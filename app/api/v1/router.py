@@ -5,7 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    call_lists,
     campaigns,
+    dnc,
     imports,
     invites,
     members,
@@ -35,3 +37,5 @@ router.include_router(voter_tags.router, tags=["voter-tags"])
 router.include_router(surveys.router, tags=["surveys"])
 router.include_router(turfs.router, tags=["turfs"])
 router.include_router(walk_lists.router, tags=["walk-lists"])
+router.include_router(call_lists.router, tags=["call-lists"])
+router.include_router(dnc.router, tags=["dnc"])
