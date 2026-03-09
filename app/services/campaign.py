@@ -1,0 +1,321 @@
+"""Campaign business logic with compensating transactions."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import CampaignNotFoundError, InsufficientPermissionsError
+from app.models.campaign import Campaign, CampaignStatus, CampaignType
+from app.models.campaign_member import CampaignMember
+from app.schemas.common import PaginationResponse
+
+if TYPE_CHECKING:
+    from app.core.security import AuthenticatedUser
+    from app.services.zitadel import ZitadelService
+
+
+class CampaignService:
+    """Campaign CRUD operations with ZITADEL org lifecycle management."""
+
+    async def create_campaign(
+        self,
+        db: AsyncSession,
+        name: str,
+        campaign_type: CampaignType,
+        user: AuthenticatedUser,
+        zitadel: ZitadelService,
+        jurisdiction_fips: str | None = None,
+        jurisdiction_name: str | None = None,
+        election_date=None,
+        candidate_name: str | None = None,
+        party_affiliation: str | None = None,
+    ) -> Campaign:
+        """Create a campaign with ZITADEL org provisioning.
+
+        Implements compensating transaction pattern: if local DB write fails,
+        the ZITADEL org is deleted to maintain consistency.
+
+        Args:
+            db: Async database session.
+            name: Campaign name.
+            campaign_type: Type of campaign (federal, state, local, ballot).
+            user: The authenticated user creating the campaign.
+            zitadel: ZITADEL service client for org provisioning.
+            jurisdiction_fips: Optional FIPS code.
+            jurisdiction_name: Optional jurisdiction name.
+            election_date: Optional election date.
+            candidate_name: Optional candidate name.
+            party_affiliation: Optional party affiliation.
+
+        Returns:
+            The created Campaign object.
+
+        Raises:
+            ZitadelUnavailableError: If ZITADEL is unreachable.
+            Exception: If DB write fails (after ZITADEL org cleanup).
+        """
+        # Step 1: Create ZITADEL org first (external system)
+        org_data = await zitadel.create_organization(name)
+        org_id = org_data["id"]
+
+        try:
+            # Step 2: Create local campaign record
+            campaign = Campaign(
+                id=uuid.uuid4(),
+                zitadel_org_id=org_id,
+                name=name,
+                type=campaign_type,
+                jurisdiction_fips=jurisdiction_fips,
+                jurisdiction_name=jurisdiction_name,
+                election_date=election_date,
+                candidate_name=candidate_name,
+                party_affiliation=party_affiliation,
+                status=CampaignStatus.ACTIVE,
+                created_by=user.id,
+            )
+            db.add(campaign)
+
+            # Step 3: Create campaign_member for the creator
+            member = CampaignMember(
+                user_id=user.id,
+                campaign_id=campaign.id,
+            )
+            db.add(member)
+
+            await db.commit()
+            await db.refresh(campaign)
+            return campaign
+
+        except Exception:
+            # Compensating transaction: delete the ZITADEL org
+            logger.warning(
+                "Local DB write failed for campaign '{}', cleaning up ZITADEL org {}",
+                name,
+                org_id,
+            )
+            await db.rollback()
+            try:
+                await zitadel.delete_organization(org_id)
+            except Exception:
+                logger.error(
+                    "Failed to clean up ZITADEL org {} during compensating transaction",
+                    org_id,
+                )
+            raise
+
+    async def get_campaign(
+        self, db: AsyncSession, campaign_id: uuid.UUID
+    ) -> Campaign:
+        """Get a campaign by ID.
+
+        Args:
+            db: Async database session.
+            campaign_id: The campaign UUID.
+
+        Returns:
+            The Campaign object.
+
+        Raises:
+            CampaignNotFoundError: If campaign does not exist.
+        """
+        result = await db.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+        campaign = result.scalar_one_or_none()
+        if campaign is None:
+            raise CampaignNotFoundError(campaign_id)
+        return campaign
+
+    async def list_campaigns(
+        self,
+        db: AsyncSession,
+        limit: int = 20,
+        cursor: str | None = None,
+    ) -> tuple[list[Campaign], PaginationResponse]:
+        """List campaigns with cursor-based pagination.
+
+        Uses created_at + id for stable cursor ordering.
+
+        Args:
+            db: Async database session.
+            limit: Maximum number of items to return.
+            cursor: Opaque cursor string (created_at|id format).
+
+        Returns:
+            Tuple of (campaigns list, pagination metadata).
+        """
+        query = select(Campaign).where(
+            Campaign.status != CampaignStatus.DELETED
+        ).order_by(Campaign.created_at.desc(), Campaign.id.desc())
+
+        if cursor:
+            parts = cursor.split("|", 1)
+            if len(parts) == 2:
+                cursor_ts = datetime.fromisoformat(parts[0])
+                cursor_id = uuid.UUID(parts[1])
+                query = query.where(
+                    (Campaign.created_at < cursor_ts)
+                    | (
+                        (Campaign.created_at == cursor_ts)
+                        & (Campaign.id < cursor_id)
+                    )
+                )
+
+        # Fetch one extra to check has_more
+        query = query.limit(limit + 1)
+
+        result = await db.execute(query)
+        items = list(result.scalars().all())
+
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = f"{last.created_at.isoformat()}|{last.id}"
+
+        pagination = PaginationResponse(
+            next_cursor=next_cursor,
+            has_more=has_more,
+        )
+
+        return items, pagination
+
+    async def update_campaign(
+        self,
+        db: AsyncSession,
+        campaign_id: uuid.UUID,
+        name: str | None = None,
+        campaign_type: CampaignType | None = None,
+        jurisdiction_fips: str | None = ...,
+        jurisdiction_name: str | None = ...,
+        election_date=...,
+        candidate_name: str | None = ...,
+        party_affiliation: str | None = ...,
+        status: CampaignStatus | None = None,
+    ) -> Campaign:
+        """Update campaign fields.
+
+        Args:
+            db: Async database session.
+            campaign_id: The campaign UUID.
+            name: New name (if provided).
+            campaign_type: New type (if provided).
+            jurisdiction_fips: New FIPS code (ellipsis = not provided).
+            jurisdiction_name: New jurisdiction name (ellipsis = not provided).
+            election_date: New election date (ellipsis = not provided).
+            candidate_name: New candidate name (ellipsis = not provided).
+            party_affiliation: New party affiliation (ellipsis = not provided).
+            status: New status (if provided, validates transitions).
+
+        Returns:
+            The updated Campaign object.
+
+        Raises:
+            CampaignNotFoundError: If campaign does not exist.
+        """
+        result = await db.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+        campaign = result.scalar_one_or_none()
+        if campaign is None:
+            raise CampaignNotFoundError(campaign_id)
+
+        if name is not None:
+            campaign.name = name
+        if campaign_type is not None:
+            campaign.type = campaign_type
+        if jurisdiction_fips is not ...:
+            campaign.jurisdiction_fips = jurisdiction_fips
+        if jurisdiction_name is not ...:
+            campaign.jurisdiction_name = jurisdiction_name
+        if election_date is not ...:
+            campaign.election_date = election_date
+        if candidate_name is not ...:
+            campaign.candidate_name = candidate_name
+        if party_affiliation is not ...:
+            campaign.party_affiliation = party_affiliation
+        if status is not None:
+            _validate_status_transition(campaign.status, status)
+            campaign.status = status
+
+        campaign.updated_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(campaign)
+        return campaign
+
+    async def delete_campaign(
+        self,
+        db: AsyncSession,
+        campaign_id: uuid.UUID,
+        user: AuthenticatedUser,
+        zitadel: ZitadelService,
+    ) -> None:
+        """Soft-delete a campaign and deactivate ZITADEL org.
+
+        Only the campaign creator (owner) can delete.
+
+        Args:
+            db: Async database session.
+            campaign_id: The campaign UUID.
+            user: The authenticated user requesting deletion.
+            zitadel: ZITADEL service client.
+
+        Raises:
+            CampaignNotFoundError: If campaign does not exist.
+            InsufficientPermissionsError: If user is not the campaign creator.
+            ZitadelUnavailableError: If ZITADEL is unreachable.
+        """
+        result = await db.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+        campaign = result.scalar_one_or_none()
+        if campaign is None:
+            raise CampaignNotFoundError(campaign_id)
+
+        if campaign.created_by != user.id:
+            raise InsufficientPermissionsError(
+                "Only the campaign creator can delete a campaign"
+            )
+
+        campaign.status = CampaignStatus.DELETED
+        campaign.updated_at = datetime.now(UTC)
+
+        await zitadel.deactivate_organization(campaign.zitadel_org_id)
+        await db.commit()
+
+
+def _validate_status_transition(
+    current: CampaignStatus, target: CampaignStatus
+) -> None:
+    """Validate campaign status transitions.
+
+    Allowed transitions:
+        active -> suspended
+        active -> archived
+        suspended -> active
+
+    Args:
+        current: Current campaign status.
+        target: Target campaign status.
+
+    Raises:
+        ValueError: If transition is not allowed.
+    """
+    valid_transitions: dict[CampaignStatus, set[CampaignStatus]] = {
+        CampaignStatus.ACTIVE: {CampaignStatus.SUSPENDED, CampaignStatus.ARCHIVED},
+        CampaignStatus.SUSPENDED: {CampaignStatus.ACTIVE},
+    }
+
+    allowed = valid_transitions.get(current, set())
+    if target not in allowed:
+        msg = f"Cannot transition from {current.value} to {target.value}"
+        raise ValueError(msg)
