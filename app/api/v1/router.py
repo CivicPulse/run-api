@@ -10,12 +10,14 @@ from app.api.v1 import (
     invites,
     members,
     surveys,
+    turfs,
     users,
     voter_contacts,
     voter_interactions,
     voter_lists,
     voter_tags,
     voters,
+    walk_lists,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -31,3 +33,5 @@ router.include_router(voters.router, tags=["voters"])
 router.include_router(voter_lists.router, tags=["voter-lists"])
 router.include_router(voter_tags.router, tags=["voter-tags"])
 router.include_router(surveys.router, tags=["surveys"])
+router.include_router(turfs.router, tags=["turfs"])
+router.include_router(walk_lists.router, tags=["walk-lists"])
