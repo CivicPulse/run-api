@@ -38,7 +38,7 @@ def init_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(CampaignNotFoundError)
     async def campaign_not_found_handler(request, exc):  # noqa: ARG001
-        return problem.Problem(
+        return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
             title="Campaign Not Found",
             detail=str(exc),
@@ -47,7 +47,7 @@ def init_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(InsufficientPermissionsError)
     async def insufficient_permissions_handler(request, exc):  # noqa: ARG001
-        return problem.Problem(
+        return problem.ProblemResponse(
             status=status.HTTP_403_FORBIDDEN,
             title="Insufficient Permissions",
             detail=exc.detail,
@@ -56,7 +56,7 @@ def init_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ZitadelUnavailableError)
     async def zitadel_unavailable_handler(request, exc):  # noqa: ARG001
-        return problem.Problem(
+        return problem.ProblemResponse(
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
             title="Authentication Service Unavailable",
             detail=exc.detail,
