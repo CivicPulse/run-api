@@ -15,4 +15,5 @@ class Base(DeclarativeBase):
 # These imports must be after Base is defined to avoid circular imports.
 import app.models.campaign  # noqa: E402, F401
 import app.models.campaign_member  # noqa: E402, F401
+import app.models.invite  # noqa: E402, F401
 import app.models.user  # noqa: E402, F401
