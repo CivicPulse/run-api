@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Authentication and Multi-Tenancy** - ZITADEL auth, campaign CRUD, RLS isolation, and role-based access control
 - [ ] **Phase 2: Voter Data Import and CRM** - Voter file import pipeline, canonical voter model, search/filtering, tagging, and interaction history
 - [x] **Phase 3: Canvassing Operations** - Turf cutting, walk list generation, door-knock recording, survey scripts, and canvasser assignment (completed 2026-03-09)
-- [ ] **Phase 4: Phone Banking** - Call list generation, call scripts, outcome recording, and survey capture reusing the canvassing survey engine
+- [x] **Phase 4: Phone Banking** - Call list generation, call scripts, outcome recording, and survey capture reusing the canvassing survey engine (completed 2026-03-09)
 - [ ] **Phase 5: Volunteer Management** - Volunteer registration, shift scheduling, assignment to turfs and phone banks, and hours tracking
 - [ ] **Phase 6: Operational Dashboards** - Canvassing progress, phone banking progress, and volunteer activity summary endpoints
 
@@ -124,6 +124,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Authentication and Multi-Tenancy | 3/3 | Complete |  |
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
 | 3. Canvassing Operations | 4/4 | Complete   | 2026-03-09 |
-| 4. Phone Banking | 2/3 | In Progress|  |
+| 4. Phone Banking | 3/3 | Complete   | 2026-03-09 |
 | 5. Volunteer Management | 0/1 | Not started | - |
 | 6. Operational Dashboards | 0/1 | Not started | - |
