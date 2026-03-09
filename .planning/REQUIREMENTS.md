@@ -10,11 +10,11 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Authentication & Campaign Management
 
 - [x] **AUTH-01**: User can authenticate via ZITADEL OpenID Connect and receive a JWT
-- [ ] **AUTH-02**: Campaign admin can create a campaign with name, type, jurisdiction, and election date
-- [ ] **AUTH-03**: Campaign admin can update and delete campaigns they own
+- [x] **AUTH-02**: Campaign admin can create a campaign with name, type, jurisdiction, and election date
+- [x] **AUTH-03**: Campaign admin can update and delete campaigns they own
 - [x] **AUTH-04**: Campaign data is isolated via PostgreSQL Row-Level Security on campaign_id
-- [ ] **AUTH-05**: Campaign admin can assign roles to users within a campaign (owner, admin, manager, volunteer, viewer)
-- [ ] **AUTH-06**: API endpoints enforce role-based permissions per campaign context
+- [x] **AUTH-05**: Campaign admin can assign roles to users within a campaign (owner, admin, manager, volunteer, viewer)
+- [x] **AUTH-06**: API endpoints enforce role-based permissions per campaign context
 - [ ] **AUTH-07**: Campaign admin can invite users to a campaign with a specific role via invite link
 
 ### Voter File / CRM
@@ -116,11 +116,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Complete |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
-| AUTH-05 | Phase 1 | Pending |
-| AUTH-06 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Complete |
+| AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Pending |
 | VOTER-01 | Phase 2 | Pending |
 | VOTER-02 | Phase 2 | Pending |
