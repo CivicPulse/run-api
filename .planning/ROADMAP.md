@@ -30,11 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Campaign admin can create, update, and delete campaigns they own
   3. A user in Campaign A cannot read or modify any data belonging to Campaign B (RLS enforced at the database level)
   4. Campaign admin can invite users and assign roles, and the API enforces different permissions for each role (owner, admin, manager, volunteer, viewer)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Project foundation: FastAPI skeleton, PostgreSQL + Docker, Alembic migrations with RLS, SQLAlchemy models, JWT validation with Authlib
+- [ ] 01-02-PLAN.md — Campaign CRUD with ZITADEL org provisioning, compensating transactions, role enforcement, user identity sync, /me endpoints
+- [ ] 01-03-PLAN.md — Campaign invites, member management, role assignment, RLS integration tests
 
 ### Phase 2: Voter Data Import and CRM
 **Goal**: Campaign staff can import voter files from multiple sources and work with a unified voter database for targeting and outreach
@@ -115,7 +116,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Authentication and Multi-Tenancy | 0/2 | Not started | - |
+| 1. Authentication and Multi-Tenancy | 0/3 | Planning | - |
 | 2. Voter Data Import and CRM | 0/3 | Not started | - |
 | 3. Canvassing Operations | 0/2 | Not started | - |
 | 4. Phone Banking | 0/1 | Not started | - |
