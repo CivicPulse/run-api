@@ -9,6 +9,7 @@ from app.api.v1 import (
     imports,
     invites,
     members,
+    surveys,
     users,
     voter_contacts,
     voter_interactions,
@@ -29,3 +30,4 @@ router.include_router(voter_contacts.router, tags=["voter-contacts"])
 router.include_router(voters.router, tags=["voters"])
 router.include_router(voter_lists.router, tags=["voter-lists"])
 router.include_router(voter_tags.router, tags=["voter-tags"])
+router.include_router(surveys.router, tags=["surveys"])

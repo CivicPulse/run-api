@@ -44,13 +44,14 @@ class QuestionCreate(BaseSchema):
     question_text: str
     question_type: QuestionType
     options: dict[str, Any] | None = None
-    position: int
+    position: int | None = None
 
 
 class QuestionUpdate(BaseSchema):
     """Schema for updating a survey question."""
 
     question_text: str | None = None
+    question_type: QuestionType | None = None
     position: int | None = None
     options: dict[str, Any] | None = None
 
@@ -90,6 +91,19 @@ class SurveyResponseOut(BaseSchema):
     answer_value: str
     answered_by: str
     answered_at: datetime
+
+
+class ScriptDetailResponse(ScriptResponse):
+    """Script response with nested questions."""
+
+    questions: list[QuestionResponse] = []
+
+
+class BatchResponseCreate(BaseSchema):
+    """Schema for recording batch survey responses for a voter."""
+
+    voter_id: uuid.UUID
+    responses: list[ResponseCreate]
 
 
 class ScriptListResponse(PaginatedResponse[ScriptResponse]):
