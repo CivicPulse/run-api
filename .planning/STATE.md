@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-09T21:03:06.110Z"
-last_activity: 2026-03-09 — Completed Plan 04-01 (phone banking data layer)
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-09T21:11:52.116Z"
+last_activity: 2026-03-09 — Completed Plan 04-02 (call list and DNC services)
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 4 of 6 (Phone Banking)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-09 — Completed Plan 04-01 (phone banking data layer)
+Last activity: 2026-03-09 — Completed Plan 04-02 (call list and DNC services)
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 86%
 | Phase 03 P02 | 5 min | 2 tasks | 8 files |
 | Phase 03 P03 | 5 min | 2 tasks | 6 files |
 | Phase 04 P01 | 4 min | 2 tasks | 13 files |
+| Phase 04 P02 | 6 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,10 @@ Recent decisions affecting current work:
 - [04-01] native_enum=False convention maintained (VARCHAR for all StrEnum columns)
 - [04-01] RLS subquery isolation for call_list_entries and session_callers via parent tables
 - [04-01] PHONE_CALL added to InteractionType without migration (native_enum=False)
+- [Phase 04]: Phone validation uses regex ^\d{10,15}$ for basic format checking
+- [Phase 04]: python-multipart added for UploadFile CSV import endpoint
+- [Phase 04]: DNC duplicate handling via SELECT-then-INSERT (returns existing, no error)
+- [Phase 04]: Stale claim release happens inline during claim_entries (not background job)
 
 ### Pending Todos
 
@@ -127,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T21:03:06.101Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-09T21:11:52.102Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
