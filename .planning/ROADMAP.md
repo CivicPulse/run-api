@@ -121,7 +121,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Authentication and Multi-Tenancy | 3/3 | Complete |  |
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
-| 3. Canvassing Operations | 1/4 | In Progress|  |
+| 3. Canvassing Operations | 2/4 | In Progress|  |
 | 4. Phone Banking | 0/1 | Not started | - |
 | 5. Volunteer Management | 0/1 | Not started | - |
 | 6. Operational Dashboards | 0/1 | Not started | - |
