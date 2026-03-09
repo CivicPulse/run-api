@@ -43,11 +43,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Phone Banking
 
-- [ ] **PHONE-01**: Campaign manager can generate call lists from voter universe criteria filtered by valid phone number and do-not-call status
-- [ ] **PHONE-02**: Phone banker can follow call scripts (linear and branched) during calls
-- [ ] **PHONE-03**: Phone banker can record call outcomes (answered, no answer, busy, wrong number, voicemail, refused, deceased)
-- [ ] **PHONE-04**: Phone banker can capture survey responses during calls using same survey engine as canvassing
-- [ ] **PHONE-05**: Call outcomes and survey responses sync to voter interaction history
+- [x] **PHONE-01**: Campaign manager can generate call lists from voter universe criteria filtered by valid phone number and do-not-call status
+- [x] **PHONE-02**: Phone banker can follow call scripts (linear and branched) during calls
+- [x] **PHONE-03**: Phone banker can record call outcomes (answered, no answer, busy, wrong number, voicemail, refused, deceased)
+- [x] **PHONE-04**: Phone banker can capture survey responses during calls using same survey engine as canvassing
+- [x] **PHONE-05**: Call outcomes and survey responses sync to voter interaction history
 
 ### Volunteer Management
 
@@ -140,11 +140,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CANV-06 | Phase 3 | Complete |
 | CANV-07 | Phase 3 | Complete |
 | CANV-08 | Phase 3 | Complete |
-| PHONE-01 | Phase 4 | Pending |
-| PHONE-02 | Phase 4 | Pending |
-| PHONE-03 | Phase 4 | Pending |
-| PHONE-04 | Phase 4 | Pending |
-| PHONE-05 | Phase 4 | Pending |
+| PHONE-01 | Phase 4 | Complete |
+| PHONE-02 | Phase 4 | Complete |
+| PHONE-03 | Phase 4 | Complete |
+| PHONE-04 | Phase 4 | Complete |
+| PHONE-05 | Phase 4 | Complete |
 | VOL-01 | Phase 5 | Pending |
 | VOL-02 | Phase 5 | Pending |
 | VOL-03 | Phase 5 | Pending |
