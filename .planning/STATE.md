@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-09T20:13:42Z"
+status: completed
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-09T20:16:00.947Z"
 last_activity: 2026-03-09 — Completed Plan 03-03 (survey engine and RLS tests)
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
   completed_plans: 11
   percent: 100
@@ -100,6 +100,11 @@ Recent decisions affecting current work:
 - [03-01] Voter geom spatial_index=False in model; GiST index created explicitly in migration
 - [03-01] RLS on child tables uses subquery through parent's campaign_id
 - [03-01] geoalchemy2 alembic_helpers added to both offline and online migration contexts
+- [03-02] parse_address_sort_key and household_key as standalone functions in turf.py for testability
+- [03-02] Walk list entries use sequence-based cursor pagination (not created_at)
+- [03-02] CanvassService computes attempt_number on read via COUNT query (not stored in payload)
+- [03-02] Status transitions enforced: draft->active->completed only (no backward)
+- [03-02] Walk list deletion manually cascades entries and canvassers before deleting parent
 - [03-03] QuestionCreate.position optional with auto-append (max position + 1)
 - [03-03] BatchResponseCreate schema for batch voter response recording
 - [03-03] ScriptDetailResponse includes nested questions for single-request fetch
@@ -117,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T20:13:42Z
-Stopped at: Completed 03-03-PLAN.md
-Resume file: .planning/phases/03-canvassing-operations/03-03-SUMMARY.md
+Last session: 2026-03-09T20:16:00.939Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None
