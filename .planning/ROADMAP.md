@@ -111,10 +111,11 @@ Plans:
   1. API returns canvassing progress data including doors knocked, contacts made, and outcomes broken down by turf and canvasser
   2. API returns phone banking progress data including calls made, contacts reached, and outcomes by type
   3. API returns volunteer activity summary including active volunteers, scheduled shifts, and total hours contributed
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Dashboard schemas (14 Pydantic response models), three aggregation services (CanvassingDashboardService, PhoneBankingDashboardService, VolunteerDashboardService) with live SQLAlchemy queries
+- [ ] 06-02-PLAN.md — 12 dashboard route handlers (overview, canvassing, phone-banking, volunteers, my-stats, drilldowns), router registration, unit tests
 
 ## Progress
 
@@ -128,4 +129,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Canvassing Operations | 4/4 | Complete   | 2026-03-09 |
 | 4. Phone Banking | 3/3 | Complete   | 2026-03-09 |
 | 5. Volunteer Management | 3/3 | Complete   | 2026-03-09 |
-| 6. Operational Dashboards | 0/1 | Not started | - |
+| 6. Operational Dashboards | 0/2 | Not started | - |
