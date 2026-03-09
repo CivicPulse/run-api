@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **AUTH-04**: Campaign data is isolated via PostgreSQL Row-Level Security on campaign_id
 - [x] **AUTH-05**: Campaign admin can assign roles to users within a campaign (owner, admin, manager, volunteer, viewer)
 - [x] **AUTH-06**: API endpoints enforce role-based permissions per campaign context
-- [ ] **AUTH-07**: Campaign admin can invite users to a campaign with a specific role via invite link
+- [x] **AUTH-07**: Campaign admin can invite users to a campaign with a specific role via invite link
 
 ### Voter File / CRM
 
@@ -121,7 +121,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 1 | Complete |
 | AUTH-06 | Phase 1 | Complete |
-| AUTH-07 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Complete |
 | VOTER-01 | Phase 2 | Pending |
 | VOTER-02 | Phase 2 | Pending |
 | VOTER-03 | Phase 2 | Pending |
