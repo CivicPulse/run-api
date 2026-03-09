@@ -115,13 +115,51 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| VOTER-01 | Phase 2 | Pending |
+| VOTER-02 | Phase 2 | Pending |
+| VOTER-03 | Phase 2 | Pending |
+| VOTER-04 | Phase 2 | Pending |
+| VOTER-05 | Phase 2 | Pending |
+| VOTER-06 | Phase 2 | Pending |
+| VOTER-07 | Phase 2 | Pending |
+| VOTER-08 | Phase 2 | Pending |
+| VOTER-09 | Phase 2 | Pending |
+| VOTER-10 | Phase 2 | Pending |
+| CANV-01 | Phase 3 | Pending |
+| CANV-02 | Phase 3 | Pending |
+| CANV-03 | Phase 3 | Pending |
+| CANV-04 | Phase 3 | Pending |
+| CANV-05 | Phase 3 | Pending |
+| CANV-06 | Phase 3 | Pending |
+| CANV-07 | Phase 3 | Pending |
+| CANV-08 | Phase 3 | Pending |
+| PHONE-01 | Phase 4 | Pending |
+| PHONE-02 | Phase 4 | Pending |
+| PHONE-03 | Phase 4 | Pending |
+| PHONE-04 | Phase 4 | Pending |
+| PHONE-05 | Phase 4 | Pending |
+| VOL-01 | Phase 5 | Pending |
+| VOL-02 | Phase 5 | Pending |
+| VOL-03 | Phase 5 | Pending |
+| VOL-04 | Phase 5 | Pending |
+| VOL-05 | Phase 5 | Pending |
+| VOL-06 | Phase 5 | Pending |
+| DASH-01 | Phase 6 | Pending |
+| DASH-02 | Phase 6 | Pending |
+| DASH-03 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30 ⚠️
+- v1 requirements: 39 total
+- Mapped to phases: 39
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*
