@@ -11,6 +11,7 @@ from app.api.v1 import (
     imports,
     invites,
     members,
+    phone_banks,
     surveys,
     turfs,
     users,
@@ -39,3 +40,4 @@ router.include_router(turfs.router, tags=["turfs"])
 router.include_router(walk_lists.router, tags=["walk-lists"])
 router.include_router(call_lists.router, tags=["call-lists"])
 router.include_router(dnc.router, tags=["dnc"])
+router.include_router(phone_banks.router, tags=["phone-banks"])
