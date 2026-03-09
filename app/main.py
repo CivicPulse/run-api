@@ -22,10 +22,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan handler -- initializes shared resources."""
     # Import here to avoid circular imports at module level
     from app.core.security import JWKSManager
+    from app.services.storage import StorageService
+    from app.tasks.broker import broker
 
     logger.info("Starting {}", settings.app_name)
+
+    # Auth
     app.state.jwks_manager = JWKSManager(issuer=settings.zitadel_issuer)
+
+    # Object storage
+    storage_service = StorageService()
+    await storage_service.ensure_bucket()
+    app.state.storage_service = storage_service
+
+    # Background task broker
+    await broker.startup()
+    app.state.broker = broker
+
     yield
+
+    # Shutdown
+    await broker.shutdown()
     logger.info("Shutting down {}", settings.app_name)
 
 
