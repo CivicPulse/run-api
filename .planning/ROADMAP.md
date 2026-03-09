@@ -65,9 +65,10 @@ Plans:
   3. Canvasser can record door-knock outcomes (not home, refused, supporter, etc.) and the system tracks contact attempts with timestamps per voter
   4. Canvasser can follow a linear survey script, record responses per question (multiple choice, scale, free text), and responses are stored per voter
   5. Campaign manager can assign canvassers to specific turfs
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
+- [ ] 03-00-PLAN.md — Wave 0 test stub files for all canvassing operations (turfs, walk lists, canvassing, surveys, spatial integration)
 - [ ] 03-01-PLAN.md — All canvassing models (turf, walk list, survey), Pydantic schemas, Alembic migration with PostGIS, voter geom backfill, RLS policies
 - [ ] 03-02-PLAN.md — TurfService, WalkListService, CanvassService, turf and walk list API endpoints with spatial queries and household clustering
 - [ ] 03-03-PLAN.md — SurveyService (reusable survey engine), survey API endpoints, RLS integration tests for all Phase 3 tables
@@ -120,7 +121,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Authentication and Multi-Tenancy | 3/3 | Complete |  |
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
-| 3. Canvassing Operations | 0/3 | Not started | - |
+| 3. Canvassing Operations | 0/4 | Not started | - |
 | 4. Phone Banking | 0/1 | Not started | - |
 | 5. Volunteer Management | 0/1 | Not started | - |
 | 6. Operational Dashboards | 0/1 | Not started | - |
