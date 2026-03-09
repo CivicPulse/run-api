@@ -11,8 +11,8 @@ import pytest
 from app.models.dnc import DNCReason, DoNotCallEntry
 
 
-def _make_dnc_entry(**overrides) -> DoNotCallEntry:
-    """Create a DoNotCallEntry with sensible defaults."""
+def _make_dnc_entry(**overrides) -> MagicMock:
+    """Create a mock DoNotCallEntry with sensible defaults."""
     defaults = {
         "id": uuid.uuid4(),
         "campaign_id": uuid.uuid4(),
@@ -22,9 +22,9 @@ def _make_dnc_entry(**overrides) -> DoNotCallEntry:
         "added_at": datetime.now(UTC),
     }
     defaults.update(overrides)
-    entry = DoNotCallEntry.__new__(DoNotCallEntry)
+    entry = MagicMock(spec=DoNotCallEntry)
     for k, v in defaults.items():
-        object.__setattr__(entry, k, v)
+        setattr(entry, k, v)
     return entry
 
 
@@ -63,7 +63,9 @@ class TestDNCManagement:
         session = AsyncMock()
         campaign_id = uuid.uuid4()
 
-        existing_entry = _make_dnc_entry(campaign_id=campaign_id, phone_number="5551234567")
+        existing_entry = _make_dnc_entry(
+            campaign_id=campaign_id, phone_number="5551234567"
+        )
         existing_result = MagicMock()
         existing_result.scalar_one_or_none.return_value = existing_entry
         session.execute = AsyncMock(return_value=existing_result)
@@ -142,7 +144,11 @@ class TestDNCBulkImport:
         session = AsyncMock()
         campaign_id = uuid.uuid4()
 
-        csv_content = "phone_number,reason\n5551111111,manual\n5552222222,registry_import\n"
+        csv_content = (
+            "phone_number,reason\n"
+            "5551111111,manual\n"
+            "5552222222,registry_import\n"
+        )
 
         # No existing entries for any phone
         no_existing = MagicMock()
