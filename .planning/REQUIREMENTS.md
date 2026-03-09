@@ -32,14 +32,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Canvassing
 
-- [ ] **CANV-01**: Campaign manager can define geographic turfs by drawing polygons (PostGIS)
-- [ ] **CANV-02**: Campaign manager can generate walk lists from a turf and target universe criteria
-- [ ] **CANV-03**: Walk lists cluster voters by household so multiple voters at one address appear as a single stop
-- [ ] **CANV-04**: Canvasser can record door-knock outcomes using standard result codes (not home, refused, supporter, undecided, opposed, moved, deceased)
-- [ ] **CANV-05**: System tracks contact attempts per voter with timestamps
-- [ ] **CANV-06**: Campaign manager can assign canvassers to specific turfs
-- [ ] **CANV-07**: Canvasser can follow linear survey scripts and record responses per question
-- [ ] **CANV-08**: Survey responses are captured per voter with support for multiple choice, scale, and free text
+- [x] **CANV-01**: Campaign manager can define geographic turfs by drawing polygons (PostGIS)
+- [x] **CANV-02**: Campaign manager can generate walk lists from a turf and target universe criteria
+- [x] **CANV-03**: Walk lists cluster voters by household so multiple voters at one address appear as a single stop
+- [x] **CANV-04**: Canvasser can record door-knock outcomes using standard result codes (not home, refused, supporter, undecided, opposed, moved, deceased)
+- [x] **CANV-05**: System tracks contact attempts per voter with timestamps
+- [x] **CANV-06**: Campaign manager can assign canvassers to specific turfs
+- [x] **CANV-07**: Canvasser can follow linear survey scripts and record responses per question
+- [x] **CANV-08**: Survey responses are captured per voter with support for multiple choice, scale, and free text
 
 ### Phone Banking
 
@@ -132,14 +132,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOTER-08 | Phase 2 | Complete |
 | VOTER-09 | Phase 2 | Complete |
 | VOTER-10 | Phase 2 | Complete |
-| CANV-01 | Phase 3 | Pending |
-| CANV-02 | Phase 3 | Pending |
-| CANV-03 | Phase 3 | Pending |
-| CANV-04 | Phase 3 | Pending |
-| CANV-05 | Phase 3 | Pending |
-| CANV-06 | Phase 3 | Pending |
-| CANV-07 | Phase 3 | Pending |
-| CANV-08 | Phase 3 | Pending |
+| CANV-01 | Phase 3 | Complete |
+| CANV-02 | Phase 3 | Complete |
+| CANV-03 | Phase 3 | Complete |
+| CANV-04 | Phase 3 | Complete |
+| CANV-05 | Phase 3 | Complete |
+| CANV-06 | Phase 3 | Complete |
+| CANV-07 | Phase 3 | Complete |
+| CANV-08 | Phase 3 | Complete |
 | PHONE-01 | Phase 4 | Pending |
 | PHONE-02 | Phase 4 | Pending |
 | PHONE-03 | Phase 4 | Pending |
