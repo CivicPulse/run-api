@@ -276,10 +276,12 @@ class TestCallerManagement:
         result = await svc.check_in(db, session_obj.id, "caller-1")
         assert result.check_in_at is not None
 
-        # check_out: need caller lookup
+        # check_out: need caller lookup + session lookup (for entry release)
         caller_obj2 = _make_caller(session_id=session_obj.id, check_in_at=datetime.now(UTC))
         db.execute.side_effect = [
             _mock_scalar_result(caller_obj2),
+            _mock_scalar_result(session_obj),
+            AsyncMock(),  # release entries update
         ]
         result = await svc.check_out(db, session_obj.id, "caller-1")
         assert result.check_out_at is not None
