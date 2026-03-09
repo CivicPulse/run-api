@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-09T22:12:24.063Z"
-last_activity: 2026-03-09 — Completed Plan 05-01 (volunteer data layer)
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-09T22:20:20.000Z"
+last_activity: 2026-03-09 — Completed Plan 05-02 (volunteer services and API)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 5 of 6 (Volunteer Management)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-09 — Completed Plan 05-01 (volunteer data layer)
+Last activity: 2026-03-09 — Completed Plan 05-02 (volunteer services and API)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 88%
 | Phase 04 P02 | 6 min | 2 tasks | 7 files |
 | Phase 04 P03 | 6 min | 2 tasks | 5 files |
 | Phase 05 P01 | 3 min | 2 tasks | 10 files |
+| Phase 05 P02 | 7 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,10 @@ Recent decisions affecting current work:
 - [05-01] ARRAY(String) for volunteer skills column (flexible, no join table needed)
 - [05-01] native_enum=False convention maintained for all StrEnum columns
 - [05-01] Skip-marked test stubs with NotImplementedError bodies (Phase 3 Wave 0 pattern)
+- [05-02] Late imports for WalkListCanvasser/SessionCaller in check_in() to avoid circular deps
+- [05-02] SELECT FOR UPDATE on waitlist promotion to prevent race conditions
+- [05-02] Walk-in volunteers without user_id skip operational record creation with warning log
+- [05-02] Hours computed on-read from timestamps with adjusted_hours override
 
 ### Pending Todos
 
@@ -141,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T22:12:24.054Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-09T22:20:20.000Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

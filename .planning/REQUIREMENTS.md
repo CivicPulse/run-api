@@ -52,11 +52,11 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Volunteer Management
 
 - [x] **VOL-01**: Volunteer can register with profile information (name, contact, skills, availability)
-- [ ] **VOL-02**: Campaign manager can assign volunteers to canvassing turfs, phone bank sessions, and tasks
+- [x] **VOL-02**: Campaign manager can assign volunteers to canvassing turfs, phone bank sessions, and tasks
 - [x] **VOL-03**: Campaign manager can create shifts with date, time, location, and capacity limits
-- [ ] **VOL-04**: Volunteer can self-sign up for available shifts
-- [ ] **VOL-05**: System tracks volunteer hours via check-in/check-out timestamps
-- [ ] **VOL-06**: System auto-calculates hours from canvassing and phone banking session start/end times
+- [x] **VOL-04**: Volunteer can self-sign up for available shifts
+- [x] **VOL-05**: System tracks volunteer hours via check-in/check-out timestamps
+- [x] **VOL-06**: System auto-calculates hours from canvassing and phone banking session start/end times
 
 ### Dashboards
 
@@ -146,11 +146,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PHONE-04 | Phase 4 | Complete |
 | PHONE-05 | Phase 4 | Complete |
 | VOL-01 | Phase 5 | Complete |
-| VOL-02 | Phase 5 | Pending |
+| VOL-02 | Phase 5 | Complete |
 | VOL-03 | Phase 5 | Complete |
-| VOL-04 | Phase 5 | Pending |
-| VOL-05 | Phase 5 | Pending |
-| VOL-06 | Phase 5 | Pending |
+| VOL-04 | Phase 5 | Complete |
+| VOL-05 | Phase 5 | Complete |
+| VOL-06 | Phase 5 | Complete |
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |
 | DASH-03 | Phase 6 | Pending |
