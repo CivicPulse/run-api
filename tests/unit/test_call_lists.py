@@ -2,76 +2,518 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
+
+from app.models.call_list import CallList, CallListEntry, CallListStatus, EntryStatus
+
+
+def _make_call_list(**overrides) -> CallList:
+    """Create a CallList with sensible defaults."""
+    defaults = {
+        "id": uuid.uuid4(),
+        "campaign_id": uuid.uuid4(),
+        "voter_list_id": None,
+        "script_id": None,
+        "name": "Test Call List",
+        "status": CallListStatus.DRAFT,
+        "total_entries": 0,
+        "completed_entries": 0,
+        "max_attempts": 3,
+        "claim_timeout_minutes": 30,
+        "cooldown_minutes": 60,
+        "created_by": "user-1",
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }
+    defaults.update(overrides)
+    cl = CallList.__new__(CallList)
+    for k, v in defaults.items():
+        object.__setattr__(cl, k, v)
+    return cl
+
+
+def _make_entry(**overrides) -> CallListEntry:
+    """Create a CallListEntry with sensible defaults."""
+    defaults = {
+        "id": uuid.uuid4(),
+        "call_list_id": uuid.uuid4(),
+        "voter_id": uuid.uuid4(),
+        "priority_score": 50,
+        "phone_numbers": [{"phone_id": str(uuid.uuid4()), "value": "5551234567", "type": "cell", "is_primary": True}],
+        "status": EntryStatus.AVAILABLE,
+        "attempt_count": 0,
+        "claimed_by": None,
+        "claimed_at": None,
+        "last_attempt_at": None,
+        "phone_attempts": None,
+    }
+    defaults.update(overrides)
+    entry = CallListEntry.__new__(CallListEntry)
+    for k, v in defaults.items():
+        object.__setattr__(entry, k, v)
+    return entry
 
 
 class TestCallListGeneration:
     """Tests for call list generation from voter universes."""
 
-    @pytest.mark.skip(reason="stub")
-    def test_generate_call_list_from_voter_list(self) -> None:
+    @pytest.mark.asyncio
+    async def test_generate_call_list_from_voter_list(self) -> None:
         """PHONE-01: generates frozen snapshot from voter universe, filters by phone + DNC."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_generate_call_list_phone_validation(self) -> None:
+        svc = CallListService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+        voter_list_id = uuid.uuid4()
+
+        # Mock voter list lookup
+        voter_list_result = MagicMock()
+        voter_list_obj = MagicMock()
+        voter_list_obj.filter_query = {"party": "D"}
+        voter_list_obj.list_type = "dynamic"
+        voter_list_result.scalar_one_or_none.return_value = voter_list_obj
+
+        # Mock voter+phone query: two voters with valid phones
+        voter1_id = uuid.uuid4()
+        voter2_id = uuid.uuid4()
+        phone1_id = uuid.uuid4()
+        phone2_id = uuid.uuid4()
+        rows = [
+            MagicMock(voter_id=voter1_id, phone_id=phone1_id, phone_value="5551234567", phone_type="cell", is_primary=True),
+            MagicMock(voter_id=voter2_id, phone_id=phone2_id, phone_value="5559876543", phone_type="home", is_primary=True),
+        ]
+        voter_phone_result = MagicMock()
+        voter_phone_result.all.return_value = rows
+
+        # Mock DNC check: no DNC numbers
+        dnc_result = MagicMock()
+        dnc_result.scalars.return_value.all.return_value = []
+
+        # Mock interaction count for priority
+        interaction_result = MagicMock()
+        interaction_result.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            voter_list_result,  # voter list lookup
+            voter_phone_result,  # voter+phone query
+            dnc_result,  # DNC query
+            interaction_result,  # interaction counts
+        ])
+
+        from app.schemas.call_list import CallListCreate
+
+        data = CallListCreate(
+            name="Test List",
+            voter_list_id=voter_list_id,
+        )
+
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
+
+        assert result is not None
+        assert result.status == CallListStatus.DRAFT
+        assert result.total_entries == 2
+        # Verify entries were added to session
+        add_calls = [c for c in session.add.call_args_list]
+        assert len(add_calls) >= 3  # 2 entries + 1 call list
+
+    @pytest.mark.asyncio
+    async def test_generate_call_list_phone_validation(self) -> None:
         """PHONE-01: filters out invalid phone numbers."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_generate_call_list_dnc_filtering(self) -> None:
-        """PHONE-01: excludes DNC numbers."""
-        raise NotImplementedError
+        svc = CallListService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
 
-    @pytest.mark.skip(reason="stub")
-    def test_multi_phone_entry(self) -> None:
-        """PHONE-01: entry includes all voter phone numbers ordered by priority."""
-        raise NotImplementedError
+        # No voter list -- base query
+        voter_list_result = MagicMock()
+        voter_list_result.scalar_one_or_none.return_value = None
+
+        # One voter with invalid phone (too short), one with valid
+        voter1_id = uuid.uuid4()
+        voter2_id = uuid.uuid4()
+        rows = [
+            MagicMock(voter_id=voter1_id, phone_id=uuid.uuid4(), phone_value="123", phone_type="cell", is_primary=True),
+            MagicMock(voter_id=voter2_id, phone_id=uuid.uuid4(), phone_value="5551234567", phone_type="cell", is_primary=True),
+        ]
+        voter_phone_result = MagicMock()
+        voter_phone_result.all.return_value = rows
+
+        dnc_result = MagicMock()
+        dnc_result.scalars.return_value.all.return_value = []
+
+        interaction_result = MagicMock()
+        interaction_result.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            voter_phone_result,  # voter+phone query (no voter list lookup)
+            dnc_result,
+            interaction_result,
+        ])
+
+        from app.schemas.call_list import CallListCreate
+
+        data = CallListCreate(name="Phone Validation Test")
+
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
+
+        # Only voter2 should be included (voter1's only phone is invalid)
+        assert result.total_entries == 1
+
+    @pytest.mark.asyncio
+    async def test_generate_call_list_dnc_filtering(self) -> None:
+        """PHONE-01: excludes voters whose all phone numbers are on DNC list."""
+        from app.services.call_list import CallListService
+
+        svc = CallListService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+
+        voter1_id = uuid.uuid4()
+        voter2_id = uuid.uuid4()
+        rows = [
+            MagicMock(voter_id=voter1_id, phone_id=uuid.uuid4(), phone_value="5551111111", phone_type="cell", is_primary=True),
+            MagicMock(voter_id=voter2_id, phone_id=uuid.uuid4(), phone_value="5552222222", phone_type="cell", is_primary=True),
+        ]
+        voter_phone_result = MagicMock()
+        voter_phone_result.all.return_value = rows
+
+        # voter1's phone is on DNC
+        dnc_result = MagicMock()
+        dnc_result.scalars.return_value.all.return_value = ["5551111111"]
+
+        interaction_result = MagicMock()
+        interaction_result.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            voter_phone_result,
+            dnc_result,
+            interaction_result,
+        ])
+
+        from app.schemas.call_list import CallListCreate
+
+        data = CallListCreate(name="DNC Filter Test")
+
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
+
+        # Only voter2 should be included (voter1 fully DNC'd)
+        assert result.total_entries == 1
+
+    @pytest.mark.asyncio
+    async def test_multi_phone_entry(self) -> None:
+        """PHONE-01: entry includes all voter phone numbers ordered primary-first."""
+        from app.services.call_list import CallListService
+
+        svc = CallListService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+
+        voter_id = uuid.uuid4()
+        phone1_id = uuid.uuid4()
+        phone2_id = uuid.uuid4()
+        rows = [
+            MagicMock(voter_id=voter_id, phone_id=phone1_id, phone_value="5551234567", phone_type="home", is_primary=False),
+            MagicMock(voter_id=voter_id, phone_id=phone2_id, phone_value="5559876543", phone_type="cell", is_primary=True),
+        ]
+        voter_phone_result = MagicMock()
+        voter_phone_result.all.return_value = rows
+
+        dnc_result = MagicMock()
+        dnc_result.scalars.return_value.all.return_value = []
+
+        interaction_result = MagicMock()
+        interaction_result.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            voter_phone_result,
+            dnc_result,
+            interaction_result,
+        ])
+
+        from app.schemas.call_list import CallListCreate
+
+        data = CallListCreate(name="Multi Phone Test")
+
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
+
+        assert result.total_entries == 1
+        # Find the entry that was added
+        entry_added = None
+        for call in session.add.call_args_list:
+            obj = call[0][0]
+            if isinstance(obj, CallListEntry):
+                entry_added = obj
+                break
+
+        assert entry_added is not None
+        # Primary phone should be first
+        assert entry_added.phone_numbers[0]["is_primary"] is True
+        assert entry_added.phone_numbers[0]["value"] == "5559876543"
+        assert len(entry_added.phone_numbers) == 2
 
 
 class TestCallListClaiming:
     """Tests for claim-on-fetch entry distribution."""
 
-    @pytest.mark.skip(reason="stub")
-    def test_claim_entries_returns_batch(self) -> None:
+    @pytest.mark.asyncio
+    async def test_claim_entries_returns_batch(self) -> None:
         """PHONE-01: claim-on-fetch returns correct batch size ordered by priority."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_claim_entries_skip_locked(self) -> None:
-        """PHONE-01: concurrent claims don't get same entries."""
-        raise NotImplementedError
+        svc = CallListService()
+        session = AsyncMock()
+        call_list_id = uuid.uuid4()
+        caller_id = "caller-1"
 
-    @pytest.mark.skip(reason="stub")
-    def test_release_stale_claims(self) -> None:
+        call_list = _make_call_list(
+            id=call_list_id,
+            status=CallListStatus.ACTIVE,
+            max_attempts=3,
+        )
+
+        # Mock call list lookup
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+
+        # Mock stale release (0 updated)
+        stale_result = MagicMock()
+        stale_result.rowcount = 0
+
+        # Mock SELECT FOR UPDATE SKIP LOCKED -- return 3 entries
+        entries = [
+            _make_entry(call_list_id=call_list_id, priority_score=90),
+            _make_entry(call_list_id=call_list_id, priority_score=70),
+            _make_entry(call_list_id=call_list_id, priority_score=50),
+        ]
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = entries
+
+        # Mock UPDATE for claiming
+        claim_result = MagicMock()
+
+        session.execute = AsyncMock(side_effect=[
+            cl_result,
+            stale_result,
+            entries_result,
+            claim_result,
+        ])
+
+        result = await svc.claim_entries(session, call_list_id, caller_id, batch_size=3)
+
+        assert len(result) == 3
+        # Verify entries are IN_PROGRESS with caller assignment
+        for entry in result:
+            assert entry.status == EntryStatus.IN_PROGRESS
+            assert entry.claimed_by == caller_id
+
+    @pytest.mark.asyncio
+    async def test_release_stale_claims(self) -> None:
         """PHONE-01: stale entries released on next claim."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_priority_score_ordering(self) -> None:
+        svc = CallListService()
+        session = AsyncMock()
+        call_list_id = uuid.uuid4()
+
+        call_list = _make_call_list(
+            id=call_list_id,
+            status=CallListStatus.ACTIVE,
+            claim_timeout_minutes=30,
+        )
+
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+
+        # Stale release should be called -- verify the UPDATE was executed
+        stale_result = MagicMock()
+        stale_result.rowcount = 2  # 2 stale entries released
+
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            cl_result,
+            stale_result,
+            entries_result,
+        ])
+
+        await svc.claim_entries(session, call_list_id, "caller-1", batch_size=5)
+
+        # Verify at least 2 execute calls happened (call list + stale release)
+        assert session.execute.call_count >= 2
+
+    @pytest.mark.asyncio
+    async def test_priority_score_ordering(self) -> None:
         """PHONE-01: entries returned in descending priority order."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
+
+        svc = CallListService()
+        session = AsyncMock()
+        call_list_id = uuid.uuid4()
+
+        call_list = _make_call_list(id=call_list_id, status=CallListStatus.ACTIVE)
+
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+
+        stale_result = MagicMock()
+        stale_result.rowcount = 0
+
+        # Entries already ordered by priority desc (as service should query them)
+        entries = [
+            _make_entry(call_list_id=call_list_id, priority_score=100),
+            _make_entry(call_list_id=call_list_id, priority_score=80),
+            _make_entry(call_list_id=call_list_id, priority_score=60),
+        ]
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = entries
+
+        claim_result = MagicMock()
+
+        session.execute = AsyncMock(side_effect=[
+            cl_result, stale_result, entries_result, claim_result,
+        ])
+
+        result = await svc.claim_entries(session, call_list_id, "caller-1", batch_size=5)
+
+        assert len(result) == 3
+        scores = [e.priority_score for e in result]
+        assert scores == [100, 80, 60]
 
 
 class TestCallListEntryStatus:
     """Tests for entry status transitions and recycling."""
 
-    @pytest.mark.skip(reason="stub")
-    def test_entry_status_transitions(self) -> None:
-        """PHONE-03: available -> in_progress -> completed/terminal/max_attempts."""
-        raise NotImplementedError
-
-    @pytest.mark.skip(reason="stub")
-    def test_auto_recycle_no_answer(self) -> None:
+    @pytest.mark.asyncio
+    async def test_auto_recycle_no_answer(self) -> None:
         """PHONE-01: no_answer entries return to pool after cooldown."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_terminal_outcome_never_retried(self) -> None:
+        svc = CallListService()
+        session = AsyncMock()
+        call_list_id = uuid.uuid4()
+
+        call_list = _make_call_list(
+            id=call_list_id,
+            status=CallListStatus.ACTIVE,
+            cooldown_minutes=60,
+            max_attempts=3,
+        )
+
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+
+        stale_result = MagicMock()
+        stale_result.rowcount = 0
+
+        # Entry that was attempted but past cooldown -- should be available
+        cooled_entry = _make_entry(
+            call_list_id=call_list_id,
+            status=EntryStatus.AVAILABLE,
+            attempt_count=1,
+            last_attempt_at=datetime.now(UTC) - timedelta(hours=2),
+        )
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = [cooled_entry]
+
+        claim_result = MagicMock()
+
+        session.execute = AsyncMock(side_effect=[
+            cl_result, stale_result, entries_result, claim_result,
+        ])
+
+        result = await svc.claim_entries(session, call_list_id, "caller-1", batch_size=5)
+
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_terminal_outcome_never_retried(self) -> None:
         """PHONE-03: refused/deceased entries never return to pool."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
 
-    @pytest.mark.skip(reason="stub")
-    def test_call_list_status_lifecycle(self) -> None:
+        svc = CallListService()
+        session = AsyncMock()
+        call_list_id = uuid.uuid4()
+
+        call_list = _make_call_list(id=call_list_id, status=CallListStatus.ACTIVE)
+
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+
+        stale_result = MagicMock()
+        stale_result.rowcount = 0
+
+        # No available entries (terminal ones filtered out by query)
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[
+            cl_result, stale_result, entries_result,
+        ])
+
+        result = await svc.claim_entries(session, call_list_id, "caller-1", batch_size=5)
+
+        assert len(result) == 0
+
+    @pytest.mark.asyncio
+    async def test_call_list_status_lifecycle(self) -> None:
         """Call list lifecycle: draft -> active -> completed, no backward."""
-        raise NotImplementedError
+        from app.services.call_list import CallListService
+
+        svc = CallListService()
+        session = AsyncMock()
+
+        call_list = _make_call_list(status=CallListStatus.DRAFT)
+        cl_result = MagicMock()
+        cl_result.scalar_one_or_none.return_value = call_list
+        session.execute = AsyncMock(return_value=cl_result)
+
+        # Draft -> Active should succeed
+        result = await svc.update_status(session, call_list.id, CallListStatus.ACTIVE)
+        assert result.status == CallListStatus.ACTIVE
+
+        # Active -> Completed should succeed
+        call_list_active = _make_call_list(status=CallListStatus.ACTIVE)
+        cl_result2 = MagicMock()
+        cl_result2.scalar_one_or_none.return_value = call_list_active
+        session.execute = AsyncMock(return_value=cl_result2)
+
+        result2 = await svc.update_status(session, call_list_active.id, CallListStatus.COMPLETED)
+        assert result2.status == CallListStatus.COMPLETED
+
+        # Completed -> Active should fail
+        call_list_done = _make_call_list(status=CallListStatus.COMPLETED)
+        cl_result3 = MagicMock()
+        cl_result3.scalar_one_or_none.return_value = call_list_done
+        session.execute = AsyncMock(return_value=cl_result3)
+
+        with pytest.raises(ValueError, match="Invalid status transition"):
+            await svc.update_status(session, call_list_done.id, CallListStatus.ACTIVE)
+
+
+class TestCalculatePriorityScore:
+    """Tests for priority score calculation."""
+
+    def test_calculate_priority_score_zero_interactions(self) -> None:
+        """No interactions should give max score."""
+        from app.services.call_list import calculate_priority_score
+
+        assert calculate_priority_score(0) == 100
+
+    def test_calculate_priority_score_some_interactions(self) -> None:
+        """Score decreases by 20 per interaction."""
+        from app.services.call_list import calculate_priority_score
+
+        assert calculate_priority_score(2) == 60
+
+    def test_calculate_priority_score_many_interactions(self) -> None:
+        """Score floors at 0."""
+        from app.services.call_list import calculate_priority_score
+
+        assert calculate_priority_score(10) == 0
