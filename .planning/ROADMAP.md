@@ -96,10 +96,12 @@ Plans:
   1. Volunteer can register with profile information (name, contact, skills, availability) and self-sign up for available shifts
   2. Campaign manager can create shifts with date, time, location, and capacity limits, and assign volunteers to canvassing turfs, phone bank sessions, and tasks
   3. System tracks volunteer hours via check-in/check-out and auto-calculates hours from canvassing and phone banking session durations
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Volunteer and shift models (Volunteer, Shift, ShiftVolunteer), Pydantic schemas, Alembic migration with RLS, test stubs
+- [ ] 05-02-PLAN.md — VolunteerService, ShiftService (signup, waitlist, check-in/out with WalkListCanvasser/SessionCaller side effects, hours), all API endpoints, unit tests
+- [ ] 05-03-PLAN.md — RLS integration tests for all Phase 5 tables (volunteers, shifts, tags, shift_volunteers, availability)
 
 ### Phase 6: Operational Dashboards
 **Goal**: Campaign leadership has real-time visibility into field operation progress across canvassing, phone banking, and volunteer activity
@@ -125,5 +127,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
 | 3. Canvassing Operations | 4/4 | Complete   | 2026-03-09 |
 | 4. Phone Banking | 3/3 | Complete   | 2026-03-09 |
-| 5. Volunteer Management | 0/1 | Not started | - |
+| 5. Volunteer Management | 0/3 | Not started | - |
 | 6. Operational Dashboards | 0/1 | Not started | - |
