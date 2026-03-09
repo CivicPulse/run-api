@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Voter Data Import and CRM** - Voter file import pipeline, canonical voter model, search/filtering, tagging, and interaction history
 - [x] **Phase 3: Canvassing Operations** - Turf cutting, walk list generation, door-knock recording, survey scripts, and canvasser assignment (completed 2026-03-09)
 - [x] **Phase 4: Phone Banking** - Call list generation, call scripts, outcome recording, and survey capture reusing the canvassing survey engine (completed 2026-03-09)
-- [ ] **Phase 5: Volunteer Management** - Volunteer registration, shift scheduling, assignment to turfs and phone banks, and hours tracking
+- [x] **Phase 5: Volunteer Management** - Volunteer registration, shift scheduling, assignment to turfs and phone banks, and hours tracking (completed 2026-03-09)
 - [ ] **Phase 6: Operational Dashboards** - Canvassing progress, phone banking progress, and volunteer activity summary endpoints
 
 ## Phase Details
@@ -127,5 +127,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
 | 3. Canvassing Operations | 4/4 | Complete   | 2026-03-09 |
 | 4. Phone Banking | 3/3 | Complete   | 2026-03-09 |
-| 5. Volunteer Management | 2/3 | In Progress|  |
+| 5. Volunteer Management | 3/3 | Complete   | 2026-03-09 |
 | 6. Operational Dashboards | 0/1 | Not started | - |
