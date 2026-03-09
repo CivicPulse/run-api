@@ -47,12 +47,13 @@ Plans:
   3. Campaign user can tag voters, create static lists, and create dynamic lists from saved filter queries
   4. Every voter interaction (door knock, call, survey response) is recorded in an append-only history visible on the voter record
   5. Voter contact information (phone, email, address) can be viewed and managed with primary/secondary designation
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — Voter data model (all SQLAlchemy models, Pydantic schemas), Alembic migration with RLS, MinIO + StorageService, TaskIQ broker
+- [ ] 02-02-PLAN.md — Import pipeline: pre-signed URL upload, RapidFuzz field mapping, CSV batch processing, TaskIQ background job, import status endpoints
+- [ ] 02-03-PLAN.md — Voter search/filter with composable query builder, tag management, static/dynamic voter lists, target universes
+- [ ] 02-04-PLAN.md — Append-only interaction history, multi-channel contact management (phone/email/address), RLS integration tests
 
 ### Phase 3: Canvassing Operations
 **Goal**: Campaign managers can cut turfs, generate walk lists, and canvassers can record door-knock outcomes and survey responses in the field
@@ -116,8 +117,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Authentication and Multi-Tenancy | 1/3 | In Progress|  |
-| 2. Voter Data Import and CRM | 0/3 | Not started | - |
+| 1. Authentication and Multi-Tenancy | 3/3 | Complete |  |
+| 2. Voter Data Import and CRM | 0/4 | Not started | - |
 | 3. Canvassing Operations | 0/2 | Not started | - |
 | 4. Phone Banking | 0/1 | Not started | - |
 | 5. Volunteer Management | 0/1 | Not started | - |
