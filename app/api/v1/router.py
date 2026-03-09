@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     call_lists,
     campaigns,
+    dashboard,
     dnc,
     imports,
     invites,
@@ -16,12 +17,12 @@ from app.api.v1 import (
     surveys,
     turfs,
     users,
+    volunteers,
     voter_contacts,
     voter_interactions,
     voter_lists,
     voter_tags,
     voters,
-    volunteers,
     walk_lists,
 )
 
@@ -45,3 +46,4 @@ router.include_router(dnc.router, tags=["dnc"])
 router.include_router(phone_banks.router, tags=["phone-banks"])
 router.include_router(volunteers.router, tags=["volunteers"])
 router.include_router(shifts.router, tags=["shifts"])
+router.include_router(dashboard.router, tags=["dashboard"])
