@@ -101,6 +101,29 @@ class StorageService:
             async for chunk in response["Body"].iter_chunks():
                 yield chunk
 
+    async def upload_bytes(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+    ) -> None:
+        """Upload raw bytes directly to S3.
+
+        Used for server-generated files like error reports.
+
+        Args:
+            key: S3 object key.
+            data: Raw bytes to upload.
+            content_type: MIME type for the object.
+        """
+        async with self.session.client(**self._client_kwargs()) as s3:
+            await s3.put_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
+
     async def ensure_bucket(self) -> None:
         """Create the configured bucket if it does not exist.
 
