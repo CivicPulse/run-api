@@ -60,9 +60,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Dashboards
 
-- [ ] **DASH-01**: API provides canvassing progress data (doors knocked, contacts made, outcomes by turf and canvasser)
-- [ ] **DASH-02**: API provides phone banking progress data (calls made, contacts reached, outcomes by type)
-- [ ] **DASH-03**: API provides volunteer activity summary (active volunteers, scheduled shifts, total hours)
+- [x] **DASH-01**: API provides canvassing progress data (doors knocked, contacts made, outcomes by turf and canvasser)
+- [x] **DASH-02**: API provides phone banking progress data (calls made, contacts reached, outcomes by type)
+- [x] **DASH-03**: API provides volunteer activity summary (active volunteers, scheduled shifts, total hours)
 
 ## v2 Requirements
 
@@ -151,9 +151,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOL-04 | Phase 5 | Complete |
 | VOL-05 | Phase 5 | Complete |
 | VOL-06 | Phase 5 | Complete |
-| DASH-01 | Phase 6 | Pending |
-| DASH-02 | Phase 6 | Pending |
-| DASH-03 | Phase 6 | Pending |
+| DASH-01 | Phase 6 | Complete |
+| DASH-02 | Phase 6 | Complete |
+| DASH-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 39 total

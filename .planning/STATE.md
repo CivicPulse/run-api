@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-09T23:11:31.840Z"
-last_activity: 2026-03-09 — Completed Plan 05-03 (volunteer RLS integration tests)
+status: in-progress
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-09T23:45:37Z"
+last_activity: 2026-03-09 — Completed Plan 06-01 (dashboard schemas and services)
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 19
+  completed_plans: 18
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 5: Volunteer Management
+**Current focus:** Phase 6: Operational Dashboards
 
 ## Current Position
 
-Phase: 5 of 6 (Volunteer Management)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-03-09 — Completed Plan 05-03 (volunteer RLS integration tests)
+Phase: 6 of 6 (Operational Dashboards)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-09 — Completed Plan 06-01 (dashboard schemas and services)
 
-Progress: [██████████] 100%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 05 P01 | 3 min | 2 tasks | 10 files |
 | Phase 05 P02 | 7 min | 2 tasks | 7 files |
 | Phase 05 P03 | 2 min | 1 task | 1 file |
+| Phase 06 P01 | 2 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,9 @@ Recent decisions affecting current work:
 - [05-02] SELECT FOR UPDATE on waitlist promotion to prevent race conditions
 - [05-02] Walk-in volunteers without user_id skip operational record creation with warning log
 - [05-02] Hours computed on-read from timestamps with adjusted_hours override
+- [06-01] Contact classification: canvassing contacts = supporter+undecided+opposed+refused; phone contacts = answered+refused
+- [06-01] Hours calculation uses func.coalesce(adjusted_hours, epoch-based delta) for override support
+- [06-01] All dashboard drilldown methods use UUID-based cursor pagination
 
 ### Pending Todos
 
@@ -147,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T23:11:31.830Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-operational-dashboards/06-CONTEXT.md
+Last session: 2026-03-09T23:45:37Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: .planning/phases/06-operational-dashboards/06-01-SUMMARY.md
