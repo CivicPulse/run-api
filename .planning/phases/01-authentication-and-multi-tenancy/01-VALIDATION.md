@@ -38,14 +38,12 @@ created: 2026-03-09
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01 | 0 | ALL | infrastructure | `pytest tests/ --collect-only` | ❌ W0 | ⬜ pending |
-| 01-02-01 | 02 | 1 | AUTH-01 | unit | `pytest tests/unit/test_security.py -x` | ❌ W0 | ⬜ pending |
-| 01-02-02 | 02 | 1 | AUTH-04 | integration | `pytest tests/integration/test_rls.py -x` | ❌ W0 | ⬜ pending |
-| 01-03-01 | 03 | 1 | AUTH-02 | unit + integration | `pytest tests/unit/test_campaign_service.py -x` | ❌ W0 | ⬜ pending |
-| 01-03-02 | 03 | 1 | AUTH-03 | unit | `pytest tests/unit/test_campaign_service.py -x` | ❌ W0 | ⬜ pending |
-| 01-04-01 | 04 | 2 | AUTH-05 | unit | `pytest tests/unit/test_roles.py -x` | ❌ W0 | ⬜ pending |
-| 01-04-02 | 04 | 2 | AUTH-06 | unit | `pytest tests/unit/test_api_campaigns.py -x` | ❌ W0 | ⬜ pending |
-| 01-04-03 | 04 | 2 | AUTH-07 | unit + integration | `pytest tests/unit/test_invites.py -x` | ❌ W0 | ⬜ pending |
+| 01-01-T1 | 01 | 1 | ALL | infrastructure | `docker compose up -d && alembic upgrade head && ruff check` | ❌ W0 | ⬜ pending |
+| 01-01-T2 | 01 | 1 | AUTH-01, AUTH-04 | unit | `pytest tests/unit/test_security.py -x -v --timeout=30` | ❌ W0 | ⬜ pending |
+| 01-02-T1 | 02 | 2 | AUTH-02, AUTH-03 | unit | `pytest tests/unit/test_campaign_service.py -x -v --timeout=30` | ❌ W0 | ⬜ pending |
+| 01-02-T2 | 02 | 2 | AUTH-05, AUTH-06 | unit | `pytest tests/unit/test_api_campaigns.py tests/unit/test_campaign_service.py -x -v --timeout=30` | ❌ W0 | ⬜ pending |
+| 01-03-T1 | 03 | 3 | AUTH-07 | unit | `pytest tests/unit/test_invite_service.py tests/unit/test_api_invites.py -x -v --timeout=30` | ❌ W0 | ⬜ pending |
+| 01-03-T2 | 03 | 3 | AUTH-04, AUTH-05, AUTH-06 | integration | `pytest tests/integration/test_rls.py -x -v --timeout=60` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
