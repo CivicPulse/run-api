@@ -27,8 +27,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **VOTER-06**: Campaign user can build target universes (e.g., "Democrats who voted in 2022 but not 2024 in precinct 5")
 - [x] **VOTER-07**: Campaign user can tag voters and manage static voter lists
 - [x] **VOTER-08**: Campaign user can create dynamic voter lists from saved filter queries
-- [ ] **VOTER-09**: System records interaction history per voter as an append-only event log (door knocks, calls, survey responses)
-- [ ] **VOTER-10**: Campaign user can view and manage contact information (phone, email, address) with primary/secondary designation
+- [x] **VOTER-09**: System records interaction history per voter as an append-only event log (door knocks, calls, survey responses)
+- [x] **VOTER-10**: Campaign user can view and manage contact information (phone, email, address) with primary/secondary designation
 
 ### Canvassing
 
@@ -130,8 +130,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOTER-06 | Phase 2 | Complete |
 | VOTER-07 | Phase 2 | Complete |
 | VOTER-08 | Phase 2 | Complete |
-| VOTER-09 | Phase 2 | Pending |
-| VOTER-10 | Phase 2 | Pending |
+| VOTER-09 | Phase 2 | Complete |
+| VOTER-10 | Phase 2 | Complete |
 | CANV-01 | Phase 3 | Pending |
 | CANV-02 | Phase 3 | Pending |
 | CANV-03 | Phase 3 | Pending |
