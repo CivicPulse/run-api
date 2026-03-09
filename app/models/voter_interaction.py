@@ -27,6 +27,7 @@ class InteractionType(enum.StrEnum):
     CONTACT_UPDATED = "contact_updated"
     DOOR_KNOCK = "door_knock"
     SURVEY_RESPONSE = "survey_response"
+    PHONE_CALL = "phone_call"
 
 
 class VoterInteraction(Base):
