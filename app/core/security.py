@@ -1,0 +1,205 @@
+"""JWT validation, JWKS management, and role enforcement.
+
+Uses Authlib for JWT/JWKS validation against ZITADEL OIDC.
+"""
+
+from __future__ import annotations
+
+from enum import IntEnum
+
+import httpx
+from authlib.jose import JsonWebKey, jwt
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from loguru import logger
+from pydantic import BaseModel
+
+from app.core.config import settings
+
+
+class CampaignRole(IntEnum):
+    """Role hierarchy -- higher value = more permissions."""
+
+    VIEWER = 0
+    VOLUNTEER = 1
+    MANAGER = 2
+    ADMIN = 3
+    OWNER = 4
+
+
+class AuthenticatedUser(BaseModel):
+    """Authenticated user context extracted from JWT claims."""
+
+    id: str
+    org_id: str
+    role: CampaignRole
+    email: str | None = None
+    display_name: str | None = None
+
+
+class JWKSManager:
+    """Manages JWKS fetching with caching and key rotation support."""
+
+    def __init__(self, issuer: str) -> None:
+        self.issuer = issuer
+        self.oidc_config_url = f"{issuer}/.well-known/openid-configuration"
+        self._jwks: dict | None = None
+        self._jwks_uri: str | None = None
+
+    async def get_jwks(self, force_refresh: bool = False) -> dict:
+        """Fetch JWKS, using cache unless force_refresh.
+
+        Args:
+            force_refresh: Force re-fetching from ZITADEL.
+
+        Returns:
+            The JWKS key set as a dict.
+        """
+        if self._jwks is not None and not force_refresh:
+            return self._jwks
+
+        async with httpx.AsyncClient() as client:
+            if self._jwks_uri is None or force_refresh:
+                oidc_resp = await client.get(self.oidc_config_url)
+                oidc_resp.raise_for_status()
+                oidc_config = oidc_resp.json()
+                self._jwks_uri = oidc_config["jwks_uri"]
+
+            jwks_resp = await client.get(self._jwks_uri)
+            jwks_resp.raise_for_status()
+            self._jwks = jwks_resp.json()
+
+        logger.debug("JWKS refreshed from {}", self._jwks_uri)
+        return self._jwks
+
+    async def validate_token(self, token: str) -> dict:
+        """Validate JWT, refreshing JWKS on unknown kid.
+
+        Args:
+            token: The raw JWT string.
+
+        Returns:
+            Validated claims as a dict.
+
+        Raises:
+            Exception: If token validation fails after JWKS refresh.
+        """
+        jwks = await self.get_jwks()
+        try:
+            key_set = JsonWebKey.import_key_set(jwks)
+            claims = jwt.decode(token, key_set)
+            claims.validate()
+            return dict(claims)
+        except Exception:
+            # Unknown kid or other decode failure -- try refreshing JWKS
+            logger.debug("JWT decode failed, refreshing JWKS and retrying")
+            jwks = await self.get_jwks(force_refresh=True)
+            key_set = JsonWebKey.import_key_set(jwks)
+            claims = jwt.decode(token, key_set)
+            claims.validate()
+            return dict(claims)
+
+
+def _extract_role(claims: dict, project_id: str | None = None) -> CampaignRole:
+    """Extract role from ZITADEL nested claim structure.
+
+    ZITADEL encodes roles as:
+    ``urn:zitadel:iam:org:project:{projectId}:roles: {"admin": {"org-id": "domain"}}``
+
+    Args:
+        claims: Decoded JWT claims dict.
+        project_id: ZITADEL project ID. Uses settings if not provided.
+
+    Returns:
+        The highest matching CampaignRole, defaulting to VIEWER.
+    """
+    if project_id is None:
+        project_id = settings.zitadel_project_id
+
+    role_claim_key = f"urn:zitadel:iam:org:project:{project_id}:roles"
+    roles_obj = claims.get(role_claim_key, {})
+
+    if not roles_obj:
+        return CampaignRole.VIEWER
+
+    # Find the highest role present in the claims
+    best_role = CampaignRole.VIEWER
+    for role_name in roles_obj:
+        try:
+            role = CampaignRole[role_name.upper()]
+            if role > best_role:
+                best_role = role
+        except KeyError:
+            logger.warning("Unknown role in JWT: {}", role_name)
+            continue
+
+    return best_role
+
+
+bearer_scheme = HTTPBearer()
+
+
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> AuthenticatedUser:
+    """Extract and validate JWT, return authenticated user context.
+
+    Args:
+        request: The FastAPI request (provides access to app state).
+        credentials: Bearer token from Authorization header.
+
+    Returns:
+        AuthenticatedUser with claims extracted from the token.
+
+    Raises:
+        HTTPException: 401 if token validation fails.
+    """
+    token = credentials.credentials
+    try:
+        claims = await request.app.state.jwks_manager.validate_token(token)
+    except Exception as exc:
+        logger.debug("JWT validation failed: {}", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        ) from exc
+
+    org_id = claims.get("urn:zitadel:iam:user:resourceowner:id")
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing organization claim",
+        )
+
+    return AuthenticatedUser(
+        id=claims["sub"],
+        org_id=org_id,
+        role=_extract_role(claims),
+        email=claims.get("email"),
+        display_name=claims.get("name"),
+    )
+
+
+def require_role(minimum: str):
+    """FastAPI dependency factory that enforces minimum role level.
+
+    Args:
+        minimum: The minimum role name (e.g., "manager", "admin").
+
+    Returns:
+        A FastAPI dependency function.
+    """
+    min_level = CampaignRole[minimum.upper()]
+
+    async def _check_role(
+        current_user: AuthenticatedUser = Depends(get_current_user),
+    ) -> AuthenticatedUser:
+        if current_user.role < min_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return _check_role

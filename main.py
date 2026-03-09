@@ -1,6 +1,5 @@
-def main():
-    print("Hello from run-api!")
+"""Thin wrapper for uvicorn -- imports from app package."""
 
+from app.main import create_app
 
-if __name__ == "__main__":
-    main()
+app = create_app()
