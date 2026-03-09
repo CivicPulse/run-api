@@ -19,9 +19,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Voter File / CRM
 
-- [ ] **VOTER-01**: Campaign admin can import voter data from generic CSV files
-- [ ] **VOTER-02**: Campaign admin can import voter data from L2-format files with pre-configured field mapping
-- [ ] **VOTER-03**: System suggests field mappings automatically based on column name similarity during import
+- [x] **VOTER-01**: Campaign admin can import voter data from generic CSV files
+- [x] **VOTER-02**: Campaign admin can import voter data from L2-format files with pre-configured field mapping
+- [x] **VOTER-03**: System suggests field mappings automatically based on column name similarity during import
 - [x] **VOTER-04**: Voter records conform to a canonical model (name, address, phone, email, party, voting history, demographics, lat/long, household ID)
 - [ ] **VOTER-05**: Campaign user can search and filter voters by demographic, geographic, voting history, and tag criteria
 - [ ] **VOTER-06**: Campaign user can build target universes (e.g., "Democrats who voted in 2022 but not 2024 in precinct 5")
@@ -122,9 +122,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-05 | Phase 1 | Complete |
 | AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Complete |
-| VOTER-01 | Phase 2 | Pending |
-| VOTER-02 | Phase 2 | Pending |
-| VOTER-03 | Phase 2 | Pending |
+| VOTER-01 | Phase 2 | Complete |
+| VOTER-02 | Phase 2 | Complete |
+| VOTER-03 | Phase 2 | Complete |
 | VOTER-04 | Phase 2 | Complete |
 | VOTER-05 | Phase 2 | Pending |
 | VOTER-06 | Phase 2 | Pending |
