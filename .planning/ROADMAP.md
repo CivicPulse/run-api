@@ -81,10 +81,12 @@ Plans:
   1. Campaign manager can generate call lists from voter universe criteria, filtered to voters with valid phone numbers and excluding do-not-call entries
   2. Phone banker can follow call scripts (linear and branched) and record call outcomes (answered, no answer, busy, wrong number, voicemail, refused, deceased)
   3. Phone banker can capture survey responses during calls using the same survey engine as canvassing, and all outcomes sync to the voter's interaction history
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Phone banking models (CallList, CallListEntry, PhoneBankSession, SessionCaller, DoNotCallEntry), Pydantic schemas, Alembic migration with RLS, test stubs
+- [ ] 04-02-PLAN.md — CallListService (generation, claim-on-fetch, DNC filtering), DNCService (CRUD, bulk import, auto-flag), call list and DNC API endpoints
+- [ ] 04-03-PLAN.md — PhoneBankService (session lifecycle, call recording, survey integration, supervisor ops), phone bank API endpoints, RLS integration tests
 
 ### Phase 5: Volunteer Management
 **Goal**: Campaigns can recruit, schedule, and track volunteers across all field operations
@@ -122,6 +124,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Authentication and Multi-Tenancy | 3/3 | Complete |  |
 | 2. Voter Data Import and CRM | 3/4 | In Progress|  |
 | 3. Canvassing Operations | 4/4 | Complete   | 2026-03-09 |
-| 4. Phone Banking | 0/1 | Not started | - |
+| 4. Phone Banking | 0/3 | Not started | - |
 | 5. Volunteer Management | 0/1 | Not started | - |
 | 6. Operational Dashboards | 0/1 | Not started | - |
