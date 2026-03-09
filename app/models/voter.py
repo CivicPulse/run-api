@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
+from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -78,6 +79,10 @@ class Voter(Base):
     # Geographic
     latitude: Mapped[float | None] = mapped_column()
     longitude: Mapped[float | None] = mapped_column()
+    geom: Mapped[WKBElement | None] = mapped_column(
+        Geometry(geometry_type="POINT", srid=4326, spatial_index=False),
+        nullable=True,
+    )
     household_id: Mapped[str | None] = mapped_column(String(255))
 
     # Extras

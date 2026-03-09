@@ -25,6 +25,8 @@ class InteractionType(enum.StrEnum):
     TAG_REMOVED = "tag_removed"
     IMPORT = "import"
     CONTACT_UPDATED = "contact_updated"
+    DOOR_KNOCK = "door_knock"
+    SURVEY_RESPONSE = "survey_response"
 
 
 class VoterInteraction(Base):
