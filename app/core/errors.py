@@ -24,6 +24,30 @@ class InsufficientPermissionsError(Exception):
         super().__init__(detail)
 
 
+class VoterNotFoundError(Exception):
+    """Raised when a voter cannot be found."""
+
+    def __init__(self, voter_id: uuid.UUID) -> None:
+        self.voter_id = voter_id
+        super().__init__(f"Voter {voter_id} not found")
+
+
+class VoterListNotFoundError(Exception):
+    """Raised when a voter list cannot be found."""
+
+    def __init__(self, list_id: uuid.UUID) -> None:
+        self.list_id = list_id
+        super().__init__(f"Voter list {list_id} not found")
+
+
+class VoterTagNotFoundError(Exception):
+    """Raised when a voter tag cannot be found."""
+
+    def __init__(self, tag_id: uuid.UUID) -> None:
+        self.tag_id = tag_id
+        super().__init__(f"Voter tag {tag_id} not found")
+
+
 class ZitadelUnavailableError(Exception):
     """Raised when ZITADEL is unreachable (503)."""
 
@@ -52,6 +76,33 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Insufficient Permissions",
             detail=exc.detail,
             type="insufficient-permissions",
+        )
+
+    @app.exception_handler(VoterNotFoundError)
+    async def voter_not_found_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Voter Not Found",
+            detail=str(exc),
+            type="voter-not-found",
+        )
+
+    @app.exception_handler(VoterListNotFoundError)
+    async def voter_list_not_found_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Voter List Not Found",
+            detail=str(exc),
+            type="voter-list-not-found",
+        )
+
+    @app.exception_handler(VoterTagNotFoundError)
+    async def voter_tag_not_found_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Voter Tag Not Found",
+            detail=str(exc),
+            type="voter-tag-not-found",
         )
 
     @app.exception_handler(ZitadelUnavailableError)
