@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
+from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.shift import (
     CheckInResponse,
     HoursAdjustment,
@@ -18,7 +19,6 @@ from app.schemas.shift import (
     ShiftResponse,
     ShiftSignupResponse,
     ShiftUpdate,
-    VolunteerHoursSummary,
 )
 from app.services.shift import ShiftService
 from app.services.volunteer import VolunteerService
@@ -92,7 +92,7 @@ async def create_shift(
 
 @router.get(
     "/campaigns/{campaign_id}/shifts",
-    response_model=list[ShiftResponse],
+    response_model=PaginatedResponse[ShiftResponse],
 )
 async def list_shifts(
     campaign_id: uuid.UUID,
@@ -113,13 +113,17 @@ async def list_shifts(
         db, campaign_id, status=shift_status, shift_type=shift_type
     )
     # For list view, return with zero counts (or fetch per-shift)
-    return [
+    items = [
         ShiftResponse.model_validate(
             {**{c.key: getattr(s, c.key) for c in s.__table__.columns},
              "signed_up_count": 0, "waitlist_count": 0}
         )
         for s in shifts
     ]
+    return PaginatedResponse[ShiftResponse](
+        items=items,
+        pagination=PaginationResponse(next_cursor=None, has_more=False),
+    )
 
 
 @router.get(
@@ -269,9 +273,9 @@ async def signup_for_shift(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
     from sqlalchemy import select as sa_select
 
+    from app.db.rls import set_campaign_context
     from app.models.volunteer import Volunteer
 
     await set_campaign_context(db, str(campaign_id))
@@ -358,9 +362,9 @@ async def cancel_self_signup(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
     from sqlalchemy import select as sa_select
 
+    from app.db.rls import set_campaign_context
     from app.models.volunteer import Volunteer
 
     await set_campaign_context(db, str(campaign_id))

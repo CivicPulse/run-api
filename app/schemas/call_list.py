@@ -66,3 +66,4 @@ class CallListSummaryResponse(BaseSchema):
     status: str
     total_entries: int
     completed_entries: int
+    created_at: datetime

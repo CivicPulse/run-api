@@ -32,12 +32,12 @@ function useDebounced<T>(value: T, delayMs: number): T {
 
 const PARTY_OPTIONS = [
   { label: "All Parties", value: "__all__" },
-  { label: "Democrat", value: "Democrat" },
-  { label: "Republican", value: "Republican" },
-  { label: "Independent", value: "Independent" },
-  { label: "Libertarian", value: "Libertarian" },
-  { label: "Green", value: "Green" },
-  { label: "Other", value: "Other" },
+  { label: "Democrat (DEM)", value: "DEM" },
+  { label: "Republican (REP)", value: "REP" },
+  { label: "No Party (NPA)", value: "NPA" },
+  { label: "Libertarian (LIB)", value: "LIB" },
+  { label: "Green (GRN)", value: "GRN" },
+  { label: "Other", value: "OTH" },
 ]
 
 function VotersPage() {

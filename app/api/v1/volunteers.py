@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
+from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.volunteer import (
     AvailabilityCreate,
     AvailabilityResponse,
@@ -95,7 +96,7 @@ async def self_register(
 
 @router.get(
     "/campaigns/{campaign_id}/volunteers",
-    response_model=list[VolunteerResponse],
+    response_model=PaginatedResponse[VolunteerResponse],
 )
 async def list_volunteers(
     campaign_id: uuid.UUID,
@@ -121,7 +122,10 @@ async def list_volunteers(
         skills=skills_list,
         name_search=name,
     )
-    return [VolunteerResponse.model_validate(v) for v in volunteers]
+    return PaginatedResponse[VolunteerResponse](
+        items=[VolunteerResponse.model_validate(v) for v in volunteers],
+        pagination=PaginationResponse(next_cursor=None, has_more=False),
+    )
 
 
 @router.get(

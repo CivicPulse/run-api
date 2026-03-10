@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced, get_db_with_rls
+from app.api.deps import ensure_user_synced
 from app.core.errors import VoterNotFoundError
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
@@ -19,6 +19,44 @@ from app.services.voter import VoterService
 router = APIRouter()
 
 _service = VoterService()
+
+
+@router.get(
+    "/campaigns/{campaign_id}/voters",
+    response_model=PaginatedResponse[VoterResponse],
+)
+async def list_voters(
+    campaign_id: uuid.UUID,
+    cursor: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    search: str | None = Query(None),
+    party: str | None = Query(None),
+    city: str | None = Query(None),
+    state: str | None = Query(None),
+    precinct: str | None = Query(None),
+    county: str | None = Query(None),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List and filter voters via query parameters.
+
+    Supports basic filtering via query params. For advanced filtering
+    with AND/OR logic, use the POST /voters/search endpoint.
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    filters = VoterFilter(
+        search=search,
+        party=party,
+        city=city,
+        state=state,
+        precinct=precinct,
+        county=county,
+    )
+    return await _service.search_voters(db, filters, cursor=cursor, limit=limit)
 
 
 @router.post(
