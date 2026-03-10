@@ -59,8 +59,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 09-01-PLAN.md — Docker Compose API service, dev entrypoint, and Vite proxy config
-- [ ] 09-02-PLAN.md — Macon-Bibb County seed data script
+- [x] 09-01-PLAN.md — Docker Compose API service, dev entrypoint, and Vite proxy config
+- [x] 09-02-PLAN.md — Macon-Bibb County seed data script
 
 ### Phase 10: CI/CD Pipeline
 **Goal**: Every push to main automatically builds and publishes a tagged container image to GHCR
@@ -70,10 +70,10 @@ Plans:
   1. Pushing a commit to main triggers a GitHub Actions workflow that builds and pushes an image to GHCR
   2. Published images are tagged with both `sha-<commit>` and `latest`
   3. The workflow automatically updates `k8s/deployment.yaml` with the new image SHA and commits the change back to the repo
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 10-01: TBD
+- [ ] 10-01-PLAN.md — PR validation workflow, GHCR publish workflow, and stub K8s manifest
 
 ### Phase 11: Kubernetes & GitOps
 **Goal**: Complete K8s manifests and ArgoCD config exist so the API can be deployed to a baremetal cluster by applying manifests
@@ -104,6 +104,6 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 6. Operational Dashboards | v1.0 | 2/2 | Complete | 2026-03-09 |
 | 7. Integration Wiring Fixes | v1.0 | 1/1 | Complete | 2026-03-10 |
 | 8. Containerization | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 9. Local Dev Environment | 2/2 | Complete   | 2026-03-10 | - |
-| 10. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
+| 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
+| 10. CI/CD Pipeline | v1.1 | 0/1 | Not started | - |
 | 11. Kubernetes & GitOps | v1.1 | 0/? | Not started | - |
