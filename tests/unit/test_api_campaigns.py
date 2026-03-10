@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
@@ -49,8 +49,8 @@ def _make_campaign(
         type=CampaignType.STATE,
         status=CampaignStatus.ACTIVE,
         created_by=created_by,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
 
 
@@ -59,8 +59,8 @@ def _make_local_user(user_id: str = "user-test-1") -> User:
         id=user_id,
         display_name=f"Test User {user_id}",
         email=f"{user_id}@test.com",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
 
 
@@ -160,8 +160,8 @@ class TestCampaignCreate:
         async def fake_refresh(obj):
             if isinstance(obj, Campaign):
                 obj.id = obj.id or uuid.uuid4()
-                obj.created_at = obj.created_at or datetime.now(UTC)
-                obj.updated_at = obj.updated_at or datetime.now(UTC)
+                obj.created_at = obj.created_at or utcnow()
+                obj.updated_at = obj.updated_at or utcnow()
 
         mock_db.refresh = AsyncMock(side_effect=fake_refresh)
 

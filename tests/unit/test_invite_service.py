@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import AuthenticatedUser, CampaignRole
+from app.core.time import utcnow
 from app.models.invite import Invite
 from app.services.invite import InviteService
 
@@ -43,11 +44,11 @@ def _make_invite(
         email=email,
         role=role,
         token=uuid.uuid4(),
-        expires_at=expires_at or (datetime.now(UTC) + timedelta(days=7)),
+        expires_at=expires_at or (utcnow() + timedelta(days=7)),
         accepted_at=accepted_at,
         revoked_at=revoked_at,
         created_by="user-1",
-        created_at=datetime.now(UTC),
+        created_at=utcnow(),
     )
 
 
@@ -102,7 +103,7 @@ class TestCreateInvite:
         assert invite.email == "new@test.com"
         assert invite.role == "manager"
         # Expiry is ~7 days from now
-        delta = invite.expires_at - datetime.now(UTC)
+        delta = invite.expires_at - utcnow()
         assert delta.days >= 6  # at least 6 days remaining
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()
@@ -158,7 +159,7 @@ class TestValidateInvite:
     async def test_returns_none_for_expired_token(self, service, mock_db):
         """Expired token returns None."""
         invite = _make_invite(
-            expires_at=datetime.now(UTC) - timedelta(hours=1)
+            expires_at=utcnow() - timedelta(hours=1)
         )
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = invite
@@ -169,7 +170,7 @@ class TestValidateInvite:
 
     async def test_returns_none_for_revoked_token(self, service, mock_db):
         """Revoked token returns None."""
-        invite = _make_invite(revoked_at=datetime.now(UTC))
+        invite = _make_invite(revoked_at=utcnow())
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = invite
         mock_db.execute = AsyncMock(return_value=mock_result)

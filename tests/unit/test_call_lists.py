@@ -6,11 +6,12 @@ Covers PHONE-01, PHONE-03.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.call_list import (
     CallList,
     CallListEntry,
@@ -34,8 +35,8 @@ def _make_call_list(**overrides) -> MagicMock:
         "claim_timeout_minutes": 30,
         "cooldown_minutes": 60,
         "created_by": "user-1",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
     }
     defaults.update(overrides)
     cl = MagicMock(spec=CallList)
@@ -464,7 +465,7 @@ class TestCallListEntryStatus:
             call_list_id=call_list_id,
             status=EntryStatus.AVAILABLE,
             attempt_count=1,
-            last_attempt_at=datetime.now(UTC) - timedelta(hours=2),
+            last_attempt_at=utcnow() - timedelta(hours=2),
         )
         entries_result = MagicMock()
         entries_result.scalars.return_value.all.return_value = [

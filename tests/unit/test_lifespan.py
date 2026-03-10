@@ -5,13 +5,13 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import uuid
-from datetime import UTC, datetime
 
 import httpx
 import pytest
 
 from app.core.errors import ZitadelUnavailableError
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
@@ -157,8 +157,8 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
         id=user.id,
         display_name=user.display_name,
         email=user.email,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
 
     mock_db = AsyncMock()
@@ -176,8 +176,8 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     async def fake_refresh(obj):
         if isinstance(obj, Campaign):
             obj.id = obj.id or uuid.uuid4()
-            obj.created_at = obj.created_at or datetime.now(UTC)
-            obj.updated_at = obj.updated_at or datetime.now(UTC)
+            obj.created_at = obj.created_at or utcnow()
+            obj.updated_at = obj.updated_at or utcnow()
 
     mock_db.refresh = AsyncMock(side_effect=fake_refresh)
 

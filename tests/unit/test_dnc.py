@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.dnc import DNCReason, DoNotCallEntry
 
 
@@ -19,7 +19,7 @@ def _make_dnc_entry(**overrides) -> MagicMock:
         "phone_number": "5551234567",
         "reason": DNCReason.MANUAL,
         "added_by": "user-1",
-        "added_at": datetime.now(UTC),
+        "added_at": utcnow(),
     }
     defaults.update(overrides)
     entry = MagicMock(spec=DoNotCallEntry)
