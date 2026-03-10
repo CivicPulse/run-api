@@ -1,135 +1,186 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-09
+**Analysis Date:** 2026-03-10
 
 ## Tech Debt
 
-**No Application Code Exists:**
-- Issue: The project has dependencies declared in `pyproject.toml` (FastAPI, SQLAlchemy, Alembic, asyncpg, etc.) but `main.py` is a stub that only prints "Hello from run-api!" -- no FastAPI app, no routes, no models, no database configuration
-- Files: `main.py`, `pyproject.toml`
-- Impact: None of the declared dependencies are used; the application cannot serve any requests or connect to any database
-- Fix approach: Scaffold the FastAPI application structure -- create app package with routes, models, schemas, config, and database setup modules
+**InMemoryBroker for Background Tasks:**
+- Issue: TaskIQ uses `InMemoryBroker` which loses all queued tasks on process restart and does not distribute across workers
+- Files: `app/tasks/broker.py`
+- Impact: Import jobs queued via `process_import.kiq()` are lost if the server restarts mid-import. No horizontal scaling of background work. The comment says "Swap to a Redis or RabbitMQ broker for production" but this has not been done.
+- Fix approach: Replace `InMemoryBroker` with `RedisAsyncBroker` or `RabbitBroker` from TaskIQ. Requires adding a Redis/RabbitMQ dependency and connection string to `app/core/config.py`.
 
-**Missing Project Structure:**
-- Issue: The project has no source package directory (no `src/` or `app/` directory). All code would need to be built from scratch
-- Files: Project root contains only `main.py`
-- Impact: Cannot begin feature development until basic project scaffolding is complete
-- Fix approach: Create a proper Python package structure (e.g., `app/` with `__init__.py`, `config.py`, `models/`, `routes/`, `schemas/`, `services/`, `db/`)
+**No Campaign Ownership Verification on Path Parameter:**
+- Issue: Endpoints accept `campaign_id` as a URL path parameter but never verify the authenticated user belongs to that campaign. RLS only filters query results -- it does not prevent a user from setting RLS context to a campaign they do not belong to. The `set_campaign_context` call trusts the path parameter blindly.
+- Files: All route handlers in `app/api/v1/` (e.g., `app/api/v1/voters.py`, `app/api/v1/shifts.py`, `app/api/v1/volunteers.py`), `app/db/rls.py`
+- Impact: A user with a valid JWT for Campaign A could potentially call endpoints for Campaign B by changing the `campaign_id` path parameter. The RLS policy scope depends entirely on whether PostgreSQL RLS policies are enforced at the database level (which they are), but the application sets `app.current_campaign_id` to whatever the client sends -- no membership check occurs.
+- Fix approach: Add a dependency that validates the user's `org_id` claim maps to the requested `campaign_id` before setting RLS context. Extract this into a shared FastAPI dependency in `app/api/deps.py`.
 
-**Placeholder Project Metadata:**
-- Issue: `pyproject.toml` has placeholder description "Add your description here"
-- Files: `pyproject.toml`
-- Impact: Minor -- affects package metadata only
-- Fix approach: Update description to match project purpose from `init.md`
+**Inconsistent Transaction Boundaries (Service vs. Route Layer):**
+- Issue: Some services call `db.commit()` internally (e.g., `app/services/voter.py:234`, `app/services/campaign.py:91`, `app/services/voter_list.py`), while others leave commit to the route handler (e.g., `app/services/shift.py`, `app/services/phone_bank.py`). This creates an inconsistent pattern where some service methods are atomic and some are not.
+- Files: `app/services/voter.py`, `app/services/campaign.py`, `app/services/voter_list.py` (commit internally); `app/services/shift.py`, `app/services/phone_bank.py`, `app/services/volunteer.py` (no commit)
+- Impact: Composing service calls becomes error-prone. If a route calls two services where one commits and one does not, partial commits can occur. Harder to reason about transactional guarantees.
+- Fix approach: Standardize on route-layer commits. Remove all `db.commit()` calls from service methods and have route handlers own the transaction boundary. This is the more common pattern and matches what the newer services already do.
 
-## Known Bugs
+**`ensure_user_synced` Called on Every Request:**
+- Issue: Every authenticated endpoint calls `ensure_user_synced()`, which executes 1-3 database queries per request (user lookup, optional campaign lookup, optional member lookup) plus potential `db.commit()` calls. This runs on every single API request.
+- Files: `app/api/deps.py:37-104`, all route handlers (149 call sites across 17 files)
+- Impact: Adds significant per-request database overhead. The user sync rarely changes anything after first login, yet it runs every time.
+- Fix approach: Cache synced user state in-memory (e.g., a TTL dict) or move sync to a login/token-refresh hook. At minimum, skip the campaign_member check on read-only operations.
 
-No bugs to report -- the application has no functional code.
+**Duplicate RLS Context Pattern (Boilerplate):**
+- Issue: Every route handler manually imports and calls `set_campaign_context(db, str(campaign_id))`. Some import it at module top, others use inline imports. This is repeated across 50+ endpoints.
+- Files: All `app/api/v1/*.py` route files
+- Impact: Boilerplate makes it easy to forget RLS setup. A missed `set_campaign_context` call would silently return data from all campaigns or no campaigns depending on the RLS policy default.
+- Fix approach: Create a FastAPI dependency that accepts `campaign_id` path param and returns a session with RLS already configured. Replace all manual calls with this dependency.
+
+**Service Instantiation as Module-Level Singletons:**
+- Issue: Services like `PhoneBankService`, `ShiftService`, `VolunteerService` are instantiated once at module level (e.g., `_service = VoterService()` in `app/api/v1/voters.py`). Some services compose other services in `__init__` (e.g., `PhoneBankService.__init__` creates `VoterInteractionService`, `SurveyService`, `DNCService`).
+- Files: `app/api/v1/voters.py:21`, `app/api/v1/shifts.py:28-29`, `app/services/phone_bank.py:64-67`
+- Impact: No dependency injection makes testing harder (must mock at import time). No lifecycle management. Works today because services are stateless, but fragile if state is ever added.
+- Fix approach: Register services as FastAPI dependencies or use a simple DI container. This also enables proper mocking in tests.
 
 ## Security Considerations
 
-**No Authentication Implementation:**
-- Risk: `init.md` specifies ZITADEL (https://auth.civpulse.org) for authentication, but no auth middleware, token validation, or ZITADEL integration exists
-- Files: `main.py` (no auth code), `init.md` (auth requirements)
-- Current mitigation: None -- app has no endpoints to protect
-- Recommendations: When building the FastAPI app, implement ZITADEL OIDC/OAuth2 token validation middleware before creating any protected endpoints. Use `pydantic-settings` (already a dependency) for secure configuration management. Create `.env.example` documenting required environment variables without secrets.
-
-**No Environment Configuration:**
-- Risk: No `.env` file, no settings module, no configuration management despite `pydantic-settings` being a dependency
-- Files: `pyproject.toml` (lists `pydantic-settings` dependency)
+**No Rate Limiting:**
+- Risk: No rate limiting on any endpoint. Authentication endpoints, import uploads, and voter search are all unprotected from abuse.
+- Files: `app/main.py` (no rate limit middleware), `app/api/v1/` (no per-route limits)
 - Current mitigation: None
-- Recommendations: Create a settings module using `pydantic-settings.BaseSettings` with environment variable validation before any database or service connections are implemented. Ensure `.env` remains in `.gitignore` (it is currently listed).
+- Recommendations: Add `slowapi` or similar middleware. Priority targets: auth-related endpoints, import initiation (`POST /imports`), and voter search (`POST /voters/search`).
 
-**No CORS Configuration:**
-- Risk: When the API is built, it will need CORS configuration for the run-web frontend
-- Files: N/A (no FastAPI app exists)
-- Current mitigation: None
-- Recommendations: Configure FastAPI CORS middleware with explicit allowed origins from environment variables, not wildcards
+**JWKS Cached Without TTL:**
+- Risk: The `JWKSManager` caches JWKS keys indefinitely after first fetch. If ZITADEL rotates keys, old tokens could remain valid until a decode failure triggers a refresh. Conversely, a decode failure on a legitimately expired token triggers an unnecessary JWKS refetch.
+- Files: `app/core/security.py:40-100`
+- Current mitigation: JWKS refresh on decode failure (line 96) acts as a fallback.
+- Recommendations: Add a time-based TTL (e.g., 1 hour) to `JWKSManager._jwks` so keys rotate proactively. Consider caching the JWKS URI separately from the key set.
 
-**Sensitive Data Handling Not Planned:**
-- Risk: The application will handle voter PII, donor financial information, and FEC compliance data per `init.md`. No data protection patterns, encryption-at-rest, or audit logging patterns exist
-- Files: `init.md` (feature requirements mentioning constituent data, donation data, CRM)
+**Broad Exception Handling in JWT Validation:**
+- Risk: `validate_token` catches bare `Exception` (line 93), meaning any error (network, JSON parsing, programming bugs) triggers a JWKS refresh and retry instead of failing fast.
+- Files: `app/core/security.py:88-100`
+- Current mitigation: On second failure, the exception propagates.
+- Recommendations: Catch specific `authlib` exceptions (e.g., `InvalidClaimError`, `DecodeError`) to distinguish key rotation issues from genuine validation failures.
+
+**CORS Wildcard Methods and Headers:**
+- Risk: `allow_methods=["*"]` and `allow_headers=["*"]` are overly permissive for a production API.
+- Files: `app/main.py:87-92`
+- Current mitigation: `allow_origins` is configurable via settings.
+- Recommendations: Restrict to actual methods used (GET, POST, PATCH, DELETE, OPTIONS) and specific headers (Authorization, Content-Type).
+
+**Import File Processing Has No Size Limit:**
+- Risk: The import pipeline downloads the entire file into memory (`b"".join(chunks)` in `app/services/import_service.py:458`). A malicious or accidentally large file could cause OOM.
+- Files: `app/services/import_service.py:455-458`, `app/tasks/import_task.py`
 - Current mitigation: None
-- Recommendations: Design data models with PII classification from the start. Implement field-level encryption for sensitive voter/donor data. Build audit logging into the base model layer. Consider GDPR/state privacy law compliance requirements early.
+- Recommendations: Add a max file size check (e.g., 500MB) before downloading. Stream-process the CSV instead of loading entirely into memory.
+
+**SQL Injection via ILIKE Search:**
+- Risk: Voter name search uses `f"%{filters.search}%"` directly in an ILIKE clause. While SQLAlchemy parameterizes values, the `%` and `_` characters in LIKE patterns are not escaped, allowing users to craft expensive pattern matches.
+- Files: `app/services/voter.py:116-122`, `app/services/volunteer.py:306-308`
+- Current mitigation: SQLAlchemy parameterization prevents actual SQL injection.
+- Recommendations: Escape `%` and `_` in search input before building the LIKE pattern. Consider using full-text search (tsvector) for better performance and control.
 
 ## Performance Bottlenecks
 
-**Dual PostgreSQL Driver Dependencies:**
-- Problem: Both `asyncpg` (async) and `psycopg2-binary` (sync) are listed as dependencies in `pyproject.toml`
-- Files: `pyproject.toml`
-- Cause: Unclear whether the project intends to use async or sync database access patterns
-- Improvement path: Decide on one approach. For FastAPI, use `asyncpg` with SQLAlchemy async engine. Use `psycopg2-binary` only if needed for Alembic migrations (which typically run synchronously). Document the decision. Remove the unneeded driver if possible, or clarify each driver's role.
+**N+1 Potential in Shift Listing:**
+- Problem: `list_shifts` returns raw `Shift` objects but the route handler needs signup counts. The get_shift method issues separate count queries per shift.
+- Files: `app/services/shift.py:218-268` (list returns raw), `app/services/shift.py:97-135` (get adds counts with extra query)
+- Cause: The list endpoint likely fetches counts in a loop if it needs them. Currently the list endpoint returns shifts without counts, but individual shift fetches require 2 queries.
+- Improvement path: Use a single query with window functions or subquery joins to get counts alongside the list query.
 
-**No Database Migration Infrastructure:**
-- Problem: Alembic is a dependency but no `alembic.ini` or `alembic/` directory exists
-- Files: `pyproject.toml` (lists `alembic>=1.18.4`)
-- Cause: Project not yet scaffolded
-- Improvement path: Run `alembic init` and configure it to use the same database URL as the FastAPI app. Set up async-compatible migration configuration.
+**Voter Import Loads Entire File Into Memory:**
+- Problem: `process_import_file` downloads the complete file before processing batches.
+- Files: `app/services/import_service.py:455-458`
+- Cause: The S3 download collects all chunks into a list, then joins them.
+- Improvement path: Use a streaming approach -- pipe S3 download chunks through a csv reader without buffering the entire file. This would also allow processing files larger than available RAM.
+
+**Phone Bank Progress Query Counts All Campaign Interactions:**
+- Problem: The `get_progress` method counts all PHONE_CALL interactions across the entire campaign, not filtered to the specific session.
+- Files: `app/services/phone_bank.py:557-565`
+- Cause: The query filters by `campaign_id` and `InteractionType.PHONE_CALL` but not by session_id in the interaction payload. This means the count aggregates across all phone bank sessions.
+- Improvement path: Store session_id as a column on `VoterInteraction` (not just in payload JSON) or filter by call_list_id membership to scope counts correctly.
+
+**No Database Connection Pool Tuning:**
+- Problem: The SQLAlchemy async engine uses default pool settings (pool_size=5, max_overflow=10).
+- Files: `app/db/session.py:15-19`
+- Cause: No explicit pool configuration.
+- Improvement path: Add `pool_size`, `max_overflow`, and `pool_timeout` settings to `app/core/config.py` and pass to `create_async_engine`.
 
 ## Fragile Areas
 
-**No Fragile Code Areas:** The codebase is too nascent to have fragile areas. However, the following architectural risks should be addressed during initial development:
+**Import Task Double-Status-Update Race:**
+- Files: `app/tasks/import_task.py:45-46`, `app/services/import_service.py:448`
+- Why fragile: Both `process_import` task (line 45) and `ImportService.process_import_file` (line 448) set `job.status = ImportStatus.PROCESSING`. The task sets it and flushes, then the service sets it again. If the service method is called independently (not via the task), it also sets RLS context, creating overlapping responsibility.
+- Safe modification: Choose one owner for status transitions. The task should own job lifecycle; the service should focus on data processing only.
+- Test coverage: `tests/unit/test_import_service.py` exists but integration between task and service may have gaps.
 
-**Ambitious Feature Scope vs. Zero Implementation:**
-- Files: `init.md` (12 major feature areas listed)
-- Why fragile: The gap between planned features (constituent management, event management, volunteer management, donation management, user management, analytics, canvassing, phone banking, CRM, integrations, campaign websites, third-party integrations) and current state (empty stub) creates risk of rushed implementation
-- Safe modification: Follow the priority order defined in `init.md` (auth first, then campaign management, then integrations, etc.)
-- Test coverage: No tests exist; no test framework is configured despite needing one
+**ShiftService.check_in Side Effects:**
+- Files: `app/services/shift.py:544-623`
+- Why fragile: The `check_in` method has inline imports and creates `WalkListCanvasser` and `SessionCaller` records as side effects. It queries walk lists by turf, takes the most recent one, and creates a canvasser record. If walk list structure changes, this breaks silently (just logs a warning).
+- Safe modification: Extract side effects into dedicated methods. Add explicit error handling instead of silent warning-and-continue.
+- Test coverage: `tests/unit/test_shifts.py` (729 lines) likely covers this, but the walk list query assumption is fragile.
+
+**httpx Client Created Per-Request in ZitadelService:**
+- Files: `app/services/zitadel.py:48`, `app/services/zitadel.py:91`, `app/services/zitadel.py:122`, `app/services/zitadel.py:145`
+- Why fragile: Every ZITADEL API call creates a new `httpx.AsyncClient()` via `async with`. This means no connection pooling, no keep-alive, and TCP handshake overhead on every call.
+- Safe modification: Create a shared `httpx.AsyncClient` in `__init__` and close it on application shutdown. Store it on `app.state` alongside the service.
+- Test coverage: `tests/unit/test_lifespan.py` tests initialization but likely not connection reuse.
 
 ## Scaling Limits
 
-Not applicable -- no application exists to evaluate scaling characteristics. When building:
-- Use async SQLAlchemy with connection pooling for database access
-- Design multi-tenant data isolation early (campaigns are the tenant boundary per `init.md`)
-- Plan for voter file imports (potentially millions of records per state) requiring batch processing
+**InMemoryBroker Task Queue:**
+- Current capacity: Single process, in-memory
+- Limit: All queued import tasks lost on restart. No concurrent worker scaling. No retry semantics.
+- Scaling path: Migrate to Redis-backed TaskIQ broker. Add worker processes.
+
+**Voter Import Single-Threaded Processing:**
+- Current capacity: One import at a time per worker process (synchronous batch processing within async)
+- Limit: Large voter files (1M+ records) block the worker for extended periods. No progress reporting granularity below 1000-row batches.
+- Scaling path: Chunk files and distribute across multiple workers. Add progress websocket/SSE for real-time updates.
+
+**Single-Database Architecture:**
+- Current capacity: Single PostgreSQL instance
+- Limit: All campaigns share one database. Large campaigns with millions of voters will compete for connection pool and query resources.
+- Scaling path: Read replicas for dashboard/reporting queries. Consider per-campaign schema isolation if tenant count grows significantly.
 
 ## Dependencies at Risk
 
-**`psycopg2-binary`:**
-- Risk: The `-binary` variant bundles its own libpq and is not recommended for production deployments by the psycopg2 maintainers
-- Impact: Potential issues in production containers
-- Migration plan: Use `psycopg2` (non-binary) for production builds, or migrate to `psycopg[binary]` (psycopg3) which is the successor library. Alternatively, rely solely on `asyncpg` for all database access if going fully async.
-
-**No Dev Dependencies Declared:**
-- Risk: No test framework (pytest), no linter (ruff), no type checker (mypy/pyright), no formatter configured in `pyproject.toml`
-- Impact: No quality gates exist; code quality will degrade without tooling
-- Migration plan: Add dev dependencies: `pytest`, `pytest-asyncio`, `httpx` (for FastAPI test client), `ruff`, `mypy` or `pyright`. Configure in `pyproject.toml` under `[tool.ruff]`, `[tool.pytest.ini_options]`, etc.
-
-**Typer Dependency May Be Unnecessary:**
-- Risk: `typer>=0.24.1` is declared but there is no CLI code; unclear if the project needs a CLI framework alongside FastAPI
-- Impact: Minor -- unused dependency adds to install size
-- Migration plan: Clarify if CLI management commands are needed (e.g., for data imports, admin tasks). If not, remove. If yes, implement the CLI module.
+**None critical**, but notable:
+- `geoalchemy2` ties the project to PostgreSQL + PostGIS. No abstraction layer for spatial queries.
+- `authlib` for JWT validation -- relatively stable but the ZITADEL-specific claim structure (`urn:zitadel:iam:...`) is hardcoded in `app/core/security.py:103-136`.
 
 ## Missing Critical Features
 
-**No Application Skeleton:**
-- Problem: There is no FastAPI application, no database models, no API routes, no configuration management
-- Blocks: All feature development is blocked until basic scaffolding exists
+**No Pagination on Several List Endpoints:**
+- Problem: `list_sessions` in `app/services/phone_bank.py:126-145` returns all sessions for a campaign with no pagination.
+- Blocks: Will degrade as campaigns accumulate sessions.
 
-**No Testing Infrastructure:**
-- Problem: No test framework, no test directory, no test configuration
-- Blocks: Cannot verify any feature implementation; no CI/CD quality gates possible
+**No Audit Trail for Destructive Operations:**
+- Problem: Deletions (shift delete, campaign soft-delete, DNC entry removal) are not logged to an audit table. Only the application logs capture these events.
+- Blocks: Compliance and accountability for campaign operations.
 
-**No Database Schema:**
-- Problem: No SQLAlchemy models, no Alembic migrations, no database schema
-- Blocks: All data-dependent features (which is everything listed in `init.md`)
-
-**No Docker/Deployment Configuration:**
-- Problem: `init.md` specifies Kubernetes deployment but no Dockerfile, docker-compose, or K8s manifests exist
-- Blocks: Cannot deploy or run the application in any environment beyond local development
-
-**No API Documentation/OpenAPI Spec:**
-- Problem: Despite `docs/spec_driven_dev(SDD).md` suggesting a spec-driven development approach, no OpenAPI specification exists
-- Blocks: Cannot generate client SDKs, cannot validate API contracts, cannot enable frontend development in parallel
+**No Health Check for Database or External Dependencies:**
+- Problem: `app/api/health.py` likely provides a basic health endpoint but does not verify database connectivity, S3 reachability, or ZITADEL availability.
+- Blocks: Load balancer health routing and operational monitoring.
 
 ## Test Coverage Gaps
 
-**Zero Test Coverage:**
-- What's not tested: Everything -- the entire application
-- Files: No test files exist anywhere in the project
-- Risk: Any code written without tests will be untestable retroactively without significant refactoring
-- Priority: High -- establish testing patterns (conftest.py, fixtures, test database setup) before writing any feature code
+**No Integration Tests for Import Pipeline:**
+- What's not tested: The full flow from `initiate_import` through `process_import` task to completed job with voter records in the database
+- Files: `app/tasks/import_task.py`, `app/services/import_service.py`, `app/api/v1/imports.py`
+- Risk: The import task creates its own session, sets RLS context, and processes files -- this composition is not tested end-to-end. The double-status-update issue mentioned above would be caught.
+- Priority: High
+
+**No E2E Tests for Authentication Flow:**
+- What's not tested: Full JWT validation with real ZITADEL tokens, role extraction, and campaign membership resolution
+- Files: `app/core/security.py`, `app/api/deps.py`
+- Risk: JWT claim structure changes from ZITADEL would not be caught until production
+- Priority: Medium
+
+**Dashboard Services Partially Tested:**
+- What's not tested: Complex aggregate queries in dashboard services may not cover edge cases (zero data, partial data)
+- Files: `app/services/dashboard/phone_banking.py`, `app/services/dashboard/volunteer.py`, `app/services/dashboard/` (overview presumed)
+- Risk: Dashboard queries with empty campaigns or unusual data distributions could error or return misleading results
+- Priority: Low
 
 ---
 
-*Concerns audit: 2026-03-09*
+*Concerns audit: 2026-03-10*

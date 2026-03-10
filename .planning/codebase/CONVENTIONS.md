@@ -1,225 +1,273 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-09
-
-## Project Status
-
-This is a greenfield project at initial scaffold stage. Only `main.py` (stub) and `pyproject.toml` exist. Conventions below are **prescriptive** -- derived from the declared stack (FastAPI, SQLAlchemy, Pydantic, Alembic, Loguru) and project methodology (Spec-Driven Development documented in `docs/spec_driven_dev(SDD).md`).
+**Analysis Date:** 2026-03-10
 
 ## Naming Patterns
 
 **Files:**
 - Use `snake_case.py` for all Python modules
-- Use plural nouns for collection modules (e.g., `routers/`, `models/`, `schemas/`)
-- Use singular nouns for individual domain modules (e.g., `models/campaign.py`, `schemas/constituent.py`)
+- Model files are singular nouns: `campaign.py`, `voter.py`, `user.py`
+- Service files match their domain: `campaign.py`, `voter.py`, `invite.py`
+- Schema files match their domain: `campaign.py`, `voter.py`, `invite.py`
+- API route files use plural nouns: `campaigns.py`, `voters.py`, `invites.py`
+- Test files use `test_` prefix: `test_campaign_service.py`, `test_api_campaigns.py`
 
 **Functions:**
 - Use `snake_case` for all functions and methods
-- Prefix async functions with verbs: `get_campaign()`, `create_constituent()`, `list_events()`
-- Use `_` prefix for private/internal helpers: `_validate_donor_email()`
+- Async functions use `async def`
+- Private/internal functions use leading underscore: `_extract_role()`, `_validate_status_transition()`
+- FastAPI dependency factories return callables: `require_role("admin")` returns a dependency
+- Helper functions at module level prefixed with underscore: `_make_user()`, `_mock_result_with()`
 
 **Variables:**
 - Use `snake_case` for all variables
-- Use `UPPER_SNAKE_CASE` for constants and settings
-- Use descriptive names: `campaign_id` not `cid`, `volunteer_list` not `vl`
+- Module-level constants use `UPPER_SNAKE_CASE`: `CAMPAIGN_ID`, `ORG_ID`, `TEST_KID`
+- Private module-level state uses leading underscore: `_service = CampaignService()`
 
 **Types/Classes:**
 - Use `PascalCase` for all classes
-- Pydantic models: suffix with purpose -- `CampaignCreate`, `CampaignResponse`, `CampaignUpdate`
-- SQLAlchemy models: no suffix, just the entity name -- `Campaign`, `Constituent`, `Event`
-- Use `Base` for the declarative base class
+- SQLAlchemy models are singular: `Campaign`, `Voter`, `User`
+- Pydantic schemas use suffix pattern: `CampaignCreate`, `CampaignUpdate`, `CampaignResponse`
+- Service classes use `Service` suffix: `CampaignService`, `VoterService`, `ZitadelService`
+- Enums use `PascalCase` with `StrEnum` or `IntEnum`: `CampaignType`, `CampaignRole`
+- Custom exceptions use `Error` suffix: `CampaignNotFoundError`, `VoterNotFoundError`
 
 ## Code Style
 
 **Formatting:**
-- Use `ruff format` (configured via `pyproject.toml`)
-- Line length: 88 characters (ruff default)
-- Use double quotes for strings
-- Use trailing commas in multi-line collections
+- Tool: Ruff (configured in `pyproject.toml`)
+- Line length: 88 characters
+- Target Python version: 3.13
+- Config location: `pyproject.toml` `[tool.ruff]` section
 
 **Linting:**
-- Use `ruff check` with `--fix` for auto-fixable issues
-- Run `ruff check` and `ruff format --check` before every commit
-- No linting configuration exists yet in `pyproject.toml` -- add `[tool.ruff]` section when first source files are created
+- Tool: Ruff
+- Selected rule sets: E (pycodestyle), F (pyflakes), I (isort), N (pep8-naming), UP (pyupgrade), B (bugbear), SIM (simplify), ASYNC
+- Ignored rules: `B008` (Depends() in default args is standard FastAPI pattern)
+- Noqa comments used sparingly for intentional violations: `# noqa: ARG001`, `# noqa: E402, F401`
 
-**Recommended ruff config for `pyproject.toml`:**
-```toml
-[tool.ruff]
-target-version = "py313"
-line-length = 88
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "SIM", "ASYNC"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["run_api"]
-```
+**Python Version Features:**
+- Use `from __future__ import annotations` in every module (PEP 604 style unions)
+- Use `str | None` instead of `Optional[str]`
+- Use `list[str]` instead of `List[str]`
+- Use generic syntax for Pydantic: `PaginatedResponse[T]` with PEP 695 style
+- Use `datetime.now(UTC)` not `datetime.utcnow()`
 
 ## Import Organization
 
 **Order:**
-1. Standard library imports
-2. Third-party imports (fastapi, sqlalchemy, pydantic, loguru)
-3. Local application imports (run_api.*)
+1. `from __future__ import annotations` (always first)
+2. Standard library imports
+3. Third-party imports (fastapi, sqlalchemy, pydantic, loguru, httpx)
+4. Local application imports (`from app.core...`, `from app.models...`)
 
 **Path Aliases:**
-- No path aliases configured yet. Use relative imports within packages, absolute imports from entry points.
+- No path aliases configured. Use full dotted paths: `from app.core.security import AuthenticatedUser`
+- First-party package configured in isort: `known-first-party = ["app"]`
 
-**Style:**
+**Conditional Imports:**
+- Use `TYPE_CHECKING` guard for imports only needed by type annotations:
 ```python
-from __future__ import annotations
+from typing import TYPE_CHECKING
 
-import uuid
-from datetime import datetime
+if TYPE_CHECKING:
+    from app.core.security import AuthenticatedUser
+    from app.services.zitadel import ZitadelService
+```
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from run_api.db.session import get_db
-from run_api.models.campaign import Campaign
-from run_api.schemas.campaign import CampaignCreate, CampaignResponse
+**Deferred Imports:**
+- Use inline imports to break circular dependencies:
+```python
+async def get_campaign_from_token(...):
+    from app.core.errors import CampaignNotFoundError  # deferred
 ```
 
 ## Error Handling
 
-**Patterns:**
-- Use `fastapi.HTTPException` for API-level errors with appropriate status codes
-- Use custom exception classes for domain-level errors, caught by FastAPI exception handlers
-- Never return bare 500 errors -- always catch and wrap with meaningful messages
-- Use `status` constants from FastAPI, not raw integers: `status.HTTP_404_NOT_FOUND`
+**Domain Exceptions:**
+- Define custom exception classes in `app/core/errors.py`
+- Each exception stores relevant IDs as attributes: `self.campaign_id`, `self.voter_id`
+- Naming pattern: `{Entity}NotFoundError`, `InsufficientPermissionsError`, `ZitadelUnavailableError`
 
-**Example pattern:**
+**Problem Details (RFC 9457):**
+- Use `fastapi-problem-details` package for error responses
+- Initialize via `init_error_handlers(app)` in `app/core/errors.py`
+- Each exception maps to a handler returning `problem.ProblemResponse`:
 ```python
-from fastapi import HTTPException, status
+@app.exception_handler(CampaignNotFoundError)
+async def campaign_not_found_handler(request, exc):  # noqa: ARG001
+    return problem.ProblemResponse(
+        status=status.HTTP_404_NOT_FOUND,
+        title="Campaign Not Found",
+        detail=str(exc),
+        type="campaign-not-found",
+    )
+```
 
-class CampaignNotFoundError(Exception):
-    def __init__(self, campaign_id: uuid.UUID):
-        self.campaign_id = campaign_id
-        super().__init__(f"Campaign {campaign_id} not found")
+**Service Layer Errors:**
+- Services raise domain exceptions (`CampaignNotFoundError`, `InsufficientPermissionsError`)
+- Services raise `ValueError` for entity-not-found when no custom exception exists yet
+- API routes catch `ValueError` and re-raise as domain exceptions:
+```python
+try:
+    voter = await _service.get_voter(db, voter_id)
+except ValueError as exc:
+    raise VoterNotFoundError(voter_id) from exc
+```
 
-# In router:
-async def get_campaign(campaign_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    campaign = await campaign_service.get_by_id(db, campaign_id)
-    if not campaign:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Campaign {campaign_id} not found",
-        )
-    return campaign
+**HTTP Errors:**
+- Use `HTTPException` for auth failures (401, 403) in `app/core/security.py`
+- Use domain exceptions + problem details for business logic errors (404, 422)
+
+**Compensating Transactions:**
+- When external service call succeeds but local DB fails, clean up the external resource:
+```python
+try:
+    # local DB write
+except Exception:
+    await db.rollback()
+    await zitadel.delete_organization(org_id)  # compensate
+    raise
 ```
 
 ## Logging
 
-**Framework:** Loguru (`loguru` is a declared dependency)
+**Framework:** Loguru (`from loguru import logger`)
 
 **Patterns:**
-- Use `from loguru import logger` at module level
-- Use structured logging with context: `logger.info("Campaign created", campaign_id=str(campaign.id))`
-- Log at appropriate levels: `debug` for internals, `info` for business events, `warning` for recoverable issues, `error` for failures
-- Never log sensitive data (passwords, tokens, PII beyond IDs)
+- Use `logger.info()`, `logger.debug()`, `logger.warning()`, `logger.error()`
+- Use Loguru's `{}` placeholder syntax, not f-strings or %s:
+```python
+logger.info("Created local user record for {}", user.id)
+logger.warning("Local DB write failed for campaign '{}', cleaning up ZITADEL org {}", name, org_id)
+```
+- Note: `app/services/volunteer.py` uses `logging.getLogger(__name__)` instead of loguru -- this is inconsistent
 
 ## Comments
 
 **When to Comment:**
-- Docstrings on all public functions, classes, and modules
-- Inline comments only for non-obvious logic
-- Use `# TODO:` with ticket/issue reference for planned work
-- Use `# HACK:` sparingly and only with justification
+- Module-level docstrings on every `.py` file explaining purpose
+- Class-level docstrings on all classes
+- Method-level docstrings on all public methods
 
-**Docstrings:**
-- Use Google-style docstrings
-- Include `Args:`, `Returns:`, and `Raises:` sections for public functions
-
+**Docstring Style:**
+- Google-style docstrings with `Args:`, `Returns:`, `Raises:` sections:
 ```python
-async def create_campaign(db: AsyncSession, data: CampaignCreate) -> Campaign:
-    """Create a new campaign.
+async def get_campaign(self, db: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
+    """Get a campaign by ID.
 
     Args:
-        db: Database session.
-        data: Campaign creation payload.
+        db: Async database session.
+        campaign_id: The campaign UUID.
 
     Returns:
-        The newly created Campaign instance.
+        The Campaign object.
 
     Raises:
-        ValueError: If campaign name is already taken.
+        CampaignNotFoundError: If campaign does not exist.
     """
 ```
+- Every arg gets a brief description. Keep descriptions concise (one line).
+
+**Inline Comments:**
+- Used sparingly for non-obvious logic
+- `# noqa:` comments for intentional lint suppressions
 
 ## Function Design
 
-**Size:** Keep functions under 30 lines. Extract helpers for complex logic.
+**Size:** Functions are kept focused on a single operation. Service methods typically 10-30 lines.
 
-**Parameters:** Use Pydantic models for grouped parameters. Use `Depends()` for FastAPI dependency injection.
+**Parameters:**
+- Always use type annotations on all parameters and return types
+- Use `uuid.UUID` for entity IDs, not strings
+- Use Pydantic models for request data (not raw dicts)
+- Use ellipsis (`...`) as sentinel for "not provided" on nullable update fields:
+```python
+async def update_campaign(self, db, campaign_id, jurisdiction_fips: str | None = ...):
+    if jurisdiction_fips is not ...:
+        campaign.jurisdiction_fips = jurisdiction_fips
+```
 
-**Return Values:** Always use type hints. Return Pydantic response models from API endpoints, domain models from service functions.
+**Return Values:**
+- Return domain model objects from services, not dicts
+- Convert to Pydantic response schemas at the API layer: `CampaignResponse.model_validate(campaign)`
+- Return tuples for paginated results: `tuple[list[Campaign], PaginationResponse]`
 
 ## Module Design
 
-**Exports:** Use `__all__` in `__init__.py` files to control public API.
+**Exports:**
+- `app/models/__init__.py` uses explicit `__all__` list with all model classes
+- Other `__init__.py` files are empty (just mark packages)
+- No barrel file pattern in services or schemas
 
-**Barrel Files:** Use `__init__.py` for re-exports in package directories. Keep them minimal.
+**Singleton Pattern:**
+- Services instantiated at module level in route files: `_service = CampaignService()`
+- Services are stateless classes -- no instance state, just method grouping
+- Shared state (settings, engines) lives in module-level singletons: `settings = Settings()`, `engine = create_async_engine(...)`
 
-## Async Patterns
+## API Route Patterns
 
-**Convention:** Use `async def` for all database and I/O operations. The project uses `asyncpg` and SQLAlchemy async sessions.
+**Dependency Injection:**
+- Use FastAPI `Depends()` for auth, DB sessions, and role checks
+- Override dependencies in tests via `app.dependency_overrides[get_current_user] = lambda: user`
+- Role enforcement via `require_role("admin")` dependency factory
+- DB session via `Depends(get_db)` or `Depends(get_db_with_rls)`
 
+**Response Pattern:**
+- Set `response_model` on route decorators
+- Use `status_code=status.HTTP_201_CREATED` for creation endpoints
+- Return `Response(status_code=status.HTTP_204_NO_CONTENT)` for deletes
+- Always call `model_validate()` before returning: `CampaignResponse.model_validate(campaign)`
+
+**URL Structure:**
+- Version prefix: `/api/v1/`
+- Resource-scoped routes: `/campaigns/{campaign_id}/voters/{voter_id}`
+- Use POST for search endpoints: `POST /campaigns/{campaign_id}/voters/search`
+- Use PATCH for partial updates (not PUT)
+
+**RLS Context:**
+- Campaign-scoped endpoints must set RLS context before querying:
 ```python
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-async def get_by_id(db: AsyncSession, campaign_id: uuid.UUID) -> Campaign | None:
-    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
-    return result.scalar_one_or_none()
+from app.db.rls import set_campaign_context
+await set_campaign_context(db, str(campaign_id))
 ```
 
-## Pydantic Conventions
+**User Sync:**
+- Every authenticated endpoint calls `await ensure_user_synced(user, db)` early in the handler
 
-**Base config:**
-```python
-from pydantic import BaseModel, ConfigDict
+## Pydantic Schema Patterns
 
-class BaseSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-```
+**Base Class:**
+- All schemas inherit from `BaseSchema` (defined in `app/schemas/common.py`)
+- `BaseSchema` enables `from_attributes=True` for ORM model conversion
 
-**Schema naming:** `{Entity}Create`, `{Entity}Update`, `{Entity}Response`, `{Entity}List`
+**Schema Naming:**
+- `{Entity}Create` for POST request bodies
+- `{Entity}Update` for PATCH request bodies (all fields optional)
+- `{Entity}Response` for API responses
 
-## SQLAlchemy Conventions
+**Pagination:**
+- Use `PaginatedResponse[T]` generic wrapper from `app/schemas/common.py`
+- Cursor-based pagination with `next_cursor` and `has_more` fields
+- Cursor format: `{created_at.isoformat()}|{id}`
 
-**Use mapped_column with type annotations:**
-```python
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-import uuid
+## SQLAlchemy Model Patterns
 
-class Base(DeclarativeBase):
-    pass
+**Base Class:**
+- All models inherit from `Base` (defined in `app/db/base.py`)
+- All models must be imported in `app/db/base.py` for Alembic detection
 
-class Campaign(Base):
-    __tablename__ = "campaigns"
+**Column Patterns:**
+- Use `Mapped[type]` with `mapped_column()` (SQLAlchemy 2.0 style)
+- UUID primary keys with `default=uuid.uuid4`
+- Timestamps with `server_default=func.now()` and `onupdate=func.now()`
+- Use `String(N)` for all string columns with explicit max length
+- Use `Enum(..., native_enum=False)` for enum columns (stores as VARCHAR)
 
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(index=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
-```
-
-## Environment and Settings
-
-**Use pydantic-settings for configuration:**
-```python
-from pydantic_settings import BaseSettings
-
-class Settings(BaseSettings):
-    database_url: str
-    zitadel_issuer: str
-    debug: bool = False
-
-    model_config = ConfigDict(env_file=".env")
-```
-
-- Never hardcode secrets or connection strings
-- `.env` files are gitignored and must never be committed
+**Multi-tenancy:**
+- Most tables have `campaign_id: Mapped[uuid.UUID]` as a foreign key
+- RLS policies enforce tenant isolation at the database level
 
 ---
 
-*Convention analysis: 2026-03-09*
+*Convention analysis: 2026-03-10*
