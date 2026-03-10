@@ -14,6 +14,7 @@ import {
   LogOut,
   Map,
   Phone,
+  Settings,
   Users,
   Vote,
 } from "lucide-react"
@@ -29,6 +30,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -42,6 +44,7 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { RequireRole } from "@/components/shared/RequireRole"
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuthStore } from "@/stores/authStore"
@@ -117,6 +120,23 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <RequireRole minimum="admin">
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname.includes("/settings")}
+              >
+                <Link to={`/campaigns/${campaignId}/settings`}>
+                  <Settings />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </RequireRole>
       <SidebarRail />
     </Sidebar>
   )
