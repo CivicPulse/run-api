@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import init_error_handlers
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -94,5 +99,16 @@ def create_app() -> FastAPI:
     init_error_handlers(app)
     app.include_router(health_router)
     app.include_router(v1_router)
+
+    # Serve built frontend in production (static/ exists only in Docker image)
+    if STATIC_DIR.exists():
+        app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+        @app.get("/{path:path}")
+        async def spa_fallback(path: str) -> FileResponse:
+            """Return index.html for client-side routing; 404 for API paths."""
+            if path.startswith("api/") or path.startswith("health/"):
+                raise HTTPException(status_code=404, detail="Not found")
+            return FileResponse(STATIC_DIR / "index.html")
 
     return app
