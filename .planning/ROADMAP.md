@@ -28,7 +28,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 
 - [x] **Phase 8: Containerization** - Production Dockerfile with multi-stage build, health check, and proper ignore rules
 - [x] **Phase 9: Local Dev Environment** - Docker Compose full-stack dev with migrations, hot-reload, and seed data (completed 2026-03-10)
-- [ ] **Phase 10: CI/CD Pipeline** - GitHub Actions workflow for GHCR image publishing with SHA tagging
+- [x] **Phase 10: CI/CD Pipeline** - GitHub Actions workflow for GHCR image publishing with SHA tagging (completed 2026-03-10)
 - [ ] **Phase 11: Kubernetes & GitOps** - K8s manifests and ArgoCD application for baremetal deployment
 
 ## Phase Details
@@ -70,7 +70,7 @@ Plans:
   1. Pushing a commit to main triggers a GitHub Actions workflow that builds and pushes an image to GHCR
   2. Published images are tagged with both `sha-<commit>` and `latest`
   3. The workflow automatically updates `k8s/deployment.yaml` with the new image SHA and commits the change back to the repo
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md — PR validation workflow, GHCR publish workflow, and stub K8s manifest
@@ -105,5 +105,5 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 7. Integration Wiring Fixes | v1.0 | 1/1 | Complete | 2026-03-10 |
 | 8. Containerization | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 10. CI/CD Pipeline | v1.1 | 0/1 | Not started | - |
+| 10. CI/CD Pipeline | 1/1 | Complete   | 2026-03-10 | - |
 | 11. Kubernetes & GitOps | v1.1 | 0/? | Not started | - |

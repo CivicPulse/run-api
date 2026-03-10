@@ -22,9 +22,9 @@ Requirements for Local Dev & Deployment Readiness milestone.
 
 ### CI/CD
 
-- [ ] **CICD-01**: GitHub Actions workflow builds and pushes image to GHCR on push to main
-- [ ] **CICD-02**: Images tagged with `sha-<commit>` and `latest`, matching contact-api pattern
-- [ ] **CICD-03**: Workflow updates `k8s/deployment.yaml` with new image SHA and commits back
+- [x] **CICD-01**: GitHub Actions workflow builds and pushes image to GHCR on push to main
+- [x] **CICD-02**: Images tagged with `sha-<commit>` and `latest`, matching contact-api pattern
+- [x] **CICD-03**: Workflow updates `k8s/deployment.yaml` with new image SHA and commits back
 
 ### Kubernetes
 
@@ -74,9 +74,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | DEV-02 | Phase 9 | Complete |
 | DEV-03 | Phase 9 | Complete |
 | DEV-04 | Phase 9 | Complete |
-| CICD-01 | Phase 10 | Pending |
-| CICD-02 | Phase 10 | Pending |
-| CICD-03 | Phase 10 | Pending |
+| CICD-01 | Phase 10 | Complete |
+| CICD-02 | Phase 10 | Complete |
+| CICD-03 | Phase 10 | Complete |
 | K8S-01 | Phase 11 | Pending |
 | K8S-02 | Phase 11 | Pending |
 | K8S-03 | Phase 11 | Pending |
