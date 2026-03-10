@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-03-10T21:45:07.020Z"
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-03-10T21:52:27.833Z"
 last_activity: 2026-03-10 — Completed 12-01 (usePermissions, RequireRole, useFormGuard, DataTable — 51 tests passing)
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 5
 ---
 
@@ -48,6 +48,7 @@ Progress: [█░░░░░░░░░] 5%
 *Updated after each plan completion*
 | Phase 12 P01 | 5 | 3 tasks | 9 files |
 | Phase 12 P02 | 3 | 2 tasks | 7 files |
+| Phase 12 P03 | 5 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Progress: [█░░░░░░░░░] 5%
 - [Phase 12]: DataTable uses manualSorting/manualFiltering/manualPagination for all server-side data operations
 - [Phase 12]: Settings is a sibling route to campaign layout — campaign tabs do NOT appear on settings pages
 - [Phase 12]: DestructiveConfirmDialog uses type-to-confirm pattern — button disabled until input matches confirmText exactly
+- [Phase 12]: Owner row shows no kebab menu in members tab — cannot change owner role or remove owner (ownership transfer is in Danger Zone)
+- [Phase 12]: Self-role-change prevention in members tab — Change role hidden when member.user_id matches current user sub claim
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T21:45:07.011Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-03-10T21:52:27.826Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None

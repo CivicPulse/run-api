@@ -39,7 +39,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** Build complete UI coverage for all ~95 API endpoints that currently lack pages, closing the gap between backend capabilities and user-facing functionality.
 
-- [ ] **Phase 12: Shared Infrastructure & Campaign Foundation** - Permission system, shared components, form guards, campaign settings and member management
+- [x] **Phase 12: Shared Infrastructure & Campaign Foundation** - Permission system, shared components, form guards, campaign settings and member management (completed 2026-03-10)
 - [ ] **Phase 13: Voter Management Completion** - Contacts, tags, lists, create/edit, advanced search, interaction notes
 - [ ] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history
 - [ ] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import
@@ -59,7 +59,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Data tables across the application display consistent sorting controls, filter inputs, pagination, and empty state messages
   4. Campaign owner can edit campaign details, invite members by email, view pending invites, change member roles, remove members, and transfer ownership — all from the campaign settings area
   5. Campaign owner can delete a campaign with a confirmation step that prevents accidental deletion
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 12-01-PLAN.md — Shared UI infrastructure (usePermissions, RequireRole, useFormGuard, DataTable)
@@ -151,7 +151,7 @@ Plans:
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 10. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-10 |
 | 11. Kubernetes & GitOps | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 12. Shared Infrastructure & Campaign Foundation | 2/3 | In Progress|  | - |
+| 12. Shared Infrastructure & Campaign Foundation | 3/3 | Complete   | 2026-03-10 | - |
 | 13. Voter Management Completion | v1.2 | 0/? | Not started | - |
 | 14. Voter Import Wizard | v1.2 | 0/? | Not started | - |
 | 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
