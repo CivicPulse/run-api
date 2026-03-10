@@ -18,6 +18,7 @@ from app.schemas.volunteer import (
     VolunteerCreate,
     VolunteerDetailResponse,
     VolunteerResponse,
+    VolunteerStatusUpdate,
     VolunteerTagCreate,
     VolunteerTagResponse,
     VolunteerUpdate,
@@ -224,7 +225,7 @@ async def update_volunteer(
 async def update_volunteer_status(
     campaign_id: uuid.UUID,
     volunteer_id: uuid.UUID,
-    body: dict,
+    body: VolunteerStatusUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -238,7 +239,7 @@ async def update_volunteer_status(
     await set_campaign_context(db, str(campaign_id))
     try:
         volunteer = await _volunteer_service.update_status(
-            db, volunteer_id, body["status"]
+            db, volunteer_id, body.status
         )
     except ValueError as exc:
         return problem.ProblemResponse(
