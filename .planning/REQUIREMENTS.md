@@ -9,9 +9,9 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Shared Infrastructure
 
-- [ ] **INFR-01**: UI shows/hides actions based on user's campaign role (permission-gated)
-- [ ] **INFR-02**: User is warned before navigating away from unsaved form changes
-- [ ] **INFR-03**: Data tables use consistent sorting, filtering, pagination, and empty states
+- [x] **INFR-01**: UI shows/hides actions based on user's campaign role (permission-gated)
+- [x] **INFR-02**: User is warned before navigating away from unsaved form changes
+- [x] **INFR-03**: Data tables use consistent sorting, filtering, pagination, and empty states
 
 ### Campaign Management
 
@@ -127,9 +127,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | Phase 12 | Pending |
-| INFR-02 | Phase 12 | Pending |
-| INFR-03 | Phase 12 | Pending |
+| INFR-01 | Phase 12 | Complete |
+| INFR-02 | Phase 12 | Complete |
+| INFR-03 | Phase 12 | Complete |
 | CAMP-01 | Phase 12 | Pending |
 | CAMP-02 | Phase 12 | Pending |
 | CAMP-03 | Phase 12 | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
-status: planning
-stopped_at: Phase 12 context gathered
-last_updated: "2026-03-10T21:06:35.402Z"
-last_activity: 2026-03-10 — Roadmap created for v1.2 milestone (7 phases, 60 requirements mapped)
+status: executing
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-10T21:39:46.804Z"
+last_activity: 2026-03-10 — Completed 12-01 (usePermissions, RequireRole, useFormGuard, DataTable — 51 tests passing)
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 5
 ---
 
 # Project State
@@ -21,37 +21,49 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 12 ready to plan
+**Current focus:** v1.2 Full UI — Phase 12 Plan 01 complete, Plan 02 next
 
 ## Current Position
 
 Phase: 12 of 18 (Shared Infrastructure & Campaign Foundation)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-03-10 — Roadmap created for v1.2 milestone (7 phases, 60 requirements mapped)
+Plan: 1 of 3 complete
+Status: Executing
+Last activity: 2026-03-10 — Completed 12-01 (usePermissions, RequireRole, useFormGuard, DataTable — 51 tests passing)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 5%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (v1.2)
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 1 (v1.2)
+- Average duration: 5 min
+- Total execution time: 5 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 12 | 1/3 | 5 min | 5 min |
 
 *Updated after each plan completion*
+| Phase 12 P01 | 5 | 3 tasks | 9 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 15 key decisions logged in PROJECT.md Key Decisions table (12 from v1.0, 6 from v1.1).
+
+**Phase 12 decisions:**
+- RequireRole hides unauthorized content entirely (no disabled/greyed-out state)
+- usePermissions selects highest role when multiple roles present in JWT claim object
+- useFormGuard wires both route blocking AND beforeunload in one hook
+- DataTable uses manualSorting/manualFiltering/manualPagination — all data operations server-side
+- DataTable: py-3 comfortable density, hover highlight only, no zebra striping (Notion-style)
+- Kebab menu column handled by column ColumnDef cell renderer in consuming components, not baked into DataTable
+- [Phase 12]: RequireRole hides unauthorized content entirely (no disabled/greyed-out state)
+- [Phase 12]: usePermissions selects highest role when multiple roles present in JWT claim object
+- [Phase 12]: DataTable uses manualSorting/manualFiltering/manualPagination for all server-side data operations
 
 ### Pending Todos
 
@@ -64,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T21:06:35.394Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-shared-infrastructure-campaign-foundation/12-CONTEXT.md
+Last session: 2026-03-10T21:39:46.795Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
