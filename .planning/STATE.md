@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-10T00:38:52.108Z"
-last_activity: 2026-03-09 — Completed Plan 06-02 (dashboard route handlers and tests)
+status: in-progress
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-10T00:54:19.000Z"
+last_activity: 2026-03-10 — Completed Plan 07-01 (lifespan wiring and model imports)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 20
+  completed_plans: 20
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 6: Operational Dashboards
+**Current focus:** Phase 7: Integration Wiring Fixes
 
 ## Current Position
 
-Phase: 6 of 6 (Operational Dashboards)
-Plan: 2 of 2 in current phase
+Phase: 7 of 7 (Integration Wiring Fixes)
+Plan: 1 of 1 in current phase
 Status: Complete
-Last activity: 2026-03-09 — Completed Plan 06-02 (dashboard route handlers and tests)
+Last activity: 2026-03-10 — Completed Plan 07-01 (lifespan wiring and model imports)
 
 Progress: [██████████] 100%
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 05 P03 | 2 min | 1 task | 1 file |
 | Phase 06 P01 | 2 min | 2 tasks | 5 files |
 | Phase 06 P02 | 4 min | 2 tasks | 6 files |
+| Phase 07 P01 | 4 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [06-01] Hours calculation uses func.coalesce(adjusted_hours, epoch-based delta) for override support
 - [06-01] All dashboard drilldown methods use UUID-based cursor pagination
 - [Phase 06]: my-stats uses inline SQLAlchemy queries (too simple for dedicated service method)
+- [07-01] ZitadelService init placed between JWKSManager and StorageService in lifespan
+- [07-01] Fail-fast: empty client_id/secret raises RuntimeError before any requests served
+- [07-01] _get_token() called at startup to validate credentials (not deferred)
 
 ### Pending Todos
 
@@ -153,6 +157,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-10T00:38:52.098Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-integration-wiring-fixes/07-CONTEXT.md
+Last session: 2026-03-10T00:54:19.000Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-integration-wiring-fixes/07-01-SUMMARY.md
