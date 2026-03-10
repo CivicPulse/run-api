@@ -39,7 +39,7 @@ from app.models.walk_list import WalkList, WalkListCanvasser, WalkListEntry
 # ---------------------------------------------------------------------------
 
 SEED_CAMPAIGN_NAME = "Macon-Bibb Demo Campaign"
-NOW = datetime.now(UTC)
+NOW = datetime.now(UTC).replace(tzinfo=None)
 
 # Macon-Bibb County GA neighborhood center coordinates
 NEIGHBORHOODS = {
