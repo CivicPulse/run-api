@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.errors import ZitadelUnavailableError
+from app.core.time import utcnow
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 
 # ---------------------------------------------------------------------------
@@ -148,8 +149,8 @@ class TestCampaignService:
             type=CampaignType.STATE,
             status=CampaignStatus.ACTIVE,
             created_by="user-abc",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         return campaign
 
@@ -165,8 +166,8 @@ class TestCampaignService:
         async def fake_refresh(obj):
             if isinstance(obj, Campaign) and not obj.id:
                 obj.id = uuid.uuid4()
-                obj.created_at = datetime.now(UTC)
-                obj.updated_at = datetime.now(UTC)
+                obj.created_at = utcnow()
+                obj.updated_at = utcnow()
 
         mock_db.refresh = AsyncMock(side_effect=fake_refresh)
 

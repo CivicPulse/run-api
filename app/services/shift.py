@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import case, extract, func, select
+from sqlalchemy import func, select
 
+from app.core.time import utcnow
 from app.models.shift import (
     Shift,
     ShiftStatus,
@@ -19,6 +19,8 @@ from app.models.shift import (
 from app.models.volunteer import Volunteer, VolunteerStatus
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.schemas.shift import ShiftCreate, ShiftUpdate
@@ -67,7 +69,7 @@ class ShiftService:
         if data.type == ShiftType.PHONE_BANKING and data.phone_bank_session_id is None:
             logger.warning("Creating phone banking shift without phone_bank_session_id")
 
-        now = datetime.now(UTC)
+        now = utcnow()
         shift = Shift(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -179,7 +181,7 @@ class ShiftService:
         for key, value in update_fields.items():
             setattr(shift, key, value)
 
-        shift.updated_at = datetime.now(UTC)
+        shift.updated_at = utcnow()
         return shift
 
     async def update_status(
@@ -212,7 +214,7 @@ class ShiftService:
             raise ValueError(msg)
 
         shift.status = new_status
-        shift.updated_at = datetime.now(UTC)
+        shift.updated_at = utcnow()
         return shift
 
     async def list_shifts(
@@ -368,7 +370,7 @@ class ShiftService:
         )
         signed_up_count = count_result.scalar()
 
-        now = datetime.now(UTC)
+        now = utcnow()
         if signed_up_count < shift.max_volunteers:
             signup_status = SignupStatus.SIGNED_UP
             waitlist_position = None
@@ -434,7 +436,7 @@ class ShiftService:
         is_self = volunteer.user_id == requester_id
 
         if is_self and requester_role < CampaignRole.MANAGER:
-            if shift.start_at <= datetime.now(UTC):
+            if shift.start_at <= utcnow():
                 msg = "Cannot self-cancel after shift has started"
                 raise ValueError(msg)
 
@@ -494,7 +496,7 @@ class ShiftService:
             msg = f"Volunteer {volunteer_id} already assigned to shift {shift_id}"
             raise ValueError(msg)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         shift_volunteer = ShiftVolunteer(
             id=uuid.uuid4(),
             shift_id=shift_id,
@@ -565,7 +567,7 @@ class ShiftService:
             ValueError: If signup not found.
         """
         shift_vol = await self._get_shift_volunteer(session, shift_id, volunteer_id)
-        shift_vol.check_in_at = datetime.now(UTC)
+        shift_vol.check_in_at = utcnow()
         shift_vol.status = SignupStatus.CHECKED_IN
 
         shift = await self._get_shift_raw(session, shift_id)
@@ -610,8 +612,8 @@ class ShiftService:
                     id=uuid.uuid4(),
                     session_id=shift.phone_bank_session_id,
                     user_id=volunteer.user_id,
-                    check_in_at=datetime.now(UTC),
-                    created_at=datetime.now(UTC),
+                    check_in_at=utcnow(),
+                    created_at=utcnow(),
                 )
                 session.add(caller)
             else:
@@ -642,7 +644,7 @@ class ShiftService:
             The updated ShiftVolunteer.
         """
         shift_vol = await self._get_shift_volunteer(session, shift_id, volunteer_id)
-        now = datetime.now(UTC)
+        now = utcnow()
         shift_vol.check_out_at = now
         shift_vol.status = SignupStatus.CHECKED_OUT
 
@@ -701,7 +703,7 @@ class ShiftService:
         shift_vol.adjusted_hours = adjusted_hours
         shift_vol.adjustment_reason = reason
         shift_vol.adjusted_by = adjusted_by
-        shift_vol.adjusted_at = datetime.now(UTC)
+        shift_vol.adjusted_at = utcnow()
         return shift_vol
 
     async def get_volunteer_hours(

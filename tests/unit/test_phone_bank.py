@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.call_list import (
     CallList,
     CallListEntry,
@@ -18,7 +18,6 @@ from app.models.call_list import (
 from app.models.dnc import DNCReason
 from app.models.phone_bank import PhoneBankSession, SessionCaller, SessionStatus
 from app.services.phone_bank import PhoneBankService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -35,8 +34,8 @@ def _make_session_obj(**overrides) -> MagicMock:
         "scheduled_start": None,
         "scheduled_end": None,
         "created_by": "user-1",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=PhoneBankSession)
@@ -53,7 +52,7 @@ def _make_caller(**overrides) -> MagicMock:
         "user_id": "caller-1",
         "check_in_at": None,
         "check_out_at": None,
-        "created_at": datetime.now(UTC),
+        "created_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=SessionCaller)
@@ -76,7 +75,7 @@ def _make_entry(**overrides) -> MagicMock:
         "status": EntryStatus.IN_PROGRESS,
         "attempt_count": 0,
         "claimed_by": "caller-1",
-        "claimed_at": datetime.now(UTC),
+        "claimed_at": utcnow(),
         "last_attempt_at": None,
         "phone_attempts": None,
     }
@@ -277,7 +276,7 @@ class TestCallerManagement:
         assert result.check_in_at is not None
 
         # check_out: need caller lookup + session lookup (for entry release)
-        caller_obj2 = _make_caller(session_id=session_obj.id, check_in_at=datetime.now(UTC))
+        caller_obj2 = _make_caller(session_id=session_obj.id, check_in_at=utcnow())
         db.execute.side_effect = [
             _mock_scalar_result(caller_obj2),
             _mock_scalar_result(session_obj),
@@ -316,8 +315,8 @@ class TestCallRecording:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
         )
         result = await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
@@ -349,8 +348,8 @@ class TestCallRecording:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.NO_ANSWER,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
         )
         result = await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
@@ -384,8 +383,8 @@ class TestCallRecording:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
             survey_responses=survey_data,
             survey_complete=True,
         )
@@ -422,8 +421,8 @@ class TestCallRecording:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
             survey_responses=[{"question_id": str(uuid.uuid4()), "answer_value": "Maybe"}],
             survey_complete=False,
         )
@@ -465,8 +464,8 @@ class TestCallRecording:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.WRONG_NUMBER,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
@@ -499,14 +498,14 @@ class TestInteractionEvents:
             _mock_scalar_result(call_list),
         ]
 
-        from app.schemas.phone_bank import CallRecordCreate
         from app.models.voter_interaction import InteractionType
+        from app.schemas.phone_bank import CallRecordCreate
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
             notes="Supportive voter",
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
@@ -545,8 +544,8 @@ class TestInteractionEvents:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
             survey_responses=[{"question_id": str(uuid.uuid4()), "answer_value": "Yes"}],
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
@@ -579,8 +578,8 @@ class TestInteractionEvents:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.REFUSED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
@@ -611,7 +610,7 @@ class TestSupervisorOps:
             ])),
             # Callers for the session
             _mock_scalars_result([
-                _make_caller(user_id="caller-1", check_in_at=datetime.now(UTC)),
+                _make_caller(user_id="caller-1", check_in_at=utcnow()),
                 _make_caller(user_id="caller-2"),
             ]),
             # Call counts per caller
@@ -683,8 +682,8 @@ class TestSupervisorOps:
             call_list_entry_id=entry.id,
             result_code=CallResultCode.DECEASED,
             phone_number_used="5551234567",
-            call_started_at=datetime.now(UTC),
-            call_ended_at=datetime.now(UTC),
+            call_started_at=utcnow(),
+            call_ended_at=utcnow(),
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 

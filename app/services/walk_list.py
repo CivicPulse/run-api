@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, func, select
 
+from app.core.time import utcnow
 from app.models.turf import Turf
 from app.models.voter import Voter
 from app.models.voter_list import VoterListMember
@@ -85,7 +86,7 @@ class WalkListService:
         voters.sort(key=lambda v: parse_address_sort_key(v.address_line1, v.last_name))
 
         # Create walk list record
-        now = datetime.now(UTC)
+        now = utcnow()
         walk_list = WalkList(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -298,7 +299,7 @@ class WalkListService:
         Returns:
             The created WalkListCanvasser.
         """
-        now = datetime.now(UTC)
+        now = utcnow()
         canvasser = WalkListCanvasser(
             walk_list_id=walk_list_id,
             user_id=user_id,

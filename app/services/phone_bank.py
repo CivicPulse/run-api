@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select, update
 
+from app.core.time import utcnow
 from app.models.call_list import (
     CallList,
     CallListEntry,
@@ -88,7 +88,7 @@ class PhoneBankService:
         Returns:
             The created PhoneBankSession.
         """
-        now = datetime.now(UTC)
+        now = utcnow()
         pb_session = PhoneBankSession(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -191,7 +191,7 @@ class PhoneBankService:
             if value is not None:
                 setattr(pb_session, key, value)
 
-        pb_session.updated_at = datetime.now(UTC)
+        pb_session.updated_at = utcnow()
         return pb_session
 
     # -------------------------------------------------------------------
@@ -226,7 +226,7 @@ class PhoneBankService:
             id=uuid.uuid4(),
             session_id=session_id,
             user_id=user_id,
-            created_at=datetime.now(UTC),
+            created_at=utcnow(),
         )
         session.add(caller)
         return caller
@@ -281,7 +281,7 @@ class PhoneBankService:
             raise ValueError(msg)
 
         caller = await self._get_caller(session, session_id, user_id)
-        caller.check_in_at = datetime.now(UTC)
+        caller.check_in_at = utcnow()
         return caller
 
     async def check_out(
@@ -301,7 +301,7 @@ class PhoneBankService:
             The updated SessionCaller.
         """
         caller = await self._get_caller(session, session_id, user_id)
-        caller.check_out_at = datetime.now(UTC)
+        caller.check_out_at = utcnow()
 
         # Release caller's claimed entries
         pb_session = await self.get_session(session, session_id)
@@ -393,7 +393,7 @@ class PhoneBankService:
         call_list = cl_result.scalar_one_or_none()
 
         result_code = data.result_code
-        now = datetime.now(UTC)
+        now = utcnow()
 
         # Build interaction payload
         payload = {
@@ -611,7 +611,7 @@ class PhoneBankService:
             raise ValueError(msg)
 
         entry.claimed_by = new_caller_id
-        entry.claimed_at = datetime.now(UTC)
+        entry.claimed_at = utcnow()
         return entry
 
     async def force_release_entry(

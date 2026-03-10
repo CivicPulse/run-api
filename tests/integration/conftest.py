@@ -7,7 +7,7 @@ and verify RLS enforcement using the app_user role.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import text
@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+
+from app.core.time import utcnow
 
 # Database URLs for integration tests
 # Superuser connection for setup/teardown
@@ -85,7 +87,7 @@ async def two_campaigns(superuser_session):
             "id": user_a_id,
             "name": "User A",
             "email": "usera@test.com",
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
     await session.execute(
@@ -97,7 +99,7 @@ async def two_campaigns(superuser_session):
             "id": user_b_id,
             "name": "User B",
             "email": "userb@test.com",
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
 
@@ -116,7 +118,7 @@ async def two_campaigns(superuser_session):
             "type": "state",
             "status": "active",
             "created_by": user_a_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
     await session.execute(
@@ -133,7 +135,7 @@ async def two_campaigns(superuser_session):
             "type": "federal",
             "status": "active",
             "created_by": user_b_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
 
@@ -147,7 +149,7 @@ async def two_campaigns(superuser_session):
             "id": uuid.uuid4(),
             "user_id": user_a_id,
             "campaign_id": campaign_a_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
     await session.execute(
@@ -159,7 +161,7 @@ async def two_campaigns(superuser_session):
             "id": uuid.uuid4(),
             "user_id": user_b_id,
             "campaign_id": campaign_b_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
 
@@ -177,9 +179,9 @@ async def two_campaigns(superuser_session):
             "email": "invite-a@test.com",
             "role": "manager",
             "token": uuid.uuid4(),
-            "expires_at": datetime.now(UTC) + timedelta(days=7),
+            "expires_at": utcnow() + timedelta(days=7),
             "created_by": user_a_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
     await session.execute(
@@ -195,9 +197,9 @@ async def two_campaigns(superuser_session):
             "email": "invite-b@test.com",
             "role": "admin",
             "token": uuid.uuid4(),
-            "expires_at": datetime.now(UTC) + timedelta(days=7),
+            "expires_at": utcnow() + timedelta(days=7),
             "created_by": user_b_id,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
 

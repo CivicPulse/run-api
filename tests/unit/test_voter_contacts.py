@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import InteractionType
 
@@ -101,8 +101,8 @@ class TestVoterContactService:
             type="home",
             is_primary=True,
             source="import",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
         with patch.object(
@@ -208,8 +208,8 @@ class TestVoterContactService:
             type="cell",
             is_primary=False,
             source="manual",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
         with patch.object(
@@ -246,8 +246,8 @@ class TestVoterContactService:
             type="cell",
             is_primary=True,
             source="manual",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         email = VoterEmail(
             id=uuid.uuid4(),
@@ -257,8 +257,8 @@ class TestVoterContactService:
             type="home",
             is_primary=True,
             source="manual",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
         # Mock three separate execute calls (phones, emails, addresses)
@@ -298,8 +298,8 @@ class TestVoterContactService:
             type="home",
             is_primary=True,
             source="import",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         target_phone = VoterPhone(
             id=target_phone_id,
@@ -309,8 +309,8 @@ class TestVoterContactService:
             type="cell",
             is_primary=False,
             source="manual",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
         with patch.object(

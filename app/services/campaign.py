@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import CampaignNotFoundError, InsufficientPermissionsError
+from app.core.time import utcnow
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
 from app.schemas.common import PaginationResponse
@@ -247,7 +248,7 @@ class CampaignService:
             _validate_status_transition(campaign.status, status)
             campaign.status = status
 
-        campaign.updated_at = datetime.now(UTC)
+        campaign.updated_at = utcnow()
         await db.commit()
         await db.refresh(campaign)
         return campaign
@@ -287,7 +288,7 @@ class CampaignService:
             )
 
         campaign.status = CampaignStatus.DELETED
-        campaign.updated_at = datetime.now(UTC)
+        campaign.updated_at = utcnow()
 
         await zitadel.deactivate_organization(campaign.zitadel_org_id)
         await db.commit()

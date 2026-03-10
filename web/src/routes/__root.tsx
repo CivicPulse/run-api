@@ -53,7 +53,7 @@ function AppSidebar() {
   const campaignMatch = location.pathname.match(/^\/campaigns\/([^/]+)/)
   const campaignId = campaignMatch?.[1]
 
-  if (!campaignId) return null
+  if (!campaignId || campaignId === "new") return null
 
   const navItems = [
     { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
@@ -180,7 +180,11 @@ function RootLayout() {
     initialize()
   }, [initialize])
 
-  if (!isInitialized) {
+  // Let the callback route process the OIDC response immediately,
+  // before initialize() can clear pending state from localStorage
+  const isCallbackRoute = location.pathname === "/callback"
+
+  if (!isInitialized && !isCallbackRoute) {
     return (
       <div className="flex h-svh items-center justify-center">
         <div className="flex items-center gap-2 text-muted-foreground">

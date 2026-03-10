@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from app.core.time import utcnow
 from app.models.voter_interaction import InteractionType, VoterInteraction
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ class VoterInteractionService:
             type=interaction_type,
             payload=payload,
             created_by=user_id,
-            created_at=datetime.now(UTC),
+            created_at=utcnow(),
         )
         session.add(interaction)
         await session.flush()

@@ -6,12 +6,12 @@ import csv
 import io
 import re
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import select
 
+from app.core.time import utcnow
 from app.models.dnc import DoNotCallEntry
 from app.schemas.dnc import DNCCheckResponse, DNCEntryResponse, DNCImportResponse
 
@@ -64,7 +64,7 @@ class DNCService:
             phone_number=phone_number,
             reason=reason,
             added_by=added_by,
-            added_at=datetime.now(UTC),
+            added_at=utcnow(),
         )
         session.add(entry)
         return entry
@@ -122,7 +122,7 @@ class DNCService:
                 phone_number=phone,
                 reason=reason,
                 added_by=added_by,
-                added_at=datetime.now(UTC),
+                added_at=utcnow(),
             )
             session.add(entry)
             added += 1

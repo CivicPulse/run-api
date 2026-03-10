@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.invite import Invite
@@ -44,11 +45,11 @@ def _make_invite(
         email=email,
         role=role,
         token=token or uuid.uuid4(),
-        expires_at=datetime.now(UTC) + timedelta(days=7),
+        expires_at=utcnow() + timedelta(days=7),
         accepted_at=None,
         revoked_at=None,
         created_by="user-1",
-        created_at=datetime.now(UTC),
+        created_at=utcnow(),
     )
 
 

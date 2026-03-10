@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsCampaignIdRouteImport } from './routes/campaigns/$campaignId'
 import { Route as CampaignsCampaignIdVolunteersRouteImport } from './routes/campaigns/$campaignId/volunteers'
 import { Route as CampaignsCampaignIdPhoneBankingRouteImport } from './routes/campaigns/$campaignId/phone-banking'
@@ -33,6 +34,11 @@ const CallbackRoute = CallbackRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampaignsNewRoute = CampaignsNewRouteImport.update({
+  id: '/campaigns/new',
+  path: '/campaigns/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsCampaignIdRoute = CampaignsCampaignIdRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
+  '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
+  '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
+  '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/login'
     | '/campaigns/$campaignId'
+    | '/campaigns/new'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/login'
     | '/campaigns/$campaignId'
+    | '/campaigns/new'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/login'
     | '/campaigns/$campaignId'
+    | '/campaigns/new'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   CallbackRoute: typeof CallbackRoute
   LoginRoute: typeof LoginRoute
   CampaignsCampaignIdRoute: typeof CampaignsCampaignIdRouteWithChildren
+  CampaignsNewRoute: typeof CampaignsNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campaigns/new': {
+      id: '/campaigns/new'
+      path: '/campaigns/new'
+      fullPath: '/campaigns/new'
+      preLoaderRoute: typeof CampaignsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns/$campaignId': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   CallbackRoute: CallbackRoute,
   LoginRoute: LoginRoute,
   CampaignsCampaignIdRoute: CampaignsCampaignIdRouteWithChildren,
+  CampaignsNewRoute: CampaignsNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

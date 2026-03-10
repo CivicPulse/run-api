@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AuthenticatedUser
+from app.core.time import utcnow
 from app.db.rls import set_campaign_context
 from app.db.session import async_session_factory
 from app.models.campaign import Campaign
@@ -53,7 +53,7 @@ async def ensure_user_synced(
     local_user = result.scalar_one_or_none()
 
     if local_user is None:
-        now = datetime.now(UTC)
+        now = utcnow()
         local_user = User(
             id=user.id,
             display_name=user.display_name or "",

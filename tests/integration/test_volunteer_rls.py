@@ -10,10 +10,12 @@ Requires: PostgreSQL running via docker compose, migrations applied.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import text
+
+from app.core.time import utcnow
 
 
 @pytest.fixture
@@ -39,7 +41,7 @@ async def two_campaigns_with_volunteer_data(superuser_session):
     shift_vol_b_id = uuid.uuid4()
     avail_a_id = uuid.uuid4()
     avail_b_id = uuid.uuid4()
-    now = datetime.now(UTC)
+    now = utcnow()
 
     # Users
     for uid, name, email in [

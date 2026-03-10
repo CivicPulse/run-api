@@ -12,10 +12,11 @@ Requires: PostgreSQL with PostGIS running via docker compose, migrations applied
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import text
+
+from app.core.time import utcnow
 
 
 @pytest.fixture
@@ -45,7 +46,7 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     question_b_id = uuid.uuid4()
     response_a_id = uuid.uuid4()
     response_b_id = uuid.uuid4()
-    now = datetime.now(UTC)
+    now = utcnow()
 
     # Users
     for uid, name, email in [

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.voter_list import ListType, VoterList, VoterListMember
 
 
@@ -32,8 +32,8 @@ class TestVoterListService:
             list_type=ListType.STATIC,
             filter_query=None,
             created_by="user-abc",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
     @pytest.fixture
@@ -45,8 +45,8 @@ class TestVoterListService:
             list_type=ListType.DYNAMIC,
             filter_query={"party": "DEM", "age_min": 18, "age_max": 35},
             created_by="user-abc",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
 
     async def test_create_list(self, mock_db):

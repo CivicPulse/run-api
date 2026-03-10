@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.survey import (
     QuestionType,
     ScriptStatus,
@@ -40,8 +40,8 @@ def _make_script(
         description="A test survey",
         status=status,
         created_by="user-123",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
 
 

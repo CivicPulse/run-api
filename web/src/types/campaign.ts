@@ -1,5 +1,5 @@
-export type CampaignType = "federal" | "state" | "local" | "municipal" | "other"
-export type CampaignStatus = "active" | "completed" | "archived"
+export type CampaignType = "federal" | "state" | "local" | "ballot"
+export type CampaignStatus = "active" | "suspended" | "archived" | "deleted"
 
 export interface Campaign {
   id: string

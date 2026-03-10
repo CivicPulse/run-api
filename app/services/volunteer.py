@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from app.core.time import utcnow
 from app.models.volunteer import (
     Volunteer,
     VolunteerAvailability,
@@ -18,6 +18,8 @@ from app.models.volunteer import (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.schemas.volunteer import (
@@ -63,7 +65,7 @@ class VolunteerService:
         Returns:
             The created Volunteer.
         """
-        now = datetime.now(UTC)
+        now = utcnow()
         volunteer = Volunteer(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -219,7 +221,7 @@ class VolunteerService:
         for key, value in update_fields.items():
             setattr(volunteer, key, value)
 
-        volunteer.updated_at = datetime.now(UTC)
+        volunteer.updated_at = utcnow()
         return volunteer
 
     async def update_status(
@@ -255,7 +257,7 @@ class VolunteerService:
             raise ValueError(msg)
 
         volunteer.status = new_status
-        volunteer.updated_at = datetime.now(UTC)
+        volunteer.updated_at = utcnow()
         return volunteer
 
     # -------------------------------------------------------------------
@@ -289,8 +291,6 @@ class VolunteerService:
         Returns:
             List of Volunteer objects.
         """
-        from sqlalchemy import or_
-        from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 
         stmt = select(Volunteer).where(Volunteer.campaign_id == campaign_id)
 
@@ -299,7 +299,6 @@ class VolunteerService:
 
         if skills:
             # ANY match: volunteer has at least one of the requested skills
-            from sqlalchemy import String, cast, literal_column
             stmt = stmt.where(Volunteer.skills.overlap(skills))
 
         if name_search:
@@ -352,7 +351,7 @@ class VolunteerService:
             id=uuid.uuid4(),
             campaign_id=campaign_id,
             name=name,
-            created_at=datetime.now(UTC),
+            created_at=utcnow(),
         )
         session.add(tag)
         return tag

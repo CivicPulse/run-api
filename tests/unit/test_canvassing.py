@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.models.walk_list import DoorKnockResult, WalkListEntryStatus
 
@@ -55,7 +55,7 @@ class TestCanvassService:
         )
 
         # Mock the interaction service
-        now = datetime.now(UTC)
+        now = utcnow()
         mock_interaction = MagicMock()
         mock_interaction.id = uuid.uuid4()
         mock_interaction.created_at = now
@@ -123,7 +123,7 @@ class TestCanvassService:
             side_effect=[mock_entry_result, mock_wl_result, mock_count_result]
         )
 
-        now = datetime.now(UTC)
+        now = utcnow()
         mock_interaction = MagicMock()
         mock_interaction.id = uuid.uuid4()
         mock_interaction.created_at = now
@@ -180,7 +180,7 @@ class TestCanvassService:
             side_effect=[mock_entry_result, mock_wl_result, mock_count_result]
         )
 
-        now = datetime.now(UTC)
+        now = utcnow()
         mock_interaction = MagicMock()
         mock_interaction.id = uuid.uuid4()
         mock_interaction.created_at = now

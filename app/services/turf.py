@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from geoalchemy2.shape import from_shape, to_shape
@@ -12,6 +12,7 @@ from shapely.geometry import mapping, shape
 from shapely.validation import explain_validity
 from sqlalchemy import func, select
 
+from app.core.time import utcnow
 from app.models.turf import Turf, TurfStatus
 from app.models.voter import Voter
 
@@ -127,7 +128,7 @@ class TurfService:
             ValueError: If GeoJSON boundary is invalid.
         """
         boundary_wkb = _validate_polygon(data.boundary)
-        now = datetime.now(UTC)
+        now = utcnow()
         turf = Turf(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -259,7 +260,7 @@ class TurfService:
             if value is not None:
                 setattr(turf, field, value)
 
-        turf.updated_at = datetime.now(UTC)
+        turf.updated_at = utcnow()
         await session.flush()
         return turf
 

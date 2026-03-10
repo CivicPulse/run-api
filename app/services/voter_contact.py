@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from app.core.time import utcnow
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import InteractionType
 from app.services.voter_interaction import VoterInteractionService
@@ -59,7 +59,7 @@ class VoterContactService:
         if is_primary:
             await self._unset_primary(session, VoterPhone, campaign_id, voter_id)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         phone = VoterPhone(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -118,7 +118,7 @@ class VoterContactService:
         for key, val in kwargs.items():
             if hasattr(phone, key):
                 setattr(phone, key, val)
-        phone.updated_at = datetime.now(UTC)
+        phone.updated_at = utcnow()
         await session.flush()
 
         await self._interaction_service.record_interaction(
@@ -199,7 +199,7 @@ class VoterContactService:
         if is_primary:
             await self._unset_primary(session, VoterEmail, campaign_id, voter_id)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         email = VoterEmail(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -258,7 +258,7 @@ class VoterContactService:
         for key, val in kwargs.items():
             if hasattr(email, key):
                 setattr(email, key, val)
-        email.updated_at = datetime.now(UTC)
+        email.updated_at = utcnow()
         await session.flush()
 
         await self._interaction_service.record_interaction(
@@ -347,7 +347,7 @@ class VoterContactService:
         if is_primary:
             await self._unset_primary(session, VoterAddress, campaign_id, voter_id)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         address = VoterAddress(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -410,7 +410,7 @@ class VoterContactService:
         for key, val in kwargs.items():
             if hasattr(address, key):
                 setattr(address, key, val)
-        address.updated_at = datetime.now(UTC)
+        address.updated_at = utcnow()
         await session.flush()
 
         await self._interaction_service.record_interaction(
@@ -539,7 +539,7 @@ class VoterContactService:
 
         target = await self._get_contact(session, model, contact_id, campaign_id, voter_id)
         target.is_primary = True
-        target.updated_at = datetime.now(UTC)
+        target.updated_at = utcnow()
         await session.flush()
 
         await self._interaction_service.record_interaction(
