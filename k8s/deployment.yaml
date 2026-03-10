@@ -1,0 +1,22 @@
+# Stub deployment manifest -- Phase 11 fills in complete spec
+# CI auto-updates the image tag on every main push
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-api
+  namespace: run-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-api
+  template:
+    metadata:
+      labels:
+        app: run-api
+    spec:
+      containers:
+        - name: run-api
+          image: ghcr.io/civicpulse/run-api:latest
+          ports:
+            - containerPort: 8000
