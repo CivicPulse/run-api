@@ -50,6 +50,49 @@
 
 ---
 
+## Milestone: v1.1 — Local Dev & Deployment Readiness
+
+**Shipped:** 2026-03-10
+**Phases:** 4 | **Plans:** 7
+
+### What Was Built
+- Three-stage Docker build (node/uv/python-slim) producing 485MB production image with health probes
+- Docker Compose full-stack dev environment with auto-migrations, MinIO bootstrap, Vite hot-reload proxy
+- Idempotent seed data script with Macon-Bibb County demo data (50 voters, campaigns, turfs, interactions)
+- GitHub Actions CI/CD: PR validation gates + GHCR publish with SHA/latest tags and K8s manifest auto-update
+- Kubernetes manifests: Deployment with init container migrations, ClusterIP Service, ConfigMap, Secret template
+- Traefik IngressRoute and ArgoCD Application for zero-touch GitOps deployment
+
+### What Worked
+- Milestone audit caught zero gaps — clean pass on all 15 requirements, 12 integration points, 3 E2E flows
+- Cross-phase consistency: same Alembic pattern used in dev-entrypoint (P9) and K8s init container (P11)
+- CI infinite-loop prevention designed correctly on first attempt (GITHUB_TOKEN commits don't re-trigger)
+- Phase dependencies cleanly layered: P8 → P9 (compose), P8 → P10 (CI), P10 → P11 (K8s)
+
+### What Was Inefficient
+- ROADMAP.md Phase 11 plan checkboxes not updated (show `[ ]` despite being complete)
+- ROADMAP.md Phase 11 progress table row had malformed columns
+- Nyquist validation still not run — phases 9, 10 missing VALIDATION.md entirely
+- Summary files lack `one_liner` field, requiring manual extraction during milestone completion
+
+### Patterns Established
+- Three-stage Docker build pattern: node frontend → uv Python deps → python-slim runtime
+- Dev entrypoint pattern: wait-for-it + alembic upgrade + boto3 bucket init
+- CI separation: PR workflow for quality gates, publish workflow for image delivery
+- K8s manifest pattern: init container for migrations, envFrom for config/secrets, .yaml.example for templates
+
+### Key Lessons
+1. Summary files should include a `one_liner` field for automated extraction during milestone completion
+2. ROADMAP.md checkbox and progress table updates should be part of plan completion workflow
+3. Infrastructure-as-code phases execute cleanly because they have minimal runtime dependencies to test
+
+### Cost Observations
+- Model mix: Primarily sonnet for execution, opus for planning/auditing
+- Timeline: Same day as v1.0 completion — fast iteration on infra phases
+- Notable: 1,512 lines of Docker/CI/K8s config across 7 plans with zero test failures
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -57,14 +100,18 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.0 | 7 | 20 | Established GSD workflow with phase verification and milestone audit |
+| v1.1 | 4 | 7 | Infrastructure-as-code phases; clean milestone audit (zero gaps) |
 
 ### Cumulative Quality
 
 | Milestone | Unit Tests | Integration Tests | LOC |
 |-----------|------------|-------------------|-----|
 | v1.0 | 236+ passing | 24+ written (not executed) | 56,653 |
+| v1.1 | 268 passing | — | +1,512 (infra) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Design models for cross-phase reuse from the start (survey engine, interaction events)
 2. Run integration tests against live infrastructure — deferred testing is deferred risk
+3. Run milestone audit before declaring done — catches real gaps (v1.0) and confirms completeness (v1.1)
+4. Keep ROADMAP.md checkboxes and progress table updated during execution — manual fixups during archival are wasteful
