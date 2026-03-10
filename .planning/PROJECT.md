@@ -46,7 +46,16 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(None yet — define with `/gsd:new-milestone`)
+<!-- v1.2 Full UI — building UI pages for all ~95 uncovered API endpoints -->
+
+- [ ] Voter import wizard (file upload, column mapping, confirmation, history)
+- [ ] Campaign member management (invite, list, role change, remove, ownership transfer)
+- [ ] Voter management completion (contacts, tags, lists, create/edit, advanced search)
+- [ ] Phone banking UI (session CRUD, caller management, calling experience, progress)
+- [ ] Volunteer management UI (detail, create/edit, availability, tags, hours tracking)
+- [ ] Shift management UI (CRUD, signup/assign, check-in/out, roster, hours adjustment)
+- [ ] Call list & DNC management (create, detail, claim, DNC list/import/check)
+- [ ] Campaign settings (edit, delete)
 
 ### Out of Scope
 
@@ -62,10 +71,19 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Helm/Kustomize — plain manifests following contact-api pattern
 - Local ZITADEL instance — use existing dev org at auth.civpulse.org
 
-## Current State
+## Current Milestone: v1.2 Full UI
 
-Shipped v1.0 MVP and v1.1 Local Dev & Deployment Readiness.
-Next milestone not yet defined — use `/gsd:new-milestone` to start.
+**Goal:** Build complete UI coverage for all ~95 API endpoints that currently lack pages, closing the gap between backend capabilities and user-facing functionality.
+
+**Target features:**
+- Voter import wizard with multi-step file upload and column mapping
+- Campaign collaboration (invites, members, roles)
+- Complete voter management (contacts, tags, lists, create/edit, search)
+- Full phone banking workflow (sessions, calling experience, progress)
+- Full volunteer management (profiles, availability, tags, hours)
+- Full shift management (scheduling, signup, check-in/out, roster)
+- Call list & DNC management
+- Campaign settings page
 
 ## Context
 
@@ -110,4 +128,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | CI manifest commit-back | Publish workflow updates k8s/deployment.yaml with new SHA | ✓ Good — GITHUB_TOKEN prevents infinite loops |
 
 ---
-*Last updated: 2026-03-10 after v1.1 milestone*
+*Last updated: 2026-03-10 after v1.2 milestone start*
