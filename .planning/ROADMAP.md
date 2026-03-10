@@ -56,10 +56,11 @@ Plans:
   2. The database has up-to-date schema on first start (Alembic migrations run automatically on API container start)
   3. Vite dev server with hot-reload works against the dockerized API backend (frontend changes reflect without restart)
   4. After running the seed script, the developer can browse sample campaigns, voters, and related data via API calls
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md — Docker Compose API service, dev entrypoint, and Vite proxy config
+- [ ] 09-02-PLAN.md — Macon-Bibb County seed data script
 
 ### Phase 10: CI/CD Pipeline
 **Goal**: Every push to main automatically builds and publishes a tagged container image to GHCR
@@ -103,6 +104,6 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 6. Operational Dashboards | v1.0 | 2/2 | Complete | 2026-03-09 |
 | 7. Integration Wiring Fixes | v1.0 | 1/1 | Complete | 2026-03-10 |
 | 8. Containerization | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 9. Local Dev Environment | v1.1 | 0/? | Not started | - |
+| 9. Local Dev Environment | v1.1 | 0/2 | Not started | - |
 | 10. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
 | 11. Kubernetes & GitOps | v1.1 | 0/? | Not started | - |
