@@ -1,7 +1,7 @@
 """Canvassing operations models with PostGIS and RLS policies.
 
 Revision ID: 003
-Revises: 002
+Revises: 002b
 Create Date: 2026-03-09
 
 Enables PostGIS extension, adds geom column to voters (backfilled from lat/long),
@@ -22,7 +22,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
 
 revision: str = "003"
-down_revision: str = "002"
+down_revision: str = "002b"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

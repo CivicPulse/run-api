@@ -1,7 +1,7 @@
 """Voter data models with RLS policies.
 
-Revision ID: 002
-Revises: 001
+Revision ID: 002b
+Revises: 002a
 Create Date: 2026-03-09
 
 Creates tables: voters, voter_tags, voter_tag_members, voter_phones,
@@ -22,8 +22,8 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from alembic import op
 
-revision: str = "002"
-down_revision: str = "001"
+revision: str = "002b"
+down_revision: str = "002a"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -543,7 +543,7 @@ def upgrade() -> None:
             "INSERT INTO field_mapping_templates "
             "(id, campaign_id, name, source_type, mapping, is_system, created_by) "
             "VALUES (gen_random_uuid(), NULL, 'L2 Voter File', "
-            "'l2', :mapping, true, NULL)"
+            "'l2', CAST(:mapping AS jsonb), true, NULL)"
         ).bindparams(mapping=json.dumps(_L2_MAPPING))
     )
 

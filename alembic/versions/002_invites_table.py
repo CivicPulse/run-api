@@ -1,6 +1,6 @@
 """Create invites table with RLS.
 
-Revision ID: 002
+Revision ID: 002a
 Revises: 001
 Create Date: 2026-03-09
 
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "002"
+revision: str = "002a"
 down_revision: str | None = "001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
