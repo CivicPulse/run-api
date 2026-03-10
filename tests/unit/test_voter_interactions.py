@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.voter_interaction import InteractionType, VoterInteraction
 
 
@@ -70,7 +71,7 @@ class TestVoterInteractionService:
         self, service, mock_db, voter_id, campaign_id, user_id
     ):
         """record_interaction sets created_at explicitly (not relying on server_default)."""
-        before = datetime.now(UTC)
+        before = utcnow()
         await service.record_interaction(
             session=mock_db,
             campaign_id=campaign_id,
@@ -79,7 +80,7 @@ class TestVoterInteractionService:
             payload={},
             user_id=user_id,
         )
-        after = datetime.now(UTC)
+        after = utcnow()
 
         added_obj = mock_db.add.call_args[0][0]
         assert before <= added_obj.created_at <= after

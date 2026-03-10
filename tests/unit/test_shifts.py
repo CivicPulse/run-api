@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.shift import (
     Shift,
     ShiftStatus,
@@ -17,7 +18,6 @@ from app.models.shift import (
 )
 from app.models.volunteer import Volunteer, VolunteerStatus
 from app.services.shift import ShiftService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,8 +33,8 @@ def _make_shift(**overrides) -> MagicMock:
         "description": None,
         "type": ShiftType.GENERAL,
         "status": ShiftStatus.SCHEDULED,
-        "start_at": datetime.now(UTC) + timedelta(hours=2),
-        "end_at": datetime.now(UTC) + timedelta(hours=6),
+        "start_at": utcnow() + timedelta(hours=2),
+        "end_at": utcnow() + timedelta(hours=6),
         "max_volunteers": 5,
         "location_name": "HQ",
         "street": None,
@@ -46,8 +46,8 @@ def _make_shift(**overrides) -> MagicMock:
         "turf_id": None,
         "phone_bank_session_id": None,
         "created_by": "manager-1",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=Shift)
@@ -71,8 +71,8 @@ def _make_volunteer(**overrides) -> MagicMock:
         "status": VolunteerStatus.ACTIVE,
         "skills": [],
         "created_by": "manager-1",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=Volunteer)
@@ -95,7 +95,7 @@ def _make_shift_volunteer(**overrides) -> MagicMock:
         "adjustment_reason": None,
         "adjusted_by": None,
         "adjusted_at": None,
-        "signed_up_at": datetime.now(UTC),
+        "signed_up_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=ShiftVolunteer)
@@ -160,8 +160,8 @@ class TestShiftCRUD:
         data = ShiftCreate(
             name="Door Knock AM",
             type=ShiftType.CANVASSING,
-            start_at=datetime.now(UTC) + timedelta(hours=1),
-            end_at=datetime.now(UTC) + timedelta(hours=5),
+            start_at=utcnow() + timedelta(hours=1),
+            end_at=utcnow() + timedelta(hours=5),
             max_volunteers=10,
             turf_id=turf_id,
         )
@@ -186,8 +186,8 @@ class TestShiftCRUD:
         data = ShiftCreate(
             name="Evening Calls",
             type=ShiftType.PHONE_BANKING,
-            start_at=datetime.now(UTC) + timedelta(hours=1),
-            end_at=datetime.now(UTC) + timedelta(hours=4),
+            start_at=utcnow() + timedelta(hours=1),
+            end_at=utcnow() + timedelta(hours=4),
             max_volunteers=8,
             phone_bank_session_id=session_id,
         )
@@ -209,8 +209,8 @@ class TestShiftCRUD:
         data = ShiftCreate(
             name="Yard Sign Setup",
             type=ShiftType.GENERAL,
-            start_at=datetime.now(UTC) + timedelta(hours=1),
-            end_at=datetime.now(UTC) + timedelta(hours=3),
+            start_at=utcnow() + timedelta(hours=1),
+            end_at=utcnow() + timedelta(hours=3),
             max_volunteers=5,
         )
 
@@ -404,7 +404,7 @@ class TestShiftCancel:
         """Volunteer cancels before shift.start_at."""
         db = _mock_db()
         svc = ShiftService()
-        shift = _make_shift(start_at=datetime.now(UTC) + timedelta(hours=2))
+        shift = _make_shift(start_at=utcnow() + timedelta(hours=2))
         shift_vol = _make_shift_volunteer(status=SignupStatus.SIGNED_UP)
         volunteer = _make_volunteer(user_id="user-1")
 
@@ -428,7 +428,7 @@ class TestShiftCancel:
         """Volunteer cannot cancel after shift has started."""
         db = _mock_db()
         svc = ShiftService()
-        shift = _make_shift(start_at=datetime.now(UTC) - timedelta(hours=1))
+        shift = _make_shift(start_at=utcnow() - timedelta(hours=1))
         shift_vol = _make_shift_volunteer(status=SignupStatus.SIGNED_UP)
         volunteer = _make_volunteer(user_id="user-1")
 
@@ -451,7 +451,7 @@ class TestShiftCancel:
         db = _mock_db()
         svc = ShiftService()
         # Shift started in the past
-        shift = _make_shift(start_at=datetime.now(UTC) - timedelta(hours=1))
+        shift = _make_shift(start_at=utcnow() - timedelta(hours=1))
         shift_vol = _make_shift_volunteer(status=SignupStatus.SIGNED_UP)
         volunteer = _make_volunteer(user_id="user-1")
 
@@ -476,7 +476,7 @@ class TestShiftCancel:
         """Cancellation promotes next waitlisted volunteer."""
         db = _mock_db()
         svc = ShiftService()
-        shift = _make_shift(start_at=datetime.now(UTC) + timedelta(hours=2))
+        shift = _make_shift(start_at=utcnow() + timedelta(hours=2))
         shift_vol = _make_shift_volunteer(status=SignupStatus.SIGNED_UP)
         volunteer = _make_volunteer(user_id="user-1")
 
@@ -595,7 +595,7 @@ class TestCheckInOut:
         shift = _make_shift(type=ShiftType.GENERAL)
         shift_vol = _make_shift_volunteer(
             status=SignupStatus.CHECKED_IN,
-            check_in_at=datetime.now(UTC) - timedelta(hours=3),
+            check_in_at=utcnow() - timedelta(hours=3),
         )
         volunteer = _make_volunteer()
 
@@ -712,8 +712,8 @@ class TestHoursTracking:
         svc = ShiftService()
         shift_vol = _make_shift_volunteer(
             status=SignupStatus.CHECKED_OUT,
-            check_in_at=datetime.now(UTC) - timedelta(hours=4),
-            check_out_at=datetime.now(UTC),
+            check_in_at=utcnow() - timedelta(hours=4),
+            check_out_at=utcnow(),
         )
 
         db.execute.return_value = _mock_scalar_result(shift_vol)

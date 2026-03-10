@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.time import utcnow
 from app.models.volunteer import (
     Volunteer,
     VolunteerAvailability,
@@ -16,7 +17,6 @@ from app.models.volunteer import (
     VolunteerTagMember,
 )
 from app.services.volunteer import VolunteerService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,8 +43,8 @@ def _make_volunteer(**overrides) -> MagicMock:
         "status": VolunteerStatus.PENDING,
         "skills": ["canvassing", "phone_banking"],
         "created_by": "manager-1",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=Volunteer)
@@ -58,8 +58,8 @@ def _make_availability(**overrides) -> MagicMock:
     defaults = {
         "id": uuid.uuid4(),
         "volunteer_id": uuid.uuid4(),
-        "start_at": datetime.now(UTC),
-        "end_at": datetime.now(UTC) + timedelta(hours=4),
+        "start_at": utcnow(),
+        "end_at": utcnow() + timedelta(hours=4),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=VolunteerAvailability)
@@ -74,7 +74,7 @@ def _make_tag(**overrides) -> MagicMock:
         "id": uuid.uuid4(),
         "campaign_id": uuid.uuid4(),
         "name": "bilingual-spanish",
-        "created_at": datetime.now(UTC),
+        "created_at": utcnow(),
     }
     defaults.update(overrides)
     obj = MagicMock(spec=VolunteerTag)
@@ -313,7 +313,7 @@ class TestVolunteerAvailability:
 
         from app.schemas.volunteer import AvailabilityCreate
 
-        now = datetime.now(UTC)
+        now = utcnow()
         data = AvailabilityCreate(
             start_at=now,
             end_at=now + timedelta(hours=4),
@@ -333,7 +333,7 @@ class TestVolunteerAvailability:
 
         from app.schemas.volunteer import AvailabilityCreate
 
-        now = datetime.now(UTC)
+        now = utcnow()
         data = AvailabilityCreate(
             start_at=now + timedelta(hours=4),
             end_at=now,

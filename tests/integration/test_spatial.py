@@ -7,10 +7,11 @@ and migrations applied (alembic upgrade head).
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import text
+
+from app.core.time import utcnow
 
 pytestmark = pytest.mark.integration
 
@@ -62,7 +63,7 @@ async def spatial_test_data(superuser_session, two_campaigns):
             "last_name": "Tester",
             "lat": 38.90,
             "lng": -77.03,
-            "now": datetime.now(UTC),
+            "now": utcnow(),
         },
     )
 
