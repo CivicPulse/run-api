@@ -104,12 +104,12 @@ async def list_volunteers(
     volunteer_status: str | None = Query(None, alias="status"),
     skills: str | None = Query(None),
     name: str | None = Query(None),
-    user: AuthenticatedUser = Depends(require_role("manager")),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List volunteers with optional filters.
 
-    Requires manager+ role.
+    Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
     from app.db.rls import set_campaign_context
