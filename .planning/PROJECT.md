@@ -37,15 +37,16 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Cross-domain check-in (auto-creates canvasser/caller records) — v1.0
 - ✓ Hours tracking with check-in/check-out and manual adjustment — v1.0
 - ✓ Canvassing, phone banking, and volunteer dashboards with drilldowns — v1.0
+- ✓ Docker Compose full-stack dev environment with auto-migrations and hot-reload — v1.1
+- ✓ Multi-stage Dockerfile (node/uv/python-slim) with health probes and SPA serving — v1.1
+- ✓ GitHub Actions CI/CD for GHCR image publishing with SHA tags and manifest auto-update — v1.1
+- ✓ Kubernetes manifests with init container migrations, Service, and Secret template — v1.1
+- ✓ Traefik IngressRoute and ArgoCD Application for GitOps deployment — v1.1
+- ✓ Seed data script for Macon-Bibb County demo dataset — v1.1
 
 ### Active
 
-- [ ] Local dev environment via Docker Compose (full stack: API, PostgreSQL+PostGIS, MinIO)
-- [ ] Dockerfile for containerized API with embedded web frontend
-- [ ] GitHub Actions CI/CD pipeline for GHCR image publishing
-- [ ] Kubernetes manifests for baremetal deployment (Traefik ingress)
-- [ ] ArgoCD application manifest for GitOps deployment
-- [ ] Web frontend served via FastAPI static files mount (temporary; moves to Cloudflare Pages later)
+(None yet — define with `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -61,25 +62,18 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Helm/Kustomize — plain manifests following contact-api pattern
 - Local ZITADEL instance — use existing dev org at auth.civpulse.org
 
-## Current Milestone: v1.1 Local Dev & Deployment Readiness
+## Current State
 
-**Goal:** Make the v1.0 API runnable end-to-end locally via Docker Compose and ready for K8s deployment to baremetal cluster via GHCR images and plain manifests.
-
-**Target features:**
-- Docker Compose local dev environment (API + PostgreSQL/PostGIS + MinIO)
-- Dockerfile with web frontend build embedded (served via FastAPI static mount)
-- GitHub Actions CI/CD for GHCR image publishing (SHA tags, matching contact-api pattern)
-- K8s manifests (Deployment, Service, Traefik IngressRoute, Secret template)
-- ArgoCD application manifest for GitOps
-- Documentation of secrets to generate separately on deploy workstation
+Shipped v1.0 MVP and v1.1 Local Dev & Deployment Readiness.
+Next milestone not yet defined — use `/gsd:new-milestone` to start.
 
 ## Context
 
-Shipped v1.0 with 56,653 LOC Python across 243 files.
+Shipped v1.0 MVP (39 requirements, 7 phases) and v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases) in 2 days.
 Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ.
-39 v1 requirements delivered across 7 phases in 2 days.
-18 tech debt items (integration tests written but need live infrastructure execution).
-All Nyquist validation phases in draft status.
+Codebase: ~58K LOC Python across 263 files, plus 1,512 lines of Docker/CI/K8s infrastructure.
+Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s manifests with ArgoCD GitOps.
+18 tech debt items from v1.0 (integration tests need live infrastructure).
 
 ## Constraints
 
@@ -108,9 +102,12 @@ All Nyquist validation phases in draft status.
 | Claim-on-fetch with SKIP LOCKED | Concurrent call list entry claiming without contention | ✓ Good — PostgreSQL advisory locking pattern |
 | Late imports for cross-phase models | Avoid circular deps between volunteer/canvassing/phone banking | ✓ Good — ShiftService.check_in() imports at call site |
 
-| Embed web frontend in API container | Temporary convenience; avoids separate static hosting setup for now | — Pending |
-| GHCR for container images | GitHub-native, free for public repos, matches contact-api pattern | — Pending |
-| Plain K8s manifests (no Helm) | Simplicity, matches contact-api pattern, ArgoCD handles sync | — Pending |
+| Embed web frontend in API container | Temporary convenience; avoids separate static hosting setup for now | ⚠️ Revisit — will move to Cloudflare Pages |
+| GHCR for container images | GitHub-native, free for public repos, matches contact-api pattern | ✓ Good — SHA + latest tagging with CI auto-publish |
+| Plain K8s manifests (no Helm) | Simplicity, matches contact-api pattern, ArgoCD handles sync | ✓ Good — ArgoCD auto-sync works well |
+| Three-stage Docker build | node → uv → python-slim keeps image at 485MB | ✓ Good — clean separation of build concerns |
+| Cloudflare TLS termination | HTTP-only IngressRoute; Cloudflare handles HTTPS | ✓ Good — simplifies K8s config |
+| CI manifest commit-back | Publish workflow updates k8s/deployment.yaml with new SHA | ✓ Good — GITHUB_TOKEN prevents infinite loops |
 
 ---
-*Last updated: 2026-03-10 after v1.1 milestone start*
+*Last updated: 2026-03-10 after v1.1 milestone*

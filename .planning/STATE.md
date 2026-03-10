@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Local Dev & Deployment Readiness
-status: completed
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-10T04:55:10.899Z"
-last_activity: 2026-03-10 — Completed 11-02 Ingress & ArgoCD manifests
+status: shipped
+stopped_at: Milestone v1.1 complete
+last_updated: "2026-03-10T05:10:00.000Z"
+last_activity: 2026-03-10 — Milestone v1.1 archived
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 7
   completed_plans: 7
-  percent: 86
+  percent: 100
 ---
 
 # Project State
@@ -21,42 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 11 - Kubernetes & GitOps
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 11 of 11 (Kubernetes & GitOps)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase 11 complete, all plans executed
-Last activity: 2026-03-10 — Completed 11-02 Ingress & ArgoCD manifests
-
-Progress: [█████████░] 86% (Phase 11: 2/2 plans complete)
+Milestone v1.1 shipped. No active milestone.
+Next step: `/gsd:new-milestone`
 
 ## Accumulated Context
 
 ### Decisions
 
-12 key decisions logged in PROJECT.md Key Decisions table from v1.0, all marked Good.
-3 new decisions pending for v1.1 (embed web frontend, GHCR, plain K8s manifests).
-- 08-01: Readiness checks DB only, not ZITADEL or S3
-- 08-01: Build info defaults to 'unknown' when env vars not set
-- 08-02: Three-stage Docker build (node/uv/python-slim) produces 485MB image
-- 08-02: SPA fallback guarded with STATIC_DIR.exists() for dev mode compatibility
-- 08-02: python -m uvicorn instead of bare uvicorn to avoid venv shebang issues
-- 09-01: Compose command override reuses production Dockerfile with dev entrypoint
-- 09-01: boto3 (sync) for one-shot bucket creation at startup
-- 09-01: Bind-mount source dirs for hot-reload without container rebuild
-- [Phase 09]: Standalone async engine for seed script instead of importing app.db.session
-- [Phase 09]: VoterList created as FK target for walk lists and call lists in seed data
-- 10-01: Publish workflow does not re-run quality gates -- PR workflow is sole gate
-- 10-01: Manifest commit-back only on main pushes, not tag pushes
-- 10-01: GITHUB_TOKEN commits do not re-trigger workflows (prevents infinite loops)
-- 11-02: HTTP-only IngressRoute (web entrypoint) because Cloudflare terminates TLS at edge
-- 11-02: ArgoCD app run-api-dev with selfHeal and prune for zero-touch deploys
-- 11-02: CreateNamespace=true sync option for cluster bootstrap
-- [Phase 11]: 11-01: Init container runs alembic migrations before main container starts
-- [Phase 11]: 11-01: Both containers share envFrom for ConfigMap and Secret (no individual env vars)
-- [Phase 11]: 11-01: Secret template uses .yaml.example extension so ArgoCD ignores it
+15 key decisions logged in PROJECT.md Key Decisions table (12 from v1.0, 6 from v1.1).
 
 ### Pending Todos
 
@@ -68,6 +44,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:53:08.069Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-03-10
+Stopped at: Milestone v1.1 complete
 Resume file: None

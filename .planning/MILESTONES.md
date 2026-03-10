@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.1 Local Dev & Deployment Readiness (Shipped: 2026-03-10)
+
+**Phases completed:** 4 phases, 7 plans
+**Timeline:** 2 days (2026-03-08 → 2026-03-10)
+**Files modified:** 20 | **Lines added:** 1,512 | **Commits:** 40
+**Git range:** `e246c98` → `f25eb0d`
+
+**Key accomplishments:**
+1. Three-stage Docker build (node/uv/python-slim) producing 485MB production image with liveness/readiness health probes and conditional SPA static file serving
+2. Docker Compose full-stack dev environment (API + PostgreSQL/PostGIS + MinIO) with auto-migrations, MinIO bucket bootstrap, and Vite hot-reload proxy
+3. Idempotent Macon-Bibb County seed data script with 50 voters, campaigns, turfs, walk lists, surveys, phone banks, shifts, and 35+ voter interactions
+4. GitHub Actions CI/CD: PR validation workflow (lint, test, frontend, docker-build gates) + GHCR publish workflow with SHA/latest tags and K8s manifest auto-update
+5. Kubernetes manifests: Deployment with init container for Alembic migrations, ClusterIP Service, ConfigMap, and Secret template with 11 documented keys
+6. Traefik IngressRoute (HTTP via Cloudflare TLS termination) and ArgoCD Application with selfHeal/prune for zero-touch GitOps deployment
+
+**Audit:** .planning/milestones/v1.1-MILESTONE-AUDIT.md (status: passed, 15/15 requirements satisfied)
+
+---
+
 ## v1.0 CivicPulse Run API MVP (Shipped: 2026-03-10)
 
 **Phases completed:** 7 phases, 20 plans
