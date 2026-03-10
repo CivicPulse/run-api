@@ -1,4 +1,4 @@
-export type CampaignRole = "owner" | "admin" | "manager" | "volunteer"
+export type CampaignRole = "owner" | "admin" | "manager" | "volunteer" | "viewer"
 
 export interface UserProfile {
   id: string
