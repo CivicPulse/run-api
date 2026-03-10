@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import CampaignRole
+from app.core.time import utcnow
 from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
 
@@ -77,7 +78,7 @@ class InviteService:
                     Invite.email == email.lower(),
                     Invite.accepted_at.is_(None),
                     Invite.revoked_at.is_(None),
-                    Invite.expires_at > datetime.now(UTC),
+                    Invite.expires_at > utcnow(),
                 )
             )
         )
@@ -86,7 +87,7 @@ class InviteService:
             msg = f"A pending invite already exists for {email} in this campaign"
             raise ValueError(msg)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         invite = Invite(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -128,7 +129,7 @@ class InviteService:
         invite = result.scalar_one_or_none()
         if invite is None:
             return None
-        if invite.expires_at < datetime.now(UTC):
+        if invite.expires_at < utcnow():
             return None
         if invite.revoked_at is not None:
             return None
@@ -189,7 +190,7 @@ class InviteService:
             str(invite.campaign_id), user.id, invite.role
         )
 
-        invite.accepted_at = datetime.now(UTC)
+        invite.accepted_at = utcnow()
         await db.commit()
         await db.refresh(invite)
         logger.info(
@@ -225,7 +226,7 @@ class InviteService:
             msg = "Invite not found"
             raise ValueError(msg)
 
-        invite.revoked_at = datetime.now(UTC)
+        invite.revoked_at = utcnow()
         await db.commit()
         await db.refresh(invite)
         return invite
@@ -250,7 +251,7 @@ class InviteService:
                     Invite.campaign_id == campaign_id,
                     Invite.accepted_at.is_(None),
                     Invite.revoked_at.is_(None),
-                    Invite.expires_at > datetime.now(UTC),
+                    Invite.expires_at > utcnow(),
                 )
             )
         )

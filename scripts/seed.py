@@ -13,10 +13,12 @@ import asyncio
 import os
 import random
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.time import utcnow
 
 # Model imports
 from app.models.call_list import CallList, CallListEntry
@@ -27,11 +29,11 @@ from app.models.shift import Shift, ShiftVolunteer
 from app.models.survey import SurveyQuestion, SurveyResponse, SurveyScript
 from app.models.turf import Turf
 from app.models.user import User
+from app.models.volunteer import Volunteer
 from app.models.voter import Voter
 from app.models.voter_contact import VoterEmail, VoterPhone
 from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.models.voter_list import VoterList
-from app.models.volunteer import Volunteer
 from app.models.walk_list import WalkList, WalkListCanvasser, WalkListEntry
 
 # ---------------------------------------------------------------------------
@@ -39,7 +41,7 @@ from app.models.walk_list import WalkList, WalkListCanvasser, WalkListEntry
 # ---------------------------------------------------------------------------
 
 SEED_CAMPAIGN_NAME = "Macon-Bibb Demo Campaign"
-NOW = datetime.now(UTC).replace(tzinfo=None)
+NOW = utcnow()
 
 # Macon-Bibb County GA neighborhood center coordinates
 NEIGHBORHOODS = {

@@ -5,12 +5,13 @@ from __future__ import annotations
 import re
 import uuid
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import select, update
 
+from app.core.time import utcnow
 from app.models.call_list import (
     CallList,
     CallListEntry,
@@ -162,8 +163,8 @@ class CallListService:
             claim_timeout_minutes=data.claim_timeout_minutes,
             cooldown_minutes=data.cooldown_minutes,
             created_by=user_id,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         session.add(call_list)
 
@@ -239,7 +240,7 @@ class CallListService:
             raise ValueError(msg)
 
         # Release stale claims
-        stale_cutoff = datetime.now(UTC) - timedelta(
+        stale_cutoff = utcnow() - timedelta(
             minutes=call_list.claim_timeout_minutes
         )
         await session.execute(
@@ -274,7 +275,7 @@ class CallListService:
             return []
 
         # Update claimed entries
-        now = datetime.now(UTC)
+        now = utcnow()
         entry_ids = [e.id for e in entries]
         await session.execute(
             update(CallListEntry)
@@ -327,7 +328,7 @@ class CallListService:
             raise ValueError(msg)
 
         call_list.status = new_status
-        call_list.updated_at = datetime.now(UTC)
+        call_list.updated_at = utcnow()
         return call_list
 
     async def get_call_list(
