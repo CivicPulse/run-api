@@ -82,7 +82,10 @@ async def get_overview(
 
     canvassing = await _canvassing.get_summary(db, campaign_id, start_date, end_date)
     phone_banking = await _phone_banking.get_summary(
-        db, campaign_id, start_date, end_date,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
     )
     volunteers = await _volunteer.get_summary(db, campaign_id, start_date, end_date)
 
@@ -159,7 +162,10 @@ async def get_my_stats(
         .where(ShiftVolunteer.status == SignupStatus.CHECKED_OUT)
     )
     shift_q = apply_date_filter(
-        shift_q, ShiftVolunteer.check_in_at, start_date, end_date,
+        shift_q,
+        ShiftVolunteer.check_in_at,
+        start_date,
+        end_date,
     )
     shift_result = (await db.execute(shift_q)).mappings().one()
 
@@ -197,6 +203,61 @@ async def get_canvassing_summary(
 
 
 @router.get(
+    "/campaigns/{campaign_id}/dashboard/canvassing/canvassers",
+    response_model=list[CanvasserBreakdown],
+)
+async def get_canvassing_canvassers(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All canvasser stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _canvassing.get_by_canvasser(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/dashboard/canvassing/turfs",
+    response_model=list[TurfBreakdown],
+)
+async def get_canvassing_turfs(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All turf stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _canvassing.get_by_turf(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        turf_id=None,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
     "/campaigns/{campaign_id}/dashboard/canvassing/by-turf",
     response_model=PaginatedResponse[TurfBreakdown],
 )
@@ -217,7 +278,13 @@ async def get_canvassing_by_turf(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _canvassing.get_by_turf(
-        db, campaign_id, start_date, end_date, turf_id, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        turf_id,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "turf_id")
 
@@ -242,7 +309,12 @@ async def get_canvassing_by_canvasser(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _canvassing.get_by_canvasser(
-        db, campaign_id, start_date, end_date, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "user_id")
 
@@ -273,6 +345,61 @@ async def get_phone_banking_summary(
 
 
 @router.get(
+    "/campaigns/{campaign_id}/dashboard/phone-banking/sessions",
+    response_model=list[SessionBreakdown],
+)
+async def get_phone_banking_sessions(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All session stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _phone_banking.get_by_session(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        session_id=None,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/dashboard/phone-banking/callers",
+    response_model=list[CallerBreakdown],
+)
+async def get_phone_banking_callers(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All caller stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _phone_banking.get_by_caller(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
     "/campaigns/{campaign_id}/dashboard/phone-banking/by-session",
     response_model=PaginatedResponse[SessionBreakdown],
 )
@@ -293,7 +420,13 @@ async def get_phone_banking_by_session(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_session(
-        db, campaign_id, start_date, end_date, session_id, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        session_id,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "session_id")
 
@@ -318,7 +451,12 @@ async def get_phone_banking_by_caller(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_caller(
-        db, campaign_id, start_date, end_date, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "user_id")
 
@@ -343,7 +481,12 @@ async def get_phone_banking_by_call_list(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_call_list(
-        db, campaign_id, start_date, end_date, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "call_list_id")
 
@@ -374,6 +517,61 @@ async def get_volunteer_summary(
 
 
 @router.get(
+    "/campaigns/{campaign_id}/dashboard/volunteers/volunteers",
+    response_model=list[VolunteerBreakdown],
+)
+async def get_volunteers_list(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All volunteer stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _volunteer.get_by_volunteer(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/dashboard/volunteers/shifts",
+    response_model=list[ShiftBreakdown],
+)
+async def get_volunteers_shifts(
+    campaign_id: uuid.UUID,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All shift stats as a flat list (no pagination).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+    return await _volunteer.get_by_shift(
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        shift_type=None,
+        cursor=None,
+        limit=100,
+    )
+
+
+@router.get(
     "/campaigns/{campaign_id}/dashboard/volunteers/by-volunteer",
     response_model=PaginatedResponse[VolunteerBreakdown],
 )
@@ -393,7 +591,12 @@ async def get_volunteers_by_volunteer(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _volunteer.get_by_volunteer(
-        db, campaign_id, start_date, end_date, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "volunteer_id")
 
@@ -419,6 +622,12 @@ async def get_volunteers_by_shift(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
     items = await _volunteer.get_by_shift(
-        db, campaign_id, start_date, end_date, shift_type, cursor, limit,
+        db,
+        campaign_id,
+        start_date,
+        end_date,
+        shift_type,
+        cursor,
+        limit,
     )
     return _paginate(items, limit, "shift_id")
