@@ -28,8 +28,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { EmptyState } from "@/components/EmptyState"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { EmptyState } from "@/components/shared/EmptyState"
 import {
   ArrowLeft,
   GripVertical,

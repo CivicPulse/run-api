@@ -1,7 +1,7 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
 import { useTurf, useUpdateTurf, useDeleteTurf } from "@/hooks/useTurfs"
 import { TurfForm } from "@/components/canvassing/TurfForm"
-import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Trash2 } from "lucide-react"

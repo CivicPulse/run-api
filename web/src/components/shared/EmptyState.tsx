@@ -1,7 +1,8 @@
+import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface EmptyStateProps {
-  icon?: React.ReactNode
+  icon?: LucideIcon | React.ReactNode
   title: string
   description?: string
   action?: React.ReactNode
@@ -15,16 +16,20 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
+  const isComponent = typeof icon === "function"
+
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-12 text-center",
+        "flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center",
         className
       )}
     >
       {icon && (
-        <div className="mb-4 text-muted-foreground [&_svg]:size-12">
-          {icon}
+        <div className="mb-4 text-muted-foreground">
+          {isComponent
+            ? (() => { const Icon = icon as LucideIcon; return <Icon className="h-10 w-10 text-muted-foreground/50" /> })()
+            : <div className="[&_svg]:size-12">{icon}</div>}
         </div>
       )}
       <h3 className="text-lg font-semibold">{title}</h3>

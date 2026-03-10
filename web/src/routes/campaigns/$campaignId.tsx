@@ -6,6 +6,7 @@ import {
   Map,
   Phone,
   ClipboardList,
+  FileText,
   Loader2,
 } from "lucide-react"
 import { api } from "@/api/client"
@@ -32,6 +33,7 @@ function CampaignLayout() {
     { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
     { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
     { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
+    { to: `/campaigns/${campaignId}/surveys`, label: "Surveys", icon: FileText },
     { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
   ]
 

@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/EmptyState"
-import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import {
   Dialog,
   DialogContent,
