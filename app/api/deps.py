@@ -53,7 +53,7 @@ async def ensure_user_synced(
     local_user = result.scalar_one_or_none()
 
     if local_user is None:
-        now = datetime.now(UTC)
+        now = datetime.now(UTC).replace(tzinfo=None)
         local_user = User(
             id=user.id,
             display_name=user.display_name or "",
