@@ -65,17 +65,29 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| CTR-01 | Phase 8 | Pending |
+| CTR-02 | Phase 8 | Pending |
+| CTR-03 | Phase 8 | Pending |
+| DEV-01 | Phase 9 | Pending |
+| DEV-02 | Phase 9 | Pending |
+| DEV-03 | Phase 9 | Pending |
+| DEV-04 | Phase 9 | Pending |
+| CICD-01 | Phase 10 | Pending |
+| CICD-02 | Phase 10 | Pending |
+| CICD-03 | Phase 10 | Pending |
+| K8S-01 | Phase 11 | Pending |
+| K8S-02 | Phase 11 | Pending |
+| K8S-03 | Phase 11 | Pending |
+| K8S-04 | Phase 11 | Pending |
+| K8S-05 | Phase 11 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after initial definition*
+*Last updated: 2026-03-10 after roadmap creation*
