@@ -1,4 +1,3 @@
-# Stub deployment manifest -- Phase 11 fills in complete spec
 # CI auto-updates the image tag on every main push
 apiVersion: apps/v1
 kind: Deployment
@@ -15,8 +14,52 @@ spec:
       labels:
         app: run-api
     spec:
+      initContainers:
+        - name: migrate
+          image: ghcr.io/civicpulse/run-api:latest
+          command: ["python", "-m", "alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
       containers:
         - name: run-api
           image: ghcr.io/civicpulse/run-api:latest
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            runAsNonRoot: true
