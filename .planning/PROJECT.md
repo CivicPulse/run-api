@@ -40,27 +40,38 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-- [ ] Branched survey scripts with conditional logic
-- [ ] GPS-optimized canvassing route suggestions
-- [ ] Real-time canvassing monitoring (live canvasser status)
-- [ ] Offline sync API pattern (changes-since + batch upload)
-- [ ] Voter deduplication across import sources
-- [ ] State-specific voter file import adapters
-- [ ] Event management (CRUD, RSVP, volunteer assignment)
-- [ ] Email/SMS integration endpoints (webhook-based)
-- [ ] OSDI-compliant API endpoints for interoperability
+- [ ] Local dev environment via Docker Compose (full stack: API, PostgreSQL+PostGIS, MinIO)
+- [ ] Dockerfile for containerized API with embedded web frontend
+- [ ] GitHub Actions CI/CD pipeline for GHCR image publishing
+- [ ] Kubernetes manifests for baremetal deployment (Traefik ingress)
+- [ ] ArgoCD application manifest for GitOps deployment
+- [ ] Web frontend served via FastAPI static files mount (temporary; moves to Cloudflare Pages later)
 
 ### Out of Scope
 
 - Donation management / Stripe integration — FEC compliance extremely complex, defer
 - FEC/state campaign finance compliance — 80+ federal report types, 50 state systems
 - Mobile app — API-only; mobile clients are separate projects
-- Web dashboard frontend — API-only; frontends are separate projects
 - Predictive dialer / telephony integration — requires Twilio/TCPA/FCC compliance
 - Email/SMS delivery engine — building deliverability infra is a separate product
 - AI-generated campaign content — client-side concern
 - Voter score prediction — import vendor-provided scores instead
 - Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
+- Actual cluster deployment — manifests only, deployment is a separate operational step
+- Helm/Kustomize — plain manifests following contact-api pattern
+- Local ZITADEL instance — use existing dev org at auth.civpulse.org
+
+## Current Milestone: v1.1 Local Dev & Deployment Readiness
+
+**Goal:** Make the v1.0 API runnable end-to-end locally via Docker Compose and ready for K8s deployment to baremetal cluster via GHCR images and plain manifests.
+
+**Target features:**
+- Docker Compose local dev environment (API + PostgreSQL/PostGIS + MinIO)
+- Dockerfile with web frontend build embedded (served via FastAPI static mount)
+- GitHub Actions CI/CD for GHCR image publishing (SHA tags, matching contact-api pattern)
+- K8s manifests (Deployment, Service, Traefik IngressRoute, Secret template)
+- ArgoCD application manifest for GitOps
+- Documentation of secrets to generate separately on deploy workstation
 
 ## Context
 
@@ -76,7 +87,7 @@ All Nyquist validation phases in draft status.
 - **Auth**: ZITADEL at https://auth.civpulse.org — external OIDC provider
 - **Deployment**: Kubernetes — production deployment target
 - **Python**: 3.13+ with uv for package management
-- **API-only**: No frontend — REST API consumed by separate client applications
+- **API-first**: Web frontend temporarily served via FastAPI static mount; will move to Cloudflare Pages
 - **Multi-tenant**: PostgreSQL RLS isolation between campaigns
 - **Nonpartisan**: No political affiliation restrictions
 
@@ -87,7 +98,7 @@ All Nyquist validation phases in draft status.
 | ZITADEL for auth | Externalize auth to proven OIDC provider; avoid building auth from scratch | ✓ Good — Authlib JWT decode + JWKS refresh works well |
 | PostgreSQL + PostGIS | Geographic queries essential for turf cutting; PostGIS is the standard | ✓ Good — ST_Contains spatial queries, voter geom backfill |
 | Multi-tenant from start | Shared deployment; data isolation via campaign_id RLS | ✓ Good — RLS policies on all 30+ tables, consistent pattern |
-| API-only (no frontend) | Separation of concerns; enables multiple client apps | ✓ Good — clean REST API with 100+ endpoints |
+| API-only (no frontend) | Separation of concerns; enables multiple client apps | ⚠️ Revisit — v1.1 embeds web frontend temporarily via static mount |
 | Multi-source voter import | Campaigns use different data vendors; flexible mapping system needed | ✓ Good — RapidFuzz auto-mapping at 75% threshold |
 | Field ops as core value | Canvassing + phone banking is biggest gap for independents | ✓ Good — full canvassing + phone banking with survey reuse |
 | Reusable survey engine | Decoupled from canvassing for phone banking reuse | ✓ Good — PhoneBankService composes SurveyService directly |
@@ -97,5 +108,9 @@ All Nyquist validation phases in draft status.
 | Claim-on-fetch with SKIP LOCKED | Concurrent call list entry claiming without contention | ✓ Good — PostgreSQL advisory locking pattern |
 | Late imports for cross-phase models | Avoid circular deps between volunteer/canvassing/phone banking | ✓ Good — ShiftService.check_in() imports at call site |
 
+| Embed web frontend in API container | Temporary convenience; avoids separate static hosting setup for now | — Pending |
+| GHCR for container images | GitHub-native, free for public repos, matches contact-api pattern | — Pending |
+| Plain K8s manifests (no Helm) | Simplicity, matches contact-api pattern, ArgoCD handles sync | — Pending |
+
 ---
-*Last updated: 2026-03-10 after v1.0 milestone*
+*Last updated: 2026-03-10 after v1.1 milestone start*
