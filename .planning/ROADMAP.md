@@ -41,10 +41,11 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
   1. `docker build` produces a working image that serves both the API and web frontend on a single port
   2. `GET /health` returns a successful response from the running container
   3. The built image excludes tests, `.planning`, `.git`, `node_modules`, and dev artifacts (verified by inspecting image contents)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Health endpoints, Alembic container fix, and .dockerignore
+- [ ] 08-02-PLAN.md — Multi-stage Dockerfile and SPA static file serving
 
 ### Phase 9: Local Dev Environment
 **Goal**: A developer can clone the repo and have a fully working local stack in one command, with hot-reload and realistic test data
@@ -101,7 +102,7 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 5. Volunteer Management | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 6. Operational Dashboards | v1.0 | 2/2 | Complete | 2026-03-09 |
 | 7. Integration Wiring Fixes | v1.0 | 1/1 | Complete | 2026-03-10 |
-| 8. Containerization | v1.1 | 0/? | Not started | - |
+| 8. Containerization | v1.1 | 0/2 | Planning | - |
 | 9. Local Dev Environment | v1.1 | 0/? | Not started | - |
 | 10. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
 | 11. Kubernetes & GitOps | v1.1 | 0/? | Not started | - |
