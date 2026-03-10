@@ -18,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Phone Banking** - Call list generation, call scripts, outcome recording, and survey capture reusing the canvassing survey engine (completed 2026-03-09)
 - [x] **Phase 5: Volunteer Management** - Volunteer registration, shift scheduling, assignment to turfs and phone banks, and hours tracking (completed 2026-03-09)
 - [x] **Phase 6: Operational Dashboards** - Canvassing progress, phone banking progress, and volunteer activity summary endpoints (completed 2026-03-09)
+- [ ] **Phase 7: Integration Wiring Fixes** - ZitadelService lifespan init, Phone banking model Alembic discovery, campaign creation E2E flow fix
 
 ## Phase Details
 
@@ -117,10 +118,23 @@ Plans:
 - [ ] 06-01-PLAN.md — Dashboard schemas (14 Pydantic response models), three aggregation services (CanvassingDashboardService, PhoneBankingDashboardService, VolunteerDashboardService) with live SQLAlchemy queries
 - [ ] 06-02-PLAN.md — 12 dashboard route handlers (overview, canvassing, phone-banking, volunteers, my-stats, drilldowns), router registration, unit tests
 
+### Phase 7: Integration Wiring Fixes
+**Goal:** Fix runtime wiring gaps that prevent campaign creation flow and future Alembic autogenerate from working correctly
+**Depends on**: Phase 1, Phase 4
+**Requirements:** AUTH-02, AUTH-03, AUTH-05, AUTH-07, PHONE-01, PHONE-02, PHONE-03, PHONE-04, PHONE-05
+**Gap Closure:** Closes INT-01, INT-02, FLOW-01 from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. App startup initializes ZitadelService in app.state and campaign CRUD, invite accept, member management work without AttributeError
+  2. All Phone banking models are discoverable by Alembic autogenerate
+**Plans**: 1 plan
+
+Plans:
+- [ ] 07-01-PLAN.md — ZitadelService lifespan init, phone banking model imports in base.py, verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -130,3 +144,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 4. Phone Banking | 3/3 | Complete   | 2026-03-09 |
 | 5. Volunteer Management | 3/3 | Complete   | 2026-03-09 |
 | 6. Operational Dashboards | 2/2 | Complete   | 2026-03-09 |
+| 7. Integration Wiring Fixes | 0/1 | Pending |  |

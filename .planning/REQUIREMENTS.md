@@ -116,12 +116,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Complete |
-| AUTH-02 | Phase 1 | Complete |
-| AUTH-03 | Phase 1 | Complete |
+| AUTH-02 | Phase 1, Phase 7 | Complete (INT-01 wiring fix in Phase 7) |
+| AUTH-03 | Phase 1, Phase 7 | Complete (INT-01 wiring fix in Phase 7) |
 | AUTH-04 | Phase 1 | Complete |
-| AUTH-05 | Phase 1 | Complete |
+| AUTH-05 | Phase 1, Phase 7 | Complete (INT-01 wiring fix in Phase 7) |
 | AUTH-06 | Phase 1 | Complete |
-| AUTH-07 | Phase 1 | Complete |
+| AUTH-07 | Phase 1, Phase 7 | Complete (INT-01 wiring fix in Phase 7) |
 | VOTER-01 | Phase 2 | Complete |
 | VOTER-02 | Phase 2 | Complete |
 | VOTER-03 | Phase 2 | Complete |
@@ -140,11 +140,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CANV-06 | Phase 3 | Complete |
 | CANV-07 | Phase 3 | Complete |
 | CANV-08 | Phase 3 | Complete |
-| PHONE-01 | Phase 4 | Complete |
-| PHONE-02 | Phase 4 | Complete |
-| PHONE-03 | Phase 4 | Complete |
-| PHONE-04 | Phase 4 | Complete |
-| PHONE-05 | Phase 4 | Complete |
+| PHONE-01 | Phase 4, Phase 7 | Complete (INT-02 Alembic fix in Phase 7) |
+| PHONE-02 | Phase 4, Phase 7 | Complete (INT-02 Alembic fix in Phase 7) |
+| PHONE-03 | Phase 4, Phase 7 | Complete (INT-02 Alembic fix in Phase 7) |
+| PHONE-04 | Phase 4, Phase 7 | Complete (INT-02 Alembic fix in Phase 7) |
+| PHONE-05 | Phase 4, Phase 7 | Complete (INT-02 Alembic fix in Phase 7) |
 | VOL-01 | Phase 5 | Complete |
 | VOL-02 | Phase 5 | Complete |
 | VOL-03 | Phase 5 | Complete |
