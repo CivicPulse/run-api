@@ -1,4 +1,28 @@
 services:
+  api:
+    build: .
+    command: bash /home/app/scripts/dev-entrypoint.sh
+    container_name: run-api-api
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/run_api
+      DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
+      S3_ENDPOINT_URL: http://minio:9000
+    volumes:
+      - ./app:/home/app/app
+      - ./main.py:/home/app/main.py
+      - ./alembic:/home/app/alembic
+      - ./alembic.ini:/home/app/alembic.ini
+      - ./scripts:/home/app/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgis/postgis:17-3.5
     container_name: run-api-postgres
