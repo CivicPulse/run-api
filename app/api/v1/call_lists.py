@@ -18,6 +18,7 @@ from app.schemas.call_list import (
     CallListSummaryResponse,
     ClaimEntriesRequest,
 )
+from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.services.call_list import CallListService
 
 router = APIRouter()
@@ -61,7 +62,7 @@ async def generate_call_list(
 
 @router.get(
     "/campaigns/{campaign_id}/call-lists",
-    response_model=list[CallListSummaryResponse],
+    response_model=PaginatedResponse[CallListSummaryResponse],
 )
 async def list_call_lists(
     campaign_id: uuid.UUID,
@@ -81,9 +82,12 @@ async def list_call_lists(
     items = await _call_list_service.list_call_lists(
         db, campaign_id
     )
-    return [
-        CallListSummaryResponse.model_validate(cl) for cl in items
-    ]
+    return PaginatedResponse[CallListSummaryResponse](
+        items=[
+            CallListSummaryResponse.model_validate(cl) for cl in items
+        ],
+        pagination=PaginationResponse(next_cursor=None, has_more=False),
+    )
 
 
 @router.get(

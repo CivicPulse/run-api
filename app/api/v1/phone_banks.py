@@ -12,6 +12,7 @@ from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.call_list import CallListEntryResponse
+from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.phone_bank import (
     CallRecordCreate,
     CallRecordResponse,
@@ -62,7 +63,7 @@ async def create_session(
 
 @router.get(
     "/campaigns/{campaign_id}/phone-bank-sessions",
-    response_model=list[PhoneBankSessionResponse],
+    response_model=PaginatedResponse[PhoneBankSessionResponse],
 )
 async def list_sessions(
     campaign_id: uuid.UUID,
@@ -78,7 +79,10 @@ async def list_sessions(
 
     await set_campaign_context(db, str(campaign_id))
     sessions = await _phone_bank_service.list_sessions(db, campaign_id)
-    return [PhoneBankSessionResponse.model_validate(s) for s in sessions]
+    return PaginatedResponse[PhoneBankSessionResponse](
+        items=[PhoneBankSessionResponse.model_validate(s) for s in sessions],
+        pagination=PaginationResponse(next_cursor=None, has_more=False),
+    )
 
 
 @router.get(
