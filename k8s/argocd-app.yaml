@@ -1,0 +1,31 @@
+# ArgoCD Application for run-api GitOps deployment
+#
+# This file is stored in k8s/ for version control but is NOT auto-synced by ArgoCD.
+# It must be applied once manually:
+#   kubectl apply -n argocd -f k8s/argocd-app.yaml
+#
+# After that, ArgoCD watches the k8s/ directory for app manifests
+# (deployment, service, configmap, ingress) and auto-syncs changes.
+#
+# The argocd-app.yaml itself targets the argocd namespace, so ArgoCD
+# will not try to re-apply it into the run-api namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: run-api-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/civicpulse/run-api.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: run-api
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
