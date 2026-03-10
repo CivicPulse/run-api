@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-tenant, nonpartisan REST API for managing political campaigns — serving candidates of any party or affiliation. The API powers field operations (canvassing, phone banking, volunteer management) with integrated voter CRM capabilities, designed to rival tools like NGPVAN's MiniVAN and NationBuilder while remaining open-source and accessible.
+A multi-tenant, nonpartisan REST API for managing political campaign field operations. The API provides authentication, voter CRM with import pipeline, canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, survey reuse), volunteer coordination (shift scheduling, cross-domain check-in, hours tracking), and operational dashboards — all with row-level security isolation between campaigns.
 
 ## Core Value
 
@@ -12,75 +12,90 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. -->
-
-- ✓ Project scaffold with FastAPI + SQLAlchemy + PostgreSQL stack — existing
-- ✓ ZITADEL authentication integration planned at auth.civpulse.org — existing decision
-- ✓ Kubernetes deployment target — existing decision
-- ✓ Competitive research on campaign tech landscape — existing (docs/campaign_platforms_research.md)
+- ✓ ZITADEL OIDC authentication with JWT/JWKS validation — v1.0
+- ✓ Campaign CRUD with ZITADEL org provisioning and compensating transactions — v1.0
+- ✓ PostgreSQL RLS-based multi-tenant data isolation — v1.0
+- ✓ Role-based access control (owner, admin, manager, volunteer, viewer) — v1.0
+- ✓ Campaign invites with role assignment — v1.0
+- ✓ CSV voter file import with RapidFuzz field mapping — v1.0
+- ✓ L2-format voter file import with pre-configured mapping — v1.0
+- ✓ Canonical voter model with demographics, voting history, lat/long — v1.0
+- ✓ Composable voter search/filter query builder — v1.0
+- ✓ Target universes via dynamic voter lists — v1.0
+- ✓ Voter tagging and static/dynamic list management — v1.0
+- ✓ Append-only voter interaction history — v1.0
+- ✓ Multi-channel contact management (phone/email/address) — v1.0
+- ✓ PostGIS turf cutting with polygon boundaries — v1.0
+- ✓ Household-clustered walk list generation — v1.0
+- ✓ Door-knock outcome recording with contact attempt tracking — v1.0
+- ✓ Reusable survey engine (linear scripts, multiple choice/scale/free text) — v1.0
+- ✓ Call list generation with DNC filtering and claim-on-fetch — v1.0
+- ✓ Phone bank sessions with call recording and survey integration — v1.0
+- ✓ Auto-DNC on refused outcomes — v1.0
+- ✓ Volunteer registration with skills and availability — v1.0
+- ✓ Shift scheduling with capacity limits and waitlists — v1.0
+- ✓ Cross-domain check-in (auto-creates canvasser/caller records) — v1.0
+- ✓ Hours tracking with check-in/check-out and manual adjustment — v1.0
+- ✓ Canvassing, phone banking, and volunteer dashboards with drilldowns — v1.0
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
-
-- [ ] Authentication & user management via ZITADEL
-- [ ] Multi-tenant campaign management (campaign CRUD, owner assignment, data isolation)
-- [ ] Voter/constituent data import from multiple sources (L2, state SOS files, generic CSV)
-- [ ] Canonical voter model with configurable field mappings per data source
-- [ ] Constituent CRM with interaction history and segmentation
-- [ ] Canvassing management — turf cutting, walk list generation, household clustering
-- [ ] Canvassing tracking — door-knock outcomes, branched survey scripts, survey responses
-- [ ] GPS routing suggestions for canvassing routes
-- [ ] Real-time canvassing dashboards
-- [ ] Phone banking — call list generation, scripts, call outcome tracking
-- [ ] Volunteer management — signup, skill tracking, shift scheduling
-- [ ] Volunteer assignment to turfs, phone banks, and tasks
+- [ ] Branched survey scripts with conditional logic
+- [ ] GPS-optimized canvassing route suggestions
+- [ ] Real-time canvassing monitoring (live canvasser status)
+- [ ] Offline sync API pattern (changes-since + batch upload)
+- [ ] Voter deduplication across import sources
+- [ ] State-specific voter file import adapters
+- [ ] Event management (CRUD, RSVP, volunteer assignment)
+- [ ] Email/SMS integration endpoints (webhook-based)
+- [ ] OSDI-compliant API endpoints for interoperability
 
 ### Out of Scope
 
-<!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
-
-- Donation management / Stripe integration — defer to v2, keep v1 focused on field ops
-- FEC/state campaign finance compliance — high complexity, defer to v2
-- Event management — defer to v2
-- Email/SMS messaging — defer to v2
-- Campaign website management — defer to v2
-- Analytics & reporting beyond real-time dashboards — defer to v2
-- Mobile app — this is a backend API only; mobile clients are separate projects
+- Donation management / Stripe integration — FEC compliance extremely complex, defer
+- FEC/state campaign finance compliance — 80+ federal report types, 50 state systems
+- Mobile app — API-only; mobile clients are separate projects
 - Web dashboard frontend — API-only; frontends are separate projects
+- Predictive dialer / telephony integration — requires Twilio/TCPA/FCC compliance
+- Email/SMS delivery engine — building deliverability infra is a separate product
+- AI-generated campaign content — client-side concern
+- Voter score prediction — import vendor-provided scores instead
+- Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
 
 ## Context
 
-- The campaign tech market is dominated by partisan platforms (NGPVAN for Democrats, WinRed/i360 for Republicans) that exclude independent and third-party candidates
-- ~49% of Americans identify with neither major party but have no access to professional campaign tools
-- NGPVAN is degrading under private equity ownership (Bonterra/Apax); NationBuilder is increasingly expensive
-- Open-source alternatives exist in fragments (Spoke for texting, CiviCRM for donor mgmt) but nothing integrated
-- An example L2-format voter file exists at `data/example-2026-02-24.csv` with 50+ fields including voting history, likelihood scores, ethnicity estimates, lat/long, and household data
-- The project follows Specification-Driven Development (SDD) as documented in `docs/spec_driven_dev(SDD).md`
-- Existing codebase map is at `.planning/codebase/`
+Shipped v1.0 with 56,653 LOC Python across 243 files.
+Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ.
+39 v1 requirements delivered across 7 phases in 2 days.
+18 tech debt items (integration tests written but need live infrastructure execution).
+All Nyquist validation phases in draft status.
 
 ## Constraints
 
-- **Tech stack**: FastAPI + SQLAlchemy + PostgreSQL + PostGIS — already decided and declared in pyproject.toml
-- **Auth**: ZITADEL at https://auth.civpulse.org — external OpenID Connect/OAuth2 provider, non-negotiable
+- **Tech stack**: FastAPI + SQLAlchemy + PostgreSQL + PostGIS — established
+- **Auth**: ZITADEL at https://auth.civpulse.org — external OIDC provider
 - **Deployment**: Kubernetes — production deployment target
 - **Python**: 3.13+ with uv for package management
-- **API-only**: No frontend — this is a REST API consumed by separate client applications
-- **Multi-tenant**: Must support data isolation between campaigns from day one
-- **Nonpartisan**: No political affiliation restrictions on who can use the platform
+- **API-only**: No frontend — REST API consumed by separate client applications
+- **Multi-tenant**: PostgreSQL RLS isolation between campaigns
+- **Nonpartisan**: No political affiliation restrictions
 
 ## Key Decisions
 
-<!-- Decisions that constrain future work. Add throughout project lifecycle. -->
-
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| ZITADEL for auth | Externalize auth to proven OpenID Connect provider; avoid building auth from scratch | — Pending |
-| PostgreSQL + PostGIS | Geographic queries essential for turf cutting and canvassing; PostGIS is the standard | — Pending |
-| Multi-tenant from start | Shared deployment for many campaigns reduces ops burden; data isolation via campaign_id | — Pending |
-| API-only (no frontend) | Separation of concerns; enables multiple client apps (web, mobile, CLI) | — Pending |
-| Multi-source voter import | Campaigns use different data vendors (L2, state SOS, etc.); flexible mapping system needed | — Pending |
-| Field ops as core value | Canvassing + phone banking is the biggest gap for independent candidates | — Pending |
+| ZITADEL for auth | Externalize auth to proven OIDC provider; avoid building auth from scratch | ✓ Good — Authlib JWT decode + JWKS refresh works well |
+| PostgreSQL + PostGIS | Geographic queries essential for turf cutting; PostGIS is the standard | ✓ Good — ST_Contains spatial queries, voter geom backfill |
+| Multi-tenant from start | Shared deployment; data isolation via campaign_id RLS | ✓ Good — RLS policies on all 30+ tables, consistent pattern |
+| API-only (no frontend) | Separation of concerns; enables multiple client apps | ✓ Good — clean REST API with 100+ endpoints |
+| Multi-source voter import | Campaigns use different data vendors; flexible mapping system needed | ✓ Good — RapidFuzz auto-mapping at 75% threshold |
+| Field ops as core value | Canvassing + phone banking is biggest gap for independents | ✓ Good — full canvassing + phone banking with survey reuse |
+| Reusable survey engine | Decoupled from canvassing for phone banking reuse | ✓ Good — PhoneBankService composes SurveyService directly |
+| Composition over inheritance | Services compose VoterInteractionService, SurveyService, DNCService | ✓ Good — clean dependency injection, no circular imports |
+| native_enum=False | VARCHAR for all StrEnum columns for migration extensibility | ✓ Good — avoids ALTER TYPE in future migrations |
+| Compensating transactions | ZITADEL org creation + DB insert with rollback on failure | ✓ Good — tested with mocks, needs live validation |
+| Claim-on-fetch with SKIP LOCKED | Concurrent call list entry claiming without contention | ✓ Good — PostgreSQL advisory locking pattern |
+| Late imports for cross-phase models | Avoid circular deps between volunteer/canvassing/phone banking | ✓ Good — ShiftService.check_in() imports at call site |
 
 ---
-*Last updated: 2026-03-09 after initialization*
+*Last updated: 2026-03-10 after v1.0 milestone*
