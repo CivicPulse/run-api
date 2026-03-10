@@ -9,9 +9,9 @@ Requirements for Local Dev & Deployment Readiness milestone.
 
 ### Local Dev Environment
 
-- [ ] **DEV-01**: Developer can start full stack (API, PostgreSQL+PostGIS, MinIO) with `docker compose up`
-- [ ] **DEV-02**: Alembic migrations run automatically on API container start
-- [ ] **DEV-03**: Developer can run Vite dev server with hot-reload proxied to dockerized API
+- [x] **DEV-01**: Developer can start full stack (API, PostgreSQL+PostGIS, MinIO) with `docker compose up`
+- [x] **DEV-02**: Alembic migrations run automatically on API container start
+- [x] **DEV-03**: Developer can run Vite dev server with hot-reload proxied to dockerized API
 - [ ] **DEV-04**: Seed data script populates sample campaign, voters, and related data for testing
 
 ### Containerization
@@ -70,9 +70,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | CTR-01 | Phase 8 | Complete |
 | CTR-02 | Phase 8 | Complete |
 | CTR-03 | Phase 8 | Complete |
-| DEV-01 | Phase 9 | Pending |
-| DEV-02 | Phase 9 | Pending |
-| DEV-03 | Phase 9 | Pending |
+| DEV-01 | Phase 9 | Complete |
+| DEV-02 | Phase 9 | Complete |
+| DEV-03 | Phase 9 | Complete |
 | DEV-04 | Phase 9 | Pending |
 | CICD-01 | Phase 10 | Pending |
 | CICD-02 | Phase 10 | Pending |
