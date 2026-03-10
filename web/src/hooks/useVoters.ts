@@ -1,0 +1,75 @@
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { api } from "@/api/client"
+import type { Voter, VoterFilter, VoterInteraction } from "@/types/voter"
+import type { PaginatedResponse } from "@/types/common"
+
+export function useVoters(campaignId: string, filters?: VoterFilter) {
+  const searchParams = new URLSearchParams()
+  if (filters) {
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== "") {
+        if (Array.isArray(value)) {
+          for (const v of value) {
+            searchParams.append(key, v)
+          }
+        } else {
+          searchParams.set(key, String(value))
+        }
+      }
+    }
+  }
+  const queryString = searchParams.toString()
+
+  return useInfiniteQuery({
+    queryKey: ["voters", campaignId, filters],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams(queryString)
+      if (pageParam) {
+        params.set("cursor", pageParam)
+      }
+      const qs = params.toString()
+      return api
+        .get(`api/v1/campaigns/${campaignId}/voters${qs ? `?${qs}` : ""}`)
+        .json<PaginatedResponse<Voter>>()
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.has_more ? lastPage.pagination.next_cursor ?? undefined : undefined,
+    enabled: !!campaignId,
+  })
+}
+
+export function useVoter(campaignId: string, voterId: string) {
+  return useQuery({
+    queryKey: ["voters", campaignId, voterId],
+    queryFn: () =>
+      api.get(`api/v1/campaigns/${campaignId}/voters/${voterId}`).json<Voter>(),
+    enabled: !!campaignId && !!voterId,
+  })
+}
+
+export function useVoterInteractions(campaignId: string, voterId: string) {
+  return useQuery({
+    queryKey: ["voters", campaignId, voterId, "interactions"],
+    queryFn: () =>
+      api
+        .get(`api/v1/campaigns/${campaignId}/voters/${voterId}/interactions`)
+        .json<PaginatedResponse<VoterInteraction>>(),
+    enabled: !!campaignId && !!voterId,
+  })
+}
+
+export function useCreateInteraction(campaignId: string, voterId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { type: string; payload: Record<string, unknown> }) =>
+      api
+        .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/interactions`, { json: data })
+        .json<VoterInteraction>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["voters", campaignId, voterId, "interactions"],
+      })
+    },
+  })
+}
