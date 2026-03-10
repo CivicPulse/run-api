@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Local Dev & Deployment Readiness
 status: completed
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-10T04:52:55.846Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-10T04:53:08.079Z"
 last_activity: 2026-03-10 — Completed 11-02 Ingress & ArgoCD manifests
 progress:
   total_phases: 4
@@ -54,6 +54,9 @@ Progress: [█████████░] 86% (Phase 11: 2/2 plans complete)
 - 11-02: HTTP-only IngressRoute (web entrypoint) because Cloudflare terminates TLS at edge
 - 11-02: ArgoCD app run-api-dev with selfHeal and prune for zero-touch deploys
 - 11-02: CreateNamespace=true sync option for cluster bootstrap
+- [Phase 11]: 11-01: Init container runs alembic migrations before main container starts
+- [Phase 11]: 11-01: Both containers share envFrom for ConfigMap and Secret (no individual env vars)
+- [Phase 11]: 11-01: Secret template uses .yaml.example extension so ArgoCD ignores it
 
 ### Pending Todos
 
@@ -65,6 +68,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:52:00Z
-Stopped at: Completed 11-02-PLAN.md
-Resume file: .planning/phases/11-kubernetes-gitops/11-02-SUMMARY.md
+Last session: 2026-03-10T04:53:08.069Z
+Stopped at: Completed 11-01-PLAN.md
+Resume file: None
