@@ -167,6 +167,19 @@ async def get_current_user(
 
     org_id = claims.get("urn:zitadel:iam:user:resourceowner:id")
     if not org_id:
+        # Fallback: extract org_id from role claim structure where org_id
+        # is the key inside role values, e.g.:
+        # "urn:zitadel:iam:org:project:{pid}:roles": {"admin": {"org-id": "domain"}}
+        project_id = settings.zitadel_project_id
+        role_claim_key = f"urn:zitadel:iam:org:project:{project_id}:roles"
+        roles_obj = claims.get(role_claim_key, {})
+        for _role_name, org_map in roles_obj.items():
+            if isinstance(org_map, dict):
+                org_id = next(iter(org_map), None)
+                if org_id:
+                    break
+    if not org_id:
+        logger.warning("JWT missing organization claim for sub={}", claims.get("sub"))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing organization claim",

@@ -1,6 +1,12 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_ZITADEL_ISSUER: ${VITE_ZITADEL_ISSUER:-https://auth.civpulse.org}
+        VITE_ZITADEL_CLIENT_ID: ${VITE_ZITADEL_CLIENT_ID}
+        VITE_ZITADEL_PROJECT_ID: ${VITE_ZITADEL_PROJECT_ID}
     command: bash /home/app/scripts/dev-entrypoint.sh
     container_name: run-api-api
     ports:
@@ -31,7 +37,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

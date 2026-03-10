@@ -34,7 +34,10 @@ export const api = ky.create({
       async (_request, _options, response) => {
         if (response.status === 401) {
           const { useAuthStore } = await import("@/stores/authStore")
-          useAuthStore.getState().logout()
+          // Clear local auth state only — don't call signoutRedirect() which
+          // triggers a full OIDC logout redirect and destroys the session.
+          // The user will see the unauthenticated landing page and can re-login.
+          useAuthStore.setState({ user: null, isAuthenticated: false })
           throw new AuthenticationError()
         }
         if (response.status === 403) {
