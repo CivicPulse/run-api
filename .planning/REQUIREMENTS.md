@@ -127,78 +127,78 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | — | Pending |
-| INFR-02 | — | Pending |
-| INFR-03 | — | Pending |
-| CAMP-01 | — | Pending |
-| CAMP-02 | — | Pending |
-| CAMP-03 | — | Pending |
-| CAMP-04 | — | Pending |
-| CAMP-05 | — | Pending |
-| CAMP-06 | — | Pending |
-| CAMP-07 | — | Pending |
-| CAMP-08 | — | Pending |
-| VOTR-01 | — | Pending |
-| VOTR-02 | — | Pending |
-| VOTR-03 | — | Pending |
-| VOTR-04 | — | Pending |
-| VOTR-05 | — | Pending |
-| VOTR-06 | — | Pending |
-| VOTR-07 | — | Pending |
-| VOTR-08 | — | Pending |
-| VOTR-09 | — | Pending |
-| VOTR-10 | — | Pending |
-| VOTR-11 | — | Pending |
-| IMPT-01 | — | Pending |
-| IMPT-02 | — | Pending |
-| IMPT-03 | — | Pending |
-| IMPT-04 | — | Pending |
-| IMPT-05 | — | Pending |
-| IMPT-06 | — | Pending |
-| IMPT-07 | — | Pending |
-| CALL-01 | — | Pending |
-| CALL-02 | — | Pending |
-| CALL-03 | — | Pending |
-| CALL-04 | — | Pending |
-| CALL-05 | — | Pending |
-| CALL-06 | — | Pending |
-| CALL-07 | — | Pending |
-| CALL-08 | — | Pending |
-| PHON-01 | — | Pending |
-| PHON-02 | — | Pending |
-| PHON-03 | — | Pending |
-| PHON-04 | — | Pending |
-| PHON-05 | — | Pending |
-| PHON-06 | — | Pending |
-| PHON-07 | — | Pending |
-| PHON-08 | — | Pending |
-| PHON-09 | — | Pending |
-| PHON-10 | — | Pending |
-| VLTR-01 | — | Pending |
-| VLTR-02 | — | Pending |
-| VLTR-03 | — | Pending |
-| VLTR-04 | — | Pending |
-| VLTR-05 | — | Pending |
-| VLTR-06 | — | Pending |
-| VLTR-07 | — | Pending |
-| VLTR-08 | — | Pending |
-| VLTR-09 | — | Pending |
-| SHFT-01 | — | Pending |
-| SHFT-02 | — | Pending |
-| SHFT-03 | — | Pending |
-| SHFT-04 | — | Pending |
-| SHFT-05 | — | Pending |
-| SHFT-06 | — | Pending |
-| SHFT-07 | — | Pending |
-| SHFT-08 | — | Pending |
-| SHFT-09 | — | Pending |
-| SHFT-10 | — | Pending |
+| INFR-01 | Phase 12 | Pending |
+| INFR-02 | Phase 12 | Pending |
+| INFR-03 | Phase 12 | Pending |
+| CAMP-01 | Phase 12 | Pending |
+| CAMP-02 | Phase 12 | Pending |
+| CAMP-03 | Phase 12 | Pending |
+| CAMP-04 | Phase 12 | Pending |
+| CAMP-05 | Phase 12 | Pending |
+| CAMP-06 | Phase 12 | Pending |
+| CAMP-07 | Phase 12 | Pending |
+| CAMP-08 | Phase 12 | Pending |
+| VOTR-01 | Phase 13 | Pending |
+| VOTR-02 | Phase 13 | Pending |
+| VOTR-03 | Phase 13 | Pending |
+| VOTR-04 | Phase 13 | Pending |
+| VOTR-05 | Phase 13 | Pending |
+| VOTR-06 | Phase 13 | Pending |
+| VOTR-07 | Phase 13 | Pending |
+| VOTR-08 | Phase 13 | Pending |
+| VOTR-09 | Phase 13 | Pending |
+| VOTR-10 | Phase 13 | Pending |
+| VOTR-11 | Phase 13 | Pending |
+| IMPT-01 | Phase 14 | Pending |
+| IMPT-02 | Phase 14 | Pending |
+| IMPT-03 | Phase 14 | Pending |
+| IMPT-04 | Phase 14 | Pending |
+| IMPT-05 | Phase 14 | Pending |
+| IMPT-06 | Phase 14 | Pending |
+| IMPT-07 | Phase 14 | Pending |
+| CALL-01 | Phase 15 | Pending |
+| CALL-02 | Phase 15 | Pending |
+| CALL-03 | Phase 15 | Pending |
+| CALL-04 | Phase 15 | Pending |
+| CALL-05 | Phase 15 | Pending |
+| CALL-06 | Phase 15 | Pending |
+| CALL-07 | Phase 15 | Pending |
+| CALL-08 | Phase 15 | Pending |
+| PHON-01 | Phase 16 | Pending |
+| PHON-02 | Phase 16 | Pending |
+| PHON-03 | Phase 16 | Pending |
+| PHON-04 | Phase 16 | Pending |
+| PHON-05 | Phase 16 | Pending |
+| PHON-06 | Phase 16 | Pending |
+| PHON-07 | Phase 16 | Pending |
+| PHON-08 | Phase 16 | Pending |
+| PHON-09 | Phase 16 | Pending |
+| PHON-10 | Phase 16 | Pending |
+| VLTR-01 | Phase 17 | Pending |
+| VLTR-02 | Phase 17 | Pending |
+| VLTR-03 | Phase 17 | Pending |
+| VLTR-04 | Phase 17 | Pending |
+| VLTR-05 | Phase 17 | Pending |
+| VLTR-06 | Phase 17 | Pending |
+| VLTR-07 | Phase 17 | Pending |
+| VLTR-08 | Phase 17 | Pending |
+| VLTR-09 | Phase 17 | Pending |
+| SHFT-01 | Phase 18 | Pending |
+| SHFT-02 | Phase 18 | Pending |
+| SHFT-03 | Phase 18 | Pending |
+| SHFT-04 | Phase 18 | Pending |
+| SHFT-05 | Phase 18 | Pending |
+| SHFT-06 | Phase 18 | Pending |
+| SHFT-07 | Phase 18 | Pending |
+| SHFT-08 | Phase 18 | Pending |
+| SHFT-09 | Phase 18 | Pending |
+| SHFT-10 | Phase 18 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 60 total
-- Mapped to phases: 0
-- Unmapped: 60 ⚠️
+- Mapped to phases: 60
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after initial definition*
+*Last updated: 2026-03-10 after roadmap creation*
