@@ -1,220 +1,238 @@
 # Stack Research
 
-**Domain:** Multi-tenant political campaign management API with field operations and voter CRM
-**Researched:** 2026-03-09
+**Domain:** Frontend UI additions for political campaign management app (v1.2 Full UI milestone)
+**Researched:** 2026-03-10
 **Confidence:** HIGH
 
-## Existing Stack (Already Decided)
+## Context
 
-These technologies are already declared in `pyproject.toml` and are non-negotiable.
+This research covers ONLY the frontend library additions needed for v1.2. The existing validated stack is not re-evaluated:
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Python | 3.13+ | Runtime |
-| FastAPI | >=0.135.1 | Async REST API framework |
-| SQLAlchemy | >=2.0.48 | ORM and query builder |
-| Alembic | >=1.18.4 | Database migrations |
-| asyncpg | >=0.31.0 | Async PostgreSQL driver |
-| psycopg2-binary | >=2.9.11 | Sync PostgreSQL driver (Alembic) |
-| Pydantic | >=2.12.5 | Request/response validation |
-| Pydantic-Settings | >=2.13.1 | Configuration from env vars |
-| Uvicorn | >=0.41.0 | ASGI server |
-| Loguru | >=0.7.3 | Structured logging |
-| Typer | >=0.24.1 | CLI commands |
-| uv | -- | Package manager |
+**Already installed and in use (DO NOT ADD):**
+- React 19.2, React DOM 19.2
+- TanStack Router 1.159, TanStack Query 5.90, TanStack Table 8.21
+- Tailwind CSS 4.1, shadcn/ui (via `radix-ui` 1.4 + `shadcn` 3.8 CLI)
+- Vite 7.3, TypeScript 5.9
+- react-hook-form 7.71, @hookform/resolvers 5.2, zod 4.3
+- Leaflet 1.9 + react-leaflet 5.0 (installed, not yet used in components)
+- recharts 3.7 (used in dashboard)
+- ky 1.14 (HTTP client), oidc-client-ts 3.1, zustand 5.0
+- sonner 2.0 (toasts), vaul 1.1 (drawer), cmdk 1.1 (command palette)
+- lucide-react 0.563 (icons)
+- Vitest 4.0, Playwright 1.58, Testing Library
 
-## Recommended Additions
+**Already installed shadcn/ui components:**
+alert-dialog, avatar, badge, button, card, command, dialog, dropdown-menu, input, label, popover, radio-group, select, separator, sheet, sidebar, skeleton, sonner, table, tabs, textarea, tooltip
 
-### PostGIS / Geospatial
+## Recommended Stack Additions
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| GeoAlchemy2 | >=0.18.4 | SQLAlchemy extension for PostGIS spatial types and functions | The only maintained SQLAlchemy-PostGIS bridge. Supports SQLAlchemy 2.x, provides `Geometry` and `Geography` column types, and exposes PostGIS functions (`ST_Contains`, `ST_DWithin`, `ST_Intersects`) as SQLAlchemy constructs. Required for turf boundaries, household clustering, and walk-list generation. | HIGH |
-| Shapely | >=2.1.2 | Python geometry library for polygon operations in application code | Needed for turf cutting algorithms (splitting precincts into walkable turfs), bounding-box calculations, and geometry validation before database writes. GeoAlchemy2 integrates with Shapely for WKB/WKT serialization. Used in the turf-cutting service layer, not at the database query level. | HIGH |
+### 1. Client-Side CSV Parsing: PapaParse
 
-**Why not GeoPandas:** GeoPandas pulls in numpy, pandas, and heavy C dependencies. Overkill for an API that primarily does geometry operations through PostGIS queries. Shapely alone handles the application-layer geometry needs (turf splitting, validation) without the DataFrame overhead.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| papaparse | ^5.5.3 | Client-side CSV preview and column detection | Zero-dependency, framework-agnostic CSV parser. Supports streaming via Web Workers for large files (voter files can be 500MB+). The import wizard needs to preview the first N rows locally before uploading to S3 and calling the server-side detect endpoint. PapaParse handles this without loading the entire file into memory. |
+| @types/papaparse | ^5.5.2 | TypeScript definitions for PapaParse | Needed for type-safe integration. |
 
-### Authentication (ZITADEL Integration)
+**How it fits the import wizard flow:**
+1. User selects file via react-dropzone (see below)
+2. PapaParse streams first 100 rows for local preview (instant feedback)
+3. File uploads to S3 via pre-signed URL from `/campaigns/{id}/imports`
+4. Server calls `/detect` for fuzzy-match column suggestions via RapidFuzz
+5. User confirms mapping in the column mapping UI step
+6. Server dispatches TaskIQ background job, frontend polls status
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| fastapi-zitadel-auth | >=0.3.2 | ZITADEL-specific FastAPI auth integration | Purpose-built for ZITADEL + FastAPI. Handles JWKS fetching/caching, token validation, and provides FastAPI dependencies for route protection. Eliminates boilerplate of manual OIDC integration. Actively maintained (Feb 2026 release). | MEDIUM |
-| Authlib | >=1.6.9 | OAuth2/OIDC client library (fallback) | ZITADEL's own Python documentation recommends Authlib. Use as the underlying OIDC library if fastapi-zitadel-auth doesn't cover a needed flow (e.g., machine-to-machine tokens, custom scopes). Battle-tested, well-documented. | HIGH |
+**Confidence:** HIGH -- PapaParse has zero peer dependencies, works in any React version, 12M+ weekly npm downloads, actively maintained.
 
-**Why not python-jose:** Unmaintained since 2022. The PyPI page shows no releases in 3+ years. FastAPI's own docs have moved away from recommending it.
+### 2. File Upload Drop Zone: react-dropzone
 
-**Why not PyJWT directly:** PyJWT works but is low-level -- you'd manually handle JWKS endpoint discovery, key rotation, issuer validation. Authlib and fastapi-zitadel-auth handle all of this.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| react-dropzone | ^15.0.0 | Drag-and-drop file upload zone | Purpose-built for file upload UX. Provides accessible drag-and-drop with file type validation, size limits, and multiple-file support. v15 supports React 19. The import wizard's first step needs a polished drop zone for CSV/TSV files -- react-dropzone provides this without building drag-and-drop from scratch with HTML5 APIs. |
 
-### Multi-Tenancy
+**Why not build with native HTML5 drag-and-drop:** React-dropzone handles edge cases that are painful to implement manually: browser inconsistencies in drag events, accessible keyboard upload, MIME type validation, and the "enter/leave" event flickering when dragging over child elements. For a single drop zone component, the library saves significant effort.
 
-No additional library needed. Multi-tenancy is an architectural pattern, not a library dependency. The recommended approach:
+**Why not a full drag-and-drop library (dnd-kit) for file upload:** dnd-kit is for rearranging/sorting items within the UI. File upload from the OS is a different interaction pattern that react-dropzone handles specifically.
 
-**Pattern: Shared database with `campaign_id` foreign key + PostgreSQL Row-Level Security (RLS)**
+**Confidence:** HIGH -- v15.0.0 published recently, 10M+ weekly npm downloads, React 19 compatible (peer dep: `react >= 16.8`).
 
-- Every tenant-scoped table includes a `campaign_id` column
-- PostgreSQL RLS policies enforce data isolation at the database level (`SET app.current_campaign_id` per connection)
-- FastAPI middleware extracts tenant context from the JWT (ZITADEL provides org/project context) and sets `campaign_id` on the database session
-- SQLAlchemy events or session-level configuration set the PostgreSQL session variable before queries execute
+### 3. Drag-and-Drop Interactions: @dnd-kit
 
-**Why RLS over application-level filtering:** Even if application code has a bug and forgets a `.filter(campaign_id=...)`, the database refuses to return rows belonging to other tenants. Defense in depth.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| @dnd-kit/core | ^6.3.1 | Drag-and-drop foundation for column mapping UI | Best-in-class React DnD library. Accessible (keyboard + screen reader), performant (60fps with 1000+ items via CSS transforms), modular architecture. Needed for the column mapping step where users drag source columns to target fields, and for availability slot reordering in the volunteer scheduling UI. |
+| @dnd-kit/sortable | ^10.0.0 | Sortable list presets built on @dnd-kit/core | Provides SortableContext and useSortable hook for ordered lists. Used for reordering availability time slots in the shift scheduling UI. |
+| @dnd-kit/utilities | ^3.2.2 | CSS transform utilities for dnd-kit | Small utility package for CSS.Transform.toString() used in drag overlays. Required by @dnd-kit/sortable. |
 
-**Why not schema-per-tenant:** Schema-per-tenant doesn't scale past ~100 tenants (migration complexity explodes), and campaigns are lightweight tenants -- many will have <1000 records. Shared tables with RLS is the standard for this scale.
+**Why @dnd-kit/core (stable) over @dnd-kit/react (new):** The `@dnd-kit/react` package is v0.3.2 -- pre-1.0, API may change. The `@dnd-kit/core` package is v6.3.1, battle-tested in production, and explicitly supports React 18+19 in peer dependencies. Use the stable ecosystem.
 
-**Reference implementation:** The `fastapi-rowsecurity` library on GitHub demonstrates the pattern but is too minimal for production use -- implement the pattern directly.
+**Why not react-beautiful-dnd:** Deprecated by Atlassian in 2022. The community fork `@hello-pangea/dnd` exists but dnd-kit is more flexible, has better TypeScript support, and is the modern standard.
 
-### Async Task Queue (Bulk Voter Imports, Background Processing)
+**Why not react-dnd:** Heavier abstraction with a backend system (HTML5, touch). More complex API for the same result. dnd-kit is lighter and more composable.
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| TaskIQ | >=0.12.1 | Async-native distributed task queue | Built for async Python from the ground up. Uses FastAPI-style dependency injection. Benchmarks show ~10x better throughput than ARQ. Supports Redis as broker. The async-first design avoids the impedance mismatch of running Celery in an async application. | HIGH |
-| taskiq-fastapi | >=0.4.0 | FastAPI integration for TaskIQ | Allows TaskIQ tasks to use FastAPI dependencies (database sessions, auth context). Tasks can depend on `Request` objects and reuse the same DI container as your API routes. | HIGH |
-| taskiq-redis | >=1.2.2 | Redis broker and result backend for TaskIQ | Redis is already needed for real-time features (pub/sub). Using it as the task broker avoids adding another infrastructure dependency like RabbitMQ. | HIGH |
-| Redis (server) | 7.x+ | Broker for TaskIQ, pub/sub for real-time | Required infrastructure. Single Redis instance serves both task queue and real-time pub/sub. | HIGH |
-| redis (Python) | >=7.3.0 | Python Redis client | Async-native Redis client. Required by taskiq-redis. Supports Redis 7.x and 8.x. | HIGH |
+**Where used in v1.2:**
+- Column mapping wizard: drag detected columns onto target voter fields
+- Shift scheduling: reorder or rearrange availability slots
+- Potential: reorder survey questions (already have surveys, may want editing)
 
-**Why not Celery:** Celery was designed for synchronous Python. Using it with async FastAPI requires running sync workers alongside your async app, creating two execution models. TaskIQ is async-native and shares FastAPI's dependency injection pattern, making the codebase consistent.
+**Confidence:** HIGH -- @dnd-kit/core 6.3.1 is stable, peer deps explicitly include React 19, 2.5M+ weekly npm downloads.
 
-**Why not ARQ:** ARQ benchmarks poorly under load (nearly 10x slower than TaskIQ in comparative tests). ARQ is simpler but lacks TaskIQ's middleware system, dependency injection, and ecosystem of integrations.
+### 4. Additional shadcn/ui Components (via CLI, not npm)
 
-**Task examples for this project:**
-- Bulk voter file import (L2 CSV files with 50+ columns, potentially millions of rows)
-- Voter record deduplication after import
-- Walk-list generation (geospatial clustering of households into turfs)
-- Geocoding voter addresses that lack lat/long
-- Aggregating canvassing results for dashboard metrics
+These are not npm packages -- they are added via `npx shadcn add [component]` which copies the component source into the project. No new dependencies are introduced.
 
-### Real-Time Features (Canvassing Dashboards)
+| Component | Purpose | Needed For |
+|-----------|---------|------------|
+| `progress` | Progress bar for import status tracking | Import wizard progress step, phone bank session progress |
+| `checkbox` | Multi-select in data tables | Member lists, DNC lists, call lists, voter selection |
+| `switch` | Toggle controls | Volunteer availability, shift settings, DNC flags |
+| `scroll-area` | Custom scrollable regions | Column mapping panel with many fields, long voter detail tabs |
+| `date-picker` | Date selection (built on Calendar + Popover) | Shift scheduling, volunteer availability, import date filters |
+| `calendar` | Date display/selection (uses react-day-picker internally) | Shift calendar view, availability calendar |
+| `breadcrumb` | Navigation breadcrumbs | Deep nested routes (campaign > phone banking > session > caller) |
+| `pagination` | Page navigation controls | Data tables with server-side pagination |
+| `toggle` | Toggle buttons | View mode switches (list/grid/calendar) |
+| `toggle-group` | Grouped toggle buttons | Multi-day availability selection, view mode switches |
+| `collapsible` | Expandable sections | Voter detail sections, advanced search filters |
+| `spinner` | Loading indicators | Inline loading states during mutations |
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| FastAPI SSE (sse-starlette) | >=2.2.1 | Server-Sent Events for dashboard updates | SSE is simpler than WebSocket for the primary use case: server pushes canvassing metrics to dashboards. Works over HTTP/1.1, traverses proxies easily, auto-reconnects. FastAPI supports SSE natively via `StreamingResponse`, but sse-starlette adds proper event formatting and ID tracking. | MEDIUM |
-| Redis Pub/Sub | -- | Cross-instance event broadcasting | When running multiple API instances behind a load balancer (Kubernetes), Redis Pub/Sub distributes events to all instances. A canvass result submitted to instance A gets broadcast to dashboard connections on instance B. No additional library needed beyond the redis Python client. | HIGH |
+**Important:** shadcn/ui's `calendar` component depends on `react-day-picker`, which is already a transitive dependency via the `radix-ui` package. Running `npx shadcn add calendar` will install `react-day-picker@^9.14.0` if not already present. react-day-picker v9 is compatible with React 19.
 
-**Why SSE over WebSocket for dashboards:** Campaign dashboards are read-heavy (server pushes updates). SSE is unidirectional server-to-client, which matches this pattern exactly. WebSocket adds complexity (connection management, heartbeats, reconnection logic) without benefit when the client never sends data back through the socket.
+**Confidence:** HIGH -- these are official shadcn/ui components built on Radix primitives that already support React 19.
 
-**When to use WebSocket:** If the project later adds real-time collaborative features (e.g., two canvassers editing the same turf simultaneously), add WebSocket endpoints then. FastAPI supports `@app.websocket()` natively -- no additional library needed.
+### 5. Date Range and Scheduling Display
 
-### CSV / Data Import
+No additional library needed beyond shadcn/ui's `calendar` (which wraps react-day-picker v9).
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| Python csv (stdlib) | -- | CSV parsing for voter file imports | Voter files (L2, state SOS) are standard CSV. The stdlib `csv` module with `DictReader` handles this without pulling in pandas. For streaming large files (millions of rows), use chunked reading with `itertools.islice`. | HIGH |
+**Why not react-big-calendar or FullCalendar:** The scheduling UI in this project is shift-based (create a shift for a date/time, volunteers sign up). This is CRUD + a list view grouped by date, not a Google Calendar-style event grid. The shadcn calendar for date picking + a custom list/card layout for shift display is simpler and more consistent with the existing UI system. If a full calendar view is needed later, `react-big-calendar` (v1.19.4, React 19 compatible) can be added incrementally.
 
-**Why not pandas for CSV import:** Pandas loads entire files into memory as DataFrames. L2 voter files can be 500MB+. Streaming with stdlib `csv` + batch inserts via SQLAlchemy's `insert().values([...])` keeps memory constant regardless of file size.
+**Why not schedule-x:** Newer library (v4.1.0), smaller community, adds complexity for a use case that doesn't need a full calendar widget.
 
-### Testing
+**Confidence:** HIGH -- this is an architectural decision, not a library choice. The shift model is CRUD, not calendar-event management.
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| pytest | >=9.0.2 | Test runner | Standard Python test runner. No alternative is worth considering. | HIGH |
-| pytest-asyncio | >=1.1.0 | Async test support | Required for testing async FastAPI endpoints and async SQLAlchemy sessions. Set `asyncio_mode = "auto"` in `pyproject.toml` to avoid decorating every test with `@pytest.mark.asyncio`. | HIGH |
-| httpx | >=0.28.1 | Async HTTP client for testing | FastAPI recommends httpx with `ASGITransport` for async test clients. Replaces the sync `TestClient` when testing async endpoints. Also useful as a production HTTP client for calling external APIs (geocoding, ZITADEL introspection). | HIGH |
-| factory-boy | >=3.3.3 | Test data factories | Generates realistic test data for models (voters, campaigns, turfs). Supports SQLAlchemy out of the box via `factory.alchemy.SQLAlchemyModelFactory`. Avoids brittle fixture files. | HIGH |
-| coverage | >=7.13.4 | Code coverage reporting | Standard coverage tool. Use `pytest-cov` plugin for integration with pytest. | HIGH |
+## What NOT to Add
 
-**Testing pattern for multi-tenant tests:**
-- Create a test fixture that sets up RLS policies and sets `campaign_id` on the session
-- Each test gets a transactional session that rolls back after the test
-- Use factory-boy factories with a `campaign` trait to generate tenant-scoped test data
-- Test that cross-tenant data access is blocked at the database level
+| Avoid | Why | What to Use Instead |
+|-------|-----|---------------------|
+| Any multi-step form library (react-step-wizard, CoreUI Stepper) | The import wizard is 4 steps with custom logic at each step. A wizard library adds abstraction without value when steps have heterogeneous content (file upload, column mapping, confirmation, progress). Build with zustand state machine + shadcn tabs/cards. | Custom wizard component with zustand step state + shadcn `card` + `progress` |
+| react-csv-importer | v0.8.1, peer dep is React 16-17 only. Unmaintained. Also too opinionated about the column mapping UI. | PapaParse for parsing + custom column mapping UI with @dnd-kit |
+| @dnd-kit/react (v0.3.2) | Pre-1.0, API unstable. The React-specific wrapper is experimental. | @dnd-kit/core (v6.3.1, stable) |
+| react-big-calendar | Overkill for shift scheduling. Adds 50KB+ for a CRUD-list UI that doesn't need week/month grid views. | shadcn calendar for date picking + custom shift list layout |
+| AG Grid | Commercial license required for advanced features. TanStack Table already installed and covers all data table needs (sorting, filtering, pagination, column visibility, row selection). | TanStack Table 8.21 (already installed) |
+| Material UI / Chakra UI components | Mixing component libraries creates visual inconsistency and increases bundle size. Everything should go through shadcn/ui. | shadcn/ui components (already the design system) |
+| redux / @reduxjs/toolkit | zustand is already installed and used for state management. Adding Redux alongside zustand creates confusion about which store to use. | zustand 5.0 (already installed) |
+| socket.io-client / WebSocket libraries | The import progress flow uses polling (GET `/imports/{id}` returns `total_rows` / `imported_rows`). The backend has no SSE/WebSocket endpoints. Polling every 2-3 seconds is sufficient for import progress that takes minutes. | TanStack Query `refetchInterval` for polling |
+| date-fns or dayjs | Not needed for the current feature set. Date formatting for shifts/availability can use `Intl.DateTimeFormat` (built into every browser). If heavy date manipulation is needed later, add then. | Native `Intl.DateTimeFormat` and `Date` |
+
+## Recommended Stack (Summary)
+
+### New npm Dependencies
+
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| papaparse | ^5.5.3 | Client-side CSV preview | Import wizard: preview first N rows before upload |
+| @types/papaparse | ^5.5.2 | TypeScript definitions | Development |
+| react-dropzone | ^15.0.0 | File upload drop zone | Import wizard: drag-and-drop file selection |
+| @dnd-kit/core | ^6.3.1 | Drag-and-drop foundation | Column mapping UI, sortable lists |
+| @dnd-kit/sortable | ^10.0.0 | Sortable list presets | Availability slot reordering, column reordering |
+| @dnd-kit/utilities | ^3.2.2 | CSS transform utilities | Required by @dnd-kit/sortable |
+
+### shadcn/ui Components to Add (via CLI)
+
+```bash
+npx shadcn add progress checkbox switch scroll-area date-picker calendar breadcrumb pagination toggle toggle-group collapsible spinner
+```
+
+This will pull in `react-day-picker` as a dependency of the calendar component if not already present.
 
 ### Development Tools
 
-| Tool | Version | Purpose | Notes | Confidence |
-|------|---------|---------|-------|------------|
-| ruff | >=0.15.5 | Linter and formatter | Replaces flake8, isort, black, and pyflakes. Single tool for all Python code quality. Already specified in project conventions. | HIGH |
-| pre-commit | >=4.x | Git hook manager | Run ruff, type checks, and tests before commits. Prevents broken code from entering the repo. | HIGH |
-| mypy | >=1.x | Static type checking | FastAPI + Pydantic + SQLAlchemy 2 all have excellent type stub support. Catches bugs at development time, especially important for complex tenant-scoping logic. | MEDIUM |
+No additional dev dependencies needed. Vitest, Testing Library, and Playwright are already installed.
 
 ## Installation
 
 ```bash
-# Core additions (production dependencies)
-uv add "geoalchemy2>=0.18.4" "shapely>=2.1.2" "fastapi-zitadel-auth>=0.3.2" "authlib>=1.6.9" "taskiq>=0.12.1" "taskiq-fastapi>=0.4.0" "taskiq-redis>=1.2.2" "redis>=7.3.0" "sse-starlette>=2.2.1" "httpx>=0.28.1"
+cd web
 
-# Dev dependencies
-uv add --dev "pytest>=9.0.2" "pytest-asyncio>=1.1.0" "factory-boy>=3.3.3" "coverage>=7.13.4" "pytest-cov>=6.0" "ruff>=0.15.5" "pre-commit>=4.0" "mypy>=1.0"
+# New npm dependencies (3 packages + 1 type package)
+npm install papaparse react-dropzone @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+npm install -D @types/papaparse
+
+# shadcn/ui components (copies source files, may add react-day-picker)
+npx shadcn add progress checkbox switch scroll-area date-picker calendar breadcrumb pagination toggle toggle-group collapsible spinner
 ```
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| TaskIQ | Celery | If the team already knows Celery well and the impedance mismatch with async is acceptable. Celery has more monitoring tools (Flower). |
-| TaskIQ | ARQ | If task volume is very low (<100 tasks/day) and simplicity is paramount. ARQ has fewer moving parts. |
-| GeoAlchemy2 + Shapely | GeoPandas | If the project needs heavy geospatial analytics (not just CRUD + spatial queries). GeoPandas excels at batch analysis, not per-request API operations. |
-| fastapi-zitadel-auth | Manual Authlib OIDC | If ZITADEL-specific features are needed that fastapi-zitadel-auth doesn't expose (custom grant types, device auth flow). |
-| SSE (sse-starlette) | WebSocket | If the project adds bidirectional real-time features (collaborative editing, live chat between canvassers). |
-| stdlib csv | pandas | If voter file import needs complex transformations (pivot tables, statistical analysis) before database insertion. Unlikely for this project. |
-| RLS multi-tenancy | Schema-per-tenant | If tenants need completely independent database schemas (custom fields per tenant). Adds significant migration complexity. |
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| python-jose | Unmaintained since 2022, security vulnerabilities unfixed | Authlib or fastapi-zitadel-auth |
-| pandas for CSV import | Loads entire file into memory; voter files can be 500MB+ | stdlib csv with streaming/chunked reads |
-| GeoPandas for API operations | Heavy dependency chain (numpy, pandas, GDAL); overkill for per-request spatial queries | GeoAlchemy2 for DB queries, Shapely for app-layer geometry |
-| Celery | Synchronous architecture conflicts with async FastAPI; two execution models in one codebase | TaskIQ (async-native, FastAPI DI compatible) |
-| SQLAlchemy sync engine in production | Blocks the async event loop; negates FastAPI's performance advantages | asyncpg with SQLAlchemy async engine (already configured) |
-| Flask-* anything | Wrong framework ecosystem | FastAPI equivalents |
-| Dramatiq | No native async support; same sync problems as Celery | TaskIQ |
-| raw WebSocket for dashboards | Unnecessary complexity for unidirectional server-to-client updates | SSE via sse-starlette |
+| papaparse (client-side preview) | Server-only parsing (skip client preview) | If import files are always small (<1MB) and instant preview isn't needed. But voter files are large, and showing a preview before upload improves UX. |
+| react-dropzone | Native HTML5 drag-and-drop | If the file upload is a simple button click only (no drag-and-drop needed). react-dropzone handles browser edge cases that would require 100+ lines of manual code. |
+| @dnd-kit/core (stable) | @dnd-kit/react (new) | When @dnd-kit/react reaches v1.0 stable. Currently v0.3.2, not production-ready. |
+| Custom wizard (zustand + shadcn) | react-step-wizard | If the wizard has many identical steps (e.g., a survey with 20 identical question pages). Our wizard has 4 heterogeneous steps, making a library unnecessary. |
+| TanStack Query polling | SSE/WebSocket for progress | If the backend adds SSE endpoints for real-time progress. Currently the backend only supports polling via GET. |
+| shadcn calendar + list layout | react-big-calendar | If users explicitly request a week/month calendar grid view for shift scheduling. Can be added later -- react-big-calendar v1.19.4 supports React 19. |
 
 ## Version Compatibility
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| GeoAlchemy2 >=0.18.4 | SQLAlchemy >=1.4 | Tested with SQLAlchemy 2.x. Requires PostGIS 2 or 3 on the database server. |
-| taskiq >=0.12.1 | Python >=3.10 | Compatible with Python 3.13. taskiq-redis requires redis-py >=7.0.0,<8. |
-| taskiq-fastapi >=0.4.0 | FastAPI >=0.93.0, taskiq >=0.8.0 | Compatible with current FastAPI version. |
-| pytest-asyncio >=1.1.0 | Python >=3.9 | Breaking change in 1.0: `asyncio_mode` defaults changed. Set `asyncio_mode = "auto"` explicitly. |
-| fastapi-zitadel-auth >=0.3.2 | Python >=3.10 | Relatively new library (first release 2024). Evaluate stability during implementation. |
-| Shapely >=2.1.2 | Python >=3.9 | Shapely 2.x is a major rewrite using C++ (GEOS). Much faster than Shapely 1.x. |
+| papaparse 5.5.3 | Any (zero dependencies) | Framework-agnostic, no React dependency at all |
+| react-dropzone 15.0.0 | React >=16.8 (React 19 supported) | v15.0.0 fixed React 19 JSX type imports |
+| @dnd-kit/core 6.3.1 | React >=16.8 including React 19 | Peer dep: `react >=16.8.0, react-dom >=16.8.0` |
+| @dnd-kit/sortable 10.0.0 | @dnd-kit/core ^6.3.0 | Must use matching core version |
+| react-day-picker 9.14.0 | React >=16.8 (React 19 supported) | v9.4.3+ resolved React 19 ref issues. Pulled in by shadcn calendar. |
+| TanStack Table 8.21.3 | React >=16.8 (React 19 supported) | Already installed, already compatible |
 
-## Infrastructure Requirements
+## Stack Patterns by Feature Area
 
-| Component | Purpose | Notes |
-|-----------|---------|-------|
-| PostgreSQL 15+ with PostGIS 3.x | Primary database with spatial support | PostGIS extension must be enabled (`CREATE EXTENSION postgis`) |
-| Redis 7.x+ | Task queue broker + real-time pub/sub | Single instance serves both purposes. Consider Redis Sentinel or Redis Cluster for HA in production. |
-| ZITADEL | Authentication and authorization | External service at auth.civpulse.org. No infrastructure to manage. |
+**Import Wizard (file upload + column mapping + progress):**
+- react-dropzone for file selection (step 1)
+- PapaParse for local CSV preview with Web Worker streaming (step 1)
+- ky for pre-signed URL upload to S3 (step 1)
+- @dnd-kit/core for column mapping drag-and-drop (step 2)
+- shadcn progress + TanStack Query `refetchInterval` for import polling (step 3)
+- shadcn table for import history list (step 4)
 
-## Stack Patterns by Variant
+**Data Tables (members, DNC, call lists, volunteers):**
+- TanStack Table 8.21 for headless table logic (already installed)
+- shadcn table + checkbox + pagination for rendering
+- TanStack Query for server-side data fetching with pagination
+- URL search params (TanStack Router) for filter/sort state persistence
 
-**If voter file imports are >1M rows:**
-- Use TaskIQ with chunked processing (batch size 5000 rows)
-- Stream CSV with stdlib, insert batches via `INSERT ... VALUES` with SQLAlchemy Core (not ORM)
-- Report progress via Redis pub/sub to the dashboard
+**Complex Forms (voter detail, phone bank session, shift creation):**
+- react-hook-form + zod (already installed, already used in TurfForm)
+- shadcn tabs for multi-section forms (voter detail with contacts/tags/lists/history)
+- shadcn collapsible for expandable form sections
 
-**If real-time needs grow beyond dashboards:**
-- Add WebSocket endpoints for bidirectional communication
-- Use Redis pub/sub as the message layer (already in place)
-- Consider adding `broadcaster` library for cleaner pub/sub abstraction
+**Shift Scheduling / Volunteer Availability:**
+- shadcn calendar + date-picker for date selection
+- @dnd-kit/sortable for availability slot reordering
+- shadcn toggle-group for day-of-week selection
+- Custom card/list layout for shift display (not a calendar grid)
 
-**If turf-cutting algorithms become compute-intensive:**
-- Move turf generation to dedicated TaskIQ workers
-- Consider adding `scipy` for Voronoi diagrams or k-means clustering
-- PostGIS `ST_Subdivide` handles most polygon splitting at the DB level
+**Map / Geographic (turf visualization):**
+- Leaflet + react-leaflet (already installed, just need to build components)
+- No additional libraries needed
+
+**Real-Time Progress (import, phone bank sessions):**
+- TanStack Query `refetchInterval: 3000` for polling
+- shadcn progress for visual indicator
+- No SSE/WebSocket needed (backend uses polling)
 
 ## Sources
 
-- [GeoAlchemy2 PyPI](https://pypi.org/project/GeoAlchemy2/) -- version 0.18.4 confirmed
-- [GeoAlchemy2 Documentation](https://geoalchemy-2.readthedocs.io/) -- SQLAlchemy 2.x compatibility verified
-- [TaskIQ PyPI](https://pypi.org/project/taskiq/) -- version 0.12.1 confirmed
-- [TaskIQ FastAPI Integration](https://pypi.org/project/taskiq-fastapi/) -- version 0.4.0 confirmed
-- [TaskIQ Redis](https://pypi.org/project/taskiq-redis/) -- version 1.2.2 confirmed
-- [fastapi-zitadel-auth PyPI](https://pypi.org/project/fastapi-zitadel-auth/) -- version 0.3.2 confirmed
-- [ZITADEL FastAPI SDK Docs](https://zitadel.com/docs/sdk-examples/fastapi) -- recommends Authlib
-- [Authlib PyPI](https://pypi.org/project/authlib/) -- version 1.6.9 confirmed
-- [FastAPI Multi-Tenancy Discussion](https://github.com/fastapi/fastapi/discussions/6056) -- community patterns
-- [Multi-Tenancy with RLS Pattern](https://adityamattos.com/multi-tenancy-in-python-fastapi-and-sqlalchemy-using-postgres-row-level-security) -- implementation reference
-- [FastAPI Async Tests Documentation](https://fastapi.tiangolo.com/advanced/async-tests/) -- httpx recommended
-- [pytest-asyncio PyPI](https://pypi.org/project/pytest-asyncio/) -- version 1.1.0 confirmed
-- [Shapely PyPI](https://pypi.org/project/shapely/) -- version 2.1.2 confirmed
-- [Redis-py PyPI](https://pypi.org/project/redis/) -- version 7.3.0 confirmed
-- [Task Queue Benchmarks](https://stevenyue.com/blogs/exploring-python-task-queue-libraries-with-load-test) -- TaskIQ performance data
+- [react-dropzone GitHub](https://github.com/react-dropzone/react-dropzone) -- React 19 support confirmed via PR #1422 (v14.3.6+), v15.0.0 current
+- [PapaParse official site](https://www.papaparse.com/) -- zero-dependency, streaming + Web Worker support verified
+- [PapaParse GitHub](https://github.com/mholt/PapaParse) -- v5.5.3, 12M+ weekly downloads
+- [@dnd-kit official docs](https://dndkit.com/) -- architecture and API reference
+- [@dnd-kit/core npm](https://www.npmjs.com/package/@dnd-kit/core) -- v6.3.1, peer deps verified (React 16.8+)
+- [@dnd-kit/react npm](https://www.npmjs.com/package/@dnd-kit/react) -- v0.3.2, confirmed pre-1.0
+- [react-day-picker discussion #2152](https://github.com/gpbl/react-day-picker/discussions/2152) -- React 19 support confirmed
+- [shadcn/ui components page](https://ui.shadcn.com/docs/components) -- full component list verified
+- [shadcn/ui data table guide](https://ui.shadcn.com/docs/components/radix/data-table) -- TanStack Table integration patterns
+- [shadcn/ui stepper discussion #6219](https://github.com/shadcn-ui/ui/discussions/6219) -- no official stepper component in shadcn/ui
+- npm view commands -- all version numbers and peer dependencies verified locally via `npm view [package] version peerDependencies` on 2026-03-10
 
 ---
-*Stack research for: CivicPulse Run API -- multi-tenant campaign management*
-*Researched: 2026-03-09*
+*Stack research for: CivicPulse Run v1.2 Full UI -- frontend library additions*
+*Researched: 2026-03-10*

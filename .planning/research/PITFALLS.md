@@ -1,243 +1,267 @@
-# Pitfalls Research
+# Pitfalls Research: Full UI Coverage (v1.2)
 
-**Domain:** Multi-tenant political campaign management API (voter CRM, canvassing, field operations)
-**Researched:** 2026-03-09
-**Confidence:** MEDIUM-HIGH (domain-specific patterns verified across multiple sources; some areas rely on architectural inference)
+**Domain:** Adding ~95 CRUD UI pages to existing React + TanStack Router + TanStack Query campaign management app
+**Researched:** 2026-03-10
+**Confidence:** HIGH (patterns verified against existing codebase, TanStack docs, and community best practices)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Multi-Tenant Data Leaks via Missing or Bypassed Row-Level Security
+### Pitfall 1: TanStack Query Cache Invalidation Breaks at Scale with Deeply Nested Campaign Routes
 
 **What goes wrong:**
-Campaign A's voter data, canvassing results, or survey responses become visible to Campaign B. In political campaigns this is catastrophic -- exposing voter contact strategies, opposition research targets, or supporter lists to rival campaigns. A single leak could destroy platform trust permanently.
+With ~95 endpoints all scoped under `/campaigns/$campaignId/...`, mutation callbacks invalidate the wrong data, miss related queries, or over-invalidate causing waterfall refetches. Example: recording a phone bank call outcome should invalidate the call list entry, the session progress stats, and the voter's interaction history -- but the current pattern only invalidates one query key per mutation. As more hooks are added, stale data becomes the default user experience, and pages show outdated counts, phantom entries, or missing updates.
 
 **Why it happens:**
-- Application-level filtering (`WHERE campaign_id = :id`) is fragile. A single missed filter in one query, one new endpoint, or one admin tool leaks data across tenants.
-- PostgreSQL superusers and table owners bypass RLS by default. If the application connects as the table owner (common in early development), RLS policies have zero effect.
-- Connection pooling with async SQLAlchemy can share session state between requests. If tenant context is set via `SET app.current_tenant` on a pooled connection and the next request reuses that connection without resetting the variable, it inherits the previous tenant's context.
-- Alembic migrations typically run as a privileged user that bypasses RLS, which is correct -- but developers may accidentally use the same connection string for the application, silently disabling all tenant isolation.
-- Referential integrity checks can leak information across tenant boundaries (covert channel attacks via foreign key constraint errors).
+The existing codebase already shows the beginning of this problem. In `useTurfs.ts`, `useCreateTurf` invalidates `["turfs", campaignId]` -- but what about the dashboard stats that count turfs? What about walk lists that depend on turf existence? Each hook author only thinks about their immediate data, not the cross-cutting queries that also display it. TanStack Query's `invalidateQueries` uses prefix matching by default (invalidating `["turfs", campaignId]` also invalidates `["turfs", campaignId, turfId]`), which is helpful but only works within the same key namespace. Cross-namespace invalidation (turf mutation invalidating dashboard data) must be explicit and is consistently forgotten.
+
+The current hooks also use inconsistent key namespaces: `useFieldOps.ts` uses `["turfs", campaignId]` while `useTurfs.ts` also uses `["turfs", campaignId]` -- these overlap correctly by accident, but with 20+ hook files this will break down.
 
 **How to avoid:**
-1. Implement PostgreSQL RLS as the **primary** isolation mechanism, not application-level WHERE clauses. RLS is a database-level guardrail that protects even when application code has bugs.
-2. Create a dedicated PostgreSQL role for the application (e.g., `civicpulse_app`) that is NOT the table owner and NOT a superuser. The migration user owns tables; the app user is subject to RLS.
-3. Set tenant context at the start of every database session using `SET app.current_campaign_id = :id` via an SQLAlchemy session event (`after_begin` or via middleware). Reset it when the session closes.
-4. Use `after_begin` session events rather than middleware-level SET statements to ensure the tenant context is always set before any query executes, even in background tasks.
-5. Write integration tests that explicitly attempt cross-tenant data access and assert failure. Run these on every PR.
-
-**Warning signs:**
-- No separate database roles for migrations vs. application
-- `campaign_id` filtering only in Python code, not in database policies
-- Tests that only verify "correct data returned" without verifying "incorrect data NOT returned"
-- Connection pool warnings or stale session issues in logs
-
-**Phase to address:**
-Phase 1 (Foundation/Multi-tenancy). RLS must be designed into the schema from day one. Retrofitting RLS onto an existing schema is painful because every table needs policies, every query path needs testing, and every connection needs role separation.
-
----
-
-### Pitfall 2: Voter Data Normalization Treated as a Simple Field-Mapping Problem
-
-**What goes wrong:**
-The team builds a CSV field mapper ("L2's column 'Lattitude' maps to our 'latitude' field") and considers voter import solved. Then real-world data arrives: state SOS files with completely different schemas, voting history encoded as columns vs. rows, percentage-formatted likelihood scores, ethnicity as "Likely African-American" (modeled, not self-reported), addresses with inconsistent parsing, and phone numbers with varying confidence codes. The "simple mapper" becomes an unmaintainable mess of special cases.
-
-**Why it happens:**
-- L2 provides a standardized format, but it standardizes **their** output -- each state's raw SOS data underneath has different fields, different voter ID formats, different voting history structures, and different demographic categories.
-- L2 data contains modeled/estimated fields (ethnicity, marital status, likelihood scores) mixed with administrative fields (name, address, voting history). These have fundamentally different reliability levels but look identical in the CSV.
-- Voting history varies wildly: L2 uses boolean columns per election year (e.g., `General_2024`, `Voted in 2022`), but state SOS files may provide a separate history table with election dates and vote methods. The canonical model must accommodate both.
-- Address normalization is deceptively complex: "112 Tee Dr" vs "112 Tee Drive" vs "112 Tee Dr." are the same address. USPS standardization is needed for deduplication but adds a dependency.
-- The National Voter File open-source project stalled after processing only 9 states, demonstrating exactly how this complexity compounds.
-
-**How to avoid:**
-1. Design a two-layer data model: a **raw import** layer that preserves source data verbatim (with source type, import timestamp, confidence metadata), and a **canonical voter** layer with normalized fields. Never discard the raw data.
-2. Build source-specific adapters as pluggable classes (L2Adapter, StateSOS_GA_Adapter, GenericCSVAdapter), not a single configurable mapper. Each adapter knows its source's quirks.
-3. Separate "administrative facts" (name, address, registration) from "modeled estimates" (ethnicity, likelihood scores) in the data model. Tag every field with its provenance and confidence level.
-4. Use a voter matching/deduplication strategy that handles the same person appearing in multiple data sources. Match on a composite of (name similarity + address + date of birth) rather than any single field.
-5. Normalize addresses using USPS standards (consider the `usaddress` Python library or a geocoding service) during import, storing both raw and normalized forms.
-6. Represent voting history as rows (voter_id, election_date, election_type, voted_boolean) rather than columns. Column-per-election schemas become unmanageable as election cycles accumulate.
-
-**Warning signs:**
-- A single "field mapping" configuration table or JSON blob trying to handle all sources
-- Import tests using only the example L2 file, not real state SOS formats
-- No distinction between modeled and administrative data in the schema
-- Deduplication based on exact string matching (misses "Bob" vs "Robert")
-- Voting history stored as wide columns rather than normalized rows
-
-**Phase to address:**
-Phase 2 (Voter Data Import). This is the foundational data layer -- get it wrong and every downstream feature (canvassing lists, segmentation, CRM) inherits the problems. Design the canonical model before writing import code.
-
----
-
-### Pitfall 3: PostGIS Spatial Queries That Degrade Catastrophically at Scale
-
-**What goes wrong:**
-Turf cutting and walk list generation work fine with 1,000 test voters but take minutes or time out with 500,000+ voters in a real county. Spatial queries that should use indexes fall back to sequential scans. The team ends up with a system that can import voter data but cannot efficiently query it geographically -- defeating the core value proposition of canvassing management.
-
-**Why it happens:**
-- Using `ST_Distance()` instead of `ST_DWithin()` for proximity queries. `ST_Distance` computes exact distance for every row and cannot use spatial indexes. `ST_DWithin` uses the bounding box index (via the `&&` operator internally) to filter first, then computes exact distance only on candidates.
-- Storing coordinates as `geography` type when `geometry` with SRID 4326 would suffice. Geography type computations are significantly more expensive (geodesic math vs. planar math). For campaign operations within a single state or county, the accuracy difference is negligible but the performance cost is real.
-- Missing or incorrect spatial indexes. A GiST index on a geometry column is not automatically created -- it must be explicitly added. Without it, every spatial query is a full table scan.
-- Querying raw point data when the use case calls for pre-computed aggregates. "How many target voters in this precinct?" should hit a materialized view, not count individual voter points each time.
-- Running `ST_Contains()` or `ST_Intersects()` with complex polygon boundaries (hand-drawn turfs with many vertices) against millions of points without simplifying the polygon first.
-
-**How to avoid:**
-1. Always use `ST_DWithin()` for proximity/radius queries, never `ST_Distance() < threshold`.
-2. Use `geometry` type with SRID 4326, not `geography`, for voter point data. The computational savings are substantial and the accuracy loss is negligible at campaign-district scale.
-3. Create GiST spatial indexes on all geometry columns. Include them in Alembic migrations as first-class schema objects.
-4. Pre-compute voter counts per precinct/census block as materialized views. Refresh on data import, not on query.
-5. For turf cutting operations, simplify polygon boundaries with `ST_Simplify()` before running containment queries against voter points.
-6. Cluster the table on the spatial index using `CLUSTER voters USING idx_voters_geom` after bulk imports. This physically reorders rows on disk to match spatial proximity, dramatically improving range query performance.
-7. Set appropriate PostgreSQL memory parameters: increase `work_mem` for complex spatial operations, increase `maintenance_work_mem` for spatial index builds.
-
-**Warning signs:**
-- Spatial queries taking > 1 second for a single turf/precinct
-- `EXPLAIN ANALYZE` showing sequential scans on voter tables
-- Dashboard showing "generating walk list..." spinners for > 5 seconds
-- Memory spikes during turf cutting operations
-
-**Phase to address:**
-Phase 2 (Voter Data Import) for index creation and table clustering. Phase 3 (Canvassing) for turf cutting query optimization. Performance test with realistic data volumes (100K+ voters) during both phases.
-
----
-
-### Pitfall 4: Canvassing Turf Cutting Edge Cases That Produce Unusable Walk Lists
-
-**What goes wrong:**
-Auto-generated turfs look reasonable on a map but are impractical for canvassers in the field: turfs split by rivers or highways that require a 20-minute detour, apartment buildings assigned to multiple turfs splitting the same hallway, rural areas where "nearby" addresses are miles apart by road, or turf sizes that give one volunteer 200 doors and another 15.
-
-**Why it happens:**
-- Turf cutting by geographic proximity (nearest-neighbor clustering) ignores road networks, natural barriers, and building access patterns. Two houses 50 meters apart on a map may be on opposite sides of a freeway with the nearest crossing 2 miles away.
-- Apartment/condo buildings require household clustering -- all units at the same address should be in the same turf. Naive point-based clustering treats each unit as independent.
-- Equal-area geographic splits do not produce equal-workload splits. Urban blocks may have 500 voters per square mile while rural areas have 5.
-- Odd/even address splitting (a common canvassing optimization to keep walkers on one side of the street) breaks when the data source does not reliably provide the odd/even flag or when the street has irregular numbering.
-- Manual turf drawing on a map (the NationBuilder approach) is flexible but labor-intensive and requires GIS knowledge that most campaign staff lack.
-
-**How to avoid:**
-1. Implement household clustering as a pre-processing step: group all voters at the same physical address into a household unit. Use the household as the atomic unit for turf assignment, not individual voters.
-2. Default turf size to 50-80 doors per turf (NGPVAN's recommended range for a 2-3 hour canvassing shift). Allow campaigns to configure this.
-3. Support both auto-generated and manually-drawn turfs. Auto-generation should produce a starting point that staff can adjust, not a final assignment.
-4. When auto-cutting, use census block boundaries or precinct boundaries as initial cut lines rather than arbitrary geographic splits. These boundaries already follow roads and natural features.
-5. Include a "turf quality" check that flags turfs spanning natural barriers (using road network data or known boundary polygons) or turfs with extreme voter density imbalances.
-6. Store the L2 `Street Number Odd/Even` field and use it for walk-sheet ordering (canvass one side of the street, then the other) but do not rely on it for turf splitting.
-
-**Warning signs:**
-- Turf generation produces turfs with highly variable voter counts (>2x standard deviation from target)
-- No household grouping logic -- each apartment unit is a separate "door"
-- Turf boundaries that cross highways, rivers, or railroad tracks
-- Walk lists ordered by voter ID or alphabetically instead of geographic routing
-
-**Phase to address:**
-Phase 3 (Canvassing Management). But household clustering logic belongs in Phase 2 (Voter Data Import) as part of the canonical data model. The `Mailing Family ID` and household fields from L2 should be captured during import.
-
----
-
-### Pitfall 5: Bulk Voter File Import That Blocks the API or Corrupts Data
-
-**What goes wrong:**
-Importing a full state voter file (5-15 million rows) locks the database, exhausts connection pool, causes API timeouts for other users, or partially completes leaving the database in an inconsistent state. Alternatively, imports succeed but silently produce duplicate records, lose voting history, or mangle Unicode characters in voter names.
-
-**Why it happens:**
-- Using SQLAlchemy ORM `session.add()` in a loop for bulk inserts. ORM overhead (identity map, change tracking, event hooks) makes this 10-100x slower than raw COPY.
-- Running imports in the same database connection pool as the API. A long-running import transaction holds connections and blocks API requests.
-- No transactional strategy for partial imports. If an import fails at row 3 million of 5 million, is the database in a consistent state?
-- Not disabling indexes during bulk loads. Maintaining spatial and B-tree indexes during a multi-million row insert dramatically slows the import and fragments indexes.
-- Processing the entire file in memory. A 15-million-row CSV can consume 10+ GB of RAM if loaded into Python objects.
-
-**How to avoid:**
-1. Use PostgreSQL `COPY` protocol (via asyncpg's `copy_to_table` or psycopg's `copy_expert`) for bulk imports. COPY is 10-100x faster than INSERT because it bypasses SQL parsing and transaction per-row overhead.
-2. Run imports as a background task (Celery, ARQ, or a dedicated worker process) with a separate database connection pool from the API. Never import in an API request handler.
-3. Implement chunk-based processing: read the CSV in chunks of 10,000-50,000 rows, validate each chunk, COPY it to a staging table, then merge from staging to the canonical table in a single transaction.
-4. Use a staging table pattern: COPY raw data into `voter_import_staging`, run validation/normalization queries, then `INSERT INTO voters SELECT ... FROM voter_import_staging ON CONFLICT DO UPDATE`. This keeps the canonical table consistent.
-5. Drop and recreate spatial indexes around bulk imports. For initial loads, build indexes after all data is loaded. For incremental updates, consider partial index rebuilds.
-6. Stream CSV files line-by-line using Python's `csv` module or `pandas` chunked reader rather than loading the entire file into memory.
-7. Track import progress (rows processed, rows skipped, rows errored) and make it queryable so campaigns can monitor long-running imports.
-
-**Warning signs:**
-- Import endpoint returns HTTP response (should be 202 Accepted with a job ID, not a synchronous response)
-- SQLAlchemy `session.add()` calls in a loop during import code
-- No staging table in the schema
-- Import tests using only the 50-row example file, never a file with 100K+ rows
-- No background task infrastructure (no Celery/ARQ/task queue)
-
-**Phase to address:**
-Phase 2 (Voter Data Import). The import pipeline is the most performance-critical path in the entire system. Design it for millions of rows from day one -- retrofitting a synchronous ORM-based import into an async COPY-based pipeline is a significant rewrite.
-
----
-
-### Pitfall 6: ZITADEL OIDC Integration That Breaks Multi-Tenancy or Fails Under Load
-
-**What goes wrong:**
-Authentication works in development but breaks in production: tokens validated against the wrong ZITADEL project, campaign-level authorization not enforced (a user authenticated for Campaign A can access Campaign B's data), token introspection calls to ZITADEL add 50-100ms latency to every API request, or JWKS key rotation causes a brief authentication outage.
-
-**Why it happens:**
-- Confusing authentication (who is this user?) with authorization (what campaigns can this user access?). ZITADEL handles authentication. Campaign-level authorization (user X is an admin of Campaign A and a volunteer for Campaign B) must be enforced by CivicPulse, not by ZITADEL.
-- Using token introspection (HTTP call to ZITADEL on every request) instead of local JWT validation with cached JWKS. Introspection is authoritative but adds network latency. At 100 requests/second, this means 100 HTTP calls/second to ZITADEL.
-- Not caching the JWKS (JSON Web Key Set). ZITADEL publishes its signing keys at a well-known endpoint. If the application fetches this on every request instead of caching it (with TTL-based refresh), it creates unnecessary latency and a ZITADEL dependency for every API call.
-- ZITADEL can issue both JWT and opaque tokens depending on client configuration. If the API only handles one format, it silently fails for the other.
-- Custom claims mapping: ZITADEL's default token claims may not include campaign-specific roles. Getting custom claims (like `campaign_roles`) into tokens requires ZITADEL Actions (server-side hooks) or metadata, which are non-trivial to configure.
-
-**How to avoid:**
-1. Use local JWT validation with cached JWKS as the primary authentication method. Use the `fastapi-zitadel-auth` library which implements this pattern. Cache JWKS with a 1-hour TTL and background refresh.
-2. Build a separate authorization layer in CivicPulse that maps authenticated users to campaign roles. Store campaign membership (`user_campaign_roles` table) in your database, not in ZITADEL tokens.
-3. Configure ZITADEL to issue JWT tokens (not opaque tokens) for all API clients to enable local validation.
-4. Implement a `get_current_user` FastAPI dependency that: validates the JWT, looks up the user's campaign roles from the local database, and returns a context object with both identity and permissions.
-5. Use ZITADEL's organization concept to map to campaigns if appropriate, but keep the authoritative campaign-role mapping in your own database for flexibility and to avoid ZITADEL vendor lock-in.
-6. Handle JWKS rotation gracefully: if a token's `kid` (key ID) is not in the cached JWKS, fetch a fresh JWKS before rejecting the token.
-
-**Warning signs:**
-- Every API request makes an HTTP call to ZITADEL (should be local JWT validation)
-- No `user_campaign_roles` or equivalent table in the schema
-- Authorization logic checking ZITADEL token claims for campaign permissions
-- No JWKS caching or refresh strategy
-- Tests mocking ZITADEL entirely rather than testing actual token validation paths
-
-**Phase to address:**
-Phase 1 (Foundation/Authentication). Authentication is the first thing to build, and getting the auth-vs-authz boundary wrong here means every subsequent phase builds on a broken foundation.
-
----
-
-### Pitfall 7: FastAPI Async Patterns That Exhaust Connections or Deadlock Under Load
-
-**What goes wrong:**
-The API handles 10 concurrent requests fine but deadlocks or throws `QueuePool limit overflow` errors at 50+ concurrent requests. Or worse: it appears to work but silently leaks database connections until the pool is exhausted and the entire API becomes unresponsive. This typically happens during peak campaign moments (election day, debate nights, volunteer training sessions) -- exactly when reliability matters most.
-
-**Why it happens:**
-- Mixing sync and async code in FastAPI. Calling a synchronous database operation inside an `async def` endpoint blocks the event loop thread. FastAPI runs sync endpoints in a thread pool, but async endpoints run directly on the event loop -- a blocking call in an async endpoint blocks ALL concurrent requests.
-- Not using `async with` for database sessions. If an async session is created but not properly closed (e.g., an exception occurs before the `finally` block), the connection is never returned to the pool. With asyncpg, connections are NOT returned via garbage collection -- they leak permanently until the pool is exhausted.
-- Creating multiple SQLAlchemy engine instances instead of a single shared engine. Each engine has its own pool, and multiple engines multiply the total connections to PostgreSQL, potentially exceeding `max_connections`.
-- Background tasks (imports, report generation) sharing the same connection pool as the API. A long-running import holds connections that the API needs for request handling.
-- Not configuring pool size, max overflow, and pool timeout to match the expected concurrency and PostgreSQL's `max_connections`.
-
-**How to avoid:**
-1. Use `async def` endpoints with `AsyncSession` consistently. Never mix sync SQLAlchemy calls in async endpoints. If you must call sync code, use `run_in_executor`.
-2. Always use context managers for sessions: `async with async_session() as session:`. Implement a FastAPI dependency that yields sessions with proper cleanup:
-   ```python
-   async def get_db():
-       async with async_session_maker() as session:
-           try:
-               yield session
-               await session.commit()
-           except Exception:
-               await session.rollback()
-               raise
+1. Establish a query key factory pattern at the start of v1.2. Create a single `queryKeys.ts` file that defines all query keys as nested objects:
+   ```typescript
+   export const queryKeys = {
+     voters: {
+       all: (campaignId: string) => ["voters", campaignId] as const,
+       detail: (campaignId: string, voterId: string) => ["voters", campaignId, voterId] as const,
+       interactions: (campaignId: string, voterId: string) => ["voters", campaignId, voterId, "interactions"] as const,
+     },
+     callLists: {
+       all: (campaignId: string) => ["call-lists", campaignId] as const,
+       detail: (campaignId: string, listId: string) => ["call-lists", campaignId, listId] as const,
+       entries: (campaignId: string, listId: string) => ["call-lists", campaignId, listId, "entries"] as const,
+     },
+     dashboard: {
+       stats: (campaignId: string) => ["dashboard", campaignId, "stats"] as const,
+     },
+     // ... all other entities
+   }
    ```
-3. Create exactly ONE `AsyncEngine` instance at application startup (in the lifespan handler). Configure pool size based on deployment:
-   - `pool_size`: number of persistent connections (start with 5-10)
-   - `max_overflow`: temporary connections under load (start with 10)
-   - `pool_timeout`: seconds to wait for a connection (30 seconds default)
-   - `pool_recycle`: seconds before recycling connections (3600 to avoid stale connections)
-4. Use a separate connection pool (or a separate database) for background tasks. Configure this in the task worker, not in the API process.
-5. Add connection pool monitoring: log pool checkout/checkin events and alert when pool utilization exceeds 80%.
+2. Define an invalidation map that documents which mutations should invalidate which queries. For example, `recordCallOutcome` should invalidate `callLists.entries`, `dashboard.stats`, and `voters.interactions`.
+3. Never use string literals in `queryKey` or `invalidateQueries` calls -- always reference the factory. This makes key typos a compile-time error.
+4. Use `isMutating()` checks in `onSettled` callbacks to prevent premature invalidation when multiple mutations are in flight (the TkDodo pattern).
 
 **Warning signs:**
-- `TimeoutError` or `QueuePool limit overflow` in logs
-- API response times increasing over time (connection leak)
-- Sync database calls visible in async endpoint code paths
-- Multiple `create_async_engine()` calls in the codebase
-- No pool size configuration (relying on defaults)
+- Dashboard counts not updating after creating/deleting entities in sub-pages
+- Users need to manually refresh to see changes made on other tabs
+- Different parts of the same page showing inconsistent data
+- More than 3 inline `queryKey` string arrays per hook file
 
 **Phase to address:**
-Phase 1 (Foundation). The database session pattern is established in the first endpoint and copied everywhere. Getting it wrong in Phase 1 means fixing it requires touching every endpoint.
+Phase 1 (Shared Infrastructure). The query key factory and invalidation map must be established before any CRUD pages are built. Retrofitting consistent keys onto 20+ hook files is error-prone.
+
+---
+
+### Pitfall 2: Pre-Signed URL File Upload with No Progress, No Error Recovery, No Size Validation
+
+**What goes wrong:**
+The import flow uses pre-signed URLs for direct-to-S3 upload (the backend returns `upload_url` from `POST /imports`). A naive implementation starts the upload, shows a spinner, and hopes for the best. Large CSV files (50-500MB voter files) upload for minutes with no progress indicator, users close the tab thinking it froze, the pre-signed URL expires mid-upload, or the browser runs out of memory trying to validate the file client-side before upload. Non-UTF-8 encoded files upload successfully but produce garbage data during import processing.
+
+**Why it happens:**
+The backend API is correctly designed for this (returns `upload_url` and `file_key`, then the client calls `/detect` after upload). But the frontend implementation often treats upload as a single `fetch()` call with no progress tracking. The `ky` HTTP client used in this project does support `onDownloadProgress` but does NOT support `onUploadProgress` for streamed uploads -- this is a known limitation. Pre-signed URLs have a default TTL (often 15 minutes), and large files on slow connections can exceed this. CSV encoding issues (Windows-1252, Latin-1) are invisible until the backend tries to parse the file.
+
+**How to avoid:**
+1. Use the raw `XMLHttpRequest` or `fetch` with `ReadableStream` for the actual S3 upload (not `ky`), since `ky` lacks upload progress events. Wrap it in a custom `useUpload` hook that tracks `xhr.upload.onprogress`.
+2. Validate file size client-side before requesting the pre-signed URL. Reject files over 500MB with a clear message. Validate file extension (.csv, .tsv, .txt).
+3. Read the first 8KB of the file client-side using `FileReader` to detect encoding. If it is not UTF-8, show a warning and offer to re-encode or reject.
+4. Show a progress bar with percentage, bytes uploaded, and estimated time remaining during upload.
+5. Handle pre-signed URL expiry: if the upload takes longer than 10 minutes, request a new pre-signed URL before the old one expires. Alternatively, use multipart upload for files over 100MB.
+6. Implement a cancel button that aborts the `XMLHttpRequest` and cleans up the import job.
+7. On upload failure (network error, URL expiry), offer a retry button that requests a fresh pre-signed URL and resumes or restarts.
+
+**Warning signs:**
+- Upload UI shows only a spinner with no percentage
+- No file size check before upload begins
+- Using `ky` or `fetch` for the S3 PUT with no progress callback
+- Import wizard does not handle the case where the user closes the browser mid-upload
+- No encoding detection or preview of the first few rows
+
+**Phase to address:**
+Phase 2 (Voter Import Wizard). This is the most complex single feature in v1.2. The upload UX must be designed with large files in mind from the start -- bolting progress tracking onto a finished wizard requires restructuring the upload layer.
+
+---
+
+### Pitfall 3: Multi-Step Wizard State Loss on Navigation, Refresh, or Error
+
+**What goes wrong:**
+The voter import wizard has 4 steps: (1) upload file, (2) detect/review columns, (3) confirm field mapping, (4) monitor processing. Users complete step 1 (which creates a server-side ImportJob and uploads to S3), then accidentally hit the browser back button, navigate to another page, or refresh. All wizard state is lost. They must start over, but the orphaned ImportJob and uploaded file now exist on the server with no client-side reference. Worse: the import job might actually still be processing, and the user starts a duplicate import.
+
+**Why it happens:**
+React component state (useState, useReducer) is destroyed on unmount. Multi-step wizards that store progress in component state lose everything on navigation. The existing app uses TanStack Router with file-based routing, so each route is its own component tree -- navigating away unmounts the entire wizard. Using Zustand for wizard state would survive navigation but not page refresh. Neither approach handles the fundamental problem: the server-side state (ImportJob with status=PENDING/UPLOADED) exists independently of the client.
+
+**How to avoid:**
+1. Design the wizard as a server-state-driven flow, not a client-state-driven flow. The `ImportJob` record IS the wizard state. Each step updates the server-side job status (PENDING -> UPLOADED -> QUEUED -> PROCESSING -> COMPLETED).
+2. On the import page, first check for any in-progress import jobs (call `GET /imports?status=pending,uploaded`). If one exists, resume it at the appropriate step instead of starting fresh.
+3. Store the current import job ID in the URL (e.g., `/campaigns/$campaignId/voters/import/$importId`). This makes wizard state survive refresh and is shareable.
+4. Use TanStack Query to fetch the import job status at each step. The wizard step is derived from the job status, not from client-side step counter.
+5. Add a "Cancel Import" action that deletes the server-side ImportJob and uploaded file if the user wants to start over.
+6. Use TanStack Router's `useBlocker` hook to warn users when navigating away from an in-progress import (steps 1-3). Do NOT block navigation after step 4 (monitoring), since the import runs independently.
+
+**Warning signs:**
+- Wizard state stored entirely in useState or Zustand with no server-side persistence
+- No check for existing in-progress imports on page load
+- Import job ID not in the URL
+- No cancel/cleanup mechanism for abandoned imports
+- Users reporting duplicate imports or "stuck" import jobs
+
+**Phase to address:**
+Phase 2 (Voter Import Wizard). This architecture decision must be made before building the wizard UI. A client-state wizard that gets retroactively connected to server state is messy.
+
+---
+
+### Pitfall 4: Phone Banking Claim-on-Fetch Race Conditions Creating Duplicate Calls or Lost Work
+
+**What goes wrong:**
+Multiple callers working the same call list simultaneously. Caller A claims 5 entries, starts calling. Caller A's browser goes idle for 20 minutes (claim timeout is configurable via `claim_timeout_minutes`). The server releases Caller A's stale claims. Caller B claims those same entries and starts calling the same voters. Caller A returns, still sees the old entries in their UI, and records outcomes against entries that are now claimed by Caller B. The backend may accept Caller A's outcome recording (since the entry exists), creating conflicting records, or reject it, causing Caller A to lose their work.
+
+**Why it happens:**
+The backend correctly implements `SELECT ... FOR UPDATE SKIP LOCKED` for claim atomicity, and releases stale claims based on `claim_timeout_minutes`. But the frontend has no awareness of claim expiry. The UI shows claimed entries indefinitely without checking if the claims are still valid. There is no heartbeat or periodic re-validation. The `ky` client retries on 408/429/500 but does not distinguish between "entry no longer claimed by you" (409 Conflict) and other errors.
+
+**How to avoid:**
+1. Track claim timestamps on the frontend. When the caller claims entries, store `claimed_at` and `claim_timeout_minutes`. Show a countdown timer per entry and auto-release (re-claim or warn) before server-side timeout triggers.
+2. Implement a claim heartbeat: periodically (every 60 seconds) call a lightweight endpoint or re-verify claimed entries are still assigned to the current user. If claims were released, show a prominent warning.
+3. When recording an outcome, handle 409 Conflict specifically: show "This entry was reclaimed by another caller" with the option to save notes locally and skip to the next entry.
+4. Add optimistic locking: include `claimed_at` timestamp in the outcome recording request. The backend rejects if `claimed_at` does not match (meaning the entry was released and reclaimed).
+5. Auto-claim the next batch of entries before the current batch is exhausted (prefetch pattern). When the caller is on entry 3 of 5, claim the next 5. This prevents downtime between batches.
+6. Disable the call UI for entries whose claim has expired on the client side. Do not let the user interact with expired claims.
+
+**Warning signs:**
+- No timer or expiry indicator on claimed call list entries
+- Users reporting "I called that person already" from another caller
+- Outcome recording failing silently or with generic error messages
+- No handling of 409 status code in the phone banking hooks
+- No periodic claim validation or heartbeat
+
+**Phase to address:**
+Phase 4 (Phone Banking UI). The calling experience is the highest-stakes real-time UI in the entire app. Claim management UX must be designed alongside the backend's SKIP LOCKED pattern, not as an afterthought.
+
+---
+
+### Pitfall 5: Permission-Gated UI Becomes an Unmaintainable Spaghetti of Role Checks
+
+**What goes wrong:**
+The backend enforces 5 roles (owner, admin, manager, volunteer, viewer) per endpoint via `require_role()`. The frontend starts with `if (userRole === 'admin' || userRole === 'owner')` scattered through every component. With 95 endpoints mapped to UI, this creates hundreds of inline role checks. Role definitions change (add a "coordinator" role), and 40 components need updating. Worse: the frontend role checks drift from backend enforcement, so buttons appear that return 403 when clicked, or buttons are hidden that the user actually has access to.
+
+**Why it happens:**
+The existing app has NO permission system on the frontend. The auth store tracks `user` and `isAuthenticated` but not `role` or permissions. Campaign member roles come from ZITADEL (the `members.py` endpoint even returns a hardcoded `role="member"` since real roles come from ZITADEL claims). The JWT token contains ZITADEL roles, but these are not parsed or exposed to the React components. Without a central permission system, each developer improvises their own role checking.
+
+**How to avoid:**
+1. Parse ZITADEL campaign roles from the JWT token or fetch them via the members API on campaign load. Store the current user's role for the active campaign in a Zustand store or React context scoped to the campaign layout.
+2. Create a permission map (not individual role checks) that maps actions to minimum required roles:
+   ```typescript
+   const permissions = {
+     'imports:create': ['admin', 'owner'],
+     'call-lists:create': ['manager', 'admin', 'owner'],
+     'shifts:signup': ['volunteer', 'manager', 'admin', 'owner'],
+     'members:list': ['viewer', 'volunteer', 'manager', 'admin', 'owner'],
+   } as const
+   ```
+3. Build a single `usePermission(action: string)` hook and a `<CanDo action="imports:create">` wrapper component. All role checks go through these -- never inline role string comparisons.
+4. The permission map is the single source of truth. When roles change, update one file.
+5. Always let the backend be the ultimate authority. If a user somehow reaches a button they should not see, the backend still returns 403. The frontend permission system is a UX optimization (hide unavailable actions), not a security mechanism.
+6. Provide graceful degradation: do not hide entire pages from lower-role users. Instead, show the page in read-only mode with disabled action buttons and a tooltip explaining "Manager role required."
+
+**Warning signs:**
+- Inline `role === 'admin'` checks in component files
+- Buttons that show up but return 403 when clicked
+- No `usePermission` or `<CanDo>` abstraction in the codebase
+- User role not available in the campaign layout context
+- Different pages checking the same permission differently
+
+**Phase to address:**
+Phase 1 (Shared Infrastructure). The permission system must exist before any CRUD pages are built. Every page needs it, and retrofitting requires touching every component.
+
+---
+
+### Pitfall 6: Form-Heavy Pages with No Dirty State Tracking, No Unsaved Changes Warning, No Optimistic Updates
+
+**What goes wrong:**
+v1.2 adds dozens of create/edit forms: voters, volunteers, shifts, call lists, DNC entries, campaign settings, survey scripts, etc. Users fill out a complex form, accidentally click a sidebar link, and lose all their work. Or they submit a form, the API takes 2 seconds, and they see no feedback -- so they click Submit again, creating a duplicate. Or they edit a record, switch to another tab, come back, and the form still shows stale data from 30 minutes ago.
+
+**Why it happens:**
+The existing forms (e.g., TurfForm.tsx) use React Hook Form + Zod but do not implement navigation blocking. There is no `useBlocker` integration with TanStack Router. The existing `ky` client retries failed requests (including POST mutations), which can create duplicates if the server processes the first request but the client retries before receiving the response. React Hook Form's `isDirty` state is not connected to anything that prevents navigation.
+
+**How to avoid:**
+1. Create a reusable `useFormGuard` hook that combines React Hook Form's `formState.isDirty` with TanStack Router's `useBlocker`:
+   ```typescript
+   function useFormGuard(isDirty: boolean) {
+     useBlocker({
+       shouldBlockFn: () => isDirty,
+       withResolver: true,
+       enableBeforeUnload: true,
+     })
+   }
+   ```
+2. Apply `useFormGuard` to every form page. Make this a code review checklist item.
+3. Prevent double-submit by disabling the submit button on `isSubmitting` (React Hook Form provides this). Do NOT rely on `ky` retry for mutation endpoints. Remove POST/PUT/PATCH/DELETE from the retry status codes in the `ky` client config, or use mutation idempotency keys.
+4. Implement optimistic updates for simple edits (name changes, status toggles) using TanStack Query's `onMutate` callback. For complex edits (campaign settings with ZITADEL side effects), wait for server confirmation.
+5. On edit pages, refetch the entity data when the page regains focus (`refetchOnWindowFocus: true` is TanStack Query's default -- verify it is not disabled).
+6. For long forms (volunteer profiles with many fields), consider auto-save with debounce (save draft every 5 seconds of inactivity) rather than requiring explicit submit.
+
+**Warning signs:**
+- Forms with no `useBlocker` or `beforeunload` handler
+- Submit button enabled during submission (no `isSubmitting` check)
+- POST endpoints in the `ky` retry config (currently retries on 413, which IS a POST-relevant status)
+- No optimistic updates on any mutation
+- Edit pages not refetching data on window focus
+
+**Phase to address:**
+Phase 1 (Shared Infrastructure) for `useFormGuard` hook and `ky` retry config fix. Every subsequent phase uses it.
+
+---
+
+### Pitfall 7: Volunteer Shift Scheduling Ignoring Timezones and Creating Unusable Calendar UIs
+
+**What goes wrong:**
+A campaign manager in the Eastern timezone creates a canvassing shift from 9am-12pm. A volunteer in the Central timezone sees it as 9am-12pm (their local time) instead of 8am-11am. They show up an hour late. Or: a shift created on March 8 (before DST spring-forward) for March 10 (after DST) shows the wrong time because the frontend added hours naively instead of using timezone-aware date math. Recurring weekly shifts drift by an hour every DST transition.
+
+**Why it happens:**
+The backend stores `start_at` and `end_at` as timestamps (likely UTC in PostgreSQL). JavaScript `Date` objects are UTC internally but display in the browser's local timezone. If the frontend formats shift times without considering the campaign's timezone (or the shift's location timezone), times display incorrectly for users in different timezones. The `Intl.DateTimeFormat` API handles this correctly but only if the timezone is explicitly specified. The existing codebase uses no date formatting library -- dates are likely displayed via `.toLocaleString()` which uses the browser's timezone.
+
+**How to avoid:**
+1. Add a `timezone` field to campaigns (or infer from jurisdiction). Store it as an IANA timezone string (e.g., "America/New_York").
+2. Always store shift times in UTC on the server. Convert to the campaign's timezone for display, not the browser's timezone. A volunteer in California viewing an Atlanta campaign's shifts should see Eastern times.
+3. Use `date-fns` with `date-fns-tz` (already in the npm ecosystem, no heavy dependencies) for all date formatting and arithmetic. Never use raw `Date` math for adding hours/days.
+4. Display the timezone abbreviation next to all times (e.g., "9:00 AM EST"). This prevents ambiguity.
+5. For shift creation forms, accept times in the campaign's timezone and convert to UTC before sending to the API.
+6. Test DST transitions explicitly: create a shift during DST changeover week and verify the displayed time is correct before and after the transition.
+
+**Warning signs:**
+- No timezone field on campaigns or shifts
+- Date formatting using `.toLocaleString()` without explicit timezone
+- No date-fns or equivalent library in package.json
+- Shift times displayed without timezone indicator
+- No DST transition tests
+
+**Phase to address:**
+Phase 5 (Shift Management UI). But the campaign timezone field should be added in Phase 1 (shared data) or Phase 3 (Campaign Settings), since it affects multiple features.
+
+---
+
+### Pitfall 8: Voter List Pages That Freeze the Browser at 10K+ Records
+
+**What goes wrong:**
+The voter index page renders all returned voters into the DOM. With the existing `useInfiniteQuery` in `useVoters.ts`, users keep scrolling and loading pages. After 50 pages of 100 voters each, there are 5,000 DOM rows rendering simultaneously. The browser becomes sluggish. At 20,000 rows, the tab crashes. But the campaign has 500,000 voters, and campaign staff need to scroll through filtered results that might still be 50K+ records.
+
+**Why it happens:**
+The existing `useVoters` hook correctly uses `useInfiniteQuery` with cursor-based pagination, but infinite scrolling without virtualization means every loaded page stays in the DOM. TanStack Table is already a dependency (`@tanstack/react-table: ^8.21.3`) but TanStack Virtual (`@tanstack/react-virtual`) is NOT installed. Without virtualization, the browser renders every row into the DOM, and React re-renders all of them on any state change.
+
+**How to avoid:**
+1. Install `@tanstack/react-virtual` and combine it with `@tanstack/react-table` for virtualized infinite scrolling. TanStack's own example (`virtualized-infinite-scrolling`) shows exactly this pattern.
+2. Only render the visible rows plus a small overscan buffer (20-30 rows). Replace the current flat list rendering with a virtualized container.
+3. Set `maxPages` on the infinite query to limit how many pages TanStack Query keeps in memory. For voter lists, keeping 5-10 pages (500-1000 records) in memory while the virtualizer handles which are visible.
+4. For search results, use server-side filtering (the backend already supports this via `POST /voters/search`) and show paginated results, not infinite scroll.
+5. Memoize row components with `React.memo` and stable key props. Use `useMemo` for derived data (filtered/sorted views).
+6. Do NOT load all voters on page mount. Default to showing a search interface with no results until the user applies filters. This is standard for large datasets in political tech (NationBuilder, NGP VAN).
+
+**Warning signs:**
+- Browser dev tools showing 10,000+ DOM nodes on the voter page
+- Scroll jank or input lag after loading multiple pages
+- Memory usage climbing linearly with scroll depth
+- No `@tanstack/react-virtual` in dependencies
+- Voter list loading without any filters applied
+
+**Phase to address:**
+Phase 3 (Voter Management). Virtualization must be part of the initial voter list implementation, not retrofitted. The hook (`useVoters`) already supports infinite queries -- it just needs a virtualized renderer.
 
 ---
 
@@ -245,117 +269,125 @@ Phase 1 (Foundation). The database session pattern is established in the first e
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Application-level tenant filtering instead of RLS | Faster initial development, no need for multiple DB roles | One missed WHERE clause = data leak; no defense in depth | Never for multi-tenant campaign data |
-| SQLAlchemy ORM for bulk imports | Consistent code style, familiar patterns | 10-100x slower imports; cannot handle state-sized voter files | Only for imports under 10K rows (test data) |
-| Storing voting history as columns | Matches L2 CSV format directly | Schema changes every election cycle; cannot query "all elections where voter participated" efficiently | Never -- normalize from the start |
-| Synchronous voter file import in API request | No background task infrastructure needed | Blocks API, times out on real files, no progress tracking | Only in local development for testing |
-| Hardcoded L2 field mappings | Works for the first data source | Adding state SOS support requires code changes, not configuration | MVP if L2 is explicitly the only source for v1 |
-| Campaign authorization in ZITADEL claims | Single source of truth for auth | Tight coupling to ZITADEL; claim size limits; requires ZITADEL Actions for updates | Never -- keep campaign roles in your own database |
+| Inline query key strings instead of factory | Faster to write individual hooks | Key typos, missed invalidation, inconsistent naming across 20+ hook files | Never for v1.2 -- too many hooks |
+| Storing wizard state in React component state | Simple implementation, no persistence code | State loss on navigation, duplicate imports from abandoned wizards | Never for import wizard -- use server-side state |
+| `ky` retry config including mutation status codes | Fewer failed requests visible to users | Duplicate resource creation (double-submit on POST), data corruption | Never for POST/PUT/PATCH/DELETE. Remove 413 from retry for mutations or use idempotency keys |
+| Inline role string comparisons | Quick to implement first few pages | Hundreds of scattered checks, role changes require touching every file | Only for prototype/spike. Replace with permission map before merge |
+| Using browser timezone for all date display | No timezone infrastructure needed | Wrong times for cross-timezone campaigns, DST bugs | Only if all campaign operations are strictly local |
+| Rendering all loaded infinite query pages | No virtualization dependency or complexity | Browser crash at 10K+ rows, memory leak on scroll | Only for lists guaranteed under 100 items |
+| Client-side CSV parsing for column detection | Faster feedback, no server round-trip | Browser memory issues with large files, inconsistent parsing vs. backend | Only for preview (first 100 rows). Actual column detection should match backend |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| ZITADEL OIDC | Using token introspection for every request (HTTP call per request) | Local JWT validation with cached JWKS; introspection only for revocation checks |
-| ZITADEL OIDC | Assuming tokens are always JWT format | Configure ZITADEL project to issue JWT tokens explicitly; handle both formats defensively |
-| ZITADEL OIDC | Not handling JWKS key rotation | Cache JWKS with TTL; on unknown `kid`, refetch once before rejecting |
-| PostgreSQL RLS | Connecting as table owner (bypasses all RLS policies) | Separate DB roles: `civicpulse_migrations` (owner), `civicpulse_app` (subject to RLS) |
-| PostgreSQL RLS | Setting tenant via middleware but session reused from pool | Use SQLAlchemy `after_begin` event to SET tenant context on every new transaction |
-| asyncpg | Using psycopg2 connection string format with asyncpg | asyncpg uses `postgresql+asyncpg://` scheme and does not support all psycopg2 parameters |
-| PostGIS | Assuming PostGIS extension is auto-created | Include `CREATE EXTENSION IF NOT EXISTS postgis` in first Alembic migration |
-| L2 Voter Data | Treating modeled fields (ethnicity, likelihood) as ground truth | Tag modeled fields with source and confidence; never use for legal/compliance purposes |
+| Pre-signed URL upload (S3/MinIO) | Using `ky` or `fetch` for the upload PUT (no progress events) | Use `XMLHttpRequest` with `xhr.upload.onprogress` for the S3 PUT. Use `ky` for all other API calls |
+| Pre-signed URL upload (S3/MinIO) | Not handling URL expiry during slow uploads | Request fresh URL if upload exceeds 80% of TTL; or use multipart upload for files > 100MB |
+| TanStack Router navigation blocking | Using `beforeunload` alone (does not block in-app navigation) | Use TanStack Router's `useBlocker` hook for in-app navigation AND `enableBeforeUnload` for tab close |
+| TanStack Query + mutations | Calling `refetch()` after mutation instead of `invalidateQueries()` | Always invalidate via query key factory; refetch is for retrying the same query with the same params |
+| ZITADEL role claims | Parsing roles from every API response header | Parse roles from JWT on login; cache in campaign-scoped Zustand store; refresh on campaign switch |
+| React Hook Form + Zod 4 | Using Zod v3 schema methods with Zod v4 (breaking changes in `z.string().email()` etc.) | The project uses Zod v4 (`^4.3.6`). Verify all schema definitions use v4 API. `@hookform/resolvers` v5 supports Zod v4 |
+| TanStack Table + Virtual | Mounting virtualizer on a div but using table semantics (thead/tbody) | Use the spacer-based virtualization pattern that preserves native table layout for sticky headers and column pinning |
+| `ky` retry + mutations | `ky` retries on 408, 413, 429, 500, 502, 503, 504 by default (current config). POST mutations retried on 500 create duplicates | Create a separate `ky` instance for mutations with `retry: 0`, or add idempotency keys |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| ST_Distance for proximity queries | Walk list generation takes minutes | Use ST_DWithin with spatial index | > 50K voters in query area |
-| No spatial index on voter geometry | All spatial queries slow, CPU-bound | CREATE INDEX USING GIST in migration | > 10K voters |
-| ORM bulk insert for voter imports | Import hangs, memory spikes, 30+ minute imports | Use COPY protocol via asyncpg/psycopg | > 50K rows per import |
-| Unclustered spatial data on disk | Spatial range queries read scattered disk pages | CLUSTER table ON spatial index after bulk import | > 200K voters |
-| Complex turf polygons in containment queries | Turf assignment takes 10+ seconds per turf | ST_Simplify polygon before ST_Contains | Turfs with > 100 vertices |
-| No connection pool limits | Works in dev, pool exhaustion under load | Configure pool_size, max_overflow, pool_timeout | > 20 concurrent API requests |
-| Materialized views not used for aggregates | Dashboard queries scan full voter table | Materialized views for precinct/district rollups | > 100K voters per campaign |
-| Indexes maintained during bulk import | Import slows exponentially as table grows | Drop/recreate indexes around bulk loads | > 500K row imports |
+| No virtualization on voter lists | Browser jank, tab crash, memory climbing linearly | TanStack Virtual + Table with maxPages on infinite query | > 2,000 rows rendered in DOM |
+| Re-rendering all table rows on any state change | Typing in a search field re-renders 500 visible rows | `React.memo` on row components; isolate search state from table state | > 500 visible rows with interactive filters |
+| Loading all campaign data on layout mount | Slow initial load, unnecessary API calls for pages user may not visit | Lazy load per-route; only fetch dashboard data when on dashboard route | > 5 active data fetches on campaign layout |
+| Infinite query without maxPages | Memory grows unbounded as user scrolls | Set `maxPages: 10` on voter/call list infinite queries; virtualize rendering | > 5,000 records loaded in memory |
+| Large CSV parsed entirely in browser | Tab freezes or crashes on 100MB+ files | Stream-parse only first 100 rows for preview; upload full file to server for processing | > 50MB CSV files |
+| Unthrottled polling for import progress | Polling every 500ms creates unnecessary server load and rerenders | Poll every 3 seconds while processing; stop polling when status is terminal (COMPLETED/FAILED) | > 10 concurrent import monitors |
+| No debounce on voter search filters | Every keystroke triggers a new API request | Debounce search input by 300ms; use `keepPreviousData: true` for smooth UX | > 5 filter fields changing simultaneously |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| RLS policies not covering all tables | Voter contact data, survey responses, or canvassing results leak across campaigns | Audit every table with campaign-scoped data; automated test that attempts cross-tenant access on all endpoints |
-| Voter PII in API response logs | Voter names, addresses, phone numbers in log files; compliance violation | Structured logging with PII field redaction; never log request/response bodies for voter endpoints |
-| Bulk export endpoints without rate limiting | Competitor campaign scrapes entire voter universe via API | Rate limit exports; require explicit campaign authorization; log all bulk data access |
-| Storing raw voter file on disk after import | PII at rest without encryption; accessible if server compromised | Delete source file after successful import; or store in encrypted object storage with TTL |
-| No audit trail for voter data access | Cannot demonstrate compliance with state voter data use agreements | Log every query that returns voter PII with user ID, campaign ID, timestamp, and query purpose |
-| Campaign staff credentials shared across campaigns | User authenticated for one campaign accesses another | Per-campaign role assignment; session-level tenant enforcement; no "global admin" role without explicit justification |
+| Frontend permission checks without backend enforcement | Users bypass UI restrictions via browser dev tools and call APIs directly | Backend `require_role()` is already enforced. Frontend is UX only -- never rely on it for security |
+| Displaying voter PII (phone, address) to all roles | Viewers and volunteers see sensitive contact info they should not access | Map PII field visibility to roles: viewers see name only; volunteers see name + phone; managers see all |
+| Pre-signed URL leakage via browser history or logs | Anyone with the URL can upload to or download from the S3 bucket until TTL expires | Short TTL (15 min); scope to specific object key; log URL generation |
+| Storing ZITADEL access token in localStorage | XSS attack extracts token and impersonates user | The existing code uses `WebStorageStateStore({ store: localStorage })` for oidc-client-ts. This is the standard pattern but ensure CSP headers prevent script injection |
+| Campaign member list exposing all user emails | Email harvesting of campaign staff | Only show full emails to admin/owner; show masked emails to other roles (j***@example.com) |
+| File upload accepting any file type | Malicious files uploaded disguised as CSV | Validate MIME type and extension on both client and server; never execute uploaded content |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Synchronous import with no progress feedback | Campaign staff uploads voter file, stares at spinner for 30 minutes, assumes it failed | Return 202 with job ID; provide polling endpoint for progress (rows processed, errors, ETA) |
-| Walk lists ordered by database ID | Canvassers zigzag across streets instead of walking a logical route | Order by street name, then house number, with odd/even grouping for same-side-of-street walking |
-| Turf maps showing all voters regardless of targeting | Volunteer overwhelmed with 500 doors when only 80 are targets | Filter map to show only voters matching campaign's target universe (party, likelihood, voting history) |
-| Survey scripts without skip logic | Volunteer asks irrelevant follow-up questions to uninterested voters | Branched scripts: "Not interested" should skip all policy questions and go to "thank you" |
-| No offline capability documentation | Canvassers lose data in areas with poor cell coverage | If API-only, clearly document expected client-side caching and sync patterns for mobile app developers |
+| Import wizard with no progress or estimated time | Campaign admin uploads 200MB voter file, waits 10 minutes with no feedback, closes tab | Progress bar with bytes uploaded, percentage, and ETA. Resume indicator if they navigate away and come back |
+| Phone banking claim counter with no expiry warning | Caller leaves for coffee, returns to expired claims, records outcomes that get rejected | Show countdown timer per claim; auto-release and reclaim with warning at 2 minutes before expiry |
+| Form submission with no loading state | User clicks Save, nothing happens for 2 seconds, clicks again, creates duplicate | Disable button + show spinner on submit; toast on success; shake/highlight on error |
+| Shift calendar showing times in wrong timezone | Volunteer shows up at wrong time, wastes 2 hours | Always display campaign timezone; show "in X hours" relative time alongside absolute time |
+| Modal confirmation dialogs with no keyboard support | Screen reader users cannot confirm destructive actions (delete shift, remove member) | Use Radix AlertDialog (already in deps) which handles focus trap, Escape key, and aria-labels |
+| Voter search that loads all results on empty query | Page freezes loading 500K voters when user first visits | Default to empty results with search prompt; require at least one filter to execute query |
+| DNC list import with no preview | Admin imports wrong file, accidentally DNC-flags 10K voters | Show first 10 rows preview before confirming import; add an "undo last import" feature |
+| Calling experience that hides voter context | Caller has no information about the person they are calling | Show voter name, address, previous interactions, and any existing survey responses on the call screen |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Voter import:** Often missing deduplication logic -- verify that re-importing the same file does not create duplicate voter records (need ON CONFLICT handling)
-- [ ] **Multi-tenancy:** Often missing RLS on junction/association tables -- verify that `campaign_volunteers`, `turf_assignments`, and similar linking tables have RLS policies, not just the primary entity tables
-- [ ] **Turf cutting:** Often missing household clustering -- verify that apartment buildings are treated as single stops, not 50 separate doors
-- [ ] **Walk lists:** Often missing geographic ordering -- verify that lists are ordered by walking route, not alphabetically or by ID
-- [ ] **Auth integration:** Often missing token refresh handling -- verify that expired tokens return 401 (not 500) and that clients can refresh without re-login
-- [ ] **Canvassing results:** Often missing conflict resolution for concurrent updates -- verify that two canvassers assigned overlapping turfs do not overwrite each other's survey responses
-- [ ] **Voter search:** Often missing fuzzy matching -- verify that searching "Bob Smith" finds "Robert Smith" and "Roberto Smith-Garcia"
-- [ ] **Import error handling:** Often missing partial failure reporting -- verify that a file with 1 bad row out of 100K does not reject the entire import
+- [ ] **Query key factory:** Often missing consistent key naming -- verify ALL hooks import from `queryKeys.ts`, no inline string arrays
+- [ ] **Voter import wizard:** Often missing resume-on-return -- verify navigating away and back restores wizard to correct step from server state
+- [ ] **Phone banking claiming:** Often missing claim expiry UX -- verify UI shows countdown and handles reclaim gracefully after timeout
+- [ ] **Form pages:** Often missing navigation guard -- verify every form with editable fields has `useBlocker` integration and `beforeunload`
+- [ ] **Permission gating:** Often missing read-only mode -- verify lower-role users see pages with disabled actions, not blank "Access Denied" screens
+- [ ] **Shift scheduling:** Often missing timezone display -- verify times show campaign timezone, not browser timezone
+- [ ] **Voter list:** Often missing virtualization -- verify scrolling 10,000 rows does not degrade performance (check DOM node count in dev tools)
+- [ ] **Delete confirmations:** Often missing double-confirm for destructive actions -- verify campaign delete, member remove, DNC import all require explicit confirmation
+- [ ] **Loading states:** Often missing skeleton screens -- verify every page shows skeleton layout (not just a spinner) during initial data fetch
+- [ ] **Error boundaries:** Often missing per-section error handling -- verify a failed API call in one section does not crash the entire page
+- [ ] **Empty states:** Often missing "no data yet" messaging -- verify every list page has a meaningful empty state with a call to action (not just a blank table)
+- [ ] **Accessibility:** Often missing keyboard navigation on custom components -- verify all modals trap focus, all dropdowns are keyboard-navigable, all drag-and-drop has keyboard alternative
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Cross-tenant data leak discovered | HIGH | Immediate incident response; audit all data access logs; notify affected campaigns; patch RLS policies; re-test all endpoints; consider security audit |
-| Voter data model cannot accommodate new source format | MEDIUM | Add new columns to raw import layer; write new adapter; migrate canonical model if needed; re-import affected data |
-| Spatial queries too slow for production | MEDIUM | Add missing indexes; cluster table; create materialized views; may require schema migration and full re-index |
-| Connection pool exhaustion in production | LOW | Restart API pods (Kubernetes); tune pool_size/max_overflow; separate background task pools; monitor and alert |
-| Bulk import corrupted data (duplicates, missing fields) | HIGH | Identify affected import batch by timestamp; delete and re-import from staging data; validate all downstream records (turf assignments, canvassing results) |
-| ZITADEL integration breaking after key rotation | LOW | Clear JWKS cache; force re-fetch; add retry logic on unknown kid |
-| Turf cutting producing unusable walk lists | MEDIUM | Allow manual turf adjustment overlay; re-cut with adjusted parameters; household clustering fix requires data model change |
+| Inconsistent query keys causing stale data | MEDIUM | Create query key factory; find-and-replace all inline keys; add lint rule to prevent regression |
+| Import wizard state loss (orphaned jobs) | LOW | Add cleanup job for PENDING imports older than 24 hours; add "resume import" UI |
+| Phone bank claim race condition (duplicate calls) | MEDIUM | Add optimistic locking to outcome recording; deduplicate interactions by (voter_id, call_list_entry_id); contact affected voters to apologize for duplicate calls |
+| Missing navigation guards (lost form data) | LOW | Add `useFormGuard` hook; apply to all form pages in a single PR |
+| Permission checks scattered across components | MEDIUM | Extract all role checks into permission map; create `<CanDo>` component; find-and-replace inline checks |
+| Timezone bugs in shift display | LOW | Add campaign timezone field; update all date formatting to use `date-fns-tz`; verify with DST test |
+| Browser crash from unvirtualized voter list | MEDIUM | Install TanStack Virtual; refactor voter table component; add `maxPages` to infinite query |
+| Double-submit from ky retry on mutations | HIGH | Audit all created records for duplicates; fix ky retry config; add idempotency keys to critical mutations |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Multi-tenant data leaks | Phase 1 (Foundation) | Cross-tenant integration tests on every endpoint; separate DB roles verified in deployment |
-| Voter data normalization | Phase 2 (Voter Data Import) | Import tests with multiple source formats; canonical model review; deduplication tests |
-| PostGIS performance degradation | Phase 2 (Import) + Phase 3 (Canvassing) | Performance tests with 100K+ voters; EXPLAIN ANALYZE on all spatial queries |
-| Canvassing turf cutting edge cases | Phase 3 (Canvassing Management) | User acceptance testing with real geographic data; household clustering verified |
-| Bulk import blocking API | Phase 2 (Voter Data Import) | Load test: import 500K rows while API handles concurrent requests; import progress tracking works |
-| ZITADEL OIDC integration | Phase 1 (Foundation) | Token validation works with JWT; JWKS cache verified; campaign authorization separated from ZITADEL |
-| Async connection pool exhaustion | Phase 1 (Foundation) | Load test: 50+ concurrent requests sustained; pool metrics monitored; no leaked connections after 1 hour soak test |
+| Query key inconsistency | Phase 1 (Shared Infrastructure) | All hooks import from queryKeys.ts; no inline key strings; lint rule enforced |
+| File upload UX (progress, errors) | Phase 2 (Voter Import Wizard) | Upload 200MB file; verify progress bar; verify cancel; verify resume after network error |
+| Wizard state loss | Phase 2 (Voter Import Wizard) | Navigate away mid-wizard and return; verify correct step restored from server state |
+| Phone bank claim race condition | Phase 4 (Phone Banking UI) | Two users claim from same list simultaneously; verify no duplicate calls; verify expired claim UI |
+| Permission spaghetti | Phase 1 (Shared Infrastructure) | Single `permissions.ts` file; all components use `<CanDo>` or `usePermission`; no inline role checks |
+| Form dirty state loss | Phase 1 (Shared Infrastructure) | Edit any form; navigate away; verify blocking dialog appears; verify beforeunload on tab close |
+| Timezone bugs in shifts | Phase 5 (Shift Management) | Create shift in ET campaign; view from CT browser; verify correct time with timezone indicator |
+| Voter list browser crash | Phase 3 (Voter Management) | Load 10K voters with filters; verify < 200 DOM rows rendered; verify smooth scroll at 60fps |
+| Double-submit from ky retry | Phase 1 (Shared Infrastructure) | Slow network simulation; click submit twice; verify single resource created |
+| Accessibility gaps | All phases | Keyboard-only navigation test on every page; screen reader test on modals, forms, and drag-drop |
 
 ## Sources
 
-- [L2 Voter Data Documentation - Penn Libraries](https://guides.library.upenn.edu/L2/documentation)
-- [L2 Voter Data FAQ - UC Berkeley](https://guides.lib.berkeley.edu/c.php?g=1381940&p=10332633)
-- [PostGIS Spatial Query Documentation](https://postgis.net/docs/using_postgis_query.html)
-- [PostGIS Performance: Indexing and EXPLAIN - Crunchy Data](https://www.crunchydata.com/blog/postgis-performance-indexing-and-explain)
-- [PostGIS Performance Tuning - Crunchy Data](https://www.crunchydata.com/blog/postgis-performance-postgres-tuning)
-- [FastAPI Multi-Tenant RLS Pattern - GitHub Discussion](https://github.com/fastapi/fastapi/discussions/6056)
-- [fastapi-rowsecurity - Row-Level Security in SQLAlchemy](https://github.com/JWDobken/fastapi-rowsecurity)
-- [SQLAlchemy QueuePool Exhaustion - FastAPI Discussion](https://github.com/fastapi/fastapi/discussions/10450)
-- [Row Level Security for Tenants - Crunchy Data](https://www.crunchydata.com/blog/row-level-security-for-tenants-in-postgres)
-- [PostgreSQL RLS Documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
-- [ZITADEL Token Introspection Docs](https://zitadel.com/docs/guides/integrate/token-introspection)
-- [fastapi-zitadel-auth Library](https://github.com/cleanenergyexchange/fastapi-zitadel-auth)
-- [ZITADEL OIDC Recommended Flows](https://zitadel.com/docs/guides/integrate/login/oidc/oauth-recommended-flows)
-- [PostgreSQL COPY for Bulk Loading](https://www.postgresql.org/docs/current/populate.html)
-- [NGPVAN Turf Cutting Best Practices](https://www.ngpvan.com/wp-content/uploads/2024/10/Turf-Cutting-OBP.pdf)
-- [GoodParty.org Turf Cutting Guide](https://goodparty.org/blog/article/turf-cutting)
-- [Pew Research: Voter File Accuracy](https://www.pewresearch.org/methods/2018/02/15/commercial-voter-files-and-the-study-of-u-s-politics/)
-- CivicPulse competitive research: `docs/campaign_platforms_research.md` (internal)
-- CivicPulse L2 example file: `data/example-2026-02-24.csv` (internal)
+- [Avoiding Common Mistakes with TanStack Query](https://www.buncolak.com/posts/avoiding-common-mistakes-with-tanstack-query-part-1/) - Query key management pitfalls
+- [Concurrent Optimistic Updates in React Query - TkDodo](https://tkdodo.eu/blog/concurrent-optimistic-updates-in-react-query) - Race condition patterns for concurrent mutations
+- [We kept breaking cache invalidation in TanStack Query](https://dev.to/ignasave/we-kept-breaking-cache-invalidation-in-tanstack-query-so-we-stopped-managing-it-manually-47k2) - Cache invalidation patterns at scale
+- [TanStack Query Invalidation Docs](https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation) - Official invalidation guide
+- [TanStack Router Navigation Blocking](https://tanstack.com/router/v1/docs/framework/react/guide/navigation-blocking) - useBlocker API for dirty form guards
+- [Handling Large File Uploads in React with Pre-signed URLs](https://www.pullrequest.com/blog/handling-large-file-uploads-in-react-securely-using-aws-s3-pre-signed-urls/) - S3 upload patterns
+- [Multipart Upload Approach for React](https://www.tothenew.com/blog/handling-large-file-uploads-in-react-the-multipart-upload-approach/) - Progress tracking and chunking
+- [Secure File Uploads with React and FastAPI](https://medium.com/@sanmugamsanjai98/secure-file-uploads-made-simple-mastering-s3-presigned-urls-with-react-and-fastapi-258a8f874e97) - FastAPI + S3 pre-signed URL pattern
+- [Building a Virtualized Table with TanStack](https://dev.to/ainayeem/building-an-efficient-virtualized-table-with-tanstack-virtual-and-react-query-with-shadcn-2hhl) - Virtual + Table + Query integration
+- [TanStack Table Virtualized Infinite Scrolling Example](https://tanstack.com/table/v8/docs/framework/react/examples/virtualized-infinite-scrolling) - Official reference implementation
+- [Implementing RBAC in React](https://www.permit.io/blog/implementing-react-rbac-authorization) - Permission-gated UI patterns
+- [Accessible Drag and Drop - React Spectrum](https://react-spectrum.adobe.com/blog/drag-and-drop.html) - WCAG 2.2 drag-and-drop patterns
+- [Autosave Race Conditions in React Query](https://www.pz.com.au/avoiding-race-conditions-and-data-loss-when-autosaving-in-react-query) - FIFO mutation queue pattern
+- [Building Multi-Step Forms with React](https://makerkit.dev/blog/tutorials/multi-step-forms-reactjs) - Wizard state management patterns
+- [Multi-Step Forms with React Hook Form + Zustand + Zod](https://www.buildwithmatija.com/blog/master-multi-step-forms-build-a-dynamic-react-form-in-6-simple-steps) - Per-step validation pattern
+- CivicPulse codebase analysis: `web/src/hooks/`, `web/src/api/client.ts`, `app/api/v1/` (internal)
 
 ---
-*Pitfalls research for: Multi-tenant political campaign management API*
-*Researched: 2026-03-09*
+*Pitfalls research for: Full UI Coverage (v1.2) -- adding ~95 CRUD pages to existing React + TanStack campaign management app*
+*Researched: 2026-03-10*
