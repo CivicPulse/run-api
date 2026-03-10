@@ -59,7 +59,12 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Data tables across the application display consistent sorting controls, filter inputs, pagination, and empty state messages
   4. Campaign owner can edit campaign details, invite members by email, view pending invites, change member roles, remove members, and transfer ownership — all from the campaign settings area
   5. Campaign owner can delete a campaign with a confirmation step that prevents accidental deletion
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Shared UI infrastructure (usePermissions, RequireRole, useFormGuard, DataTable)
+- [ ] 12-02-PLAN.md — Campaign settings structure, General tab, and Danger Zone
+- [ ] 12-03-PLAN.md — Campaign members and invites management
 
 ### Phase 13: Voter Management Completion
 **Goal**: Users have a complete voter CRM experience — viewing, creating, editing, and organizing voters with contacts, tags, lists, search, and interaction notes
@@ -146,7 +151,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 10. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-10 |
 | 11. Kubernetes & GitOps | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 12. Shared Infrastructure & Campaign Foundation | v1.2 | 0/? | Not started | - |
+| 12. Shared Infrastructure & Campaign Foundation | v1.2 | 0/3 | Not started | - |
 | 13. Voter Management Completion | v1.2 | 0/? | Not started | - |
 | 14. Voter Import Wizard | v1.2 | 0/? | Not started | - |
 | 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
