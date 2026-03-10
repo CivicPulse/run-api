@@ -73,7 +73,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md — PR validation workflow, GHCR publish workflow, and stub K8s manifest
+- [x] 10-01-PLAN.md — PR validation workflow, GHCR publish workflow, and stub K8s manifest
 
 ### Phase 11: Kubernetes & GitOps
 **Goal**: Complete K8s manifests and ArgoCD config exist so the API can be deployed to a baremetal cluster by applying manifests
@@ -84,10 +84,11 @@ Plans:
   2. A ClusterIP Service exposes the API on port 8000 and a Traefik IngressRoute routes external traffic to it
   3. A Secret template YAML documents every required secret with ready-to-use `kubectl create secret` commands
   4. An ArgoCD Application manifest exists that points to the `k8s/` directory with automated sync enabled
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 11-01: TBD
+- [ ] 11-01-PLAN.md — Core workload manifests (Deployment, Service, ConfigMap, Secret template)
+- [ ] 11-02-PLAN.md — Traefik IngressRoute and ArgoCD Application
 
 ## Progress
 
@@ -105,5 +106,5 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 7. Integration Wiring Fixes | v1.0 | 1/1 | Complete | 2026-03-10 |
 | 8. Containerization | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 10. CI/CD Pipeline | 1/1 | Complete    | 2026-03-10 | - |
-| 11. Kubernetes & GitOps | v1.1 | 0/? | Not started | - |
+| 10. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-10 |
+| 11. Kubernetes & GitOps | v1.1 | 0/2 | Not started | - |
