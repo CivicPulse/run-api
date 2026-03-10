@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from loguru import logger
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time import utcnow
 from app.models.voter import Voter
 from app.models.voter_list import ListType, VoterList, VoterListMember
 from app.schemas.common import PaginatedResponse, PaginationResponse
@@ -100,7 +101,7 @@ class VoterListService:
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(voter_list, field, value)
-        voter_list.updated_at = datetime.now(UTC)
+        voter_list.updated_at = utcnow()
         await db.commit()
         await db.refresh(voter_list)
         return voter_list

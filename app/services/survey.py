@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
+from app.core.time import utcnow
 from app.models.survey import (
     QuestionType,
     ScriptStatus,
@@ -68,7 +69,7 @@ class SurveyService:
         Returns:
             The created SurveyScript record.
         """
-        now = datetime.now(UTC)
+        now = utcnow()
         script = SurveyScript(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
@@ -204,7 +205,7 @@ class SurveyService:
         for key, value in metadata_fields.items():
             setattr(script, key, value)
 
-        script.updated_at = datetime.now(UTC)
+        script.updated_at = utcnow()
         await session.flush()
         return script
 
@@ -456,7 +457,7 @@ class SurveyService:
         )
         self._validate_answer(question, data.answer_value)
 
-        now = datetime.now(UTC)
+        now = utcnow()
         response = SurveyResponse(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
