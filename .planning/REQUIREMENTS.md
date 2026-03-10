@@ -15,14 +15,14 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Campaign Management
 
-- [ ] **CAMP-01**: User can edit campaign name, description, and election date
-- [ ] **CAMP-02**: User can delete a campaign with confirmation
+- [x] **CAMP-01**: User can edit campaign name, description, and election date
+- [x] **CAMP-02**: User can delete a campaign with confirmation
 - [ ] **CAMP-03**: User can invite members by email with role assignment
 - [ ] **CAMP-04**: User can view pending invites and revoke them
 - [ ] **CAMP-05**: User can view campaign member list with role badges
 - [ ] **CAMP-06**: User can change a member's role
 - [ ] **CAMP-07**: User can remove a member from a campaign
-- [ ] **CAMP-08**: User can transfer campaign ownership to another admin
+- [x] **CAMP-08**: User can transfer campaign ownership to another admin
 
 ### Voter Management
 
@@ -130,14 +130,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-01 | Phase 12 | Complete |
 | INFR-02 | Phase 12 | Complete |
 | INFR-03 | Phase 12 | Complete |
-| CAMP-01 | Phase 12 | Pending |
-| CAMP-02 | Phase 12 | Pending |
+| CAMP-01 | Phase 12 | Complete |
+| CAMP-02 | Phase 12 | Complete |
 | CAMP-03 | Phase 12 | Pending |
 | CAMP-04 | Phase 12 | Pending |
 | CAMP-05 | Phase 12 | Pending |
 | CAMP-06 | Phase 12 | Pending |
 | CAMP-07 | Phase 12 | Pending |
-| CAMP-08 | Phase 12 | Pending |
+| CAMP-08 | Phase 12 | Complete |
 | VOTR-01 | Phase 13 | Pending |
 | VOTR-02 | Phase 13 | Pending |
 | VOTR-03 | Phase 13 | Pending |
