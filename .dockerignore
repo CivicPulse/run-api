@@ -1,0 +1,39 @@
+# Version control
+.git
+.gitignore
+
+# Planning and docs
+.planning
+*.md
+LICENSE
+
+# Tests
+tests/
+
+# Dev artifacts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Frontend dev artifacts (source copied, node_modules rebuilt in build stage)
+web/node_modules/
+web/.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files (secrets -- must not be baked into image)
+.env
+.env.*
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Claude/AI
+.claude/

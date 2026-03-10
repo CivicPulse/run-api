@@ -6,6 +6,7 @@ Supports both sync (psycopg2) for offline and async (asyncpg) for online migrati
 from __future__ import annotations
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from geoalchemy2 import alembic_helpers
@@ -17,6 +18,12 @@ from alembic import context
 from app.db.base import Base
 
 config = context.config
+
+# Override alembic.ini URL with env var if set (for containerized environments)
+db_url = os.environ.get("DATABASE_URL_SYNC")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+
 target_metadata = Base.metadata
 
 if config.config_file_name is not None:
