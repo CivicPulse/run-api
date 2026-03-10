@@ -90,6 +90,12 @@ class VolunteerDetailResponse(VolunteerResponse):
     availability: list[AvailabilityResponse] = []
 
 
+class VolunteerStatusUpdate(BaseSchema):
+    """Request schema for updating a volunteer's status."""
+
+    status: str
+
+
 class VolunteerTagCreate(BaseSchema):
     """Request schema for creating a campaign-scoped volunteer tag."""
 

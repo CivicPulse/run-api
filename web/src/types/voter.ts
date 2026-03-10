@@ -45,6 +45,35 @@ export interface VoterFilter {
   tags?: string[]
 }
 
+export interface VoterCreate {
+  first_name?: string
+  middle_name?: string
+  last_name?: string
+  suffix?: string
+  date_of_birth?: string
+  gender?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state?: string
+  zip_code?: string
+  county?: string
+  party?: string
+  precinct?: string
+  congressional_district?: string
+  state_senate_district?: string
+  state_house_district?: string
+  ethnicity?: string
+  source_type?: string
+}
+
+export interface VoterUpdate extends Partial<VoterCreate> {}
+
+export interface VoterSearchRequest {
+  filters?: VoterFilter
+  query?: string
+}
+
 export interface VoterInteraction {
   id: string
   campaign_id: string

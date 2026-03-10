@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
-import type { Voter, VoterFilter, VoterInteraction } from "@/types/voter"
+import type { Voter, VoterFilter, VoterInteraction, VoterCreate, VoterUpdate, VoterSearchRequest } from "@/types/voter"
 import type { PaginatedResponse } from "@/types/common"
 
 export function useVoters(campaignId: string, filters?: VoterFilter) {
@@ -70,6 +70,44 @@ export function useCreateInteraction(campaignId: string, voterId: string) {
       queryClient.invalidateQueries({
         queryKey: ["voters", campaignId, voterId, "interactions"],
       })
+    },
+  })
+}
+
+export function useCreateVoter(campaignId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: VoterCreate) =>
+      api.post(`api/v1/campaigns/${campaignId}/voters`, { json: data }).json<Voter>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
+  })
+}
+
+export function useUpdateVoter(campaignId: string, voterId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: VoterUpdate) =>
+      api
+        .patch(`api/v1/campaigns/${campaignId}/voters/${voterId}`, { json: data })
+        .json<Voter>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
+      queryClient.invalidateQueries({ queryKey: ["voters", campaignId, voterId] })
+    },
+  })
+}
+
+export function useSearchVoters(campaignId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: VoterSearchRequest) =>
+      api
+        .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: data })
+        .json<PaginatedResponse<Voter>>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
     },
   })
 }

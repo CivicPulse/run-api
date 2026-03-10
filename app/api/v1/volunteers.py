@@ -18,6 +18,7 @@ from app.schemas.volunteer import (
     VolunteerCreate,
     VolunteerDetailResponse,
     VolunteerResponse,
+    VolunteerStatusUpdate,
     VolunteerTagCreate,
     VolunteerTagResponse,
     VolunteerUpdate,
@@ -103,12 +104,12 @@ async def list_volunteers(
     volunteer_status: str | None = Query(None, alias="status"),
     skills: str | None = Query(None),
     name: str | None = Query(None),
-    user: AuthenticatedUser = Depends(require_role("manager")),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List volunteers with optional filters.
 
-    Requires manager+ role.
+    Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
     from app.db.rls import set_campaign_context
@@ -224,7 +225,7 @@ async def update_volunteer(
 async def update_volunteer_status(
     campaign_id: uuid.UUID,
     volunteer_id: uuid.UUID,
-    body: dict,
+    body: VolunteerStatusUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -238,7 +239,7 @@ async def update_volunteer_status(
     await set_campaign_context(db, str(campaign_id))
     try:
         volunteer = await _volunteer_service.update_status(
-            db, volunteer_id, body["status"]
+            db, volunteer_id, body.status
         )
     except ValueError as exc:
         return problem.ProblemResponse(

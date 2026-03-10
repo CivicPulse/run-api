@@ -114,6 +114,12 @@ class HoursAdjustment(BaseSchema):
     adjustment_reason: str
 
 
+class ShiftStatusUpdate(BaseSchema):
+    """Request schema for updating a shift's status."""
+
+    status: str
+
+
 class ShiftSummaryItem(BaseSchema):
     """Summary of a single shift for hours aggregation."""
 

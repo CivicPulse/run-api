@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.schemas.call_list import CallListEntryResponse
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.phone_bank import (
+    AssignCallerRequest,
     CallRecordCreate,
     CallRecordResponse,
     PhoneBankSessionCreate,
@@ -161,7 +162,7 @@ async def update_session(
 async def assign_caller(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
-    body: dict,
+    body: AssignCallerRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -175,7 +176,7 @@ async def assign_caller(
     await set_campaign_context(db, str(campaign_id))
     try:
         caller = await _phone_bank_service.assign_caller(
-            db, session_id, body["user_id"]
+            db, session_id, body.user_id
         )
     except ValueError as exc:
         return problem.ProblemResponse(

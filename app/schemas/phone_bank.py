@@ -96,6 +96,12 @@ class SessionProgressResponse(BaseSchema):
     callers: list[CallerProgressItem] = []
 
 
+class AssignCallerRequest(BaseSchema):
+    """Schema for assigning a caller to a phone bank session."""
+
+    user_id: str
+
+
 class ReassignRequest(BaseSchema):
     """Schema for reassigning an entry to a different caller."""
 

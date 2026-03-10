@@ -18,6 +18,7 @@ from app.schemas.shift import (
     ShiftCreate,
     ShiftResponse,
     ShiftSignupResponse,
+    ShiftStatusUpdate,
     ShiftUpdate,
 )
 from app.services.shift import ShiftService
@@ -195,7 +196,7 @@ async def update_shift(
 async def update_shift_status(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
-    body: dict,
+    body: ShiftStatusUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -208,7 +209,7 @@ async def update_shift_status(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        await _shift_service.update_status(db, shift_id, body["status"])
+        await _shift_service.update_status(db, shift_id, body.status)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
