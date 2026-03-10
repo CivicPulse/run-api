@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: migrate
-          image: ghcr.io/civicpulse/run-api:sha-64db7f0e0f93bda5ecd7805d840393258cbda84d
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb819c71a80c6f2fa36e21f27e4f77e66470
           command: ["python", "-m", "alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
@@ -32,7 +32,7 @@ spec:
               cpu: "200m"
       containers:
         - name: run-api
-          image: ghcr.io/civicpulse/run-api:sha-64db7f0e0f93bda5ecd7805d840393258cbda84d
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb819c71a80c6f2fa36e21f27e4f77e66470
           ports:
             - containerPort: 8000
           envFrom:
