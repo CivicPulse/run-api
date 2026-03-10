@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Local Dev & Deployment Readiness
-status: planning
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-10T02:00:15.566Z"
-last_activity: 2026-03-10 — v1.1 roadmap created (Phases 8-11)
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-10T02:20:46.521Z"
+last_activity: 2026-03-10 — Completed 08-01 health endpoints and container prep
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 70
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 ## Current Position
 
 Phase: 8 of 11 (Containerization)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-03-10 — v1.1 roadmap created (Phases 8-11)
+Plan: 1 of 2 in current phase (complete)
+Status: Executing
+Last activity: 2026-03-10 — Completed 08-01 health endpoints and container prep
 
-Progress: [||||||||||||||||||..........] 70% (v1.0 complete, v1.1 Phase 8 next)
+Progress: [|||||.....] 50% (Phase 8: 1/2 plans complete)
 
 ## Accumulated Context
 
@@ -38,6 +38,8 @@ Progress: [||||||||||||||||||..........] 70% (v1.0 complete, v1.1 Phase 8 next)
 
 12 key decisions logged in PROJECT.md Key Decisions table from v1.0, all marked Good.
 3 new decisions pending for v1.1 (embed web frontend, GHCR, plain K8s manifests).
+- 08-01: Readiness checks DB only, not ZITADEL or S3
+- 08-01: Build info defaults to 'unknown' when env vars not set
 
 ### Pending Todos
 
@@ -49,6 +51,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T02:00:15.557Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-containerization/08-CONTEXT.md
+Last session: 2026-03-10T02:20:01Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: .planning/phases/08-containerization/08-01-SUMMARY.md

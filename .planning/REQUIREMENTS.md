@@ -17,8 +17,8 @@ Requirements for Local Dev & Deployment Readiness milestone.
 ### Containerization
 
 - [ ] **CTR-01**: Multi-stage Dockerfile builds web frontend and Python API into single production image
-- [ ] **CTR-02**: Health check endpoint (`GET /health`) available for container and K8s probes
-- [ ] **CTR-03**: `.dockerignore` excludes tests, `.planning`, `.git`, `node_modules`, and dev artifacts
+- [x] **CTR-02**: Health check endpoint (`GET /health`) available for container and K8s probes
+- [x] **CTR-03**: `.dockerignore` excludes tests, `.planning`, `.git`, `node_modules`, and dev artifacts
 
 ### CI/CD
 
@@ -68,8 +68,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CTR-01 | Phase 8 | Pending |
-| CTR-02 | Phase 8 | Pending |
-| CTR-03 | Phase 8 | Pending |
+| CTR-02 | Phase 8 | Complete |
+| CTR-03 | Phase 8 | Complete |
 | DEV-01 | Phase 9 | Pending |
 | DEV-02 | Phase 9 | Pending |
 | DEV-03 | Phase 9 | Pending |
