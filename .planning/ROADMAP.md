@@ -76,7 +76,16 @@ Plans:
   3. User can create/manage campaign-level tags and apply or remove tags on individual voters
   4. User can create static voter lists (manually adding members), create dynamic voter lists (defining filter criteria that auto-populate), and view list detail with member management
   5. User can use an advanced search interface with composable filters (demographics, voting history, tags, location) to find specific voters and add interaction notes on voter detail pages
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Hook bug fixes (set-primary URL, voter-lists URL, tag add body), VoterFilter type expansion, Wave 0 test scaffolds
+- [ ] 13-02-PLAN.md — Voters layout scaffold (voters.tsx layout + route stubs for lists/ and tags/ + sidebar nav)
+- [ ] 13-03-PLAN.md — Voters index upgrade (DataTable + VoterFilterBuilder collapsible panel + New Voter sheet)
+- [ ] 13-04-PLAN.md — Voter detail sub-tabs: Overview, Contacts tab (inline add/edit/set-primary), Tags tab
+- [ ] 13-05-PLAN.md — Voter detail History tab (notes list + add note form) + Edit Voter sheet with useFormGuard
+- [ ] 13-06-PLAN.md — Voter Lists route: lists index DataTable + static/dynamic list detail + AddVotersDialog
+- [ ] 13-07-PLAN.md — Campaign Tags route (CRUD DataTable) + visual verification checkpoint
 
 ### Phase 14: Voter Import Wizard
 **Goal**: Users can import voter data files into the system through a guided multi-step wizard with automatic column detection, manual mapping adjustments, progress tracking, and the ability to resume interrupted imports
@@ -151,8 +160,8 @@ Plans:
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 10. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-10 |
 | 11. Kubernetes & GitOps | v1.1 | 2/2 | Complete | 2026-03-10 |
-| 12. Shared Infrastructure & Campaign Foundation | 3/3 | Complete    | 2026-03-10 | - |
-| 13. Voter Management Completion | v1.2 | 0/? | Not started | - |
+| 12. Shared Infrastructure & Campaign Foundation | v1.2 | 3/3 | Complete | 2026-03-10 |
+| 13. Voter Management Completion | v1.2 | 0/7 | Not started | - |
 | 14. Voter Import Wizard | v1.2 | 0/? | Not started | - |
 | 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
 | 16. Phone Banking | v1.2 | 0/? | Not started | - |
