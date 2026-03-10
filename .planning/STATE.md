@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Local Dev & Deployment Readiness
 status: completed
-stopped_at: Phase 11 context gathered
-last_updated: "2026-03-10T04:31:06.833Z"
-last_activity: 2026-03-10 — Completed 10-01 CI/CD pipeline workflows
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-03-10T04:52:55.846Z"
+last_activity: 2026-03-10 — Completed 11-02 Ingress & ArgoCD manifests
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
+  percent: 86
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 10 - CI/CD Pipeline
+**Current focus:** Phase 11 - Kubernetes & GitOps
 
 ## Current Position
 
-Phase: 10 of 11 (CI/CD Pipeline)
-Plan: 1 of 1 in current phase (complete)
-Status: Phase 10 complete, all plans executed
-Last activity: 2026-03-10 — Completed 10-01 CI/CD pipeline workflows
+Phase: 11 of 11 (Kubernetes & GitOps)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase 11 complete, all plans executed
+Last activity: 2026-03-10 — Completed 11-02 Ingress & ArgoCD manifests
 
-Progress: [██████████] 100% (Phase 10: 1/1 plans complete)
+Progress: [█████████░] 86% (Phase 11: 2/2 plans complete)
 
 ## Accumulated Context
 
@@ -51,6 +51,9 @@ Progress: [██████████] 100% (Phase 10: 1/1 plans complete)
 - 10-01: Publish workflow does not re-run quality gates -- PR workflow is sole gate
 - 10-01: Manifest commit-back only on main pushes, not tag pushes
 - 10-01: GITHUB_TOKEN commits do not re-trigger workflows (prevents infinite loops)
+- 11-02: HTTP-only IngressRoute (web entrypoint) because Cloudflare terminates TLS at edge
+- 11-02: ArgoCD app run-api-dev with selfHeal and prune for zero-touch deploys
+- 11-02: CreateNamespace=true sync option for cluster bootstrap
 
 ### Pending Todos
 
@@ -62,6 +65,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:31:06.823Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-kubernetes-gitops/11-CONTEXT.md
+Last session: 2026-03-10T04:52:00Z
+Stopped at: Completed 11-02-PLAN.md
+Resume file: .planning/phases/11-kubernetes-gitops/11-02-SUMMARY.md

@@ -30,9 +30,9 @@ Requirements for Local Dev & Deployment Readiness milestone.
 
 - [ ] **K8S-01**: Deployment manifest with init container for Alembic migrations, liveness/readiness probes
 - [ ] **K8S-02**: ClusterIP Service exposing API on port 8000
-- [ ] **K8S-03**: Traefik IngressRoute for external access
+- [x] **K8S-03**: Traefik IngressRoute for external access
 - [ ] **K8S-04**: Secret template YAML with documented `kubectl create secret` commands for all required secrets
-- [ ] **K8S-05**: ArgoCD Application manifest with automated sync from `k8s/` directory
+- [x] **K8S-05**: ArgoCD Application manifest with automated sync from `k8s/` directory
 
 ## Future Requirements
 
@@ -79,9 +79,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | CICD-03 | Phase 10 | Complete |
 | K8S-01 | Phase 11 | Pending |
 | K8S-02 | Phase 11 | Pending |
-| K8S-03 | Phase 11 | Pending |
+| K8S-03 | Phase 11 | Complete |
 | K8S-04 | Phase 11 | Pending |
-| K8S-05 | Phase 11 | Pending |
+| K8S-05 | Phase 11 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 15 total

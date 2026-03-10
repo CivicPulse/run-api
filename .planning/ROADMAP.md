@@ -29,7 +29,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 - [x] **Phase 8: Containerization** - Production Dockerfile with multi-stage build, health check, and proper ignore rules
 - [x] **Phase 9: Local Dev Environment** - Docker Compose full-stack dev with migrations, hot-reload, and seed data (completed 2026-03-10)
 - [x] **Phase 10: CI/CD Pipeline** - GitHub Actions workflow for GHCR image publishing with SHA tagging (completed 2026-03-10)
-- [ ] **Phase 11: Kubernetes & GitOps** - K8s manifests and ArgoCD application for baremetal deployment
+- [x] **Phase 11: Kubernetes & GitOps** - K8s manifests and ArgoCD application for baremetal deployment (completed 2026-03-10)
 
 ## Phase Details
 
@@ -84,7 +84,7 @@ Plans:
   2. A ClusterIP Service exposes the API on port 8000 and a Traefik IngressRoute routes external traffic to it
   3. A Secret template YAML documents every required secret with ready-to-use `kubectl create secret` commands
   4. An ArgoCD Application manifest exists that points to the `k8s/` directory with automated sync enabled
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md — Core workload manifests (Deployment, Service, ConfigMap, Secret template)
@@ -107,4 +107,4 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 8. Containerization | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 9. Local Dev Environment | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 10. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-10 |
-| 11. Kubernetes & GitOps | v1.1 | 0/2 | Not started | - |
+| 11. Kubernetes & GitOps | 2/2 | Complete   | 2026-03-10 | - |
