@@ -12,6 +12,8 @@ from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.call_list import (
+    AppendFromListRequest,
+    AppendFromListResponse,
     CallListCreate,
     CallListEntryResponse,
     CallListResponse,
@@ -286,3 +288,41 @@ async def claim_entries(
     return [
         CallListEntryResponse.model_validate(e) for e in entries
     ]
+
+
+@router.post(
+    "/campaigns/{campaign_id}/call-lists/{call_list_id}/append-from-list",
+    response_model=AppendFromListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def append_from_list(
+    campaign_id: uuid.UUID,
+    call_list_id: uuid.UUID,
+    body: AppendFromListRequest,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Append voters from a voter list into an existing call list.
+
+    Voters already present in the call list are skipped. New voters must
+    have at least one valid non-DNC phone to be added.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        added, skipped = await _call_list_service.append_from_list(
+            db, campaign_id, call_list_id, body.voter_list_id
+        )
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            title="Append From List Failed",
+            detail=str(exc),
+            type="append-from-list-failed",
+        )
+    await db.commit()
+    return AppendFromListResponse(added=added, skipped=skipped)

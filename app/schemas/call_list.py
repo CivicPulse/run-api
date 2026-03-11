@@ -75,3 +75,16 @@ class CallListSummaryResponse(BaseSchema):
     total_entries: int
     completed_entries: int
     created_at: datetime
+
+
+class AppendFromListRequest(BaseSchema):
+    """Schema for appending voters from a voter list into a call list."""
+
+    voter_list_id: uuid.UUID
+
+
+class AppendFromListResponse(BaseSchema):
+    """Schema for the append-from-list operation result."""
+
+    added: int
+    skipped: int

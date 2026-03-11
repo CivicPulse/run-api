@@ -438,6 +438,173 @@ class CallListService:
         )
         return list(result.scalars().all())
 
+    async def append_from_list(
+        self,
+        session: AsyncSession,
+        campaign_id: uuid.UUID,
+        call_list_id: uuid.UUID,
+        voter_list_id: uuid.UUID,
+    ) -> tuple[int, int]:
+        """Append voters from a voter list into an existing call list.
+
+        Voters already present in the call list (by voter_id) are skipped.
+        New voters must have at least one valid non-DNC phone to be added.
+
+        Args:
+            session: Async database session.
+            campaign_id: Campaign UUID (used for phone/DNC scoping).
+            call_list_id: Target call list UUID.
+            voter_list_id: Source voter list UUID.
+
+        Returns:
+            Tuple of (added_count, skipped_count).
+
+        Raises:
+            ValueError: If call list or voter list is not found.
+        """
+        # Load the call list
+        cl_result = await session.execute(
+            select(CallList).where(CallList.id == call_list_id)
+        )
+        call_list = cl_result.scalar_one_or_none()
+        if call_list is None:
+            raise ValueError(f"Call list {call_list_id} not found")
+
+        # Load the voter list
+        vl_result = await session.execute(
+            select(VoterList).where(VoterList.id == voter_list_id)
+        )
+        voter_list = vl_result.scalar_one_or_none()
+        if voter_list is None:
+            raise ValueError(f"Voter list {voter_list_id} not found")
+
+        # Determine source voter IDs from the voter list
+        if voter_list.list_type == "static":
+            members_result = await session.execute(
+                select(VoterListMember.voter_id).where(
+                    VoterListMember.voter_list_id == voter_list_id
+                )
+            )
+            source_voter_ids: list[uuid.UUID] = [row[0] for row in members_result.all()]
+        else:
+            # Dynamic list type not yet supported for append; treat as empty
+            source_voter_ids = []
+
+        if not source_voter_ids:
+            return 0, 0
+
+        # Single query: find voter_ids already present in this call list
+        existing_result = await session.execute(
+            select(CallListEntry.voter_id).where(
+                CallListEntry.call_list_id == call_list_id,
+                CallListEntry.voter_id.in_(source_voter_ids),
+            )
+        )
+        existing_voter_ids: set[uuid.UUID] = set(existing_result.scalars().all())
+
+        # Candidate voter IDs are those not yet in the call list
+        candidate_voter_ids = [
+            vid for vid in source_voter_ids if vid not in existing_voter_ids
+        ]
+        skipped_already_present = len(source_voter_ids) - len(candidate_voter_ids)
+
+        if not candidate_voter_ids:
+            return 0, skipped_already_present
+
+        # Get phones for candidate voters in this campaign
+        phone_result = await session.execute(
+            select(
+                VoterPhone.voter_id.label("voter_id"),
+                VoterPhone.id.label("phone_id"),
+                VoterPhone.value.label("phone_value"),
+                VoterPhone.type.label("phone_type"),
+                VoterPhone.is_primary.label("is_primary"),
+            ).where(
+                VoterPhone.campaign_id == campaign_id,
+                VoterPhone.voter_id.in_(candidate_voter_ids),
+            )
+        )
+        phone_rows = phone_result.all()
+
+        # Get DNC numbers for this campaign
+        dnc_result = await session.execute(
+            select(DoNotCallEntry.phone_number).where(
+                DoNotCallEntry.campaign_id == campaign_id
+            )
+        )
+        dnc_numbers: set[str] = set(dnc_result.scalars().all())
+
+        # Get interaction counts for priority scoring
+        interaction_result = await session.execute(
+            select(
+                VoterInteraction.voter_id,
+                VoterInteraction.id,
+            )
+            .where(
+                VoterInteraction.campaign_id == campaign_id,
+                VoterInteraction.voter_id.in_(candidate_voter_ids),
+            )
+        )
+        interaction_counts: dict[uuid.UUID, int] = defaultdict(int)
+        for row in interaction_result.all():
+            interaction_counts[row[0]] += 1
+
+        # Group phones by voter, filter by validity and DNC
+        voter_phones: dict[uuid.UUID, list[dict]] = defaultdict(list)
+        for row in phone_rows:
+            phone_value = row.phone_value
+            if not PHONE_REGEX.match(phone_value):
+                continue
+            if phone_value in dnc_numbers:
+                continue
+            voter_phones[row.voter_id].append({
+                "phone_id": str(row.phone_id),
+                "value": phone_value,
+                "type": row.phone_type,
+                "is_primary": row.is_primary,
+            })
+
+        # Create entries for voters with valid non-DNC phones
+        added_count = 0
+        skipped_no_phone = 0
+        for vid in candidate_voter_ids:
+            phones = voter_phones.get(vid, [])
+            if not phones:
+                skipped_no_phone += 1
+                continue
+            phones.sort(key=lambda p: (not p["is_primary"], p["type"]))
+            priority = calculate_priority_score(interaction_counts.get(vid, 0))
+            entry = CallListEntry(
+                id=uuid.uuid4(),
+                call_list_id=call_list_id,
+                voter_id=vid,
+                priority_score=priority,
+                phone_numbers=phones,
+                status=EntryStatus.AVAILABLE,
+                attempt_count=0,
+                claimed_by=None,
+                claimed_at=None,
+                last_attempt_at=None,
+                phone_attempts=None,
+            )
+            session.add(entry)
+            added_count += 1
+
+        # Increment total_entries on the call list
+        call_list.total_entries += added_count
+        call_list.updated_at = utcnow()
+
+        total_skipped = skipped_already_present + skipped_no_phone
+        logger.info(
+            "Appended {} entries to call list {} from voter list {} ({} skipped)",
+            added_count,
+            call_list_id,
+            voter_list_id,
+            total_skipped,
+        )
+
+        return added_count, total_skipped
+
     async def delete_call_list(
         self,
         session: AsyncSession,
