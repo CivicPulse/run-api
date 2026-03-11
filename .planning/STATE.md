@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 16-01 (backend gap fixes and Wave 0 test scaffolds)
-last_updated: "2026-03-11T21:10:25.379Z"
+stopped_at: Completed 16-02 (TypeScript types and session hooks)
+last_updated: "2026-03-11T21:14:11.904Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 27
-  completed_plans: 21
+  completed_plans: 22
   percent: 75
 ---
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 75%
 | Phase 15-call-lists-dnc-management P04 | 185 sec | 1 tasks | 1 files |
 | Phase 15 P06 | 99 | 1 tasks | 1 files |
 | Phase 16-phone-banking P01 | 6 | 2 tasks | 9 files |
+| Phase 16-phone-banking P02 | 134 sec | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Progress: [████████░░] 75%
 - [Phase 16-phone-banking]: caller_count populated at endpoint layer via batch COUNT query — avoids N+1, keeps service returning plain models
 - [Phase 16-phone-banking]: self_release_entry validates claimed_by == user_id before releasing — consistent with record_call ownership pattern
 - [Phase 16-phone-banking]: Wave 0 stubs use it.todo with no imports — suite stays green while stubs are pending
+- [Phase 16-phone-banking]: useUpdateSessionStatus (not useUpdateSession) exported — name matches plan must_haves export list exactly
+- [Phase 16-phone-banking]: useMyPhoneBankSessions spreads sessionKeys.all() and appends 'mine' — stays invalidatable by session list mutations
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T21:10:25.374Z
-Stopped at: Completed 16-01 (backend gap fixes and Wave 0 test scaffolds)
+Last session: 2026-03-11T21:14:11.899Z
+Stopped at: Completed 16-02 (TypeScript types and session hooks)
 Resume file: None

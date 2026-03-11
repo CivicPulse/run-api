@@ -61,16 +61,16 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Phone Banking
 
-- [ ] **PHON-01**: User can create a phone bank session with call list and survey
-- [ ] **PHON-02**: User can manage session status transitions (draft → active → complete)
+- [x] **PHON-01**: User can create a phone bank session with call list and survey
+- [x] **PHON-02**: User can manage session status transitions (draft → active → complete)
 - [x] **PHON-03**: User can assign and remove callers to a session
 - [x] **PHON-04**: User can check in and check out of a phone bank session
-- [ ] **PHON-05**: User can use the active calling screen to claim and call voters sequentially
-- [ ] **PHON-06**: User can view voter details, contact info, and survey script during a call
-- [ ] **PHON-07**: User can record call outcomes with quick-select buttons
+- [x] **PHON-05**: User can use the active calling screen to claim and call voters sequentially
+- [x] **PHON-06**: User can view voter details, contact info, and survey script during a call
+- [x] **PHON-07**: User can record call outcomes with quick-select buttons
 - [x] **PHON-08**: User can skip or release a claimed call list entry
-- [ ] **PHON-09**: User can view session progress dashboard with outcome breakdown
-- [ ] **PHON-10**: User can reassign call list entries to other callers
+- [x] **PHON-09**: User can view session progress dashboard with outcome breakdown
+- [x] **PHON-10**: User can reassign call list entries to other callers
 
 ### Volunteer Management
 
@@ -164,16 +164,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CALL-06 | Phase 15 | Complete |
 | CALL-07 | Phase 15 | Complete |
 | CALL-08 | Phase 15 | Complete |
-| PHON-01 | Phase 16 | Pending |
-| PHON-02 | Phase 16 | Pending |
+| PHON-01 | Phase 16 | Complete |
+| PHON-02 | Phase 16 | Complete |
 | PHON-03 | Phase 16 | Complete |
 | PHON-04 | Phase 16 | Complete |
-| PHON-05 | Phase 16 | Pending |
-| PHON-06 | Phase 16 | Pending |
-| PHON-07 | Phase 16 | Pending |
+| PHON-05 | Phase 16 | Complete |
+| PHON-06 | Phase 16 | Complete |
+| PHON-07 | Phase 16 | Complete |
 | PHON-08 | Phase 16 | Complete |
-| PHON-09 | Phase 16 | Pending |
-| PHON-10 | Phase 16 | Pending |
+| PHON-09 | Phase 16 | Complete |
+| PHON-10 | Phase 16 | Complete |
 | VLTR-01 | Phase 17 | Pending |
 | VLTR-02 | Phase 17 | Pending |
 | VLTR-03 | Phase 17 | Pending |
