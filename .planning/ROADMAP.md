@@ -41,7 +41,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 
 - [x] **Phase 12: Shared Infrastructure & Campaign Foundation** - Permission system, shared components, form guards, campaign settings and member management (completed 2026-03-10)
 - [x] **Phase 13: Voter Management Completion** - Contacts, tags, lists, create/edit, advanced search, interaction notes (completed 2026-03-11)
-- [ ] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history
+- [x] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history (completed 2026-03-11)
 - [ ] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import
 - [ ] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards
 - [ ] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking
@@ -97,7 +97,7 @@ Plans:
   3. User can preview a sample of mapped data (showing how source columns map to voter fields) before confirming the import
   4. User can monitor import progress in real-time showing row counts, percentage complete, and error counts — and can view a history of all past imports with their statuses
   5. User can navigate away from an in-progress import wizard and return to resume at the correct step
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 14-01-PLAN.md — Wave 0 types, test scaffolds, shadcn Progress install
@@ -168,7 +168,7 @@ Plans:
 | 11. Kubernetes & GitOps | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 12. Shared Infrastructure & Campaign Foundation | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
-| 14. Voter Import Wizard | 3/4 | In Progress|  | - |
+| 14. Voter Import Wizard | 4/4 | Complete   | 2026-03-11 | - |
 | 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
 | 16. Phone Banking | v1.2 | 0/? | Not started | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
