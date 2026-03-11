@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-03-11T14:30:49.236Z"
+stopped_at: Completed 15-02 (type contracts, hook layer, sidebar layout)
+last_updated: "2026-03-11T15:22:53.836Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 20
+  completed_plans: 15
   percent: 75
 ---
 
@@ -59,6 +59,7 @@ Progress: [████████░░] 75%
 | Phase 14 P02 | 4 | 2 tasks | 3 files |
 | Phase 14-voter-import-wizard P03 | 6 | 2 tasks | 7 files |
 | Phase 14-voter-import-wizard P04 | 15 | 2 tasks | 2 files |
+| Phase 15-call-lists-dnc-management P02 | 2 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Progress: [████████░░] 75%
 - [Phase 14-voter-import-wizard]: SKIP_VALUE='__skip__' sentinel replaces empty string for Radix UI SelectItem compatibility — translated back to '' at onMappingChange boundary
 - [Phase 14-voter-import-wizard]: useRef guard in ImportProgress prevents onComplete/onFailed double-fire in React StrictMode
 - [Phase 14-voter-import-wizard]: Error report download shown as disabled DropdownMenuItem when error_report_key present — avoids constructing MinIO URLs client-side without a confirmed backend endpoint
+- [Phase 15-call-lists-dnc-management]: useCallLists and useDNC use @/api/client (not @/lib/api) — matching existing project hook pattern
+- [Phase 15-call-lists-dnc-management]: useImportDNC uses body: formData (not json:) for multipart upload — browser sets Content-Type boundary
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T14:30:49.230Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-call-lists-dnc-management/15-CONTEXT.md
+Last session: 2026-03-11T15:22:53.831Z
+Stopped at: Completed 15-02 (type contracts, hook layer, sidebar layout)
+Resume file: None
