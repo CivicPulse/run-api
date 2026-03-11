@@ -7,11 +7,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from sqlalchemy import Select, and_, delete, func, or_, select
+from sqlalchemy import Select, and_, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utcnow
 from app.models.voter import Voter, VoterTag, VoterTagMember
+from app.models.voter_contact import VoterPhone
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter import VoterResponse
 from app.schemas.voter_filter import VoterFilter
@@ -111,6 +112,16 @@ def build_voter_query(filters: VoterFilter) -> Select:
 
     if filters.registered_before is not None:
         conditions.append(Voter.registration_date <= filters.registered_before)
+
+    # Phone existence
+    if filters.has_phone is not None:
+        phone_subquery = select(VoterPhone).where(
+            VoterPhone.voter_id == Voter.id
+        ).correlate(Voter)
+        if filters.has_phone:
+            conditions.append(exists(phone_subquery))
+        else:
+            conditions.append(~exists(phone_subquery))
 
     # Free-text search on name
     if filters.search is not None:

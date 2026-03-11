@@ -30,4 +30,5 @@ class VoterFilter(BaseModel):
     registered_after: str | None = None
     registered_before: str | None = None
     search: str | None = None
+    has_phone: bool | None = None
     logic: str = Field(default="AND", pattern="^(AND|OR)$")

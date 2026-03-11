@@ -35,6 +35,7 @@ async def list_voters(
     state: str | None = Query(None),
     precinct: str | None = Query(None),
     county: str | None = Query(None),
+    has_phone: bool | None = Query(None),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -55,6 +56,7 @@ async def list_voters(
         state=state,
         precinct=precinct,
         county=county,
+        has_phone=has_phone,
     )
     return await _service.search_voters(db, filters, cursor=cursor, limit=limit)
 
