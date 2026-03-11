@@ -26,7 +26,7 @@ from app.models.voter_list import VoterList, VoterListMember
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.schemas.call_list import CallListCreate
+    from app.schemas.call_list import CallListCreate, CallListUpdate
 
 # Phone number validation: 10-15 digits only
 PHONE_REGEX = re.compile(r"^\d{10,15}$")
@@ -328,6 +328,47 @@ class CallListService:
             raise ValueError(msg)
 
         call_list.status = new_status
+        call_list.updated_at = utcnow()
+        return call_list
+
+    async def update_call_list(
+        self,
+        session: AsyncSession,
+        call_list_id: uuid.UUID,
+        update: "CallListUpdate",
+        new_status: str | None = None,
+    ) -> CallList:
+        """Update call list name, voter_list_id, and/or status.
+
+        Args:
+            session: Async database session.
+            call_list_id: The call list UUID.
+            update: CallListUpdate schema with optional name/voter_list_id.
+            new_status: Optional new status for transition.
+
+        Returns:
+            The updated CallList.
+
+        Raises:
+            ValueError: If call list not found or invalid status transition.
+        """
+        cl_result = await session.execute(
+            select(CallList).where(CallList.id == call_list_id)
+        )
+        call_list = cl_result.scalar_one_or_none()
+        if call_list is None:
+            raise ValueError(f"Call list {call_list_id} not found")
+        if update.name is not None:
+            call_list.name = update.name
+        if update.voter_list_id is not None:
+            call_list.voter_list_id = update.voter_list_id
+        if new_status is not None:
+            valid_targets = _VALID_TRANSITIONS.get(call_list.status, set())
+            if new_status not in valid_targets:
+                raise ValueError(
+                    f"Invalid status transition from {call_list.status} to {new_status}"
+                )
+            call_list.status = new_status
         call_list.updated_at = utcnow()
         return call_list
 

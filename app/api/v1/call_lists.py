@@ -16,6 +16,7 @@ from app.schemas.call_list import (
     CallListEntryResponse,
     CallListResponse,
     CallListSummaryResponse,
+    CallListUpdate,
     ClaimEntriesRequest,
 )
 from app.schemas.common import PaginatedResponse, PaginationResponse
@@ -130,11 +131,12 @@ async def get_call_list(
 async def update_call_list_status(
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
-    new_status: str,
+    new_status: str | None = None,
+    body: CallListUpdate | None = None,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update call list status (draft->active->completed).
+    """Update call list status and/or name/voter_list_id.
 
     Requires manager+ role.
     """
@@ -143,15 +145,15 @@ async def update_call_list_status(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        call_list = await _call_list_service.update_status(
-            db, call_list_id, new_status
+        call_list = await _call_list_service.update_call_list(
+            db, call_list_id, body or CallListUpdate(), new_status
         )
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            title="Status Update Failed",
+            title="Update Failed",
             detail=str(exc),
-            type="status-update-failed",
+            type="update-failed",
         )
     await db.commit()
     return CallListResponse.model_validate(call_list)

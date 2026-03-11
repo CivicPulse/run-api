@@ -52,6 +52,13 @@ class CallListEntryResponse(BaseSchema):
     phone_attempts: dict | None = None
 
 
+class CallListUpdate(BaseSchema):
+    """Schema for updating call list name and voter list."""
+
+    name: str | None = None
+    voter_list_id: uuid.UUID | None = None
+
+
 class ClaimEntriesRequest(BaseSchema):
     """Schema for claiming a batch of entries for calling."""
 
