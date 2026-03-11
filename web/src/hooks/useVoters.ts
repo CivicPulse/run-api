@@ -99,6 +99,48 @@ export function useUpdateVoter(campaignId: string, voterId: string) {
   })
 }
 
+export interface VotersPaginatedOptions {
+  cursor?: string
+  pageSize?: number
+  sortBy?: string
+  sortDir?: "asc" | "desc"
+  filters?: VoterFilter
+}
+
+/**
+ * Cursor-based paginated voter query (replaces useInfiniteQuery pattern for DataTable).
+ * Uses GET /voters when no filters are active, or includes filter params in query string.
+ */
+export function useVotersQuery(campaignId: string, options: VotersPaginatedOptions = {}) {
+  const { cursor, pageSize = 50, sortBy, sortDir, filters } = options
+  return useQuery({
+    queryKey: ["voters", campaignId, "paginated", cursor, pageSize, sortBy, sortDir, filters],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (cursor) params.set("cursor", cursor)
+      if (pageSize) params.set("page_size", String(pageSize))
+      if (sortBy) params.set("sort_by", sortBy)
+      if (sortDir) params.set("sort_dir", sortDir)
+      if (filters) {
+        for (const [key, value] of Object.entries(filters)) {
+          if (value !== undefined && value !== null && value !== "") {
+            if (Array.isArray(value)) {
+              for (const v of value) params.append(key, v)
+            } else {
+              params.set(key, String(value))
+            }
+          }
+        }
+      }
+      const qs = params.toString()
+      return api
+        .get(`api/v1/campaigns/${campaignId}/voters${qs ? `?${qs}` : ""}`)
+        .json<PaginatedResponse<Voter>>()
+    },
+    enabled: !!campaignId,
+  })
+}
+
 export function useSearchVoters(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation({
