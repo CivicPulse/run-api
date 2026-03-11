@@ -33,7 +33,7 @@ export function useAddTagToVoter(campaignId: string, voterId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (tagId: string) =>
-      api.post(`api/v1/campaigns/${campaignId}/voters/${voterId}/tags/${tagId}`).json(),
+      api.post(`api/v1/campaigns/${campaignId}/voters/${voterId}/tags`, { json: { tag_id: tagId } }).json(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["voters", campaignId, voterId, "tags"] }),
   })
 }
