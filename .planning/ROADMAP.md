@@ -42,7 +42,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 12: Shared Infrastructure & Campaign Foundation** - Permission system, shared components, form guards, campaign settings and member management (completed 2026-03-10)
 - [x] **Phase 13: Voter Management Completion** - Contacts, tags, lists, create/edit, advanced search, interaction notes (completed 2026-03-11)
 - [x] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history (completed 2026-03-11)
-- [ ] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import
+- [x] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import (completed 2026-03-11)
 - [ ] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards
 - [ ] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking
 - [ ] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment
@@ -114,7 +114,7 @@ Plans:
   2. User can view call list detail showing all entries with their current statuses (unclaimed, claimed, completed, skipped)
   3. User can view the campaign DNC list, add individual phone numbers, and remove numbers from the list
   4. User can bulk import DNC numbers from a file and check whether a specific phone number is on the DNC list
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] 15-01-PLAN.md — Backend gaps (CallListUpdate schema, PATCH body, GET /entries endpoint) + Wave 0 test scaffolds
@@ -177,7 +177,7 @@ Plans:
 | 12. Shared Infrastructure & Campaign Foundation | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
-| 15. Call Lists & DNC Management | 5/6 | In Progress|  | - |
+| 15. Call Lists & DNC Management | 6/6 | Complete   | 2026-03-11 | - |
 | 16. Phone Banking | v1.2 | 0/? | Not started | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
