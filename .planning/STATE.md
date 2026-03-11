@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 15-05 (DNC list page — CALL-04 through CALL-08 satisfied)
-last_updated: "2026-03-11T15:27:42.893Z"
+stopped_at: Completed 15-03 (Call lists index page with DataTable and CRUD dialogs)
+last_updated: "2026-03-11T15:28:04.762Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
   percent: 75
 ---
 
@@ -62,6 +62,7 @@ Progress: [████████░░] 75%
 | Phase 15-call-lists-dnc-management P02 | 2 | 2 tasks | 7 files |
 | Phase 15-call-lists-dnc-management P01 | 163 sec | 2 tasks | 6 files |
 | Phase 15-call-lists-dnc-management P05 | 2 | 1 tasks | 2 files |
+| Phase 15-call-lists-dnc-management P03 | 109 sec | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Progress: [████████░░] 75%
 - [Phase 15-call-lists-dnc-management]: Voter name join handled at endpoint layer not service — keeps service returning plain model objects
 - [Phase 15]: DNCListPage uses DataTable with plain array (not paginated) — omit pagination props to hide PaginationControls
 - [Phase 15]: Client-side DNC search strips non-digit characters before comparing — matches formatted and raw phone numbers
+- [Phase 15-call-lists-dnc-management]: Advanced settings section uses button-toggle show/hide instead of shadcn Collapsible — component not installed in project
+- [Phase 15-call-lists-dnc-management]: Single CallListDialog component handles both create and edit modes via editList prop — avoids duplicate form boilerplate
 
 ### Pending Todos
 
@@ -122,6 +125,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T15:27:42.887Z
-Stopped at: Completed 15-05 (DNC list page — CALL-04 through CALL-08 satisfied)
+Last session: 2026-03-11T15:28:00.029Z
+Stopped at: Completed 15-03 (Call lists index page with DataTable and CRUD dialogs)
 Resume file: None
