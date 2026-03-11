@@ -35,7 +35,7 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 - [x] **VOTR-07**: User can create and manage static voter lists
 - [x] **VOTR-08**: User can create and manage dynamic voter lists with filter criteria
 - [x] **VOTR-09**: User can view voter list detail with member management
-- [ ] **VOTR-10**: User can use advanced search with composable filters
+- [x] **VOTR-10**: User can use advanced search with composable filters
 - [x] **VOTR-11**: User can add interaction notes on voter detail page
 
 ### Voter Imports
@@ -147,7 +147,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOTR-07 | Phase 13 | Complete |
 | VOTR-08 | Phase 13 | Complete |
 | VOTR-09 | Phase 13 | Complete |
-| VOTR-10 | Phase 13 | Pending |
+| VOTR-10 | Phase 13 | Complete |
 | VOTR-11 | Phase 13 | Complete |
 | IMPT-01 | Phase 14 | Pending |
 | IMPT-02 | Phase 14 | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-03-11T02:11:02.962Z"
-last_activity: 2026-03-10 — Completed 12-01 (usePermissions, RequireRole, useFormGuard, DataTable — 51 tests passing)
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-03-11T02:12:21.577Z"
+last_activity: 2026-03-11 — Completed 13-04 (Voter detail sub-tabs, ContactsTab inline add/edit, TagsTab)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 5
+  completed_plans: 8
+  percent: 70
 ---
 
 # Project State
@@ -52,6 +52,7 @@ Progress: [███████░░░] 70%
 | Phase 13 P01 | 270 | 3 tasks | 8 files |
 | Phase 13 P02 | 2 | 2 tasks | 4 files |
 | Phase 13 P04 | 15 | 2 tasks | 3 files |
+| Phase 13 P03 | 4 min 24 sec | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Progress: [███████░░░] 70%
 - [Phase 13]: Shared TagFormDialog for create/edit avoids duplicate form boilerplate in tags management page
 - [Phase 13]: ContactsTab uses actual voter-contact.ts type shapes (value/type fields) not plan pseudo-types
 - [Phase 13]: Inline expand pattern for contact edit: expandedEdit state tracks contact id, form renders below row
+- [Phase 13]: useVotersQuery added as cursor-based useQuery variant — existing useVoters (useInfiniteQuery) preserved for backward compatibility
+- [Phase 13]: VoterFilterBuilder reads campaignId via useParams(strict:false) when no prop provided — gracefully falls back in tests
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T02:11:02.954Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-03-11T02:12:21.570Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
