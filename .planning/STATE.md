@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 13-06-PLAN.md
-last_updated: "2026-03-11T02:13:58.245Z"
+stopped_at: Completed 13-05-PLAN.md
+last_updated: "2026-03-11T02:14:34.966Z"
 last_activity: 2026-03-11 — Completed 13-04 (Voter detail sub-tabs, ContactsTab inline add/edit, TagsTab)
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 70
 ---
 
@@ -54,6 +54,7 @@ Progress: [███████░░░] 70%
 | Phase 13 P04 | 15 | 2 tasks | 3 files |
 | Phase 13 P03 | 4 min 24 sec | 2 tasks | 5 files |
 | Phase 13 P06 | 4 min 33 sec | 2 tasks | 3 files |
+| Phase 13 P05 | 11 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Progress: [███████░░░] 70%
 - [Phase 13]: VoterFilterBuilder reads campaignId via useParams(strict:false) when no prop provided — gracefully falls back in tests
 - [Phase 13]: Two-step New List dialog: type selector first, then name/filter form — avoids confusing mixed form
 - [Phase 13]: Dynamic list filter_query serialized as JSON.stringify(VoterFilter) for dynamic list create/edit (aligns with VoterListCreate.filter_query?: string)
+- [Phase 13]: useFormGuard takes { form } (whole react-hook-form instance) not { isDirty, onConfirm } — VoterEditSheet adapted to actual API
+- [Phase 13]: HistoryTab owns its own useVoterInteractions query — interactions sorted client-side descending by created_at
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T02:13:58.238Z
-Stopped at: Completed 13-06-PLAN.md
+Last session: 2026-03-11T02:14:34.957Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: None
