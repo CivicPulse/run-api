@@ -7,6 +7,7 @@ function VotersLayout() {
     { to: `/campaigns/${campaignId}/voters`, label: "All Voters", end: true },
     { to: `/campaigns/${campaignId}/voters/lists`, label: "Lists" },
     { to: `/campaigns/${campaignId}/voters/tags`, label: "Tags" },
+    { to: `/campaigns/${campaignId}/voters/imports`, label: "Imports" },
   ]
 
   return (
