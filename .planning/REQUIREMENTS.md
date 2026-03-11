@@ -42,7 +42,7 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 - [x] **IMPT-01**: User can upload a CSV file via drag-and-drop
 - [x] **IMPT-02**: User can view auto-detected column mappings with suggestions
-- [x] **IMPT-03**: User can manually adjust column mappings via drag-and-drop
+- [x] **IMPT-03**: User can manually adjust column mappings via dropdown selects
 - [x] **IMPT-04**: User can preview mapped data before confirming import
 - [x] **IMPT-05**: User can track import progress with row count and percentage
 - [x] **IMPT-06**: User can view import history with status and error counts
