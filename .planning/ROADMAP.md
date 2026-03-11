@@ -97,7 +97,7 @@ Plans:
   3. User can preview a sample of mapped data (showing how source columns map to voter fields) before confirming the import
   4. User can monitor import progress in real-time showing row counts, percentage complete, and error counts — and can view a history of all past imports with their statuses
   5. User can navigate away from an in-progress import wizard and return to resume at the correct step
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 14-01-PLAN.md — Wave 0 types, test scaffolds, shadcn Progress install
@@ -168,7 +168,7 @@ Plans:
 | 11. Kubernetes & GitOps | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 12. Shared Infrastructure & Campaign Foundation | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
-| 14. Voter Import Wizard | 1/4 | In Progress|  | - |
+| 14. Voter Import Wizard | 2/4 | In Progress|  | - |
 | 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
 | 16. Phone Banking | v1.2 | 0/? | Not started | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
