@@ -134,7 +134,16 @@ Plans:
   3. Caller can use the active calling screen to claim the next voter, see voter details and contact info, read through the survey script, and record call outcomes with quick-select buttons — then automatically advance to the next call
   4. Caller can skip or release a claimed entry, and a manager can reassign entries to other callers
   5. User can view a session progress dashboard showing completion percentage, outcome breakdown, and caller activity
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Backend gaps (self-release, callers list, assigned_to_me filter, caller_count) + Wave 0 test scaffolds
+- [ ] 16-02-PLAN.md — TypeScript types, session hooks, and sidebar nav update
+- [ ] 16-03-PLAN.md — Sessions index page with SessionDialog (create/edit/delete)
+- [ ] 16-04-PLAN.md — Session detail page (Overview tab + Progress tab with polling)
+- [ ] 16-05-PLAN.md — My Sessions caller dashboard
+- [ ] 16-06-PLAN.md — Active calling screen (claim lifecycle, outcomes, survey, skip)
+- [ ] 16-07-PLAN.md — Full test suite verification + visual checkpoint
 
 ### Phase 17: Volunteer Management
 **Goal**: Users can manage a complete volunteer roster with profiles, availability slots, tags, and hours tracking — and volunteers can self-register through a dedicated flow
@@ -146,7 +155,16 @@ Plans:
   3. Volunteer can self-register through a registration flow that creates their volunteer record
   4. User can manage volunteer availability by adding and removing time slots, and manage campaign-level volunteer tags with per-volunteer tag assignment
   5. User can view a volunteer's accumulated hours and shift history
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Backend gaps (self-release, callers list, assigned_to_me filter, caller_count) + Wave 0 test scaffolds
+- [ ] 16-02-PLAN.md — TypeScript types, session hooks, and sidebar nav update
+- [ ] 16-03-PLAN.md — Sessions index page with SessionDialog (create/edit/delete)
+- [ ] 16-04-PLAN.md — Session detail page (Overview tab + Progress tab with polling)
+- [ ] 16-05-PLAN.md — My Sessions caller dashboard
+- [ ] 16-06-PLAN.md — Active calling screen (claim lifecycle, outcomes, survey, skip)
+- [ ] 16-07-PLAN.md — Full test suite verification + visual checkpoint
 
 ### Phase 18: Shift Management
 **Goal**: Users can create and manage shifts with scheduling, volunteer signup and assignment, check-in/out tracking, roster views, and post-shift hours adjustment
@@ -157,7 +175,16 @@ Plans:
   2. User can view shifts in a date-grouped list showing upcoming and past shifts with their statuses and capacity
   3. Volunteer can sign up for available shifts (respecting capacity limits and waitlists) and cancel their signup, and managers can assign volunteers to shifts directly
   4. Manager can check in and check out volunteers at shifts, view a shift roster with each volunteer's status, and adjust volunteer hours after a shift completes
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Backend gaps (self-release, callers list, assigned_to_me filter, caller_count) + Wave 0 test scaffolds
+- [ ] 16-02-PLAN.md — TypeScript types, session hooks, and sidebar nav update
+- [ ] 16-03-PLAN.md — Sessions index page with SessionDialog (create/edit/delete)
+- [ ] 16-04-PLAN.md — Session detail page (Overview tab + Progress tab with polling)
+- [ ] 16-05-PLAN.md — My Sessions caller dashboard
+- [ ] 16-06-PLAN.md — Active calling screen (claim lifecycle, outcomes, survey, skip)
+- [ ] 16-07-PLAN.md — Full test suite verification + visual checkpoint
 
 ## Progress
 
@@ -178,6 +205,6 @@ Plans:
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
 | 15. Call Lists & DNC Management | 6/6 | Complete   | 2026-03-11 | - |
-| 16. Phone Banking | v1.2 | 0/? | Not started | - |
+| 16. Phone Banking | v1.2 | 0/7 | In progress | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
