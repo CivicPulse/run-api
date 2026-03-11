@@ -1,8 +1,9 @@
 import { useBlocker } from "@tanstack/react-router"
-import type { UseFormReturn, FieldValues } from "react-hook-form"
+import type { UseFormReturn } from "react-hook-form"
 
 interface UseFormGuardOptions {
-  form: UseFormReturn<FieldValues>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: UseFormReturn<any, any, any>
 }
 
 export function useFormGuard({ form }: UseFormGuardOptions) {

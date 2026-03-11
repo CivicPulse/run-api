@@ -47,7 +47,7 @@ function GeneralSettings() {
     }
   }, [campaign, form])
 
-  const { isBlocked, proceed, reset: resetGuard } = useFormGuard({ form: form as ReturnType<typeof useForm> })
+  const { isBlocked, proceed, reset: resetGuard } = useFormGuard({ form })
 
   const onSubmit = form.handleSubmit(async (data) => {
     try {

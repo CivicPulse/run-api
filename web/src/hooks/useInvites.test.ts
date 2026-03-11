@@ -15,7 +15,7 @@ vi.mock("@/api/client", () => ({
 
 import { api } from "@/api/client"
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
   post: ReturnType<typeof vi.fn>
   delete: ReturnType<typeof vi.fn>

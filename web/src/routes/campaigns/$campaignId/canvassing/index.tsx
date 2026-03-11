@@ -49,7 +49,7 @@ function CanvassingIndex() {
         <div className="flex items-center justify-between">
           <h3 className="text-md font-medium">Turfs</h3>
           <Button size="sm" asChild>
-            <Link to={`/campaigns/${campaignId}/canvassing/turfs/new`}>
+            <Link to={`/campaigns/${campaignId}/canvassing/turfs/new` as any}>
               <Plus className="mr-1 h-4 w-4" /> New Turf
             </Link>
           </Button>
@@ -75,7 +75,7 @@ function CanvassingIndex() {
             description="Create a turf to define canvassing areas."
             action={
               <Button size="sm" asChild>
-                <Link to={`/campaigns/${campaignId}/canvassing/turfs/new`}>
+                <Link to={`/campaigns/${campaignId}/canvassing/turfs/new` as any}>
                   <Plus className="mr-1 h-4 w-4" /> Create Turf
                 </Link>
               </Button>
@@ -86,7 +86,7 @@ function CanvassingIndex() {
             {turfs.map((turf) => (
               <Card key={turf.id} className="group relative">
                 <Link
-                  to={`/campaigns/${campaignId}/canvassing/turfs/${turf.id}`}
+                  to={`/campaigns/${campaignId}/canvassing/turfs/${turf.id}` as any}
                   className="absolute inset-0 z-10"
                 />
                 <CardHeader>
@@ -166,7 +166,7 @@ function CanvassingIndex() {
                   <TableRow key={walkList.id} className="relative">
                     <TableCell className="font-medium">
                       <Link
-                        to={`/campaigns/${campaignId}/canvassing/walk-lists/${walkList.id}`}
+                        to={`/campaigns/${campaignId}/canvassing/walk-lists/${walkList.id}` as any}
                         className="hover:underline"
                       >
                         {walkList.name}

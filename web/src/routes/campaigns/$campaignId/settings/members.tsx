@@ -60,7 +60,7 @@ type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]
 const inviteSchema = z.object({
   email: z.string().email("Enter a valid email address"),
   role: z.enum(["viewer", "volunteer", "manager", "admin"], {
-    required_error: "Select a role",
+    error: "Select a role",
   }),
 })
 
