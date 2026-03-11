@@ -9,6 +9,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ImportTemplate } from "@/types/import-job"
 
+// Radix UI SelectItem requires a non-empty string value.
+// "__skip__" is the internal sentinel that maps to "" (skip) in the parent.
+export const SKIP_VALUE = "__skip__"
+
 export const CANONICAL_FIELDS = [
   "first_name",
   "last_name",
@@ -67,8 +71,10 @@ export function ColumnMappingTable({
     <div className="space-y-2">
       {columns.map((col) => {
         const suggested = suggestedMapping[col]
-        const current = mapping[col] ?? ""
-        const isChanged = current !== (suggested ?? "")
+        // External mapping uses "" for skip; internally map "" ↔ SKIP_VALUE
+        const externalValue = mapping[col] ?? ""
+        const selectValue = externalValue === "" ? SKIP_VALUE : externalValue
+        const isChanged = externalValue !== (suggested ?? "")
         const badge =
           !isChanged && suggested != null ? "green" :
           !isChanged && suggested == null ? "yellow" :
@@ -79,14 +85,17 @@ export function ColumnMappingTable({
             <span className="w-1/3 truncate text-sm font-medium">{col}</span>
             <div className="flex flex-1 items-center gap-2">
               <Select
-                value={current}
-                onValueChange={(value) => onMappingChange(col, value)}
+                value={selectValue}
+                onValueChange={(value) => {
+                  // Translate SKIP_VALUE back to "" for the parent
+                  onMappingChange(col, value === SKIP_VALUE ? "" : value)
+                }}
               >
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Select a field..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(skip)</SelectItem>
+                  <SelectItem value={SKIP_VALUE}>(skip)</SelectItem>
                   {CANONICAL_FIELDS.map((field) => (
                     <SelectItem key={field} value={field}>
                       {field}
