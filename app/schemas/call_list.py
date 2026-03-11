@@ -42,6 +42,7 @@ class CallListEntryResponse(BaseSchema):
 
     id: uuid.UUID
     voter_id: uuid.UUID
+    voter_name: str | None = None  # joined from voter table
     priority_score: int
     phone_numbers: list
     status: str

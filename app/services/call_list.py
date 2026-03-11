@@ -331,6 +331,32 @@ class CallListService:
         call_list.updated_at = utcnow()
         return call_list
 
+    async def list_entries(
+        self,
+        session: AsyncSession,
+        call_list_id: uuid.UUID,
+        status: str | None = None,
+    ) -> list[CallListEntry]:
+        """List entries for a call list with optional status filter.
+
+        Args:
+            session: Async database session.
+            call_list_id: The call list UUID.
+            status: Optional status filter.
+
+        Returns:
+            List of CallListEntry objects ordered by priority desc.
+        """
+        q = (
+            select(CallListEntry)
+            .where(CallListEntry.call_list_id == call_list_id)
+            .order_by(CallListEntry.priority_score.desc())
+        )
+        if status is not None:
+            q = q.where(CallListEntry.status == status)
+        result = await session.execute(q)
+        return list(result.scalars().all())
+
     async def update_call_list(
         self,
         session: AsyncSession,

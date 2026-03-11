@@ -159,6 +159,64 @@ async def update_call_list_status(
     return CallListResponse.model_validate(call_list)
 
 
+@router.get(
+    "/campaigns/{campaign_id}/call-lists/{call_list_id}/entries",
+    response_model=PaginatedResponse[CallListEntryResponse],
+)
+async def list_call_list_entries(
+    campaign_id: uuid.UUID,
+    call_list_id: uuid.UUID,
+    entry_status: str | None = None,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List entries for a call list with optional status filter.
+
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+    from app.models.voter import Voter
+    from sqlalchemy import select as sa_select
+
+    await set_campaign_context(db, str(campaign_id))
+    entries = await _call_list_service.list_entries(db, call_list_id, entry_status)
+
+    # Resolve voter names
+    voter_ids = [e.voter_id for e in entries]
+    voter_names: dict[uuid.UUID, str] = {}
+    if voter_ids:
+        voters_result = await db.execute(
+            sa_select(Voter.id, Voter.first_name, Voter.last_name).where(
+                Voter.id.in_(voter_ids)
+            )
+        )
+        for row in voters_result.all():
+            voter_names[row.id] = f"{row.first_name} {row.last_name}".strip()
+
+    items = []
+    for entry in entries:
+        entry_dict = {
+            "id": entry.id,
+            "voter_id": entry.voter_id,
+            "voter_name": voter_names.get(entry.voter_id),
+            "priority_score": entry.priority_score,
+            "phone_numbers": entry.phone_numbers,
+            "status": entry.status,
+            "attempt_count": entry.attempt_count,
+            "claimed_by": entry.claimed_by,
+            "claimed_at": entry.claimed_at,
+            "last_attempt_at": entry.last_attempt_at,
+            "phone_attempts": entry.phone_attempts,
+        }
+        items.append(CallListEntryResponse(**entry_dict))
+
+    return PaginatedResponse[CallListEntryResponse](
+        items=items,
+        pagination=PaginationResponse(next_cursor=None, has_more=False),
+    )
+
+
 @router.delete(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
