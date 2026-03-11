@@ -114,7 +114,15 @@ Plans:
   2. User can view call list detail showing all entries with their current statuses (unclaimed, claimed, completed, skipped)
   3. User can view the campaign DNC list, add individual phone numbers, and remove numbers from the list
   4. User can bulk import DNC numbers from a file and check whether a specific phone number is on the DNC list
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Backend gaps (CallListUpdate schema, PATCH body, GET /entries endpoint) + Wave 0 test scaffolds
+- [ ] 15-02-PLAN.md — Type files, hook files (useCallLists, useDNC), phone-banking.tsx sidebar layout + redirect
+- [ ] 15-03-PLAN.md — Call lists index (DataTable, create/edit dialog with advanced settings, delete)
+- [ ] 15-04-PLAN.md — Call list detail (stats chips, entries DataTable with status filter tabs, voter links)
+- [ ] 15-05-PLAN.md — DNC list page (table, add dialog, import dialog, client-side search)
+- [ ] 15-06-PLAN.md — Full test suite + visual verification checkpoint
 
 ### Phase 16: Phone Banking
 **Goal**: Users can run complete phone banking sessions — creating sessions with call lists and surveys, managing callers, and using an active calling screen where callers claim voters, view contact info and survey scripts, record outcomes, and track session progress
@@ -169,7 +177,7 @@ Plans:
 | 12. Shared Infrastructure & Campaign Foundation | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
-| 15. Call Lists & DNC Management | v1.2 | 0/? | Not started | - |
+| 15. Call Lists & DNC Management | v1.2 | 0/6 | Not started | - |
 | 16. Phone Banking | v1.2 | 0/? | Not started | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
