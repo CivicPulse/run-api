@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 16-04 (Session detail page with Overview and Progress tabs)
-last_updated: "2026-03-11T21:21:41.435Z"
+stopped_at: Completed 16-05 (My Sessions caller dashboard)
+last_updated: "2026-03-11T21:24:28.514Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 75
 ---
 
@@ -69,6 +69,7 @@ Progress: [████████░░] 75%
 | Phase 16-phone-banking P02 | 134 sec | 2 tasks | 3 files |
 | Phase 16-phone-banking P03 | 122 | 1 tasks | 1 files |
 | Phase 16-phone-banking P04 | 104 sec | 2 tasks | 1 files |
+| Phase 16-phone-banking P05 | 73 sec | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,8 @@ Progress: [████████░░] 75%
 - [Phase 16-phone-banking]: useReassignEntry imported at ProgressTab level even though v1 shows info dialog — keeps hook active for future full implementation
 - [Phase 16-phone-banking]: checkedIn local state (useState false) tracks check-in within session — not derived from callers list to avoid dependency on current user ID
 - [Phase 16-phone-banking]: ReassignInfoDialog shown instead of mutation invocation — progress endpoint lacks per-entry IDs needed for useReassignEntry (v1 limitation)
+- [Phase 16-phone-banking]: RowAction component instantiates useCheckIn per row — mutations are cheap and per-row isolation needed
+- [Phase 16-phone-banking]: checkedInSessionIds uses useState Set: resets on page refresh, acceptable for v1 (option 3 from CONTEXT.md)
 
 ### Pending Todos
 
@@ -144,6 +147,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T21:21:41.430Z
-Stopped at: Completed 16-04 (Session detail page with Overview and Progress tabs)
+Last session: 2026-03-11T21:24:28.505Z
+Stopped at: Completed 16-05 (My Sessions caller dashboard)
 Resume file: None
