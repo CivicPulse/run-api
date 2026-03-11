@@ -285,6 +285,27 @@ export function VoterFilterBuilder({
             />
           </div>
           <div>
+            <Label className="text-sm font-medium mb-2 block">Phone Number</Label>
+            <div className="flex gap-3">
+              {(
+                [
+                  { label: "Any", value: undefined },
+                  { label: "Has phone", value: true },
+                  { label: "No phone", value: false },
+                ] as const
+              ).map(({ label, value: optValue }) => (
+                <label key={label} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={value.has_phone === optValue}
+                    onChange={() => update({ has_phone: optValue })}
+                  />
+                  <span className="text-sm">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
             <Label className="text-sm font-medium mb-2 block">Registered After</Label>
             <Input
               type="date"

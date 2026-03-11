@@ -51,6 +51,7 @@ export interface VoterFilter {
   tags_any?: string[]
   registered_after?: string
   registered_before?: string
+  has_phone?: boolean
   logic?: "AND" | "OR"
 }
 
