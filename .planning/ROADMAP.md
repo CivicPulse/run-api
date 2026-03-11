@@ -43,7 +43,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 13: Voter Management Completion** - Contacts, tags, lists, create/edit, advanced search, interaction notes (completed 2026-03-11)
 - [x] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history (completed 2026-03-11)
 - [x] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import (completed 2026-03-11)
-- [ ] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards
+- [x] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards (completed 2026-03-11)
 - [ ] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking
 - [ ] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment
 
@@ -134,7 +134,7 @@ Plans:
   3. Caller can use the active calling screen to claim the next voter, see voter details and contact info, read through the survey script, and record call outcomes with quick-select buttons — then automatically advance to the next call
   4. Caller can skip or release a claimed entry, and a manager can reassign entries to other callers
   5. User can view a session progress dashboard showing completion percentage, outcome breakdown, and caller activity
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [ ] 16-01-PLAN.md — Backend gaps (self-release, callers list, assigned_to_me filter, caller_count) + Wave 0 test scaffolds
@@ -205,6 +205,6 @@ Plans:
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
 | 15. Call Lists & DNC Management | 6/6 | Complete   | 2026-03-11 | - |
-| 16. Phone Banking | 6/7 | In Progress|  | - |
+| 16. Phone Banking | 7/7 | Complete   | 2026-03-11 | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
