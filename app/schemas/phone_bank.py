@@ -38,6 +38,7 @@ class PhoneBankSessionResponse(BaseSchema):
     created_by: str
     created_at: datetime
     updated_at: datetime
+    caller_count: int = 0
 
 
 class SessionCallerResponse(BaseSchema):

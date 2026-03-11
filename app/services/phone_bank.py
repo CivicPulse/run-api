@@ -127,21 +127,35 @@ class PhoneBankService:
         self,
         session: AsyncSession,
         campaign_id: uuid.UUID,
+        assigned_to_me_user_id: str | None = None,
     ) -> list[PhoneBankSession]:
         """List all phone bank sessions for a campaign.
 
         Args:
             session: Async database session.
             campaign_id: Campaign UUID.
+            assigned_to_me_user_id: When provided, filters to sessions where
+                this user is an assigned caller.
 
         Returns:
             List of PhoneBankSession objects.
         """
-        result = await session.execute(
+        query = (
             select(PhoneBankSession)
             .where(PhoneBankSession.campaign_id == campaign_id)
             .order_by(PhoneBankSession.created_at.desc())
         )
+        if assigned_to_me_user_id is not None:
+            query = (
+                query
+                .join(
+                    SessionCaller,
+                    SessionCaller.session_id == PhoneBankSession.id,
+                )
+                .where(SessionCaller.user_id == assigned_to_me_user_id)
+                .distinct()
+            )
+        result = await session.execute(query)
         return list(result.scalars().all())
 
     async def update_session(
@@ -643,6 +657,60 @@ class PhoneBankService:
         entry.claimed_by = None
         entry.claimed_at = None
         return entry
+
+    async def self_release_entry(
+        self,
+        session: AsyncSession,
+        entry_id: uuid.UUID,
+        user_id: str,
+    ) -> CallListEntry:
+        """Release an entry back to AVAILABLE; caller must own the entry.
+
+        Args:
+            session: Async database session.
+            entry_id: Entry UUID.
+            user_id: ID of the caller requesting the release.
+
+        Returns:
+            The updated CallListEntry.
+
+        Raises:
+            ValueError: If entry not found or not claimed by user_id.
+        """
+        result = await session.execute(
+            select(CallListEntry).where(CallListEntry.id == entry_id)
+        )
+        entry = result.scalar_one_or_none()
+        if entry is None:
+            msg = f"Entry {entry_id} not found"
+            raise ValueError(msg)
+        if entry.claimed_by != user_id:
+            msg = f"Entry {entry_id} not claimed by {user_id}"
+            raise ValueError(msg)
+
+        entry.status = EntryStatus.AVAILABLE
+        entry.claimed_by = None
+        entry.claimed_at = None
+        return entry
+
+    async def list_callers(
+        self,
+        session: AsyncSession,
+        session_id: uuid.UUID,
+    ) -> list[SessionCaller]:
+        """List all callers assigned to a phone bank session.
+
+        Args:
+            session: Async database session.
+            session_id: Session UUID.
+
+        Returns:
+            List of SessionCaller objects.
+        """
+        result = await session.execute(
+            select(SessionCaller).where(SessionCaller.session_id == session_id)
+        )
+        return list(result.scalars().all())
 
     async def end_caller_session(
         self,

@@ -5,7 +5,8 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -24,6 +25,7 @@ from app.schemas.phone_bank import (
     SessionCallerResponse,
     SessionProgressResponse,
 )
+from app.models.phone_bank import SessionCaller
 from app.services.phone_bank import PhoneBankService
 
 router = APIRouter()
@@ -68,20 +70,49 @@ async def create_session(
 )
 async def list_sessions(
     campaign_id: uuid.UUID,
+    assigned_to_me: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List phone bank sessions for a campaign.
 
-    Requires volunteer+ role.
+    Requires volunteer+ role. Pass ``assigned_to_me=true`` to filter to
+    sessions where the current user is an assigned caller.
     """
     await ensure_user_synced(user, db)
     from app.db.rls import set_campaign_context
 
     await set_campaign_context(db, str(campaign_id))
-    sessions = await _phone_bank_service.list_sessions(db, campaign_id)
+
+    assigned_to_me_user_id = user.id if assigned_to_me else None
+    sessions = await _phone_bank_service.list_sessions(
+        db, campaign_id, assigned_to_me_user_id=assigned_to_me_user_id
+    )
+
+    # Batch-fetch caller counts for all returned sessions
+    session_ids = [s.id for s in sessions]
+    caller_counts: dict[uuid.UUID, int] = {}
+    if session_ids:
+        counts_result = await db.execute(
+            select(SessionCaller.session_id, func.count(SessionCaller.id))
+            .where(SessionCaller.session_id.in_(session_ids))
+            .group_by(SessionCaller.session_id)
+        )
+        caller_counts = dict(counts_result.all())
+
+    items = [
+        PhoneBankSessionResponse(
+            **{
+                k: v
+                for k, v in PhoneBankSessionResponse.model_validate(s).model_dump().items()
+                if k != "caller_count"
+            },
+            caller_count=caller_counts.get(s.id, 0),
+        )
+        for s in sessions
+    ]
     return PaginatedResponse[PhoneBankSessionResponse](
-        items=[PhoneBankSessionResponse.model_validate(s) for s in sessions],
+        items=items,
         pagination=PaginationResponse(next_cursor=None, has_more=False),
     )
 
@@ -219,6 +250,28 @@ async def remove_caller(
         )
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/callers",
+    response_model=list[SessionCallerResponse],
+)
+async def list_callers(
+    campaign_id: uuid.UUID,
+    session_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List callers assigned to a phone bank session.
+
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    callers = await _phone_bank_service.list_callers(db, session_id)
+    return [SessionCallerResponse.model_validate(c) for c in callers]
 
 
 @router.post(
@@ -420,6 +473,39 @@ async def force_release_entry(
             title="Entry Not Found",
             detail=str(exc),
             type="entry-not-found",
+        )
+    await db.commit()
+    return CallListEntryResponse.model_validate(entry)
+
+
+@router.post(
+    "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/entries/{entry_id}/self-release",
+    response_model=CallListEntryResponse,
+)
+async def self_release_entry(
+    campaign_id: uuid.UUID,
+    session_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Release a claimed entry back to AVAILABLE (caller self-service).
+
+    The requesting caller must be the one who claimed the entry.
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        entry = await _phone_bank_service.self_release_entry(db, entry_id, user.id)
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            title="Self-Release Failed",
+            detail=str(exc),
+            type="self-release-failed",
         )
     await db.commit()
     return CallListEntryResponse.model_validate(entry)
