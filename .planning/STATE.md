@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 15-03 (Call lists index page with DataTable and CRUD dialogs)
-last_updated: "2026-03-11T15:28:04.762Z"
+stopped_at: Completed 15-04 (Call list detail page with stats + entries DataTable)
+last_updated: "2026-03-11T15:29:03.581Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 75
 ---
 
@@ -63,6 +63,7 @@ Progress: [████████░░] 75%
 | Phase 15-call-lists-dnc-management P01 | 163 sec | 2 tasks | 6 files |
 | Phase 15-call-lists-dnc-management P05 | 2 | 1 tasks | 2 files |
 | Phase 15-call-lists-dnc-management P03 | 109 sec | 1 tasks | 1 files |
+| Phase 15-call-lists-dnc-management P04 | 185 sec | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Progress: [████████░░] 75%
 - [Phase 15]: Client-side DNC search strips non-digit characters before comparing — matches formatted and raw phone numbers
 - [Phase 15-call-lists-dnc-management]: Advanced settings section uses button-toggle show/hide instead of shadcn Collapsible — component not installed in project
 - [Phase 15-call-lists-dnc-management]: Single CallListDialog component handles both create and edit modes via editList prop — avoids duplicate form boilerplate
+- [Phase 15-call-lists-dnc-management]: Stats chips computed client-side from entries.items — avoids a second aggregate endpoint for v1
+- [Phase 15-call-lists-dnc-management]: STATUS_LABELS Record maps backend enum to UI vocabulary — terminal excluded from filter tabs as a rare error state
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T15:28:00.029Z
-Stopped at: Completed 15-03 (Call lists index page with DataTable and CRUD dialogs)
+Last session: 2026-03-11T15:28:59.649Z
+Stopped at: Completed 15-04 (Call list detail page with stats + entries DataTable)
 Resume file: None
