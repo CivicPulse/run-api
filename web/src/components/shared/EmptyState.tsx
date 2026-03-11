@@ -1,3 +1,4 @@
+import React from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -16,7 +17,11 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
-  const isComponent = typeof icon === "function"
+  // forwardRef components (e.g. lucide-react icons) have typeof === "object",
+  // so check for both plain functions and non-element objects (component refs).
+  const isComponent =
+    typeof icon === "function" ||
+    (typeof icon === "object" && icon !== null && !React.isValidElement(icon))
 
   return (
     <div
@@ -29,7 +34,7 @@ export function EmptyState({
         <div className="mb-4 text-muted-foreground">
           {isComponent
             ? (() => { const Icon = icon as LucideIcon; return <Icon className="h-10 w-10 text-muted-foreground/50" /> })()
-            : <div className="[&_svg]:size-12">{icon}</div>}
+            : icon}
         </div>
       )}
       <h3 className="text-lg font-semibold">{title}</h3>
