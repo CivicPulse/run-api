@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { createFileRoute, useParams } from "@tanstack/react-router"
+import { Pencil, PlusCircle } from "lucide-react"
 import { useVoter, useVoterInteractions } from "@/hooks/useVoters"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { ContactsTab } from "@/components/voters/ContactsTab"
 import { TagsTab } from "@/components/voters/TagsTab"
-import { Pencil, PlusCircle } from "lucide-react"
+import { HistoryTab } from "@/components/voters/HistoryTab"
+import { VoterEditSheet } from "@/components/voters/VoterEditSheet"
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -292,18 +294,17 @@ function VoterDetailPage() {
 
         {/* History Tab */}
         <TabsContent value="history" className="mt-6">
-          <div className="py-8 text-center text-muted-foreground">
-            History tab — coming soon
-          </div>
+          <HistoryTab campaignId={campaignId} voterId={voterId} />
         </TabsContent>
       </Tabs>
 
-      {/* Edit sheet state defined here — EditVoterSheet component added in Plan 13-05 */}
-      {editSheetOpen && (
-        <div style={{ display: "none" }} aria-hidden="true">
-          {/* EditVoterSheet placeholder — implemented in Plan 13-05 */}
-        </div>
-      )}
+      {/* Edit Sheet — outside Tabs */}
+      <VoterEditSheet
+        open={editSheetOpen}
+        onOpenChange={setEditSheetOpen}
+        voter={voter}
+        campaignId={campaignId}
+      />
     </div>
   )
 }
