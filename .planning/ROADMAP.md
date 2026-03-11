@@ -134,7 +134,7 @@ Plans:
   3. Caller can use the active calling screen to claim the next voter, see voter details and contact info, read through the survey script, and record call outcomes with quick-select buttons — then automatically advance to the next call
   4. Caller can skip or release a claimed entry, and a manager can reassign entries to other callers
   5. User can view a session progress dashboard showing completion percentage, outcome breakdown, and caller activity
-**Plans:** 7 plans
+**Plans:** 1/7 plans executed
 
 Plans:
 - [ ] 16-01-PLAN.md — Backend gaps (self-release, callers list, assigned_to_me filter, caller_count) + Wave 0 test scaffolds
@@ -205,6 +205,6 @@ Plans:
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
 | 15. Call Lists & DNC Management | 6/6 | Complete   | 2026-03-11 | - |
-| 16. Phone Banking | v1.2 | 0/7 | In progress | - |
+| 16. Phone Banking | 1/7 | In Progress|  | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |

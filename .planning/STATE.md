@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-03-11T17:23:22.358Z"
+stopped_at: Completed 16-01 (backend gap fixes and Wave 0 test scaffolds)
+last_updated: "2026-03-11T21:10:25.379Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 27
+  completed_plans: 21
   percent: 75
 ---
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 75%
 | Phase 15-call-lists-dnc-management P03 | 109 sec | 1 tasks | 1 files |
 | Phase 15-call-lists-dnc-management P04 | 185 sec | 1 tasks | 1 files |
 | Phase 15 P06 | 99 | 1 tasks | 1 files |
+| Phase 16-phone-banking P01 | 6 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Progress: [████████░░] 75%
 - [Phase 15-call-lists-dnc-management]: Single CallListDialog component handles both create and edit modes via editList prop — avoids duplicate form boilerplate
 - [Phase 15-call-lists-dnc-management]: Stats chips computed client-side from entries.items — avoids a second aggregate endpoint for v1
 - [Phase 15-call-lists-dnc-management]: STATUS_LABELS Record maps backend enum to UI vocabulary — terminal excluded from filter tabs as a rare error state
+- [Phase 16-phone-banking]: caller_count populated at endpoint layer via batch COUNT query — avoids N+1, keeps service returning plain models
+- [Phase 16-phone-banking]: self_release_entry validates claimed_by == user_id before releasing — consistent with record_call ownership pattern
+- [Phase 16-phone-banking]: Wave 0 stubs use it.todo with no imports — suite stays green while stubs are pending
 
 ### Pending Todos
 
@@ -129,6 +133,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T17:23:22.352Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-phone-banking/16-CONTEXT.md
+Last session: 2026-03-11T21:10:25.374Z
+Stopped at: Completed 16-01 (backend gap fixes and Wave 0 test scaffolds)
+Resume file: None
