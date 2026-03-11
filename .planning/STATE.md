@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 15-01 (Backend API gaps + Wave 0 test scaffolds)
-last_updated: "2026-03-11T15:23:30.866Z"
+stopped_at: Completed 15-05 (DNC list page — CALL-04 through CALL-08 satisfied)
+last_updated: "2026-03-11T15:27:42.893Z"
 last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
   percent: 75
 ---
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 75%
 | Phase 14-voter-import-wizard P04 | 15 | 2 tasks | 2 files |
 | Phase 15-call-lists-dnc-management P02 | 2 | 2 tasks | 7 files |
 | Phase 15-call-lists-dnc-management P01 | 163 sec | 2 tasks | 6 files |
+| Phase 15-call-lists-dnc-management P05 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Progress: [████████░░] 75%
 - [Phase 15-call-lists-dnc-management]: useImportDNC uses body: formData (not json:) for multipart upload — browser sets Content-Type boundary
 - [Phase 15-call-lists-dnc-management]: PATCH /call-lists/{id} new_status kept as optional query param for backward compat; optional JSON body added for name/voter_list_id updates
 - [Phase 15-call-lists-dnc-management]: Voter name join handled at endpoint layer not service — keeps service returning plain model objects
+- [Phase 15]: DNCListPage uses DataTable with plain array (not paginated) — omit pagination props to hide PaginationControls
+- [Phase 15]: Client-side DNC search strips non-digit characters before comparing — matches formatted and raw phone numbers
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T15:23:30.860Z
-Stopped at: Completed 15-01 (Backend API gaps + Wave 0 test scaffolds)
+Last session: 2026-03-11T15:27:42.887Z
+Stopped at: Completed 15-05 (DNC list page — CALL-04 through CALL-08 satisfied)
 Resume file: None
