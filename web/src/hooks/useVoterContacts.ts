@@ -59,13 +59,13 @@ export function useDeletePhone(campaignId: string, voterId: string) {
   })
 }
 
-export function useSetPrimaryPhone(campaignId: string, voterId: string) {
+export function useSetPrimaryContact(campaignId: string, voterId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (phoneId: string) =>
+    mutationFn: ({ contactType, contactId }: { contactType: "phones" | "emails" | "addresses"; contactId: string }) =>
       api
-        .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/phones/${phoneId}/set-primary`)
-        .json<PhoneContact>(),
+        .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/contacts/${contactType}/${contactId}/set-primary`)
+        .json(),
     onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
   })
 }
@@ -103,17 +103,6 @@ export function useDeleteEmail(campaignId: string, voterId: string) {
   })
 }
 
-export function useSetPrimaryEmail(campaignId: string, voterId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (emailId: string) =>
-      api
-        .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/emails/${emailId}/set-primary`)
-        .json<EmailContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
-  })
-}
-
 // --- Addresses ---
 
 export function useAddAddress(campaignId: string, voterId: string) {
@@ -147,13 +136,3 @@ export function useDeleteAddress(campaignId: string, voterId: string) {
   })
 }
 
-export function useSetPrimaryAddress(campaignId: string, voterId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (addressId: string) =>
-      api
-        .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/addresses/${addressId}/set-primary`)
-        .json<AddressContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
-  })
-}

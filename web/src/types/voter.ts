@@ -33,16 +33,25 @@ export interface Voter {
 }
 
 export interface VoterFilter {
+  search?: string
   party?: string
+  parties?: string[]
   city?: string
   state?: string
   zip_code?: string
   county?: string
+  precinct?: string
+  congressional_district?: string
   age_min?: number
   age_max?: number
   gender?: string
-  search?: string
+  voted_in?: string[]
+  not_voted_in?: string[]
   tags?: string[]
+  tags_any?: string[]
+  registered_after?: string
+  registered_before?: string
+  logic?: "AND" | "OR"
 }
 
 export interface VoterCreate {
