@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-11T04:10:40.418Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-03-11T04:17:34.967Z"
 last_activity: 2026-03-11 — Completed 13-04 (Voter detail sub-tabs, ContactsTab inline add/edit, TagsTab)
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 70
 ---
 
@@ -57,6 +57,7 @@ Progress: [███████░░░] 70%
 | Phase 13 P05 | 11 | 2 tasks | 3 files |
 | Phase 14-voter-import-wizard P01 | 2 | 2 tasks | 6 files |
 | Phase 14 P02 | 4 | 2 tasks | 3 files |
+| Phase 14-voter-import-wizard P03 | 6 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,8 @@ Progress: [███████░░░] 70%
 - [Phase 14]: uploadToMinIO uses XMLHttpRequest not ky/fetch — ky interceptors add Authorization headers which break MinIO presigned URL auth
 - [Phase 14]: deriveStep exported as standalone pure function (not hook) — enables unit testing without QueryClient wrapper
 - [Phase 14]: refetchInterval as function checks query.state.data.status for status-aware polling — stops at completed/failed
+- [Phase 14-voter-import-wizard]: SKIP_VALUE='__skip__' sentinel replaces empty string for Radix UI SelectItem compatibility — translated back to '' at onMappingChange boundary
+- [Phase 14-voter-import-wizard]: useRef guard in ImportProgress prevents onComplete/onFailed double-fire in React StrictMode
 
 ### Pending Todos
 
@@ -108,6 +111,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T04:10:40.411Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-03-11T04:17:34.962Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
