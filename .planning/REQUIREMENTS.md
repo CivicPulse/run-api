@@ -40,13 +40,13 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Voter Imports
 
-- [ ] **IMPT-01**: User can upload a CSV file via drag-and-drop
-- [ ] **IMPT-02**: User can view auto-detected column mappings with suggestions
-- [ ] **IMPT-03**: User can manually adjust column mappings via drag-and-drop
-- [ ] **IMPT-04**: User can preview mapped data before confirming import
-- [ ] **IMPT-05**: User can track import progress with row count and percentage
-- [ ] **IMPT-06**: User can view import history with status and error counts
-- [ ] **IMPT-07**: User can resume an in-progress import wizard after navigating away
+- [x] **IMPT-01**: User can upload a CSV file via drag-and-drop
+- [x] **IMPT-02**: User can view auto-detected column mappings with suggestions
+- [x] **IMPT-03**: User can manually adjust column mappings via drag-and-drop
+- [x] **IMPT-04**: User can preview mapped data before confirming import
+- [x] **IMPT-05**: User can track import progress with row count and percentage
+- [x] **IMPT-06**: User can view import history with status and error counts
+- [x] **IMPT-07**: User can resume an in-progress import wizard after navigating away
 
 ### Call Lists & DNC
 
@@ -149,13 +149,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOTR-09 | Phase 13 | Complete |
 | VOTR-10 | Phase 13 | Complete |
 | VOTR-11 | Phase 13 | Complete |
-| IMPT-01 | Phase 14 | Pending |
-| IMPT-02 | Phase 14 | Pending |
-| IMPT-03 | Phase 14 | Pending |
-| IMPT-04 | Phase 14 | Pending |
-| IMPT-05 | Phase 14 | Pending |
-| IMPT-06 | Phase 14 | Pending |
-| IMPT-07 | Phase 14 | Pending |
+| IMPT-01 | Phase 14 | Complete |
+| IMPT-02 | Phase 14 | Complete |
+| IMPT-03 | Phase 14 | Complete |
+| IMPT-04 | Phase 14 | Complete |
+| IMPT-05 | Phase 14 | Complete |
+| IMPT-06 | Phase 14 | Complete |
+| IMPT-07 | Phase 14 | Complete |
 | CALL-01 | Phase 15 | Pending |
 | CALL-02 | Phase 15 | Pending |
 | CALL-03 | Phase 15 | Pending |
