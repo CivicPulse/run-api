@@ -205,6 +205,6 @@ Plans:
 | 13. Voter Management Completion | 7/7 | Complete   | 2026-03-11 | - |
 | 14. Voter Import Wizard | 4/4 | Complete    | 2026-03-11 | - |
 | 15. Call Lists & DNC Management | 6/6 | Complete   | 2026-03-11 | - |
-| 16. Phone Banking | 7/7 | Complete   | 2026-03-11 | - |
+| 16. Phone Banking | 7/7 | Complete    | 2026-03-11 | - |
 | 17. Volunteer Management | v1.2 | 0/? | Not started | - |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
