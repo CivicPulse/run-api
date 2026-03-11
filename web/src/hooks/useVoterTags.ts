@@ -29,6 +29,24 @@ export function useCreateTag(campaignId: string) {
   })
 }
 
+export function useUpdateTag(campaignId: string, tagId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: VoterTagCreate) =>
+      api.patch(`api/v1/campaigns/${campaignId}/tags/${tagId}`, { json: data }).json<VoterTag>(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "tags"] }),
+  })
+}
+
+export function useDeleteTag(campaignId: string, tagId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.delete(`api/v1/campaigns/${campaignId}/tags/${tagId}`).json(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "tags"] }),
+  })
+}
+
 export function useAddTagToVoter(campaignId: string, voterId: string) {
   const qc = useQueryClient()
   return useMutation({
