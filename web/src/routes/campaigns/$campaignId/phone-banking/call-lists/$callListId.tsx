@@ -1,9 +1,30 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useState } from "react"
-import { useCallList, useCallListEntries } from "@/hooks/useCallLists"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
+import { useCallList, useCallListEntries, useAppendFromList } from "@/hooks/useCallLists"
+import { useVoterLists } from "@/hooks/useVoterLists"
+import { useFormGuard } from "@/hooks/useFormGuard"
 import { DataTable } from "@/components/shared/DataTable"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { StatusBadge } from "@/components/shared/StatusBadge"
+import { RequireRole } from "@/components/shared/RequireRole"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Phone } from "lucide-react"
@@ -26,12 +47,110 @@ const FILTER_TABS = [
   { label: "Skipped", value: "max_attempts" },
 ]
 
+interface AddTargetsFormValues {
+  voter_list_id: string
+}
+
+function AddTargetsDialog({
+  open,
+  onOpenChange,
+  campaignId,
+  callListId,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  campaignId: string
+  callListId: string
+}) {
+  const form = useForm<AddTargetsFormValues>({
+    defaultValues: { voter_list_id: "" },
+  })
+
+  useFormGuard({ form })
+
+  const { data: voterLists } = useVoterLists(campaignId)
+  const lists = voterLists ?? []
+
+  const appendMutation = useAppendFromList(campaignId, callListId)
+
+  const selectedListId = form.watch("voter_list_id")
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      form.reset({ voter_list_id: "" })
+    }
+    onOpenChange(nextOpen)
+  }
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    try {
+      const result = await appendMutation.mutateAsync(values.voter_list_id)
+      toast.success(`Added ${result.added} voters (${result.skipped} already present)`)
+      handleOpenChange(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred"
+      toast.error(`Failed to add targets: ${message}`)
+    }
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Add Targets</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="add-targets-voter-list">Voter List</Label>
+            <Select
+              value={selectedListId}
+              onValueChange={(val) =>
+                form.setValue("voter_list_id", val, { shouldDirty: true })
+              }
+            >
+              <SelectTrigger id="add-targets-voter-list">
+                <SelectValue placeholder="Select a voter list" />
+              </SelectTrigger>
+              <SelectContent>
+                {lists.map((vl) => (
+                  <SelectItem key={vl.id} value={vl.id}>
+                    {vl.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleOpenChange(false)}
+              disabled={appendMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!selectedListId || appendMutation.isPending}
+            >
+              {appendMutation.isPending ? "Adding..." : "Add"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function CallListDetailPage() {
   const { campaignId, callListId } = useParams({
     from: "/campaigns/$campaignId/phone-banking/call-lists/$callListId",
   })
 
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [addTargetsOpen, setAddTargetsOpen] = useState(false)
 
   const { data: callList, isLoading: callListLoading } = useCallList(
     campaignId,
@@ -124,9 +243,16 @@ function CallListDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold">{callList.name}</h1>
-        <StatusBadge status={callList.status} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">{callList.name}</h1>
+          <StatusBadge status={callList.status} />
+        </div>
+        <RequireRole minimum="manager">
+          <Button size="sm" onClick={() => setAddTargetsOpen(true)}>
+            + Add Targets
+          </Button>
+        </RequireRole>
       </div>
 
       {/* Stats row */}
@@ -205,6 +331,16 @@ function CallListDetailPage() {
             : "Try a different filter to see more entries."
         }
       />
+
+      {/* Add Targets Dialog */}
+      {addTargetsOpen && (
+        <AddTargetsDialog
+          open={addTargetsOpen}
+          onOpenChange={setAddTargetsOpen}
+          campaignId={campaignId}
+          callListId={callListId}
+        />
+      )}
     </div>
   )
 }

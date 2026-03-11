@@ -83,3 +83,25 @@ export function useDeleteCallList(campaignId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: callListKeys.all(campaignId) }),
   })
 }
+
+interface AppendFromListResult {
+  added: number
+  skipped: number
+}
+
+export function useAppendFromList(campaignId: string, callListId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (voter_list_id: string) =>
+      api
+        .post(
+          `api/v1/campaigns/${campaignId}/call-lists/${callListId}/append-from-list`,
+          { json: { voter_list_id } },
+        )
+        .json<AppendFromListResult>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: callListKeys.detail(campaignId, callListId) })
+      qc.invalidateQueries({ queryKey: callListKeys.entries(campaignId, callListId) })
+    },
+  })
+}
