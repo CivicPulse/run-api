@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-10)
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
-- 🚧 **v1.2 Full UI** — Phases 12-18 (in progress)
+- 🚧 **v1.2 Full UI** — Phases 12-20 (in progress)
 
 ## Phases
 
@@ -46,6 +46,8 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards (completed 2026-03-11)
 - [x] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking (completed 2026-03-12)
 - [x] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment (completed 2026-03-12)
+- [ ] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests
+- [ ] **Phase 20: Caller Picker UX** - Replace raw user ID input with volunteer/member picker in AddCallerDialog (PHON-03)
 
 ## Phase Details
 
@@ -181,6 +183,38 @@ Plans:
 - [ ] 18-03-PLAN.md — Shift detail page (Overview + Roster tabs), AssignVolunteerDialog, AdjustHoursDialog
 - [ ] 18-04-PLAN.md — Full test suite verification + visual checkpoint
 
+### Phase 19: Verification & Validation Gap Closure
+**Goal**: Close all verification documentation gaps so every v1.2 requirement has formal verification evidence, and complete remaining Nyquist test coverage
+**Depends on**: Phase 18
+**Requirements**: VOTR-01, VOTR-02, VOTR-03, VOTR-04, VOTR-05, VOTR-06, VOTR-07, VOTR-08, VOTR-09, VOTR-10, VOTR-11, CALL-01, CALL-02, CALL-03, CALL-04, CALL-05, CALL-06, CALL-07, CALL-08
+**Gap Closure:** Closes verification gaps from v1.2 audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 13 has a VERIFICATION.md confirming all 11 VOTR requirements are satisfied with evidence
+  2. Phase 15 has a VERIFICATION.md confirming all 8 CALL requirements are satisfied with evidence
+  3. Phase 15 Nyquist wave_0_complete is true — all 13 `it.todo` test stubs are implemented
+  4. Re-audit shows 60/60 requirements satisfied
+**Plans:** 0/3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — Phase 13 verification (VOTR-01 through VOTR-11)
+- [ ] 19-02-PLAN.md — Phase 15 verification + Nyquist wave 0 test completion (CALL-01 through CALL-08)
+- [ ] 19-03-PLAN.md — Re-audit validation checkpoint
+
+### Phase 20: Caller Picker UX
+**Goal**: Replace raw ZITADEL user ID input in AddCallerDialog with a volunteer/member picker, improving caller assignment UX and resolving the PHON-03 integration gap
+**Depends on**: Phase 19
+**Requirements**: PHON-03
+**Gap Closure:** Closes integration gap from v1.2 audit (caller assignment UX)
+**Success Criteria** (what must be TRUE):
+  1. AddCallerDialog shows a searchable member/volunteer picker instead of a raw user ID text input
+  2. Callers table displays member names instead of truncated UUIDs
+  3. Existing caller assignment functionality continues to work correctly
+**Plans:** 0/2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Member picker component and AddCallerDialog refactor
+- [ ] 20-02-PLAN.md — Test suite and visual verification checkpoint
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -202,4 +236,6 @@ Plans:
 | 15. Call Lists & DNC Management | v1.2 | 6/6 | Complete | 2026-03-11 |
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
-| 18. Shift Management | 4/4 | Complete    | 2026-03-12 | - |
+| 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
+| 19. Verification & Validation Gap Closure | v1.2 | 0/3 | Pending | - |
+| 20. Caller Picker UX | v1.2 | 0/2 | Pending | - |

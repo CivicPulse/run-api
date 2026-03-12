@@ -26,17 +26,17 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Voter Management
 
-- [x] **VOTR-01**: User can view and manage contacts (phone, email, address) in voter detail
-- [x] **VOTR-02**: User can set a primary contact for each contact type
-- [x] **VOTR-03**: User can create a new voter record manually
-- [x] **VOTR-04**: User can edit an existing voter record
-- [x] **VOTR-05**: User can manage campaign-level voter tags
-- [x] **VOTR-06**: User can add/remove tags on individual voters
-- [x] **VOTR-07**: User can create and manage static voter lists
-- [x] **VOTR-08**: User can create and manage dynamic voter lists with filter criteria
-- [x] **VOTR-09**: User can view voter list detail with member management
-- [x] **VOTR-10**: User can use advanced search with composable filters
-- [x] **VOTR-11**: User can add interaction notes on voter detail page
+- [ ] **VOTR-01**: User can view and manage contacts (phone, email, address) in voter detail
+- [ ] **VOTR-02**: User can set a primary contact for each contact type
+- [ ] **VOTR-03**: User can create a new voter record manually
+- [ ] **VOTR-04**: User can edit an existing voter record
+- [ ] **VOTR-05**: User can manage campaign-level voter tags
+- [ ] **VOTR-06**: User can add/remove tags on individual voters
+- [ ] **VOTR-07**: User can create and manage static voter lists
+- [ ] **VOTR-08**: User can create and manage dynamic voter lists with filter criteria
+- [ ] **VOTR-09**: User can view voter list detail with member management
+- [ ] **VOTR-10**: User can use advanced search with composable filters
+- [ ] **VOTR-11**: User can add interaction notes on voter detail page
 
 ### Voter Imports
 
@@ -50,20 +50,20 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Call Lists & DNC
 
-- [x] **CALL-01**: User can create a call list from a voter universe with DNC filtering
-- [x] **CALL-02**: User can view call list detail with entry statuses
-- [x] **CALL-03**: User can edit and delete call lists
-- [x] **CALL-04**: User can view the DNC list for a campaign
-- [x] **CALL-05**: User can add an individual phone number to the DNC list
-- [x] **CALL-06**: User can bulk import DNC numbers from a file
-- [x] **CALL-07**: User can remove a number from the DNC list
-- [x] **CALL-08**: User can check if a phone number is on the DNC list
+- [ ] **CALL-01**: User can create a call list from a voter universe with DNC filtering
+- [ ] **CALL-02**: User can view call list detail with entry statuses
+- [ ] **CALL-03**: User can edit and delete call lists
+- [ ] **CALL-04**: User can view the DNC list for a campaign
+- [ ] **CALL-05**: User can add an individual phone number to the DNC list
+- [ ] **CALL-06**: User can bulk import DNC numbers from a file
+- [ ] **CALL-07**: User can remove a number from the DNC list
+- [ ] **CALL-08**: User can check if a phone number is on the DNC list
 
 ### Phone Banking
 
 - [x] **PHON-01**: User can create a phone bank session with call list and survey
 - [x] **PHON-02**: User can manage session status transitions (draft → active → complete)
-- [x] **PHON-03**: User can assign and remove callers to a session
+- [ ] **PHON-03**: User can assign and remove callers to a session
 - [x] **PHON-04**: User can check in and check out of a phone bank session
 - [x] **PHON-05**: User can use the active calling screen to claim and call voters sequentially
 - [x] **PHON-06**: User can view voter details, contact info, and survey script during a call
@@ -138,17 +138,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAMP-06 | Phase 12 | Complete |
 | CAMP-07 | Phase 12 | Complete |
 | CAMP-08 | Phase 12 | Complete |
-| VOTR-01 | Phase 13 | Complete |
-| VOTR-02 | Phase 13 | Complete |
-| VOTR-03 | Phase 13 | Complete |
-| VOTR-04 | Phase 13 | Complete |
-| VOTR-05 | Phase 13 | Complete |
-| VOTR-06 | Phase 13 | Complete |
-| VOTR-07 | Phase 13 | Complete |
-| VOTR-08 | Phase 13 | Complete |
-| VOTR-09 | Phase 13 | Complete |
-| VOTR-10 | Phase 13 | Complete |
-| VOTR-11 | Phase 13 | Complete |
+| VOTR-01 | Phase 19 | Pending |
+| VOTR-02 | Phase 19 | Pending |
+| VOTR-03 | Phase 19 | Pending |
+| VOTR-04 | Phase 19 | Pending |
+| VOTR-05 | Phase 19 | Pending |
+| VOTR-06 | Phase 19 | Pending |
+| VOTR-07 | Phase 19 | Pending |
+| VOTR-08 | Phase 19 | Pending |
+| VOTR-09 | Phase 19 | Pending |
+| VOTR-10 | Phase 19 | Pending |
+| VOTR-11 | Phase 19 | Pending |
 | IMPT-01 | Phase 14 | Complete |
 | IMPT-02 | Phase 14 | Complete |
 | IMPT-03 | Phase 14 | Complete |
@@ -156,17 +156,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IMPT-05 | Phase 14 | Complete |
 | IMPT-06 | Phase 14 | Complete |
 | IMPT-07 | Phase 14 | Complete |
-| CALL-01 | Phase 15 | Complete |
-| CALL-02 | Phase 15 | Complete |
-| CALL-03 | Phase 15 | Complete |
-| CALL-04 | Phase 15 | Complete |
-| CALL-05 | Phase 15 | Complete |
-| CALL-06 | Phase 15 | Complete |
-| CALL-07 | Phase 15 | Complete |
-| CALL-08 | Phase 15 | Complete |
+| CALL-01 | Phase 19 | Pending |
+| CALL-02 | Phase 19 | Pending |
+| CALL-03 | Phase 19 | Pending |
+| CALL-04 | Phase 19 | Pending |
+| CALL-05 | Phase 19 | Pending |
+| CALL-06 | Phase 19 | Pending |
+| CALL-07 | Phase 19 | Pending |
+| CALL-08 | Phase 19 | Pending |
 | PHON-01 | Phase 16 | Complete |
 | PHON-02 | Phase 16 | Complete |
-| PHON-03 | Phase 16 | Complete |
+| PHON-03 | Phase 20 | Pending |
 | PHON-04 | Phase 16 | Complete |
 | PHON-05 | Phase 16 | Complete |
 | PHON-06 | Phase 16 | Complete |
@@ -198,7 +198,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.2 requirements: 60 total
 - Mapped to phases: 60
 - Unmapped: 0
+- Pending (gap closure): 20 (11 VOTR + 8 CALL + 1 PHON)
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after roadmap creation*
+*Last updated: 2026-03-12 after gap closure phase creation*
