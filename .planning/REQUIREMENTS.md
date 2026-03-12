@@ -198,8 +198,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.2 requirements: 60 total
 - Mapped to phases: 60
 - Unmapped: 0
-- Pending (gap closure): 20 (11 VOTR + 8 CALL + 1 PHON)
+- Pending (gap closure): 1 (PHON-03 deferred to Phase 20)
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-12 after gap closure phase creation*
+*Last updated: 2026-03-12 after Phase 19 gap closure re-audit (60/60 verified, only PHON-03 pending)*
