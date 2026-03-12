@@ -46,7 +46,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards (completed 2026-03-11)
 - [x] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking (completed 2026-03-12)
 - [x] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment (completed 2026-03-12)
-- [ ] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests
+- [x] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests (completed 2026-03-12)
 - [ ] **Phase 20: Caller Picker UX** - Replace raw user ID input with volunteer/member picker in AddCallerDialog (PHON-03)
 
 ## Phase Details
@@ -193,7 +193,7 @@ Plans:
   2. Phase 15 has a VERIFICATION.md confirming all 8 CALL requirements are satisfied with evidence
   3. Phase 15 Nyquist wave_0_complete is true — all 13 `it.todo` test stubs are implemented
   4. Re-audit shows 60/60 requirements satisfied
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 19-01-PLAN.md — Phase 13 verification (VOTR-01 through VOTR-11)
@@ -237,5 +237,5 @@ Plans:
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
-| 19. Verification & Validation Gap Closure | 2/3 | In Progress|  | - |
+| 19. Verification & Validation Gap Closure | v1.2 | 3/3 | Complete | 2026-03-12 |
 | 20. Caller Picker UX | v1.2 | 0/2 | Pending | - |
