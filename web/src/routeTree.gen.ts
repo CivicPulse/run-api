@@ -35,6 +35,7 @@ import { Route as CampaignsCampaignIdVotersTagsIndexRouteImport } from './routes
 import { Route as CampaignsCampaignIdVotersListsIndexRouteImport } from './routes/campaigns/$campaignId/voters/lists/index'
 import { Route as CampaignsCampaignIdVotersImportsIndexRouteImport } from './routes/campaigns/$campaignId/voters/imports/index'
 import { Route as CampaignsCampaignIdVolunteersTagsIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/tags/index'
+import { Route as CampaignsCampaignIdVolunteersShiftsIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/shifts/index'
 import { Route as CampaignsCampaignIdVolunteersRosterIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/roster/index'
 import { Route as CampaignsCampaignIdVolunteersRegisterIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/register/index'
 import { Route as CampaignsCampaignIdVolunteersVolunteerIdIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/$volunteerId/index'
@@ -202,6 +203,12 @@ const CampaignsCampaignIdVolunteersTagsIndexRoute =
     path: '/tags/',
     getParentRoute: () => CampaignsCampaignIdVolunteersRoute,
   } as any)
+const CampaignsCampaignIdVolunteersShiftsIndexRoute =
+  CampaignsCampaignIdVolunteersShiftsIndexRouteImport.update({
+    id: '/shifts/',
+    path: '/shifts/',
+    getParentRoute: () => CampaignsCampaignIdVolunteersRoute,
+  } as any)
 const CampaignsCampaignIdVolunteersRosterIndexRoute =
   CampaignsCampaignIdVolunteersRosterIndexRouteImport.update({
     id: '/roster/',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId/volunteers/$volunteerId/': typeof CampaignsCampaignIdVolunteersVolunteerIdIndexRoute
   '/campaigns/$campaignId/volunteers/register/': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
   '/campaigns/$campaignId/volunteers/roster/': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts/': typeof CampaignsCampaignIdVolunteersShiftsIndexRoute
   '/campaigns/$campaignId/volunteers/tags/': typeof CampaignsCampaignIdVolunteersTagsIndexRoute
   '/campaigns/$campaignId/voters/imports/': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists/': typeof CampaignsCampaignIdVotersListsIndexRoute
@@ -367,6 +375,7 @@ export interface FileRoutesByTo {
   '/campaigns/$campaignId/volunteers/$volunteerId': typeof CampaignsCampaignIdVolunteersVolunteerIdIndexRoute
   '/campaigns/$campaignId/volunteers/register': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
   '/campaigns/$campaignId/volunteers/roster': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts': typeof CampaignsCampaignIdVolunteersShiftsIndexRoute
   '/campaigns/$campaignId/volunteers/tags': typeof CampaignsCampaignIdVolunteersTagsIndexRoute
   '/campaigns/$campaignId/voters/imports': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists': typeof CampaignsCampaignIdVotersListsIndexRoute
@@ -411,6 +420,7 @@ export interface FileRoutesById {
   '/campaigns/$campaignId/volunteers/$volunteerId/': typeof CampaignsCampaignIdVolunteersVolunteerIdIndexRoute
   '/campaigns/$campaignId/volunteers/register/': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
   '/campaigns/$campaignId/volunteers/roster/': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts/': typeof CampaignsCampaignIdVolunteersShiftsIndexRoute
   '/campaigns/$campaignId/volunteers/tags/': typeof CampaignsCampaignIdVolunteersTagsIndexRoute
   '/campaigns/$campaignId/voters/imports/': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists/': typeof CampaignsCampaignIdVotersListsIndexRoute
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/volunteers/$volunteerId/'
     | '/campaigns/$campaignId/volunteers/register/'
     | '/campaigns/$campaignId/volunteers/roster/'
+    | '/campaigns/$campaignId/volunteers/shifts/'
     | '/campaigns/$campaignId/volunteers/tags/'
     | '/campaigns/$campaignId/voters/imports/'
     | '/campaigns/$campaignId/voters/lists/'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/volunteers/$volunteerId'
     | '/campaigns/$campaignId/volunteers/register'
     | '/campaigns/$campaignId/volunteers/roster'
+    | '/campaigns/$campaignId/volunteers/shifts'
     | '/campaigns/$campaignId/volunteers/tags'
     | '/campaigns/$campaignId/voters/imports'
     | '/campaigns/$campaignId/voters/lists'
@@ -537,6 +549,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/volunteers/$volunteerId/'
     | '/campaigns/$campaignId/volunteers/register/'
     | '/campaigns/$campaignId/volunteers/roster/'
+    | '/campaigns/$campaignId/volunteers/shifts/'
     | '/campaigns/$campaignId/volunteers/tags/'
     | '/campaigns/$campaignId/voters/imports/'
     | '/campaigns/$campaignId/voters/lists/'
@@ -735,6 +748,13 @@ declare module '@tanstack/react-router' {
       path: '/tags'
       fullPath: '/campaigns/$campaignId/volunteers/tags/'
       preLoaderRoute: typeof CampaignsCampaignIdVolunteersTagsIndexRouteImport
+      parentRoute: typeof CampaignsCampaignIdVolunteersRoute
+    }
+    '/campaigns/$campaignId/volunteers/shifts/': {
+      id: '/campaigns/$campaignId/volunteers/shifts/'
+      path: '/shifts'
+      fullPath: '/campaigns/$campaignId/volunteers/shifts/'
+      preLoaderRoute: typeof CampaignsCampaignIdVolunteersShiftsIndexRouteImport
       parentRoute: typeof CampaignsCampaignIdVolunteersRoute
     }
     '/campaigns/$campaignId/volunteers/roster/': {
@@ -950,6 +970,7 @@ interface CampaignsCampaignIdVolunteersRouteChildren {
   CampaignsCampaignIdVolunteersVolunteerIdIndexRoute: typeof CampaignsCampaignIdVolunteersVolunteerIdIndexRoute
   CampaignsCampaignIdVolunteersRegisterIndexRoute: typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
   CampaignsCampaignIdVolunteersRosterIndexRoute: typeof CampaignsCampaignIdVolunteersRosterIndexRoute
+  CampaignsCampaignIdVolunteersShiftsIndexRoute: typeof CampaignsCampaignIdVolunteersShiftsIndexRoute
   CampaignsCampaignIdVolunteersTagsIndexRoute: typeof CampaignsCampaignIdVolunteersTagsIndexRoute
 }
 
@@ -961,6 +982,8 @@ const CampaignsCampaignIdVolunteersRouteChildren: CampaignsCampaignIdVolunteersR
       CampaignsCampaignIdVolunteersRegisterIndexRoute,
     CampaignsCampaignIdVolunteersRosterIndexRoute:
       CampaignsCampaignIdVolunteersRosterIndexRoute,
+    CampaignsCampaignIdVolunteersShiftsIndexRoute:
+      CampaignsCampaignIdVolunteersShiftsIndexRoute,
     CampaignsCampaignIdVolunteersTagsIndexRoute:
       CampaignsCampaignIdVolunteersTagsIndexRoute,
   }
