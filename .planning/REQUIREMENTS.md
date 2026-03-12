@@ -195,12 +195,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHFT-10 | Phase 18 | Complete |
 
 **Coverage:**
-- v1.2 requirements: 60 total
-- Mapped to phases: 60
+- v1.2 requirements: 66 total
+- Mapped to phases: 66
 - Unmapped: 0
-- Satisfied: 60/60
+- Satisfied: 66/66
 - Integration polish (Phase 21): CALL-06, PHON-05, PHON-07 display gaps
+- Final integration fixes (Phase 22): PHON-05 claimed_by display, INFR-01/CALL-07 RequireRole gates
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-12 — Phase 21 added for integration display polish (CALL-06, PHON-05, PHON-07)*
+*Last updated: 2026-03-12 — Phase 22 added for final integration fixes (INT-01, INT-02 from milestone audit)*

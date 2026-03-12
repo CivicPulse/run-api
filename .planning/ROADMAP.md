@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-10)
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
-- 🚧 **v1.2 Full UI** — Phases 12-20 (in progress)
+- 🚧 **v1.2 Full UI** — Phases 12-22 (in progress)
 
 ## Phases
 
@@ -49,6 +49,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests (completed 2026-03-12)
 - [x] **Phase 20: Caller Picker UX** - Replace raw user ID input with volunteer/member picker in AddCallerDialog (PHON-03) (completed 2026-03-12)
 - [x] **Phase 21: Integration Polish** - DNC reason column, call list name resolution in session views (gap closure) (completed 2026-03-12)
+- [ ] **Phase 22: Final Integration Fixes** - Claimed-by UUID→name resolution in call list detail, RequireRole gates on DNC mutation buttons
 
 ## Phase Details
 
@@ -230,6 +231,18 @@ Plans:
 Plans:
 - [ ] 21-01-PLAN.md — DNC reason column + call list name resolution in session views
 
+### Phase 22: Final Integration Fixes
+**Goal**: Close final integration gaps from v1.2 milestone audit — resolve claimed_by UUID display and add missing RequireRole gates
+**Depends on**: Phase 21
+**Requirements**: PHON-05, INFR-01, CALL-07
+**Gap Closure:** Closes gaps INT-01, INT-02 from v1.2 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Call list detail page `claimed_by` column shows member names instead of raw UUIDs (using useMembers + membersById lookup)
+  2. DNC management page mutation buttons (Add Number, Import, Remove) are wrapped with RequireRole minimum='manager'
+
+Plans:
+- [ ] 22-01-PLAN.md — Claimed-by name resolution + DNC RequireRole gates
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -255,3 +268,4 @@ Plans:
 | 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
 | 21. Integration Polish | 1/1 | Complete    | 2026-03-12 | - |
+| 22. Final Integration Fixes | v1.2 | 0/1 | Planned | - |
