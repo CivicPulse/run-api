@@ -1,10 +1,11 @@
 ---
 phase: 14
 slug: voter-import-wizard
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-11
+validated: 2026-03-12
 ---
 
 # Phase 14 — Validation Strategy
@@ -22,6 +23,8 @@ created: 2026-03-11
 | **Quick run command** | `cd web && npx vitest run --reporter=verbose src/hooks/useImports.test.ts` |
 | **Full suite command** | `cd web && npx vitest run` |
 | **Estimated runtime** | ~15 seconds |
+| **E2E Framework** | Playwright |
+| **E2E run command** | `cd web && npx playwright test e2e/phase14-import-verify.spec.ts` |
 
 ---
 
@@ -38,12 +41,13 @@ created: 2026-03-11
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 14-01-01 | 01 | 0 | IMPT-01..07 | unit stubs | `cd web && npx vitest run src/hooks/useImports.test.ts` | ❌ W0 | ⬜ pending |
-| 14-02-01 | 02 | 1 | IMPT-01 | unit (hook) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ❌ W0 | ⬜ pending |
-| 14-02-02 | 02 | 1 | IMPT-02, IMPT-03 | unit (component) | `cd web && npx vitest run src/components/voters/ColumnMappingTable.test.tsx` | ❌ W0 | ⬜ pending |
-| 14-02-03 | 02 | 1 | IMPT-04 | unit (component) | `cd web && npx vitest run src/components/voters/MappingPreview.test.tsx` | ❌ W0 | ⬜ pending |
-| 14-02-04 | 02 | 1 | IMPT-05, IMPT-07 | unit (hook) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ❌ W0 | ⬜ pending |
-| 14-03-01 | 03 | 2 | IMPT-06 | unit (hook) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ❌ W0 | ⬜ pending |
+| 14-01-01 | 01 | 0 | IMPT-01..07 | unit stubs | `cd web && npx vitest run src/hooks/useImports.test.ts` | ✅ | ✅ green |
+| 14-02-01 | 02 | 1 | IMPT-01 | unit (XHR mock) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ✅ | ✅ green |
+| 14-02-02 | 02 | 1 | IMPT-02, IMPT-03 | unit (component + hook) | `cd web && npx vitest run src/hooks/useImports.test.ts src/components/voters/ColumnMappingTable.test.tsx` | ✅ | ✅ green |
+| 14-02-03 | 02 | 1 | IMPT-04 | unit (component) | `cd web && npx vitest run src/components/voters/MappingPreview.test.tsx` | ✅ | ✅ green |
+| 14-02-04 | 02 | 1 | IMPT-05, IMPT-07 | unit (hook) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ✅ | ✅ green |
+| 14-03-01 | 03 | 2 | IMPT-06 | unit (hook) | `cd web && npx vitest run src/hooks/useImports.test.ts` | ✅ | ✅ green |
+| 14-e2e | all | — | IMPT-01..07 | e2e (smoke) | `cd web && npx playwright test e2e/phase14-import-verify.spec.ts` | ✅ | ✅ green (requires live server) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,10 +55,10 @@ created: 2026-03-11
 
 ## Wave 0 Requirements
 
-- [ ] `web/src/hooks/useImports.test.ts` — stubs for IMPT-01, IMPT-02, IMPT-05, IMPT-06, IMPT-07
-- [ ] `web/src/components/voters/ColumnMappingTable.test.tsx` — stubs for IMPT-03
-- [ ] `web/src/components/voters/MappingPreview.test.tsx` — stubs for IMPT-04
-- [ ] (Optional) Install shadcn Progress component: `cd web && npx shadcn@latest add progress`
+- [x] `web/src/hooks/useImports.test.ts` — stubs for IMPT-01, IMPT-02, IMPT-05, IMPT-06, IMPT-07 → all promoted to passing tests
+- [x] `web/src/components/voters/ColumnMappingTable.test.tsx` — stubs for IMPT-03 → 7 passing tests
+- [x] `web/src/components/voters/MappingPreview.test.tsx` — stubs for IMPT-04 → 4 passing tests
+- [x] (Optional) Install shadcn Progress component: `cd web && npx shadcn@latest add progress` → installed
 
 ---
 
@@ -71,11 +75,32 @@ created: 2026-03-11
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-03-12
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 3 |
+| Resolved | 3 |
+| Escalated | 0 |
+
+### Audit Details
+
+| Gap | Requirement | Resolution |
+|-----|-------------|------------|
+| 4 XHR unit test todos | IMPT-01 | Promoted to real tests via MockXHR class |
+| 1 detect columns todo | IMPT-02 | Promoted to real test via vi.mock + renderHook |
+| No Playwright e2e tests | IMPT-01..07 | Created phase14-import-verify.spec.ts (5 smoke tests) |
+
+**Pre-audit:** 27 passing, 5 todo, 0 e2e
+**Post-audit:** 32 passing, 0 todo, 5 e2e smoke tests
