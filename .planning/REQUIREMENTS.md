@@ -93,7 +93,7 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 - [x] **SHFT-05**: Volunteer can sign up for available shifts (with capacity/waitlist)
 - [x] **SHFT-06**: Manager can assign volunteers to shifts
 - [x] **SHFT-07**: Manager can check in/check out volunteers at shifts
-- [ ] **SHFT-08**: User can view shift roster with volunteer statuses
+- [x] **SHFT-08**: User can view shift roster with volunteer statuses
 - [x] **SHFT-09**: Manager can adjust volunteer hours after a shift
 - [x] **SHFT-10**: Volunteer can cancel their shift signup
 
@@ -190,7 +190,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHFT-05 | Phase 18 | Complete |
 | SHFT-06 | Phase 18 | Complete |
 | SHFT-07 | Phase 18 | Complete |
-| SHFT-08 | Phase 18 | Pending |
+| SHFT-08 | Phase 18 | Complete |
 | SHFT-09 | Phase 18 | Complete |
 | SHFT-10 | Phase 18 | Complete |
 

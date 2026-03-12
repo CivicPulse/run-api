@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: in-progress
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-03-12T02:19:49Z"
-last_activity: "2026-03-12 — Completed 18-02 (Shift list page with date-grouped cards, create/edit dialog, filters)"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-03-12T02:27:07Z"
+last_activity: "2026-03-12 — Completed 18-03 (Shift detail page with Overview/Roster tabs, check-in/out, assignment, hours adjustment)"
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 36
-  completed_plans: 34
-  percent: 94
+  completed_plans: 35
+  percent: 97
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 18 in progress (2/4 plans)
+**Current focus:** v1.2 Full UI — Phase 18 in progress (3/4 plans)
 
 ## Current Position
 
 Phase: 18 of 18 (Shift Management)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: in-progress
-Last activity: 2026-03-12 — Completed 18-02 (Shift list page with date-grouped cards, create/edit dialog, filters)
+Last activity: 2026-03-12 — Completed 18-03 (Shift detail page with Overview/Roster tabs, check-in/out, assignment, hours adjustment)
 
-Progress: [█████████░] 94%
+Progress: [█████████░] 97%
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [█████████░] 94%
 | Phase 17-volunteer-management P05 | 120 | 2 tasks | 0 files |
 | Phase 18 P01 | 116 | 2 tasks | 4 files |
 | Phase 18 P02 | 209 | 2 tasks | 4 files |
+| Phase 18 P03 | 247 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,10 @@ Progress: [█████████░] 94%
 - [Phase 18]: Capacity shown as 'Max: N' on list cards since list endpoint returns 0 for counts -- accurate counts only on detail page
 - [Phase 18]: Sign Up button shown on all scheduled shifts -- 422 'already signed up' and 404 'not registered' handled gracefully
 - [Phase 18]: Date grouping: Today = current calendar day, This Week = tomorrow through Sunday, Upcoming = after this week, Past = before today start
+- [Phase 18]: RowActions per-row component for roster DataTable -- hooks require volunteerId, mutation instantiation is per-row
+- [Phase 18]: volunteersById lookup via useMemo on useVolunteerList -- resolves volunteer names from IDs with fallback to ID substring
+- [Phase 18]: Activate button has no confirmation dialog (primary action) -- Cancel Shift and Mark Complete require ConfirmDialog
+- [Phase 18]: Self-signup shows both Sign Up and Cancel Signup buttons -- backend returns appropriate 422/404 errors handled via HTTPError
 
 ### Pending Todos
 
@@ -177,6 +182,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T02:19:49Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-03-12T02:27:07Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None
