@@ -89,7 +89,7 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 - [x] **SHFT-01**: User can create a shift with date, time, location, capacity, and type
 - [x] **SHFT-02**: User can edit and delete shifts
 - [x] **SHFT-03**: User can manage shift status transitions
-- [ ] **SHFT-04**: User can view shifts in a date-grouped list
+- [x] **SHFT-04**: User can view shifts in a date-grouped list
 - [x] **SHFT-05**: Volunteer can sign up for available shifts (with capacity/waitlist)
 - [x] **SHFT-06**: Manager can assign volunteers to shifts
 - [x] **SHFT-07**: Manager can check in/check out volunteers at shifts
@@ -186,7 +186,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHFT-01 | Phase 18 | Complete |
 | SHFT-02 | Phase 18 | Complete |
 | SHFT-03 | Phase 18 | Complete |
-| SHFT-04 | Phase 18 | Pending |
+| SHFT-04 | Phase 18 | Complete |
 | SHFT-05 | Phase 18 | Complete |
 | SHFT-06 | Phase 18 | Complete |
 | SHFT-07 | Phase 18 | Complete |

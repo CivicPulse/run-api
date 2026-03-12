@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: in-progress
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-03-12T02:14:45.288Z"
-last_activity: "2026-03-12 — Completed 18-01 (Shift data layer: types, hooks, test stubs, sidebar nav)"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-03-12T02:19:49Z"
+last_activity: "2026-03-12 — Completed 18-02 (Shift list page with date-grouped cards, create/edit dialog, filters)"
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 36
-  completed_plans: 33
-  percent: 92
+  completed_plans: 34
+  percent: 94
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 18 in progress (1/4 plans)
+**Current focus:** v1.2 Full UI — Phase 18 in progress (2/4 plans)
 
 ## Current Position
 
 Phase: 18 of 18 (Shift Management)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: in-progress
-Last activity: 2026-03-12 — Completed 18-01 (Shift data layer: types, hooks, test stubs, sidebar nav)
+Last activity: 2026-03-12 — Completed 18-02 (Shift list page with date-grouped cards, create/edit dialog, filters)
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 92%
 | Phase 17-volunteer-management P04 | 238 | 2 tasks | 5 files |
 | Phase 17-volunteer-management P05 | 120 | 2 tasks | 0 files |
 | Phase 18 P01 | 116 | 2 tasks | 4 files |
+| Phase 18 P02 | 209 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,11 @@ Progress: [█████████░] 92%
 - [Phase 18]: Shift hooks follow useVolunteers.ts and usePhoneBankSessions.ts patterns exactly -- query key factory + individual query/mutation functions
 - [Phase 18]: shiftKeys.list spreads shiftKeys.all and appends 'list' + filters -- stays invalidatable by shift mutations that invalidate shiftKeys.all
 - [Phase 18]: Wave 0 stubs use it.todo with no imports -- suite stays green while stubs are pending
+- [Phase 18]: ShiftDialog uses Sheet (not Dialog) following VolunteerEditSheet pattern -- consistent side-panel UX for long forms
+- [Phase 18]: NONE_VALUE sentinel for optional Select fields (turf, session) -- Radix SelectItem requires non-empty string values
+- [Phase 18]: Capacity shown as 'Max: N' on list cards since list endpoint returns 0 for counts -- accurate counts only on detail page
+- [Phase 18]: Sign Up button shown on all scheduled shifts -- 422 'already signed up' and 404 'not registered' handled gracefully
+- [Phase 18]: Date grouping: Today = current calendar day, This Week = tomorrow through Sunday, Upcoming = after this week, Past = before today start
 
 ### Pending Todos
 
@@ -171,6 +177,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T02:14:45.283Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-03-12T02:19:49Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: None
