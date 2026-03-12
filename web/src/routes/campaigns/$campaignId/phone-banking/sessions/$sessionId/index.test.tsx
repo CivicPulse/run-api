@@ -27,6 +27,10 @@ vi.mock("@/hooks/usePhoneBankSessions", () => ({
   useReassignEntry: vi.fn(),
 }))
 
+vi.mock("@/hooks/useMembers", () => ({
+  useMembers: vi.fn(),
+}))
+
 // RequireRole: by default render children (manager view)
 const _roleStore = vi.hoisted(() => ({ role: "manager" }))
 vi.mock("@/components/shared/RequireRole", () => ({
@@ -57,6 +61,7 @@ vi.mock("sonner", () => ({
 }))
 
 import type { PhoneBankSession, SessionCaller, SessionProgressResponse } from "@/types/phone-bank-session"
+import type { CampaignMember } from "@/types/campaign"
 import {
   usePhoneBankSession,
   useSessionCallers,
@@ -68,6 +73,7 @@ import {
   useSessionProgress,
   useReassignEntry,
 } from "@/hooks/usePhoneBankSessions"
+import { useMembers } from "@/hooks/useMembers"
 
 import "./index"
 
@@ -80,6 +86,7 @@ const mockUseCheckIn = useCheckIn as unknown as ReturnType<typeof vi.fn>
 const mockUseCheckOut = useCheckOut as unknown as ReturnType<typeof vi.fn>
 const mockUseSessionProgress = useSessionProgress as unknown as ReturnType<typeof vi.fn>
 const mockUseReassignEntry = useReassignEntry as unknown as ReturnType<typeof vi.fn>
+const mockUseMembers = useMembers as unknown as ReturnType<typeof vi.fn>
 
 function makeMutation(mutateAsync?: ReturnType<typeof vi.fn>) {
   return {
@@ -129,6 +136,23 @@ function makeProgress(overrides: Partial<SessionProgressResponse> = {}): Session
   }
 }
 
+function makeMember(overrides: Partial<CampaignMember> = {}): CampaignMember {
+  return {
+    user_id: "member-user-1",
+    display_name: "Jane Smith",
+    email: "jane@example.com",
+    role: "manager",
+    synced_at: "2026-03-11T00:00:00Z",
+    ...overrides,
+  }
+}
+
+const defaultMembers = [
+  makeMember({ user_id: "member-user-1", display_name: "Jane Smith", email: "jane@example.com", role: "manager" }),
+  makeMember({ user_id: "member-user-2", display_name: "Bob Jones", email: "bob@example.com", role: "volunteer" }),
+  makeMember({ user_id: "member-user-3", display_name: "Alice Admin", email: "alice@example.com", role: "admin" }),
+]
+
 function renderPage() {
   const Component = _store.component
   if (!Component) throw new Error("SessionDetailPage component not captured by createFileRoute mock")
@@ -148,6 +172,16 @@ describe("Session Detail", () => {
     mockUseCheckOut.mockReturnValue(makeMutation())
     mockUseSessionProgress.mockReturnValue({ data: undefined, isLoading: false })
     mockUseReassignEntry.mockReturnValue(makeMutation())
+    mockUseMembers.mockReturnValue({
+      data: {
+        items: defaultMembers,
+        total: 3,
+        page: 1,
+        size: 50,
+        pages: 1,
+      },
+      isLoading: false,
+    })
   })
 
   describe("Status Transitions (PHON-02)", () => {
@@ -205,41 +239,49 @@ describe("Session Detail", () => {
   })
 
   describe("Caller Management (PHON-03)", () => {
-    it("renders caller management table with assigned callers", () => {
-      const caller = makeCaller({ user_id: "user-abc-123-def-456" })
+    it("renders caller table with display name + role badge instead of UUID", () => {
+      const caller = makeCaller({ user_id: "member-user-1" })
       mockUseSessionCallers.mockReturnValue({ data: [caller], isLoading: false })
 
       renderPage()
 
-      // Caller user_id is displayed (sliced to 12 chars + ellipsis)
-      expect(screen.getByText(/user-abc-123/)).toBeInTheDocument()
+      // Display name shown instead of truncated UUID
+      expect(screen.getByText("Jane Smith")).toBeInTheDocument()
+      // Role badge shown
+      expect(screen.getByText("manager")).toBeInTheDocument()
     })
 
-    it("Add Caller triggers assignCaller mutation with selected user", async () => {
+    it("Add Caller via combobox triggers assignCaller mutation with selected user_id", async () => {
       const mutateAsync = vi.fn().mockResolvedValue(makeCaller())
       mockUseAssignCaller.mockReturnValue(makeMutation(mutateAsync))
 
       renderPage()
 
-      // Click Add Caller button
-      const addCallerBtn = screen.getByRole("button", { name: /\+ add caller/i })
-      fireEvent.click(addCallerBtn)
+      // Open AddCallerDialog
+      fireEvent.click(screen.getByRole("button", { name: /\+ add caller/i }))
 
-      // Dialog opens
       await waitFor(() => {
         expect(screen.getByText("Add Caller")).toBeInTheDocument()
       })
 
-      // Fill in user ID
-      const userIdInput = screen.getByLabelText(/user id/i)
-      fireEvent.change(userIdInput, { target: { value: "new-user-123" } })
+      // Click combobox trigger to open popover
+      const comboboxTrigger = screen.getByRole("combobox")
+      fireEvent.click(comboboxTrigger)
 
-      // Submit
+      // Select a member from the list
+      await waitFor(() => {
+        expect(screen.getByRole("option", { name: /Jane Smith/i })).toBeInTheDocument()
+      })
+
+      // Click the option for Jane Smith
+      fireEvent.click(screen.getByRole("option", { name: /Jane Smith/i }))
+
+      // Click Add button
       const addBtn = screen.getByRole("button", { name: /^add$/i })
       fireEvent.click(addBtn)
 
       await waitFor(() => {
-        expect(mutateAsync).toHaveBeenCalledWith("new-user-123")
+        expect(mutateAsync).toHaveBeenCalledWith("member-user-1")
       })
     })
 
@@ -247,10 +289,13 @@ describe("Session Detail", () => {
       const removeAsync = vi.fn().mockResolvedValue(undefined)
       mockUseRemoveCaller.mockReturnValue(makeMutation(removeAsync))
 
-      const caller = makeCaller({ user_id: "user-abc-123-def-456" })
+      const caller = makeCaller({ user_id: "member-user-1" })
       mockUseSessionCallers.mockReturnValue({ data: [caller], isLoading: false })
 
       renderPage()
+
+      // Caller row shows display name
+      expect(screen.getByText("Jane Smith")).toBeInTheDocument()
 
       // Open kebab menu on caller row
       const moreButtons = screen.getAllByRole("button", { name: /actions/i })
@@ -263,8 +308,71 @@ describe("Session Detail", () => {
       fireEvent.click(screen.getByRole("menuitem", { name: /remove caller/i }))
 
       await waitFor(() => {
-        expect(removeAsync).toHaveBeenCalledWith("user-abc-123-def-456")
+        expect(removeAsync).toHaveBeenCalledWith("member-user-1")
       })
+    })
+
+    it("hides already-assigned callers from combobox options", async () => {
+      // member-user-1 is already assigned as a caller
+      const caller = makeCaller({ user_id: "member-user-1" })
+      mockUseSessionCallers.mockReturnValue({ data: [caller], isLoading: false })
+
+      renderPage()
+
+      fireEvent.click(screen.getByRole("button", { name: /\+ add caller/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText("Add Caller")).toBeInTheDocument()
+      })
+
+      // Open combobox
+      fireEvent.click(screen.getByRole("combobox"))
+
+      await waitFor(() => {
+        // member-user-2 (Bob Jones) should be visible in combobox
+        expect(screen.getByRole("option", { name: /Bob Jones/i })).toBeInTheDocument()
+      })
+
+      // member-user-1 (Jane Smith) should NOT appear as an option
+      // (already assigned -- filtered out from available members)
+      const janeOptions = screen.queryAllByRole("option", { name: /Jane Smith/i })
+      expect(janeOptions).toHaveLength(0)
+    })
+
+    it("shows 'All campaign members are already assigned' when no available members", async () => {
+      // All 3 members already assigned
+      mockUseSessionCallers.mockReturnValue({
+        data: [
+          makeCaller({ id: "c1", user_id: "member-user-1" }),
+          makeCaller({ id: "c2", user_id: "member-user-2" }),
+          makeCaller({ id: "c3", user_id: "member-user-3" }),
+        ],
+        isLoading: false,
+      })
+
+      renderPage()
+
+      fireEvent.click(screen.getByRole("button", { name: /\+ add caller/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText("Add Caller")).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole("combobox"))
+
+      await waitFor(() => {
+        expect(screen.getByText("All campaign members are already assigned")).toBeInTheDocument()
+      })
+    })
+
+    it("falls back to truncated UUID when caller user_id not in members list", () => {
+      const caller = makeCaller({ user_id: "unknown-user-id-very-long-uuid" })
+      mockUseSessionCallers.mockReturnValue({ data: [caller], isLoading: false })
+
+      renderPage()
+
+      // Should show first 12 chars + "..."
+      expect(screen.getByText("unknown-user...")).toBeInTheDocument()
     })
   })
 
@@ -378,11 +486,11 @@ describe("Session Detail", () => {
       })
     })
 
-    it("per-caller table renders with Reassign kebab menu for managers", async () => {
+    it("per-caller table renders with display name + role badge and Reassign kebab menu", async () => {
       const progress = makeProgress({
         callers: [
           {
-            user_id: "caller-user-id-xyz",
+            user_id: "member-user-1",
             calls_made: 5,
             check_in_at: "2026-03-11T10:00:00Z",
             check_out_at: null,
@@ -396,8 +504,10 @@ describe("Session Detail", () => {
       clickProgressTab()
 
       await waitFor(() => {
-        // Caller row renders (user_id sliced to 12 chars: "caller-user-i…")
-        expect(screen.getByText(/caller-user/)).toBeInTheDocument()
+        // Display name shown instead of truncated UUID
+        expect(screen.getByText("Jane Smith")).toBeInTheDocument()
+        // Role badge shown
+        expect(screen.getByText("manager")).toBeInTheDocument()
         // Calls made
         expect(screen.getByText("5")).toBeInTheDocument()
       })
@@ -410,7 +520,7 @@ describe("Session Detail", () => {
       const progress = makeProgress({
         callers: [
           {
-            user_id: "caller-user-id-xyz",
+            user_id: "member-user-1",
             calls_made: 2,
             check_in_at: "2026-03-11T10:00:00Z",
             check_out_at: null,
@@ -440,6 +550,29 @@ describe("Session Detail", () => {
       // Reassign info dialog opens
       await waitFor(() => {
         expect(screen.getByText("Reassign Entries")).toBeInTheDocument()
+      })
+    })
+
+    it("Progress tab callers table shows display name + role badge", async () => {
+      const progress = makeProgress({
+        callers: [
+          {
+            user_id: "member-user-2",
+            calls_made: 3,
+            check_in_at: "2026-03-11T10:00:00Z",
+            check_out_at: null,
+          },
+        ],
+      })
+      mockUseSessionProgress.mockReturnValue({ data: progress, isLoading: false })
+
+      renderPage()
+
+      clickProgressTab()
+
+      await waitFor(() => {
+        expect(screen.getByText("Bob Jones")).toBeInTheDocument()
+        expect(screen.getByText("volunteer")).toBeInTheDocument()
       })
     })
   })
