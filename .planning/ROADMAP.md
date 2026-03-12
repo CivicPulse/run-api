@@ -173,10 +173,13 @@ Plans:
   2. User can view shifts in a date-grouped list showing upcoming and past shifts with their statuses and capacity
   3. Volunteer can sign up for available shifts (respecting capacity limits and waitlists) and cancel their signup, and managers can assign volunteers to shifts directly
   4. Manager can check in and check out volunteers at shifts, view a shift roster with each volunteer's status, and adjust volunteer hours after a shift completes
-**Plans:** [To be planned]
+**Plans:** 4 plans
 
 Plans:
-- [To be planned]
+- [ ] 18-01-PLAN.md — Shift types, hooks (14 exports), Wave 0 test stubs, sidebar nav update
+- [ ] 18-02-PLAN.md — ShiftDialog (create/edit), ShiftCard component, shift list page with date grouping and filters
+- [ ] 18-03-PLAN.md — Shift detail page (Overview + Roster tabs), AssignVolunteerDialog, AdjustHoursDialog
+- [ ] 18-04-PLAN.md — Full test suite verification + visual checkpoint
 
 ## Progress
 
@@ -199,4 +202,4 @@ Plans:
 | 15. Call Lists & DNC Management | v1.2 | 6/6 | Complete | 2026-03-11 |
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
-| 18. Shift Management | v1.2 | 0/? | Not started | - |
+| 18. Shift Management | v1.2 | 0/4 | Not started | - |
