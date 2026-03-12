@@ -33,6 +33,7 @@ class PhoneBankSessionResponse(BaseSchema):
     name: str
     status: str
     call_list_id: uuid.UUID
+    call_list_name: str | None = None
     scheduled_start: datetime | None = None
     scheduled_end: datetime | None = None
     created_by: str

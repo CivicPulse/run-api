@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -79,6 +79,7 @@ async def add_dnc_entry(
 async def bulk_import_dnc(
     campaign_id: uuid.UUID,
     file: UploadFile,
+    reason: str = Query(default="manual"),
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -93,7 +94,7 @@ async def bulk_import_dnc(
     content = await file.read()
     csv_content = content.decode("utf-8")
     result = await _dnc_service.bulk_import(
-        db, campaign_id, csv_content, user.id
+        db, campaign_id, csv_content, user.id, default_reason=reason
     )
     await db.commit()
     return result

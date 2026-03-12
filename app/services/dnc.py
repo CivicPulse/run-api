@@ -75,6 +75,7 @@ class DNCService:
         campaign_id: uuid.UUID,
         csv_content: str,
         added_by: str,
+        default_reason: str = "registry_import",
     ) -> DNCImportResponse:
         """Bulk import DNC entries from CSV content.
 
@@ -98,7 +99,7 @@ class DNCService:
 
         for row in reader:
             phone = row.get("phone_number", "").strip()
-            reason = row.get("reason", "registry_import").strip()
+            reason = row.get("reason", default_reason).strip()
 
             # Validate phone format
             if not PHONE_REGEX.match(phone):

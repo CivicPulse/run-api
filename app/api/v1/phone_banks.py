@@ -25,6 +25,7 @@ from app.schemas.phone_bank import (
     SessionCallerResponse,
     SessionProgressResponse,
 )
+from app.models.call_list import CallList
 from app.models.phone_bank import SessionCaller
 from app.services.phone_bank import PhoneBankService
 
@@ -100,14 +101,25 @@ async def list_sessions(
         )
         caller_counts = dict(counts_result.all())
 
+    # Batch-fetch call list names for all returned sessions
+    call_list_ids = list({s.call_list_id for s in sessions})
+    call_list_names: dict[uuid.UUID, str] = {}
+    if call_list_ids:
+        names_result = await db.execute(
+            select(CallList.id, CallList.name)
+            .where(CallList.id.in_(call_list_ids))
+        )
+        call_list_names = dict(names_result.all())
+
     items = [
         PhoneBankSessionResponse(
             **{
                 k: v
                 for k, v in PhoneBankSessionResponse.model_validate(s).model_dump().items()
-                if k != "caller_count"
+                if k not in ("caller_count", "call_list_name")
             },
             caller_count=caller_counts.get(s.id, 0),
+            call_list_name=call_list_names.get(s.call_list_id),
         )
         for s in sessions
     ]
@@ -143,7 +155,14 @@ async def get_session(
             detail=f"Phone bank session {session_id} not found",
             type="session-not-found",
         )
-    return PhoneBankSessionResponse.model_validate(pb_session)
+    cl_result = await db.execute(
+        select(CallList.name).where(CallList.id == pb_session.call_list_id)
+    )
+    cl_name = cl_result.scalar_one_or_none()
+    response = PhoneBankSessionResponse.model_validate(pb_session)
+    response_dict = response.model_dump()
+    response_dict["call_list_name"] = cl_name
+    return PhoneBankSessionResponse(**response_dict)
 
 
 @router.patch(
