@@ -238,4 +238,4 @@ Plans:
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
 | 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
-| 20. Caller Picker UX | 2/2 | Complete   | 2026-03-12 | - |
+| 20. Caller Picker UX | 2/2 | Complete    | 2026-03-12 | - |
