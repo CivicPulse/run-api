@@ -1,9 +1,9 @@
 ---
 phase: 15
 slug: call-lists-dnc-management
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-03-11
 ---
 
@@ -38,14 +38,14 @@ created: 2026-03-11
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 15-01-01 | 01 | 0 | CALL-01, CALL-02, CALL-03 | unit | `npm run test -- --run useCallLists` | ❌ W0 | ⬜ pending |
-| 15-01-02 | 01 | 0 | CALL-04, CALL-05, CALL-06, CALL-07, CALL-08 | unit | `npm run test -- --run useDNC DNCListPage` | ❌ W0 | ⬜ pending |
-| 15-02-01 | 02 | 1 | CALL-01 | unit | `npm run test -- --run useCallLists` | ✅ W0 | ⬜ pending |
-| 15-02-02 | 02 | 1 | CALL-03 | unit | `npm run test -- --run useCallLists` | ✅ W0 | ⬜ pending |
-| 15-03-01 | 03 | 1 | CALL-02 | unit | `npm run test -- --run useCallLists` | ✅ W0 | ⬜ pending |
-| 15-04-01 | 04 | 1 | CALL-04, CALL-05, CALL-07 | unit | `npm run test -- --run useDNC` | ✅ W0 | ⬜ pending |
-| 15-04-02 | 04 | 1 | CALL-06 | unit | `npm run test -- --run useDNC` | ✅ W0 | ⬜ pending |
-| 15-04-03 | 04 | 1 | CALL-08 | unit | `npm run test -- --run DNCListPage` | ✅ W0 | ⬜ pending |
+| 15-01-01 | 01 | 0 | CALL-01, CALL-02, CALL-03 | unit | `npm run test -- --run useCallLists` | ✅ | ✅ green |
+| 15-01-02 | 01 | 0 | CALL-04, CALL-05, CALL-06, CALL-07, CALL-08 | unit | `npm run test -- --run useDNC DNCListPage` | ✅ | ✅ green |
+| 15-02-01 | 02 | 1 | CALL-01 | unit | `npm run test -- --run useCallLists` | ✅ | ✅ green |
+| 15-02-02 | 02 | 1 | CALL-03 | unit | `npm run test -- --run useCallLists` | ✅ | ✅ green |
+| 15-03-01 | 03 | 1 | CALL-02 | unit | `npm run test -- --run useCallLists` | ✅ | ✅ green |
+| 15-04-01 | 04 | 1 | CALL-04, CALL-05, CALL-07 | unit | `npm run test -- --run useDNC` | ✅ | ✅ green |
+| 15-04-02 | 04 | 1 | CALL-06 | unit | `npm run test -- --run useDNC` | ✅ | ✅ green |
+| 15-04-03 | 04 | 1 | CALL-08 | unit | `npm run test -- --run DNCListPage` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,9 +53,9 @@ created: 2026-03-11
 
 ## Wave 0 Requirements
 
-- [ ] `web/src/hooks/useCallLists.test.ts` — stubs for CALL-01, CALL-02, CALL-03
-- [ ] `web/src/hooks/useDNC.test.ts` — stubs for CALL-04, CALL-05, CALL-06, CALL-07
-- [ ] `web/src/routes/campaigns/$campaignId/phone-banking/dnc/index.test.tsx` — stubs for CALL-08 (client-side filter); describe name "DNCListPage" required for --run DNCListPage filter to match
+- [x] `web/src/hooks/useCallLists.test.ts` — 5 real tests for CALL-01, CALL-02, CALL-03
+- [x] `web/src/hooks/useDNC.test.ts` — 4 real tests for CALL-04, CALL-05, CALL-06, CALL-07
+- [x] `web/src/routes/campaigns/$campaignId/phone-banking/dnc/index.test.tsx` — 4 real tests for CALL-08 (client-side filter); describe name "DNCListPage" required for --run DNCListPage filter to match
 
 *Note: VALIDATION.md originally listed this file as `web/src/pages/DNCListPage.test.tsx`. The actual path is co-located with the route file at the routes/ path above. The describe("DNCListPage") name ensures the --run DNCListPage filter still works.*
 
@@ -82,4 +82,4 @@ created: 2026-03-11
 - [x] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved (wave_0_complete: true -- all 13 stubs implemented and passing)
