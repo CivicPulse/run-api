@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-03-12T00:58:38.130Z"
-last_activity: 2026-03-12 — Completed 17-01 (Backend gaps and Wave 0 scaffolds)
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-03-12T01:04:15.162Z"
+last_activity: 2026-03-12 — Completed 17-03 (Roster & Tags pages)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 29
-  percent: 88
+  completed_plans: 31
+  percent: 94
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 17 Plan 01 complete, Plan 02 next
+**Current focus:** v1.2 Full UI — Phase 17 Plan 03 complete, Plan 04 next
 
 ## Current Position
 
 Phase: 17 of 18 (Volunteer Management)
-Plan: 1 of 5 complete
+Plan: 3 of 5 complete
 Status: Executing
-Last activity: 2026-03-12 — Completed 17-01 (Backend gaps and Wave 0 scaffolds)
+Last activity: 2026-03-12 — Completed 17-03 (Roster & Tags pages)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [█████████░] 88%
 | Phase 16-phone-banking P07 | 2 | 2 tasks | 0 files |
 | Phase 17-volunteer-management P02 | 123 | 2 tasks | 6 files |
 | Phase 17-volunteer-management P01 | 176 | 2 tasks | 8 files |
+| Phase 17-volunteer-management P03 | 139 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ Progress: [█████████░] 88%
 - [Phase 17]: useSelfRegister does not auto-invalidate queries -- caller handles redirect after register/conflict
 - [Phase 17]: Sidebar nav includes Roster, Tags, Register items matching CONTEXT.md navigation spec
 - [Phase 17]: ProblemResponse **extra kwargs used for volunteer_id in 409 response -- avoids JSONResponse fallback
+- [Phase 17]: Skills multi-select uses Popover with checkboxes (not single-select) -- 10 fixed items, simple approach
+- [Phase 17]: RowActions component per row for kebab menu -- hooks require volunteerId, mutation instantiation is per-row
+- [Phase 17]: Tags page mirrors voter tags pattern exactly -- same TagActions/TagFormDialog/DestructiveConfirmDialog structure
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T00:58:38.125Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-03-12T01:04:15.145Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
