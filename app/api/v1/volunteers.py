@@ -12,6 +12,9 @@ from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.common import PaginatedResponse, PaginationResponse
+from sqlalchemy import select as sa_select
+
+from app.models.volunteer import Volunteer
 from app.schemas.volunteer import (
     AvailabilityCreate,
     AvailabilityResponse,
@@ -21,6 +24,7 @@ from app.schemas.volunteer import (
     VolunteerStatusUpdate,
     VolunteerTagCreate,
     VolunteerTagResponse,
+    VolunteerTagUpdate,
     VolunteerUpdate,
 )
 from app.services.volunteer import VolunteerService
@@ -85,11 +89,19 @@ async def self_register(
             db, campaign_id, user.id, body
         )
     except ValueError as exc:
+        existing = await db.execute(
+            sa_select(Volunteer).where(
+                Volunteer.campaign_id == campaign_id,
+                Volunteer.user_id == user.id,
+            )
+        )
+        existing_vol = existing.scalar_one_or_none()
         return problem.ProblemResponse(
             status=status.HTTP_409_CONFLICT,
             title="Already Registered",
             detail=str(exc),
             type="volunteer-already-registered",
+            volunteer_id=str(existing_vol.id) if existing_vol else None,
         )
     await db.commit()
     return VolunteerResponse.model_validate(volunteer)
@@ -394,6 +406,69 @@ async def list_tags(
     await set_campaign_context(db, str(campaign_id))
     tags = await _volunteer_service.list_tags(db, campaign_id)
     return [VolunteerTagResponse.model_validate(t) for t in tags]
+
+
+@router.patch(
+    "/campaigns/{campaign_id}/volunteer-tags/{tag_id}",
+    response_model=VolunteerTagResponse,
+)
+async def update_tag(
+    campaign_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    body: VolunteerTagUpdate,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename a campaign-scoped volunteer tag.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        tag = await _volunteer_service.update_tag(db, tag_id, body.name)
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Volunteer Tag Not Found",
+            detail=str(exc),
+            type="volunteer-tag-not-found",
+        )
+    await db.commit()
+    return VolunteerTagResponse.model_validate(tag)
+
+
+@router.delete(
+    "/campaigns/{campaign_id}/volunteer-tags/{tag_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_tag(
+    campaign_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a campaign-scoped volunteer tag (cascades to member associations).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        await _volunteer_service.delete_tag(db, tag_id)
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Volunteer Tag Not Found",
+            detail=str(exc),
+            type="volunteer-tag-not-found",
+        )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

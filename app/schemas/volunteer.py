@@ -102,6 +102,12 @@ class VolunteerTagCreate(BaseSchema):
     name: str
 
 
+class VolunteerTagUpdate(BaseSchema):
+    """Request schema for updating a campaign-scoped volunteer tag."""
+
+    name: str
+
+
 class VolunteerTagResponse(BaseSchema):
     """Response schema for a volunteer tag."""
 

@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.core.time import utcnow
 from app.models.volunteer import (
@@ -376,6 +376,64 @@ class VolunteerService:
             .order_by(VolunteerTag.name)
         )
         return list(result.scalars().all())
+
+    async def update_tag(
+        self,
+        session: AsyncSession,
+        tag_id: uuid.UUID,
+        name: str,
+    ) -> VolunteerTag:
+        """Rename a campaign-scoped volunteer tag.
+
+        Args:
+            session: Async database session.
+            tag_id: Tag UUID.
+            name: New tag name.
+
+        Returns:
+            The updated VolunteerTag.
+
+        Raises:
+            ValueError: If tag not found.
+        """
+        result = await session.execute(
+            select(VolunteerTag).where(VolunteerTag.id == tag_id)
+        )
+        tag = result.scalar_one_or_none()
+        if tag is None:
+            msg = f"Volunteer tag {tag_id} not found"
+            raise ValueError(msg)
+
+        tag.name = name
+        return tag
+
+    async def delete_tag(
+        self,
+        session: AsyncSession,
+        tag_id: uuid.UUID,
+    ) -> None:
+        """Delete a campaign-scoped volunteer tag and its member associations.
+
+        Args:
+            session: Async database session.
+            tag_id: Tag UUID.
+
+        Raises:
+            ValueError: If tag not found.
+        """
+        result = await session.execute(
+            select(VolunteerTag).where(VolunteerTag.id == tag_id)
+        )
+        tag = result.scalar_one_or_none()
+        if tag is None:
+            msg = f"Volunteer tag {tag_id} not found"
+            raise ValueError(msg)
+
+        # Cascade: remove all volunteer-tag member associations first
+        await session.execute(
+            delete(VolunteerTagMember).where(VolunteerTagMember.tag_id == tag_id)
+        )
+        await session.delete(tag)
 
     async def add_tag(
         self,
