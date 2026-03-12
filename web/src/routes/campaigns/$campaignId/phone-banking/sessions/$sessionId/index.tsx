@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import {
   usePhoneBankSession,
@@ -12,12 +12,11 @@ import {
   useSessionProgress,
   useReassignEntry,
 } from "@/hooks/usePhoneBankSessions"
+import { useMembers } from "@/hooks/useMembers"
 import { STATUS_ACTIONS } from "@/types/phone-bank-session"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
@@ -33,8 +32,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { ChevronsUpDown, Check, MoreHorizontal } from "lucide-react"
 import type { PhoneBankSession, SessionCaller, SessionStatus } from "@/types/phone-bank-session"
+import type { CampaignMember } from "@/types/campaign"
 
 export const Route = createFileRoute(
   "/campaigns/$campaignId/phone-banking/sessions/$sessionId/",
@@ -55,6 +68,30 @@ function statusVariant(
     default:
       return "default"
   }
+}
+
+type StatusVariant = "default" | "success" | "warning" | "error" | "info"
+const roleVariant: Record<string, StatusVariant> = {
+  owner: "info",
+  admin: "success",
+  manager: "warning",
+  volunteer: "default",
+  viewer: "default",
+}
+
+function resolveCallerName(
+  membersById: Map<string, CampaignMember>,
+  userId: string,
+): string {
+  const member = membersById.get(userId)
+  return member ? member.display_name : `${userId.slice(0, 12)}...`
+}
+
+function resolveCallerRole(
+  membersById: Map<string, CampaignMember>,
+  userId: string,
+): string | null {
+  return membersById.get(userId)?.role ?? null
 }
 
 function formatDateTime(iso: string | null): string {
@@ -184,11 +221,15 @@ function OverviewTab({
   callers,
   campaignId,
   sessionId,
+  membersById,
+  members,
 }: {
   session: PhoneBankSession
   callers: SessionCaller[]
   campaignId: string
   sessionId: string
+  membersById: Map<string, CampaignMember>
+  members: CampaignMember[]
 }) {
   const [addCallerOpen, setAddCallerOpen] = useState(false)
   const [checkedIn, setCheckedIn] = useState(false)
@@ -326,7 +367,7 @@ function OverviewTab({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 font-medium">User ID</th>
+                  <th className="text-left py-2 font-medium">Caller</th>
                   <th className="text-left py-2 font-medium">Checked In</th>
                   <th className="text-left py-2 font-medium">Checked Out</th>
                   <th className="py-2" />
@@ -335,8 +376,24 @@ function OverviewTab({
               <tbody>
                 {callers.map((caller) => (
                   <tr key={caller.id} className="border-b hover:bg-muted/50">
-                    <td className="py-2 font-mono text-xs">
-                      {caller.user_id.slice(0, 12)}…
+                    <td className="py-2">
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {resolveCallerName(membersById, caller.user_id)}
+                        </span>
+                        {resolveCallerRole(membersById, caller.user_id) && (
+                          <StatusBadge
+                            status={
+                              resolveCallerRole(membersById, caller.user_id)!
+                            }
+                            variant={
+                              roleVariant[
+                                resolveCallerRole(membersById, caller.user_id)!
+                              ] ?? "default"
+                            }
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 text-muted-foreground">
                       {caller.check_in_at
@@ -422,6 +479,8 @@ function OverviewTab({
           onOpenChange={setAddCallerOpen}
           campaignId={campaignId}
           sessionId={sessionId}
+          members={members}
+          assignedUserIds={new Set(callers.map((c) => c.user_id))}
         />
       )}
     </div>
@@ -433,9 +492,11 @@ function OverviewTab({
 function ProgressTab({
   campaignId,
   sessionId,
+  membersById,
 }: {
   campaignId: string
   sessionId: string
+  membersById: Map<string, CampaignMember>
 }) {
   const { data: progress, isLoading } = useSessionProgress(campaignId, sessionId)
   // useReassignEntry imported for future use; v1 shows info dialog instead
@@ -522,8 +583,27 @@ function ProgressTab({
                       key={caller.user_id}
                       className="border-b hover:bg-muted/50"
                     >
-                      <td className="py-2 font-mono text-xs">
-                        {caller.user_id.slice(0, 12)}…
+                      <td className="py-2">
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {resolveCallerName(membersById, caller.user_id)}
+                          </span>
+                          {resolveCallerRole(membersById, caller.user_id) && (
+                            <StatusBadge
+                              status={
+                                resolveCallerRole(membersById, caller.user_id)!
+                              }
+                              variant={
+                                roleVariant[
+                                  resolveCallerRole(
+                                    membersById,
+                                    caller.user_id,
+                                  )!
+                                ] ?? "default"
+                              }
+                            />
+                          )}
+                        </div>
                       </td>
                       <td className="py-2">{caller.calls_made}</td>
                       <td className="py-2 text-muted-foreground">
@@ -589,6 +669,15 @@ function SessionDetailPage() {
 
   const { data: session, isLoading } = usePhoneBankSession(campaignId, sessionId)
   const { data: callers } = useSessionCallers(campaignId, sessionId)
+  const { data: membersData } = useMembers(campaignId)
+
+  const membersById = useMemo(() => {
+    const map = new Map<string, CampaignMember>()
+    for (const m of membersData?.items ?? []) {
+      map.set(m.user_id, m)
+    }
+    return map
+  }, [membersData])
 
   if (isLoading) {
     return (
@@ -639,10 +728,16 @@ function SessionDetailPage() {
             callers={callers ?? []}
             campaignId={campaignId}
             sessionId={sessionId}
+            membersById={membersById}
+            members={membersData?.items ?? []}
           />
         </TabsContent>
         <TabsContent value="progress" className="mt-6">
-          <ProgressTab campaignId={campaignId} sessionId={sessionId} />
+          <ProgressTab
+            campaignId={campaignId}
+            sessionId={sessionId}
+            membersById={membersById}
+          />
         </TabsContent>
       </Tabs>
     </div>
