@@ -7,6 +7,7 @@ function VolunteerLayout() {
     { to: `/campaigns/${campaignId}/volunteers/roster`, label: "Roster" },
     { to: `/campaigns/${campaignId}/volunteers/tags`, label: "Tags" },
     { to: `/campaigns/${campaignId}/volunteers/register`, label: "Register" },
+    { to: `/campaigns/${campaignId}/volunteers/shifts`, label: "Shifts" },
   ]
 
   return (
