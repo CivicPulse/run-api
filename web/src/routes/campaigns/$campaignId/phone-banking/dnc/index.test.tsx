@@ -176,7 +176,7 @@ describe("DNCListPage", () => {
     renderPage()
 
     // Type a partial phone number that matches only the first entry
-    const searchInput = screen.getByPlaceholderText("Search phone numbers...")
+    const searchInput = screen.getByPlaceholderText("Search phone numbers or reasons...")
     fireEvent.change(searchInput, { target: { value: "1234" } })
 
     await waitFor(() => {
@@ -197,7 +197,7 @@ describe("DNCListPage", () => {
 
     // Type formatted phone number — non-digit characters should be stripped
     // "(555) 123" -> "555123" which matches "5551234567" and "5551232..." entries
-    const searchInput = screen.getByPlaceholderText("Search phone numbers...")
+    const searchInput = screen.getByPlaceholderText("Search phone numbers or reasons...")
     fireEvent.change(searchInput, { target: { value: "(555) 987" } })
 
     await waitFor(() => {
@@ -231,7 +231,7 @@ describe("DNCListPage", () => {
 
     renderPage()
 
-    const searchInput = screen.getByPlaceholderText("Search phone numbers...")
+    const searchInput = screen.getByPlaceholderText("Search phone numbers or reasons...")
     fireEvent.change(searchInput, { target: { value: "0000000000" } })
 
     await waitFor(() => {
