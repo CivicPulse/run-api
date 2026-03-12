@@ -34,6 +34,8 @@ import { Route as CampaignsCampaignIdSettingsDangerRouteImport } from './routes/
 import { Route as CampaignsCampaignIdVotersTagsIndexRouteImport } from './routes/campaigns/$campaignId/voters/tags/index'
 import { Route as CampaignsCampaignIdVotersListsIndexRouteImport } from './routes/campaigns/$campaignId/voters/lists/index'
 import { Route as CampaignsCampaignIdVotersImportsIndexRouteImport } from './routes/campaigns/$campaignId/voters/imports/index'
+import { Route as CampaignsCampaignIdVolunteersRosterIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/roster/index'
+import { Route as CampaignsCampaignIdVolunteersRegisterIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/register/index'
 import { Route as CampaignsCampaignIdPhoneBankingSessionsIndexRouteImport } from './routes/campaigns/$campaignId/phone-banking/sessions/index'
 import { Route as CampaignsCampaignIdPhoneBankingMySessionsIndexRouteImport } from './routes/campaigns/$campaignId/phone-banking/my-sessions/index'
 import { Route as CampaignsCampaignIdPhoneBankingDncIndexRouteImport } from './routes/campaigns/$campaignId/phone-banking/dnc/index'
@@ -192,6 +194,18 @@ const CampaignsCampaignIdVotersImportsIndexRoute =
     path: '/imports/',
     getParentRoute: () => CampaignsCampaignIdVotersRoute,
   } as any)
+const CampaignsCampaignIdVolunteersRosterIndexRoute =
+  CampaignsCampaignIdVolunteersRosterIndexRouteImport.update({
+    id: '/roster/',
+    path: '/roster/',
+    getParentRoute: () => CampaignsCampaignIdVolunteersRoute,
+  } as any)
+const CampaignsCampaignIdVolunteersRegisterIndexRoute =
+  CampaignsCampaignIdVolunteersRegisterIndexRouteImport.update({
+    id: '/register/',
+    path: '/register/',
+    getParentRoute: () => CampaignsCampaignIdVolunteersRoute,
+  } as any)
 const CampaignsCampaignIdPhoneBankingSessionsIndexRoute =
   CampaignsCampaignIdPhoneBankingSessionsIndexRouteImport.update({
     id: '/sessions/',
@@ -276,7 +290,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
   '/campaigns/$campaignId/settings': typeof CampaignsCampaignIdSettingsRouteWithChildren
   '/campaigns/$campaignId/surveys': typeof CampaignsCampaignIdSurveysRouteWithChildren
-  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRoute
+  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRouteWithChildren
   '/campaigns/$campaignId/voters': typeof CampaignsCampaignIdVotersRouteWithChildren
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
@@ -298,6 +312,8 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId/phone-banking/dnc/': typeof CampaignsCampaignIdPhoneBankingDncIndexRoute
   '/campaigns/$campaignId/phone-banking/my-sessions/': typeof CampaignsCampaignIdPhoneBankingMySessionsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions/': typeof CampaignsCampaignIdPhoneBankingSessionsIndexRoute
+  '/campaigns/$campaignId/volunteers/register/': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
+  '/campaigns/$campaignId/volunteers/roster/': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
   '/campaigns/$campaignId/voters/imports/': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists/': typeof CampaignsCampaignIdVotersListsIndexRoute
   '/campaigns/$campaignId/voters/tags/': typeof CampaignsCampaignIdVotersTagsIndexRoute
@@ -311,7 +327,7 @@ export interface FileRoutesByTo {
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
-  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRoute
+  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRouteWithChildren
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -332,6 +348,8 @@ export interface FileRoutesByTo {
   '/campaigns/$campaignId/phone-banking/dnc': typeof CampaignsCampaignIdPhoneBankingDncIndexRoute
   '/campaigns/$campaignId/phone-banking/my-sessions': typeof CampaignsCampaignIdPhoneBankingMySessionsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions': typeof CampaignsCampaignIdPhoneBankingSessionsIndexRoute
+  '/campaigns/$campaignId/volunteers/register': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
+  '/campaigns/$campaignId/volunteers/roster': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
   '/campaigns/$campaignId/voters/imports': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists': typeof CampaignsCampaignIdVotersListsIndexRoute
   '/campaigns/$campaignId/voters/tags': typeof CampaignsCampaignIdVotersTagsIndexRoute
@@ -350,7 +368,7 @@ export interface FileRoutesById {
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
   '/campaigns/$campaignId/settings': typeof CampaignsCampaignIdSettingsRouteWithChildren
   '/campaigns/$campaignId/surveys': typeof CampaignsCampaignIdSurveysRouteWithChildren
-  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRoute
+  '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRouteWithChildren
   '/campaigns/$campaignId/voters': typeof CampaignsCampaignIdVotersRouteWithChildren
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
@@ -372,6 +390,8 @@ export interface FileRoutesById {
   '/campaigns/$campaignId/phone-banking/dnc/': typeof CampaignsCampaignIdPhoneBankingDncIndexRoute
   '/campaigns/$campaignId/phone-banking/my-sessions/': typeof CampaignsCampaignIdPhoneBankingMySessionsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions/': typeof CampaignsCampaignIdPhoneBankingSessionsIndexRoute
+  '/campaigns/$campaignId/volunteers/register/': typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
+  '/campaigns/$campaignId/volunteers/roster/': typeof CampaignsCampaignIdVolunteersRosterIndexRoute
   '/campaigns/$campaignId/voters/imports/': typeof CampaignsCampaignIdVotersImportsIndexRoute
   '/campaigns/$campaignId/voters/lists/': typeof CampaignsCampaignIdVotersListsIndexRoute
   '/campaigns/$campaignId/voters/tags/': typeof CampaignsCampaignIdVotersTagsIndexRoute
@@ -413,6 +433,8 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/phone-banking/dnc/'
     | '/campaigns/$campaignId/phone-banking/my-sessions/'
     | '/campaigns/$campaignId/phone-banking/sessions/'
+    | '/campaigns/$campaignId/volunteers/register/'
+    | '/campaigns/$campaignId/volunteers/roster/'
     | '/campaigns/$campaignId/voters/imports/'
     | '/campaigns/$campaignId/voters/lists/'
     | '/campaigns/$campaignId/voters/tags/'
@@ -447,6 +469,8 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/phone-banking/dnc'
     | '/campaigns/$campaignId/phone-banking/my-sessions'
     | '/campaigns/$campaignId/phone-banking/sessions'
+    | '/campaigns/$campaignId/volunteers/register'
+    | '/campaigns/$campaignId/volunteers/roster'
     | '/campaigns/$campaignId/voters/imports'
     | '/campaigns/$campaignId/voters/lists'
     | '/campaigns/$campaignId/voters/tags'
@@ -486,6 +510,8 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/phone-banking/dnc/'
     | '/campaigns/$campaignId/phone-banking/my-sessions/'
     | '/campaigns/$campaignId/phone-banking/sessions/'
+    | '/campaigns/$campaignId/volunteers/register/'
+    | '/campaigns/$campaignId/volunteers/roster/'
     | '/campaigns/$campaignId/voters/imports/'
     | '/campaigns/$campaignId/voters/lists/'
     | '/campaigns/$campaignId/voters/tags/'
@@ -678,6 +704,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsCampaignIdVotersImportsIndexRouteImport
       parentRoute: typeof CampaignsCampaignIdVotersRoute
     }
+    '/campaigns/$campaignId/volunteers/roster/': {
+      id: '/campaigns/$campaignId/volunteers/roster/'
+      path: '/roster'
+      fullPath: '/campaigns/$campaignId/volunteers/roster/'
+      preLoaderRoute: typeof CampaignsCampaignIdVolunteersRosterIndexRouteImport
+      parentRoute: typeof CampaignsCampaignIdVolunteersRoute
+    }
+    '/campaigns/$campaignId/volunteers/register/': {
+      id: '/campaigns/$campaignId/volunteers/register/'
+      path: '/register'
+      fullPath: '/campaigns/$campaignId/volunteers/register/'
+      preLoaderRoute: typeof CampaignsCampaignIdVolunteersRegisterIndexRouteImport
+      parentRoute: typeof CampaignsCampaignIdVolunteersRoute
+    }
     '/campaigns/$campaignId/phone-banking/sessions/': {
       id: '/campaigns/$campaignId/phone-banking/sessions/'
       path: '/sessions'
@@ -866,6 +906,24 @@ const CampaignsCampaignIdSurveysRouteWithChildren =
     CampaignsCampaignIdSurveysRouteChildren,
   )
 
+interface CampaignsCampaignIdVolunteersRouteChildren {
+  CampaignsCampaignIdVolunteersRegisterIndexRoute: typeof CampaignsCampaignIdVolunteersRegisterIndexRoute
+  CampaignsCampaignIdVolunteersRosterIndexRoute: typeof CampaignsCampaignIdVolunteersRosterIndexRoute
+}
+
+const CampaignsCampaignIdVolunteersRouteChildren: CampaignsCampaignIdVolunteersRouteChildren =
+  {
+    CampaignsCampaignIdVolunteersRegisterIndexRoute:
+      CampaignsCampaignIdVolunteersRegisterIndexRoute,
+    CampaignsCampaignIdVolunteersRosterIndexRoute:
+      CampaignsCampaignIdVolunteersRosterIndexRoute,
+  }
+
+const CampaignsCampaignIdVolunteersRouteWithChildren =
+  CampaignsCampaignIdVolunteersRoute._addFileChildren(
+    CampaignsCampaignIdVolunteersRouteChildren,
+  )
+
 interface CampaignsCampaignIdVotersRouteChildren {
   CampaignsCampaignIdVotersVoterIdRoute: typeof CampaignsCampaignIdVotersVoterIdRoute
   CampaignsCampaignIdVotersIndexRoute: typeof CampaignsCampaignIdVotersIndexRoute
@@ -904,7 +962,7 @@ interface CampaignsCampaignIdRouteChildren {
   CampaignsCampaignIdPhoneBankingRoute: typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
   CampaignsCampaignIdSettingsRoute: typeof CampaignsCampaignIdSettingsRouteWithChildren
   CampaignsCampaignIdSurveysRoute: typeof CampaignsCampaignIdSurveysRouteWithChildren
-  CampaignsCampaignIdVolunteersRoute: typeof CampaignsCampaignIdVolunteersRoute
+  CampaignsCampaignIdVolunteersRoute: typeof CampaignsCampaignIdVolunteersRouteWithChildren
   CampaignsCampaignIdVotersRoute: typeof CampaignsCampaignIdVotersRouteWithChildren
 }
 
@@ -917,7 +975,8 @@ const CampaignsCampaignIdRouteChildren: CampaignsCampaignIdRouteChildren = {
   CampaignsCampaignIdSettingsRoute:
     CampaignsCampaignIdSettingsRouteWithChildren,
   CampaignsCampaignIdSurveysRoute: CampaignsCampaignIdSurveysRouteWithChildren,
-  CampaignsCampaignIdVolunteersRoute: CampaignsCampaignIdVolunteersRoute,
+  CampaignsCampaignIdVolunteersRoute:
+    CampaignsCampaignIdVolunteersRouteWithChildren,
   CampaignsCampaignIdVotersRoute: CampaignsCampaignIdVotersRouteWithChildren,
 }
 
