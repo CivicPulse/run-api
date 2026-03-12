@@ -86,16 +86,16 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Shift Management
 
-- [ ] **SHFT-01**: User can create a shift with date, time, location, capacity, and type
-- [ ] **SHFT-02**: User can edit and delete shifts
-- [ ] **SHFT-03**: User can manage shift status transitions
+- [x] **SHFT-01**: User can create a shift with date, time, location, capacity, and type
+- [x] **SHFT-02**: User can edit and delete shifts
+- [x] **SHFT-03**: User can manage shift status transitions
 - [ ] **SHFT-04**: User can view shifts in a date-grouped list
-- [ ] **SHFT-05**: Volunteer can sign up for available shifts (with capacity/waitlist)
-- [ ] **SHFT-06**: Manager can assign volunteers to shifts
-- [ ] **SHFT-07**: Manager can check in/check out volunteers at shifts
+- [x] **SHFT-05**: Volunteer can sign up for available shifts (with capacity/waitlist)
+- [x] **SHFT-06**: Manager can assign volunteers to shifts
+- [x] **SHFT-07**: Manager can check in/check out volunteers at shifts
 - [ ] **SHFT-08**: User can view shift roster with volunteer statuses
-- [ ] **SHFT-09**: Manager can adjust volunteer hours after a shift
-- [ ] **SHFT-10**: Volunteer can cancel their shift signup
+- [x] **SHFT-09**: Manager can adjust volunteer hours after a shift
+- [x] **SHFT-10**: Volunteer can cancel their shift signup
 
 ## Future Requirements
 
@@ -183,16 +183,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VLTR-07 | Phase 17 | Complete |
 | VLTR-08 | Phase 17 | Complete |
 | VLTR-09 | Phase 17 | Complete |
-| SHFT-01 | Phase 18 | Pending |
-| SHFT-02 | Phase 18 | Pending |
-| SHFT-03 | Phase 18 | Pending |
+| SHFT-01 | Phase 18 | Complete |
+| SHFT-02 | Phase 18 | Complete |
+| SHFT-03 | Phase 18 | Complete |
 | SHFT-04 | Phase 18 | Pending |
-| SHFT-05 | Phase 18 | Pending |
-| SHFT-06 | Phase 18 | Pending |
-| SHFT-07 | Phase 18 | Pending |
+| SHFT-05 | Phase 18 | Complete |
+| SHFT-06 | Phase 18 | Complete |
+| SHFT-07 | Phase 18 | Complete |
 | SHFT-08 | Phase 18 | Pending |
-| SHFT-09 | Phase 18 | Pending |
-| SHFT-10 | Phase 18 | Pending |
+| SHFT-09 | Phase 18 | Complete |
+| SHFT-10 | Phase 18 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 60 total

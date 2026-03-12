@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
-status: completed
-stopped_at: Phase 18 context gathered
-last_updated: "2026-03-12T01:47:44.538Z"
-last_activity: 2026-03-12 — Completed 17-05 (Full test suite verification & visual checkpoint)
+status: in-progress
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-12T02:14:45.288Z"
+last_activity: "2026-03-12 — Completed 18-01 (Shift data layer: types, hooks, test stubs, sidebar nav)"
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 32
-  completed_plans: 32
-  percent: 100
+  total_plans: 36
+  completed_plans: 33
+  percent: 92
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 17 complete (5/5 plans), Phase 18 next
+**Current focus:** v1.2 Full UI — Phase 18 in progress (1/4 plans)
 
 ## Current Position
 
-Phase: 17 of 18 (Volunteer Management)
-Plan: 5 of 5 complete
-Status: Phase 17 complete
-Last activity: 2026-03-12 — Completed 17-05 (Full test suite verification & visual checkpoint)
+Phase: 18 of 18 (Shift Management)
+Plan: 1 of 4 complete
+Status: in-progress
+Last activity: 2026-03-12 — Completed 18-01 (Shift data layer: types, hooks, test stubs, sidebar nav)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 17-volunteer-management P03 | 139 | 2 tasks | 3 files |
 | Phase 17-volunteer-management P04 | 238 | 2 tasks | 5 files |
 | Phase 17-volunteer-management P05 | 120 | 2 tasks | 0 files |
+| Phase 18 P01 | 116 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,9 @@ Progress: [██████████] 100%
 - [Phase 17]: Tag name-to-ID resolution via tagsByName Map from useVolunteerCampaignTags -- detail response returns names, endpoints need IDs
 - [Phase 17]: Availability slots sorted ascending by start_at; past slots get muted styling and hidden delete button
 - [Phase 17]: Verification-only plan: all tests passed on first run with no code changes needed
+- [Phase 18]: Shift hooks follow useVolunteers.ts and usePhoneBankSessions.ts patterns exactly -- query key factory + individual query/mutation functions
+- [Phase 18]: shiftKeys.list spreads shiftKeys.all and appends 'list' + filters -- stays invalidatable by shift mutations that invalidate shiftKeys.all
+- [Phase 18]: Wave 0 stubs use it.todo with no imports -- suite stays green while stubs are pending
 
 ### Pending Todos
 
@@ -167,6 +171,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T01:47:44.532Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-shift-management/18-CONTEXT.md
+Last session: 2026-03-12T02:14:45.283Z
+Stopped at: Completed 18-01-PLAN.md
+Resume file: None
