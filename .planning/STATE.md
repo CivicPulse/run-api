@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: completed
-stopped_at: Phase 21 context gathered
-last_updated: "2026-03-12T20:34:44.498Z"
-last_activity: 2026-03-12 — Completed 20-02 (PHON-03 Verification - Tests + Playwright e2e)
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-12T21:01:07.929Z"
+last_activity: 2026-03-12 — Completed 21-01 (Integration Polish - DNC reason + session call list names)
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 41
-  completed_plans: 41
+  completed_phases: 10
+  total_plans: 42
+  completed_plans: 42
   percent: 100
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 ## Current Position
 
-Phase: 20 of 20 (Caller Picker UX)
-Plan: 2 of 2
+Phase: 21 of 21 (Integration Polish)
+Plan: 1 of 1
 Status: complete
-Last activity: 2026-03-12 — Completed 20-02 (PHON-03 Verification - Tests + Playwright e2e)
+Last activity: 2026-03-12 — Completed 21-01 (Integration Polish - DNC reason + session call list names)
 
 Progress: [██████████] 100%
 
@@ -87,6 +87,7 @@ Progress: [██████████] 100%
 | Phase 19 P03 | 206 | 2 tasks | 2 files |
 | Phase 20-caller-picker-ux P01 | 165 | 2 tasks | 1 files |
 | Phase 20-caller-picker-ux P02 | 16 | 2 tasks | 1 files |
+| Phase 21-integration-polish P01 | 291 | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,9 @@ Progress: [██████████] 100%
 - [Phase 20]: CommandItem value set to display_name + email for dual-field search via cmdk built-in filter
 - [Phase 20]: Popover+Command combobox uses closure-captured member.user_id in onSelect (avoids cmdk normalization pitfall)
 - [Phase 20]: Playwright e2e tests used for visual verification checkpoint instead of manual browser inspection
+- [Phase 21]: DNC import reason sent as searchParams query parameter alongside FormData body
+- [Phase 21]: Sessions index removes useCallLists lookup in favor of backend call_list_name enrichment
+- [Phase 21]: SessionDialog retains useCallLists for call list selector dropdown -- only SessionsPage lookup removed
 
 ### Pending Todos
 
@@ -199,6 +203,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T20:34:44.486Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-integration-polish/21-CONTEXT.md
+Last session: 2026-03-12T21:00:00.000Z
+Stopped at: Completed 21-01-PLAN.md
+Resume file: .planning/phases/21-integration-polish/21-01-SUMMARY.md

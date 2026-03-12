@@ -48,7 +48,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment (completed 2026-03-12)
 - [x] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests (completed 2026-03-12)
 - [x] **Phase 20: Caller Picker UX** - Replace raw user ID input with volunteer/member picker in AddCallerDialog (PHON-03) (completed 2026-03-12)
-- [ ] **Phase 21: Integration Polish** - DNC reason column, call list name resolution in session views (gap closure)
+- [x] **Phase 21: Integration Polish** - DNC reason column, call list name resolution in session views (gap closure) (completed 2026-03-12)
 
 ## Phase Details
 
@@ -225,7 +225,7 @@ Plans:
   1. DNC DataTable displays a `reason` column showing why each number was added
   2. Session detail Overview tab shows the call list name instead of a truncated UUID
   3. My Sessions table shows call list names instead of truncated UUIDs
-**Plans:** 1/1 plans
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 21-01-PLAN.md — DNC reason column + call list name resolution in session views
@@ -254,4 +254,4 @@ Plans:
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
 | 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
-| 21. Integration Polish | v1.2 | 0/1 | Planning | - |
+| 21. Integration Polish | 1/1 | Complete   | 2026-03-12 | - |
