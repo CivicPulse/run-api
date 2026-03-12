@@ -48,6 +48,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment (completed 2026-03-12)
 - [x] **Phase 19: Verification & Validation Gap Closure** - Create VERIFICATION.md for phases 13 and 15, complete Phase 15 Nyquist wave 0 tests (completed 2026-03-12)
 - [x] **Phase 20: Caller Picker UX** - Replace raw user ID input with volunteer/member picker in AddCallerDialog (PHON-03) (completed 2026-03-12)
+- [ ] **Phase 21: Integration Polish** - DNC reason column, call list name resolution in session views (gap closure)
 
 ## Phase Details
 
@@ -215,6 +216,20 @@ Plans:
 - [ ] 20-01-PLAN.md — Member picker component and AddCallerDialog refactor
 - [ ] 20-02-PLAN.md — Test suite and visual verification checkpoint
 
+### Phase 21: Integration Polish
+**Goal**: Close remaining integration display gaps — show DNC reason in table, resolve call list names in session views instead of showing truncated UUIDs
+**Depends on**: Phase 20
+**Requirements**: CALL-06, PHON-05, PHON-07
+**Gap Closure:** Closes integration gaps from v1.2 final audit
+**Success Criteria** (what must be TRUE):
+  1. DNC DataTable displays a `reason` column showing why each number was added
+  2. Session detail Overview tab shows the call list name instead of a truncated UUID
+  3. My Sessions table shows call list names instead of truncated UUIDs
+**Plans:** 0/1 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — DNC reason column + call list name resolution in session views
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -238,4 +253,5 @@ Plans:
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
 | 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
-| 20. Caller Picker UX | 2/2 | Complete    | 2026-03-12 | - |
+| 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
+| 21. Integration Polish | v1.2 | 0/1 | Pending | - |

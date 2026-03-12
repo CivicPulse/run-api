@@ -198,8 +198,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.2 requirements: 60 total
 - Mapped to phases: 60
 - Unmapped: 0
-- Pending (gap closure): 1 (PHON-03 deferred to Phase 20)
+- Satisfied: 60/60
+- Integration polish (Phase 21): CALL-06, PHON-05, PHON-07 display gaps
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-12 after Phase 19 gap closure re-audit (60/60 verified, only PHON-03 pending)*
+*Last updated: 2026-03-12 — Phase 21 added for integration display polish (CALL-06, PHON-05, PHON-07)*
