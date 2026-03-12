@@ -117,22 +117,32 @@ function AddCallerDialog({
   onOpenChange,
   campaignId,
   sessionId,
+  members,
+  assignedUserIds,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   campaignId: string
   sessionId: string
+  members: CampaignMember[]
+  assignedUserIds: Set<string>
 }) {
-  const [userId, setUserId] = useState("")
+  const [selectedUserId, setSelectedUserId] = useState("")
+  const [comboboxOpen, setComboboxOpen] = useState(false)
   const assignMutation = useAssignCaller(campaignId, sessionId)
+
+  const availableMembers = members.filter(
+    (m) => !assignedUserIds.has(m.user_id),
+  )
+  const selectedMember = members.find((m) => m.user_id === selectedUserId)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userId.trim()) return
+    if (!selectedUserId) return
     try {
-      await assignMutation.mutateAsync(userId.trim())
+      await assignMutation.mutateAsync(selectedUserId)
       toast.success("Caller added")
-      setUserId("")
+      setSelectedUserId("")
       onOpenChange(false)
     } catch {
       toast.error("Failed to add caller")
@@ -140,7 +150,7 @@ function AddCallerDialog({
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) setUserId("")
+    if (!nextOpen) setSelectedUserId("")
     onOpenChange(nextOpen)
   }
 
@@ -152,17 +162,56 @@ function AddCallerDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="add-caller-user-id">User ID</Label>
-            <Input
-              id="add-caller-user-id"
-              placeholder="ZITADEL user ID"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              autoComplete="off"
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter the ZITADEL user ID of the campaign member to add.
-            </p>
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedMember
+                    ? selectedMember.display_name
+                    : "Select a member..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                <Command>
+                  <CommandInput placeholder="Search by name or email..." />
+                  <CommandList>
+                    <CommandEmpty>
+                      {availableMembers.length === 0
+                        ? "All campaign members are already assigned"
+                        : "No members found"}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {availableMembers.map((member) => (
+                        <CommandItem
+                          key={member.user_id}
+                          value={`${member.display_name} ${member.email}`}
+                          onSelect={() => {
+                            setSelectedUserId(member.user_id)
+                            setComboboxOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${selectedUserId === member.user_id ? "opacity-100" : "opacity-0"}`}
+                          />
+                          <div className="flex items-center gap-2">
+                            <span>{member.display_name}</span>
+                            <StatusBadge
+                              status={member.role}
+                              variant={roleVariant[member.role] ?? "default"}
+                            />
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <DialogFooter>
             <Button
@@ -175,7 +224,7 @@ function AddCallerDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!userId.trim() || assignMutation.isPending}
+              disabled={!selectedUserId || assignMutation.isPending}
             >
               {assignMutation.isPending ? "Adding..." : "Add"}
             </Button>
