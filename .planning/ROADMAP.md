@@ -44,7 +44,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 14: Voter Import Wizard** - Multi-step file upload, column mapping, preview, progress tracking, import history (completed 2026-03-11)
 - [x] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import (completed 2026-03-11)
 - [x] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards (completed 2026-03-11)
-- [ ] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking
+- [x] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking (completed 2026-03-12)
 - [ ] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment
 
 ## Phase Details
@@ -155,7 +155,7 @@ Plans:
   3. Volunteer can self-register through a registration flow that creates their volunteer record
   4. User can manage volunteer availability by adding and removing time slots, and manage campaign-level volunteer tags with per-volunteer tag assignment
   5. User can view a volunteer's accumulated hours and shift history
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 17-01-PLAN.md — Backend gaps (volunteer tag PATCH/DELETE, 409 enrichment) + Wave 0 test scaffolds
@@ -198,5 +198,5 @@ Plans:
 | 14. Voter Import Wizard | v1.2 | 4/4 | Complete | 2026-03-11 |
 | 15. Call Lists & DNC Management | v1.2 | 6/6 | Complete | 2026-03-11 |
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
-| 17. Volunteer Management | 4/5 | In Progress|  | - |
+| 17. Volunteer Management | v1.2 | 5/5 | Complete | 2026-03-12 |
 | 18. Shift Management | v1.2 | 0/? | Not started | - |
