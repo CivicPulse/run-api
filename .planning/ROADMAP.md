@@ -209,7 +209,7 @@ Plans:
   1. AddCallerDialog shows a searchable member/volunteer picker instead of a raw user ID text input
   2. Callers table displays member names instead of truncated UUIDs
   3. Existing caller assignment functionality continues to work correctly
-**Plans:** 0/2 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] 20-01-PLAN.md — Member picker component and AddCallerDialog refactor
@@ -237,5 +237,5 @@ Plans:
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
-| 19. Verification & Validation Gap Closure | v1.2 | 3/3 | Complete | 2026-03-12 |
+| 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 20. Caller Picker UX | v1.2 | 0/2 | Pending | - |
