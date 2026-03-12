@@ -50,14 +50,14 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Call Lists & DNC
 
-- [ ] **CALL-01**: User can create a call list from a voter universe with DNC filtering
-- [ ] **CALL-02**: User can view call list detail with entry statuses
-- [ ] **CALL-03**: User can edit and delete call lists
-- [ ] **CALL-04**: User can view the DNC list for a campaign
-- [ ] **CALL-05**: User can add an individual phone number to the DNC list
-- [ ] **CALL-06**: User can bulk import DNC numbers from a file
-- [ ] **CALL-07**: User can remove a number from the DNC list
-- [ ] **CALL-08**: User can check if a phone number is on the DNC list
+- [x] **CALL-01**: User can create a call list from a voter universe with DNC filtering
+- [x] **CALL-02**: User can view call list detail with entry statuses
+- [x] **CALL-03**: User can edit and delete call lists
+- [x] **CALL-04**: User can view the DNC list for a campaign
+- [x] **CALL-05**: User can add an individual phone number to the DNC list
+- [x] **CALL-06**: User can bulk import DNC numbers from a file
+- [x] **CALL-07**: User can remove a number from the DNC list
+- [x] **CALL-08**: User can check if a phone number is on the DNC list
 
 ### Phone Banking
 
@@ -156,14 +156,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IMPT-05 | Phase 14 | Complete |
 | IMPT-06 | Phase 14 | Complete |
 | IMPT-07 | Phase 14 | Complete |
-| CALL-01 | Phase 19 | Pending |
-| CALL-02 | Phase 19 | Pending |
-| CALL-03 | Phase 19 | Pending |
-| CALL-04 | Phase 19 | Pending |
-| CALL-05 | Phase 19 | Pending |
-| CALL-06 | Phase 19 | Pending |
-| CALL-07 | Phase 19 | Pending |
-| CALL-08 | Phase 19 | Pending |
+| CALL-01 | Phase 19 | Complete |
+| CALL-02 | Phase 19 | Complete |
+| CALL-03 | Phase 19 | Complete |
+| CALL-04 | Phase 19 | Complete |
+| CALL-05 | Phase 19 | Complete |
+| CALL-06 | Phase 19 | Complete |
+| CALL-07 | Phase 19 | Complete |
+| CALL-08 | Phase 19 | Complete |
 | PHON-01 | Phase 16 | Complete |
 | PHON-02 | Phase 16 | Complete |
 | PHON-03 | Phase 20 | Pending |
