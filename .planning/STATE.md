@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-03-12T00:12:26.552Z"
-last_activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-03-12T00:57:54.943Z"
+last_activity: 2026-03-12 — Completed 17-02 (Volunteer types, hooks, and sidebar layout)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 27
-  completed_plans: 27
-  percent: 75
+  total_plans: 32
+  completed_plans: 28
+  percent: 88
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 13 Plan 04 complete, Plan 05 next
+**Current focus:** v1.2 Full UI — Phase 17 Plan 02 complete, Plan 03 next
 
 ## Current Position
 
-Phase: 14 of 18 (Voter Import Wizard)
-Plan: 4 of 4 complete — Phase 14 complete
+Phase: 17 of 18 (Volunteer Management)
+Plan: 1 of 5 complete
 Status: Executing
-Last activity: 2026-03-11 — Completed 14-04 (Import history page and full wizard verification — IMPT-06 closed)
+Last activity: 2026-03-12 — Completed 17-02 (Volunteer types, hooks, and sidebar layout)
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 75%
 | Phase 16-phone-banking P06 | 100 sec | 1 tasks | 2 files |
 | Phase 16 P07 | 45 sec | 1 tasks | 0 files |
 | Phase 16-phone-banking P07 | 2 | 2 tasks | 0 files |
+| Phase 17-volunteer-management P02 | 123 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,9 @@ Progress: [████████░░] 75%
 - [Phase 16-phone-banking]: RowAction component instantiates useCheckIn per row — mutations are cheap and per-row isolation needed
 - [Phase 16-phone-banking]: checkedInSessionIds uses useState Set: resets on page refresh, acceptable for v1 (option 3 from CONTEXT.md)
 - [Phase 16-phone-banking]: Inline useQuery for script questions in call.tsx — dedicated useScript hook does not exist yet; TODO comment added for future extraction
+- [Phase 17]: volunteerKeys exported from useVolunteers.ts for cross-hook invalidation (tags and availability hooks import it)
+- [Phase 17]: useSelfRegister does not auto-invalidate queries -- caller handles redirect after register/conflict
+- [Phase 17]: Sidebar nav includes Roster, Tags, Register items matching CONTEXT.md navigation spec
 
 ### Pending Todos
 
@@ -151,6 +155,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T00:12:26.546Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-volunteer-management/17-CONTEXT.md
+Last session: 2026-03-12T00:57:54.937Z
+Stopped at: Completed 17-02-PLAN.md
+Resume file: None

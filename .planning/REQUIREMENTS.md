@@ -74,15 +74,15 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 ### Volunteer Management
 
-- [ ] **VLTR-01**: User can view volunteer roster with filters
-- [ ] **VLTR-02**: User can create a new volunteer record
-- [ ] **VLTR-03**: User can edit a volunteer's profile and status
-- [ ] **VLTR-04**: User can view volunteer detail page (info, availability, shifts, hours)
-- [ ] **VLTR-05**: Volunteer can self-register through a registration flow
-- [ ] **VLTR-06**: User can manage volunteer availability (add/remove time slots)
-- [ ] **VLTR-07**: User can manage campaign-level volunteer tags
-- [ ] **VLTR-08**: User can add/remove tags on individual volunteers
-- [ ] **VLTR-09**: User can view volunteer hours and shift history
+- [x] **VLTR-01**: User can view volunteer roster with filters
+- [x] **VLTR-02**: User can create a new volunteer record
+- [x] **VLTR-03**: User can edit a volunteer's profile and status
+- [x] **VLTR-04**: User can view volunteer detail page (info, availability, shifts, hours)
+- [x] **VLTR-05**: Volunteer can self-register through a registration flow
+- [x] **VLTR-06**: User can manage volunteer availability (add/remove time slots)
+- [x] **VLTR-07**: User can manage campaign-level volunteer tags
+- [x] **VLTR-08**: User can add/remove tags on individual volunteers
+- [x] **VLTR-09**: User can view volunteer hours and shift history
 
 ### Shift Management
 
@@ -174,15 +174,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PHON-08 | Phase 16 | Complete |
 | PHON-09 | Phase 16 | Complete |
 | PHON-10 | Phase 16 | Complete |
-| VLTR-01 | Phase 17 | Pending |
-| VLTR-02 | Phase 17 | Pending |
-| VLTR-03 | Phase 17 | Pending |
-| VLTR-04 | Phase 17 | Pending |
-| VLTR-05 | Phase 17 | Pending |
-| VLTR-06 | Phase 17 | Pending |
-| VLTR-07 | Phase 17 | Pending |
-| VLTR-08 | Phase 17 | Pending |
-| VLTR-09 | Phase 17 | Pending |
+| VLTR-01 | Phase 17 | Complete |
+| VLTR-02 | Phase 17 | Complete |
+| VLTR-03 | Phase 17 | Complete |
+| VLTR-04 | Phase 17 | Complete |
+| VLTR-05 | Phase 17 | Complete |
+| VLTR-06 | Phase 17 | Complete |
+| VLTR-07 | Phase 17 | Complete |
+| VLTR-08 | Phase 17 | Complete |
+| VLTR-09 | Phase 17 | Complete |
 | SHFT-01 | Phase 18 | Pending |
 | SHFT-02 | Phase 18 | Pending |
 | SHFT-03 | Phase 18 | Pending |
