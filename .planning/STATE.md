@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-03-12T00:57:54.943Z"
-last_activity: 2026-03-12 — Completed 17-02 (Volunteer types, hooks, and sidebar layout)
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-12T00:58:38.130Z"
+last_activity: 2026-03-12 — Completed 17-01 (Backend gaps and Wave 0 scaffolds)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 88
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.2 Full UI — Phase 17 Plan 02 complete, Plan 03 next
+**Current focus:** v1.2 Full UI — Phase 17 Plan 01 complete, Plan 02 next
 
 ## Current Position
 
 Phase: 17 of 18 (Volunteer Management)
 Plan: 1 of 5 complete
 Status: Executing
-Last activity: 2026-03-12 — Completed 17-02 (Volunteer types, hooks, and sidebar layout)
+Last activity: 2026-03-12 — Completed 17-01 (Backend gaps and Wave 0 scaffolds)
 
 Progress: [█████████░] 88%
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 88%
 | Phase 16 P07 | 45 sec | 1 tasks | 0 files |
 | Phase 16-phone-banking P07 | 2 | 2 tasks | 0 files |
 | Phase 17-volunteer-management P02 | 123 | 2 tasks | 6 files |
+| Phase 17-volunteer-management P01 | 176 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Progress: [█████████░] 88%
 - [Phase 17]: volunteerKeys exported from useVolunteers.ts for cross-hook invalidation (tags and availability hooks import it)
 - [Phase 17]: useSelfRegister does not auto-invalidate queries -- caller handles redirect after register/conflict
 - [Phase 17]: Sidebar nav includes Roster, Tags, Register items matching CONTEXT.md navigation spec
+- [Phase 17]: ProblemResponse **extra kwargs used for volunteer_id in 409 response -- avoids JSONResponse fallback
 
 ### Pending Todos
 
@@ -155,6 +157,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T00:57:54.937Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-03-12T00:58:38.125Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
