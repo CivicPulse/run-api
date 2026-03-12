@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full UI
 status: executing
-stopped_at: Phase 20 context gathered
-last_updated: "2026-03-12T19:15:23.480Z"
-last_activity: 2026-03-12 — Completed 19-03 (Milestone Re-Audit - 60/60 Requirements)
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-12T19:45:56.062Z"
+last_activity: 2026-03-12 — Completed 20-01 (Caller Picker UX - Combobox + Name Resolution)
 progress:
   total_phases: 9
   completed_phases: 8
-  total_plans: 39
-  completed_plans: 39
-  percent: 100
+  total_plans: 41
+  completed_plans: 40
+  percent: 98
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 ## Current Position
 
-Phase: 19 of 20 (Verification & Validation Gaps)
-Plan: 3 of 3 complete (Phase 19 COMPLETE)
+Phase: 20 of 20 (Caller Picker UX)
+Plan: 1 of 2
 Status: executing
-Last activity: 2026-03-12 — Completed 19-03 (Milestone Re-Audit - 60/60 Requirements)
+Last activity: 2026-03-12 — Completed 20-01 (Caller Picker UX - Combobox + Name Resolution)
 
-Progress: [██████████] 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [██████████] 100%
 | Phase 19 P01 | 279 | 2 tasks | 2 files |
 | Phase 19 P02 | 376 | 2 tasks | 6 files |
 | Phase 19 P03 | 206 | 2 tasks | 2 files |
+| Phase 20-caller-picker-ux P01 | 165 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,9 @@ Progress: [██████████] 100%
 - [Phase 19]: Re-audit scope limited to 19 previously-unverified requirements; 41 already-satisfied left unchanged
 - [Phase 19]: Phase 15 tech debt items (test stubs, wave_0_complete) marked as resolved in audit after Plan 02 closed them
 - [Phase 19]: PHON-03 remains sole pending gap closure item, correctly deferred to Phase 20
+- [Phase 20]: roleVariant map duplicated from settings/members.tsx -- minimal file changes for focused phase
+- [Phase 20]: CommandItem value set to display_name + email for dual-field search via cmdk built-in filter
+- [Phase 20]: Popover+Command combobox uses closure-captured member.user_id in onSelect (avoids cmdk normalization pitfall)
 
 ### Pending Todos
 
@@ -193,6 +197,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T19:15:23.474Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-caller-picker-ux/20-CONTEXT.md
+Last session: 2026-03-12T19:45:56.056Z
+Stopped at: Completed 20-01-PLAN.md
+Resume file: None

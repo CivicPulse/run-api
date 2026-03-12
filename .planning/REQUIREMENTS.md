@@ -63,7 +63,7 @@ Requirements for Full UI milestone. Each maps to roadmap phases.
 
 - [x] **PHON-01**: User can create a phone bank session with call list and survey
 - [x] **PHON-02**: User can manage session status transitions (draft → active → complete)
-- [ ] **PHON-03**: User can assign and remove callers to a session
+- [x] **PHON-03**: User can assign and remove callers to a session
 - [x] **PHON-04**: User can check in and check out of a phone bank session
 - [x] **PHON-05**: User can use the active calling screen to claim and call voters sequentially
 - [x] **PHON-06**: User can view voter details, contact info, and survey script during a call
@@ -166,7 +166,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CALL-08 | Phase 19 | Complete |
 | PHON-01 | Phase 16 | Complete |
 | PHON-02 | Phase 16 | Complete |
-| PHON-03 | Phase 20 | Pending |
+| PHON-03 | Phase 20 | Complete |
 | PHON-04 | Phase 16 | Complete |
 | PHON-05 | Phase 16 | Complete |
 | PHON-06 | Phase 16 | Complete |
