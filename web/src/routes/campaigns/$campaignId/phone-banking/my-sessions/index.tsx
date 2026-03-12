@@ -121,11 +121,22 @@ function MySessionsPage() {
     {
       id: "call_list",
       header: "Call List",
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.call_list_id.slice(0, 8)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const name = row.original.call_list_name
+        if (!name) {
+          return <span className="text-sm text-muted-foreground">Deleted list</span>
+        }
+        return (
+          <Link
+            to="/campaigns/$campaignId/phone-banking/call-lists/$callListId"
+            params={{ campaignId, callListId: row.original.call_list_id }}
+            className="font-medium hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {name}
+          </Link>
+        )
+      },
     },
     {
       id: "checked_in",

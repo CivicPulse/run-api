@@ -11,9 +11,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { DNCEntry } from "@/types/dnc"
 import type { ColumnDef } from "@tanstack/react-table"
+
+const REASON_LABELS: Record<string, string> = {
+  refused: "Refused",
+  voter_request: "Voter Request",
+  registry_import: "Registry Import",
+  manual: "Manual",
+}
 
 export const Route = createFileRoute("/campaigns/$campaignId/phone-banking/dnc/")({
   component: DNCListPage,
@@ -35,6 +49,7 @@ function DNCListPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
+  const [importReason, setImportReason] = useState("manual")
 
   const form = useForm<AddFormValues>({
     defaultValues: { phone_number: "", reason: "" },
@@ -43,7 +58,13 @@ function DNCListPage() {
 
   const entries = data ?? []
   const filteredEntries = search
-    ? entries.filter(e => e.phone_number.includes(search.replace(/\D/g, "")))
+    ? entries.filter((e) => {
+        const normalizedSearch = search.toLowerCase()
+        const phoneMatch = e.phone_number.includes(search.replace(/\D/g, ""))
+        const reasonLabel = REASON_LABELS[e.reason] ?? e.reason
+        const reasonMatch = reasonLabel.toLowerCase().includes(normalizedSearch)
+        return phoneMatch || reasonMatch
+      })
     : entries
 
   function handleRemove(id: string) {
@@ -70,13 +91,14 @@ function DNCListPage() {
   async function handleImport() {
     if (!importFile) return
     try {
-      const result = await importMutation.mutateAsync(importFile)
+      const result = await importMutation.mutateAsync({ file: importFile, reason: importReason })
       let msg = `Imported ${result.added} numbers.`
       if (result.skipped > 0) msg += ` ${result.skipped} duplicates skipped.`
       if (result.invalid > 0) msg += ` ${result.invalid} invalid entries ignored.`
       toast.success(msg)
       setImportOpen(false)
       setImportFile(null)
+      setImportReason("manual")
     } catch {
       toast.error("Import failed. Check your file format.")
     }
@@ -87,6 +109,15 @@ function DNCListPage() {
       accessorKey: "phone_number",
       header: "Phone Number",
       cell: ({ row }) => <span className="font-mono">{row.original.phone_number}</span>,
+    },
+    {
+      accessorKey: "reason",
+      header: "Reason",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {REASON_LABELS[row.original.reason] ?? row.original.reason}
+        </span>
+      ),
     },
     {
       accessorKey: "added_at",
@@ -142,7 +173,7 @@ function DNCListPage() {
 
       {/* Search input */}
       <Input
-        placeholder="Search phone numbers..."
+        placeholder="Search phone numbers or reasons..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-sm"
@@ -202,7 +233,7 @@ function DNCListPage() {
       {/* Import from File Dialog */}
       <Dialog open={importOpen} onOpenChange={(open) => {
         setImportOpen(open)
-        if (!open) setImportFile(null)
+        if (!open) { setImportFile(null); setImportReason("manual") }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -221,12 +252,28 @@ function DNCListPage() {
                 CSV file with one phone number per row. Headers optional.
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="import-reason">Reason for all entries</Label>
+              <Select value={importReason} onValueChange={setImportReason}>
+                <SelectTrigger id="import-reason">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="voter_request">Voter Request</SelectItem>
+                  <SelectItem value="registry_import">Registry Import</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                "Refused" is auto-applied by the system on call refusal.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => { setImportOpen(false); setImportFile(null) }}
+              onClick={() => { setImportOpen(false); setImportFile(null); setImportReason("manual") }}
             >
               Cancel
             </Button>

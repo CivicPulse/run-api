@@ -5,6 +5,7 @@ export interface PhoneBankSession {
   name: string
   status: SessionStatus
   call_list_id: string
+  call_list_name: string | null
   scheduled_start: string | null
   scheduled_end: string | null
   created_by: string

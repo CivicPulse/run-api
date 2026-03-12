@@ -351,9 +351,19 @@ function OverviewTab({
           </div>
           <div>
             <span className="text-muted-foreground">Call List</span>
-            <p className="font-medium mt-0.5 font-mono text-xs">
-              {session.call_list_id.slice(0, 12)}…
-            </p>
+            <div className="mt-0.5">
+              {session.call_list_name ? (
+                <Link
+                  to="/campaigns/$campaignId/phone-banking/call-lists/$callListId"
+                  params={{ campaignId, callListId: session.call_list_id }}
+                  className="font-medium hover:underline"
+                >
+                  {session.call_list_name}
+                </Link>
+              ) : (
+                <span className="text-sm text-muted-foreground">Deleted list</span>
+              )}
+            </div>
           </div>
           <div>
             <span className="text-muted-foreground">Callers</span>

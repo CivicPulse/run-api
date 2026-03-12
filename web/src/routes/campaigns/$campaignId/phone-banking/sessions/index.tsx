@@ -254,11 +254,6 @@ function SessionsPage() {
   const { data: sessionsData, isLoading } = usePhoneBankSessions(campaignId)
   const sessions = sessionsData?.items ?? []
 
-  const { data: callListsData } = useCallLists(campaignId)
-  const callListsById = Object.fromEntries(
-    (callListsData?.items ?? []).map((cl) => [cl.id, cl.name]),
-  )
-
   // Create/Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editSession, setEditSession] = useState<PhoneBankSession | undefined>(undefined)
@@ -325,11 +320,19 @@ function SessionsPage() {
       id: "call_list",
       header: "Call List",
       cell: ({ row }) => {
-        const name = callListsById[row.original.call_list_id]
+        const name = row.original.call_list_name
+        if (!name) {
+          return <span className="text-sm text-muted-foreground">Deleted list</span>
+        }
         return (
-          <span className="text-sm text-muted-foreground">
-            {name ?? row.original.call_list_id.slice(0, 8)}
-          </span>
+          <Link
+            to="/campaigns/$campaignId/phone-banking/call-lists/$callListId"
+            params={{ campaignId, callListId: row.original.call_list_id }}
+            className="font-medium hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {name}
+          </Link>
         )
       },
     },

@@ -115,12 +115,12 @@ describe("useDNC", () => {
       "numbers.csv",
       { type: "text/csv" },
     )
-    result.current.mutate(testFile)
+    result.current.mutate({ file: testFile, reason: "manual" })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(mockApi.post).toHaveBeenCalledWith(
       "api/v1/campaigns/campaign-1/dnc/import",
-      { body: expect.any(FormData) },
+      { body: expect.any(FormData), searchParams: { reason: "manual" } },
     )
   })
 

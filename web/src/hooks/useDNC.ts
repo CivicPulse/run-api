@@ -37,13 +37,14 @@ export function useDeleteDNCEntry(campaignId: string) {
 export function useImportDNC(campaignId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: ({ file, reason }: { file: File; reason: string }) => {
       const formData = new FormData()
       formData.append("file", file)
       // Use body: formData (NOT json:) — browser sets multipart/form-data boundary
       // ky interceptors adding Authorization header is fine for this endpoint (not MinIO)
       return api.post(`api/v1/campaigns/${campaignId}/dnc/import`, {
         body: formData,
+        searchParams: { reason },
       }).json<DNCImportResult>()
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: dncKeys.all(campaignId) }),
