@@ -702,6 +702,7 @@ function ShiftDetailPage() {
           onOpenChange={setAssignOpen}
           campaignId={campaignId}
           shiftId={shiftId}
+          shiftType={shift.type}
           existingVolunteerIds={existingVolunteerIds}
         />
       )}

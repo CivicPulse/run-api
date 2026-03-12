@@ -741,11 +741,25 @@ async def main() -> None:  # noqa: C901, PLR0915
                  ["data_entry", "fundraising"], None),
             ]
 
+            # Emergency contact names pool — 95% of volunteers get both
+            # name and phone so field shift assignment works in dev.
+            ec_names = [
+                "Maria Brooks", "Jorge Hernandez", "Diane Washington",
+                "Luis Morales", "Amina Ali", "David Kim",
+                "Elena Reyes", "Frank Osei", "Brenda Patterson",
+                "Tony Turner", "Colleen O'Brien", "Huy Pham",
+                "Janet Cooper", "Ricardo Reed", "Ana Santos",
+                "Robert Barrett", "Carmen Delgado", "Gloria Foster",
+                "Pat Griffin", "Linda Huang",
+            ]
+
             volunteer_records: list[Volunteer] = []
-            for first, last, status, skills, uid in vol_data:
-                emergency = None
-                if random.random() < 0.4:
-                    emergency = f"478-555-{random.randint(1000, 9999)}"
+            for idx, (first, last, status, skills, uid) in enumerate(
+                vol_data
+            ):
+                # ~95% get emergency contacts; leave last active without
+                # to verify the UI warning for missing contacts.
+                has_ec = idx != 11  # Maya Pham left without
                 vol = Volunteer(
                     id=uuid.uuid4(),
                     campaign_id=campaign_id,
@@ -759,7 +773,14 @@ async def main() -> None:  # noqa: C901, PLR0915
                     zip_code=random.choice(["31201", "31204", "31206"]),
                     status=status,
                     skills=skills,
-                    emergency_contact_phone=emergency,
+                    emergency_contact_name=(
+                        ec_names[idx % len(ec_names)] if has_ec else None
+                    ),
+                    emergency_contact_phone=(
+                        f"478-555-{random.randint(1000, 9999)}"
+                        if has_ec
+                        else None
+                    ),
                     created_by=user_owner_id,
                     created_at=NOW - timedelta(days=random.randint(1, 60)),
                     updated_at=NOW,

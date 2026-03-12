@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
 import { toast } from "sonner"
+import { HTTPError } from "ky"
 import {
   Dialog,
   DialogContent,
@@ -13,11 +14,21 @@ import { Input } from "@/components/ui/input"
 import { useVolunteerList } from "@/hooks/useVolunteers"
 import { useAssignVolunteer } from "@/hooks/useShifts"
 
+const FIELD_SHIFT_TYPES = new Set(["canvassing", "phone_banking"])
+
+function hasEmergencyContact(v: {
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+}): boolean {
+  return !!v.emergency_contact_name && !!v.emergency_contact_phone
+}
+
 interface AssignVolunteerDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   campaignId: string
   shiftId: string
+  shiftType: string
   existingVolunteerIds: string[]
 }
 
@@ -26,6 +37,7 @@ export function AssignVolunteerDialog({
   onOpenChange,
   campaignId,
   shiftId,
+  shiftType,
   existingVolunteerIds,
 }: AssignVolunteerDialogProps) {
   const [search, setSearch] = useState("")
@@ -34,6 +46,8 @@ export function AssignVolunteerDialog({
   const { data: volunteersData, isLoading: volunteersLoading } =
     useVolunteerList(campaignId, { status: "active" })
   const assignMutation = useAssignVolunteer(campaignId, shiftId)
+
+  const isFieldShift = FIELD_SHIFT_TYPES.has(shiftType)
 
   // Filter out already-assigned volunteers and apply search
   const filteredVolunteers = useMemo(() => {
@@ -58,8 +72,17 @@ export function AssignVolunteerDialog({
       setSelectedId(null)
       setSearch("")
       onOpenChange(false)
-    } catch {
-      toast.error("Failed to assign volunteer")
+    } catch (err) {
+      if (err instanceof HTTPError) {
+        const body = await err.response.json().catch(() => null)
+        const detail =
+          body && typeof body === "object" && "detail" in body
+            ? (body as { detail: string }).detail
+            : "Failed to assign volunteer"
+        toast.error(detail)
+      } else {
+        toast.error("Failed to assign volunteer")
+      }
     }
   }
 
@@ -81,6 +104,13 @@ export function AssignVolunteerDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {isFieldShift && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2">
+            This is a field shift — volunteers need emergency contact info on
+            file to be assigned.
+          </p>
+        )}
+
         <Input
           placeholder="Search by name..."
           value={search}
@@ -97,26 +127,37 @@ export function AssignVolunteerDialog({
               No available volunteers to assign
             </p>
           ) : (
-            filteredVolunteers.map((v) => (
-              <label
-                key={v.id}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50 ${
-                  selectedId === v.id ? "bg-muted" : ""
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="volunteer"
-                  value={v.id}
-                  checked={selectedId === v.id}
-                  onChange={() => setSelectedId(v.id)}
-                  className="accent-primary"
-                />
-                <span className="text-sm">
-                  {v.first_name} {v.last_name}
-                </span>
-              </label>
-            ))
+            filteredVolunteers.map((v) => {
+              const eligible = !isFieldShift || hasEmergencyContact(v)
+              return (
+                <label
+                  key={v.id}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2 ${
+                    eligible
+                      ? `cursor-pointer hover:bg-muted/50 ${selectedId === v.id ? "bg-muted" : ""}`
+                      : "opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="volunteer"
+                    value={v.id}
+                    checked={selectedId === v.id}
+                    disabled={!eligible}
+                    onChange={() => setSelectedId(v.id)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {v.first_name} {v.last_name}
+                    {!eligible && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        (no emergency contact)
+                      </span>
+                    )}
+                  </span>
+                </label>
+              )
+            })
           )}
         </div>
 
