@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: caller-picker-ux
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-12
+audited: 2026-03-12
 ---
 
 # Phase 20 — Validation Strategy
@@ -38,13 +39,13 @@ created: 2026-03-12
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 20-01-01 | 01 | 1 | PHON-03a | unit | `cd web && npx vitest run ...index.test.tsx -t "combobox"` | ❌ W0 | ⬜ pending |
-| 20-01-02 | 01 | 1 | PHON-03b | unit | `cd web && npx vitest run ...index.test.tsx -t "Add Caller"` | ✅ (needs update) | ⬜ pending |
-| 20-01-03 | 01 | 1 | PHON-03c | unit | `cd web && npx vitest run ...index.test.tsx -t "already-assigned"` | ❌ W0 | ⬜ pending |
-| 20-01-04 | 01 | 1 | PHON-03d | unit | `cd web && npx vitest run ...index.test.tsx -t "display name"` | ❌ W0 | ⬜ pending |
-| 20-01-05 | 01 | 1 | PHON-03e | unit | `cd web && npx vitest run ...index.test.tsx -t "progress.*display name"` | ❌ W0 | ⬜ pending |
-| 20-01-06 | 01 | 1 | PHON-03f | unit | `cd web && npx vitest run ...index.test.tsx -t "fallback"` | ❌ W0 | ⬜ pending |
-| 20-01-07 | 01 | 1 | PHON-03g | unit | `cd web && npx vitest run ...index.test.tsx -t "all.*assigned"` | ❌ W0 | ⬜ pending |
+| 20-01-01 | 01 | 1 | PHON-03a | unit | `cd web && npx vitest run ...index.test.tsx -t "combobox"` | ✅ | ✅ green |
+| 20-01-02 | 01 | 1 | PHON-03b | unit | `cd web && npx vitest run ...index.test.tsx -t "Add Caller"` | ✅ | ✅ green |
+| 20-01-03 | 01 | 1 | PHON-03c | unit | `cd web && npx vitest run ...index.test.tsx -t "already-assigned"` | ✅ | ✅ green |
+| 20-01-04 | 01 | 1 | PHON-03d | unit | `cd web && npx vitest run ...index.test.tsx -t "display name"` | ✅ | ✅ green |
+| 20-01-05 | 01 | 1 | PHON-03e | unit | `cd web && npx vitest run ...index.test.tsx -t "progress.*display name"` | ✅ | ✅ green |
+| 20-01-06 | 01 | 1 | PHON-03f | unit | `cd web && npx vitest run ...index.test.tsx -t "fallback"` | ✅ | ✅ green |
+| 20-01-07 | 01 | 1 | PHON-03g | unit | `cd web && npx vitest run ...index.test.tsx -t "all.*assigned"` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,12 +53,7 @@ created: 2026-03-12
 
 ## Wave 0 Requirements
 
-- [ ] Update existing test mock setup to include `useMembers` mock in `index.test.tsx`
-- [ ] Add `CampaignMember` test factory helpers (similar to existing `makeCaller`, `makeSession`)
-- [ ] Update existing "Add Caller" test to use combobox interaction pattern instead of text input
-- [ ] Add new test cases for: already-assigned filtering, name display in tables, fallback behavior, empty state
-
-*Existing `index.test.tsx` covers basic session CRUD — needs mock expansion for member picker tests.*
+Existing infrastructure covers all phase requirements.
 
 ---
 
@@ -72,11 +68,23 @@ created: 2026-03-12
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-03-12
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 7 requirements have automated test coverage across 18 passing test cases in `index.test.tsx`. No gaps detected during audit.
