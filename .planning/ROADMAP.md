@@ -225,7 +225,7 @@ Plans:
   1. DNC DataTable displays a `reason` column showing why each number was added
   2. Session detail Overview tab shows the call list name instead of a truncated UUID
   3. My Sessions table shows call list names instead of truncated UUIDs
-**Plans:** 0/1 plans
+**Plans:** 1/1 plans
 
 Plans:
 - [ ] 21-01-PLAN.md — DNC reason column + call list name resolution in session views
@@ -254,4 +254,4 @@ Plans:
 | 18. Shift Management | v1.2 | 4/4 | Complete | 2026-03-12 |
 | 19. Verification & Validation Gap Closure | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
 | 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
-| 21. Integration Polish | v1.2 | 0/1 | Pending | - |
+| 21. Integration Polish | v1.2 | 0/1 | Planning | - |
