@@ -49,6 +49,7 @@ import { Route as CampaignsCampaignIdPhoneBankingCallListsCallListIdRouteImport 
 import { Route as CampaignsCampaignIdCanvassingWalkListsWalkListIdRouteImport } from './routes/campaigns/$campaignId/canvassing/walk-lists/$walkListId'
 import { Route as CampaignsCampaignIdCanvassingTurfsNewRouteImport } from './routes/campaigns/$campaignId/canvassing/turfs/new'
 import { Route as CampaignsCampaignIdCanvassingTurfsTurfIdRouteImport } from './routes/campaigns/$campaignId/canvassing/turfs/$turfId'
+import { Route as CampaignsCampaignIdVolunteersShiftsShiftIdIndexRouteImport } from './routes/campaigns/$campaignId/volunteers/shifts/$shiftId/index'
 import { Route as CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRouteImport } from './routes/campaigns/$campaignId/phone-banking/sessions/$sessionId/index'
 import { Route as CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRouteImport } from './routes/campaigns/$campaignId/phone-banking/sessions/$sessionId/call'
 
@@ -287,6 +288,12 @@ const CampaignsCampaignIdCanvassingTurfsTurfIdRoute =
     path: '/turfs/$turfId',
     getParentRoute: () => CampaignsCampaignIdCanvassingRoute,
   } as any)
+const CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute =
+  CampaignsCampaignIdVolunteersShiftsShiftIdIndexRouteImport.update({
+    id: '/shifts/$shiftId/',
+    path: '/shifts/$shiftId/',
+    getParentRoute: () => CampaignsCampaignIdVolunteersRoute,
+  } as any)
 const CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRoute =
   CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRouteImport.update({
     id: '/sessions/$sessionId/',
@@ -343,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId/voters/tags/': typeof CampaignsCampaignIdVotersTagsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId/': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts/$shiftId/': typeof CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -382,6 +390,7 @@ export interface FileRoutesByTo {
   '/campaigns/$campaignId/voters/tags': typeof CampaignsCampaignIdVotersTagsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts/$shiftId': typeof CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -427,6 +436,7 @@ export interface FileRoutesById {
   '/campaigns/$campaignId/voters/tags/': typeof CampaignsCampaignIdVotersTagsIndexRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRoute
   '/campaigns/$campaignId/phone-banking/sessions/$sessionId/': typeof CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRoute
+  '/campaigns/$campaignId/volunteers/shifts/$shiftId/': typeof CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/voters/tags/'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId/'
+    | '/campaigns/$campaignId/volunteers/shifts/$shiftId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/voters/tags'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId'
+    | '/campaigns/$campaignId/volunteers/shifts/$shiftId'
   id:
     | '__root__'
     | '/'
@@ -556,6 +568,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/voters/tags/'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId/call'
     | '/campaigns/$campaignId/phone-banking/sessions/$sessionId/'
+    | '/campaigns/$campaignId/volunteers/shifts/$shiftId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -848,6 +861,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsCampaignIdCanvassingTurfsTurfIdRouteImport
       parentRoute: typeof CampaignsCampaignIdCanvassingRoute
     }
+    '/campaigns/$campaignId/volunteers/shifts/$shiftId/': {
+      id: '/campaigns/$campaignId/volunteers/shifts/$shiftId/'
+      path: '/shifts/$shiftId'
+      fullPath: '/campaigns/$campaignId/volunteers/shifts/$shiftId/'
+      preLoaderRoute: typeof CampaignsCampaignIdVolunteersShiftsShiftIdIndexRouteImport
+      parentRoute: typeof CampaignsCampaignIdVolunteersRoute
+    }
     '/campaigns/$campaignId/phone-banking/sessions/$sessionId/': {
       id: '/campaigns/$campaignId/phone-banking/sessions/$sessionId/'
       path: '/sessions/$sessionId'
@@ -972,6 +992,7 @@ interface CampaignsCampaignIdVolunteersRouteChildren {
   CampaignsCampaignIdVolunteersRosterIndexRoute: typeof CampaignsCampaignIdVolunteersRosterIndexRoute
   CampaignsCampaignIdVolunteersShiftsIndexRoute: typeof CampaignsCampaignIdVolunteersShiftsIndexRoute
   CampaignsCampaignIdVolunteersTagsIndexRoute: typeof CampaignsCampaignIdVolunteersTagsIndexRoute
+  CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute: typeof CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute
 }
 
 const CampaignsCampaignIdVolunteersRouteChildren: CampaignsCampaignIdVolunteersRouteChildren =
@@ -986,6 +1007,8 @@ const CampaignsCampaignIdVolunteersRouteChildren: CampaignsCampaignIdVolunteersR
       CampaignsCampaignIdVolunteersShiftsIndexRoute,
     CampaignsCampaignIdVolunteersTagsIndexRoute:
       CampaignsCampaignIdVolunteersTagsIndexRoute,
+    CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute:
+      CampaignsCampaignIdVolunteersShiftsShiftIdIndexRoute,
   }
 
 const CampaignsCampaignIdVolunteersRouteWithChildren =
