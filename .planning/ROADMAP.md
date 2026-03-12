@@ -45,7 +45,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 15: Call Lists & DNC Management** - Call list CRUD with DNC filtering, DNC list management with bulk import (completed 2026-03-11)
 - [x] **Phase 16: Phone Banking** - Session management, caller assignment, active calling experience, progress dashboards (completed 2026-03-11)
 - [x] **Phase 17: Volunteer Management** - Volunteer roster, profiles, availability, tags, self-registration, hours tracking (completed 2026-03-12)
-- [ ] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment
+- [x] **Phase 18: Shift Management** - Shift CRUD, signup/assignment, check-in/out, roster, hours adjustment (completed 2026-03-12)
 
 ## Phase Details
 
@@ -173,7 +173,7 @@ Plans:
   2. User can view shifts in a date-grouped list showing upcoming and past shifts with their statuses and capacity
   3. Volunteer can sign up for available shifts (respecting capacity limits and waitlists) and cancel their signup, and managers can assign volunteers to shifts directly
   4. Manager can check in and check out volunteers at shifts, view a shift roster with each volunteer's status, and adjust volunteer hours after a shift completes
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 18-01-PLAN.md — Shift types, hooks (14 exports), Wave 0 test stubs, sidebar nav update
@@ -202,4 +202,4 @@ Plans:
 | 15. Call Lists & DNC Management | v1.2 | 6/6 | Complete | 2026-03-11 |
 | 16. Phone Banking | v1.2 | 7/7 | Complete | 2026-03-11 |
 | 17. Volunteer Management | v1.2 | Complete    | 2026-03-12 | 2026-03-12 |
-| 18. Shift Management | 3/4 | In Progress|  | - |
+| 18. Shift Management | 4/4 | Complete   | 2026-03-12 | - |
