@@ -5,8 +5,10 @@ import { Ban } from "lucide-react"
 import { toast } from "sonner"
 import { useDNCEntries, useAddDNCEntry, useDeleteDNCEntry, useImportDNC } from "@/hooks/useDNC"
 import { useFormGuard } from "@/hooks/useFormGuard"
+import { usePermissions } from "@/hooks/usePermissions"
 import { DataTable } from "@/components/shared/DataTable"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { RequireRole } from "@/components/shared/RequireRole"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,6 +52,9 @@ function DNCListPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importReason, setImportReason] = useState("manual")
+
+  const { hasRole } = usePermissions()
+  const isManager = hasRole("manager")
 
   const form = useForm<AddFormValues>({
     defaultValues: { phone_number: "", reason: "" },
@@ -128,20 +133,24 @@ function DNCListPage() {
         </span>
       ),
     },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={() => handleRemove(row.original.id)}
-        >
-          Remove
-        </Button>
-      ),
-    },
-  ]
+    ...(isManager
+      ? [
+          {
+            id: "actions",
+            cell: ({ row }: { row: { original: DNCEntry } }) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleRemove(row.original.id)}
+              >
+                Remove
+              </Button>
+            ),
+          },
+        ]
+      : []),
+  ] as ColumnDef<DNCEntry>[]
 
   if (isLoading) {
     return (
@@ -164,10 +173,14 @@ function DNCListPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">DNC List</h1>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setAddOpen(true)}>Add Number</Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            Import from file
-          </Button>
+          <RequireRole minimum="manager">
+            <Button onClick={() => setAddOpen(true)}>Add Number</Button>
+          </RequireRole>
+          <RequireRole minimum="manager">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              Import from file
+            </Button>
+          </RequireRole>
         </div>
       </div>
 

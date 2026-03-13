@@ -7,6 +7,8 @@ const _store = vi.hoisted(() => ({
   component: null as React.ComponentType | null,
 }))
 
+const _roleStore = vi.hoisted(() => ({ role: "manager" }))
+
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => {
     _store.component = opts.component
@@ -46,6 +48,35 @@ vi.mock("@/hooks/useFormGuard", () => ({
 
 vi.mock("@/components/shared/EmptyState", () => ({
   EmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+}))
+
+vi.mock("@/components/shared/RequireRole", () => ({
+  RequireRole: ({
+    children,
+    minimum,
+    fallback,
+  }: {
+    children: React.ReactNode
+    minimum: string
+    fallback?: React.ReactNode
+  }) => {
+    const hierarchy: Record<string, number> = {
+      viewer: 0, volunteer: 1, manager: 2, admin: 3, owner: 4,
+    }
+    const userLevel = hierarchy[_roleStore.role] ?? 0
+    const required = hierarchy[minimum] ?? 0
+    return userLevel >= required ? <>{children}</> : <>{fallback ?? null}</>
+  },
+}))
+
+vi.mock("@/hooks/usePermissions", () => ({
+  usePermissions: vi.fn(() => ({
+    role: _roleStore.role,
+    hasRole: (min: string) => {
+      const h: Record<string, number> = { viewer: 0, volunteer: 1, manager: 2, admin: 3, owner: 4 }
+      return (h[_roleStore.role] ?? 0) >= (h[min] ?? 0)
+    },
+  })),
 }))
 
 vi.mock("@/components/shared/DataTable", () => ({
@@ -156,6 +187,7 @@ function renderPage() {
 describe("DNCListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    _roleStore.role = "manager"
     mockUseDNCEntries.mockReturnValue({
       data: [],
       isLoading: false,
@@ -238,6 +270,50 @@ describe("DNCListPage", () => {
       expect(screen.getByTestId("empty-title")).toHaveTextContent(
         "No numbers match your search",
       )
+    })
+  })
+
+  describe("RequireRole permission gating", () => {
+    it("hides Add Number and Import buttons when user role is viewer", () => {
+      _roleStore.role = "viewer"
+      const entries = [makeEntry()]
+      mockUseDNCEntries.mockReturnValue({ data: entries, isLoading: false })
+
+      renderPage()
+
+      expect(screen.queryByRole("button", { name: /add number/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /import from file/i })).not.toBeInTheDocument()
+    })
+
+    it("hides Remove column when user role is viewer", () => {
+      _roleStore.role = "viewer"
+      const entries = [makeEntry()]
+      mockUseDNCEntries.mockReturnValue({ data: entries, isLoading: false })
+
+      renderPage()
+
+      expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument()
+    })
+
+    it("shows Add Number and Import buttons when user role is manager", () => {
+      _roleStore.role = "manager"
+      const entries = [makeEntry()]
+      mockUseDNCEntries.mockReturnValue({ data: entries, isLoading: false })
+
+      renderPage()
+
+      expect(screen.getByRole("button", { name: /add number/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /import from file/i })).toBeInTheDocument()
+    })
+
+    it("shows Remove button in table rows when user role is manager", () => {
+      _roleStore.role = "manager"
+      const entries = [makeEntry()]
+      mockUseDNCEntries.mockReturnValue({ data: entries, isLoading: false })
+
+      renderPage()
+
+      expect(screen.getByRole("button", { name: /remove/i })).toBeInTheDocument()
     })
   })
 })
