@@ -60,7 +60,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 **Milestone Goal:** Expand the voter model with first-class columns for all high-value L2 voter file fields (propensity scores, demographics, mailing address, household data, military status) and upgrade the import pipeline to auto-create phone contacts, parse voting history, and handle enriched field mapping.
 
 - [x] **Phase 23: Schema Foundation** - Alembic migration, expanded Voter model, Pydantic schemas, VoterPhone constraint (completed 2026-03-13)
-- [ ] **Phase 24: Import Pipeline Enhancement** - RETURNING clause, phone creation, voting history parsing, propensity parsing, field mapping, SET clause fix
+- [x] **Phase 24: Import Pipeline Enhancement** - RETURNING clause, phone creation, voting history parsing, propensity parsing, field mapping, SET clause fix (completed 2026-03-13)
 - [ ] **Phase 25: Filter Builder & Query Enhancement** - Propensity range filters, demographic multi-select, mailing address filters, voting history backward compat
 - [ ] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping
 
@@ -159,6 +159,6 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 21. Integration Polish | v1.2 | 1/1 | Complete | 2026-03-12 |
 | 22. Final Integration Fixes | v1.2 | 1/1 | Complete | 2026-03-13 |
 | 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
-| 24. Import Pipeline Enhancement | 2/3 | In Progress|  | - |
+| 24. Import Pipeline Enhancement | 3/3 | Complete   | 2026-03-13 | - |
 | 25. Filter Builder & Query Enhancement | v1.3 | 0/TBD | Not started | - |
 | 26. Frontend Updates | v1.3 | 0/TBD | Not started | - |
