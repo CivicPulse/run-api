@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -15,6 +15,14 @@ class VoterPhone(Base):
     """Phone number associated with a voter."""
 
     __tablename__ = "voter_phones"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id",
+            "voter_id",
+            "value",
+            name="uq_voter_phone_campaign_voter_value",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
