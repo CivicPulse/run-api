@@ -9,16 +9,16 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 ### Voter Model
 
-- [ ] **VMOD-01**: Voter model includes propensity_general, propensity_primary, propensity_combined as SmallInteger (0-100) first-class columns
-- [ ] **VMOD-02**: Voter model includes mailing address fields (line1, line2, city, state, zip, zip4, country, type) as first-class columns
-- [ ] **VMOD-03**: Voter model includes spoken_language as first-class String column
-- [ ] **VMOD-04**: Voter model includes marital_status, military_status, party_change_indicator as first-class String columns
-- [ ] **VMOD-05**: Voter model includes cell_phone_confidence as SmallInteger column
-- [ ] **VMOD-06**: Voter model includes household_party_registration, household_size, family_id as first-class columns
-- [ ] **VMOD-07**: Voter model includes zip_plus4 and apartment_type as first-class columns
-- [ ] **VMOD-08**: Alembic migration adds all new columns as nullable with appropriate indexes
-- [ ] **VMOD-09**: VoterResponse, VoterCreateRequest, VoterUpdateRequest schemas include all new fields
-- [ ] **VMOD-10**: VoterPhone table has unique constraint on (campaign_id, voter_id, value) for dedup
+- [x] **VMOD-01**: Voter model includes propensity_general, propensity_primary, propensity_combined as SmallInteger (0-100) first-class columns
+- [x] **VMOD-02**: Voter model includes mailing address fields (line1, line2, city, state, zip, zip4, country, type) as first-class columns
+- [x] **VMOD-03**: Voter model includes spoken_language as first-class String column
+- [x] **VMOD-04**: Voter model includes marital_status, military_status, party_change_indicator as first-class String columns
+- [x] **VMOD-05**: Voter model includes cell_phone_confidence as SmallInteger column
+- [x] **VMOD-06**: Voter model includes household_party_registration, household_size, family_id as first-class columns
+- [x] **VMOD-07**: Voter model includes zip_plus4 and apartment_type as first-class columns
+- [x] **VMOD-08**: Alembic migration adds all new columns as nullable with appropriate indexes
+- [x] **VMOD-09**: VoterResponse, VoterCreateRequest, VoterUpdateRequest schemas include all new fields
+- [x] **VMOD-10**: VoterPhone table has unique constraint on (campaign_id, voter_id, value) for dedup
 
 ### Import Pipeline
 
@@ -74,16 +74,16 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VMOD-01 | Phase 23 | Pending |
-| VMOD-02 | Phase 23 | Pending |
-| VMOD-03 | Phase 23 | Pending |
-| VMOD-04 | Phase 23 | Pending |
-| VMOD-05 | Phase 23 | Pending |
-| VMOD-06 | Phase 23 | Pending |
-| VMOD-07 | Phase 23 | Pending |
-| VMOD-08 | Phase 23 | Pending |
-| VMOD-09 | Phase 23 | Pending |
-| VMOD-10 | Phase 23 | Pending |
+| VMOD-01 | Phase 23 | Complete |
+| VMOD-02 | Phase 23 | Complete |
+| VMOD-03 | Phase 23 | Complete |
+| VMOD-04 | Phase 23 | Complete |
+| VMOD-05 | Phase 23 | Complete |
+| VMOD-06 | Phase 23 | Complete |
+| VMOD-07 | Phase 23 | Complete |
+| VMOD-08 | Phase 23 | Complete |
+| VMOD-09 | Phase 23 | Complete |
+| VMOD-10 | Phase 23 | Complete |
 | IMPT-01 | Phase 24 | Pending |
 | IMPT-02 | Phase 24 | Pending |
 | IMPT-03 | Phase 24 | Pending |
