@@ -560,14 +560,30 @@ class ImportService:
                 "source_type": source_type,
             }
             extra_data: dict = {}
+            result_dict: dict = {}
 
             for csv_col, value in row.items():
                 canonical = field_mapping.get(csv_col)
-                if canonical is not None and canonical in _VOTER_COLUMNS:
+                if canonical is not None and canonical.startswith("__"):
+                    # Double-underscore prefix: route to related table data
+                    if canonical == "__cell_phone" and value and value.strip():
+                        result_dict["phone_value"] = value
+                elif canonical is not None and canonical in _VOTER_COLUMNS:
                     voter[canonical] = value
                 elif value and value.strip():
                     # Unmapped or None-mapped: non-empty values go to extra_data
                     extra_data[csv_col] = value
+
+            # Parse propensity strings to integers
+            for prop_field in ("propensity_general", "propensity_primary", "propensity_combined"):
+                raw = voter.get(prop_field)
+                if isinstance(raw, str):
+                    voter[prop_field] = parse_propensity(raw)
+
+            # Parse voting history from original CSV row columns
+            voting_history = parse_voting_history(row)
+            if voting_history:
+                voter["voting_history"] = voting_history
 
             voter["extra_data"] = extra_data
 
@@ -576,12 +592,14 @@ class ImportService:
             has_last = bool(voter.get("last_name", "").strip()) if voter.get("last_name") else False
 
             if not has_first and not has_last:
-                results.append({
+                result_dict.update({
                     "voter": voter,
                     "error": "Missing required field: at least one of first_name or last_name is required",
                 })
             else:
-                results.append({"voter": voter})
+                result_dict["voter"] = voter
+
+            results.append(result_dict)
 
         return results
 
@@ -616,6 +634,7 @@ class ImportService:
         )
 
         valid_voters: list[dict] = []
+        phone_values: list[str | None] = []
         errors: list[dict] = []
 
         for i, result in enumerate(mapped_results):
@@ -629,6 +648,8 @@ class ImportService:
                 # Ensure source_id has a value for upsert; generate if missing
                 if not voter.get("source_id"):
                     voter["source_id"] = str(uuid.uuid4())
+                # Extract phone_value before inserting (not a Voter column)
+                phone_values.append(result.get("phone_value"))
                 valid_voters.append(voter)
 
         phones_created = 0
@@ -651,6 +672,37 @@ class ImportService:
             result = await session.execute(stmt)
             voter_ids = [row[0] for row in result.all()]
             await session.flush()
+
+            # Create VoterPhone records for voters with phone data
+            phone_records: list[dict] = []
+            for i, phone_raw in enumerate(phone_values):
+                if phone_raw and i < len(voter_ids):
+                    normalized = normalize_phone(phone_raw)
+                    if normalized is not None:
+                        phone_records.append({
+                            "campaign_id": valid_voters[i]["campaign_id"],
+                            "voter_id": voter_ids[i],
+                            "value": normalized,
+                            "type": "cell",
+                            "source": "import",
+                            "is_primary": True,
+                        })
+
+            if phone_records:
+                phone_stmt = insert(VoterPhone).values(phone_records)
+                phone_stmt = phone_stmt.on_conflict_do_update(
+                    constraint="uq_voter_phone_campaign_voter_value",
+                    set_={
+                        "type": phone_stmt.excluded.type,
+                        "source": phone_stmt.excluded.source,
+                        "updated_at": func.now(),
+                        # is_primary deliberately EXCLUDED -- preserve user edits
+                    },
+                )
+                await session.execute(phone_stmt)
+                await session.flush()
+
+            phones_created = len(phone_records)
 
         return len(valid_voters), errors, phones_created
 
@@ -715,6 +767,7 @@ class ImportService:
         all_errors: list[dict] = []
         total_imported = 0
         total_skipped = 0
+        total_phones_created = 0
         total_rows = 0
         batch_size = 1000
 
@@ -723,7 +776,7 @@ class ImportService:
             total_rows += 1
 
             if len(batch) >= batch_size:
-                imported, errors, _phones = await self.process_csv_batch(
+                imported, errors, phones = await self.process_csv_batch(
                     batch,
                     job.field_mapping,
                     str(job.campaign_id),
@@ -732,6 +785,7 @@ class ImportService:
                 )
                 total_imported += imported
                 total_skipped += len(errors)
+                total_phones_created += phones
                 all_errors.extend(errors)
                 batch = []
 
@@ -743,7 +797,7 @@ class ImportService:
 
         # Process remaining rows
         if batch:
-            imported, errors, _phones = await self.process_csv_batch(
+            imported, errors, phones = await self.process_csv_batch(
                 batch,
                 job.field_mapping,
                 str(job.campaign_id),
@@ -752,6 +806,7 @@ class ImportService:
             )
             total_imported += imported
             total_skipped += len(errors)
+            total_phones_created += phones
             all_errors.extend(errors)
 
         # Generate error report if there were errors
@@ -780,13 +835,15 @@ class ImportService:
         job.total_rows = total_rows
         job.imported_rows = total_imported
         job.skipped_rows = total_skipped
+        job.phones_created = total_phones_created
         job.status = ImportStatus.COMPLETED
         await session.flush()
 
         logger.info(
-            "Import {} complete: {} imported, {} skipped out of {} total",
+            "Import {} complete: {} imported, {} phones created, {} skipped out of {} total",
             import_job_id,
             total_imported,
+            total_phones_created,
             total_skipped,
             total_rows,
         )

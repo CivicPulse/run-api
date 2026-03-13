@@ -267,3 +267,227 @@ class TestUpsertSetClause:
         assert imported == 1
         assert errors == []
         assert phones == 0  # No phone data in this batch
+
+
+class TestApplyFieldMappingEnhancements:
+    """Tests for phone routing, propensity parsing, and voting history in apply_field_mapping."""
+
+    @pytest.fixture
+    def service(self):
+        return ImportService()
+
+    @pytest.fixture
+    def campaign_id(self):
+        return str(uuid.uuid4())
+
+    def test_cell_phone_routing_in_apply_field_mapping(self, service, campaign_id):
+        """__cell_phone mapped column routes to result['phone_value'], not voter dict."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "Cell": "__cell_phone",
+            "VoterID": "source_id",
+        }
+        rows = [
+            {"First_Name": "John", "Last_Name": "Doe", "Cell": "555-123-4567", "VoterID": "V001"},
+        ]
+        results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
+        result = results[0]
+
+        # phone_value should be on the result dict
+        assert result["phone_value"] == "555-123-4567"
+        # phone_value should NOT be in the voter dict
+        assert "phone_value" not in result["voter"]
+        assert "__cell_phone" not in result["voter"]
+        # phone_value should NOT be in extra_data
+        assert "Cell" not in result["voter"]["extra_data"]
+
+    def test_cell_phone_empty_value_not_routed(self, service, campaign_id):
+        """Empty __cell_phone value does not create phone_value key."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "Cell": "__cell_phone",
+        }
+        rows = [{"First_Name": "John", "Last_Name": "Doe", "Cell": ""}]
+        results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
+        assert "phone_value" not in results[0]
+
+    def test_propensity_parsing_in_apply_field_mapping(self, service, campaign_id):
+        """Propensity strings like '77%' are parsed to integers during mapping."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "Gen_Score": "propensity_general",
+            "Pri_Score": "propensity_primary",
+            "Comb_Score": "propensity_combined",
+        }
+        rows = [{
+            "First_Name": "Jane",
+            "Last_Name": "Doe",
+            "Gen_Score": "77%",
+            "Pri_Score": "42",
+            "Comb_Score": "Not Eligible",
+        }]
+        results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
+        voter = results[0]["voter"]
+        assert voter["propensity_general"] == 77
+        assert voter["propensity_primary"] == 42
+        assert voter["propensity_combined"] is None
+
+    def test_voting_history_parsing_in_apply_field_mapping(self, service, campaign_id):
+        """CSV rows with General_YYYY/Primary_YYYY columns produce voting_history array."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+        }
+        rows = [{
+            "First_Name": "John",
+            "Last_Name": "Doe",
+            "General_2024": "Y",
+            "Primary_2022": "A",
+            "General_2020": "N",
+        }]
+        results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
+        voter = results[0]["voter"]
+        assert voter["voting_history"] == ["General_2024", "Primary_2022"]
+
+    def test_voting_history_not_set_when_no_columns(self, service, campaign_id):
+        """When no General_/Primary_ columns exist, voting_history is not set."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+        }
+        rows = [{
+            "First_Name": "John",
+            "Last_Name": "Doe",
+        }]
+        results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
+        voter = results[0]["voter"]
+        # voting_history should NOT be present -- avoids wiping existing data on re-import
+        assert "voting_history" not in voter
+
+
+class TestPhoneCreationInBatch:
+    """Tests for VoterPhone creation in process_csv_batch."""
+
+    @pytest.fixture
+    def service(self):
+        return ImportService()
+
+    @pytest.fixture
+    def campaign_id(self):
+        return str(uuid.uuid4())
+
+    @pytest.mark.asyncio
+    async def test_phone_creation_skipped_on_bad_number(self, service, campaign_id):
+        """Bad phone number (e.g. '123') does not prevent voter import."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "VoterID": "source_id",
+            "Cell": "__cell_phone",
+        }
+        rows = [
+            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "123"},
+        ]
+
+        voter_id = uuid.uuid4()
+        call_count = 0
+
+        async def capture_execute(stmt, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            mock_result = MagicMock()
+            mock_result.all.return_value = [(voter_id,)]
+            return mock_result
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=capture_execute)
+
+        imported, errors, phones = await service.process_csv_batch(
+            rows, mapping, campaign_id, "csv", session
+        )
+
+        # Voter should be imported
+        assert imported == 1
+        assert errors == []
+        # Phone should NOT be created (bad number)
+        assert phones == 0
+        # Only one execute call (voter upsert), no phone upsert
+        assert call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_phone_creation_with_valid_number(self, service, campaign_id):
+        """Valid phone number creates a phone record after voter upsert."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "VoterID": "source_id",
+            "Cell": "__cell_phone",
+        }
+        rows = [
+            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "(555) 123-4567"},
+        ]
+
+        voter_id = uuid.uuid4()
+        captured_stmts = []
+
+        async def capture_execute(stmt, *args, **kwargs):
+            captured_stmts.append(stmt)
+            mock_result = MagicMock()
+            mock_result.all.return_value = [(voter_id,)]
+            return mock_result
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=capture_execute)
+
+        imported, errors, phones = await service.process_csv_batch(
+            rows, mapping, campaign_id, "csv", session
+        )
+
+        assert imported == 1
+        assert errors == []
+        assert phones == 1
+        # Two execute calls: voter upsert + phone upsert
+        assert len(captured_stmts) == 2
+
+    @pytest.mark.asyncio
+    async def test_is_primary_excluded_from_phone_upsert_set(self, service, campaign_id):
+        """Phone upsert ON CONFLICT SET clause does NOT include is_primary."""
+        mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "VoterID": "source_id",
+            "Cell": "__cell_phone",
+        }
+        rows = [
+            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "555-123-4567"},
+        ]
+
+        voter_id = uuid.uuid4()
+        captured_stmts = []
+
+        async def capture_execute(stmt, *args, **kwargs):
+            captured_stmts.append(stmt)
+            mock_result = MagicMock()
+            mock_result.all.return_value = [(voter_id,)]
+            return mock_result
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=capture_execute)
+
+        await service.process_csv_batch(
+            rows, mapping, campaign_id, "csv", session
+        )
+
+        # The second statement is the phone upsert
+        assert len(captured_stmts) == 2
+        phone_stmt = captured_stmts[1]
+        compiled = phone_stmt.compile(dialect=pg_dialect())
+        sql_text = str(compiled)
+
+        # The ON CONFLICT SET clause should NOT reference is_primary
+        # Split at ON CONFLICT to examine only the SET portion
+        on_conflict_part = sql_text.upper().split("ON CONFLICT")[1] if "ON CONFLICT" in sql_text.upper() else ""
+        assert "IS_PRIMARY" not in on_conflict_part
