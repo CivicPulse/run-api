@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -28,6 +29,16 @@ if TYPE_CHECKING:
 # Each key is a canonical Voter model column; values are known aliases
 # (lowercased, underscore-separated) that should map to that field.
 CANONICAL_FIELDS: dict[str, list[str]] = {
+    "__cell_phone": [
+        "__cell_phone",
+        "cellphone",
+        "cell_phone",
+        "phone",
+        "cell",
+        # L2 official headers
+        "voters_cellphonefull",
+        "voters_cellphone",
+    ],
     "source_id": [
         "source_id",
         "voter_id",
@@ -183,12 +194,16 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "household_id",
         "householdid",
         "hh_id",
+        # L2 official headers
+        "voters_hhid",
     ],
     "registration_zip4": [
         "registration_zip4",
         "zip4",
         "zip_plus4",
         "residence_addresses_zip4",
+        # L2 official headers
+        "voters_zip4",
     ],
     "registration_apartment_type": [
         "registration_apartment_type",
@@ -201,32 +216,47 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "mail_address",
         "mailing_address",
         "mail_address_line1",
+        # L2 official headers
+        "mail_vaddressline1",
     ],
     "mailing_line2": [
         "mailing_line2",
         "mail_address2",
         "mail_address_line2",
+        # L2 official headers
+        "mail_vaddressline2",
     ],
     "mailing_city": [
         "mailing_city",
         "mail_city",
+        # L2 official headers
+        "mail_vcity",
     ],
     "mailing_state": [
         "mailing_state",
         "mail_state",
+        # L2 official headers
+        "mail_vstate",
     ],
     "mailing_zip": [
         "mailing_zip",
         "mail_zip",
         "mail_zipcode",
+        # L2 official headers
+        "mail_vzip",
+        "mail_vzipcode",
     ],
     "mailing_zip4": [
         "mailing_zip4",
         "mail_zip4",
+        # L2 official headers
+        "mail_vzip4",
     ],
     "mailing_country": [
         "mailing_country",
         "mail_country",
+        # L2 official headers
+        "mail_vcountry",
     ],
     "mailing_type": [
         "mailing_type",
@@ -235,14 +265,21 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
     "propensity_general": [
         "propensity_general",
         "general_propensity",
+        # L2 official headers
+        "general_turnout_score",
     ],
     "propensity_primary": [
         "propensity_primary",
         "primary_propensity",
+        # L2 official headers
+        "primary_turnout_score",
     ],
     "propensity_combined": [
         "propensity_combined",
         "combined_propensity",
+        # L2 official headers
+        "combined_turnout_score",
+        "overall_turnout_score",
     ],
     "spoken_language": [
         "spoken_language",
@@ -252,30 +289,44 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
     "marital_status": [
         "marital_status",
         "marital",
+        # L2 official headers
+        "commercialdata_maritalstatus",
     ],
     "military_status": [
         "military_status",
         "military",
+        # L2 official headers
+        "commercialdata_militaryactive",
     ],
     "party_change_indicator": [
         "party_change_indicator",
         "party_change",
+        # L2 official headers
+        "voters_partychangeindicator",
     ],
     "cell_phone_confidence": [
         "cell_phone_confidence",
         "cellphone_confidence",
+        # L2 official headers
+        "cellphoneconfidence",
     ],
     "household_party_registration": [
         "household_party_registration",
         "hh_party_registration",
+        # L2 official headers
+        "voters_hhpartyregistration",
     ],
     "household_size": [
         "household_size",
         "hh_size",
+        # L2 official headers
+        "voters_hhsize",
     ],
     "family_id": [
         "family_id",
         "familyid",
+        # L2 official headers
+        "voters_familyid",
     ],
 }
 
@@ -286,6 +337,62 @@ for _field, _aliases in CANONICAL_FIELDS.items():
     for _alias in _aliases:
         _ALIAS_LIST.append(_alias)
         _ALIAS_TO_FIELD[_alias] = _field
+
+# ---------------------------------------------------------------------------
+# Parsing utility functions for L2 voter file import
+# ---------------------------------------------------------------------------
+
+_PROPENSITY_RE = re.compile(r"^(\d+)%?$")
+
+
+def parse_propensity(value: str) -> int | None:
+    """Parse a propensity percentage string to an integer (0-100) or None.
+
+    Handles values like "77%", "42", "0%", "100".  Non-numeric strings
+    ("Not Eligible", "High", "N/A"), empty strings, and out-of-range
+    numbers (>100) all return None.
+    """
+    if not value or not value.strip():
+        return None
+    match = _PROPENSITY_RE.match(value.strip())
+    if match:
+        score = int(match.group(1))
+        return score if 0 <= score <= 100 else None
+    return None
+
+
+def normalize_phone(value: str) -> str | None:
+    """Normalize a phone number string to 10 US digits, or return None.
+
+    Strips all non-digit characters, handles the leading US country
+    code "1" for 11-digit results, and validates the final result is
+    exactly 10 digits.
+    """
+    if not value or not value.strip():
+        return None
+    digits = re.sub(r"\D", "", value)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    return digits if len(digits) == 10 else None
+
+
+_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")
+_VOTED_VALUES = frozenset({"Y", "A", "E"})
+
+
+def parse_voting_history(row: dict[str, str]) -> list[str]:
+    """Extract voting history entries from an L2 row dict.
+
+    Scans keys for ``General_YYYY`` / ``Primary_YYYY`` patterns.  If the
+    corresponding value (stripped, uppercased) is Y, A, or E the key is
+    included in the returned sorted list.
+    """
+    history: list[str] = []
+    for col, val in row.items():
+        if _VOTING_HISTORY_RE.match(col) and val.strip().upper() in _VOTED_VALUES:
+            history.append(col)
+    return sorted(history)
+
 
 # Canonical field names that exist as columns on the Voter model
 _VOTER_COLUMNS: set[str] = {

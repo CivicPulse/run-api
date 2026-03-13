@@ -109,3 +109,52 @@ class TestSuggestFieldMapping:
         assert result["state"] == "registration_state"
         assert result["zip_code"] == "registration_zip"
         assert result["county"] == "registration_county"
+
+    def test_l2_expanded_aliases(self):
+        """L2 official column headers map to canonical fields."""
+        # Test L2 propensity aliases
+        result = suggest_field_mapping(["General_Turnout_Score"])
+        assert result["General_Turnout_Score"] == "propensity_general"
+
+        result = suggest_field_mapping(["Primary_Turnout_Score"])
+        assert result["Primary_Turnout_Score"] == "propensity_primary"
+
+        # Test L2 mailing aliases
+        result = suggest_field_mapping(["Mail_VAddressLine1"])
+        assert result["Mail_VAddressLine1"] == "mailing_line1"
+
+        result = suggest_field_mapping(["Mail_VCity"])
+        assert result["Mail_VCity"] == "mailing_city"
+
+        result = suggest_field_mapping(["Mail_VState"])
+        assert result["Mail_VState"] == "mailing_state"
+
+        result = suggest_field_mapping(["Mail_VZip"])
+        assert result["Mail_VZip"] == "mailing_zip"
+
+        # Test L2 household aliases
+        result = suggest_field_mapping(["Voters_HHId"])
+        assert result["Voters_HHId"] == "household_id"
+
+        result = suggest_field_mapping(["Voters_FamilyId"])
+        assert result["Voters_FamilyId"] == "family_id"
+
+        # Test L2 demographic aliases
+        result = suggest_field_mapping(["CommercialData_MaritalStatus"])
+        assert result["CommercialData_MaritalStatus"] == "marital_status"
+
+    def test_cell_phone_maps_to_special_field(self):
+        """Voters_CellPhoneFull maps to __cell_phone special field."""
+        result = suggest_field_mapping(["Voters_CellPhoneFull"])
+        assert result["Voters_CellPhoneFull"] == "__cell_phone"
+
+    def test_cell_phone_not_in_voter_columns(self):
+        """__cell_phone is NOT in _VOTER_COLUMNS (routes to VoterPhone, not Voter)."""
+        from app.services.import_service import _VOTER_COLUMNS
+
+        assert "__cell_phone" not in _VOTER_COLUMNS
+
+    def test_unmapped_l2_commercial_field(self):
+        """Unmapped L2 commercial fields return None."""
+        result = suggest_field_mapping(["CommercialData_EstimatedHHIncomeAmount"])
+        assert result["CommercialData_EstimatedHHIncomeAmount"] is None
