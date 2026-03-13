@@ -15,10 +15,10 @@ class VoterFilter(BaseModel):
     party: str | None = None
     parties: list[str] | None = None
     precinct: str | None = None
-    city: str | None = None
-    state: str | None = None
-    zip_code: str | None = None
-    county: str | None = None
+    registration_city: str | None = None
+    registration_state: str | None = None
+    registration_zip: str | None = None
+    registration_county: str | None = None
     congressional_district: str | None = None
     age_min: int | None = None
     age_max: int | None = None
