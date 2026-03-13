@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { useCallList, useCallListEntries, useAppendFromList } from "@/hooks/useCallLists"
+import { useMembers } from "@/hooks/useMembers"
 import { useVoterLists } from "@/hooks/useVoterLists"
 import { useFormGuard } from "@/hooks/useFormGuard"
 import { DataTable } from "@/components/shared/DataTable"
@@ -29,7 +30,32 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Phone } from "lucide-react"
 import type { CallListEntry } from "@/types/call-list"
+import type { CampaignMember } from "@/types/campaign"
 import type { ColumnDef } from "@tanstack/react-table"
+
+type StatusVariant = "default" | "success" | "warning" | "error" | "info"
+const roleVariant: Record<string, StatusVariant> = {
+  owner: "info",
+  admin: "success",
+  manager: "warning",
+  volunteer: "default",
+  viewer: "default",
+}
+
+function resolveCallerName(
+  membersById: Map<string, CampaignMember>,
+  userId: string,
+): string {
+  const member = membersById.get(userId)
+  return member ? member.display_name : `${userId.slice(0, 12)}...`
+}
+
+function resolveCallerRole(
+  membersById: Map<string, CampaignMember>,
+  userId: string,
+): string | null {
+  return membersById.get(userId)?.role ?? null
+}
 
 const STATUS_LABELS: Record<string, string> = {
   available: "Unclaimed",
@@ -162,6 +188,16 @@ function CallListDetailPage() {
     selectedStatus === "all" ? undefined : selectedStatus,
   )
 
+  const { data: membersData } = useMembers(campaignId)
+
+  const membersById = useMemo(() => {
+    const map = new Map<string, CampaignMember>()
+    for (const m of membersData?.items ?? []) {
+      map.set(m.user_id, m)
+    }
+    return map
+  }, [membersData])
+
   const entries = entriesData?.items ?? []
 
   // Compute per-status counts from loaded entries
@@ -203,11 +239,29 @@ function CallListDetailPage() {
     {
       id: "assigned_caller",
       header: "Assigned Caller",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.claimed_by ?? "—"}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const claimedBy = row.original.claimed_by
+        if (!claimedBy) {
+          return <span className="text-muted-foreground">--</span>
+        }
+        const member = membersById.get(claimedBy)
+        if (!member) {
+          return (
+            <span className="text-muted-foreground">
+              {claimedBy.slice(0, 12)}...
+            </span>
+          )
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <span>{member.display_name}</span>
+            <StatusBadge
+              status={member.role}
+              variant={roleVariant[member.role] ?? "default"}
+            />
+          </div>
+        )
+      },
     },
   ]
 
