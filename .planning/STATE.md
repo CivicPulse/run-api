@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 ## Current Position
 
-Phase: 21 of 21 (Integration Polish)
+Phase: 22 of 22 (Final Integration Fixes)
 Plan: 1 of 1
 Status: complete
-Last activity: 2026-03-12 — Completed 21-01 (Integration Polish - DNC reason + session call list names)
+Last activity: 2026-03-13 — Completed 22-01 (Final Integration Fixes - claimed_by resolution + DNC RequireRole gates)
 
 Progress: [██████████] 100%
 
@@ -88,6 +88,7 @@ Progress: [██████████] 100%
 | Phase 20-caller-picker-ux P01 | 165 | 2 tasks | 1 files |
 | Phase 20-caller-picker-ux P02 | 16 | 2 tasks | 1 files |
 | Phase 21-integration-polish P01 | 291 | 3 tasks | 12 files |
+| Phase 22-final-integration-fixes P01 | 303 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,8 @@ Progress: [██████████] 100%
 - [Phase 21]: DNC import reason sent as searchParams query parameter alongside FormData body
 - [Phase 21]: Sessions index removes useCallLists lookup in favor of backend call_list_name enrichment
 - [Phase 21]: SessionDialog retains useCallLists for call list selector dropdown -- only SessionsPage lookup removed
+- [Phase 22]: membersById kept inline in component (not extracted to shared hook) -- only 3 usages across codebase
+- [Phase 22]: Remove column uses spread pattern with isManager flag (not RequireRole in cell) -- hides entire column including header
 
 ### Pending Todos
 
@@ -203,6 +206,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-13T13:35:08.683Z
-Stopped at: Phase 22 context gathered
-Resume file: .planning/phases/22-final-integration-fixes/22-CONTEXT.md
+Last session: 2026-03-13T13:54:13Z
+Stopped at: Completed 22-01-PLAN.md
+Resume file: .planning/phases/22-final-integration-fixes/22-01-SUMMARY.md
