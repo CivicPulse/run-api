@@ -92,12 +92,12 @@ Plans:
   3. Importing an L2 CSV file with propensity percentage columns ("77%", "Not Eligible") stores the correct integer values (77, NULL) in the propensity columns
   4. Re-importing the same L2 file updates existing voters and phone records without creating duplicates (idempotent upsert)
   5. The upsert SET clause includes all model columns regardless of which columns appear in the first batch row (no silent column omission)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 24-01: TBD
-- [ ] 24-02: TBD
-- [ ] 24-03: TBD
+- [ ] 24-01-PLAN.md — Utility functions (parse_propensity, normalize_phone, parse_voting_history), CANONICAL_FIELDS expansion with L2 aliases and __cell_phone
+- [ ] 24-02-PLAN.md — Alembic migration 007 (phones_created column, L2 template update), ImportJob model/schema updates
+- [ ] 24-03-PLAN.md — Core pipeline modifications: SET clause fix, RETURNING clause, VoterPhone creation, voting history/propensity parsing wired into apply_field_mapping and process_csv_batch
 
 ### Phase 25: Filter Builder & Query Enhancement
 **Goal**: Users can filter voters by propensity score ranges, demographic attributes, and mailing address fields using the existing composable filter system
@@ -159,6 +159,6 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 21. Integration Polish | v1.2 | 1/1 | Complete | 2026-03-12 |
 | 22. Final Integration Fixes | v1.2 | 1/1 | Complete | 2026-03-13 |
 | 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
-| 24. Import Pipeline Enhancement | v1.3 | 0/TBD | Not started | - |
+| 24. Import Pipeline Enhancement | v1.3 | 0/3 | Not started | - |
 | 25. Filter Builder & Query Enhancement | v1.3 | 0/TBD | Not started | - |
 | 26. Frontend Updates | v1.3 | 0/TBD | Not started | - |
