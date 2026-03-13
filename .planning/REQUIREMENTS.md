@@ -74,39 +74,39 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VMOD-01 | — | Pending |
-| VMOD-02 | — | Pending |
-| VMOD-03 | — | Pending |
-| VMOD-04 | — | Pending |
-| VMOD-05 | — | Pending |
-| VMOD-06 | — | Pending |
-| VMOD-07 | — | Pending |
-| VMOD-08 | — | Pending |
-| VMOD-09 | — | Pending |
-| VMOD-10 | — | Pending |
-| IMPT-01 | — | Pending |
-| IMPT-02 | — | Pending |
-| IMPT-03 | — | Pending |
-| IMPT-04 | — | Pending |
-| IMPT-05 | — | Pending |
-| IMPT-06 | — | Pending |
-| IMPT-07 | — | Pending |
-| FILT-01 | — | Pending |
-| FILT-02 | — | Pending |
-| FILT-03 | — | Pending |
-| FILT-04 | — | Pending |
-| FILT-05 | — | Pending |
-| FRNT-01 | — | Pending |
-| FRNT-02 | — | Pending |
-| FRNT-03 | — | Pending |
-| FRNT-04 | — | Pending |
-| FRNT-05 | — | Pending |
+| VMOD-01 | Phase 23 | Pending |
+| VMOD-02 | Phase 23 | Pending |
+| VMOD-03 | Phase 23 | Pending |
+| VMOD-04 | Phase 23 | Pending |
+| VMOD-05 | Phase 23 | Pending |
+| VMOD-06 | Phase 23 | Pending |
+| VMOD-07 | Phase 23 | Pending |
+| VMOD-08 | Phase 23 | Pending |
+| VMOD-09 | Phase 23 | Pending |
+| VMOD-10 | Phase 23 | Pending |
+| IMPT-01 | Phase 24 | Pending |
+| IMPT-02 | Phase 24 | Pending |
+| IMPT-03 | Phase 24 | Pending |
+| IMPT-04 | Phase 24 | Pending |
+| IMPT-05 | Phase 24 | Pending |
+| IMPT-06 | Phase 24 | Pending |
+| IMPT-07 | Phase 24 | Pending |
+| FILT-01 | Phase 25 | Pending |
+| FILT-02 | Phase 25 | Pending |
+| FILT-03 | Phase 25 | Pending |
+| FILT-04 | Phase 25 | Pending |
+| FILT-05 | Phase 25 | Pending |
+| FRNT-01 | Phase 26 | Pending |
+| FRNT-02 | Phase 26 | Pending |
+| FRNT-03 | Phase 26 | Pending |
+| FRNT-04 | Phase 26 | Pending |
+| FRNT-05 | Phase 26 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after initial definition*
+*Last updated: 2026-03-13 after roadmap creation*
