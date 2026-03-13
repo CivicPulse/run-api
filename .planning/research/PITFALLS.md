@@ -1,393 +1,402 @@
-# Pitfalls Research: Full UI Coverage (v1.2)
+# Domain Pitfalls: v1.3 Voter Model & Import Enhancement
 
-**Domain:** Adding ~95 CRUD UI pages to existing React + TanStack Router + TanStack Query campaign management app
-**Researched:** 2026-03-10
-**Confidence:** HIGH (patterns verified against existing codebase, TanStack docs, and community best practices)
+**Domain:** Expanding an existing voter model with ~20 new columns, multi-table import pipeline, voting history parsing, propensity score normalization, and sensitive demographic data handling
+**Researched:** 2026-03-13
+**Confidence:** HIGH (analysis based on direct codebase inspection of all affected files)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: TanStack Query Cache Invalidation Breaks at Scale with Deeply Nested Campaign Routes
+Mistakes that cause data corruption, require rewrites, or break existing functionality.
 
-**What goes wrong:**
-With ~95 endpoints all scoped under `/campaigns/$campaignId/...`, mutation callbacks invalidate the wrong data, miss related queries, or over-invalidate causing waterfall refetches. Example: recording a phone bank call outcome should invalidate the call list entry, the session progress stats, and the voter's interaction history -- but the current pattern only invalidates one query key per mutation. As more hooks are added, stale data becomes the default user experience, and pages show outdated counts, phantom entries, or missing updates.
+### Pitfall 1: Upsert SET Clause Derived from First Row Instead of Full Column Set
 
-**Why it happens:**
-The existing codebase already shows the beginning of this problem. In `useTurfs.ts`, `useCreateTurf` invalidates `["turfs", campaignId]` -- but what about the dashboard stats that count turfs? What about walk lists that depend on turf existence? Each hook author only thinks about their immediate data, not the cross-cutting queries that also display it. TanStack Query's `invalidateQueries` uses prefix matching by default (invalidating `["turfs", campaignId]` also invalidates `["turfs", campaignId, turfId]`), which is helpful but only works within the same key namespace. Cross-namespace invalidation (turf mutation invalidating dashboard data) must be explicit and is consistently forgotten.
+**What goes wrong:** The `process_csv_batch` method in `import_service.py` (lines 401-406) dynamically builds the `ON CONFLICT DO UPDATE SET` clause from `valid_voters[0].keys()` -- the keys present in the first valid voter dict of the batch. When adding ~20 new columns, the chance that different rows in a batch have different mapped column sets increases substantially. L2 files with propensity scores, mailing addresses, and demographic fields will have varying column completeness across rows. If row 0 lacks `propensity_score` but row 47 has it, the SET clause will not include `propensity_score` and row 47's score is silently dropped into `extra_data` instead of the typed column, or worse -- the INSERT succeeds with the value but the ON CONFLICT UPDATE path ignores it.
 
-The current hooks also use inconsistent key namespaces: `useFieldOps.ts` uses `["turfs", campaignId]` while `useTurfs.ts` also uses `["turfs", campaignId]` -- these overlap correctly by accident, but with 20+ hook files this will break down.
+**Why it happens:** The current pattern was adequate when all mapped rows had roughly the same shape (the ~20 original fields are present in most voter files). With 40+ potential columns, column sparsity across rows within a single batch becomes the norm, not the exception.
 
-**How to avoid:**
-1. Establish a query key factory pattern at the start of v1.2. Create a single `queryKeys.ts` file that defines all query keys as nested objects:
-   ```typescript
-   export const queryKeys = {
-     voters: {
-       all: (campaignId: string) => ["voters", campaignId] as const,
-       detail: (campaignId: string, voterId: string) => ["voters", campaignId, voterId] as const,
-       interactions: (campaignId: string, voterId: string) => ["voters", campaignId, voterId, "interactions"] as const,
-     },
-     callLists: {
-       all: (campaignId: string) => ["call-lists", campaignId] as const,
-       detail: (campaignId: string, listId: string) => ["call-lists", campaignId, listId] as const,
-       entries: (campaignId: string, listId: string) => ["call-lists", campaignId, listId, "entries"] as const,
-     },
-     dashboard: {
-       stats: (campaignId: string) => ["dashboard", campaignId, "stats"] as const,
-     },
-     // ... all other entities
-   }
+**Consequences:** Partial data on reimport. A campaign imports an L2 file, gets all fields populated. Later they reimport an updated file where some rows have new propensity scores but the first row in a batch does not. The UPDATE clause silently skips the propensity column, and previously-set values are preserved (which is actually OK in that case) -- but the reverse is the real problem: if the first row HAS a column that subsequent rows do NOT have, the SET clause includes it, and rows without that column get `NULL` written over their existing values.
+
+**Prevention:**
+1. Build `update_cols` from `_VOTER_COLUMNS` (the full set of known model columns), not from `valid_voters[0].keys()`.
+2. Ensure `apply_field_mapping` always produces dicts with a consistent key set -- include all `_VOTER_COLUMNS` keys with `None` for unmapped values, rather than omitting them.
+3. Alternatively, exclude columns with `None` values per-row from the SET clause -- but this requires per-row upsert statements (incompatible with batch insert). The consistent-key-set approach is simpler and preserves batch performance.
+
+**Detection:** Write a test importing a batch where row 0 has only core fields and row 1 has propensity scores. Verify row 1's scores land in the typed column, not `extra_data`.
+
+**Phase:** Must be fixed in the model/migration phase, before any import pipeline changes. This is a prerequisite.
+
+---
+
+### Pitfall 2: Multi-Table Import Transaction -- Getting Voter IDs Back for VoterPhone Creation
+
+**What goes wrong:** The current import pipeline fires `session.execute(stmt)` on the voter upsert without `RETURNING`. To auto-create VoterPhone records during import, you need the voter's UUID -- which you do not have for newly inserted rows. The voter_id is server-generated (`default=uuid.uuid4` / `gen_random_uuid()`). Without it, you cannot INSERT into `voter_phones`.
+
+**Why it happens:** The batch `INSERT ... ON CONFLICT DO UPDATE` was designed as a fire-and-forget upsert. VoterPhone creation was not part of the original pipeline.
+
+**Consequences:**
+- Without RETURNING: Cannot create VoterPhone records for newly imported voters. Only re-imported (already existing) voters could get phones via a second query.
+- Naive two-pass (upsert voters, then SELECT all by source_id, then insert phones): Doubles query count per batch, may hit timeouts on large files.
+- If phone INSERT fails mid-batch without savepoints: Either the entire batch rolls back (losing voter upserts) or orphaned voters exist without their phone records.
+
+**Prevention:**
+1. Add `RETURNING id, source_id` to the voter upsert statement. PostgreSQL supports RETURNING on INSERT ... ON CONFLICT DO UPDATE. In SQLAlchemy: `stmt = stmt.returning(Voter.id, Voter.source_id)`.
+2. Execute the upsert and collect the result: `result = await session.execute(stmt); rows = result.fetchall()`.
+3. Build a `source_id -> voter_id` mapping from the returned rows.
+4. Use that mapping to construct a batch VoterPhone INSERT for all phone numbers in the batch.
+5. Wrap the voter upsert + phone insert in the same transaction (which the current session pattern already provides). Use a per-batch savepoint only if you want phone failures to be non-fatal.
+
+**Detection:** Import a file with phone numbers where all voters are new (no existing records). Verify VoterPhone records are created with correct voter_id FK references.
+
+**Phase:** Import pipeline enhancement phase. This is the hardest engineering change in the milestone.
+
+---
+
+### Pitfall 3: VoterPhone Duplicates on Reimport
+
+**What goes wrong:** The `voter_phones` table has no unique constraint on `(voter_id, value)` or `(campaign_id, voter_id, value)`. When the same voter file is reimported (common for data refreshes), the voter upsert correctly updates existing rows via the `(campaign_id, source_type, source_id)` unique index. But VoterPhone INSERTs would create duplicate phone records every time -- the same number appearing 2, 3, N times per voter.
+
+**Why it happens:** VoterPhone was designed for manual entry through the UI, where the user interface prevents duplicates naturally. Batch import bypasses this.
+
+**Consequences:** Duplicate phone numbers per voter. Call list generation queries `voter_phones` and would create multiple call list entries for the same number. DNC filtering that expects one record per number misses duplicates.
+
+**Prevention:**
+1. Add a unique constraint on `voter_phones(campaign_id, voter_id, value)` in the migration.
+2. Use `INSERT ... ON CONFLICT (campaign_id, voter_id, value) DO UPDATE SET type = EXCLUDED.type, source = EXCLUDED.source, updated_at = now()` for phone upserts during import.
+3. This preserves idempotent reimport behavior -- same file imported twice produces the same result.
+
+**Detection:** Import the same file twice. Verify `SELECT count(*) FROM voter_phones WHERE voter_id = X` returns the same count both times.
+
+**Phase:** Same phase as VoterPhone auto-creation. The unique constraint must be in the migration.
+
+---
+
+### Pitfall 4: Voting History Normalization Breaks Existing Filters and Saved Lists
+
+**What goes wrong:** The existing `voting_history` column is `ARRAY(String)` containing election identifiers. The frontend `VoterFilterBuilder` (line 38-39) generates year strings ("2026", "2025", ...) as filter values. The backend `build_voter_query` (lines 77-87) uses `Voter.voting_history.contains([election])` for array containment. If L2 voting history columns are parsed into entries like `"General_2024_11_05"` or `"Primary_2022_05_24"`, they will NOT match existing year-only filter values like `"2024"`. All existing dynamic voter lists with `voted_in` filters silently return wrong results.
+
+**Why it happens:** L2 files encode voting history as separate columns: `General_2024`, `Primary_2022_06_28`, `Municipal_2023`. The column name IS the election identifier. There is no single standard format across states. Without an explicit normalization strategy, parsed values vary in format.
+
+**Consequences:**
+- Saved dynamic voter lists (stored as `filter_query` JSONB on `voter_lists` table) with `voted_in: ["2024"]` stop matching voters whose history now contains `"General_2024"` instead of `"2024"`.
+- Frontend voting history checkboxes (year-based) no longer correspond to actual array values.
+- Breaking change for existing campaigns that already have voting history data.
+
+**Prevention:**
+1. Define a canonical election identifier format now: `"{Type}_{Year}"` (e.g., `"General_2024"`, `"Primary_2022"`).
+2. Parse L2 column names: `"General_2024_11_05"` -> extract type (`General`) and year (`2024`) -> store `"General_2024"`.
+3. Update the backend `build_voter_query` to support BOTH formats: year-only (`"2024"`) should match any election in that year. Use a LIKE or regex check: `voting_history @> ARRAY['General_2024']` for exact match, or use `ANY(voting_history) LIKE '%_2024'` for year-based filter.
+4. Update the frontend filter to show election type + year rather than just year. Fetch available election identifiers from the backend (aggregated from actual data) instead of hardcoding year ranges.
+5. Provide backward compatibility: if a saved filter has `voted_in: ["2024"]`, interpret it as "any election in 2024."
+
+**Detection:** Import an L2 file with voting history columns. Apply an existing year-based filter. Verify results include voters with the new format.
+
+**Phase:** Voting history parsing must be its own focused sub-phase with explicit format specification agreed upon BEFORE implementation.
+
+---
+
+### Pitfall 5: Alembic Migration -- Non-Nullable Column on Table with Existing Data
+
+**What goes wrong:** Adding a column with `nullable=False` and no `server_default` to the `voters` table will fail immediately if the table has existing rows, because PostgreSQL cannot satisfy the NOT NULL constraint for existing rows.
+
+**Why it happens:** Copy-paste from a model definition that uses `Mapped[str]` (non-nullable in SQLAlchemy 2.0) instead of `Mapped[str | None]` (nullable). Or a Pydantic schema field that says `str` getting unconsciously mirrored in the model.
+
+**Consequences:** Migration fails on any database with existing voter records. In production, this means a failed deployment. If Alembic is not configured with transactional DDL, the migration can be half-applied.
+
+**Prevention:**
+1. ALL new columns MUST be `nullable=True`. The existing pattern uses `Mapped[str | None]` consistently -- follow it.
+2. No `server_default` is needed for nullable columns (but will not cause harm if present).
+3. Test the migration against the Macon-Bibb demo dataset before merging.
+4. Write a single migration file for all new columns, not separate migrations per column.
+
+**Detection:** Run `alembic upgrade head` against a seeded database. If it succeeds, the constraint is satisfied.
+
+**Phase:** First phase (model + migration). Must be verified before any subsequent work.
+
+---
+
+## Moderate Pitfalls
+
+### Pitfall 6: Propensity Score Parsing -- "77%" vs "Not Eligible" vs Empty String
+
+**What goes wrong:** L2 propensity scores are string values: `"77%"`, `"45%"`, `"Not Eligible"`, `"N/A"`, `""`, `"0%"`. Storing as `String` makes numeric filtering impossible (cannot query "propensity > 60"). Storing as `Integer` loses the "Not Eligible" semantic. Naive `int("77%".rstrip("%"))` crashes on `"Not Eligible"`.
+
+**Why it happens:** Vendor data mixes numeric values with categorical status strings in the same column. No parsing is applied -- the raw value goes straight to the database.
+
+**Prevention:**
+1. Store as `Integer` (0-100 range), nullable. `NULL` means unknown or not eligible.
+2. Create a dedicated `parse_propensity(raw: str) -> int | None` function:
+   - Strip whitespace, strip `%` suffix.
+   - Try `int()` conversion. If it succeeds and is 0-100, return the value.
+   - If conversion fails or value is out of range, return `None`.
+   - Log non-numeric values (like "Not Eligible") to the import error/warning report for transparency.
+3. Test the parser with a matrix: `"77%"` -> 77, `"0%"` -> 0, `"100"` -> 100, `""` -> None, `"Not Eligible"` -> None, `"N/A"` -> None, `"  45 %  "` -> 45.
+
+**Phase:** Model phase (column type decision) and import parsing phase (parser function).
+
+---
+
+### Pitfall 7: Mailing Address -- Inline Columns vs. VoterAddress Table
+
+**What goes wrong:** The Voter model already has inline residential address fields (`address_line1` through `zip_code`). The `VoterAddress` table also exists for multi-address support. Adding mailing address creates a design fork: (a) add `mail_address_line1`, `mail_city`, `mail_state`, `mail_zip_code` as inline columns on Voter (6 new columns), or (b) insert a row into `voter_addresses` with `type='mailing'`. If the wrong choice is made, either the import pipeline becomes significantly more complex (option b -- now touching THREE tables per batch) or the data model becomes denormalized in a way that requires maintaining two address patterns (option a).
+
+**Why it happens:** The original design put the primary residential address inline on the Voter model for query convenience, then also created the VoterAddress table for extensibility. This dual pattern was not harmful before, but mailing address forces a choice.
+
+**Prevention:** Use inline columns on the Voter model because:
+- The import pipeline already handles flat column -> Voter model mapping. No new table writes needed.
+- Filtering on mailing state/zip is a simple WHERE clause, not a JOIN.
+- Campaigns need at most 2 addresses (residential + mailing). The VoterAddress table can remain for any future address types.
+- Prefix all mailing columns: `mail_address_line1`, `mail_address_line2`, `mail_city`, `mail_state`, `mail_zip_code`.
+
+**Phase:** Model definition phase. This is a design decision that must be made before writing the migration.
+
+---
+
+### Pitfall 8: CANONICAL_FIELDS and _VOTER_COLUMNS Drift from Voter Model
+
+**What goes wrong:** The import service maintains two hardcoded data structures: `CANONICAL_FIELDS` (50+ aliases mapping to canonical column names) and `_VOTER_COLUMNS` (set of 23 valid Voter model column names). Adding ~20 new columns means updating BOTH. Forgetting to add a column to `_VOTER_COLUMNS` means mapped values silently go to `extra_data` instead of the typed column. Forgetting to add aliases to `CANONICAL_FIELDS` means CSV columns with standard names (like `"MilitaryStatus"`) do not auto-map.
+
+**Why it happens:** Two manually-maintained lists that must stay synchronized with the model. No automated validation.
+
+**Prevention:**
+1. Derive `_VOTER_COLUMNS` from the Voter model at import time rather than hardcoding:
+   ```python
+   _EXCLUDED = {"id", "campaign_id", "created_at", "updated_at", "geom"}
+   _VOTER_COLUMNS = {c.key for c in Voter.__table__.columns} - _EXCLUDED
    ```
-2. Define an invalidation map that documents which mutations should invalidate which queries. For example, `recordCallOutcome` should invalidate `callLists.entries`, `dashboard.stats`, and `voters.interactions`.
-3. Never use string literals in `queryKey` or `invalidateQueries` calls -- always reference the factory. This makes key typos a compile-time error.
-4. Use `isMutating()` checks in `onSettled` callbacks to prevent premature invalidation when multiple mutations are in flight (the TkDodo pattern).
+2. Add a test that asserts every key in `CANONICAL_FIELDS` is also in `_VOTER_COLUMNS`: `assert set(CANONICAL_FIELDS.keys()).issubset(_VOTER_COLUMNS | {"source_id"})`.
+3. Add L2-specific aliases for every new field. L2 column names are documented and predictable.
 
-**Warning signs:**
-- Dashboard counts not updating after creating/deleting entities in sub-pages
-- Users need to manually refresh to see changes made on other tabs
-- Different parts of the same page showing inconsistent data
-- More than 3 inline `queryKey` string arrays per hook file
-
-**Phase to address:**
-Phase 1 (Shared Infrastructure). The query key factory and invalidation map must be established before any CRUD pages are built. Retrofitting consistent keys onto 20+ hook files is error-prone.
+**Phase:** Import enhancement phase. But the derive-from-model change should happen first in the model phase since it eliminates the manual sync requirement entirely.
 
 ---
 
-### Pitfall 2: Pre-Signed URL File Upload with No Progress, No Error Recovery, No Size Validation
+### Pitfall 9: Ethnicity -- "Likely" Prefix Makes Filtering Miss Records
 
-**What goes wrong:**
-The import flow uses pre-signed URLs for direct-to-S3 upload (the backend returns `upload_url` from `POST /imports`). A naive implementation starts the upload, shows a spinner, and hopes for the best. Large CSV files (50-500MB voter files) upload for minutes with no progress indicator, users close the tab thinking it froze, the pre-signed URL expires mid-upload, or the browser runs out of memory trying to validate the file client-side before upload. Non-UTF-8 encoded files upload successfully but produce garbage data during import processing.
+**What goes wrong:** L2 ethnicity values include a qualifier prefix: `"Likely African-American"`, `"Likely Hispanic and Portuguese"`, `"East and South Asian"`, `"European"`. If stored as-is in the existing `ethnicity` column (`String(100)`), a filter for `ethnicity = "African-American"` returns zero results because no record has exactly that value -- they all have `"Likely African-American"`.
 
-**Why it happens:**
-The backend API is correctly designed for this (returns `upload_url` and `file_key`, then the client calls `/detect` after upload). But the frontend implementation often treats upload as a single `fetch()` call with no progress tracking. The `ky` HTTP client used in this project does support `onDownloadProgress` but does NOT support `onUploadProgress` for streamed uploads -- this is a known limitation. Pre-signed URLs have a default TTL (often 15 minutes), and large files on slow connections can exceed this. CSV encoding issues (Windows-1252, Latin-1) are invisible until the backend tries to parse the file.
+**Why it happens:** The frontend or API filter sends a normalized category name, but the stored value includes the vendor's qualifier prefix. No normalization layer exists.
 
-**How to avoid:**
-1. Use the raw `XMLHttpRequest` or `fetch` with `ReadableStream` for the actual S3 upload (not `ky`), since `ky` lacks upload progress events. Wrap it in a custom `useUpload` hook that tracks `xhr.upload.onprogress`.
-2. Validate file size client-side before requesting the pre-signed URL. Reject files over 500MB with a clear message. Validate file extension (.csv, .tsv, .txt).
-3. Read the first 8KB of the file client-side using `FileReader` to detect encoding. If it is not UTF-8, show a warning and offer to re-encode or reject.
-4. Show a progress bar with percentage, bytes uploaded, and estimated time remaining during upload.
-5. Handle pre-signed URL expiry: if the upload takes longer than 10 minutes, request a new pre-signed URL before the old one expires. Alternatively, use multipart upload for files over 100MB.
-6. Implement a cancel button that aborts the `XMLHttpRequest` and cleans up the import job.
-7. On upload failure (network error, URL expiry), offer a retry button that requests a fresh pre-signed URL and resumes or restarts.
+**Prevention:**
+1. Store the raw vendor value in the existing `ethnicity` column for display purposes.
+2. Optionally add an `ethnicity_category` column with normalized categories: strip `"Likely "` prefix, map compound values to primary category.
+3. Or: Normalize on storage -- strip the `"Likely "` prefix before saving. Since the `"Likely"` qualifier applies to nearly all L2 ethnicity values, it adds no information value for campaign operations.
+4. Use `ILIKE` or case-insensitive matching in the filter builder rather than exact match.
 
-**Warning signs:**
-- Upload UI shows only a spinner with no percentage
-- No file size check before upload begins
-- Using `ky` or `fetch` for the S3 PUT with no progress callback
-- Import wizard does not handle the case where the user closes the browser mid-upload
-- No encoding detection or preview of the first few rows
-
-**Phase to address:**
-Phase 2 (Voter Import Wizard). This is the most complex single feature in v1.2. The upload UX must be designed with large files in mind from the start -- bolting progress tracking onto a finished wizard requires restructuring the upload layer.
+**Phase:** Model phase (decide on normalization strategy) and import parsing phase (apply normalization).
 
 ---
 
-### Pitfall 3: Multi-Step Wizard State Loss on Navigation, Refresh, or Error
+### Pitfall 10: New Filterable Columns Without Indexes
 
-**What goes wrong:**
-The voter import wizard has 4 steps: (1) upload file, (2) detect/review columns, (3) confirm field mapping, (4) monitor processing. Users complete step 1 (which creates a server-side ImportJob and uploads to S3), then accidentally hit the browser back button, navigate to another page, or refresh. All wizard state is lost. They must start over, but the orphaned ImportJob and uploaded file now exist on the server with no client-side reference. Worse: the import job might actually still be processing, and the user starts a duplicate import.
+**What goes wrong:** Adding 20 columns is a metadata-only operation in PostgreSQL (fast). But when the VoterFilterBuilder adds filter dimensions for ethnicity, language, propensity score ranges, etc., queries against a 500K-row voter table without indexes on these columns degrade to sequential scans. The query planner cannot use the existing indexes (which cover campaign_id + party, precinct, zip_code, last_name) for new filter dimensions.
 
-**Why it happens:**
-React component state (useState, useReducer) is destroyed on unmount. Multi-step wizards that store progress in component state lose everything on navigation. The existing app uses TanStack Router with file-based routing, so each route is its own component tree -- navigating away unmounts the entire wizard. Using Zustand for wizard state would survive navigation but not page refresh. Neither approach handles the fundamental problem: the server-side state (ImportJob with status=PENDING/UPLOADED) exists independently of the client.
+**Why it happens:** The column addition migration is focused on schema changes, not performance. Index planning is deferred and forgotten.
 
-**How to avoid:**
-1. Design the wizard as a server-state-driven flow, not a client-state-driven flow. The `ImportJob` record IS the wizard state. Each step updates the server-side job status (PENDING -> UPLOADED -> QUEUED -> PROCESSING -> COMPLETED).
-2. On the import page, first check for any in-progress import jobs (call `GET /imports?status=pending,uploaded`). If one exists, resume it at the appropriate step instead of starting fresh.
-3. Store the current import job ID in the URL (e.g., `/campaigns/$campaignId/voters/import/$importId`). This makes wizard state survive refresh and is shareable.
-4. Use TanStack Query to fetch the import job status at each step. The wizard step is derived from the job status, not from client-side step counter.
-5. Add a "Cancel Import" action that deletes the server-side ImportJob and uploaded file if the user wants to start over.
-6. Use TanStack Router's `useBlocker` hook to warn users when navigating away from an in-progress import (steps 1-3). Do NOT block navigation after step 4 (monitoring), since the import runs independently.
+**Prevention:**
+1. Add composite indexes ONLY for columns that will appear in `build_voter_query` filter conditions:
+   - `(campaign_id, ethnicity_category)` -- if ethnicity filtering is implemented.
+   - `(campaign_id, language)` -- if language filtering is implemented.
+2. Do NOT add indexes for every new column. Columns that are display-only (like `mail_city`) do not need indexes.
+3. For propensity scores (numeric range queries on `Integer` columns), a standard B-tree index on `(campaign_id, propensity_score)` is sufficient. BRIN indexes only help if data is physically ordered, which voter data is not.
 
-**Warning signs:**
-- Wizard state stored entirely in useState or Zustand with no server-side persistence
-- No check for existing in-progress imports on page load
-- Import job ID not in the URL
-- No cancel/cleanup mechanism for abandoned imports
-- Users reporting duplicate imports or "stuck" import jobs
-
-**Phase to address:**
-Phase 2 (Voter Import Wizard). This architecture decision must be made before building the wizard UI. A client-state wizard that gets retroactively connected to server state is messy.
+**Phase:** Migration phase. Add indexes in the same migration as columns.
 
 ---
 
-### Pitfall 4: Phone Banking Claim-on-Fetch Race Conditions Creating Duplicate Calls or Lost Work
+### Pitfall 11: L2 System Mapping Template Not Updated
 
-**What goes wrong:**
-Multiple callers working the same call list simultaneously. Caller A claims 5 entries, starts calling. Caller A's browser goes idle for 20 minutes (claim timeout is configurable via `claim_timeout_minutes`). The server releases Caller A's stale claims. Caller B claims those same entries and starts calling the same voters. Caller A returns, still sees the old entries in their UI, and records outcomes against entries that are now claimed by Caller B. The backend may accept Caller A's outcome recording (since the entry exists), creating conflicting records, or reject it, causing Caller A to lose their work.
+**What goes wrong:** The L2 field mapping template was seeded in migration `002b` via an INSERT with a JSONB mapping of 22 L2 column names to voter model fields. Adding ~20 new columns means the L2 mapping needs ~20 new entries (e.g., `"MilitaryStatus" -> "military_status"`, `"CommercialData_EstimatedHHIncome" -> "estimated_hh_income"`, `"Mail_Addresses_City" -> "mail_city"`). If the template is not updated, L2 imports will map the old 22 fields but put all new fields into `extra_data`.
 
-**Why it happens:**
-The backend correctly implements `SELECT ... FOR UPDATE SKIP LOCKED` for claim atomicity, and releases stale claims based on `claim_timeout_minutes`. But the frontend has no awareness of claim expiry. The UI shows claimed entries indefinitely without checking if the claims are still valid. There is no heartbeat or periodic re-validation. The `ky` client retries on 408/429/500 but does not distinguish between "entry no longer claimed by you" (409 Conflict) and other errors.
+**Why it happens:** The system template is baked into a migration. There is no mechanism to update it outside of writing a new migration.
 
-**How to avoid:**
-1. Track claim timestamps on the frontend. When the caller claims entries, store `claimed_at` and `claim_timeout_minutes`. Show a countdown timer per entry and auto-release (re-claim or warn) before server-side timeout triggers.
-2. Implement a claim heartbeat: periodically (every 60 seconds) call a lightweight endpoint or re-verify claimed entries are still assigned to the current user. If claims were released, show a prominent warning.
-3. When recording an outcome, handle 409 Conflict specifically: show "This entry was reclaimed by another caller" with the option to save notes locally and skip to the next entry.
-4. Add optimistic locking: include `claimed_at` timestamp in the outcome recording request. The backend rejects if `claimed_at` does not match (meaning the entry was released and reclaimed).
-5. Auto-claim the next batch of entries before the current batch is exhausted (prefetch pattern). When the caller is on entry 3 of 5, claim the next 5. This prevents downtime between batches.
-6. Disable the call UI for entries whose claim has expired on the client side. Do not let the user interact with expired claims.
+**Prevention:**
+1. Write an UPDATE statement in the new migration that replaces the L2 template's `mapping` JSONB with the expanded mapping.
+2. Use `UPDATE field_mapping_templates SET mapping = :new_mapping WHERE is_system = true AND source_type = 'l2'`.
+3. Include ALL new L2 column name -> model field mappings.
 
-**Warning signs:**
-- No timer or expiry indicator on claimed call list entries
-- Users reporting "I called that person already" from another caller
-- Outcome recording failing silently or with generic error messages
-- No handling of 409 status code in the phone banking hooks
-- No periodic claim validation or heartbeat
-
-**Phase to address:**
-Phase 4 (Phone Banking UI). The calling experience is the highest-stakes real-time UI in the entire app. Claim management UX must be designed alongside the backend's SKIP LOCKED pattern, not as an afterthought.
+**Phase:** Migration phase, same migration file that adds new columns.
 
 ---
 
-### Pitfall 5: Permission-Gated UI Becomes an Unmaintainable Spaghetti of Role Checks
+### Pitfall 12: `extra_data` Contains Data That Should Now Be in First-Class Columns
 
-**What goes wrong:**
-The backend enforces 5 roles (owner, admin, manager, volunteer, viewer) per endpoint via `require_role()`. The frontend starts with `if (userRole === 'admin' || userRole === 'owner')` scattered through every component. With 95 endpoints mapped to UI, this creates hundreds of inline role checks. Role definitions change (add a "coordinator" role), and 40 components need updating. Worse: the frontend role checks drift from backend enforcement, so buttons appear that return 403 when clicked, or buttons are hidden that the user actually has access to.
+**What goes wrong:** Previously imported voter files put propensity scores, detailed ethnicity, language, military status, etc. into the `extra_data` JSONB blob because no typed columns existed. After adding first-class columns, these old records have data in `extra_data` but NULL in the new columns. Queries filtering on the new columns miss all previously imported voters. The campaign has 200K voters imported last week -- all with empty propensity scores in the new column, but valid scores in `extra_data.propensity_score`.
 
-**Why it happens:**
-The existing app has NO permission system on the frontend. The auth store tracks `user` and `isAuthenticated` but not `role` or permissions. Campaign member roles come from ZITADEL (the `members.py` endpoint even returns a hardcoded `role="member"` since real roles come from ZITADEL claims). The JWT token contains ZITADEL roles, but these are not parsed or exposed to the React components. Without a central permission system, each developer improvises their own role checking.
+**Why it happens:** Schema migration adds columns. Data migration (copying from JSONB to typed columns) is a separate step that is easy to forget or defer.
 
-**How to avoid:**
-1. Parse ZITADEL campaign roles from the JWT token or fetch them via the members API on campaign load. Store the current user's role for the active campaign in a Zustand store or React context scoped to the campaign layout.
-2. Create a permission map (not individual role checks) that maps actions to minimum required roles:
-   ```typescript
-   const permissions = {
-     'imports:create': ['admin', 'owner'],
-     'call-lists:create': ['manager', 'admin', 'owner'],
-     'shifts:signup': ['volunteer', 'manager', 'admin', 'owner'],
-     'members:list': ['viewer', 'volunteer', 'manager', 'admin', 'owner'],
-   } as const
+**Prevention:**
+1. Write a data migration step (in the same or a follow-up migration) that copies known keys from `extra_data` into the new typed columns:
+   ```sql
+   UPDATE voters SET propensity_score = (extra_data->>'propensity_score')::integer
+   WHERE extra_data ? 'propensity_score' AND propensity_score IS NULL;
    ```
-3. Build a single `usePermission(action: string)` hook and a `<CanDo action="imports:create">` wrapper component. All role checks go through these -- never inline role string comparisons.
-4. The permission map is the single source of truth. When roles change, update one file.
-5. Always let the backend be the ultimate authority. If a user somehow reaches a button they should not see, the backend still returns 403. The frontend permission system is a UX optimization (hide unavailable actions), not a security mechanism.
-6. Provide graceful degradation: do not hide entire pages from lower-role users. Instead, show the page in read-only mode with disabled action buttons and a tooltip explaining "Manager role required."
+2. Apply the same propensity/ethnicity parsing logic to the data migration that the import pipeline uses -- do not just copy raw strings if the new column expects parsed values.
+3. Optionally remove migrated keys from `extra_data` to avoid confusion: `UPDATE voters SET extra_data = extra_data - 'propensity_score'`.
+4. This only matters for campaigns that have already imported L2 files with these fields. If no campaigns have imported yet, skip the data migration.
 
-**Warning signs:**
-- Inline `role === 'admin'` checks in component files
-- Buttons that show up but return 403 when clicked
-- No `usePermission` or `<CanDo>` abstraction in the codebase
-- User role not available in the campaign layout context
-- Different pages checking the same permission differently
-
-**Phase to address:**
-Phase 1 (Shared Infrastructure). The permission system must exist before any CRUD pages are built. Every page needs it, and retrofitting requires touching every component.
+**Phase:** Post-schema-migration step. Can be a management command or a separate Alembic migration.
 
 ---
 
-### Pitfall 6: Form-Heavy Pages with No Dirty State Tracking, No Unsaved Changes Warning, No Optimistic Updates
+## Minor Pitfalls
 
-**What goes wrong:**
-v1.2 adds dozens of create/edit forms: voters, volunteers, shifts, call lists, DNC entries, campaign settings, survey scripts, etc. Users fill out a complex form, accidentally click a sidebar link, and lose all their work. Or they submit a form, the API takes 2 seconds, and they see no feedback -- so they click Submit again, creating a duplicate. Or they edit a record, switch to another tab, come back, and the form still shows stale data from 30 minutes ago.
+### Pitfall 13: Pydantic Schema Explosion -- Three Schemas with Identical Field Lists
 
-**Why it happens:**
-The existing forms (e.g., TurfForm.tsx) use React Hook Form + Zod but do not implement navigation blocking. There is no `useBlocker` integration with TanStack Router. The existing `ky` client retries failed requests (including POST mutations), which can create duplicates if the server processes the first request but the client retries before receiving the response. React Hook Form's `isDirty` state is not connected to anything that prevents navigation.
+**What goes wrong:** `VoterResponse`, `VoterCreateRequest`, and `VoterUpdateRequest` all need ~20 new fields. All three currently list every voter field independently. Adding 20 fields to 3 schemas is 60 lines of boilerplate that can drift out of sync.
 
-**How to avoid:**
-1. Create a reusable `useFormGuard` hook that combines React Hook Form's `formState.isDirty` with TanStack Router's `useBlocker`:
-   ```typescript
-   function useFormGuard(isDirty: boolean) {
-     useBlocker({
-       shouldBlockFn: () => isDirty,
-       withResolver: true,
-       enableBeforeUnload: true,
-     })
-   }
-   ```
-2. Apply `useFormGuard` to every form page. Make this a code review checklist item.
-3. Prevent double-submit by disabling the submit button on `isSubmitting` (React Hook Form provides this). Do NOT rely on `ky` retry for mutation endpoints. Remove POST/PUT/PATCH/DELETE from the retry status codes in the `ky` client config, or use mutation idempotency keys.
-4. Implement optimistic updates for simple edits (name changes, status toggles) using TanStack Query's `onMutate` callback. For complex edits (campaign settings with ZITADEL side effects), wait for server confirmation.
-5. On edit pages, refetch the entity data when the page regains focus (`refetchOnWindowFocus: true` is TanStack Query's default -- verify it is not disabled).
-6. For long forms (volunteer profiles with many fields), consider auto-save with debounce (save draft every 5 seconds of inactivity) rather than requiring explicit submit.
+**Prevention:**
+1. Create a `VoterFields` mixin/base with all the optional voter fields.
+2. Have each schema inherit from it: `class VoterResponse(VoterFields, BaseSchema)`, etc.
+3. Or: Write a test that asserts all three schemas have the same voter-related field names (excluding id, campaign_id, timestamps).
 
-**Warning signs:**
-- Forms with no `useBlocker` or `beforeunload` handler
-- Submit button enabled during submission (no `isSubmitting` check)
-- POST endpoints in the `ky` retry config (currently retries on 413, which IS a POST-relevant status)
-- No optimistic updates on any mutation
-- Edit pages not refetching data on window focus
-
-**Phase to address:**
-Phase 1 (Shared Infrastructure) for `useFormGuard` hook and `ky` retry config fix. Every subsequent phase uses it.
+**Phase:** Schema update phase, alongside model changes.
 
 ---
 
-### Pitfall 7: Volunteer Shift Scheduling Ignoring Timezones and Creating Unusable Calendar UIs
+### Pitfall 14: Frontend Type + Filter Interface Mismatch
 
-**What goes wrong:**
-A campaign manager in the Eastern timezone creates a canvassing shift from 9am-12pm. A volunteer in the Central timezone sees it as 9am-12pm (their local time) instead of 8am-11am. They show up an hour late. Or: a shift created on March 8 (before DST spring-forward) for March 10 (after DST) shows the wrong time because the frontend added hours naively instead of using timezone-aware date math. Recurring weekly shifts drift by an hour every DST transition.
+**What goes wrong:** The TypeScript `Voter` interface in `web/src/types/voter.ts` must gain all ~20 new fields. The `VoterFilter` interface must gain new filter dimensions. The `VoterFilterBuilder` component must render new filter controls. If any of these three are out of sync, either data is fetched but not displayed, or filters are shown but do not work.
 
-**Why it happens:**
-The backend stores `start_at` and `end_at` as timestamps (likely UTC in PostgreSQL). JavaScript `Date` objects are UTC internally but display in the browser's local timezone. If the frontend formats shift times without considering the campaign's timezone (or the shift's location timezone), times display incorrectly for users in different timezones. The `Intl.DateTimeFormat` API handles this correctly but only if the timezone is explicitly specified. The existing codebase uses no date formatting library -- dates are likely displayed via `.toLocaleString()` which uses the browser's timezone.
+**Prevention:**
+1. Add all new fields to the `Voter` interface as `type | null`.
+2. Add filter dimensions to `VoterFilter` only for fields that have backend query support in `build_voter_query`.
+3. Do not add a filter UI control without first implementing the backend filter condition.
+4. Use TypeScript strict mode to catch missing fields at compile time.
 
-**How to avoid:**
-1. Add a `timezone` field to campaigns (or infer from jurisdiction). Store it as an IANA timezone string (e.g., "America/New_York").
-2. Always store shift times in UTC on the server. Convert to the campaign's timezone for display, not the browser's timezone. A volunteer in California viewing an Atlanta campaign's shifts should see Eastern times.
-3. Use `date-fns` with `date-fns-tz` (already in the npm ecosystem, no heavy dependencies) for all date formatting and arithmetic. Never use raw `Date` math for adding hours/days.
-4. Display the timezone abbreviation next to all times (e.g., "9:00 AM EST"). This prevents ambiguity.
-5. For shift creation forms, accept times in the campaign's timezone and convert to UTC before sending to the API.
-6. Test DST transitions explicitly: create a shift during DST changeover week and verify the displayed time is correct before and after the transition.
-
-**Warning signs:**
-- No timezone field on campaigns or shifts
-- Date formatting using `.toLocaleString()` without explicit timezone
-- No date-fns or equivalent library in package.json
-- Shift times displayed without timezone indicator
-- No DST transition tests
-
-**Phase to address:**
-Phase 5 (Shift Management UI). But the campaign timezone field should be added in Phase 1 (shared data) or Phase 3 (Campaign Settings), since it affects multiple features.
+**Phase:** UI update phase (final phase). Must exactly match backend schema and filter support.
 
 ---
 
-### Pitfall 8: Voter List Pages That Freeze the Browser at 10K+ Records
+### Pitfall 15: Import Performance Regression from Multi-Table Writes
 
-**What goes wrong:**
-The voter index page renders all returned voters into the DOM. With the existing `useInfiniteQuery` in `useVoters.ts`, users keep scrolling and loading pages. After 50 pages of 100 voters each, there are 5,000 DOM rows rendering simultaneously. The browser becomes sluggish. At 20,000 rows, the tab crashes. But the campaign has 500,000 voters, and campaign staff need to scroll through filtered results that might still be 50K+ records.
+**What goes wrong:** Current import: 1 batch INSERT per 1000 rows (voters only). After changes: 1 batch INSERT for voters + RETURNING, then 1 batch INSERT for phones per batch. This doubles the SQL statements per batch. For a 200K-row file with 200 batches, that is 200 extra INSERT statements. The progress UI (which updates after each batch flush) may appear to stall.
 
-**Why it happens:**
-The existing `useVoters` hook correctly uses `useInfiniteQuery` with cursor-based pagination, but infinite scrolling without virtualization means every loaded page stays in the DOM. TanStack Table is already a dependency (`@tanstack/react-table: ^8.21.3`) but TanStack Virtual (`@tanstack/react-virtual`) is NOT installed. Without virtualization, the browser renders every row into the DOM, and React re-renders all of them on any state change.
+**Prevention:**
+1. Batch phone inserts the same way voters are batched -- collect all phones for the batch and do a single bulk INSERT.
+2. If performance degrades noticeably, reduce batch size from 1000 to 500 rows.
+3. Benchmark import time before and after the change with the Macon-Bibb demo dataset.
 
-**How to avoid:**
-1. Install `@tanstack/react-virtual` and combine it with `@tanstack/react-table` for virtualized infinite scrolling. TanStack's own example (`virtualized-infinite-scrolling`) shows exactly this pattern.
-2. Only render the visible rows plus a small overscan buffer (20-30 rows). Replace the current flat list rendering with a virtualized container.
-3. Set `maxPages` on the infinite query to limit how many pages TanStack Query keeps in memory. For voter lists, keeping 5-10 pages (500-1000 records) in memory while the virtualizer handles which are visible.
-4. For search results, use server-side filtering (the backend already supports this via `POST /voters/search`) and show paginated results, not infinite scroll.
-5. Memoize row components with `React.memo` and stable key props. Use `useMemo` for derived data (filtered/sorted views).
-6. Do NOT load all voters on page mount. Default to showing a search interface with no results until the user applies filters. This is standard for large datasets in political tech (NationBuilder, NGP VAN).
-
-**Warning signs:**
-- Browser dev tools showing 10,000+ DOM nodes on the voter page
-- Scroll jank or input lag after loading multiple pages
-- Memory usage climbing linearly with scroll depth
-- No `@tanstack/react-virtual` in dependencies
-- Voter list loading without any filters applied
-
-**Phase to address:**
-Phase 3 (Voter Management). Virtualization must be part of the initial voter list implementation, not retrofitted. The hook (`useVoters`) already supports infinite queries -- it just needs a virtualized renderer.
+**Phase:** Import pipeline phase. Benchmark after implementation.
 
 ---
 
-## Technical Debt Patterns
+### Pitfall 16: Phone Number Format Inconsistency Breaks DNC Filtering
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Inline query key strings instead of factory | Faster to write individual hooks | Key typos, missed invalidation, inconsistent naming across 20+ hook files | Never for v1.2 -- too many hooks |
-| Storing wizard state in React component state | Simple implementation, no persistence code | State loss on navigation, duplicate imports from abandoned wizards | Never for import wizard -- use server-side state |
-| `ky` retry config including mutation status codes | Fewer failed requests visible to users | Duplicate resource creation (double-submit on POST), data corruption | Never for POST/PUT/PATCH/DELETE. Remove 413 from retry for mutations or use idempotency keys |
-| Inline role string comparisons | Quick to implement first few pages | Hundreds of scattered checks, role changes require touching every file | Only for prototype/spike. Replace with permission map before merge |
-| Using browser timezone for all date display | No timezone infrastructure needed | Wrong times for cross-timezone campaigns, DST bugs | Only if all campaign operations are strictly local |
-| Rendering all loaded infinite query pages | No virtualization dependency or complexity | Browser crash at 10K+ rows, memory leak on scroll | Only for lists guaranteed under 100 items |
-| Client-side CSV parsing for column detection | Faster feedback, no server round-trip | Browser memory issues with large files, inconsistent parsing vs. backend | Only for preview (first 100 rows). Actual column detection should match backend |
+**What goes wrong:** L2 phone numbers come in varying formats: `"(478) 555-1234"`, `"4785551234"`, `"+14785551234"`, `"478-555-1234"`. The VoterPhone `value` column stores whatever is provided. The DNC list stores normalized numbers. The call list generation joins VoterPhone to DNC entries. If imported phone numbers are not normalized, DNC lookups produce false negatives (phone is on DNC list but does not match because of formatting).
 
-## Integration Gotchas
+**Why it happens:** The existing frontend DNC search strips non-digits client-side (noted in PROJECT.md as a key decision). But the import pipeline has no phone normalization. These two paths produce different formats for the same number.
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Pre-signed URL upload (S3/MinIO) | Using `ky` or `fetch` for the upload PUT (no progress events) | Use `XMLHttpRequest` with `xhr.upload.onprogress` for the S3 PUT. Use `ky` for all other API calls |
-| Pre-signed URL upload (S3/MinIO) | Not handling URL expiry during slow uploads | Request fresh URL if upload exceeds 80% of TTL; or use multipart upload for files > 100MB |
-| TanStack Router navigation blocking | Using `beforeunload` alone (does not block in-app navigation) | Use TanStack Router's `useBlocker` hook for in-app navigation AND `enableBeforeUnload` for tab close |
-| TanStack Query + mutations | Calling `refetch()` after mutation instead of `invalidateQueries()` | Always invalidate via query key factory; refetch is for retrying the same query with the same params |
-| ZITADEL role claims | Parsing roles from every API response header | Parse roles from JWT on login; cache in campaign-scoped Zustand store; refresh on campaign switch |
-| React Hook Form + Zod 4 | Using Zod v3 schema methods with Zod v4 (breaking changes in `z.string().email()` etc.) | The project uses Zod v4 (`^4.3.6`). Verify all schema definitions use v4 API. `@hookform/resolvers` v5 supports Zod v4 |
-| TanStack Table + Virtual | Mounting virtualizer on a div but using table semantics (thead/tbody) | Use the spacer-based virtualization pattern that preserves native table layout for sticky headers and column pinning |
-| `ky` retry + mutations | `ky` retries on 408, 413, 429, 500, 502, 503, 504 by default (current config). POST mutations retried on 500 create duplicates | Create a separate `ky` instance for mutations with `retry: 0`, or add idempotency keys |
+**Prevention:**
+1. Create a `normalize_phone(raw: str) -> str | None` utility:
+   - Strip all non-digit characters.
+   - If 11 digits starting with `1`, strip leading `1`.
+   - If 10 digits, return as-is.
+   - Otherwise return `None` (invalid).
+2. Apply normalization during import before inserting into VoterPhone.
+3. Verify DNC import also applies the same normalization.
+4. Validate that `call_list.py`'s phone query matches normalized values.
 
-## Performance Traps
+**Phase:** Import pipeline phase, VoterPhone auto-creation sub-task.
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| No virtualization on voter lists | Browser jank, tab crash, memory climbing linearly | TanStack Virtual + Table with maxPages on infinite query | > 2,000 rows rendered in DOM |
-| Re-rendering all table rows on any state change | Typing in a search field re-renders 500 visible rows | `React.memo` on row components; isolate search state from table state | > 500 visible rows with interactive filters |
-| Loading all campaign data on layout mount | Slow initial load, unnecessary API calls for pages user may not visit | Lazy load per-route; only fetch dashboard data when on dashboard route | > 5 active data fetches on campaign layout |
-| Infinite query without maxPages | Memory grows unbounded as user scrolls | Set `maxPages: 10` on voter/call list infinite queries; virtualize rendering | > 5,000 records loaded in memory |
-| Large CSV parsed entirely in browser | Tab freezes or crashes on 100MB+ files | Stream-parse only first 100 rows for preview; upload full file to server for processing | > 50MB CSV files |
-| Unthrottled polling for import progress | Polling every 500ms creates unnecessary server load and rerenders | Poll every 3 seconds while processing; stop polling when status is terminal (COMPLETED/FAILED) | > 10 concurrent import monitors |
-| No debounce on voter search filters | Every keystroke triggers a new API request | Debounce search input by 300ms; use `keepPreviousData: true` for smooth UX | > 5 filter fields changing simultaneously |
+---
 
-## Security Mistakes
+### Pitfall 17: VoterFilterBuilder UI Becomes Overwhelming
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Frontend permission checks without backend enforcement | Users bypass UI restrictions via browser dev tools and call APIs directly | Backend `require_role()` is already enforced. Frontend is UX only -- never rely on it for security |
-| Displaying voter PII (phone, address) to all roles | Viewers and volunteers see sensitive contact info they should not access | Map PII field visibility to roles: viewers see name only; volunteers see name + phone; managers see all |
-| Pre-signed URL leakage via browser history or logs | Anyone with the URL can upload to or download from the S3 bucket until TTL expires | Short TTL (15 min); scope to specific object key; log URL generation |
-| Storing ZITADEL access token in localStorage | XSS attack extracts token and impersonates user | The existing code uses `WebStorageStateStore({ store: localStorage })` for oidc-client-ts. This is the standard pattern but ensure CSP headers prevent script injection |
-| Campaign member list exposing all user emails | Email harvesting of campaign staff | Only show full emails to admin/owner; show masked emails to other roles (j***@example.com) |
-| File upload accepting any file type | Malicious files uploaded disguised as CSV | Validate MIME type and extension on both client and server; never execute uploaded content |
+**What goes wrong:** The current filter builder has 13 filter dimensions (party, age, voting history, tags, city, zip, state, gender, precinct, congressional district, phone, registered after/before, logic). Adding ethnicity, language, propensity score ranges, military status, and mailing address filters would push it to 18+ dimensions. The component already uses a "More filters" toggle -- adding more to the expanded section makes it a wall of inputs.
 
-## UX Pitfalls
+**Prevention:**
+1. Group filters into collapsible sections: Demographics (age, gender, ethnicity, language), Geography (city, state, zip, precinct, district), Political (party, registration, voting history), Scores (propensity), Contact (phone), Tags.
+2. Keep the 4 most-used filters always visible (party, age, city, voting history).
+3. Use an "Add filter" pattern: new dimensions default to hidden and users activate them explicitly.
+4. Extract `FilterSection` sub-components to keep the main component manageable.
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Import wizard with no progress or estimated time | Campaign admin uploads 200MB voter file, waits 10 minutes with no feedback, closes tab | Progress bar with bytes uploaded, percentage, and ETA. Resume indicator if they navigate away and come back |
-| Phone banking claim counter with no expiry warning | Caller leaves for coffee, returns to expired claims, records outcomes that get rejected | Show countdown timer per claim; auto-release and reclaim with warning at 2 minutes before expiry |
-| Form submission with no loading state | User clicks Save, nothing happens for 2 seconds, clicks again, creates duplicate | Disable button + show spinner on submit; toast on success; shake/highlight on error |
-| Shift calendar showing times in wrong timezone | Volunteer shows up at wrong time, wastes 2 hours | Always display campaign timezone; show "in X hours" relative time alongside absolute time |
-| Modal confirmation dialogs with no keyboard support | Screen reader users cannot confirm destructive actions (delete shift, remove member) | Use Radix AlertDialog (already in deps) which handles focus trap, Escape key, and aria-labels |
-| Voter search that loads all results on empty query | Page freezes loading 500K voters when user first visits | Default to empty results with search prompt; require at least one filter to execute query |
-| DNC list import with no preview | Admin imports wrong file, accidentally DNC-flags 10K voters | Show first 10 rows preview before confirming import; add an "undo last import" feature |
-| Calling experience that hides voter context | Caller has no information about the person they are calling | Show voter name, address, previous interactions, and any existing survey responses on the call screen |
+**Phase:** UI update phase (final phase of milestone).
 
-## "Looks Done But Isn't" Checklist
+---
 
-- [ ] **Query key factory:** Often missing consistent key naming -- verify ALL hooks import from `queryKeys.ts`, no inline string arrays
-- [ ] **Voter import wizard:** Often missing resume-on-return -- verify navigating away and back restores wizard to correct step from server state
-- [ ] **Phone banking claiming:** Often missing claim expiry UX -- verify UI shows countdown and handles reclaim gracefully after timeout
-- [ ] **Form pages:** Often missing navigation guard -- verify every form with editable fields has `useBlocker` integration and `beforeunload`
-- [ ] **Permission gating:** Often missing read-only mode -- verify lower-role users see pages with disabled actions, not blank "Access Denied" screens
-- [ ] **Shift scheduling:** Often missing timezone display -- verify times show campaign timezone, not browser timezone
-- [ ] **Voter list:** Often missing virtualization -- verify scrolling 10,000 rows does not degrade performance (check DOM node count in dev tools)
-- [ ] **Delete confirmations:** Often missing double-confirm for destructive actions -- verify campaign delete, member remove, DNC import all require explicit confirmation
-- [ ] **Loading states:** Often missing skeleton screens -- verify every page shows skeleton layout (not just a spinner) during initial data fetch
-- [ ] **Error boundaries:** Often missing per-section error handling -- verify a failed API call in one section does not crash the entire page
-- [ ] **Empty states:** Often missing "no data yet" messaging -- verify every list page has a meaningful empty state with a call to action (not just a blank table)
-- [ ] **Accessibility:** Often missing keyboard navigation on custom components -- verify all modals trap focus, all dropdowns are keyboard-navigable, all drag-and-drop has keyboard alternative
+### Pitfall 18: Household ID Already Exists -- Adding household_size Without Confusion
+
+**What goes wrong:** `household_id` already exists on the Voter model. If adding `household_size`, campaigns may expect it to be computed from the count of voters sharing the same `household_id` in their campaign. But L2 provides `household_size` as a pre-computed value from their full national file. If a campaign imports only a subset of voters, the computed count and the vendor value disagree.
+
+**Prevention:**
+1. Store L2's household_size as-is. Do not auto-compute.
+2. Name the column clearly: `household_size` (vendor-provided). Document that it reflects the vendor's data, not the campaign's imported subset.
+3. If campaigns also want the imported household count, that is a derived metric (computed at query time via `COUNT(*) OVER (PARTITION BY household_id)`) -- do not store it.
+
+**Phase:** Model definition phase.
+
+---
+
+## Integration Pitfalls (Cross-Cutting Concerns)
+
+### Call List Generation After Model Changes
+
+The `CallListService.generate_call_list` method queries VoterPhone records to build call entries. If VoterPhone auto-creation during import works correctly, call lists will automatically include more voters (previously, voters without manually-added phones were excluded from phone banking). This is the desired outcome -- but verify that:
+1. DNC filtering works against normalized phone numbers (Pitfall 16).
+2. Duplicate phone records do not create duplicate call list entries (Pitfall 3).
+3. The call list entry count increases as expected after importing a file with phone data.
+
+### Walk List and Turf Operations
+
+Walk lists use `Voter.geom` for PostGIS spatial queries (`ST_Contains`). New columns (mailing address, propensity scores, demographics) do not affect spatial operations. The residential address and lat/long remain the source of truth for canvassing. No action needed -- but do NOT import mailing address coordinates into the `latitude`/`longitude` columns.
+
+### Dynamic Voter Lists with Saved Filters
+
+The `filter_query` JSONB on `voter_lists` stores serialized `VoterFilter` objects. Adding new filter dimensions is additive -- old saved filters continue to work because they simply do not include the new keys. However:
+1. Do NOT rename any existing filter keys (`party`, `age_min`, `voted_in`, etc.).
+2. Do NOT change the semantics of existing keys (e.g., do not change `voted_in` from exact-match to partial-match without handling backward compat).
+3. New filter keys should be optional and default to `None` (no filtering) when absent from saved filters.
+
+### Voter Detail View
+
+The frontend voter detail page displays all voter fields. Adding ~20 new fields to a flat display creates an overwhelming detail page. Group fields into sections (Personal, Residential Address, Mailing Address, Political, Demographics, Scores, Voting History) with collapsible panels.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Model + Migration | Pitfall 5 (non-nullable column), Pitfall 7 (mailing address design) | All columns nullable; decide inline vs VoterAddress BEFORE writing migration |
+| Migration (indexes + L2 template) | Pitfall 10 (missing indexes), Pitfall 11 (stale L2 template) | Add indexes for filterable fields only; update L2 template in same migration |
+| Data backfill | Pitfall 12 (extra_data to columns) | Separate data migration from schema migration; apply same parsing logic |
+| Import pipeline -- voter upsert | Pitfall 1 (SET clause drift) | Derive update_cols from full column set, not first row |
+| Import pipeline -- VoterPhone | Pitfall 2 (missing voter IDs), Pitfall 3 (phone dedup), Pitfall 16 (phone normalization) | Add RETURNING; add unique constraint; normalize phone numbers |
+| Voting history parsing | Pitfall 4 (format breaks existing filters) | Define canonical format first; support backward-compat year-only lookups |
+| Propensity/demographic parsing | Pitfall 6 (percent parsing), Pitfall 9 (ethnicity prefix) | Dedicated parser functions with exhaustive test matrices |
+| Schema/API update | Pitfall 8 (CANONICAL_FIELDS sync), Pitfall 13 (schema explosion) | Derive _VOTER_COLUMNS from model; use schema mixin |
+| Frontend update | Pitfall 14 (type mismatch), Pitfall 17 (filter UX) | Exact type parity; grouped filter sections |
+| Performance | Pitfall 10 (missing indexes), Pitfall 15 (import slowdown) | Benchmark with realistic data after implementation |
+
+---
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Inconsistent query keys causing stale data | MEDIUM | Create query key factory; find-and-replace all inline keys; add lint rule to prevent regression |
-| Import wizard state loss (orphaned jobs) | LOW | Add cleanup job for PENDING imports older than 24 hours; add "resume import" UI |
-| Phone bank claim race condition (duplicate calls) | MEDIUM | Add optimistic locking to outcome recording; deduplicate interactions by (voter_id, call_list_entry_id); contact affected voters to apologize for duplicate calls |
-| Missing navigation guards (lost form data) | LOW | Add `useFormGuard` hook; apply to all form pages in a single PR |
-| Permission checks scattered across components | MEDIUM | Extract all role checks into permission map; create `<CanDo>` component; find-and-replace inline checks |
-| Timezone bugs in shift display | LOW | Add campaign timezone field; update all date formatting to use `date-fns-tz`; verify with DST test |
-| Browser crash from unvirtualized voter list | MEDIUM | Install TanStack Virtual; refactor voter table component; add `maxPages` to infinite query |
-| Double-submit from ky retry on mutations | HIGH | Audit all created records for duplicates; fix ky retry config; add idempotency keys to critical mutations |
+| SET clause drift (Pitfall 1) | LOW | Fix update_cols derivation; reimport affected files |
+| Missing voter IDs for phones (Pitfall 2) | MEDIUM | Add RETURNING; backfill phones for voters imported without them |
+| Duplicate phones (Pitfall 3) | LOW | Add unique constraint; deduplicate with `DELETE FROM voter_phones WHERE id NOT IN (SELECT MIN(id) ...)` |
+| Broken voting history filters (Pitfall 4) | HIGH | Must migrate all voting_history arrays to new format; update all saved filter_query JSONB; hardest to fix retroactively |
+| Non-nullable migration failure (Pitfall 5) | LOW | Fix column definition; re-run migration |
+| Stale extra_data (Pitfall 12) | MEDIUM | Run data migration script to copy JSONB keys to typed columns |
+| Unnormalized phone numbers (Pitfall 16) | MEDIUM | Run UPDATE to normalize existing VoterPhone values; verify DNC matches |
 
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Query key inconsistency | Phase 1 (Shared Infrastructure) | All hooks import from queryKeys.ts; no inline key strings; lint rule enforced |
-| File upload UX (progress, errors) | Phase 2 (Voter Import Wizard) | Upload 200MB file; verify progress bar; verify cancel; verify resume after network error |
-| Wizard state loss | Phase 2 (Voter Import Wizard) | Navigate away mid-wizard and return; verify correct step restored from server state |
-| Phone bank claim race condition | Phase 4 (Phone Banking UI) | Two users claim from same list simultaneously; verify no duplicate calls; verify expired claim UI |
-| Permission spaghetti | Phase 1 (Shared Infrastructure) | Single `permissions.ts` file; all components use `<CanDo>` or `usePermission`; no inline role checks |
-| Form dirty state loss | Phase 1 (Shared Infrastructure) | Edit any form; navigate away; verify blocking dialog appears; verify beforeunload on tab close |
-| Timezone bugs in shifts | Phase 5 (Shift Management) | Create shift in ET campaign; view from CT browser; verify correct time with timezone indicator |
-| Voter list browser crash | Phase 3 (Voter Management) | Load 10K voters with filters; verify < 200 DOM rows rendered; verify smooth scroll at 60fps |
-| Double-submit from ky retry | Phase 1 (Shared Infrastructure) | Slow network simulation; click submit twice; verify single resource created |
-| Accessibility gaps | All phases | Keyboard-only navigation test on every page; screen reader test on modals, forms, and drag-drop |
+---
 
 ## Sources
 
-- [Avoiding Common Mistakes with TanStack Query](https://www.buncolak.com/posts/avoiding-common-mistakes-with-tanstack-query-part-1/) - Query key management pitfalls
-- [Concurrent Optimistic Updates in React Query - TkDodo](https://tkdodo.eu/blog/concurrent-optimistic-updates-in-react-query) - Race condition patterns for concurrent mutations
-- [We kept breaking cache invalidation in TanStack Query](https://dev.to/ignasave/we-kept-breaking-cache-invalidation-in-tanstack-query-so-we-stopped-managing-it-manually-47k2) - Cache invalidation patterns at scale
-- [TanStack Query Invalidation Docs](https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation) - Official invalidation guide
-- [TanStack Router Navigation Blocking](https://tanstack.com/router/v1/docs/framework/react/guide/navigation-blocking) - useBlocker API for dirty form guards
-- [Handling Large File Uploads in React with Pre-signed URLs](https://www.pullrequest.com/blog/handling-large-file-uploads-in-react-securely-using-aws-s3-pre-signed-urls/) - S3 upload patterns
-- [Multipart Upload Approach for React](https://www.tothenew.com/blog/handling-large-file-uploads-in-react-the-multipart-upload-approach/) - Progress tracking and chunking
-- [Secure File Uploads with React and FastAPI](https://medium.com/@sanmugamsanjai98/secure-file-uploads-made-simple-mastering-s3-presigned-urls-with-react-and-fastapi-258a8f874e97) - FastAPI + S3 pre-signed URL pattern
-- [Building a Virtualized Table with TanStack](https://dev.to/ainayeem/building-an-efficient-virtualized-table-with-tanstack-virtual-and-react-query-with-shadcn-2hhl) - Virtual + Table + Query integration
-- [TanStack Table Virtualized Infinite Scrolling Example](https://tanstack.com/table/v8/docs/framework/react/examples/virtualized-infinite-scrolling) - Official reference implementation
-- [Implementing RBAC in React](https://www.permit.io/blog/implementing-react-rbac-authorization) - Permission-gated UI patterns
-- [Accessible Drag and Drop - React Spectrum](https://react-spectrum.adobe.com/blog/drag-and-drop.html) - WCAG 2.2 drag-and-drop patterns
-- [Autosave Race Conditions in React Query](https://www.pz.com.au/avoiding-race-conditions-and-data-loss-when-autosaving-in-react-query) - FIFO mutation queue pattern
-- [Building Multi-Step Forms with React](https://makerkit.dev/blog/tutorials/multi-step-forms-reactjs) - Wizard state management patterns
-- [Multi-Step Forms with React Hook Form + Zustand + Zod](https://www.buildwithmatija.com/blog/master-multi-step-forms-build-a-dynamic-react-form-in-6-simple-steps) - Per-step validation pattern
-- CivicPulse codebase analysis: `web/src/hooks/`, `web/src/api/client.ts`, `app/api/v1/` (internal)
+- Direct codebase inspection: `app/models/voter.py` (Voter model, 96 lines), `app/services/import_service.py` (import pipeline, 554 lines), `app/services/voter.py` (query builder, 385 lines), `app/schemas/voter_filter.py` (filter schema, 35 lines) -- HIGH confidence
+- Direct codebase inspection: `alembic/versions/002_voter_data_models.py` (RLS policies, L2 template seeding) -- HIGH confidence
+- Direct codebase inspection: `app/models/voter_contact.py` (VoterPhone schema, no unique constraint on value) -- HIGH confidence
+- Direct codebase inspection: `web/src/components/voters/VoterFilterBuilder.tsx` (349 lines, year-based voting history filter) -- HIGH confidence
+- Direct codebase inspection: `app/services/call_list.py` (VoterPhone query pattern for call list generation) -- HIGH confidence
+- PostgreSQL documentation: `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` is supported -- HIGH confidence
+- PostgreSQL documentation: `ADD COLUMN` with `NULL` default is metadata-only (no table rewrite) -- HIGH confidence
+- SQLAlchemy 2.0: `Mapped[T | None]` infers `nullable=True` automatically -- HIGH confidence
 
 ---
-*Pitfalls research for: Full UI Coverage (v1.2) -- adding ~95 CRUD pages to existing React + TanStack campaign management app*
-*Researched: 2026-03-10*
+*Pitfalls research for: v1.3 Voter Model & Import Enhancement*
+*Researched: 2026-03-13*

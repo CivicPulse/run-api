@@ -1,249 +1,218 @@
 # Project Research Summary
 
-**Project:** CivicPulse Run — v1.2 Full UI
-**Domain:** Political campaign management SPA — frontend UI coverage of ~95 API endpoints
-**Researched:** 2026-03-10
+**Project:** CivicPulse Run v1.3 — Voter Model & Import Enhancement
+**Domain:** Political campaign voter data management — schema expansion, import pipeline, search/filter
+**Researched:** 2026-03-13
 **Confidence:** HIGH
 
 ## Executive Summary
 
-CivicPulse Run v1.2 is a frontend completion milestone: the backend API is fully implemented across ~150 endpoints, but only ~55 have corresponding UI pages. This is not a greenfield project — it is a structured buildout against an existing, validated stack (React 19, TanStack Router/Query/Table, shadcn/ui, zustand, react-hook-form + zod). Research confirms the existing stack is the right foundation and requires only 6 targeted additions: PapaParse (CSV preview), react-dropzone (file upload UX), and the @dnd-kit family (column mapping drag-and-drop). The recommended approach is phased CRUD buildout starting with shared infrastructure, then progressing through voter management, imports, call lists, phone banking, and finally volunteer and shift management — each phase unlocking the next via natural data dependencies.
+v1.3 is a schema-and-pipeline expansion milestone, not a greenfield build. The research confirms that all four change vectors — voter model columns, import pipeline logic, filter query builder, and frontend display — can be implemented entirely within the existing validated stack with zero new dependencies. The work is additive: roughly 23 new nullable columns on the `voters` table, expanded CANONICAL_FIELDS mappings, a multi-table import transaction that auto-creates VoterPhone records, and parallel frontend updates. The existing SQLAlchemy/Alembic/FastAPI/RapidFuzz stack already covers every capability required.
 
-The highest-complexity feature is the voter import wizard, which requires 4 UI steps, direct-to-S3 file upload with progress tracking, server-side column detection, and async polling. The highest-stakes real-time feature is the phone banking calling screen, where claim management race conditions between concurrent callers can produce duplicate calls or lost outcomes. Both features have well-documented pitfalls with clear avoidance strategies. The key risk across the entire milestone is failing to establish shared infrastructure (query key factory, permission system, form guard hook) before building domain pages — retrofitting these across 20+ hook files and 25+ routes is the primary technical debt trap for a project of this scope.
+The recommended approach follows a strict dependency order: migration first (columns must exist before anything reads or writes them), then model + schemas, then import pipeline enhancement, then filter builder, then frontend. This order is non-negotiable — all four research files independently converged on the same critical path. The import pipeline phase carries the highest engineering risk because it introduces a two-table transactional write (voters + VoterPhone) using a RETURNING clause that does not yet exist in the current upsert. Every other phase follows well-understood, low-risk patterns from the existing codebase.
 
-The architecture research is grounded in direct codebase analysis (not inference) and produces a concrete dependency-ordered build plan with 7 phases. All phase ordering is derived from feature dependency chains, not arbitrary scheduling. The research confirms no major architectural pivots are needed: the existing patterns (file-based routes, entity-first query keys, react-hook-form + zod per domain) scale cleanly to the new feature areas.
+The primary category of risk is silent data loss, not crashes. Three pitfalls in particular can silently drop data without raising errors: the ON CONFLICT SET clause derived from the first batch row (causes sparse column writes for later rows), voting history format mismatch (breaks existing saved filters without error), and stale CANONICAL_FIELDS / _VOTER_COLUMNS (routes values to extra_data silently). All three have clear preventions documented in the research. Treat each as a test requirement: if the test is not written and passing, the feature is not done.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack handles all v1.2 requirements without major additions. Only 6 new npm packages are needed (papaparse, @types/papaparse, react-dropzone, @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities). Additionally, 12 shadcn/ui components are added via CLI (no extra npm dependencies). The guiding principle is "use what is already installed" — TanStack Table for data grids, zustand for complex ephemeral state (import wizard), TanStack Query refetchInterval for import and session progress polling, and Intl.DateTimeFormat for date formatting. Explicit research confirmed that socket.io, react-big-calendar, AG Grid, date-fns, and multi-step wizard libraries should all be excluded.
+No new packages are required. See `STACK.md` for the full breakdown. The existing stack covers every v1.3 capability: SQLAlchemy `SmallInteger` and `String` for new column types, Alembic `op.add_column()` for migration, Python stdlib `re` for phone normalization and voting history pattern matching, RapidFuzz for fuzzy field mapping (already in use), and SQLAlchemy `insert().on_conflict_do_update()` for the existing batch upsert pattern extended with RETURNING.
 
-**Core technology additions:**
-- **papaparse ^5.5.3:** Client-side CSV preview (first 100 rows) in the import wizard — zero dependencies, 12M+ weekly downloads, Web Worker streaming for 500MB+ voter files
-- **react-dropzone ^15.0.0:** File drop zone for import wizard step 1 — handles browser drag event edge cases, accessible, React 19 compatible
-- **@dnd-kit/core ^6.3.1 + @dnd-kit/sortable ^10.0.0 + @dnd-kit/utilities ^3.2.2:** Column mapping drag-and-drop in import wizard step 2 and availability slot reordering — stable API (vs. @dnd-kit/react v0.3.2 which is pre-1.0)
-- **shadcn/ui CLI additions:** progress, checkbox, switch, scroll-area, calendar, date-picker, breadcrumb, pagination, toggle, toggle-group, collapsible, spinner — all Radix-based, React 19 compatible
+**Core technologies (all existing):**
+- `SQLAlchemy >= 2.0.48`: New `mapped_column(SmallInteger)` for propensity scores (2 bytes, no Decimal serialization overhead), `String(N)` for demographic fields — consistent with `native_enum=False` project convention
+- `Alembic >= 1.18.4`: Single migration file with ~23 `op.add_column()` calls — all nullable, so PostgreSQL executes as metadata-only (no table rewrite, no downtime on large tables)
+- `Python re` stdlib: Phone normalization (strip non-digits, validate 10 digits) and voting history column detection (`^(General|Primary|Runoff|Municipal|Special)_\d{4}$`)
+- `RapidFuzz >= 3.14.3`: Existing fuzzy matching at 75% threshold covers minor L2 column name variations — no structural changes needed
 
-**Critical exclusions with rationale:**
-- No socket.io or WebSocket: TanStack Query refetchInterval handles import and session progress; backend has no SSE or WebSocket endpoints
-- No react-big-calendar: shift management is CRUD plus a list, not a Google Calendar grid
-- No ky for S3 upload: ky lacks onUploadProgress; use XMLHttpRequest for the S3 PUT specifically
-- No redux: zustand is installed and used; mixing stores creates confusion
-- No date-fns: Intl.DateTimeFormat handles display; date-fns-tz added only in Phase 7 for timezone-aware shift scheduling
+**Critical column type decisions:**
+- Propensity scores: `SmallInteger` (not Numeric, not Float) — L2 scores are integer deciles 0-100; Numeric would cause Pydantic v2 to serialize as strings in JSON
+- Demographic strings: `String(N)` (not StrEnum) — vendor values vary and expand; consistent with project's `native_enum=False` convention
+- Mailing address: inline columns on Voter model (not VoterAddress) — keeps the batch upsert atomic with one table write
 
 ### Expected Features
 
-Research analyzed campaign management conventions from NGPVAN, NationBuilder, Solidarity Tech, and Mobilize to establish what campaign staff and volunteers take for granted.
+See `FEATURES.md` for full specification including per-field L2 column name mappings.
 
 **Must have (table stakes):**
-- Voter import wizard with drag-and-drop file upload, auto-column-detection suggestions, mapping UI, and progress tracking — no campaign tool is usable without data ingestion
-- Campaign member management (invite by email, pending invites, role badges, role change, remove, ownership transfer) — team collaboration is expected
-- Voter contact management (contacts tab, add/edit/delete, primary toggle), voter create/edit forms, tag management, and voter lists (static + dynamic) — these complete the CRM core
-- Call list CRUD plus DNC list management — required prerequisite before phone banking sessions operate
-- Phone bank session CRUD plus active calling experience with voter card, survey script, and outcome buttons — NGPVAN VPB is the benchmark; callers make 100+ calls per session
-- Volunteer CRUD with availability management plus shift CRUD with roster, check-in, and check-out — standard field organizing tooling
+- Propensity scores as first-class columns (`propensity_general`, `propensity_primary`, `propensity_combined`) — every major competitor (VAN, PDI, TargetSmart) surfaces these; campaigns build target universes around them
+- Mailing address fields (8 columns inline on Voter) — direct mail is one of three core outreach channels; without it, campaigns need external mail house lookups
+- Voting history Y/N column parsing — L2 delivers history as dozens of separate `General_YYYY`/`Primary_YYYY` columns; without parsing, history data lands in `extra_data` and the existing filter builder cannot use it
+- Auto-create VoterPhone from cell phone column — the call list generator filters on VoterPhone existence; without this, imported phone numbers are invisible to phone banking
+- Spoken language column (`spoken_language`) — multilingual campaign filtering in high-diversity states (CA, TX, FL, NV, AZ)
+- Updated L2 mapping template — must ship with the migration or L2 imports still route new fields to `extra_data`
+- Filter builder updates for propensity ranges — the primary reason to make propensity first-class is enabling range queries
 
-**Should have (differentiators for v1.2):**
-- Permission-gated UI via usePermission hook and CanDo component with graceful read-only degradation — most small campaign tools lack granular role gating
-- Integrated voter timeline showing canvassing, phone banking, and volunteer activity — competitors silo these views
-- Keyboard shortcuts on the calling screen — callers making 100+ calls per session gain significant time savings
+**Should have (differentiators):**
+- Cell phone confidence score (`cell_phone_confidence`) — L2's CellConfidenceCode; allows high-confidence calls first; no competitor surfaces this in standard UI
+- Party change indicator (`party_change_indicator`) — L2's `Voters_PartyChange`; signals persuadability; rare to surface explicitly
+- Household-level fields (`household_party_registration`, `household_size`, `family_id`) — enables household-level targeting logic
+- Military status filter — important for veteran-focused platforms
+- Filter on ethnicity, language, military status — once first-class, filter exposure is low effort and high value
 
-**Defer to v2+:**
-- Google Calendar-style shift grid view (massive complexity for a CRUD list problem)
-- Real-time collaborative voter editing (requires CRDT or OT infrastructure)
-- Predictive dialer integration (requires Twilio and TCPA compliance)
-- Drag-and-drop Gantt shift scheduling (overkill for typical campaign shift assignment)
+**Defer to future milestone:**
+- Mailing address filter dimensions — mailing address is primarily for export to mail houses; in-app filtering is low priority
+- Cell phone confidence as a filter — nice-to-have for sophisticated phone banking; not blocking any workflow
+- Household-level analytics (aggregate queries across household_id) — data storage column ships in v1.3; query logic is a separate feature
+
+**Explicit anti-features (do not build):**
+- Self-computed propensity scores (vendor problem; out of scope in PROJECT.md)
+- BISG/fBISG ethnicity prediction (accuracy issues, legal/ethical concerns)
+- Normalized ethnicity/language enums (breaks with L2's 50+ and TargetSmart's 170+ values)
+- Real-time propensity score updates (requires ML infrastructure)
+- Landline/cell type auto-detection via NANPA lookups (trust vendor classification)
 
 ### Architecture Approach
 
-The architecture is additive to the existing codebase, not a restructure. Approximately 25 new route files, 8 new hook files, and 40-50 new components are needed. All new routes extend the existing `campaigns/$campaignId/` tree using TanStack Router file-based routing. Two existing leaf pages (phone-banking.tsx, volunteers.tsx) convert to layout routes with an Outlet. Three new sidebar items are added (Shifts, Team, Settings). No existing routes, hooks, or components are deleted.
+The architecture is entirely additive — no new tables, no new services, no new API endpoints. One Alembic migration adds columns and indexes and updates the L2 template JSONB. The Voter model grows from 23 to ~46 data columns. The import service gains phone extraction + voting history detection logic and a second bulk INSERT (VoterPhone) after the voter upsert, connected via a RETURNING clause. The filter builder gains ~13 new condition handlers following the exact same pattern as the 13 already in place. The frontend mirrors every backend change in TypeScript types, ColumnMappingTable, VoterFilterBuilder, VoterDetail, and VoterEditSheet.
 
-**Build-first shared components (needed by all domains):**
-1. **DataTable.tsx** — headless TanStack Table wrapper with sorting, filtering, empty state, loading skeleton
-2. **FormDialog.tsx** — standardizes open/close/loading/error across all create/edit forms
-3. **DetailPage.tsx** — standard tabbed detail page layout used by voter, volunteer, session, shift, and call list detail pages
-4. **StepWizard.tsx** — simple step container (progress bar plus step rendering) for the import wizard
-5. **FilterBar.tsx** — reusable filter controls for all list pages
+**Major components:**
+1. **Alembic migration** — single file: ADD COLUMN x23, CREATE UNIQUE INDEX on voter_phones(campaign_id, voter_id, value), CREATE INDEX on (campaign_id, turnout_score) and (campaign_id, language), UPDATE L2 template JSONB via `||` merge operator
+2. **Import pipeline** (import_service.py) — enhanced `apply_field_mapping()` extracts phone records + parses voting history columns; enhanced `process_csv_batch()` adds RETURNING clause to voter upsert, uses returned voter IDs to bulk-insert VoterPhone records in same transaction
+3. **Filter builder** (voter.py + voter_filter.py) — additive: new VoterFilter fields and corresponding `build_voter_query()` condition blocks; no changes to existing logic
+4. **Frontend** (4 files) — TypeScript Voter/VoterFilter interfaces, ColumnMappingTable canonicals, VoterFilterBuilder controls, VoterDetail display cards, VoterEditSheet fields
 
 **Key patterns to follow:**
-- Entity-first query keys: `["voters", campaignId, voterId]` not `["campaigns", campaignId, "voters"]`
-- Query key factory (`queryKeys.ts`) — all hook files import from it; no inline string arrays anywhere
-- One hook file per domain; flat structure (not subdirectories) up to ~20 files
-- Route files orchestrate only (<150 lines); domain logic extracts to `components/{domain}/`
-- Optimistic updates only for high-frequency user actions (tag toggles, outcome recording, check-in/check-out)
-
-**Import wizard architecture (most complex flow):**
-Wizard state is server-driven: the ImportJob status IS the current step. The ImportJob ID lives in the URL (`imports/$importId`). Navigating away and returning restores the wizard to the correct server-determined step. Zustand handles only transient display state (local previewed rows, column mapping selections before confirmation).
+- All new columns: `Mapped[T | None]` (nullable=True) — mandatory for ADD COLUMN on populated tables
+- Phone normalization: `re.sub(r'[^0-9]', '', value)` + 10-digit length check — match DNC filter normalization
+- Election column detection: `re.compile(r'^(General|Primary|Runoff|Municipal|Special)_(\d{4})$')` — extract type + year into canonical identifier `"General_2024"` format
+- VoterPhone dedup: `INSERT ... ON CONFLICT (campaign_id, voter_id, value) DO UPDATE SET type = EXCLUDED.type` — idempotent reimport
+- Derive `_VOTER_COLUMNS` from `Voter.__table__.columns` at import time — eliminates manual sync with model
 
 ### Critical Pitfalls
 
-Research identified 8 pitfalls with HIGH confidence. The top 5 requiring preventive action before or during early phases:
+Full details in `PITFALLS.md`. The top five that require explicit implementation decisions:
 
-1. **Query key inconsistency across 20+ hook files** — establish a `queryKeys.ts` factory in Phase 1 before any CRUD pages are built; never use inline string arrays; cross-domain mutations (e.g., recording a call outcome) must explicitly invalidate query keys across multiple namespaces
-2. **Pre-signed URL S3 upload with no progress, no error recovery, no size validation** — use XMLHttpRequest (not ky) for the S3 PUT to get upload progress events; validate file size and encoding client-side before upload; handle URL expiry; implement cancel and retry
-3. **Multi-step wizard state loss on navigation or refresh** — design the import wizard as a server-state-driven flow (ImportJob status equals the step); store ImportJob ID in the URL; check for in-progress imports on page load; use useBlocker to warn on navigation away during steps 1-3
-4. **Phone banking claim race conditions creating duplicate calls** — display a countdown timer per claim; implement a claim heartbeat (re-verify every 60s); handle 409 Conflict explicitly; consider optimistic locking on outcome recording
-5. **Permission gating becoming inline role-check spaghetti** — create `permissions.ts` map (action to minimum role) and a CanDo component in Phase 1; zero inline `role === 'admin'` comparisons anywhere; show read-only degradation for lower roles, not blank screens
+1. **ON CONFLICT SET clause built from first batch row** (PITFALL 1) — Silent data loss for sparse rows. Fix: derive `update_cols` from full `_VOTER_COLUMNS` set (or derive from `Voter.__table__.columns`), not from `valid_voters[0].keys()`. This change must land in Phase 1 before import pipeline expansion begins.
 
-**Additional pitfalls requiring phase-specific attention:**
-- **Form dirty state loss:** useFormGuard hook combining react-hook-form isDirty with TanStack Router useBlocker — needed by every form page; build in Phase 1
-- **Timezone display bugs in shift scheduling:** store UTC, display in campaign timezone using IANA string; show timezone abbreviation next to all times; add date-fns-tz for the shift management phase
-- **Voter list browser crash at 10K+ records:** install @tanstack/react-virtual; virtualize the voter table with maxPages on infinite query; default voter index to search-prompt-only (no auto-load all)
+2. **Missing RETURNING clause for VoterPhone creation** (PITFALL 2) — Cannot link VoterPhone records to newly-inserted voter UUIDs without it. Fix: add `.returning(Voter.id, Voter.source_id)` to the voter upsert statement; build `source_id -> voter_id` mapping from results. This is the hardest single engineering change in the milestone.
+
+3. **VoterPhone duplicate records on reimport** (PITFALL 3) — No unique constraint exists on voter_phones(voter_id, value). Fix: add UNIQUE constraint in migration; use `ON CONFLICT (campaign_id, voter_id, value) DO UPDATE` for phone inserts during import.
+
+4. **Voting history format breaks existing saved filters** (PITFALL 4) — If L2 columns like `General_2024_11_05` are stored as-is, year-based filter values like `"2024"` stop matching. Fix: define canonical format now as `"{Type}_{Year}"` (e.g., `"General_2024"`); implement backward-compat in `build_voter_query` so year-only filter values still match; parse L2 column names to extract type + year.
+
+5. **Stale L2 template + CANONICAL_FIELDS / _VOTER_COLUMNS drift** (PITFALLS 8 + 11) — New columns silently route to `extra_data` if not registered in both structures. Fix: derive `_VOTER_COLUMNS` from model automatically; update L2 template JSONB in the migration; add a CI test asserting CANONICAL_FIELDS keys are a subset of `_VOTER_COLUMNS`.
 
 ## Implications for Roadmap
 
-Based on the dependency chains identified in the architecture research and confirmed by feature priorities, 7 phases are recommended:
+All four research files independently recommend the same four-phase build order. The architecture analysis provides detailed pseudocode for each phase. There is no significant ambiguity about sequencing.
 
-### Phase 1: Shared Infrastructure + Campaign Foundation
+### Phase 1: Schema Foundation (Migration + Model + Core Schemas)
 
-**Rationale:** Shared components, permission system, and form guard patterns are required by every subsequent phase. Building campaign settings and members first validates the FormDialog pattern with the simplest possible CRUD before applying it to complex domains. Role data from members must be available before any permission-gated UI can exist.
+**Rationale:** Every downstream change depends on the database columns existing. This is the only phase with no predecessor dependencies. PostgreSQL ADD COLUMN with nullable=True is metadata-only — safe to run immediately on any size table.
+**Delivers:** All ~23 new nullable columns on the voters table, VoterPhone unique constraint on (campaign_id, voter_id, value), filter indexes on (campaign_id, turnout_score) and (campaign_id, language), updated L2 template JSONB, updated Voter ORM model with `Mapped[T | None]` fields, updated VoterResponse/VoterCreateRequest/VoterUpdateRequest schemas
+**Addresses:** All table-stakes features — columns must exist before import or filtering can use them
+**Avoids:**
+- Pitfall 5 (non-nullable column migration failure) — all columns must be `Mapped[T | None]`
+- Pitfall 7 (mailing address design fork) — commit to inline columns on Voter model, not VoterAddress, before writing the migration
+- Pitfall 10 (missing indexes) — add filter indexes in the same migration, not deferred
+- Pitfall 18 (household_size confusion) — store vendor value as-is, document that it reflects vendor data not the imported subset
 
-**Delivers:** DataTable, FormDialog, DetailPage, StepWizard, FilterBar shared components; queryKeys.ts factory; permissions.ts map; usePermission hook; CanDo component; useFormGuard hook; ky mutation retry config fix; campaign settings edit/delete; campaign member list + invite + role change + ownership transfer; 3 new sidebar nav items
+**Key action:** Fix `_VOTER_COLUMNS` derivation (from `Voter.__table__.columns`) in this phase, before any import changes touch it.
 
-**Addresses features:** Campaign Settings (P3), Campaign Members (P1)
+**Research flag:** Skip — purely additive Alembic operations; well-established patterns in the existing codebase.
 
-**Avoids pitfalls:** Query key inconsistency (Pitfall 1); permission spaghetti (Pitfall 5); form dirty state loss (Pitfall 6); double-submit from ky retry on mutations
+### Phase 2: Import Pipeline Enhancement
 
-**Research flag:** Skip — standard CRUD patterns, well-documented shared component patterns
+**Rationale:** Depends on Phase 1 columns. Highest-risk, highest-value engineering work. Must be isolated so failures do not affect other changes. Contains the only structurally novel change in the milestone (RETURNING clause).
+**Delivers:** Phone normalization utility (`normalize_phone()`), propensity score parser (`parse_propensity()`), voting history Y/N parser with canonical `"{Type}_{Year}"` format, VoterPhone auto-creation via RETURNING clause + batch INSERT, expanded CANONICAL_FIELDS + L2 aliases for all new fields, updated L2 mapping template aliases in suggest_field_mapping
+**Addresses:** Auto-create VoterPhone (critical for phone banking pipeline), voting history parsing (critical for filter builder), mailing address + demographic field mapping
+**Avoids:**
+- Pitfall 1 (SET clause drift) — use derived full column set, not first-row keys
+- Pitfall 2 (missing voter IDs) — RETURNING clause with source_id -> voter_id mapping
+- Pitfall 3 (duplicate phones) — ON CONFLICT DO UPDATE with unique constraint from Phase 1
+- Pitfall 4 (voting history format) — implement `"{Type}_{Year}"` canonical format
+- Pitfall 6 (percent string parsing) — dedicated `parse_propensity()` with exhaustive test matrix
+- Pitfall 9 (ethnicity "Likely" prefix) — normalize on storage, strip qualifier prefix
+- Pitfall 16 (phone normalization) — strip non-digits, validate 10 digits, match DNC normalization
+- Pitfall 15 (import performance) — batch phone inserts identically to voter batch; benchmark with Macon-Bibb demo dataset
 
-### Phase 2: Voter Management Completion
+**Research flag:** NEEDS ATTENTION — The RETURNING clause change is structurally novel; verify behavior with new voter inserts (not just updates) against real test data. Exact L2 propensity column names are MEDIUM confidence; verify against an actual L2 file before finalizing aliases.
 
-**Rationale:** Voters are the core data model. The contacts, tags, lists, create/edit, and advanced search features are partially scaffolded (hooks and types exist) but have no UI pages. The import wizard (Phase 3) depends on voter types being complete. Call list creation (Phase 4) depends on voter filtering. The phone banking calling screen (Phase 5) needs voter detail.
+### Phase 3: Filter Builder + Query Enhancement
 
-**Delivers:** Voter detail enhancement (contacts, tags, lists, notes tabs); voter create/edit forms; voter lists CRUD (static and dynamic); advanced search with filter builder
+**Rationale:** Depends on Phase 1 columns. Independent of Phase 2 (can run in parallel or sequentially). Low engineering risk — identical pattern to existing 13 filter conditions. Sequenced after Phase 2 because voting history canonical format (established in Phase 2) must be known before implementing backward-compat in the query builder.
+**Delivers:** VoterFilter schema additions (~13 new dimensions including propensity ranges, ethnicity/language/military multi-select, has_mailing_address boolean), `build_voter_query()` condition handlers for all new dimensions
+**Addresses:** Propensity range filtering (primary table-stakes reason to make scores first-class), demographic filters (differentiators)
+**Avoids:**
+- Pitfall 4 (voting history backward compat) — implement year-only lookup alongside canonical format from Phase 2 so `voted_in: ["2024"]` still matches `"General_2024"` entries
+- Pitfall 12 (extra_data stale data) — assess whether a data migration is needed for campaigns that previously imported L2 files; run UPDATE to copy JSONB keys to typed columns if needed
 
-**Addresses features:** Voter Management completion (P1)
+**Research flag:** Skip — exact same pattern as 13 existing conditions; no novel patterns.
 
-**Avoids pitfalls:** Voter list browser crash — TanStack Virtual plus maxPages on infinite query required here; default voter index to search-prompt-only with no auto-load
+### Phase 4: Frontend Updates
 
-**Research flag:** Skip — established CRM patterns; TanStack Virtual integration is documented with official examples
+**Rationale:** Depends on Phases 1-3. Pure additive UI work with low risk. Must come last because it exposes only what the API already returns and already filters.
+**Delivers:** TypeScript Voter/VoterFilter interface updates, ColumnMappingTable new canonical field entries, VoterFilterBuilder new controls grouped into collapsible sections, VoterDetail new display cards (Propensity Scores, Mailing Address, Extended Demographics, Household), VoterEditSheet new editable fields
+**Addresses:** Display of all new vendor data fields, filter UI for new dimensions
+**Avoids:**
+- Pitfall 14 (frontend type mismatch) — only add filter UI controls that have backend condition handlers from Phase 3
+- Pitfall 17 (filter UX overwhelm) — group filter controls into collapsible sections (Demographics, Political, Geography, Scores, Contact, Tags); keep 4 most-used always visible
 
-### Phase 3: Voter Import Wizard
-
-**Rationale:** Import is the most complex single feature (4 steps, direct-to-S3 upload, async processing). It must come after voter management completion (Phase 2) so imported voters land in a fully functional voter UI. Import has no dependencies on other v1.2 domains.
-
-**Delivers:** Import history list; 4-step import wizard (file upload, column mapping, confirm, progress polling); import detail and status page
-
-**Addresses features:** Voter Imports (P1 critical — "can't use the app without data")
-
-**Avoids pitfalls:** Pre-signed URL upload UX (Pitfall 2) — XMLHttpRequest, progress bar, cancel, retry; wizard state loss (Pitfall 3) — server-state-driven, ImportJob ID in URL, resume on return
-
-**Research flag:** NEEDS RESEARCH — complex multi-part flow; MinIO pre-signed URL behavior (TTL, multipart support, CORS config) should be verified against the actual deployment before designing the upload layer; the backend `/detect` API response contract should be confirmed before building the column mapping UI
-
-### Phase 4: Call Lists + DNC
-
-**Rationale:** Phone bank sessions reference call lists. Call lists apply DNC filtering. Neither can be created before the underlying domain management UI exists. Call list CRUD is relatively simple but is a hard prerequisite for Phase 5.
-
-**Delivers:** Call list CRUD; call list detail with entries; DNC list management (view, add individual, bulk import, delete, DNC check)
-
-**Addresses features:** Call Lists and DNC (P2)
-
-**Avoids pitfalls:** DNC bulk import should show a first-10-rows preview before confirmation to prevent accidental mass-DNC of the wrong file
-
-**Research flag:** Skip — standard CRUD plus table patterns
-
-### Phase 5: Phone Banking
-
-**Rationale:** Depends on call lists (Phase 4), surveys (already complete), and voter detail (Phase 2). The active calling experience is the highest-complexity and highest-stakes UI in the project.
-
-**Delivers:** Phone bank session CRUD plus status controls (draft to active to complete); caller assignment; active calling experience (claim entry, voter card, survey script, outcome recording, auto-advance); session progress dashboard; check-in and check-out
-
-**Addresses features:** Phone Banking (P2 HIGH impact/HIGH complexity)
-
-**Avoids pitfalls:** Phone bank claim race conditions (Pitfall 4) — countdown timers, claim heartbeat, explicit 409 handling; calling screen should hide the sidebar via pathless layout or conditional root layout rendering
-
-**Research flag:** NEEDS RESEARCH — claim lifecycle and expiry behavior should be validated against the API (specifically claim_timeout_minutes configuration, batch claim prefetch feasibility, and whether a heartbeat endpoint exists or needs polling)
-
-### Phase 6: Volunteer Management
-
-**Rationale:** Volunteers are referenced by shifts. Volunteer CRUD must exist before shift assignment has entities to reference. Volunteer management is lower priority (MEDIUM user impact vs. HIGH for phone banking) and has no dependencies from earlier phases beyond Phase 1 shared infrastructure.
-
-**Delivers:** Volunteer roster with enhanced filters; volunteer create/edit; volunteer detail (availability, tags, hours tabs); self-registration flow; availability management
-
-**Addresses features:** Volunteer Management (P2 MEDIUM priority)
-
-**Research flag:** Skip — standard CRUD plus availability UI patterns; shadcn calendar and toggle-group components from Phase 1 CLI additions are ready to use
-
-### Phase 7: Shift Management
-
-**Rationale:** Final major feature area. Depends on volunteers (Phase 6). Shift scheduling introduces the timezone problem — the only phase requiring date-fns-tz and explicit timezone display logic.
-
-**Delivers:** Shift CRUD; shift list with date-grouped display; volunteer signup; manager assignment; check-in/out per volunteer; shift roster; hours adjustment dialog
-
-**Addresses features:** Shift Management (P2 MEDIUM priority)
-
-**Avoids pitfalls:** Timezone bugs (Pitfall 7) — store UTC, display in campaign IANA timezone, show abbreviation next to all times, use date-fns-tz for all date arithmetic; note that a campaign timezone field should be added to the campaign model in Phase 1 (settings form) so it is available here
-
-**Research flag:** Skip — CRUD plus list patterns; timezone handling with date-fns-tz is a well-documented problem with a known solution
+**Research flag:** Skip — mirrors backend schema; TypeScript strict mode catches drift at compile time.
 
 ### Phase Ordering Rationale
 
-- **Infrastructure first:** Query key factory, permissions, and form guard patterns are cross-cutting. Introducing them after domain pages are built requires touching every file.
-- **Core data model before consumers:** Voter management completion (Phase 2) feeds import (Phase 3), call lists (Phase 4), and phone banking (Phase 5). The dependency cascade is strict.
-- **Call lists before phone banking:** Sessions reference call lists; a functional phone banking session cannot be created without an existing call list.
-- **Volunteers before shifts:** Shifts assign volunteers; volunteer records must exist for shift rosters and assignment dialogs to operate.
-- **Import is isolated but data-dependent:** The import wizard depends only on voter types, not on other v1.2 domains. It is placed after voter completion (Phase 2) so imported data lands in working voter UI immediately.
+- **Migration must be first** because ADD COLUMN is metadata-only and instant in PostgreSQL — there is no cost to doing it before the application code that uses those columns is written; everything downstream requires columns to exist
+- **Import and filter are independent after migration** — they share only the Voter model, not each other's logic; the suggested sequence (import before filter) exists because voting history parsing (Phase 2) defines the canonical identifier format that the filter query builder (Phase 3) must match for backward compatibility
+- **Frontend is always last** — it depends on the API returning new fields (Phase 1) and accepting new filters (Phase 3); deferring avoids incomplete-feature UI states during development
+- **Single migration file** — one `op.add_column()` batch for all ~23 columns avoids migration chain complexity; columns are all nullable so the migration is instant regardless of table size
 
 ### Research Flags
 
-Phases needing deeper research during planning:
-- **Phase 3 (Voter Import Wizard):** MinIO pre-signed URL behavior (TTL, multipart support, CORS config for direct browser upload), backend /detect API response contract and confidence score schema, client-side encoding detection approach
-- **Phase 5 (Phone Banking):** Claim heartbeat endpoint availability, claim_timeout_minutes default and configuration range, batch claim prefetch pattern feasibility with the current backend API
+**Phases needing closer attention during implementation:**
+- **Phase 2 (RETURNING clause):** The most structurally novel change. Recommend a focused implementation session with explicit test cases covering new voter inserts (not just updates). Test: import a file with phone numbers where all voters are new; verify VoterPhone records exist with correct voter_id FK.
+- **Phase 2 (Voting history canonical format):** The `"{Type}_{Year}"` format decision has downstream impact on saved filters. Lock in the format specification in writing before coding begins. Audit actual voting_history array contents in production before implementing the parser.
+- **Phase 3 (Backward compatibility):** Existing `voter_lists` with saved `voted_in` filters using year-only strings must continue to work. Requires an explicit test with a seeded saved filter containing `voted_in: ["2024"]`.
+- **Phase 1 (extra_data backfill decision):** If campaigns have already imported L2 files, propensity and demographic data may be in `extra_data` on existing voter records. Assess before shipping Phase 1 whether a data migration script is needed.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Shared Infrastructure):** Standard React component patterns; TanStack Query key factories are documented in official examples
-- **Phase 2 (Voter Management):** CRM CRUD patterns; TanStack Virtual integration example exists in official docs
-- **Phase 4 (Call Lists + DNC):** Standard CRUD table patterns with file upload for bulk DNC import
-- **Phase 6 (Volunteer Management):** Standard CRUD plus availability slot UI patterns
-- **Phase 7 (Shift Management):** CRUD plus date-fns-tz; well-documented timezone solution
+**Phases with standard patterns (low uncertainty):**
+- **Phase 1 (Migration + model):** Purely additive Alembic operations. Well-understood pattern in this codebase.
+- **Phase 3 (Filter builder):** Exact same pattern as 13 existing conditions. No architectural questions.
+- **Phase 4 (Frontend):** Mirror backend schema. TypeScript strict mode catches drift at compile time.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All package versions verified via npm view on 2026-03-10; React 19 peer dependency compatibility explicitly confirmed for each addition; alternatives considered and excluded with written rationale |
-| Features | HIGH | Based on gap analysis of existing codebase plus competitor patterns from NGPVAN, NationBuilder, Solidarity Tech, and Mobilize; complexity estimates derived from direct codebase inspection |
-| Architecture | HIGH | Primary source is direct codebase analysis (12 hook files, 18 route files, all components reviewed); patterns derived from existing working code; dependency ordering from actual API schema |
-| Pitfalls | HIGH | Each pitfall traced to specific codebase evidence (e.g., ky retry config, useFieldOps.ts key naming, dashboard.tsx line count); prevention strategies reference official TanStack docs and verified community patterns |
+| Stack | HIGH | No new dependencies. All capabilities verified against existing installed versions. Column type decisions (SmallInteger vs Numeric vs Float) verified against SQLAlchemy docs and Pydantic v2 serialization behavior. |
+| Features | HIGH | Core features verified against L2 documentation and existing codebase. Differentiators based on industry research (Pew, VAN, NGP). L2 exact column names for new propensity fields are MEDIUM — verify against a real L2 file. |
+| Architecture | HIGH | Based on direct codebase analysis of all affected files. Pseudocode patterns derived from existing service code. No external architecture research needed. |
+| Pitfalls | HIGH | All critical pitfalls identified through direct code inspection. Three pitfalls (1, 4, 8) are subtle silent-failure modes that would not surface in basic testing without specific test cases. Recovery costs documented. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **MinIO pre-signed URL behavior:** Research assumed AWS S3 conventions. The backend uses MinIO. URL TTL, multipart upload support, and CORS configuration for direct browser-to-MinIO upload need verification against the actual deployment before building the import wizard upload layer.
-- **ZITADEL role claim format:** Campaign roles may come from ZITADEL JWT claims, but the exact claim key path (e.g., `urn:zitadel:iam:org:project:roles`) was not verified against the current ZITADEL instance. The permission system design in Phase 1 must confirm where campaign roles live in the token before building the usePermission hook.
-- **Phone banking claim_timeout_minutes default:** The actual default value and whether it can be fetched from an API endpoint was not confirmed. The claim countdown UI needs this value at render time.
-- **Voter list virtualization row height:** TanStack Virtual requires a known or estimated row height for windowing. The voter list row height depends on the final column design. This should be resolved at the start of Phase 2, not during implementation.
+- **L2 exact propensity column names** (MEDIUM confidence): The research lists likely names (`Voters_GeneralElectionTurnout`, `Modeled_Turnout`, etc.) but L2's full data dictionary is behind institutional access. Exact names vary by state. The RapidFuzz fuzzy matcher provides a safety net, but explicit aliases should be verified against an actual L2 file before the import pipeline changes go to production. Flag for early validation in Phase 2.
+
+- **TargetSmart field name prefixes** (LOW confidence): TargetSmart per-client configuration means `ts_tsmart_*` prefixes may vary. The fuzzy matcher should handle most cases. If a TargetSmart import fails to map propensity scores, add aliases after first real import.
+
+- **Existing extra_data backfill** (depends on production state): If campaigns have already imported L2 files, propensity and demographic data may be in `extra_data` on existing voter records. Whether a data migration script is needed depends on which campaigns are in production and what they have imported. Assess before shipping Phase 1.
+
+- **Voting history backward compatibility** (must be locked in before Phase 2): If existing production data has year-only strings in `voting_history` (e.g., `"2024"`) from prior manual imports or other sources, the canonical format decision affects those records. Audit actual voting_history array contents before implementing the parser.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-- Direct codebase analysis — `web/src/hooks/` (12 files), `web/src/routes/` (18 files), `web/src/components/` (all), `web/src/api/client.ts`, `web/src/types/` (11 files)
-- [UI vs API Gap Analysis Report](/docs/ui-api-gap-analysis.md) — endpoint coverage inventory (source for ~55/~28/~67 coverage breakdown)
-- npm view commands on 2026-03-10 — version and peer dependency verification for all proposed packages
-- [TanStack Query Official Docs](https://tanstack.com/query/v5/docs) — invalidation, optimistic updates, polling patterns
-- [TanStack Router Official Docs](https://tanstack.com/router/v1/docs) — file-based routing, useBlocker, navigation blocking
-- [TanStack Table + Virtual example](https://tanstack.com/table/v8/docs/framework/react/examples/virtualized-infinite-scrolling) — virtualized infinite scroll reference
-- [shadcn/ui component docs](https://ui.shadcn.com/docs/components) — full component list and CLI installation
-- [PapaParse official site](https://www.papaparse.com/) — streaming and Web Worker support verified
-- [@dnd-kit official docs](https://dndkit.com/) — v6.3.1 stable API; @dnd-kit/react v0.3.2 pre-1.0 status confirmed
+- Project codebase: `app/models/voter.py`, `app/services/import_service.py`, `app/services/voter.py`, `app/schemas/voter_filter.py`, `app/models/voter_contact.py`, `alembic/versions/002_voter_data_models.py` — direct analysis of all affected files
+- [SQLAlchemy 2.0 Type Hierarchy](https://docs.sqlalchemy.org/en/20/core/type_basics.html) — Numeric vs Float vs Integer column type selection
+- [L2 2025 Voter Data Dictionary](https://www.l2-data.com/wp-content/uploads/2025/08/L2-2025-VOTER-DATA-DICTIONARY-1.pdf) — 698 demographic variables, propensity score specification
+- [PostgreSQL ALTER TABLE ADD COLUMN](https://www.postgresql.org/docs/current/sql-altertable.html) — confirms nullable ADD COLUMN is metadata-only, no table rewrite
+- [SQLAlchemy INSERT ON CONFLICT RETURNING](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html) — VoterPhone creation pattern
 
 ### Secondary (MEDIUM confidence)
+- [Pew Research: Political data in voter files](https://www.pewresearch.org/methods/2018/02/15/political-data-in-voter-files/) — propensity score structure (0-100 scale), modeled partisanship conventions
+- [L2 Partisanship Models](https://www.l2-data.com/l2-modeled-partisanship-models/) — confirms propensity scores are decile integers 10-100
+- [TargetSmart Data Products Documentation](https://docs.targetsmart.com/my_tsmart/data-products.html) — VoterBase, CellBase field descriptions
+- [NationBuilder voter file fields](https://support.nationbuilder.com/en/articles/2471295-national-voter-file-fields) — mailing address field patterns
+- [Pydantic v2 Decimal Serialization Issue #7457](https://github.com/pydantic/pydantic/issues/7457) — confirms SmallInteger over Numeric for JSON serialization
 
-- [TkDodo — Concurrent Optimistic Updates](https://tkdodo.eu/blog/concurrent-optimistic-updates-in-react-query) — race condition patterns for concurrent mutations
-- [Handling Large File Uploads with Pre-signed URLs](https://www.pullrequest.com/blog/handling-large-file-uploads-in-react-securely-using-aws-s3-pre-signed-urls/) — XHR upload progress pattern
-- [Building a Virtualized Table with TanStack](https://dev.to/ainayeem/building-an-efficient-virtualized-table-with-tanstack-virtual-and-react-query-with-shadcn-2hhl) — Virtual plus Table plus Query integration
-- [Implementing RBAC in React](https://www.permit.io/blog/implementing-react-rbac-authorization) — permission map and CanDo component pattern
-- [TanStack Router Navigation Blocking](https://tanstack.com/router/v1/docs/framework/react/guide/navigation-blocking) — useBlocker API for dirty form guards
-
-### Tertiary (needs validation during implementation)
-
-- MinIO pre-signed URL behavior — assumed AWS S3 conventions; verify against actual deployment
-- ZITADEL campaign role claim path — needs confirmation against running ZITADEL instance
-- Phone banking claim_timeout_minutes default — not confirmed against backend configuration
+### Tertiary (LOW confidence — needs validation)
+- [Aristotle Data](https://www.aristotle.com/data/) — 1000+ data points cited; field names not publicly documented; fuzzy matching is the mitigation
+- L2 voting history column format (`General_YYYY_MM_DD` pattern) — inferred from documentation references; exact naming varies by state; must validate against real L2 file
+- TargetSmart field name prefixes (`ts_tsmart_*`, `vb_voterbase_*`) — from API documentation fragments; per-client configuration may vary
 
 ---
-*Research completed: 2026-03-10*
+*Research completed: 2026-03-13*
 *Ready for roadmap: yes*

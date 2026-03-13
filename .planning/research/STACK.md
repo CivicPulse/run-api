@@ -1,238 +1,311 @@
-# Stack Research
+# Technology Stack
 
-**Domain:** Frontend UI additions for political campaign management app (v1.2 Full UI milestone)
-**Researched:** 2026-03-10
+**Project:** CivicPulse Run v1.3 -- Voter Model & Import Enhancement
+**Researched:** 2026-03-13
 **Confidence:** HIGH
 
 ## Context
 
-This research covers ONLY the frontend library additions needed for v1.2. The existing validated stack is not re-evaluated:
+This research covers ONLY the backend changes needed for v1.3. The existing validated stack is not re-evaluated. This milestone is primarily a schema expansion + import pipeline enhancement -- no new libraries are required.
 
-**Already installed and in use (DO NOT ADD):**
-- React 19.2, React DOM 19.2
-- TanStack Router 1.159, TanStack Query 5.90, TanStack Table 8.21
-- Tailwind CSS 4.1, shadcn/ui (via `radix-ui` 1.4 + `shadcn` 3.8 CLI)
-- Vite 7.3, TypeScript 5.9
-- react-hook-form 7.71, @hookform/resolvers 5.2, zod 4.3
-- Leaflet 1.9 + react-leaflet 5.0 (installed, not yet used in components)
-- recharts 3.7 (used in dashboard)
-- ky 1.14 (HTTP client), oidc-client-ts 3.1, zustand 5.0
-- sonner 2.0 (toasts), vaul 1.1 (drawer), cmdk 1.1 (command palette)
-- lucide-react 0.563 (icons)
-- Vitest 4.0, Playwright 1.58, Testing Library
+**Already installed and validated (DO NOT ADD):**
+- FastAPI >=0.135.1, Uvicorn >=0.41.0
+- SQLAlchemy >=2.0.48 (async, mapped_column style)
+- asyncpg >=0.31.0, psycopg2-binary >=2.9.11
+- PostgreSQL + PostGIS (via GeoAlchemy2 >=0.18.4)
+- Alembic >=1.18.4 (migration management)
+- RapidFuzz >=3.14.3 (fuzzy field matching at 75% threshold)
+- Pydantic >=2.12.5, pydantic-settings >=2.13.1
+- aioboto3 >=15.5.0 (MinIO/S3 for file storage)
+- TaskIQ >=0.12.1 (background job processing)
+- Loguru >=0.7.3
 
-**Already installed shadcn/ui components:**
-alert-dialog, avatar, badge, button, card, command, dialog, dropdown-menu, input, label, popover, radio-group, select, separator, sheet, sidebar, skeleton, sonner, table, tabs, textarea, tooltip
+## Recommended Stack Changes
 
-## Recommended Stack Additions
+### Zero New Dependencies Required
 
-### 1. Client-Side CSV Parsing: PapaParse
+This milestone requires **no new Python packages**. All capabilities needed for the voter model expansion and import pipeline enhancement are provided by the existing stack:
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| papaparse | ^5.5.3 | Client-side CSV preview and column detection | Zero-dependency, framework-agnostic CSV parser. Supports streaming via Web Workers for large files (voter files can be 500MB+). The import wizard needs to preview the first N rows locally before uploading to S3 and calling the server-side detect endpoint. PapaParse handles this without loading the entire file into memory. |
-| @types/papaparse | ^5.5.2 | TypeScript definitions for PapaParse | Needed for type-safe integration. |
+| Capability Needed | Provided By | Already Installed |
+|---|---|---|
+| New Voter model columns (propensity scores) | SQLAlchemy `SmallInteger` / `Integer` | Yes (>=2.0.48) |
+| New Voter model columns (strings) | SQLAlchemy `String` / `mapped_column` | Yes (>=2.0.48) |
+| Alembic ADD COLUMN migration | Alembic `op.add_column()` | Yes (>=1.18.4) |
+| Expanded L2 field mapping aliases | RapidFuzz `fuzz.ratio` (existing pattern) | Yes (>=3.14.3) |
+| Phone number parsing/normalization | Python `re` stdlib | Yes (stdlib) |
+| Voting history Y/N column detection | Python `re` stdlib + string ops | Yes (stdlib) |
+| Batch VoterPhone upsert during import | SQLAlchemy `insert().on_conflict_do_update()` | Yes (>=2.0.48) |
+| Updated Pydantic schemas | Pydantic `BaseModel` | Yes (>=2.12.5) |
 
-**How it fits the import wizard flow:**
-1. User selects file via react-dropzone (see below)
-2. PapaParse streams first 100 rows for local preview (instant feedback)
-3. File uploads to S3 via pre-signed URL from `/campaigns/{id}/imports`
-4. Server calls `/detect` for fuzzy-match column suggestions via RapidFuzz
-5. User confirms mapping in the column mapping UI step
-6. Server dispatches TaskIQ background job, frontend polls status
+## Column Type Decisions for New Voter Fields
 
-**Confidence:** HIGH -- PapaParse has zero peer dependencies, works in any React version, 12M+ weekly npm downloads, actively maintained.
+### Propensity Scores: Use `SmallInteger` (not Numeric, not Float)
 
-### 2. File Upload Drop Zone: react-dropzone
+L2 propensity scores are expressed in deciles from 10 to 100 (representing 0-10th percentile through 90-99th percentile). They are integer values, never fractional.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| react-dropzone | ^15.0.0 | Drag-and-drop file upload zone | Purpose-built for file upload UX. Provides accessible drag-and-drop with file type validation, size limits, and multiple-file support. v15 supports React 19. The import wizard's first step needs a polished drop zone for CSV/TSV files -- react-dropzone provides this without building drag-and-drop from scratch with HTML5 APIs. |
+| Decision | Rationale |
+|---|---|
+| Use `SmallInteger` | Scores are integers 0-100. SmallInteger uses 2 bytes vs Integer's 4 bytes -- saves ~40 bytes per voter row across ~20 score columns. At 500K voters, that is 20MB savings. |
+| NOT `Numeric(5,2)` | Propensity scores from L2 are integer deciles (10, 20, ..., 100), never 85.73. Numeric adds Decimal overhead in Python (serialization complexity, Pydantic string coercion in JSON) for no benefit. |
+| NOT `Float` | Float has IEEE 754 rounding issues. Scores are exact integers. Also, Float uses 8 bytes vs SmallInteger's 2 bytes. |
 
-**Why not build with native HTML5 drag-and-drop:** React-dropzone handles edge cases that are painful to implement manually: browser inconsistencies in drag events, accessible keyboard upload, MIME type validation, and the "enter/leave" event flickering when dragging over child elements. For a single drop zone component, the library saves significant effort.
+**SQLAlchemy pattern:**
+```python
+# In Voter model -- ~20 propensity score columns
+propensity_turnout: Mapped[int | None] = mapped_column(SmallInteger)
+propensity_partisan: Mapped[int | None] = mapped_column(SmallInteger)
+# ... etc.
+```
 
-**Why not a full drag-and-drop library (dnd-kit) for file upload:** dnd-kit is for rearranging/sorting items within the UI. File upload from the OS is a different interaction pattern that react-dropzone handles specifically.
+**Pydantic pattern:**
+```python
+# In VoterResponse schema -- no special handling needed
+propensity_turnout: int | None = None
+propensity_partisan: int | None = None
+```
 
-**Confidence:** HIGH -- v15.0.0 published recently, 10M+ weekly npm downloads, React 19 compatible (peer dep: `react >= 16.8`).
+**Why this matters:** Using `Numeric` would cause Pydantic v2 to serialize scores as strings in JSON (Pydantic v2 serializes `Decimal` as strings by default). That would require either custom serializers on every score field or `asdecimal=False` on the SQLAlchemy column. `SmallInteger` avoids this entirely -- scores serialize as plain JSON integers.
 
-### 3. Drag-and-Drop Interactions: @dnd-kit
+**Confidence:** HIGH -- L2's own documentation states scores are decile integers 10-100. SmallInteger is the correct PostgreSQL type for this range.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| @dnd-kit/core | ^6.3.1 | Drag-and-drop foundation for column mapping UI | Best-in-class React DnD library. Accessible (keyboard + screen reader), performant (60fps with 1000+ items via CSS transforms), modular architecture. Needed for the column mapping step where users drag source columns to target fields, and for availability slot reordering in the volunteer scheduling UI. |
-| @dnd-kit/sortable | ^10.0.0 | Sortable list presets built on @dnd-kit/core | Provides SortableContext and useSortable hook for ordered lists. Used for reordering availability time slots in the shift scheduling UI. |
-| @dnd-kit/utilities | ^3.2.2 | CSS transform utilities for dnd-kit | Small utility package for CSS.Transform.toString() used in drag overlays. Required by @dnd-kit/sortable. |
+### String Demographic Fields: Use `String` (not Enum)
 
-**Why @dnd-kit/core (stable) over @dnd-kit/react (new):** The `@dnd-kit/react` package is v0.3.2 -- pre-1.0, API may change. The `@dnd-kit/core` package is v6.3.1, battle-tested in production, and explicitly supports React 18+19 in peer dependencies. Use the stable ecosystem.
+| Field | Type | Size | Rationale |
+|---|---|---|---|
+| `language_preference` | `String(100)` | Variable | L2 has dozens of language values. Enum would require ALTER TYPE for new values. Project convention is `native_enum=False` for all enums anyway. Plain String is simpler and consistent. |
+| `marital_status` | `String(50)` | Variable | Values: Single, Married, Divorced, etc. Same rationale as language. |
+| `military_status` | `String(50)` | Variable | Values: Active, Veteran, Reserves, etc. Small value set but may expand. |
+| `occupation` | `String(255)` | Variable | Free-text from L2 commercial data. |
+| `education` | `String(100)` | Variable | Values from L2 modeling. |
+| `home_owner_renter` | `String(50)` | Variable | Owner/Renter/Unknown. |
+| `estimated_hh_income` | `String(100)` | Variable | L2 encodes as range strings like "$50K-$75K". Store as-is, not as numeric. |
 
-**Why not react-beautiful-dnd:** Deprecated by Atlassian in 2022. The community fork `@hello-pangea/dnd` exists but dnd-kit is more flexible, has better TypeScript support, and is the modern standard.
+**Why String over StrEnum:** The existing project uses `native_enum=False` for all StrEnum columns (documented in Key Decisions). For demographic fields with vendor-provided values, plain `String` is even simpler -- no Python enum class needed, values pass through from import directly. If the UI later needs validated dropdown values, those can be driven from a frontend enum or a lookup table without schema changes.
 
-**Why not react-dnd:** Heavier abstraction with a backend system (HTML5, touch). More complex API for the same result. dnd-kit is lighter and more composable.
+**Confidence:** HIGH -- consistent with the existing `native_enum=False` project convention.
 
-**Where used in v1.2:**
-- Column mapping wizard: drag detected columns onto target voter fields
-- Shift scheduling: reorder or rearrange availability slots
-- Potential: reorder survey questions (already have surveys, may want editing)
+### Mailing Address Fields: Inline on Voter Model (not VoterAddress)
 
-**Confidence:** HIGH -- @dnd-kit/core 6.3.1 is stable, peer deps explicitly include React 19, 2.5M+ weekly npm downloads.
+| Field | Type | Size | Why |
+|---|---|---|---|
+| `mail_address_line1` | `String(500)` | Variable | L2 provides separate mailing address distinct from residence. |
+| `mail_address_line2` | `String(500)` | Variable | Secondary line. |
+| `mail_city` | `String(255)` | Variable | Mailing city. |
+| `mail_state` | `String(2)` | Fixed | Mailing state abbreviation. |
+| `mail_zip_code` | `String(10)` | Variable | Mailing ZIP. |
 
-### 4. Additional shadcn/ui Components (via CLI, not npm)
+**Why inline on Voter instead of using VoterAddress model:** The VoterAddress model is for user-managed contact records with CRUD operations, primary flags, and interaction event emission. L2 mailing addresses are imported data, not user-editable contacts. Mixing imported vendor data into the contact CRUD model creates confusion about data provenance and bloats the contact service with non-interactive records.
 
-These are not npm packages -- they are added via `npx shadcn add [component]` which copies the component source into the project. No new dependencies are introduced.
+**Confidence:** HIGH -- architecture decision based on existing data model separation.
 
-| Component | Purpose | Needed For |
-|-----------|---------|------------|
-| `progress` | Progress bar for import status tracking | Import wizard progress step, phone bank session progress |
-| `checkbox` | Multi-select in data tables | Member lists, DNC lists, call lists, voter selection |
-| `switch` | Toggle controls | Volunteer availability, shift settings, DNC flags |
-| `scroll-area` | Custom scrollable regions | Column mapping panel with many fields, long voter detail tabs |
-| `date-picker` | Date selection (built on Calendar + Popover) | Shift scheduling, volunteer availability, import date filters |
-| `calendar` | Date display/selection (uses react-day-picker internally) | Shift calendar view, availability calendar |
-| `breadcrumb` | Navigation breadcrumbs | Deep nested routes (campaign > phone banking > session > caller) |
-| `pagination` | Page navigation controls | Data tables with server-side pagination |
-| `toggle` | Toggle buttons | View mode switches (list/grid/calendar) |
-| `toggle-group` | Grouped toggle buttons | Multi-day availability selection, view mode switches |
-| `collapsible` | Expandable sections | Voter detail sections, advanced search filters |
-| `spinner` | Loading indicators | Inline loading states during mutations |
+### ZIP+4 and Household Enrichment: Column Additions
 
-**Important:** shadcn/ui's `calendar` component depends on `react-day-picker`, which is already a transitive dependency via the `radix-ui` package. Running `npx shadcn add calendar` will install `react-day-picker@^9.14.0` if not already present. react-day-picker v9 is compatible with React 19.
+| Field | Type | Size | Why |
+|---|---|---|---|
+| `zip4` | `String(4)` | Fixed | L2 provides +4 extension separately from ZIP. Existing `zip_code` is `String(10)` so it *could* hold "12345-6789", but L2 sends them in separate columns. Store separately for clean filtering and avoid requiring users to parse ZIP+4 format. |
+| `household_size` | `SmallInteger` | 2 bytes | Integer count of household members. SmallInteger is sufficient (max 32,767). |
+| `num_children` | `SmallInteger` | 2 bytes | Count of children in household. |
+| `dwelling_type` | `String(50)` | Variable | Single Family, Multi-Family, etc. |
+| `home_value` | `String(100)` | Variable | L2 encodes as range strings. Store as-is. |
 
-**Confidence:** HIGH -- these are official shadcn/ui components built on Radix primitives that already support React 19.
+**Confidence:** HIGH -- straightforward column additions following existing patterns.
 
-### 5. Date Range and Scheduling Display
+### Complete New Column List (~20 columns)
 
-No additional library needed beyond shadcn/ui's `calendar` (which wraps react-day-picker v9).
+**Propensity Scores (SmallInteger, all nullable):**
+1. `propensity_turnout` -- General election turnout propensity
+2. `propensity_partisan` -- Partisan propensity (higher = more R-leaning in L2 encoding)
+3. `propensity_primary` -- Primary election turnout propensity
+4. `propensity_caucus` -- Caucus participation propensity
+5. `propensity_gun_owner` -- Gun ownership propensity
+6. `propensity_religious` -- Religious propensity
 
-**Why not react-big-calendar or FullCalendar:** The scheduling UI in this project is shift-based (create a shift for a date/time, volunteers sign up). This is CRUD + a list view grouped by date, not a Google Calendar-style event grid. The shadcn calendar for date picking + a custom list/card layout for shift display is simpler and more consistent with the existing UI system. If a full calendar view is needed later, `react-big-calendar` (v1.19.4, React 19 compatible) can be added incrementally.
+**Demographics (String, all nullable):**
+7. `language_preference` -- Primary language
+8. `marital_status` -- Marital status
+9. `military_status` -- Military/veteran status
+10. `occupation` -- Occupation
+11. `education` -- Education level
+12. `home_owner_renter` -- Homeownership status
+13. `estimated_hh_income` -- Estimated household income range
 
-**Why not schedule-x:** Newer library (v4.1.0), smaller community, adds complexity for a use case that doesn't need a full calendar widget.
+**Mailing Address (String, all nullable):**
+14. `mail_address_line1` -- Mailing street address
+15. `mail_address_line2` -- Mailing secondary line
+16. `mail_city` -- Mailing city
+17. `mail_state` -- Mailing state
+18. `mail_zip_code` -- Mailing ZIP
 
-**Confidence:** HIGH -- this is an architectural decision, not a library choice. The shift model is CRUD, not calendar-event management.
+**Household/Residence Enrichment (various, all nullable):**
+19. `zip4` -- ZIP+4 extension
+20. `household_size` -- Household member count
+21. `num_children` -- Children in household
+22. `dwelling_type` -- Dwelling classification
+23. `home_value` -- Home value range
+
+## Import Pipeline Enhancements (No New Libraries)
+
+### Auto-Create VoterPhone During Import
+
+**Approach:** Extend `ImportService.process_csv_batch()` to detect phone columns, normalize phone numbers, and batch-insert VoterPhone records in the same transaction.
+
+**Implementation uses existing tools:**
+- Phone number detection: Add phone-related entries to `CANONICAL_FIELDS` mapping (e.g., `"phone"`, `"cell_phone"`, `"home_phone"`)
+- Phone normalization: Python `re.sub(r'[^0-9]', '', value)` to strip non-digits. No library needed.
+- Phone insertion: `insert(VoterPhone).values(...)` with `on_conflict_do_nothing()` -- same pattern as the existing voter upsert
+- Transaction boundary: Use `session.flush()` after voter upsert (to get voter IDs), then insert phones in the same session -- no new transaction management needed
+
+**Critical design choice:** Use `on_conflict_do_nothing()` for phones (not `on_conflict_do_update()`). Phone numbers from import should not overwrite user-edited phone records. The VoterPhone table has no unique constraint on (voter_id, value) currently, so one will need to be added via migration.
+
+**Why not a phone number library (python-phonenumbers):** L2 and most US voter files provide 10-digit US phone numbers. The strip-non-digits approach handles the common cases (dashes, parens, spaces). International phone validation (E.164) is not needed for US voter files. Adding a 10MB library (python-phonenumbers includes the entire Google libphonenumber database) for strip-and-validate-length is not justified.
+
+**Confidence:** HIGH -- phone normalization is string manipulation, not a library problem.
+
+### Voting History Y/N Column Parsing
+
+**Approach:** Detect columns matching election patterns (e.g., `General_2024`, `Primary_2022`, `General_2020_11_03`) where values are "Y" or "N", and convert them into the existing `voting_history` ARRAY.
+
+**Implementation uses existing tools:**
+- Column detection: `re.match(r'^(General|Primary|Municipal|Special|Runoff)_\d{4}', col)` pattern matching
+- Value parsing: Simple `value.strip().upper() == 'Y'` check
+- Array building: Collect matching election identifiers into a list, assign to `voting_history` field
+- Integration point: New step in `apply_field_mapping()` that runs after standard field mapping, before the row is yielded
+
+**Why regex pattern matching instead of fuzzy matching for election columns:** Election columns follow a strict naming convention in L2 files (`General_YYYY_MM_DD` or `General_YYYY`). Fuzzy matching would be wrong here -- we need exact pattern recognition. A column named "General_2024" should map to a voting history entry, not fuzzy-match against a canonical field.
+
+**Confidence:** HIGH -- pattern matching on election column names is deterministic.
+
+### Expanded L2 Field Mapping
+
+**Approach:** Add new aliases to the existing `CANONICAL_FIELDS` dictionary and the `_L2_MAPPING` template. No structural changes to the mapping system.
+
+New CANONICAL_FIELDS entries to add:
+```python
+"language_preference": [
+    "language_preference", "language", "primary_language",
+    "languages_description",
+],
+"marital_status": [
+    "marital_status", "marital", "voters_maritalstatus",
+],
+"military_status": [
+    "military_status", "military", "commercialdata_militarystatus",
+],
+"mail_address_line1": [
+    "mail_address_line1", "mailing_address", "mail_address",
+    "mail_addresses_addressline",
+],
+# ... etc. for all new fields
+```
+
+New L2 mapping template entries:
+```python
+"Languages_Description": "language_preference",
+"Voters_MaritalStatus": "marital_status",
+"CommercialData_MilitaryStatus": "military_status",
+"Mail_Addresses_AddressLine": "mail_address_line1",
+"Mail_Addresses_City": "mail_city",
+"Mail_Addresses_State": "mail_state",
+"Mail_Addresses_Zip": "mail_zip_code",
+"Residence_Addresses_Zip4": "zip4",
+# ... propensity scores ...
+"Modeled_TurnoutScore": "propensity_turnout",
+"Modeled_PartisanScore": "propensity_partisan",
+# ... etc.
+```
+
+**Confidence:** MEDIUM for exact L2 column names -- L2's data dictionary is behind institutional access. The naming convention follows the established pattern in the existing L2 mapping (CamelCase with category prefixes). Exact names should be verified against an actual L2 file during implementation. The fuzzy matching system will handle minor naming variations.
+
+## Database Migration Strategy
+
+### Single Alembic Migration for All Column Additions
+
+**Approach:** One migration file using `op.add_column()` for each new column. All columns are nullable (no default values needed), so this is an instant metadata-only operation in PostgreSQL -- no table rewrite.
+
+```python
+# Pattern for the migration
+op.add_column("voters", sa.Column("propensity_turnout", sa.SmallInteger(), nullable=True))
+op.add_column("voters", sa.Column("propensity_partisan", sa.SmallInteger(), nullable=True))
+# ... ~20 more add_column calls
+```
+
+**Critical:** PostgreSQL ADD COLUMN with no DEFAULT and nullable=True is a metadata-only operation. It does NOT rewrite the table or lock it. This means:
+- Safe to run on tables with millions of rows
+- Near-instant execution
+- No downtime required
+
+**Index additions:** Add composite indexes on high-cardinality filter fields:
+```python
+op.create_index("ix_voters_campaign_language", "voters", ["campaign_id", "language_preference"])
+op.create_index("ix_voters_campaign_military", "voters", ["campaign_id", "military_status"])
+```
+
+Also add the unique constraint for VoterPhone deduplication:
+```python
+op.create_unique_constraint(
+    "uq_voter_phone_voter_value",
+    "voter_phones",
+    ["campaign_id", "voter_id", "value"],
+)
+```
+
+**Confidence:** HIGH -- Alembic `add_column` is the established migration pattern in this project.
 
 ## What NOT to Add
 
-| Avoid | Why | What to Use Instead |
-|-------|-----|---------------------|
-| Any multi-step form library (react-step-wizard, CoreUI Stepper) | The import wizard is 4 steps with custom logic at each step. A wizard library adds abstraction without value when steps have heterogeneous content (file upload, column mapping, confirmation, progress). Build with zustand state machine + shadcn tabs/cards. | Custom wizard component with zustand step state + shadcn `card` + `progress` |
-| react-csv-importer | v0.8.1, peer dep is React 16-17 only. Unmaintained. Also too opinionated about the column mapping UI. | PapaParse for parsing + custom column mapping UI with @dnd-kit |
-| @dnd-kit/react (v0.3.2) | Pre-1.0, API unstable. The React-specific wrapper is experimental. | @dnd-kit/core (v6.3.1, stable) |
-| react-big-calendar | Overkill for shift scheduling. Adds 50KB+ for a CRUD-list UI that doesn't need week/month grid views. | shadcn calendar for date picking + custom shift list layout |
-| AG Grid | Commercial license required for advanced features. TanStack Table already installed and covers all data table needs (sorting, filtering, pagination, column visibility, row selection). | TanStack Table 8.21 (already installed) |
-| Material UI / Chakra UI components | Mixing component libraries creates visual inconsistency and increases bundle size. Everything should go through shadcn/ui. | shadcn/ui components (already the design system) |
-| redux / @reduxjs/toolkit | zustand is already installed and used for state management. Adding Redux alongside zustand creates confusion about which store to use. | zustand 5.0 (already installed) |
-| socket.io-client / WebSocket libraries | The import progress flow uses polling (GET `/imports/{id}` returns `total_rows` / `imported_rows`). The backend has no SSE/WebSocket endpoints. Polling every 2-3 seconds is sufficient for import progress that takes minutes. | TanStack Query `refetchInterval` for polling |
-| date-fns or dayjs | Not needed for the current feature set. Date formatting for shifts/availability can use `Intl.DateTimeFormat` (built into every browser). If heavy date manipulation is needed later, add then. | Native `Intl.DateTimeFormat` and `Date` |
+| Avoid | Why | Use Instead |
+|---|---|---|
+| `python-phonenumbers` (10MB) | US voter files have 10-digit numbers. Strip non-digits + validate length is sufficient. | `re.sub(r'[^0-9]', '', value)` + length check |
+| `pandas` for CSV processing | The existing `csv.DictReader` + batch upsert pipeline works well. Pandas would add a 50MB+ dependency for no benefit over the streaming batch approach. | Existing `csv.DictReader` + `process_csv_batch()` |
+| `SQLAlchemy Numeric` for scores | Propensity scores are integers. Numeric adds Decimal serialization complexity. | `SmallInteger` -- 2 bytes, native int |
+| `StrEnum` classes for demographics | Vendor values vary. Plain `String` with validation at the API layer is more flexible. Consistent with `native_enum=False` project convention. | `String(N)` with Pydantic validation if needed |
+| `phonenumbers` or `E.164` validation | Voter files are US-only. Full international phone validation is overkill. | Regex strip + 10-digit validation |
+| Any ORM relationship changes | New columns are all on the Voter model (flat). VoterPhone creation during import uses direct `insert()` statements, not ORM relationships. | Direct `insert(VoterPhone).values(...)` |
 
-## Recommended Stack (Summary)
+## Integration Points
 
-### New npm Dependencies
+### Files That Change
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| papaparse | ^5.5.3 | Client-side CSV preview | Import wizard: preview first N rows before upload |
-| @types/papaparse | ^5.5.2 | TypeScript definitions | Development |
-| react-dropzone | ^15.0.0 | File upload drop zone | Import wizard: drag-and-drop file selection |
-| @dnd-kit/core | ^6.3.1 | Drag-and-drop foundation | Column mapping UI, sortable lists |
-| @dnd-kit/sortable | ^10.0.0 | Sortable list presets | Availability slot reordering, column reordering |
-| @dnd-kit/utilities | ^3.2.2 | CSS transform utilities | Required by @dnd-kit/sortable |
+| File | Change Type | What Changes |
+|---|---|---|
+| `app/models/voter.py` | Modify | Add ~23 new `mapped_column` fields |
+| `app/schemas/voter.py` | Modify | Add fields to VoterResponse, VoterCreateRequest, VoterUpdateRequest |
+| `app/schemas/voter_filter.py` | Modify | Add new filter fields (language, military_status, propensity ranges, etc.) |
+| `app/services/voter.py` | Modify | Extend `build_voter_query()` with new filter conditions |
+| `app/services/import_service.py` | Modify | Add phone extraction, voting history parsing, new CANONICAL_FIELDS entries |
+| `alembic/versions/006_*.py` | New | Migration for new voter columns + VoterPhone unique constraint |
+| L2 mapping template | Modify | Update system template in migration with new field mappings |
 
-### shadcn/ui Components to Add (via CLI)
+### Files That Do NOT Change
 
-```bash
-npx shadcn add progress checkbox switch scroll-area date-picker calendar breadcrumb pagination toggle toggle-group collapsible spinner
-```
-
-This will pull in `react-day-picker` as a dependency of the calendar component if not already present.
-
-### Development Tools
-
-No additional dev dependencies needed. Vitest, Testing Library, and Playwright are already installed.
+| File | Why Not |
+|---|---|
+| `app/models/voter_contact.py` | VoterPhone model is unchanged. New unique constraint is migration-only. |
+| `app/services/voter_contact.py` | Contact CRUD service is unchanged. Import creates phones directly. |
+| `app/db/base.py` | No new models, just new columns on existing Voter model. |
+| `pyproject.toml` | No new dependencies. |
 
 ## Installation
 
 ```bash
-cd web
+# No new packages to install.
+# The existing stack covers all v1.3 requirements.
 
-# New npm dependencies (3 packages + 1 type package)
-npm install papaparse react-dropzone @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
-npm install -D @types/papaparse
-
-# shadcn/ui components (copies source files, may add react-day-picker)
-npx shadcn add progress checkbox switch scroll-area date-picker calendar breadcrumb pagination toggle toggle-group collapsible spinner
+# To verify current versions:
+uv pip list | grep -E "sqlalchemy|alembic|rapidfuzz|pydantic"
 ```
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| papaparse (client-side preview) | Server-only parsing (skip client preview) | If import files are always small (<1MB) and instant preview isn't needed. But voter files are large, and showing a preview before upload improves UX. |
-| react-dropzone | Native HTML5 drag-and-drop | If the file upload is a simple button click only (no drag-and-drop needed). react-dropzone handles browser edge cases that would require 100+ lines of manual code. |
-| @dnd-kit/core (stable) | @dnd-kit/react (new) | When @dnd-kit/react reaches v1.0 stable. Currently v0.3.2, not production-ready. |
-| Custom wizard (zustand + shadcn) | react-step-wizard | If the wizard has many identical steps (e.g., a survey with 20 identical question pages). Our wizard has 4 heterogeneous steps, making a library unnecessary. |
-| TanStack Query polling | SSE/WebSocket for progress | If the backend adds SSE endpoints for real-time progress. Currently the backend only supports polling via GET. |
-| shadcn calendar + list layout | react-big-calendar | If users explicitly request a week/month calendar grid view for shift scheduling. Can be added later -- react-big-calendar v1.19.4 supports React 19. |
-
-## Version Compatibility
-
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| papaparse 5.5.3 | Any (zero dependencies) | Framework-agnostic, no React dependency at all |
-| react-dropzone 15.0.0 | React >=16.8 (React 19 supported) | v15.0.0 fixed React 19 JSX type imports |
-| @dnd-kit/core 6.3.1 | React >=16.8 including React 19 | Peer dep: `react >=16.8.0, react-dom >=16.8.0` |
-| @dnd-kit/sortable 10.0.0 | @dnd-kit/core ^6.3.0 | Must use matching core version |
-| react-day-picker 9.14.0 | React >=16.8 (React 19 supported) | v9.4.3+ resolved React 19 ref issues. Pulled in by shadcn calendar. |
-| TanStack Table 8.21.3 | React >=16.8 (React 19 supported) | Already installed, already compatible |
-
-## Stack Patterns by Feature Area
-
-**Import Wizard (file upload + column mapping + progress):**
-- react-dropzone for file selection (step 1)
-- PapaParse for local CSV preview with Web Worker streaming (step 1)
-- ky for pre-signed URL upload to S3 (step 1)
-- @dnd-kit/core for column mapping drag-and-drop (step 2)
-- shadcn progress + TanStack Query `refetchInterval` for import polling (step 3)
-- shadcn table for import history list (step 4)
-
-**Data Tables (members, DNC, call lists, volunteers):**
-- TanStack Table 8.21 for headless table logic (already installed)
-- shadcn table + checkbox + pagination for rendering
-- TanStack Query for server-side data fetching with pagination
-- URL search params (TanStack Router) for filter/sort state persistence
-
-**Complex Forms (voter detail, phone bank session, shift creation):**
-- react-hook-form + zod (already installed, already used in TurfForm)
-- shadcn tabs for multi-section forms (voter detail with contacts/tags/lists/history)
-- shadcn collapsible for expandable form sections
-
-**Shift Scheduling / Volunteer Availability:**
-- shadcn calendar + date-picker for date selection
-- @dnd-kit/sortable for availability slot reordering
-- shadcn toggle-group for day-of-week selection
-- Custom card/list layout for shift display (not a calendar grid)
-
-**Map / Geographic (turf visualization):**
-- Leaflet + react-leaflet (already installed, just need to build components)
-- No additional libraries needed
-
-**Real-Time Progress (import, phone bank sessions):**
-- TanStack Query `refetchInterval: 3000` for polling
-- shadcn progress for visual indicator
-- No SSE/WebSocket needed (backend uses polling)
 
 ## Sources
 
-- [react-dropzone GitHub](https://github.com/react-dropzone/react-dropzone) -- React 19 support confirmed via PR #1422 (v14.3.6+), v15.0.0 current
-- [PapaParse official site](https://www.papaparse.com/) -- zero-dependency, streaming + Web Worker support verified
-- [PapaParse GitHub](https://github.com/mholt/PapaParse) -- v5.5.3, 12M+ weekly downloads
-- [@dnd-kit official docs](https://dndkit.com/) -- architecture and API reference
-- [@dnd-kit/core npm](https://www.npmjs.com/package/@dnd-kit/core) -- v6.3.1, peer deps verified (React 16.8+)
-- [@dnd-kit/react npm](https://www.npmjs.com/package/@dnd-kit/react) -- v0.3.2, confirmed pre-1.0
-- [react-day-picker discussion #2152](https://github.com/gpbl/react-day-picker/discussions/2152) -- React 19 support confirmed
-- [shadcn/ui components page](https://ui.shadcn.com/docs/components) -- full component list verified
-- [shadcn/ui data table guide](https://ui.shadcn.com/docs/components/radix/data-table) -- TanStack Table integration patterns
-- [shadcn/ui stepper discussion #6219](https://github.com/shadcn-ui/ui/discussions/6219) -- no official stepper component in shadcn/ui
-- npm view commands -- all version numbers and peer dependencies verified locally via `npm view [package] version peerDependencies` on 2026-03-10
+- [SQLAlchemy 2.0 Type Hierarchy -- Numeric vs Float vs Integer](https://docs.sqlalchemy.org/en/20/core/type_basics.html) -- Column type selection reference
+- [Pydantic v2 Decimal Serialization Issue #7457](https://github.com/pydantic/pydantic/issues/7457) -- Confirms Decimal-as-string serialization in JSON
+- [L2 Partisanship Models](https://www.l2-data.com/l2-modeled-partisanship-models/) -- Confirms propensity scores are decile integers 10-100
+- [L2 Data Dictionary Reference](https://www.l2-data.com/datamapping/voter-data-dictionary/) -- Field naming conventions (full dictionary behind institutional access)
+- [L2 2025 Voter Data Dictionary](https://www.l2-data.com/wp-content/uploads/2025/08/L2-2025-VOTER-DATA-DICTIONARY-1.pdf) -- Current field listing (698 demographic variables)
+- [PostgreSQL ADD COLUMN performance](https://www.postgresql.org/docs/current/sql-altertable.html) -- Confirms nullable ADD COLUMN is metadata-only
+- [SQLAlchemy insert().on_conflict_do_nothing()](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html) -- Pattern for VoterPhone dedup during import
+- Existing codebase: `app/models/voter.py`, `app/services/import_service.py`, `alembic/versions/002_voter_data_models.py` -- Established patterns
 
 ---
-*Stack research for: CivicPulse Run v1.2 Full UI -- frontend library additions*
-*Researched: 2026-03-10*
+*Stack research for: CivicPulse Run v1.3 Voter Model & Import Enhancement -- backend changes only*
+*Researched: 2026-03-13*
