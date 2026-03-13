@@ -83,7 +83,7 @@ class WalkListService:
         voters = list(result.scalars().all())
 
         # Sort by street address: (street_name, house_number, last_name)
-        voters.sort(key=lambda v: parse_address_sort_key(v.address_line1, v.last_name))
+        voters.sort(key=lambda v: parse_address_sort_key(v.registration_line1, v.last_name))
 
         # Create walk list record
         now = utcnow()

@@ -46,17 +46,17 @@ def build_voter_query(filters: VoterFilter) -> Select:
     if filters.precinct is not None:
         conditions.append(Voter.precinct == filters.precinct)
 
-    if filters.city is not None:
-        conditions.append(Voter.city == filters.city)
+    if filters.registration_city is not None:
+        conditions.append(Voter.registration_city == filters.registration_city)
 
-    if filters.state is not None:
-        conditions.append(Voter.state == filters.state)
+    if filters.registration_state is not None:
+        conditions.append(Voter.registration_state == filters.registration_state)
 
-    if filters.zip_code is not None:
-        conditions.append(Voter.zip_code == filters.zip_code)
+    if filters.registration_zip is not None:
+        conditions.append(Voter.registration_zip == filters.registration_zip)
 
-    if filters.county is not None:
-        conditions.append(Voter.county == filters.county)
+    if filters.registration_county is not None:
+        conditions.append(Voter.registration_county == filters.registration_county)
 
     if filters.congressional_district is not None:
         conditions.append(

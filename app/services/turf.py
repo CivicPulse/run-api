@@ -72,7 +72,7 @@ def parse_address_sort_key(address: str | None, last_name: str | None = None) ->
     """Extract (street_name, house_number, last_name) for walk order sorting.
 
     Args:
-        address: The address_line1 value.
+        address: The registration_line1 value.
         last_name: The voter's last name (tiebreaker).
 
     Returns:
@@ -98,8 +98,8 @@ def household_key(voter: Voter) -> str:
     """
     if voter.household_id:
         return voter.household_id
-    addr = (voter.address_line1 or "").strip().upper()
-    zip5 = (voter.zip_code or "").strip()[:5]
+    addr = (voter.registration_line1 or "").strip().upper()
+    zip5 = (voter.registration_zip or "").strip()[:5]
     return f"{addr}|{zip5}"
 
 

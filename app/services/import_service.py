@@ -79,7 +79,8 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "sex",
         "voters_gender",
     ],
-    "address_line1": [
+    "registration_line1": [
+        "registration_line1",
         "address_line1",
         "address1",
         "address",
@@ -88,25 +89,28 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "residential_address1",
         "residence_addresses_addressline",
     ],
-    "address_line2": [
+    "registration_line2": [
+        "registration_line2",
         "address_line2",
         "address2",
         "apt",
         "unit",
         "residential_address2",
     ],
-    "city": [
+    "registration_city": [
+        "registration_city",
         "city",
         "residential_city",
         "residence_addresses_city",
-        "mail_city",
     ],
-    "state": [
+    "registration_state": [
+        "registration_state",
         "state",
         "residential_state",
         "residence_addresses_state",
     ],
-    "zip_code": [
+    "registration_zip": [
+        "registration_zip",
         "zip_code",
         "zip",
         "zipcode",
@@ -114,7 +118,8 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "residence_addresses_zip",
         "residential_zip",
     ],
-    "county": [
+    "registration_county": [
+        "registration_county",
         "county",
         "residence_addresses_county",
         "county_name",
@@ -179,6 +184,99 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "householdid",
         "hh_id",
     ],
+    "registration_zip4": [
+        "registration_zip4",
+        "zip4",
+        "zip_plus4",
+        "residence_addresses_zip4",
+    ],
+    "registration_apartment_type": [
+        "registration_apartment_type",
+        "apartment_type",
+        "apt_type",
+        "residence_addresses_apttype",
+    ],
+    "mailing_line1": [
+        "mailing_line1",
+        "mail_address",
+        "mailing_address",
+        "mail_address_line1",
+    ],
+    "mailing_line2": [
+        "mailing_line2",
+        "mail_address2",
+        "mail_address_line2",
+    ],
+    "mailing_city": [
+        "mailing_city",
+        "mail_city",
+    ],
+    "mailing_state": [
+        "mailing_state",
+        "mail_state",
+    ],
+    "mailing_zip": [
+        "mailing_zip",
+        "mail_zip",
+        "mail_zipcode",
+    ],
+    "mailing_zip4": [
+        "mailing_zip4",
+        "mail_zip4",
+    ],
+    "mailing_country": [
+        "mailing_country",
+        "mail_country",
+    ],
+    "mailing_type": [
+        "mailing_type",
+        "mail_type",
+    ],
+    "propensity_general": [
+        "propensity_general",
+        "general_propensity",
+    ],
+    "propensity_primary": [
+        "propensity_primary",
+        "primary_propensity",
+    ],
+    "propensity_combined": [
+        "propensity_combined",
+        "combined_propensity",
+    ],
+    "spoken_language": [
+        "spoken_language",
+        "language",
+        "voters_language",
+    ],
+    "marital_status": [
+        "marital_status",
+        "marital",
+    ],
+    "military_status": [
+        "military_status",
+        "military",
+    ],
+    "party_change_indicator": [
+        "party_change_indicator",
+        "party_change",
+    ],
+    "cell_phone_confidence": [
+        "cell_phone_confidence",
+        "cellphone_confidence",
+    ],
+    "household_party_registration": [
+        "household_party_registration",
+        "hh_party_registration",
+    ],
+    "household_size": [
+        "household_size",
+        "hh_size",
+    ],
+    "family_id": [
+        "family_id",
+        "familyid",
+    ],
 }
 
 # Build reverse lookup: alias -> canonical field name
@@ -198,12 +296,22 @@ _VOTER_COLUMNS: set[str] = {
     "suffix",
     "date_of_birth",
     "gender",
-    "address_line1",
-    "address_line2",
-    "city",
-    "state",
-    "zip_code",
-    "county",
+    "registration_line1",
+    "registration_line2",
+    "registration_city",
+    "registration_state",
+    "registration_zip",
+    "registration_county",
+    "registration_zip4",
+    "registration_apartment_type",
+    "mailing_line1",
+    "mailing_line2",
+    "mailing_city",
+    "mailing_state",
+    "mailing_zip",
+    "mailing_zip4",
+    "mailing_country",
+    "mailing_type",
     "party",
     "precinct",
     "congressional_district",
@@ -215,6 +323,17 @@ _VOTER_COLUMNS: set[str] = {
     "latitude",
     "longitude",
     "household_id",
+    "propensity_general",
+    "propensity_primary",
+    "propensity_combined",
+    "spoken_language",
+    "marital_status",
+    "military_status",
+    "party_change_indicator",
+    "cell_phone_confidence",
+    "household_party_registration",
+    "household_size",
+    "family_id",
 }
 
 
