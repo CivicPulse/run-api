@@ -55,7 +55,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 
 </details>
 
-### 🚧 v1.3 Voter Model & Import Enhancement (In Progress)
+### v1.3 Voter Model & Import Enhancement (In Progress)
 
 **Milestone Goal:** Expand the voter model with first-class columns for all high-value L2 voter file fields (propensity scores, demographics, mailing address, household data, military status) and upgrade the import pipeline to auto-create phone contacts, parse voting history, and handle enriched field mapping.
 
@@ -76,11 +76,11 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
   3. A voter record can store and return spoken_language, marital_status, military_status, party_change_indicator, cell_phone_confidence, household_party_registration, household_size, family_id, zip_plus4, and apartment_type fields
   4. Attempting to create two VoterPhone records with the same (campaign_id, voter_id, phone value) results in a conflict/update rather than a duplicate row
   5. The Alembic migration applies cleanly against a database with existing voter rows (all new columns are nullable)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 23-01: TBD
-- [ ] 23-02: TBD
+- [ ] 23-01-PLAN.md — Alembic migration, Voter/VoterPhone model updates, Pydantic schema updates
+- [ ] 23-02-PLAN.md — Downstream service updates (voter, import, walk_list, turf) and test fixes
 
 ### Phase 24: Import Pipeline Enhancement
 **Goal**: The CSV import pipeline auto-creates phone contacts, parses voting history and propensity scores from L2 files, and maps all new fields correctly without silent data loss
@@ -158,7 +158,7 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
 | 21. Integration Polish | v1.2 | 1/1 | Complete | 2026-03-12 |
 | 22. Final Integration Fixes | v1.2 | 1/1 | Complete | 2026-03-13 |
-| 23. Schema Foundation | v1.3 | 0/TBD | Not started | - |
+| 23. Schema Foundation | v1.3 | 0/2 | Not started | - |
 | 24. Import Pipeline Enhancement | v1.3 | 0/TBD | Not started | - |
 | 25. Filter Builder & Query Enhancement | v1.3 | 0/TBD | Not started | - |
 | 26. Frontend Updates | v1.3 | 0/TBD | Not started | - |
