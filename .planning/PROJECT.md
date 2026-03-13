@@ -58,7 +58,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+## Current Milestone: v1.3 Voter Model & Import Enhancement
+
+**Goal:** Expand the voter model with first-class columns for all high-value L2 voter file fields (propensity scores, demographics, mailing address, household data, military status) and upgrade the import pipeline to auto-create phone contacts, parse voting history, and handle enriched field mapping.
+
+**Target features:**
+- Expanded voter model with propensity scores, ethnicity, language, mailing address, household, military status
+- Import pipeline enhancements: auto-create VoterPhone records, parse voting history columns, improved L2 mapping
+- Updated voter search/filter to leverage new first-class fields
+- UI updates to display and filter on new voter data
 
 ### Out of Scope
 
@@ -77,8 +85,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 ## Current State
 
 Shipped v1.2 Full UI on 2026-03-13. All 3 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI).
-
-**Next milestone:** Not yet planned. Use `/gsd:new-milestone` to start.
+Starting v1.3 Voter Model & Import Enhancement on 2026-03-13.
 
 ## Context
 
@@ -131,4 +138,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | it.todo test stubs | Wave 0 stubs with no imports keep suite green during development | ✓ Good — Nyquist compliance without blocking progress |
 
 ---
-*Last updated: 2026-03-13 after v1.2 milestone*
+*Last updated: 2026-03-13 after v1.3 milestone start*
