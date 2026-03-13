@@ -93,29 +93,29 @@ class TestBuildVoterQuery:
         """build_voter_query with logic='OR' produces OR combination."""
         from app.services.voter import build_voter_query
 
-        q = build_voter_query(VoterFilter(logic="OR", party="DEM", city="Austin"))
+        q = build_voter_query(VoterFilter(logic="OR", party="DEM", registration_city="Austin"))
         sql = self._compiled_sql(q)
         assert "or" in sql.lower()
 
     def test_exact_match_fields(self):
-        """build_voter_query handles exact match fields: precinct, city, state, zip, county, congressional_district, gender."""
+        """build_voter_query handles exact match fields: precinct, registration_city, registration_state, registration_zip, registration_county, congressional_district, gender."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(
             VoterFilter(
                 precinct="PCT-5",
-                city="Austin",
-                state="TX",
-                zip_code="78701",
-                county="Travis",
+                registration_city="Austin",
+                registration_state="TX",
+                registration_zip="78701",
+                registration_county="Travis",
                 congressional_district="TX-10",
                 gender="F",
             )
         )
         sql = self._compiled_sql(q)
         assert "precinct" in sql.lower()
-        assert "city" in sql.lower()
-        assert "zip_code" in sql.lower()
+        assert "registration_city" in sql.lower()
+        assert "registration_zip" in sql.lower()
 
     def test_registration_date_filters(self):
         """build_voter_query with registered_after/before produces date comparison."""
@@ -143,11 +143,11 @@ class TestBuildVoterQuery:
         from app.services.voter import build_voter_query
 
         q = build_voter_query(
-            VoterFilter(party="DEM", city="Austin", age_min=25, logic="AND")
+            VoterFilter(party="DEM", registration_city="Austin", age_min=25, logic="AND")
         )
         sql = self._compiled_sql(q)
         assert "party" in sql.lower()
-        assert "city" in sql.lower()
+        assert "registration_city" in sql.lower()
         assert "age" in sql.lower()
 
 

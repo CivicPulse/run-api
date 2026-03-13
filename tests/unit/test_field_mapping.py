@@ -18,7 +18,7 @@ class TestSuggestFieldMapping:
         assert result["First_Name"] == "first_name"
         assert result["Last_Name"] == "last_name"
         assert result["DOB"] == "date_of_birth"
-        assert result["ZIP"] == "zip_code"
+        assert result["ZIP"] == "registration_zip"
 
     def test_l2_specific_columns(self):
         """L2 vendor-specific column names map correctly."""
@@ -35,7 +35,7 @@ class TestSuggestFieldMapping:
             ["Parties_Description", "Residence_Addresses_AddressLine"]
         )
         assert result["Parties_Description"] == "party"
-        assert result["Residence_Addresses_AddressLine"] == "address_line1"
+        assert result["Residence_Addresses_AddressLine"] == "registration_line1"
 
     def test_unknown_column_returns_none(self):
         """Completely unknown columns return None (will go to extra_data)."""
@@ -47,7 +47,7 @@ class TestSuggestFieldMapping:
         result = suggest_field_mapping(["FIRST_NAME", "last_name", "City"])
         assert result["FIRST_NAME"] == "first_name"
         assert result["last_name"] == "last_name"
-        assert result["City"] == "city"
+        assert result["City"] == "registration_city"
 
     def test_fuzzy_threshold_at_75_percent(self):
         """Columns with >= 75% similarity match; below that they don't."""
@@ -87,7 +87,7 @@ class TestSuggestFieldMapping:
         """Column names with extra whitespace still match."""
         result = suggest_field_mapping(["  First Name  ", " ZIP Code "])
         assert result["  First Name  "] == "first_name"
-        assert result[" ZIP Code "] == "zip_code"
+        assert result[" ZIP Code "] == "registration_zip"
 
     def test_political_fields(self):
         """Political/district columns map correctly."""
@@ -99,13 +99,13 @@ class TestSuggestFieldMapping:
         assert result["congressional_district"] == "congressional_district"
 
     def test_address_fields(self):
-        """Address columns map correctly."""
+        """Address columns map correctly to registration_ canonical names."""
         result = suggest_field_mapping(
             ["address_line1", "address_line2", "city", "state", "zip_code", "county"]
         )
-        assert result["address_line1"] == "address_line1"
-        assert result["address_line2"] == "address_line2"
-        assert result["city"] == "city"
-        assert result["state"] == "state"
-        assert result["zip_code"] == "zip_code"
-        assert result["county"] == "county"
+        assert result["address_line1"] == "registration_line1"
+        assert result["address_line2"] == "registration_line2"
+        assert result["city"] == "registration_city"
+        assert result["state"] == "registration_state"
+        assert result["zip_code"] == "registration_zip"
+        assert result["county"] == "registration_county"

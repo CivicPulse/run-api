@@ -62,7 +62,7 @@ class TestProcessCsvBatch:
         return {
             "First_Name": "first_name",
             "Last_Name": "last_name",
-            "City": "city",
+            "City": "registration_city",
             "VoterID": "source_id",
         }
 
@@ -76,7 +76,7 @@ class TestProcessCsvBatch:
         voter = mapped[0]["voter"]
         assert voter["first_name"] == "John"
         assert voter["last_name"] == "Doe"
-        assert voter["city"] == "Austin"
+        assert voter["registration_city"] == "Austin"
         assert voter["source_id"] == "V001"
 
     def test_unmapped_columns_go_to_extra_data(self, service, campaign_id):
@@ -91,7 +91,7 @@ class TestProcessCsvBatch:
 
     def test_skip_rows_missing_name_fields(self, service, campaign_id):
         """Rows without first_name AND last_name are skipped."""
-        mapping = {"City": "city", "VoterID": "source_id"}
+        mapping = {"City": "registration_city", "VoterID": "source_id"}
         rows = [
             {"City": "Austin", "VoterID": "V001"},
         ]

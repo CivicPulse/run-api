@@ -31,12 +31,12 @@ class TestWalkListService:
 
         # Mock voter results
         voter1 = SimpleNamespace(
-            id="v1", address_line1="100 Main St", last_name="Smith",
-            zip_code="12345", household_id=None, geom="fake-geom",
+            id="v1", registration_line1="100 Main St", last_name="Smith",
+            registration_zip="12345", household_id=None, geom="fake-geom",
         )
         voter2 = SimpleNamespace(
-            id="v2", address_line1="200 Oak Ave", last_name="Jones",
-            zip_code="12345", household_id=None, geom="fake-geom",
+            id="v2", registration_line1="200 Oak Ave", last_name="Jones",
+            registration_zip="12345", household_id=None, geom="fake-geom",
         )
 
         # First execute: turf lookup, second: voter query
@@ -74,16 +74,16 @@ class TestWalkListService:
         """CANV-03: Same-address voters grouped as household."""
         # Test address-based household key generation
         v1 = SimpleNamespace(
-            address_line1="100 Main St", zip_code="12345", household_id=None
+            registration_line1="100 Main St", registration_zip="12345", household_id=None
         )
         v2 = SimpleNamespace(
-            address_line1="100 MAIN ST", zip_code="12345-6789", household_id=None
+            registration_line1="100 MAIN ST", registration_zip="12345-6789", household_id=None
         )
         v3 = SimpleNamespace(
-            address_line1="200 Oak Ave", zip_code="12345", household_id=None
+            registration_line1="200 Oak Ave", registration_zip="12345", household_id=None
         )
         v4 = SimpleNamespace(
-            address_line1="100 Main St", zip_code="12345", household_id="HH-ABC"
+            registration_line1="100 Main St", registration_zip="12345", household_id="HH-ABC"
         )
 
         # Same normalized address -> same household key
@@ -143,6 +143,6 @@ class TestWalkListService:
     def test_household_key_normalization(self) -> None:
         """Whitespace and case normalization for household keys."""
         v = SimpleNamespace(
-            address_line1="  100 main st  ", zip_code="  12345  ", household_id=None
+            registration_line1="  100 main st  ", registration_zip="  12345  ", household_id=None
         )
         assert household_key(v) == "100 MAIN ST|12345"
