@@ -19,6 +19,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
 from app.models.voter import Voter
+from app.models.voter_contact import VoterPhone
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -394,6 +395,12 @@ def parse_voting_history(row: dict[str, str]) -> list[str]:
     return sorted(history)
 
 
+# Columns excluded from the upsert SET clause (identity + auto-managed)
+_UPSERT_EXCLUDE = frozenset({
+    "id", "campaign_id", "source_type", "source_id",
+    "created_at", "updated_at", "geom",
+})
+
 # Canonical field names that exist as columns on the Voter model
 _VOTER_COLUMNS: set[str] = {
     "source_id",
@@ -585,7 +592,7 @@ class ImportService:
         campaign_id: str,
         source_type: str,
         session: AsyncSession,
-    ) -> tuple[int, list[dict]]:
+    ) -> tuple[int, list[dict], int]:
         """Process a batch of CSV rows: map fields and upsert voters.
 
         Uses PostgreSQL ``INSERT ... ON CONFLICT DO UPDATE`` on the
@@ -599,8 +606,10 @@ class ImportService:
             session: Async DB session (must have RLS context set).
 
         Returns:
-            Tuple of (imported_count, error_list) where error_list contains
-            dicts with "row" (original row) and "reason" (error message).
+            Tuple of (imported_count, error_list, phones_created) where
+            error_list contains dicts with "row" (original row) and "reason"
+            (error message), and phones_created is the number of VoterPhone
+            records created in this batch.
         """
         mapped_results = self.apply_field_mapping(
             rows, field_mapping, campaign_id, source_type
@@ -622,24 +631,28 @@ class ImportService:
                     voter["source_id"] = str(uuid.uuid4())
                 valid_voters.append(voter)
 
+        phones_created = 0
+
         if valid_voters:
-            # Build the upsert columns (exclude campaign_id, source_type, source_id from SET)
+            # Build SET clause from Voter model columns (not from row keys)
+            stmt = insert(Voter).values(valid_voters)
             update_cols = {
-                col: getattr(insert(Voter).excluded, col)
-                for col in valid_voters[0]
-                if col not in ("campaign_id", "source_type", "source_id")
+                col.name: getattr(stmt.excluded, col.name)
+                for col in Voter.__table__.columns
+                if col.name not in _UPSERT_EXCLUDE
             }
             update_cols["updated_at"] = func.now()
 
-            stmt = insert(Voter).values(valid_voters)
             stmt = stmt.on_conflict_do_update(
                 index_elements=["campaign_id", "source_type", "source_id"],
                 set_=update_cols,
-            )
-            await session.execute(stmt)
+            ).returning(Voter.id)
+
+            result = await session.execute(stmt)
+            voter_ids = [row[0] for row in result.all()]
             await session.flush()
 
-        return len(valid_voters), errors
+        return len(valid_voters), errors, phones_created
 
     async def process_import_file(
         self,
@@ -710,7 +723,7 @@ class ImportService:
             total_rows += 1
 
             if len(batch) >= batch_size:
-                imported, errors = await self.process_csv_batch(
+                imported, errors, _phones = await self.process_csv_batch(
                     batch,
                     job.field_mapping,
                     str(job.campaign_id),
@@ -730,7 +743,7 @@ class ImportService:
 
         # Process remaining rows
         if batch:
-            imported, errors = await self.process_csv_batch(
+            imported, errors, _phones = await self.process_csv_batch(
                 batch,
                 job.field_mapping,
                 str(job.campaign_id),
