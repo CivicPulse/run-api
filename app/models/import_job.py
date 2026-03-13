@@ -50,6 +50,7 @@ class ImportJob(Base):
     total_rows: Mapped[int | None] = mapped_column()
     imported_rows: Mapped[int | None] = mapped_column()
     skipped_rows: Mapped[int | None] = mapped_column()
+    phones_created: Mapped[int | None] = mapped_column()
     error_report_key: Mapped[str | None] = mapped_column(String(500))
     error_message: Mapped[str | None] = mapped_column()
 

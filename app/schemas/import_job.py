@@ -23,6 +23,7 @@ class ImportJobResponse(BaseSchema):
     total_rows: int | None = None
     imported_rows: int | None = None
     skipped_rows: int | None = None
+    phones_created: int | None = None
     error_report_key: str | None = None
     error_message: str | None = None
     created_by: str
