@@ -24,11 +24,11 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 - [ ] **IMPT-01**: Import service auto-creates VoterPhone records when cell phone column is mapped, using RETURNING clause from voter upsert
 - [ ] **IMPT-02**: Import service parses voting history Y/N columns (General_YYYY, Primary_YYYY patterns) into voting_history array with canonical "{Type}_{Year}" format
-- [ ] **IMPT-03**: Import service parses propensity percentage strings ("77%", "Not Eligible") into SmallInteger values (77, NULL)
-- [ ] **IMPT-04**: CANONICAL_FIELDS expanded with aliases for all new columns including L2 naming conventions
+- [x] **IMPT-03**: Import service parses propensity percentage strings ("77%", "Not Eligible") into SmallInteger values (77, NULL)
+- [x] **IMPT-04**: CANONICAL_FIELDS expanded with aliases for all new columns including L2 naming conventions
 - [x] **IMPT-05**: L2 mapping template updated in migration to include all new field mappings
 - [ ] **IMPT-06**: Upsert SET clause derives columns from full model column set, not first batch row keys (bug fix)
-- [ ] **IMPT-07**: Phone values normalized (strip non-digits, validate 10 digits) matching DNC normalization pattern
+- [x] **IMPT-07**: Phone values normalized (strip non-digits, validate 10 digits) matching DNC normalization pattern
 
 ### Filter & Query
 
@@ -86,11 +86,11 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 | VMOD-10 | Phase 23 | Complete |
 | IMPT-01 | Phase 24 | Pending |
 | IMPT-02 | Phase 24 | Pending |
-| IMPT-03 | Phase 24 | Pending |
-| IMPT-04 | Phase 24 | Pending |
+| IMPT-03 | Phase 24 | Complete |
+| IMPT-04 | Phase 24 | Complete |
 | IMPT-05 | Phase 24 | Complete |
 | IMPT-06 | Phase 24 | Pending |
-| IMPT-07 | Phase 24 | Pending |
+| IMPT-07 | Phase 24 | Complete |
 | FILT-01 | Phase 25 | Pending |
 | FILT-02 | Phase 25 | Pending |
 | FILT-03 | Phase 25 | Pending |
