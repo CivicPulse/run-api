@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -19,6 +20,8 @@ from app.schemas.voter_filter import VoterFilter
 
 if TYPE_CHECKING:
     pass
+
+_YEAR_ONLY_RE = re.compile(r"^\d{4}$")
 
 
 def build_voter_query(filters: VoterFilter) -> Select:
@@ -132,18 +135,27 @@ def build_voter_query(filters: VoterFilter) -> Select:
     if filters.mailing_zip is not None:
         conditions.append(Voter.mailing_zip == filters.mailing_zip)
 
-    # Voting history (array containment)
+    # Voting history (year-aware expansion for backward compatibility)
     if filters.voted_in is not None:
         for election in filters.voted_in:
-            conditions.append(
-                Voter.voting_history.contains([election])
-            )
+            if _YEAR_ONLY_RE.match(election):
+                # Year-only: voter participated in ANY election that year (OR)
+                expanded = [f"General_{election}", f"Primary_{election}"]
+                conditions.append(Voter.voting_history.overlap(expanded))
+            else:
+                # Canonical format: exact containment (existing behavior)
+                conditions.append(Voter.voting_history.contains([election]))
 
     if filters.not_voted_in is not None:
         for election in filters.not_voted_in:
-            conditions.append(
-                ~Voter.voting_history.contains([election])
-            )
+            if _YEAR_ONLY_RE.match(election):
+                # Year-only: voter did NOT vote in ANY election that year
+                # Two separate NOT CONTAINS (AND semantics: skipped BOTH)
+                conditions.append(~Voter.voting_history.contains([f"General_{election}"]))
+                conditions.append(~Voter.voting_history.contains([f"Primary_{election}"]))
+            else:
+                # Canonical format: exact NOT containment (existing behavior)
+                conditions.append(~Voter.voting_history.contains([election]))
 
     # Tags — voter must have ALL tags
     if filters.tags is not None and len(filters.tags) > 0:
