@@ -47,16 +47,22 @@ def build_voter_query(filters: VoterFilter) -> Select:
         conditions.append(Voter.precinct == filters.precinct)
 
     if filters.registration_city is not None:
-        conditions.append(Voter.registration_city == filters.registration_city)
+        conditions.append(
+            func.lower(Voter.registration_city) == filters.registration_city.lower()
+        )
 
     if filters.registration_state is not None:
-        conditions.append(Voter.registration_state == filters.registration_state)
+        conditions.append(
+            func.lower(Voter.registration_state) == filters.registration_state.lower()
+        )
 
     if filters.registration_zip is not None:
         conditions.append(Voter.registration_zip == filters.registration_zip)
 
     if filters.registration_county is not None:
-        conditions.append(Voter.registration_county == filters.registration_county)
+        conditions.append(
+            func.lower(Voter.registration_county) == filters.registration_county.lower()
+        )
 
     if filters.congressional_district is not None:
         conditions.append(
@@ -72,6 +78,59 @@ def build_voter_query(filters: VoterFilter) -> Select:
 
     if filters.age_max is not None:
         conditions.append(Voter.age <= filters.age_max)
+
+    # Propensity score ranges
+    if filters.propensity_general_min is not None:
+        conditions.append(Voter.propensity_general >= filters.propensity_general_min)
+
+    if filters.propensity_general_max is not None:
+        conditions.append(Voter.propensity_general <= filters.propensity_general_max)
+
+    if filters.propensity_primary_min is not None:
+        conditions.append(Voter.propensity_primary >= filters.propensity_primary_min)
+
+    if filters.propensity_primary_max is not None:
+        conditions.append(Voter.propensity_primary <= filters.propensity_primary_max)
+
+    if filters.propensity_combined_min is not None:
+        conditions.append(Voter.propensity_combined >= filters.propensity_combined_min)
+
+    if filters.propensity_combined_max is not None:
+        conditions.append(Voter.propensity_combined <= filters.propensity_combined_max)
+
+    # Multi-select demographics (case-insensitive)
+    if filters.ethnicities is not None:
+        conditions.append(
+            func.lower(Voter.ethnicity).in_([v.lower() for v in filters.ethnicities])
+        )
+
+    if filters.spoken_languages is not None:
+        conditions.append(
+            func.lower(Voter.spoken_language).in_(
+                [v.lower() for v in filters.spoken_languages]
+            )
+        )
+
+    if filters.military_statuses is not None:
+        conditions.append(
+            func.lower(Voter.military_status).in_(
+                [v.lower() for v in filters.military_statuses]
+            )
+        )
+
+    # Mailing address
+    if filters.mailing_city is not None:
+        conditions.append(
+            func.lower(Voter.mailing_city) == filters.mailing_city.lower()
+        )
+
+    if filters.mailing_state is not None:
+        conditions.append(
+            func.lower(Voter.mailing_state) == filters.mailing_state.lower()
+        )
+
+    if filters.mailing_zip is not None:
+        conditions.append(Voter.mailing_zip == filters.mailing_zip)
 
     # Voting history (array containment)
     if filters.voted_in is not None:
