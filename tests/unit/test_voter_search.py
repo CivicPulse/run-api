@@ -252,8 +252,8 @@ class TestVoterFilterSchema:
         assert f.mailing_zip is None
 
     def test_total_field_count(self):
-        """VoterFilter should have 31 fields (19 existing + 12 new)."""
-        assert len(VoterFilter.model_fields) == 31
+        """VoterFilter should have 32 fields (20 existing + 12 new)."""
+        assert len(VoterFilter.model_fields) == 32
 
 
 class TestVoterServiceCRUD:

@@ -31,4 +31,23 @@ class VoterFilter(BaseModel):
     registered_before: str | None = None
     search: str | None = None
     has_phone: bool | None = None
+
+    # Propensity score ranges (0-100)
+    propensity_general_min: int | None = Field(default=None, ge=0, le=100)
+    propensity_general_max: int | None = Field(default=None, ge=0, le=100)
+    propensity_primary_min: int | None = Field(default=None, ge=0, le=100)
+    propensity_primary_max: int | None = Field(default=None, ge=0, le=100)
+    propensity_combined_min: int | None = Field(default=None, ge=0, le=100)
+    propensity_combined_max: int | None = Field(default=None, ge=0, le=100)
+
+    # Multi-select demographics
+    ethnicities: list[str] | None = None
+    spoken_languages: list[str] | None = None
+    military_statuses: list[str] | None = None
+
+    # Mailing address
+    mailing_city: str | None = None
+    mailing_state: str | None = None
+    mailing_zip: str | None = None
+
     logic: str = Field(default="AND", pattern="^(AND|OR)$")
