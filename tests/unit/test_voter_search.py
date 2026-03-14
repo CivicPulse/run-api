@@ -151,6 +151,151 @@ class TestBuildVoterQuery:
         assert "registration_city" in sql.lower()
         assert "age" in sql.lower()
 
+    # --- Propensity range filters ---
+
+    def test_propensity_general_range(self):
+        """VoterFilter(propensity_general_min=60, propensity_general_max=90) produces >= and <= conditions."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(propensity_general_min=60, propensity_general_max=90))
+        sql = self._compiled_sql(q)
+        assert "propensity_general" in sql.lower()
+        assert ">=" in sql
+        assert "<=" in sql
+
+    def test_propensity_primary_min_only(self):
+        """VoterFilter(propensity_primary_min=50) produces >= with no max condition."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(propensity_primary_min=50))
+        sql = self._compiled_sql(q)
+        assert "propensity_primary" in sql.lower()
+        assert ">=" in sql
+        # No max condition
+        assert "<=" not in sql
+
+    def test_propensity_combined_max_only(self):
+        """VoterFilter(propensity_combined_max=80) produces <= with no min condition."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(propensity_combined_max=80))
+        sql = self._compiled_sql(q)
+        assert "propensity_combined" in sql.lower()
+        assert "<=" in sql
+        # No min condition
+        assert ">=" not in sql
+
+    # --- Multi-select demographic filters ---
+
+    def test_ethnicities_multi_select(self):
+        """VoterFilter(ethnicities=["Hispanic","Asian"]) produces lower(ethnicity) IN clause."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(ethnicities=["Hispanic", "Asian"]))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "ethnicity" in sql.lower()
+        assert "in" in sql.lower()
+        assert "hispanic" in sql.lower()
+        assert "asian" in sql.lower()
+
+    def test_spoken_languages_filter(self):
+        """VoterFilter(spoken_languages=["Spanish"]) produces lower(spoken_language) IN clause."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(spoken_languages=["Spanish"]))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "spoken_language" in sql.lower()
+        assert "in" in sql.lower()
+        assert "spanish" in sql.lower()
+
+    def test_military_statuses_filter(self):
+        """VoterFilter(military_statuses=["Active"]) produces lower(military_status) IN clause."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(military_statuses=["Active"]))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "military_status" in sql.lower()
+        assert "in" in sql.lower()
+        assert "active" in sql.lower()
+
+    # --- Mailing address filters ---
+
+    def test_mailing_city_filter(self):
+        """VoterFilter(mailing_city="Atlanta") produces lower(mailing_city) = 'atlanta'."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(mailing_city="Atlanta"))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "mailing_city" in sql.lower()
+
+    def test_mailing_state_filter(self):
+        """VoterFilter(mailing_state="GA") produces lower(mailing_state) = 'ga'."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(mailing_state="GA"))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "mailing_state" in sql.lower()
+
+    def test_mailing_zip_filter(self):
+        """VoterFilter(mailing_zip="30301") produces mailing_zip = '30301' (exact match)."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(mailing_zip="30301"))
+        sql = self._compiled_sql(q)
+        assert "mailing_zip" in sql.lower()
+        # Zip stays exact match -- no lower() wrapping
+        # Check the mailing_zip portion doesn't use lower
+        mailing_zip_idx = sql.lower().index("mailing_zip")
+        sql_before_zip = sql.lower()[:mailing_zip_idx]
+        # The last function call before mailing_zip should NOT be lower()
+        assert not sql_before_zip.rstrip().endswith("lower(")
+
+    # --- Registration address case-insensitive updates ---
+
+    def test_registration_city_case_insensitive(self):
+        """VoterFilter(registration_city="AUSTIN") produces lower(registration_city) condition."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(registration_city="AUSTIN"))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "registration_city" in sql.lower()
+
+    def test_registration_state_case_insensitive(self):
+        """VoterFilter(registration_state="tx") produces lower(registration_state) condition."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(registration_state="tx"))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "registration_state" in sql.lower()
+
+    def test_registration_zip_unchanged(self):
+        """VoterFilter(registration_zip="78701") stays exact match (no lower)."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(registration_zip="78701"))
+        sql = self._compiled_sql(q)
+        assert "registration_zip" in sql.lower()
+        # Zip should NOT use lower()
+        reg_zip_idx = sql.lower().index("registration_zip")
+        sql_before_zip = sql.lower()[:reg_zip_idx]
+        assert not sql_before_zip.rstrip().endswith("lower(")
+
+    def test_registration_county_case_insensitive(self):
+        """VoterFilter(registration_county="TRAVIS") produces lower(registration_county) condition."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(registration_county="TRAVIS"))
+        sql = self._compiled_sql(q)
+        assert "lower" in sql.lower()
+        assert "registration_county" in sql.lower()
+
 
 class TestVoterFilterSchema:
     """Tests for VoterFilter Pydantic schema validation."""
