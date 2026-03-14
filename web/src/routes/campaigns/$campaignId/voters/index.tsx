@@ -36,10 +36,10 @@ const voterSchema = z.object({
   last_name: z.string().optional(),
   date_of_birth: z.string().optional(),
   party: z.string().optional(),
-  address_line1: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip_code: z.string().optional(),
+  registration_line1: z.string().optional(),
+  registration_city: z.string().optional(),
+  registration_state: z.string().optional(),
+  registration_zip: z.string().optional(),
 })
 
 type VoterFormData = z.infer<typeof voterSchema>
@@ -103,22 +103,22 @@ function buildFilterChips(
       onDismiss: () => update({ tags: undefined }),
     })
   }
-  if (filters.city) {
+  if (filters.registration_city) {
     chips.push({
-      label: `City: ${filters.city}`,
-      onDismiss: () => update({ city: undefined }),
+      label: `City: ${filters.registration_city}`,
+      onDismiss: () => update({ registration_city: undefined }),
     })
   }
-  if (filters.zip_code) {
+  if (filters.registration_zip) {
     chips.push({
-      label: `Zip: ${filters.zip_code}`,
-      onDismiss: () => update({ zip_code: undefined }),
+      label: `Zip: ${filters.registration_zip}`,
+      onDismiss: () => update({ registration_zip: undefined }),
     })
   }
-  if (filters.state) {
+  if (filters.registration_state) {
     chips.push({
-      label: `State: ${filters.state}`,
-      onDismiss: () => update({ state: undefined }),
+      label: `State: ${filters.registration_state}`,
+      onDismiss: () => update({ registration_state: undefined }),
     })
   }
   if (filters.gender) {
@@ -196,22 +196,22 @@ function VoterCreateForm({ campaignId, onSuccess }: VoterCreateFormProps) {
         <Input id="party" placeholder="DEM, REP, NPA..." {...register("party")} />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="address_line1">Address</Label>
-        <Input id="address_line1" {...register("address_line1")} />
+        <Label htmlFor="registration_line1">Address</Label>
+        <Input id="registration_line1" {...register("registration_line1")} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="city">City</Label>
-          <Input id="city" {...register("city")} />
+          <Label htmlFor="registration_city">City</Label>
+          <Input id="registration_city" {...register("registration_city")} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="state">State</Label>
-          <Input id="state" {...register("state")} />
+          <Label htmlFor="registration_state">State</Label>
+          <Input id="registration_state" {...register("registration_state")} />
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="zip_code">Zip Code</Label>
-        <Input id="zip_code" {...register("zip_code")} />
+        <Label htmlFor="registration_zip">Zip Code</Label>
+        <Input id="registration_zip" {...register("registration_zip")} />
       </div>
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? "Creating..." : "Create Voter"}
@@ -264,7 +264,7 @@ function buildColumns(
       id: "city",
       header: "City",
       enableSorting: true,
-      cell: ({ row }) => row.original.city ?? <span className="text-muted-foreground">—</span>,
+      cell: ({ row }) => row.original.registration_city ?? <span className="text-muted-foreground">—</span>,
     },
     {
       id: "district",

@@ -141,6 +141,29 @@ export function useVotersQuery(campaignId: string, options: VotersPaginatedOptio
   })
 }
 
+// ─── Distinct Values ─────────────────────────────────────────────────────────
+
+interface DistinctValueEntry {
+  value: string
+  count: number
+}
+
+type DistinctValuesResponse = Record<string, DistinctValueEntry[]>
+
+export function useDistinctValues(campaignId: string, fields: string[]) {
+  return useQuery({
+    queryKey: ["voters", campaignId, "distinct-values", fields],
+    queryFn: () =>
+      api
+        .get(`api/v1/campaigns/${campaignId}/voters/distinct-values`, {
+          searchParams: { fields: fields.join(",") },
+        })
+        .json<DistinctValuesResponse>(),
+    enabled: !!campaignId && fields.length > 0,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useSearchVoters(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation({

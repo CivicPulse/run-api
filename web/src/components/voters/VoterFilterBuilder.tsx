@@ -225,8 +225,8 @@ export function VoterFilterBuilder({
         <Label className="text-sm font-medium mb-2 block">City</Label>
         <Input
           placeholder="Filter by city"
-          value={value.city ?? ""}
-          onChange={(e) => update({ city: e.target.value || undefined })}
+          value={value.registration_city ?? ""}
+          onChange={(e) => update({ registration_city: e.target.value || undefined })}
         />
       </div>
 
@@ -246,16 +246,16 @@ export function VoterFilterBuilder({
             <Label className="text-sm font-medium mb-2 block">Zip Code</Label>
             <Input
               placeholder="Zip code"
-              value={value.zip_code ?? ""}
-              onChange={(e) => update({ zip_code: e.target.value || undefined })}
+              value={value.registration_zip ?? ""}
+              onChange={(e) => update({ registration_zip: e.target.value || undefined })}
             />
           </div>
           <div>
             <Label className="text-sm font-medium mb-2 block">State</Label>
             <Input
               placeholder="State"
-              value={value.state ?? ""}
-              onChange={(e) => update({ state: e.target.value || undefined })}
+              value={value.registration_state ?? ""}
+              onChange={(e) => update({ registration_state: e.target.value || undefined })}
             />
           </div>
           <div>

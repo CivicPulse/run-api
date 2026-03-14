@@ -113,10 +113,10 @@ function ListDetailPage() {
       ),
     },
     {
-      accessorKey: "city",
+      accessorKey: "registration_city",
       header: "City",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">{row.original.city ?? "-"}</span>
+        <span className="text-muted-foreground">{row.original.registration_city ?? "-"}</span>
       ),
     },
     ...(list?.list_type === "static"

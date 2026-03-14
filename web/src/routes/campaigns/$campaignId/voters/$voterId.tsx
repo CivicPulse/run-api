@@ -158,26 +158,26 @@ function VoterDetailPage() {
                     <div className="col-span-2">
                       <dt className="text-muted-foreground">Street</dt>
                       <dd className="font-medium">
-                        {[voter.address_line1, voter.address_line2]
+                        {[voter.registration_line1, voter.registration_line2]
                           .filter(Boolean)
                           .join(", ") || "-"}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">City</dt>
-                      <dd className="font-medium">{voter.city ?? "-"}</dd>
+                      <dd className="font-medium">{voter.registration_city ?? "-"}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">State</dt>
-                      <dd className="font-medium">{voter.state ?? "-"}</dd>
+                      <dd className="font-medium">{voter.registration_state ?? "-"}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">ZIP Code</dt>
-                      <dd className="font-medium">{voter.zip_code ?? "-"}</dd>
+                      <dd className="font-medium">{voter.registration_zip ?? "-"}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">County</dt>
-                      <dd className="font-medium">{voter.county ?? "-"}</dd>
+                      <dd className="font-medium">{voter.registration_county ?? "-"}</dd>
                     </div>
                   </dl>
                 </CardContent>

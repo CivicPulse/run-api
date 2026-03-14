@@ -126,8 +126,8 @@ export function AddVotersDialog({
                     {voter.party && (
                       <span className="text-xs opacity-75">{voter.party}</span>
                     )}
-                    {voter.city && (
-                      <span className="text-xs opacity-75">{voter.city}</span>
+                    {voter.registration_city && (
+                      <span className="text-xs opacity-75">{voter.registration_city}</span>
                     )}
                   </button>
                 )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -52,10 +52,10 @@ async def list_voters(
     filters = VoterFilter(
         search=search,
         party=party,
-        city=city,
-        state=state,
+        registration_city=city,
+        registration_state=state,
         precinct=precinct,
-        county=county,
+        registration_county=county,
         has_phone=has_phone,
     )
     return await _service.search_voters(db, filters, cursor=cursor, limit=limit)
@@ -83,6 +83,40 @@ async def search_voters(
 
     await set_campaign_context(db, str(campaign_id))
     return await _service.search_voters(db, body, cursor=cursor, limit=limit)
+
+
+ALLOWED_DISTINCT_FIELDS = {"ethnicity", "spoken_language", "military_status"}
+
+
+@router.get("/campaigns/{campaign_id}/voters/distinct-values")
+async def distinct_values(
+    campaign_id: uuid.UUID,
+    fields: str = Query(..., description="Comma-separated field names"),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return distinct values with counts for whitelisted voter fields.
+
+    Accepts a comma-separated ``fields`` query param. Only fields in the
+    whitelist (ethnicity, spoken_language, military_status) are allowed;
+    any other field returns a 400 error.
+
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+
+    requested = {f.strip() for f in fields.split(",")}
+    invalid = requested - ALLOWED_DISTINCT_FIELDS
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fields not allowed: {', '.join(sorted(invalid))}",
+        )
+    result = await _service.distinct_values(db, requested)
+    return result
 
 
 @router.get(

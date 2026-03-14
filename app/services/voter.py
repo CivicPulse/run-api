@@ -272,6 +272,38 @@ class VoterService:
             ),
         )
 
+    async def distinct_values(
+        self,
+        db: AsyncSession,
+        fields: set[str],
+    ) -> dict[str, list[dict[str, str | int]]]:
+        """Return distinct values with counts for the requested fields.
+
+        For each field, queries non-NULL values grouped by value and ordered
+        by count descending.
+
+        Args:
+            db: Async database session (with RLS context set).
+            fields: Set of column names to query.
+
+        Returns:
+            Dict mapping field name to list of {"value": str, "count": int}.
+        """
+        result: dict[str, list[dict[str, str | int]]] = {}
+        for field in fields:
+            col = getattr(Voter, field)
+            stmt = (
+                select(col, func.count().label("cnt"))
+                .where(col.is_not(None))
+                .group_by(col)
+                .order_by(func.count().desc())
+            )
+            rows = await db.execute(stmt)
+            result[field] = [
+                {"value": str(row[0]), "count": row[1]} for row in rows
+            ]
+        return result
+
     async def get_voter(self, db: AsyncSession, voter_id: uuid.UUID) -> Voter:
         """Get a single voter by ID.
 
