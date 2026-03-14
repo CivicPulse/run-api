@@ -124,11 +124,13 @@ Plans:
   3. The voter edit sheet allows editing all new voter fields and saves them correctly via the API
   4. The import wizard column mapping table includes all new canonical fields so users can map L2 columns to the expanded voter model
   5. TypeScript compilation succeeds with no type errors after all voter and filter interface updates
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 26-01: TBD
-- [ ] 26-02: TBD
+- [ ] 26-01-PLAN.md — TypeScript types update, field rename propagation, shadcn component install, backend distinct-values endpoint
+- [ ] 26-02-PLAN.md — Voter detail page expansion (propensity, mailing, household, voting history) and edit sheet expansion
+- [ ] 26-03-PLAN.md — VoterFilterBuilder accordion rewrite with sliders, dynamic checkboxes, badge counts
+- [ ] 26-04-PLAN.md — ColumnMappingTable grouped dropdown with human-readable labels and expanded fields
 
 ## Progress
 
@@ -162,4 +164,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
 | 24. Import Pipeline Enhancement | 3/3 | Complete    | 2026-03-13 | - |
 | 25. Filter Builder & Query Enhancement | 2/2 | Complete    | 2026-03-14 | - |
-| 26. Frontend Updates | v1.3 | 0/TBD | Not started | - |
+| 26. Frontend Updates | v1.3 | 0/4 | Not started | - |
