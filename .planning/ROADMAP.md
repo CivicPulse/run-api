@@ -108,10 +108,11 @@ Plans:
   2. A voter query filtering by ethnicity or spoken_language with multiple values returns voters matching any of the selected values
   3. A voter query filtering by mailing_city, mailing_state, or mailing_zip returns exact matches on those fields
   4. An existing saved voter list with voted_in: ["2024"] still matches voters whose voting_history contains "General_2024" or "Primary_2024" entries (backward compatibility)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 25-01: TBD
+- [ ] 25-01-PLAN.md — VoterFilter schema extension (propensity ranges, demographic multi-select, mailing address), build_voter_query new conditions, registration address case-insensitive update
+- [ ] 25-02-PLAN.md — Voting history backward compatibility (year-only expansion to General/Primary using overlap operator)
 
 ### Phase 26: Frontend Updates
 **Goal**: The web UI displays all new voter fields, exposes filter controls for new dimensions, and supports editing and importing with the expanded schema
@@ -160,5 +161,5 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 22. Final Integration Fixes | v1.2 | 1/1 | Complete | 2026-03-13 |
 | 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
 | 24. Import Pipeline Enhancement | 3/3 | Complete    | 2026-03-13 | - |
-| 25. Filter Builder & Query Enhancement | v1.3 | 0/TBD | Not started | - |
+| 25. Filter Builder & Query Enhancement | v1.3 | 0/2 | Not started | - |
 | 26. Frontend Updates | v1.3 | 0/TBD | Not started | - |
