@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { ColumnMappingTable } from "./ColumnMappingTable"
+import { ColumnMappingTable, CANONICAL_FIELDS, FIELD_GROUPS } from "./ColumnMappingTable"
 
 const columns = ["First Name", "Email"]
 const suggestedMapping: Record<string, string | null> = {
@@ -23,21 +23,23 @@ describe("ColumnMappingTable", () => {
           onMappingChange={vi.fn()}
         />,
       )
-      expect(screen.getByText("First Name")).toBeTruthy()
-      expect(screen.getByText("Email")).toBeTruthy()
+      // "First Name" appears as both column label and selected value label;
+      // verify at least one instance exists for each column
+      expect(screen.getAllByText("First Name").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1)
     })
 
-    it("Select is pre-populated with suggested_mapping value", () => {
+    it("Select is pre-populated with suggested_mapping value showing human-readable label", () => {
       render(
         <ColumnMappingTable
-          columns={columns}
-          suggestedMapping={suggestedMapping}
-          mapping={mapping}
+          columns={["Address"]}
+          suggestedMapping={{ Address: "registration_line1" }}
+          mapping={{ Address: "registration_line1" }}
           onMappingChange={vi.fn()}
         />,
       )
-      // The selected value for "First Name" should show "first_name" as the trigger text
-      expect(screen.getByText("first_name")).toBeTruthy()
+      // The selected value for "registration_line1" should show "Registration Line 1" as the trigger text
+      expect(screen.getByText("Registration Line 1")).toBeTruthy()
     })
 
     it("shows green badge (CheckCircle2) when suggested_mapping is non-null and unchanged", () => {
@@ -79,23 +81,23 @@ describe("ColumnMappingTable", () => {
       expect(screen.getAllByText("(skip)").length).toBeGreaterThanOrEqual(1)
     })
 
-    it("changing Select value calls onMappingChange with updated mapping", () => {
+    it("changing Select value calls onMappingChange with raw field name", () => {
       const onMappingChange = vi.fn()
       render(
         <ColumnMappingTable
-          columns={["Email"]}
-          suggestedMapping={{ Email: null }}
-          mapping={{ Email: "" }}
+          columns={["Email Col"]}
+          suggestedMapping={{ "Email Col": null }}
+          mapping={{ "Email Col": "" }}
           onMappingChange={onMappingChange}
         />,
       )
-      // Open the select and choose "email"
+      // Open the select and choose "Email" (the label for "email")
       const trigger = screen.getByRole("combobox")
       fireEvent.click(trigger)
-      // Find and click the "email" option in the listbox
-      const emailOption = screen.getByRole("option", { name: "email" })
+      // Find and click the "Email" option in the listbox (label text)
+      const emailOption = screen.getByRole("option", { name: "Email" })
       fireEvent.click(emailOption)
-      expect(onMappingChange).toHaveBeenCalledWith("Email", "email")
+      expect(onMappingChange).toHaveBeenCalledWith("Email Col", "email")
     })
 
     it("renders skeleton rows when columns array is empty", () => {
@@ -110,6 +112,59 @@ describe("ColumnMappingTable", () => {
       // Should render 5 skeleton pairs
       const skeletons = container.querySelectorAll("[class*='skeleton'], [data-slot='skeleton']")
       expect(skeletons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("dropdown shows grouped field labels", () => {
+      render(
+        <ColumnMappingTable
+          columns={["Test Col"]}
+          suggestedMapping={{ "Test Col": null }}
+          mapping={{ "Test Col": "" }}
+          onMappingChange={vi.fn()}
+        />,
+      )
+      // Open the select
+      const trigger = screen.getByRole("combobox")
+      fireEvent.click(trigger)
+      // Verify group labels exist
+      expect(screen.getByText("Personal")).toBeTruthy()
+      expect(screen.getByText("Registration Address")).toBeTruthy()
+      expect(screen.getByText("Mailing Address")).toBeTruthy()
+      expect(screen.getByText("Demographics")).toBeTruthy()
+      expect(screen.getByText("Propensity")).toBeTruthy()
+      expect(screen.getByText("Household")).toBeTruthy()
+      expect(screen.getByText("Political")).toBeTruthy()
+      expect(screen.getByText("Other")).toBeTruthy()
+    })
+
+    it("CANONICAL_FIELDS includes new fields from Phase 23", () => {
+      expect(CANONICAL_FIELDS).toContain("registration_line1")
+      expect(CANONICAL_FIELDS).toContain("mailing_city")
+      expect(CANONICAL_FIELDS).toContain("propensity_general")
+      expect(CANONICAL_FIELDS).toContain("spoken_language")
+      expect(CANONICAL_FIELDS).toContain("household_size")
+    })
+
+    it("FIELD_GROUPS has 8 groups", () => {
+      expect(Object.keys(FIELD_GROUPS)).toHaveLength(8)
+    })
+
+    it("dropdown shows human-readable labels instead of raw field names", () => {
+      render(
+        <ColumnMappingTable
+          columns={["Test Col"]}
+          suggestedMapping={{ "Test Col": null }}
+          mapping={{ "Test Col": "" }}
+          onMappingChange={vi.fn()}
+        />,
+      )
+      // Open the select
+      const trigger = screen.getByRole("combobox")
+      fireEvent.click(trigger)
+      // Verify human-readable labels appear
+      expect(screen.getByText("Registration Line 1")).toBeTruthy()
+      expect(screen.getByText("Mailing City")).toBeTruthy()
+      expect(screen.getByText("General Propensity")).toBeTruthy()
     })
   })
 })
