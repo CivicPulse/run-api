@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
 status: completed
-stopped_at: Completed 26-03 VoterFilterBuilder accordion restructure
-last_updated: "2026-03-14T16:49:02.077Z"
+stopped_at: Completed 26-04 ColumnMappingTable grouped dropdown
+last_updated: "2026-03-14T16:49:30.041Z"
 last_activity: 2026-03-14 — Completed 26-03 VoterFilterBuilder accordion restructure
 progress:
   total_phases: 4
@@ -56,6 +56,7 @@ Progress: [█████████░] 91%
 | Phase 26 P01 | 4min | 2 tasks | 11 files |
 | Phase 26 P03 | 3min | 2 tasks | 2 files |
 | Phase 26 P02 | 3min | 2 tasks | 2 files |
+| Phase 26 P04 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 26]: Keep GET /voters query param names (city/state/county) for backward compat, map to registration_* in VoterFilter
 - [Phase 26]: ContactsTab address references are VoterAddress model fields, not Voter model -- left unchanged
 - [Phase 26]: onValueCommit for propensity sliders (avoids mount-time firing, cleaner commit semantics than onValueChange guard)
+- [Phase 26]: Voting history table placed inside Registration & Districts card with Separator, not standalone
+- [Phase 26]: CANONICAL_FIELDS derived from FIELD_GROUPS.flat() for single source of truth
 
 ### Research Flags
 
@@ -103,6 +106,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:47:34Z
-Stopped at: Completed 26-03 VoterFilterBuilder accordion restructure
-Resume file: .planning/phases/26-frontend-updates/26-03-SUMMARY.md
+Last session: 2026-03-14T16:49:30.036Z
+Stopped at: Completed 26-04 ColumnMappingTable grouped dropdown
+Resume file: None
