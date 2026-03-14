@@ -296,6 +296,79 @@ class TestBuildVoterQuery:
         assert "lower" in sql.lower()
         assert "registration_county" in sql.lower()
 
+    # --- Voting history year-aware expansion tests (FILT-05) ---
+
+    def test_voted_in_year_only_expansion(self):
+        """VoterFilter(voted_in=["2024"]) produces SQL with General_2024 and Primary_2024 using overlap (&&)."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(voted_in=["2024"]))
+        sql = self._compiled_sql(q)
+        assert "general_2024" in sql.lower()
+        assert "primary_2024" in sql.lower()
+        # overlap operator produces && in compiled SQL
+        assert "&&" in sql or "overlap" in sql.lower()
+
+    def test_voted_in_canonical_unchanged(self):
+        """VoterFilter(voted_in=["General_2024"]) produces contains (@>) for General_2024 only (no Primary)."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(voted_in=["General_2024"]))
+        sql = self._compiled_sql(q)
+        assert "general_2024" in sql.lower()
+        # Should NOT expand to include Primary
+        assert "primary_2024" not in sql.lower()
+        # Should use contains (@>) not overlap (&&)
+        assert "@>" in sql or "contains" in sql.lower()
+
+    def test_voted_in_mixed(self):
+        """VoterFilter(voted_in=["2024", "General_2022"]) produces overlap for 2024 AND contains for General_2022."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(voted_in=["2024", "General_2022"]))
+        sql = self._compiled_sql(q)
+        # Year-only "2024" expanded to General_2024 + Primary_2024 via overlap
+        assert "general_2024" in sql.lower()
+        assert "primary_2024" in sql.lower()
+        # Canonical "General_2022" passed through as-is
+        assert "general_2022" in sql.lower()
+
+    def test_not_voted_in_year_expansion(self):
+        """VoterFilter(not_voted_in=["2024"]) produces two NOT contains: NOT General_2024 AND NOT Primary_2024."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(not_voted_in=["2024"]))
+        sql = self._compiled_sql(q)
+        assert "general_2024" in sql.lower()
+        assert "primary_2024" in sql.lower()
+        # Both should be negated (NOT contains)
+        assert sql.lower().count("not") >= 2
+
+    def test_not_voted_in_canonical_unchanged(self):
+        """VoterFilter(not_voted_in=["General_2024"]) produces single NOT contains for General_2024."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(not_voted_in=["General_2024"]))
+        sql = self._compiled_sql(q)
+        assert "general_2024" in sql.lower()
+        # Should NOT expand to include Primary
+        assert "primary_2024" not in sql.lower()
+        assert "not" in sql.lower()
+
+    def test_not_voted_in_mixed(self):
+        """VoterFilter(not_voted_in=["2024", "General_2022"]) produces two NOT contains for 2024 AND one NOT contains for General_2022."""
+        from app.services.voter import build_voter_query
+
+        q = build_voter_query(VoterFilter(not_voted_in=["2024", "General_2022"]))
+        sql = self._compiled_sql(q)
+        # Year-only "2024" expanded to two NOT contains conditions
+        assert "general_2024" in sql.lower()
+        assert "primary_2024" in sql.lower()
+        # Canonical "General_2022" passed through as single NOT contains
+        assert "general_2022" in sql.lower()
+        # At least 3 NOT conditions (2 for year-only + 1 for canonical)
+        assert sql.lower().count("not") >= 3
+
 
 class TestVoterFilterSchema:
     """Tests for VoterFilter Pydantic schema validation."""
