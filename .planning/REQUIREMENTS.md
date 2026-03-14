@@ -44,7 +44,7 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 - [ ] **FRNT-02**: VoterFilterBuilder includes controls for propensity ranges, ethnicity, language, military status with collapsible filter groups
 - [ ] **FRNT-03**: VoterEditSheet includes editable fields for all new voter columns
 - [ ] **FRNT-04**: ColumnMappingTable includes all new canonical fields for import wizard column mapping
-- [ ] **FRNT-05**: TypeScript Voter and VoterFilter interfaces updated to match backend schemas
+- [x] **FRNT-05**: TypeScript Voter and VoterFilter interfaces updated to match backend schemas
 
 ## Future Requirements
 
@@ -100,7 +100,7 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 | FRNT-02 | Phase 26 | Pending |
 | FRNT-03 | Phase 26 | Pending |
 | FRNT-04 | Phase 26 | Pending |
-| FRNT-05 | Phase 26 | Pending |
+| FRNT-05 | Phase 26 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 27 total

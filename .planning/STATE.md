@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
-status: completed
-stopped_at: Phase 26 context gathered
-last_updated: "2026-03-14T00:43:25.845Z"
-last_activity: 2026-03-14 — Completed 25-02 voting history year expansion
+status: in-progress
+stopped_at: Completed 26-01 TypeScript types and distinct-values
+last_updated: "2026-03-14T16:41:14Z"
+last_activity: 2026-03-14 — Completed 26-01 TypeScript types and distinct-values
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
-  percent: 100
+  total_plans: 11
+  completed_plans: 8
+  percent: 73
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-13)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.3 Phase 25 — Filter Builder & Query Enhancement
+**Current focus:** v1.3 Phase 26 — Frontend Updates
 
 ## Current Position
 
-Phase: 25 of 26 (Filter Builder & Query Enhancement)
-Plan: 2 of 2
-Status: Phase Complete
-Last activity: 2026-03-14 — Completed 25-02 voting history year expansion
+Phase: 26 of 26 (Frontend Updates)
+Plan: 1 of 4
+Status: Plan 01 Complete
+Last activity: 2026-03-14 — Completed 26-01 TypeScript types and distinct-values
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (v1.3)
-- Average duration: 3min
-- Total execution time: 15min
+- Total plans completed: 6 (v1.3)
+- Average duration: 3.2min
+- Total execution time: 19min
 
 **By Phase:**
 
@@ -46,12 +46,14 @@ Progress: [██████████] 100%
 | 23 | 2 | 8min | 4min |
 | 24 | 1 | 2min | 2min |
 | 25 | 2 | 5min | 2.5min |
+| 26 | 1/4 | 4min | 4min |
 
 *Updated after each plan completion*
 | Phase 24 P01 | 3min | 1 tasks | 3 files |
 | Phase 24 P03 | 4min | 2 tasks | 2 files |
 | Phase 25 P01 | 3min | 2 tasks | 3 files |
 | Phase 25 P02 | 2min | 1 tasks | 2 files |
+| Phase 26 P01 | 4min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -77,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 25]: registration_county updated to case-insensitive alongside city/state
 - [Phase 25]: Year-only voted_in uses .overlap() for OR semantics; not_voted_in uses dual ~.contains() for AND-NOT semantics
 - [Phase 25]: Voting history year expansion covers General and Primary only (no Runoff/Special in L2 data)
+- [Phase 26]: Keep GET /voters query param names (city/state/county) for backward compat, map to registration_* in VoterFilter
+- [Phase 26]: ContactsTab address references are VoterAddress model fields, not Voter model -- left unchanged
 
 ### Research Flags
 
@@ -96,6 +100,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T00:43:25.839Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-frontend-updates/26-CONTEXT.md
+Last session: 2026-03-14T16:41:14Z
+Stopped at: Completed 26-01 TypeScript types and distinct-values
+Resume file: .planning/phases/26-frontend-updates/26-01-SUMMARY.md
