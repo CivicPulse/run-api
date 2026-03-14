@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
-status: in-progress
-stopped_at: Completed 26-01 TypeScript types and distinct-values
-last_updated: "2026-03-14T16:41:14Z"
-last_activity: 2026-03-14 — Completed 26-01 TypeScript types and distinct-values
+status: completed
+stopped_at: Completed 26-03 VoterFilterBuilder accordion restructure
+last_updated: "2026-03-14T16:49:02.077Z"
+last_activity: 2026-03-14 — Completed 26-03 VoterFilterBuilder accordion restructure
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 11
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 ## Current Position
 
 Phase: 26 of 26 (Frontend Updates)
-Plan: 1 of 4
-Status: Plan 01 Complete
-Last activity: 2026-03-14 — Completed 26-01 TypeScript types and distinct-values
+Plan: 3 of 4
+Status: Plan 03 Complete
+Last activity: 2026-03-14 — Completed 26-03 VoterFilterBuilder accordion restructure
 
-Progress: [███████░░░] 73%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [███████░░░] 73%
 | 23 | 2 | 8min | 4min |
 | 24 | 1 | 2min | 2min |
 | 25 | 2 | 5min | 2.5min |
-| 26 | 1/4 | 4min | 4min |
+| 26 | 3/4 | 7min | 2.3min |
 
 *Updated after each plan completion*
 | Phase 24 P01 | 3min | 1 tasks | 3 files |
@@ -54,6 +54,8 @@ Progress: [███████░░░] 73%
 | Phase 25 P01 | 3min | 2 tasks | 3 files |
 | Phase 25 P02 | 2min | 1 tasks | 2 files |
 | Phase 26 P01 | 4min | 2 tasks | 11 files |
+| Phase 26 P03 | 3min | 2 tasks | 2 files |
+| Phase 26 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -81,6 +83,7 @@ Recent decisions affecting current work:
 - [Phase 25]: Voting history year expansion covers General and Primary only (no Runoff/Special in L2 data)
 - [Phase 26]: Keep GET /voters query param names (city/state/county) for backward compat, map to registration_* in VoterFilter
 - [Phase 26]: ContactsTab address references are VoterAddress model fields, not Voter model -- left unchanged
+- [Phase 26]: onValueCommit for propensity sliders (avoids mount-time firing, cleaner commit semantics than onValueChange guard)
 
 ### Research Flags
 
@@ -100,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:41:14Z
-Stopped at: Completed 26-01 TypeScript types and distinct-values
-Resume file: .planning/phases/26-frontend-updates/26-01-SUMMARY.md
+Last session: 2026-03-14T16:47:34Z
+Stopped at: Completed 26-03 VoterFilterBuilder accordion restructure
+Resume file: .planning/phases/26-frontend-updates/26-03-SUMMARY.md

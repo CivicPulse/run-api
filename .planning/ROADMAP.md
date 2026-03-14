@@ -62,7 +62,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 - [x] **Phase 23: Schema Foundation** - Alembic migration, expanded Voter model, Pydantic schemas, VoterPhone constraint (completed 2026-03-13)
 - [x] **Phase 24: Import Pipeline Enhancement** - RETURNING clause, phone creation, voting history parsing, propensity parsing, field mapping, SET clause fix (completed 2026-03-13)
 - [x] **Phase 25: Filter Builder & Query Enhancement** - Propensity range filters, demographic multi-select, mailing address filters, voting history backward compat (completed 2026-03-14)
-- [ ] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping
+- [x] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping (completed 2026-03-14)
 
 ## Phase Details
 
@@ -164,4 +164,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
 | 24. Import Pipeline Enhancement | 3/3 | Complete    | 2026-03-13 | - |
 | 25. Filter Builder & Query Enhancement | 2/2 | Complete    | 2026-03-14 | - |
-| 26. Frontend Updates | 1/4 | In Progress|  | - |
+| 26. Frontend Updates | 4/4 | Complete   | 2026-03-14 | - |
