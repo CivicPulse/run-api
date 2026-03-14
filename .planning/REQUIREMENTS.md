@@ -36,7 +36,7 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 - [x] **FILT-02**: VoterFilter supports ethnicity, spoken_language, military_status as multi-select list filters
 - [x] **FILT-03**: VoterFilter supports mailing_city, mailing_state, mailing_zip as exact-match filters
 - [x] **FILT-04**: build_voter_query handles all new filter dimensions following existing pattern
-- [ ] **FILT-05**: Voting history filter maintains backward compatibility (year-only values still match "{Type}_{Year}" entries)
+- [x] **FILT-05**: Voting history filter maintains backward compatibility (year-only values still match "{Type}_{Year}" entries)
 
 ### Frontend
 
@@ -95,7 +95,7 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 | FILT-02 | Phase 25 | Complete |
 | FILT-03 | Phase 25 | Complete |
 | FILT-04 | Phase 25 | Complete |
-| FILT-05 | Phase 25 | Pending |
+| FILT-05 | Phase 25 | Complete |
 | FRNT-01 | Phase 26 | Pending |
 | FRNT-02 | Phase 26 | Pending |
 | FRNT-03 | Phase 26 | Pending |
