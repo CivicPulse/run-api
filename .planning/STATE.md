@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
-status: completed
-stopped_at: Phase 25 context gathered
-last_updated: "2026-03-13T23:49:46.353Z"
-last_activity: 2026-03-13 — Completed 24-03 core pipeline enhancement
+status: executing
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-03-14T00:11:26.844Z"
+last_activity: 2026-03-14 — Completed 25-01 filter builder plan
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 7
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-13)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.3 Phase 24 — Import Pipeline Enhancement
+**Current focus:** v1.3 Phase 25 — Filter Builder & Query Enhancement
 
 ## Current Position
 
-Phase: 24 of 26 (Import Pipeline Enhancement)
-Plan: 3 of 3
-Status: Phase Complete
-Last activity: 2026-03-13 — Completed 24-03 core pipeline enhancement
+Phase: 25 of 26 (Filter Builder & Query Enhancement)
+Plan: 1 of 2
+Status: In Progress
+Last activity: 2026-03-14 — Completed 25-01 filter builder plan
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (v1.3)
+- Total plans completed: 4 (v1.3)
 - Average duration: 3min
-- Total execution time: 10min
+- Total execution time: 13min
 
 **By Phase:**
 
@@ -45,10 +45,12 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 23 | 2 | 8min | 4min |
 | 24 | 1 | 2min | 2min |
+| 25 | 1 | 3min | 3min |
 
 *Updated after each plan completion*
 | Phase 24 P01 | 3min | 1 tasks | 3 files |
 | Phase 24 P03 | 4min | 2 tasks | 2 files |
+| Phase 25 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 24]: Utility functions placed at module level for independent testability (parse_propensity, normalize_phone, parse_voting_history)
 - [Phase 24]: SET clause derived from Voter.__table__.columns with _UPSERT_EXCLUDE (not first row keys)
 - [Phase 24]: VoterPhone upsert excludes is_primary from SET to preserve manual edits
+- [Phase 25]: func.lower() for case-insensitive equality/IN on voter filters (registration + mailing address, demographics)
+- [Phase 25]: Zip codes stay exact match (no case variation in numeric strings)
+- [Phase 25]: registration_county updated to case-insensitive alongside city/state
 
 ### Research Flags
 
@@ -88,6 +93,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-13T23:49:46.346Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-filter-builder-query-enhancement/25-CONTEXT.md
+Last session: 2026-03-14T00:11:26.839Z
+Stopped at: Completed 25-01-PLAN.md
+Resume file: None
