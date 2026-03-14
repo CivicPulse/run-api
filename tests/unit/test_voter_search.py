@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import literal_column
 
 from app.models.voter import Voter, VoterTag, VoterTagMember
@@ -149,6 +150,110 @@ class TestBuildVoterQuery:
         assert "party" in sql.lower()
         assert "registration_city" in sql.lower()
         assert "age" in sql.lower()
+
+
+class TestVoterFilterSchema:
+    """Tests for VoterFilter Pydantic schema validation."""
+
+    def test_propensity_general_min_valid(self):
+        """VoterFilter accepts propensity_general_min=60."""
+        f = VoterFilter(propensity_general_min=60)
+        assert f.propensity_general_min == 60
+
+    def test_propensity_general_max_valid(self):
+        """VoterFilter accepts propensity_general_max=90."""
+        f = VoterFilter(propensity_general_max=90)
+        assert f.propensity_general_max == 90
+
+    def test_propensity_general_min_rejects_over_100(self):
+        """VoterFilter rejects propensity_general_min=101."""
+        with pytest.raises(ValidationError):
+            VoterFilter(propensity_general_min=101)
+
+    def test_propensity_general_min_rejects_negative(self):
+        """VoterFilter rejects propensity_general_min=-1."""
+        with pytest.raises(ValidationError):
+            VoterFilter(propensity_general_min=-1)
+
+    def test_propensity_general_max_rejects_over_100(self):
+        """VoterFilter rejects propensity_general_max=101."""
+        with pytest.raises(ValidationError):
+            VoterFilter(propensity_general_max=101)
+
+    def test_propensity_primary_min_valid(self):
+        """VoterFilter accepts propensity_primary_min=50."""
+        f = VoterFilter(propensity_primary_min=50)
+        assert f.propensity_primary_min == 50
+
+    def test_propensity_primary_max_rejects_over_100(self):
+        """VoterFilter rejects propensity_primary_max=101."""
+        with pytest.raises(ValidationError):
+            VoterFilter(propensity_primary_max=101)
+
+    def test_propensity_combined_min_valid(self):
+        """VoterFilter accepts propensity_combined_min=0."""
+        f = VoterFilter(propensity_combined_min=0)
+        assert f.propensity_combined_min == 0
+
+    def test_propensity_combined_max_valid(self):
+        """VoterFilter accepts propensity_combined_max=100."""
+        f = VoterFilter(propensity_combined_max=100)
+        assert f.propensity_combined_max == 100
+
+    def test_propensity_combined_max_rejects_negative(self):
+        """VoterFilter rejects propensity_combined_max=-5."""
+        with pytest.raises(ValidationError):
+            VoterFilter(propensity_combined_max=-5)
+
+    def test_ethnicities_valid(self):
+        """VoterFilter accepts ethnicities as list[str]."""
+        f = VoterFilter(ethnicities=["Hispanic", "Asian"])
+        assert f.ethnicities == ["Hispanic", "Asian"]
+
+    def test_spoken_languages_valid(self):
+        """VoterFilter accepts spoken_languages as list[str]."""
+        f = VoterFilter(spoken_languages=["English"])
+        assert f.spoken_languages == ["English"]
+
+    def test_military_statuses_valid(self):
+        """VoterFilter accepts military_statuses as list[str]."""
+        f = VoterFilter(military_statuses=["Active"])
+        assert f.military_statuses == ["Active"]
+
+    def test_mailing_city_valid(self):
+        """VoterFilter accepts mailing_city as str."""
+        f = VoterFilter(mailing_city="Atlanta")
+        assert f.mailing_city == "Atlanta"
+
+    def test_mailing_state_valid(self):
+        """VoterFilter accepts mailing_state as str."""
+        f = VoterFilter(mailing_state="GA")
+        assert f.mailing_state == "GA"
+
+    def test_mailing_zip_valid(self):
+        """VoterFilter accepts mailing_zip as str."""
+        f = VoterFilter(mailing_zip="30301")
+        assert f.mailing_zip == "30301"
+
+    def test_new_fields_default_to_none(self):
+        """All 12 new fields default to None when not provided."""
+        f = VoterFilter()
+        assert f.propensity_general_min is None
+        assert f.propensity_general_max is None
+        assert f.propensity_primary_min is None
+        assert f.propensity_primary_max is None
+        assert f.propensity_combined_min is None
+        assert f.propensity_combined_max is None
+        assert f.ethnicities is None
+        assert f.spoken_languages is None
+        assert f.military_statuses is None
+        assert f.mailing_city is None
+        assert f.mailing_state is None
+        assert f.mailing_zip is None
+
+    def test_total_field_count(self):
+        """VoterFilter should have 31 fields (19 existing + 12 new)."""
+        assert len(VoterFilter.model_fields) == 31
 
 
 class TestVoterServiceCRUD:
