@@ -8,38 +8,59 @@ vi.mock("@/hooks/useVoterTags", () => ({
   useCampaignTags: () => ({ data: [], isLoading: false }),
 }))
 
+// Mock useDistinctValues for dynamic checkbox groups
+vi.mock("@/hooks/useVoters", () => ({
+  useDistinctValues: () => ({
+    data: {
+      ethnicity: [
+        { value: "Hispanic", count: 50 },
+        { value: "White", count: 30 },
+      ],
+      spoken_language: [
+        { value: "English", count: 70 },
+        { value: "Spanish", count: 20 },
+      ],
+      military_status: [{ value: "Veteran", count: 10 }],
+    },
+    isLoading: false,
+  }),
+}))
+
 const emptyFilter: VoterFilter = {}
 
 function noop(_filters: VoterFilter) {}
 
 describe("VoterFilterBuilder", () => {
-  it("Test 1: renders Party section with checkboxes for all six parties", () => {
+  it("Test 1: renders Demographics accordion section with party checkboxes", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
+    expect(screen.getByText("Demographics")).toBeTruthy()
+    // Demographics is open by default -- party checkboxes should be visible
     for (const party of ["DEM", "REP", "NPA", "LIB", "GRN", "OTH"]) {
       expect(screen.getByText(party)).toBeTruthy()
     }
   })
 
-  it("Test 2: renders Age Range inputs (age_min, age_max)", () => {
+  it("Test 2: renders Location accordion section with registration city input", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
-    const inputs = screen.getAllByPlaceholderText(/min|max/i)
-    expect(inputs.length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText("Location")).toBeTruthy()
+    // Expand the Location section
+    fireEvent.click(screen.getByText("Location"))
+    expect(screen.getByText("Registration City")).toBeTruthy()
   })
 
-  it("Test 3: renders a More filters toggle button", () => {
+  it("Test 3: renders Scoring accordion section", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
-    expect(screen.getByText(/more filters/i)).toBeTruthy()
+    expect(screen.getByText("Scoring")).toBeTruthy()
   })
 
-  it("Test 4: secondary filters (zip_code input) are NOT visible before clicking More filters", () => {
+  it("Test 4: renders Political accordion section", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
-    expect(screen.queryByPlaceholderText(/zip code/i)).toBeNull()
+    expect(screen.getByText("Political")).toBeTruthy()
   })
 
-  it("Test 5: secondary filters become visible after clicking More filters toggle", () => {
+  it("Test 5: renders Advanced accordion section", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
-    fireEvent.click(screen.getByText(/more filters/i))
-    expect(screen.getByPlaceholderText(/zip code/i)).toBeTruthy()
+    expect(screen.getByText("Advanced")).toBeTruthy()
   })
 
   it("Test 6: changing a party checkbox calls onChange with updated parties array", () => {
@@ -54,9 +75,33 @@ describe("VoterFilterBuilder", () => {
     expect(called.parties).toContain("DEM")
   })
 
-  it("Test 7: renders Tags section", () => {
+  it("Test 7: dynamic ethnicity checkboxes render values from useDistinctValues", () => {
     render(<VoterFilterBuilder value={emptyFilter} onChange={noop} />)
-    // Tags section header should be visible (at least one element matching "Tags")
-    expect(screen.getAllByText(/tags/i).length).toBeGreaterThan(0)
+    // Demographics section is open by default, ethnicity dynamic checkboxes should render
+    expect(screen.getByText(/Hispanic/)).toBeTruthy()
+    expect(screen.getByText(/White/)).toBeTruthy()
+  })
+
+  it("Test 8: Clear all button appears when filters are active and resets to empty object", () => {
+    const onChange = vi.fn()
+    const filterWithParty: VoterFilter = { parties: ["DEM"] }
+    render(<VoterFilterBuilder value={filterWithParty} onChange={onChange} />)
+    const clearBtn = screen.getByText("Clear all")
+    expect(clearBtn).toBeTruthy()
+    fireEvent.click(clearBtn)
+    expect(onChange).toHaveBeenCalledWith({})
+  })
+
+  it("Test 9: badge count shows on Demographics section when party filter is active", () => {
+    const filterWithParty: VoterFilter = { parties: ["DEM"] }
+    render(<VoterFilterBuilder value={filterWithParty} onChange={noop} />)
+    // The badge should show "1" next to Demographics
+    const demographicsTrigger = screen.getByText("Demographics").closest("[data-slot='accordion-trigger']")
+    expect(demographicsTrigger).toBeTruthy()
+    // Find the badge within or near the Demographics header
+    const badge = demographicsTrigger!.querySelector("[data-slot='badge']") ??
+      screen.getByText("Demographics").parentElement?.querySelector(".text-xs")
+    expect(badge).toBeTruthy()
+    expect(badge!.textContent).toBe("1")
   })
 })
