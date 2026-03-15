@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
@@ -22,12 +23,20 @@ class ZitadelService:
         issuer: str,
         client_id: str,
         client_secret: str,
+        base_url: str = "",
     ) -> None:
         self.issuer = issuer.rstrip("/")
+        self.base_url = base_url.rstrip("/") if base_url else self.issuer
         self.client_id = client_id
         self.client_secret = client_secret
         self._token: str | None = None
         self._token_expires_at: float = 0
+        # Send Host header matching the issuer when using an internal base URL
+        issuer_host = urlparse(self.issuer).hostname or ""
+        base_host = urlparse(self.base_url).hostname or ""
+        self._extra_headers: dict[str, str] = (
+            {"Host": issuer_host} if base_host != issuer_host else {}
+        )
 
     async def _get_token(self) -> str:
         """Get a service account token via client_credentials grant.
@@ -45,9 +54,9 @@ class ZitadelService:
             return self._token
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(headers=self._extra_headers) as client:
                 response = await client.post(
-                    f"{self.issuer}/oauth/v2/token",
+                    f"{self.base_url}/oauth/v2/token",
                     data={
                         "grant_type": "client_credentials",
                         "client_id": self.client_id,
@@ -72,6 +81,7 @@ class ZitadelService:
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            **self._extra_headers,
         }
 
     async def create_organization(self, name: str) -> dict:
@@ -90,7 +100,7 @@ class ZitadelService:
             token = await self._get_token()
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.issuer}/management/v1/orgs",
+                    f"{self.base_url}/management/v1/orgs",
                     headers=self._auth_headers(token),
                     json={"name": name},
                 )
@@ -121,7 +131,7 @@ class ZitadelService:
             token = await self._get_token()
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.issuer}/management/v1/orgs/{org_id}/_deactivate",
+                    f"{self.base_url}/management/v1/orgs/{org_id}/_deactivate",
                     headers=self._auth_headers(token),
                 )
                 response.raise_for_status()
@@ -144,7 +154,7 @@ class ZitadelService:
             token = await self._get_token()
             async with httpx.AsyncClient() as client:
                 response = await client.delete(
-                    f"{self.issuer}/management/v1/orgs/{org_id}",
+                    f"{self.base_url}/management/v1/orgs/{org_id}",
                     headers=self._auth_headers(token),
                 )
                 response.raise_for_status()
@@ -165,7 +175,7 @@ class ZitadelService:
         token = await self._get_token()
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.issuer}/management/v1/users/{user_id}/grants",
+                f"{self.base_url}/management/v1/users/{user_id}/grants",
                 headers=self._auth_headers(token),
                 json={
                     "projectId": org_id,
@@ -191,7 +201,7 @@ class ZitadelService:
         async with httpx.AsyncClient() as client:
             # List grants to find the one to remove
             response = await client.post(
-                f"{self.issuer}/management/v1/users/{user_id}/grants/_search",
+                f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
                 headers=self._auth_headers(token),
                 json={"queries": [{"projectIdQuery": {"projectId": org_id}}]},
             )
@@ -202,7 +212,7 @@ class ZitadelService:
                 if role in grant.get("roleKeys", []):
                     grant_id = grant["id"]
                     del_resp = await client.delete(
-                        f"{self.issuer}/management/v1/users/{user_id}/grants/{grant_id}",
+                        f"{self.base_url}/management/v1/users/{user_id}/grants/{grant_id}",
                         headers=self._auth_headers(token),
                     )
                     del_resp.raise_for_status()

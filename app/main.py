@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         issuer=settings.zitadel_issuer,
         client_id=settings.zitadel_service_client_id,
         client_secret=settings.zitadel_service_client_secret,
+        base_url=settings.zitadel_base_url,
     )
     try:
         await zitadel_service._get_token()

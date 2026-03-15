@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # ZITADEL (service account for backend API calls)
     zitadel_issuer: str = "https://auth.civpulse.org"
+    zitadel_base_url: str = ""  # Internal URL for in-cluster calls; defaults to issuer
     zitadel_project_id: str = ""
     zitadel_service_client_id: str = ""
     zitadel_service_client_secret: str = ""
