@@ -354,7 +354,7 @@ function VoterCreateForm({ campaignId, onSuccess }: VoterCreateFormProps) {
   const onSubmit = async (data: VoterFormData) => {
     const payload: VoterCreate = {}
     for (const [k, v] of Object.entries(data)) {
-      if (v) (payload as Record<string, string | number>)[k] = v
+      if (v !== undefined && v !== "") (payload as Record<string, string | number>)[k] = v
     }
     try {
       await createVoter.mutateAsync(payload)

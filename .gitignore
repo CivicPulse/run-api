@@ -137,6 +137,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.run-api.secrets
 .envrc
 .venv
 env/
