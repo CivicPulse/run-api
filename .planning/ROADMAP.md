@@ -215,7 +215,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
-| 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete   | 2026-03-15 | - |
+| 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete    | 2026-03-15 | - |
 | 31. Canvassing Wizard | v1.4 | 0/0 | Not started | - |
 | 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
