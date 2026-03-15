@@ -71,7 +71,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 
 </details>
 
-### 🚧 v1.4 Volunteer Field Mode (In Progress)
+### v1.4 Volunteer Field Mode (In Progress)
 
 **Milestone Goal:** A dedicated, zero-training mobile-first experience for volunteers actively canvassing or phone banking in the field.
 
@@ -93,11 +93,12 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
   2. Volunteer sees their active assignment (canvassing or phone banking) on the landing page and can tap to enter it
   3. Volunteer can navigate back to the landing hub from any field screen via a persistent back control
   4. Volunteer sees a help button in the field header (wired to tour replay in Phase 34; renders as disabled/placeholder until then)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 30-01: TBD
-- [ ] 30-02: TBD
+- [ ] 30-01-PLAN.md — Backend field/me endpoint and frontend data layer (types + hook)
+- [ ] 30-02-PLAN.md — Field layout shell, FieldHeader, and placeholder sub-routes
+- [ ] 30-03-PLAN.md — Landing hub page with assignment cards and volunteer auto-redirect
 
 ### Phase 31: Canvassing Wizard
 **Goal**: Volunteers can work through an entire walk list door-by-door from their phone, recording outcomes and answering surveys without losing progress
@@ -214,9 +215,19 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
-| 30. Field Layout Shell & Volunteer Landing | v1.4 | 0/0 | Not started | - |
+| 30. Field Layout Shell & Volunteer Landing | v1.4 | 0/3 | In progress | - |
 | 31. Canvassing Wizard | v1.4 | 0/0 | Not started | - |
 | 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
 | 34. Guided Onboarding Tour | v1.4 | 0/0 | Not started | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
+
+### Phase 36: Google Maps Navigation Link for Canvassing
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 35
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 36 to break down)
