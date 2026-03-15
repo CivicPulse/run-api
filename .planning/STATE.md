@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Phase 32 context gathered
-last_updated: "2026-03-15T21:52:20.029Z"
+stopped_at: Phase 32 UI-SPEC approved
+last_updated: "2026-03-15T22:38:20.125Z"
 last_activity: 2026-03-15 — Completed 31-04 inline survey, resume, door list, ARIA
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 11
+  completed_plans: 9
   percent: 88
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 31 — Canvassing Wizard
+**Current focus:** Phase 32 — Phone Banking Field Mode
 
 ## Current Position
 
-Phase: 31 of 36 (Canvassing Wizard)
-Plan: 5 of 5 in current phase
+Phase: 32 of 36 (Phone Banking Field Mode)
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Completed 31-04 inline survey, resume, door list, ARIA
+Last activity: 2026-03-15 — Completed 32-01 calling types, store, OutcomeGrid generalization
 
-Progress: [█████████░] 88% (7/8 v1.4 plans)
+Progress: [████████░░] 82% (9/11 v1.4 plans)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [█████████░] 88% (7/8 v1.4 plans)
 | Phase 31 P03 | 2min | 2 tasks | 2 files |
 | Phase 31 P04 | 3min | 2 tasks | 4 files |
 | Phase 31 P05 | 3min | 2 tasks | 2 files |
+| Phase 32 P01 | 3min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [31-04]: Scale questions use button grid (not Slider) for better mobile tap targets
 - [31-04]: FieldProgress kept separate; All Doors button in own row below to avoid modifying shared component
 - [Phase 31]: Store tests use getState() directly without React rendering context
+- [32-01]: OutcomeGrid uses string callback type with domain-specific casting at call sites
+- [32-01]: CANVASSING_OUTCOMES built from existing OUTCOME_COLORS map to avoid duplication
 
 ### Roadmap Evolution
 
@@ -95,6 +98,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:52:20.022Z
-Stopped at: Phase 32 context gathered
-Resume file: .planning/phases/32-phone-banking-field-mode/32-CONTEXT.md
+Last session: 2026-03-15T22:37:42Z
+Stopped at: Completed 32-01-PLAN.md
+Resume file: .planning/phases/32-phone-banking-field-mode/32-02-PLAN.md

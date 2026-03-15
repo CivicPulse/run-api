@@ -31,7 +31,7 @@
 - [ ] **PHONE-04**: Volunteer can answer inline survey questions after a contact outcome (skippable)
 - [ ] **PHONE-05**: Volunteer sees session progress (calls completed / remaining)
 - [ ] **PHONE-06**: Volunteer can copy a phone number to clipboard as fallback when tel: is unsupported
-- [ ] **PHONE-07**: Phone numbers are formatted to E.164 for dialing and display-formatted for reading
+- [x] **PHONE-07**: Phone numbers are formatted to E.164 for dialing and display-formatted for reading
 
 ### Onboarding & Help
 
@@ -105,7 +105,7 @@
 | PHONE-04 | Phase 32 | Pending |
 | PHONE-05 | Phase 32 | Pending |
 | PHONE-06 | Phase 32 | Pending |
-| PHONE-07 | Phase 32 | Pending |
+| PHONE-07 | Phase 32 | Complete |
 | TOUR-01 | Phase 34 | Pending |
 | TOUR-02 | Phase 34 | Pending |
 | TOUR-03 | Phase 34 | Pending |
