@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 31-01 data foundation
-last_updated: "2026-03-15T21:09:00Z"
-last_activity: 2026-03-15 — Completed 31-01 data foundation (enriched entries endpoint + wizard store)
+stopped_at: Completed 31-03 canvassing wizard assembly
+last_updated: "2026-03-15T21:14:09.904Z"
+last_activity: 2026-03-15 — Completed 31-01 data foundation
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 63
 ---
 
@@ -51,6 +51,7 @@ Progress: [██████░░░░] 63% (5/8 v1.4 plans)
 | Phase 30 P03 | 2min | 2 tasks | 6 files |
 | Phase 31 P02 | 2min | 2 tasks | 5 files |
 | Phase 31 P01 | 3min | 2 tasks | 6 files |
+| Phase 31 P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [31-01]: Correlated subqueries for interaction aggregation (no lateral join for walk list sizes up to 500)
 - [31-01]: 500-entry cap on enriched endpoint, no pagination needed for wizard
 - [31-01]: sessionStorage for wizard state (clears on tab close, fresh start each session)
+- [Phase 31]: Bulk Not Home uses sonner toast with action/cancel buttons (not modal dialog)
+- [Phase 31]: Orchestrator hook returns OutcomeResult signals (bulkPrompt/surveyTrigger) instead of callback nesting
 
 ### Roadmap Evolution
 
@@ -87,6 +90,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:09:00Z
-Stopped at: Completed 31-01 data foundation
-Resume file: .planning/phases/31-canvassing-wizard/31-01-SUMMARY.md
+Last session: 2026-03-15T21:14:09.899Z
+Stopped at: Completed 31-03 canvassing wizard assembly
+Resume file: None

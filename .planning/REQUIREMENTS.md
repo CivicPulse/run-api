@@ -16,7 +16,7 @@
 
 - [x] **CANV-01**: Volunteer sees the next address to visit with voter name, party, and propensity context
 - [x] **CANV-02**: Volunteer records a door-knock outcome via large touch-target buttons (Not Home, Contact, Refused, etc.)
-- [ ] **CANV-03**: Volunteer advances to the next door automatically after recording an outcome
+- [x] **CANV-03**: Volunteer advances to the next door automatically after recording an outcome
 - [x] **CANV-04**: Volunteer sees a progress indicator (e.g., "12 of 47 doors")
 - [ ] **CANV-05**: Volunteer can answer inline survey questions after a contact outcome (skippable)
 - [x] **CANV-06**: Volunteer sees multiple voters at the same address grouped by household
@@ -93,7 +93,7 @@
 | NAV-04 | Phase 30 | Complete |
 | CANV-01 | Phase 31 | Complete |
 | CANV-02 | Phase 31 | Complete |
-| CANV-03 | Phase 31 | Pending |
+| CANV-03 | Phase 31 | Complete |
 | CANV-04 | Phase 31 | Complete |
 | CANV-05 | Phase 31 | Pending |
 | CANV-06 | Phase 31 | Complete |
