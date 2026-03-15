@@ -7,7 +7,6 @@ import { useMembers } from "@/hooks/useMembers"
 import { useVoterLists } from "@/hooks/useVoterLists"
 import { useFormGuard } from "@/hooks/useFormGuard"
 import { DataTable } from "@/components/shared/DataTable"
-import { EmptyState } from "@/components/shared/EmptyState"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { Button } from "@/components/ui/button"
@@ -40,21 +39,6 @@ const roleVariant: Record<string, StatusVariant> = {
   manager: "warning",
   volunteer: "default",
   viewer: "default",
-}
-
-function resolveCallerName(
-  membersById: Map<string, CampaignMember>,
-  userId: string,
-): string {
-  const member = membersById.get(userId)
-  return member ? member.display_name : `${userId.slice(0, 12)}...`
-}
-
-function resolveCallerRole(
-  membersById: Map<string, CampaignMember>,
-  userId: string,
-): string | null {
-  return membersById.get(userId)?.role ?? null
 }
 
 const STATUS_LABELS: Record<string, string> = {

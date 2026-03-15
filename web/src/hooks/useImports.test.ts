@@ -160,7 +160,7 @@ describe("IMPT-01: XHR upload to MinIO presigned URL", () => {
     expect(xhr.setRequestHeader).toHaveBeenCalledWith("Content-Type", "text/csv")
     // Authorization header must NOT have been set (presigned URL is self-authenticated)
     const authCalls = xhr.setRequestHeader.mock.calls.filter(
-      ([header]: [string]) => header.toLowerCase() === "authorization"
+      ([header]: string[]) => header.toLowerCase() === "authorization"
     )
     expect(authCalls).toHaveLength(0)
   })

@@ -106,6 +106,6 @@ export function useSelfRegister(campaignId: string) {
         .post(`api/v1/campaigns/${campaignId}/volunteers/register`, {
           json: data,
         })
-        .then((res) => res.json()),
+        .then((res) => res.json<VolunteerResponse>()),
   })
 }

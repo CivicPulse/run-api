@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -42,12 +42,12 @@ const shiftFormSchema = z
       .min(3, "Name must be at least 3 characters")
       .max(100, "Name must be 100 characters or fewer"),
     type: z.enum(SHIFT_TYPES, {
-      required_error: "Type is required",
+      error: "Type is required",
     }),
     start_at: z.string().min(1, "Start date/time is required"),
     end_at: z.string().min(1, "End date/time is required"),
     max_volunteers: z.coerce
-      .number({ invalid_type_error: "Must be a number" })
+      .number({ error: "Must be a number" })
       .int("Must be a whole number")
       .min(1, "Must be at least 1"),
     description: z.string().optional(),
@@ -92,7 +92,7 @@ export function ShiftDialog({
   const sessions = sessionsData?.items ?? []
 
   const form = useForm<ShiftFormValues>({
-    resolver: zodResolver(shiftFormSchema),
+    resolver: zodResolver(shiftFormSchema) as Resolver<ShiftFormValues>,
     defaultValues: {
       name: editShift?.name ?? "",
       type: (editShift?.type as ShiftFormValues["type"]) ?? "general",

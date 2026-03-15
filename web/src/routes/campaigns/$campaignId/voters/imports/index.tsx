@@ -99,7 +99,7 @@ function ImportsHistoryPage() {
                   navigate({
                     to: "/campaigns/$campaignId/voters/imports/new",
                     params: { campaignId },
-                    search: { jobId: job.id },
+                    search: { jobId: job.id, step: 1 },
                   })
                 }
               >
@@ -127,6 +127,7 @@ function ImportsHistoryPage() {
               navigate({
                 to: "/campaigns/$campaignId/voters/imports/new",
                 params: { campaignId },
+                search: { jobId: "", step: 1 },
               })
             }
           >
@@ -144,6 +145,7 @@ function ImportsHistoryPage() {
                   navigate({
                     to: "/campaigns/$campaignId/voters/imports/new",
                     params: { campaignId },
+                    search: { jobId: "", step: 1 },
                   })
                 }
               >

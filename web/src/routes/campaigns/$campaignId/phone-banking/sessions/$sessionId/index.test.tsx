@@ -102,6 +102,7 @@ function makeSession(overrides: Partial<PhoneBankSession> = {}): PhoneBankSessio
     name: "Saturday Phone Bank",
     status: "draft",
     call_list_id: "list-1",
+    call_list_name: null,
     scheduled_start: null,
     scheduled_end: null,
     created_by: "user-1",
