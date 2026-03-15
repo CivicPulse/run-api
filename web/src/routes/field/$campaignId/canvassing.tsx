@@ -1,15 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useCallback } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { FieldHeader } from "@/components/field/FieldHeader"
 import { FieldProgress } from "@/components/field/FieldProgress"
 import { HouseholdCard } from "@/components/field/HouseholdCard"
+import { InlineSurvey } from "@/components/field/InlineSurvey"
+import { useResumePrompt } from "@/components/field/ResumePrompt"
+import { DoorListView } from "@/components/field/DoorListView"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useFieldMe } from "@/hooks/useFieldMe"
+import { useWalkList } from "@/hooks/useWalkLists"
+import { useCanvassingStore } from "@/stores/canvassingStore"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Link } from "@tanstack/react-router"
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, List } from "lucide-react"
 import { toast } from "sonner"
+import { SURVEY_TRIGGER_OUTCOMES, OUTCOME_LABELS } from "@/types/canvassing"
 import type { DoorKnockResultCode } from "@/types/canvassing"
 
 function Canvassing() {
@@ -30,14 +36,110 @@ function Canvassing() {
     isLoading,
     isError,
     handleOutcome,
+    handlePostSurveyAdvance,
     handleSkipAddress,
     handleBulkNotHome,
     handleJumpToAddress,
   } = useCanvassingWizard(campaignId, walkListId)
 
+  // Walk list detail for script_id
+  const { data: walkListDetail } = useWalkList(campaignId, walkListId)
+  const scriptId = walkListDetail?.script_id
+
+  // Store state for resume prompt
+  const storeWalkListId = useCanvassingStore((s) => s.walkListId)
+  const lastActiveAt = useCanvassingStore((s) => s.lastActiveAt)
+
+  // Survey state
+  const [surveyOpen, setSurveyOpen] = useState(false)
+  const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
+
+  // Door list view state
+  const [listViewOpen, setListViewOpen] = useState(false)
+
+  // ARIA announcement state
+  const [ariaAnnouncement, setAriaAnnouncement] = useState("")
+
+  // Active voter name for ARIA
+  const activeVoterName = useMemo(() => {
+    if (!currentHousehold || !activeEntryId) return ""
+    const entry = currentHousehold.entries.find((e) => e.id === activeEntryId)
+    if (!entry) return ""
+    return (
+      [entry.voter.first_name, entry.voter.last_name]
+        .filter(Boolean)
+        .join(" ") || "Unknown Voter"
+    )
+  }, [currentHousehold, activeEntryId])
+
+  // Resume prompt
+  useResumePrompt({
+    walkListId: walkListId || null,
+    storedWalkListId: storeWalkListId,
+    currentAddressIndex,
+    totalAddresses,
+    lastActiveAt,
+    onResume: () => {},
+    onStartOver: () => {
+      const firstPendingIdx = households.findIndex((h) =>
+        h.entries.some(
+          (e) => !completedEntries[e.id] && !skippedEntries.includes(e.id),
+        ),
+      )
+      if (firstPendingIdx >= 0) handleJumpToAddress(firstPendingIdx)
+    },
+  })
+
+  // ARIA: announce door transitions and completion
+  useEffect(() => {
+    if (currentHousehold) {
+      setAriaAnnouncement(
+        `Door ${currentAddressIndex + 1} of ${totalAddresses}. ${currentHousehold.address}. ${activeVoterName}.`,
+      )
+    }
+    if (isComplete) {
+      setAriaAnnouncement(
+        `Walk list complete. ${totalAddresses} doors visited.`,
+      )
+    }
+  }, [
+    currentAddressIndex,
+    currentHousehold,
+    isComplete,
+    totalAddresses,
+    activeVoterName,
+  ])
+
+  // Survey handlers
+  const handleSurveyComplete = useCallback(() => {
+    setSurveyOpen(false)
+    setSurveyVoterId(null)
+    handlePostSurveyAdvance()
+  }, [handlePostSurveyAdvance])
+
+  const handleSurveySkip = useCallback(() => {
+    setSurveyOpen(false)
+    setSurveyVoterId(null)
+    handlePostSurveyAdvance()
+  }, [handlePostSurveyAdvance])
+
   const handleOutcomeWithBulk = useCallback(
     (entryId: string, voterId: string, result: DoorKnockResultCode) => {
       const response = handleOutcome(entryId, voterId, result)
+
+      // ARIA: announce outcome
+      const voterEntry = currentHousehold?.entries.find(
+        (e) => e.id === entryId,
+      )
+      if (voterEntry) {
+        const voterName =
+          [voterEntry.voter.first_name, voterEntry.voter.last_name]
+            .filter(Boolean)
+            .join(" ") || "Unknown Voter"
+        setAriaAnnouncement(
+          `${OUTCOME_LABELS[result]} recorded for ${voterName}.`,
+        )
+      }
 
       // Check for bulk Not Home prompt at multi-voter address
       if (
@@ -51,26 +153,43 @@ function Canvassing() {
             completedEntries[e.id] === undefined &&
             !skippedEntries.includes(e.id),
         )
-        // Only prompt if this is the first outcome at this address
         const previouslyCompleted = currentHousehold.entries.filter(
           (e) => e.id !== entryId && completedEntries[e.id] !== undefined,
         )
         if (remaining.length > 0 && previouslyCompleted.length === 0) {
-          toast(`Apply to all ${remaining.length + 1} voters at this address?`, {
-            action: {
-              label: "Yes",
-              onClick: () => handleBulkNotHome(remaining),
+          toast(
+            `Apply to all ${remaining.length + 1} voters at this address?`,
+            {
+              action: {
+                label: "Yes",
+                onClick: () => handleBulkNotHome(remaining),
+              },
+              cancel: {
+                label: "No",
+                onClick: () => {},
+              },
+              duration: 10000,
             },
-            cancel: {
-              label: "No",
-              onClick: () => {},
-            },
-            duration: 10000,
-          })
+          )
         }
+        return
+      }
+
+      // Check for survey trigger
+      if (SURVEY_TRIGGER_OUTCOMES.has(result) && scriptId) {
+        setSurveyVoterId(voterId)
+        setSurveyOpen(true)
+        return
       }
     },
-    [handleOutcome, currentHousehold, completedEntries, skippedEntries, handleBulkNotHome],
+    [
+      handleOutcome,
+      currentHousehold,
+      completedEntries,
+      skippedEntries,
+      handleBulkNotHome,
+      scriptId,
+    ],
   )
 
   // Loading state
@@ -93,10 +212,12 @@ function Canvassing() {
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <h2 className="text-lg font-semibold mb-2">No Canvassing Assignment</h2>
+            <h2 className="text-lg font-semibold mb-2">
+              No Canvassing Assignment
+            </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              You haven&apos;t been assigned a walk list yet. Check back later or contact
-              your campaign organizer.
+              You haven&apos;t been assigned a walk list yet. Check back later
+              or contact your campaign organizer.
             </p>
             <Button asChild>
               <Link to={`/field/${campaignId}`}>Back to Hub</Link>
@@ -150,7 +271,29 @@ function Canvassing() {
   return (
     <div className="flex flex-col h-full">
       <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
+
       <FieldProgress current={completedAddresses} total={totalAddresses} />
+      <div className="flex items-center justify-end px-4 py-1 border-b">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setListViewOpen(true)}
+          className="min-h-11"
+        >
+          <List className="h-4 w-4 mr-1" />
+          All Doors
+        </Button>
+      </div>
+
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        role="status"
+        className="sr-only"
+      >
+        {ariaAnnouncement}
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4 lg:p-6">
         {currentHousehold && (
           <div
@@ -167,6 +310,27 @@ function Canvassing() {
           </div>
         )}
       </div>
+
+      {scriptId && surveyVoterId && (
+        <InlineSurvey
+          campaignId={campaignId}
+          scriptId={scriptId}
+          voterId={surveyVoterId}
+          open={surveyOpen}
+          onComplete={handleSurveyComplete}
+          onSkip={handleSurveySkip}
+        />
+      )}
+
+      <DoorListView
+        households={households}
+        currentAddressIndex={currentAddressIndex}
+        completedEntries={completedEntries}
+        skippedEntries={skippedEntries}
+        open={listViewOpen}
+        onOpenChange={setListViewOpen}
+        onJump={handleJumpToAddress}
+      />
     </div>
   )
 }
