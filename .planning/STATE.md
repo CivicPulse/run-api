@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-03-15T03:39:22Z"
-last_activity: 2026-03-15 — Completed 27-01 VoterSearchBody schema and dynamic sort
+stopped_at: Completed 27-02-PLAN.md
+last_updated: "2026-03-15T03:45:32Z"
+last_activity: 2026-03-15 — Completed 27-02 Frontend POST migration
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 4
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 ## Current Position
 
 Phase: 27 of 27 (Wire Advanced Filters to Backend)
-Plan: 1 of 3
-Status: Plan 01 Complete
-Last activity: 2026-03-15 — Completed 27-01 VoterSearchBody schema and dynamic sort
+Plan: 2 of 3
+Status: Plan 02 Complete
+Last activity: 2026-03-15 — Completed 27-02 Frontend POST migration
 
-Progress: [████████░░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 86%
 | Phase 26 P02 | 3min | 2 tasks | 2 files |
 | Phase 26 P04 | 3min | 2 tasks | 2 files |
 | Phase 27 P01 | 3min | 2 tasks | 4 files |
+| Phase 27 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 27]: SORTABLE_COLUMNS uses Literal type with 12 columns for compile-time validation
 - [Phase 27]: encode_cursor/decode_cursor as module-level helpers for independent testability
 - [Phase 27]: NULLS LAST for ascending sort only (PostgreSQL default for DESC is acceptable)
+- [Phase 27]: useQuery with POST for idempotent search (body in queryKey enables automatic refetch on filter changes)
+- [Phase 27]: placeholderData: keepPreviousData (TanStack v5) for smooth loading transitions
+- [Phase 27]: SORT_COLUMN_MAP maps frontend column IDs to backend sort columns
 
 ### Research Flags
 
@@ -110,6 +114,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T03:39:22Z
-Stopped at: Completed 27-01-PLAN.md
-Resume file: .planning/phases/27-wire-advanced-filters-to-backend/27-01-SUMMARY.md
+Last session: 2026-03-15T03:45:32Z
+Stopped at: Completed 27-02-PLAN.md
+Resume file: .planning/phases/27-wire-advanced-filters-to-backend/27-02-SUMMARY.md
