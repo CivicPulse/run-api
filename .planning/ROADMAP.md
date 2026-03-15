@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-10)
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
-- 🚧 **v1.3 Voter Model & Import Enhancement** — Phases 23-26 (in progress)
+- 🚧 **v1.3 Voter Model & Import Enhancement** — Phases 23-28 (in progress)
 
 ## Phases
 
@@ -63,6 +63,8 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 - [x] **Phase 24: Import Pipeline Enhancement** - RETURNING clause, phone creation, voting history parsing, propensity parsing, field mapping, SET clause fix (completed 2026-03-13)
 - [x] **Phase 25: Filter Builder & Query Enhancement** - Propensity range filters, demographic multi-select, mailing address filters, voting history backward compat (completed 2026-03-14)
 - [x] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping (completed 2026-03-14)
+- [ ] **Phase 27: Wire Advanced Filters to Backend** - Fix VoterSearchRequest body format, wire voter list to POST /voters/search, E2E filter validation
+- [ ] **Phase 28: Filter Chips & Frontend Type Coverage** - Add filter chips for 12 new dimensions, update ImportJob and VoterCreate TS types
 
 ## Phase Details
 
@@ -132,6 +134,33 @@ Plans:
 - [ ] 26-03-PLAN.md — VoterFilterBuilder accordion rewrite with sliders, dynamic checkboxes, badge counts
 - [ ] 26-04-PLAN.md — ColumnMappingTable grouped dropdown with human-readable labels and expanded fields
 
+### Phase 27: Wire Advanced Filters to Backend
+**Goal**: The voter list page transmits all filter fields (propensity ranges, demographic multi-select, mailing address) to the backend so advanced filtering works end-to-end
+**Depends on**: Phase 25, Phase 26
+**Requirements**: FILT-01, FILT-02, FILT-03, FILT-04, FILT-05, FRNT-02
+**Gap Closure:** Closes gaps from v1.3 milestone audit (BREAK 1: advanced filters not reaching backend)
+**Success Criteria** (what must be TRUE):
+  1. Selecting propensity range filters in VoterFilterBuilder returns only voters within the specified range
+  2. Selecting demographic multi-select filters (ethnicity, language, military) returns matching voters
+  3. Selecting mailing address filters returns matching voters
+  4. Combining new filter fields with legacy filters works correctly
+  5. VoterSearchRequest sends the correct body format to POST /voters/search
+
+Plans: TBD (run `/gsd:plan-phase 27`)
+
+### Phase 28: Filter Chips & Frontend Type Coverage
+**Goal**: Filter chips display for all filter dimensions and TypeScript interfaces match backend schemas
+**Depends on**: Phase 27
+**Requirements**: FRNT-02
+**Gap Closure:** Closes gaps from v1.3 milestone audit (GAP 1: missing filter chips, tech debt)
+**Success Criteria** (what must be TRUE):
+  1. Dismissible filter chips appear for propensity, ethnicity, language, military, and mailing filters when active
+  2. Clicking a filter chip removes the corresponding filter and refreshes results
+  3. ImportJob TypeScript type includes phones_created field
+  4. VoterCreate TypeScript interface includes all 12 fields present in backend VoterCreateRequest
+
+Plans: TBD (run `/gsd:plan-phase 28`)
+
 ## Progress
 
 **Execution Order:**
@@ -165,3 +194,5 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 24. Import Pipeline Enhancement | 3/3 | Complete    | 2026-03-13 | - |
 | 25. Filter Builder & Query Enhancement | 2/2 | Complete    | 2026-03-14 | - |
 | 26. Frontend Updates | 4/4 | Complete    | 2026-03-14 | - |
+| 27. Wire Advanced Filters to Backend | v1.3 | 0/0 | Pending | - |
+| 28. Filter Chips & Frontend Type Coverage | v1.3 | 0/0 | Pending | - |
