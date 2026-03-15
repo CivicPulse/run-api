@@ -12,7 +12,7 @@ from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.models.walk_list import WalkListEntryStatus
-from app.schemas.canvass import DoorKnockCreate, DoorKnockResponse
+from app.schemas.canvass import DoorKnockCreate, DoorKnockResponse, EnrichedEntryResponse
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.walk_list import (
     CanvasserAssignment,
@@ -149,6 +149,31 @@ async def list_entries(
         items=[WalkListEntryResponse.model_validate(e) for e in items],
         pagination=PaginationResponse(next_cursor=next_cursor, has_more=has_more),
     )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries/enriched",
+    response_model=list[EnrichedEntryResponse],
+)
+async def list_enriched_entries(
+    campaign_id: uuid.UUID,
+    walk_list_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List walk list entries enriched with voter details and interaction history.
+
+    Returns all entries (up to 500) with voter name, party, age, propensity,
+    address, and prior door-knock interaction summary.
+
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    enriched = await _walk_list_service.get_enriched_entries(db, walk_list_id)
+    return [EnrichedEntryResponse(**entry) for entry in enriched]
 
 
 @router.patch(

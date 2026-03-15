@@ -6,12 +6,14 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, desc, func, select
+from sqlalchemy.orm import aliased
 
 from app.core.time import utcnow
 from app.models.turf import Turf
 from app.models.voter import Voter
 from app.models.voter_list import VoterListMember
+from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.models.walk_list import (
     WalkList,
     WalkListCanvasser,
@@ -379,3 +381,120 @@ class WalkListService:
         )
         await session.delete(walk_list)
         await session.flush()
+
+    async def get_enriched_entries(
+        self,
+        session: AsyncSession,
+        walk_list_id: uuid.UUID,
+        limit: int = 500,
+    ) -> list[dict]:
+        """Get walk list entries enriched with voter details and interaction history.
+
+        Joins WalkListEntry with Voter and aggregates door-knock interactions
+        via correlated subqueries.
+
+        Args:
+            session: Async database session.
+            walk_list_id: Walk list UUID.
+            limit: Max entries to return (default 500).
+
+        Returns:
+            List of dicts mappable to EnrichedEntryResponse.
+        """
+        # Correlated subquery: count of door-knock interactions per voter
+        attempt_count_sq = (
+            select(func.count(VoterInteraction.id))
+            .where(
+                VoterInteraction.voter_id == WalkListEntry.voter_id,
+                VoterInteraction.type == InteractionType.DOOR_KNOCK,
+            )
+            .correlate(WalkListEntry)
+            .scalar_subquery()
+            .label("attempt_count")
+        )
+
+        # Correlated subquery: latest door-knock interaction per voter
+        latest_interaction = (
+            select(VoterInteraction)
+            .where(
+                VoterInteraction.voter_id == WalkListEntry.voter_id,
+                VoterInteraction.type == InteractionType.DOOR_KNOCK,
+            )
+            .correlate(WalkListEntry)
+            .order_by(desc(VoterInteraction.created_at))
+            .limit(1)
+            .subquery()
+        )
+
+        last_result_sq = (
+            select(latest_interaction.c.payload["result_code"].as_string())
+            .scalar_subquery()
+            .label("last_result")
+        )
+        last_date_sq = (
+            select(latest_interaction.c.created_at)
+            .scalar_subquery()
+            .label("last_date")
+        )
+
+        query = (
+            select(
+                WalkListEntry.id,
+                WalkListEntry.voter_id,
+                WalkListEntry.household_key,
+                WalkListEntry.sequence,
+                WalkListEntry.status,
+                Voter.first_name,
+                Voter.last_name,
+                Voter.party,
+                Voter.age,
+                Voter.propensity_combined,
+                Voter.registration_line1,
+                Voter.registration_line2,
+                Voter.registration_city,
+                Voter.registration_state,
+                Voter.registration_zip,
+                attempt_count_sq,
+                last_result_sq,
+                last_date_sq,
+            )
+            .join(Voter, Voter.id == WalkListEntry.voter_id)
+            .where(WalkListEntry.walk_list_id == walk_list_id)
+            .order_by(WalkListEntry.sequence.asc())
+            .limit(limit)
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+        enriched = []
+        for row in rows:
+            enriched.append(
+                {
+                    "id": row.id,
+                    "voter_id": row.voter_id,
+                    "household_key": row.household_key,
+                    "sequence": row.sequence,
+                    "status": row.status,
+                    "voter": {
+                        "first_name": row.first_name,
+                        "last_name": row.last_name,
+                        "party": row.party,
+                        "age": row.age,
+                        "propensity_combined": row.propensity_combined,
+                        "registration_line1": row.registration_line1,
+                        "registration_line2": row.registration_line2,
+                        "registration_city": row.registration_city,
+                        "registration_state": row.registration_state,
+                        "registration_zip": row.registration_zip,
+                    },
+                    "prior_interactions": {
+                        "attempt_count": row.attempt_count or 0,
+                        "last_result": row.last_result,
+                        "last_date": (
+                            row.last_date.isoformat() if row.last_date else None
+                        ),
+                    },
+                }
+            )
+        return enriched

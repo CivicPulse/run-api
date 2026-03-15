@@ -5,8 +5,43 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from app.models.walk_list import DoorKnockResult
+from app.models.walk_list import DoorKnockResult, WalkListEntryStatus
 from app.schemas.common import BaseSchema
+
+
+class VoterDetail(BaseSchema):
+    """Voter demographic and address details for enriched walk list entries."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    party: str | None = None
+    age: int | None = None
+    propensity_combined: int | None = None
+    registration_line1: str | None = None
+    registration_line2: str | None = None
+    registration_city: str | None = None
+    registration_state: str | None = None
+    registration_zip: str | None = None
+
+
+class PriorInteractions(BaseSchema):
+    """Summary of prior door-knock interactions for a voter."""
+
+    attempt_count: int = 0
+    last_result: str | None = None
+    last_date: str | None = None  # ISO date string
+
+
+class EnrichedEntryResponse(BaseSchema):
+    """Walk list entry enriched with voter details and interaction history."""
+
+    id: uuid.UUID
+    voter_id: uuid.UUID
+    household_key: str | None = None
+    sequence: int
+    status: WalkListEntryStatus
+    voter: VoterDetail
+    prior_interactions: PriorInteractions
 
 
 class DoorKnockCreate(BaseSchema):
