@@ -170,9 +170,7 @@ async def get_list_voters(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        return await _service.get_list_voters(
-            db, list_id, cursor=cursor, limit=limit
-        )
+        return await _service.get_list_voters(db, list_id, cursor=cursor, limit=limit)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
 

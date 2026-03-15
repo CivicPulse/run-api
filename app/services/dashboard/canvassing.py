@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import case, func, select
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.turf import Turf
@@ -22,12 +22,14 @@ from app.schemas.dashboard import (
 )
 
 # Result codes that count as a "contact" (person was actually reached)
-CONTACT_RESULTS = frozenset({
-    DoorKnockResult.SUPPORTER.value,
-    DoorKnockResult.UNDECIDED.value,
-    DoorKnockResult.OPPOSED.value,
-    DoorKnockResult.REFUSED.value,
-})
+CONTACT_RESULTS = frozenset(
+    {
+        DoorKnockResult.SUPPORTER.value,
+        DoorKnockResult.UNDECIDED.value,
+        DoorKnockResult.OPPOSED.value,
+        DoorKnockResult.REFUSED.value,
+    }
+)
 
 
 def _result_code_col():  # noqa: ANN202
@@ -38,10 +40,7 @@ def _result_code_col():  # noqa: ANN202
 def _outcome_columns():
     """Return SQLAlchemy aggregation columns for each DoorKnockResult value."""
     rc = _result_code_col()
-    return {
-        r.value: func.count(case((rc == r.value, 1)))
-        for r in DoorKnockResult
-    }
+    return {r.value: func.count(case((rc == r.value, 1))) for r in DoorKnockResult}
 
 
 def _build_outcome(row_mapping: dict) -> OutcomeBreakdown:
@@ -108,7 +107,7 @@ class CanvassingDashboardService:
         rc = _result_code_col()
         outcome_cols = _outcome_columns()
         walk_list_id_col = VoterInteraction.payload["walk_list_id"].astext.cast(
-            PgUUID(as_uuid=True)
+            PG_UUID(as_uuid=True)
         )
 
         q = (

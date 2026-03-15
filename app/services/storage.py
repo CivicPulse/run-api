@@ -133,11 +133,7 @@ class StorageService:
         async with self.session.client(**self._client_kwargs()) as s3:
             try:
                 await s3.head_bucket(Bucket=settings.s3_bucket)
-                logger.debug(
-                    "Bucket {} exists", settings.s3_bucket
-                )
+                logger.debug("Bucket {} exists", settings.s3_bucket)
             except ClientError:
                 await s3.create_bucket(Bucket=settings.s3_bucket)
-                logger.info(
-                    "Created bucket {}", settings.s3_bucket
-                )
+                logger.info("Created bucket {}", settings.s3_bucket)

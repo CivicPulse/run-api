@@ -77,12 +77,8 @@ async def spatial_test_data(superuser_session, two_campaigns):
     }
 
     # Cleanup
-    await session.execute(
-        text("DELETE FROM voters WHERE id = :id"), {"id": voter_id}
-    )
-    await session.execute(
-        text("DELETE FROM turfs WHERE id = :id"), {"id": turf_id}
-    )
+    await session.execute(text("DELETE FROM voters WHERE id = :id"), {"id": voter_id})
+    await session.execute(text("DELETE FROM turfs WHERE id = :id"), {"id": turf_id})
     await session.commit()
 
 
@@ -91,9 +87,7 @@ class TestSpatialOperations:
 
     async def test_postgis_extension_active(self, superuser_session) -> None:
         """PostGIS enabled."""
-        result = await superuser_session.execute(
-            text("SELECT PostGIS_Version()")
-        )
+        result = await superuser_session.execute(text("SELECT PostGIS_Version()"))
         version = result.scalar_one()
         assert version is not None
         assert len(version) > 0
@@ -104,10 +98,7 @@ class TestSpatialOperations:
         """Voter geom backfilled from lat/long."""
         voter_id = spatial_test_data["voter_id"]
         result = await superuser_session.execute(
-            text(
-                "SELECT ST_AsText(geom), ST_SRID(geom) "
-                "FROM voters WHERE id = :id"
-            ),
+            text("SELECT ST_AsText(geom), ST_SRID(geom) FROM voters WHERE id = :id"),
             {"id": voter_id},
         )
         row = result.one()
@@ -134,9 +125,7 @@ class TestSpatialOperations:
         contained = result.scalar_one()
         assert contained is True
 
-    async def test_gist_index_used(
-        self, superuser_session, spatial_test_data
-    ) -> None:
+    async def test_gist_index_used(self, superuser_session, spatial_test_data) -> None:
         """EXPLAIN shows GiST index scan."""
         # Verify the GiST index exists on voters.geom
         idx_result = await superuser_session.execute(

@@ -9,7 +9,6 @@ from sqlalchemy import ColumnElement
 
 from app.schemas.common import BaseSchema
 
-
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------

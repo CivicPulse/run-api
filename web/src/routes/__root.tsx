@@ -128,7 +128,7 @@ function AppSidebar() {
                 asChild
                 isActive={location.pathname.includes("/settings")}
               >
-                <Link to={`/campaigns/${campaignId}/settings` as any}>
+                <Link to={`/campaigns/${campaignId}/settings` as string}>
                   <Settings />
                   <span>Settings</span>
                 </Link>

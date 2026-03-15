@@ -127,7 +127,5 @@ async def get_campaign_from_token(
     )
     campaign = result.scalar_one_or_none()
     if campaign is None:
-        raise CampaignNotFoundError(
-            uuid.UUID("00000000-0000-0000-0000-000000000000")
-        )
+        raise CampaignNotFoundError(uuid.UUID("00000000-0000-0000-0000-000000000000"))
     return campaign

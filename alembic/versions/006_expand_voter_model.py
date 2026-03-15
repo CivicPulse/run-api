@@ -40,39 +40,21 @@ def upgrade() -> None:
     )
 
     # -- 3. Add new registration address columns --
-    op.add_column(
-        "voters", sa.Column("registration_zip4", sa.String(4), nullable=True)
-    )
+    op.add_column("voters", sa.Column("registration_zip4", sa.String(4), nullable=True))
     op.add_column(
         "voters",
         sa.Column("registration_apartment_type", sa.String(20), nullable=True),
     )
 
     # -- 4. Add mailing address columns --
-    op.add_column(
-        "voters", sa.Column("mailing_line1", sa.String(500), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_line2", sa.String(500), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_city", sa.String(255), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_state", sa.String(2), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_zip", sa.String(10), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_zip4", sa.String(4), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_country", sa.String(100), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("mailing_type", sa.String(20), nullable=True)
-    )
+    op.add_column("voters", sa.Column("mailing_line1", sa.String(500), nullable=True))
+    op.add_column("voters", sa.Column("mailing_line2", sa.String(500), nullable=True))
+    op.add_column("voters", sa.Column("mailing_city", sa.String(255), nullable=True))
+    op.add_column("voters", sa.Column("mailing_state", sa.String(2), nullable=True))
+    op.add_column("voters", sa.Column("mailing_zip", sa.String(10), nullable=True))
+    op.add_column("voters", sa.Column("mailing_zip4", sa.String(4), nullable=True))
+    op.add_column("voters", sa.Column("mailing_country", sa.String(100), nullable=True))
+    op.add_column("voters", sa.Column("mailing_type", sa.String(20), nullable=True))
 
     # -- 5. Add propensity score columns --
     op.add_column(
@@ -86,15 +68,9 @@ def upgrade() -> None:
     )
 
     # -- 6. Add demographic columns --
-    op.add_column(
-        "voters", sa.Column("spoken_language", sa.String(100), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("marital_status", sa.String(50), nullable=True)
-    )
-    op.add_column(
-        "voters", sa.Column("military_status", sa.String(50), nullable=True)
-    )
+    op.add_column("voters", sa.Column("spoken_language", sa.String(100), nullable=True))
+    op.add_column("voters", sa.Column("marital_status", sa.String(50), nullable=True))
+    op.add_column("voters", sa.Column("military_status", sa.String(50), nullable=True))
     op.add_column(
         "voters",
         sa.Column("party_change_indicator", sa.String(50), nullable=True),
@@ -114,9 +90,7 @@ def upgrade() -> None:
     op.add_column(
         "voters", sa.Column("household_size", sa.SmallInteger(), nullable=True)
     )
-    op.add_column(
-        "voters", sa.Column("family_id", sa.String(255), nullable=True)
-    )
+    op.add_column("voters", sa.Column("family_id", sa.String(255), nullable=True))
 
     # -- 9. Create indexes for Phase 25 filter queries --
     op.create_index(
@@ -160,10 +134,14 @@ def upgrade() -> None:
                 jsonb_set(
                     jsonb_set(
                         jsonb_set(
-                            jsonb_set(mapping,
-                                '{Residence_Addresses_AddressLine}', '"registration_line1"'),
-                            '{Residence_Addresses_ExtraAddressLine}', '"registration_line2"'),
-                        '{Residence_Addresses_City}', '"registration_city"'),
+                            jsonb_set(
+                                mapping,
+                                '{Residence_Addresses_AddressLine}',
+                                '"registration_line1"'),
+                            '{Residence_Addresses_ExtraAddressLine}',
+                            '"registration_line2"'),
+                        '{Residence_Addresses_City}',
+                        '"registration_city"'),
                     '{Residence_Addresses_State}', '"registration_state"'),
                 '{Residence_Addresses_Zip}', '"registration_zip"'),
             '{Residence_Addresses_County}', '"registration_county"')
@@ -182,9 +160,12 @@ def downgrade() -> None:
                 jsonb_set(
                     jsonb_set(
                         jsonb_set(
-                            jsonb_set(mapping,
-                                '{Residence_Addresses_AddressLine}', '"address_line1"'),
-                            '{Residence_Addresses_ExtraAddressLine}', '"address_line2"'),
+                            jsonb_set(
+                                mapping,
+                                '{Residence_Addresses_AddressLine}',
+                                '"address_line1"'),
+                            '{Residence_Addresses_ExtraAddressLine}',
+                            '"address_line2"'),
                         '{Residence_Addresses_City}', '"city"'),
                     '{Residence_Addresses_State}', '"state"'),
                 '{Residence_Addresses_Zip}', '"zip_code"'),
@@ -238,9 +219,7 @@ def downgrade() -> None:
 
     # -- Reverse 2: Drop renamed index and recreate old index --
     op.drop_index("ix_voters_campaign_reg_zip", table_name="voters")
-    op.create_index(
-        "ix_voters_campaign_zip", "voters", ["campaign_id", "zip_code"]
-    )
+    op.create_index("ix_voters_campaign_zip", "voters", ["campaign_id", "zip_code"])
 
     # -- Reverse 1: Rename columns back --
     op.alter_column("voters", "registration_county", new_column_name="county")

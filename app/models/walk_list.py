@@ -43,17 +43,13 @@ class WalkList(Base):
     """
 
     __tablename__ = "walk_lists"
-    __table_args__ = (
-        Index("ix_walk_lists_campaign_id", "campaign_id"),
-    )
+    __table_args__ = (Index("ix_walk_lists_campaign_id", "campaign_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    turf_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("turfs.id"), nullable=False
-    )
+    turf_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("turfs.id"), nullable=False)
     voter_list_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("voter_lists.id"), nullable=True
     )
@@ -63,9 +59,7 @@ class WalkList(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     total_entries: Mapped[int] = mapped_column(Integer, default=0)
     visited_entries: Mapped[int] = mapped_column(Integer, default=0)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
@@ -81,9 +75,7 @@ class WalkListEntry(Base):
     walk_list_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("walk_lists.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     household_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[WalkListEntryStatus] = mapped_column(
@@ -99,7 +91,5 @@ class WalkListCanvasser(Base):
     walk_list_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("walk_lists.id"), primary_key=True
     )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), primary_key=True
-    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
     assigned_at: Mapped[datetime] = mapped_column(server_default=func.now())

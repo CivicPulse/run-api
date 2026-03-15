@@ -117,7 +117,8 @@ async def test_canvassing_summary_empty_returns_zeros():
         mappings_one=_summary_row(doors=0, contacts=0),
     )
     result = await CanvassingDashboardService.get_summary(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert result.doors_knocked == 0
@@ -154,7 +155,8 @@ async def test_canvassing_by_turf_returns_list():
     rows = [_turf_row(turf_name="Downtown"), _turf_row(turf_name="Uptown")]
     session = _mock_session(mappings_all=rows)
     result = await CanvassingDashboardService.get_by_turf(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 2
@@ -172,7 +174,8 @@ async def test_canvassing_by_canvasser_returns_list():
     ]
     session = _mock_session(mappings_all=rows)
     result = await CanvassingDashboardService.get_by_canvasser(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 2

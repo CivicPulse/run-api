@@ -60,14 +60,21 @@ async def test_overview_combines_all_domains(
 ):
     """OverviewResponse combines canvassing, phone, volunteer."""
     mock_canvassing.return_value = CanvassingSummary(
-        doors_knocked=100, contacts_made=50, contact_rate=0.5,
+        doors_knocked=100,
+        contacts_made=50,
+        contact_rate=0.5,
     )
     mock_phone.return_value = PhoneBankingSummary(
-        calls_made=80, contacts_reached=30, contact_rate=0.375,
+        calls_made=80,
+        contacts_reached=30,
+        contact_rate=0.375,
     )
     mock_volunteer.return_value = VolunteerSummary(
-        active_volunteers=10, total_volunteers=15,
-        scheduled_shifts=5, completed_shifts=3, total_hours=20.0,
+        active_volunteers=10,
+        total_volunteers=15,
+        scheduled_shifts=5,
+        completed_shifts=3,
+        total_hours=20.0,
     )
 
     # Build the overview directly using the schema

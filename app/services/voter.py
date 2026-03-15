@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from loguru import logger
 from sqlalchemy import Select, and_, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,13 +23,15 @@ if TYPE_CHECKING:
 _YEAR_ONLY_RE = re.compile(r"^\d{4}$")
 
 # Columns that are stored as integers and need int() parsing in cursor decode.
-_INT_SORT_COLUMNS = frozenset({
-    "age",
-    "propensity_general",
-    "propensity_primary",
-    "propensity_combined",
-    "household_size",
-})
+_INT_SORT_COLUMNS = frozenset(
+    {
+        "age",
+        "propensity_general",
+        "propensity_primary",
+        "propensity_combined",
+        "household_size",
+    }
+)
 
 # Columns that are stored as datetimes and need fromisoformat() parsing.
 _DATETIME_SORT_COLUMNS = frozenset({"created_at", "updated_at"})
@@ -200,8 +201,12 @@ def build_voter_query(filters: VoterFilter) -> Select:
             if _YEAR_ONLY_RE.match(election):
                 # Year-only: voter did NOT vote in ANY election that year
                 # Two separate NOT CONTAINS (AND semantics: skipped BOTH)
-                conditions.append(~Voter.voting_history.contains([f"General_{election}"]))
-                conditions.append(~Voter.voting_history.contains([f"Primary_{election}"]))
+                conditions.append(
+                    ~Voter.voting_history.contains([f"General_{election}"])
+                )
+                conditions.append(
+                    ~Voter.voting_history.contains([f"Primary_{election}"])
+                )
             else:
                 # Canonical format: exact NOT containment (existing behavior)
                 conditions.append(~Voter.voting_history.contains([election]))
@@ -235,9 +240,9 @@ def build_voter_query(filters: VoterFilter) -> Select:
 
     # Phone existence
     if filters.has_phone is not None:
-        phone_subquery = select(VoterPhone).where(
-            VoterPhone.voter_id == Voter.id
-        ).correlate(Voter)
+        phone_subquery = (
+            select(VoterPhone).where(VoterPhone.voter_id == Voter.id).correlate(Voter)
+        )
         if filters.has_phone:
             conditions.append(exists(phone_subquery))
         else:
@@ -297,9 +302,7 @@ class VoterService:
         if is_desc:
             query = query.order_by(sort_col.desc(), Voter.id.desc())
         else:
-            query = query.order_by(
-                sort_col.asc().nullslast(), Voter.id.asc()
-            )
+            query = query.order_by(sort_col.asc().nullslast(), Voter.id.asc())
 
         # Cursor-based pagination with dynamic column
         if cursor:
@@ -313,25 +316,17 @@ class VoterService:
                         | ((sort_col.is_(None)) & (Voter.id < cursor_id))
                     )
                 else:
-                    query = query.where(
-                        (sort_col.is_(None)) & (Voter.id > cursor_id)
-                    )
+                    query = query.where((sort_col.is_(None)) & (Voter.id > cursor_id))
             else:
                 if is_desc:
                     query = query.where(
                         (sort_col < cursor_val)
-                        | (
-                            (sort_col == cursor_val)
-                            & (Voter.id < cursor_id)
-                        )
+                        | ((sort_col == cursor_val) & (Voter.id < cursor_id))
                     )
                 else:
                     query = query.where(
                         (sort_col > cursor_val)
-                        | (
-                            (sort_col == cursor_val)
-                            & (Voter.id > cursor_id)
-                        )
+                        | ((sort_col == cursor_val) & (Voter.id > cursor_id))
                     )
 
         query = query.limit(limit + 1)
@@ -381,9 +376,7 @@ class VoterService:
                 .order_by(func.count().desc())
             )
             rows = await db.execute(stmt)
-            result[field] = [
-                {"value": str(row[0]), "count": row[1]} for row in rows
-            ]
+            result[field] = [{"value": str(row[0]), "count": row[1]} for row in rows]
         return result
 
     async def get_voter(self, db: AsyncSession, voter_id: uuid.UUID) -> Voter:

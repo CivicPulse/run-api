@@ -154,9 +154,7 @@ class ZitadelService:
                 "Cannot reach ZITADEL to delete organization"
             ) from exc
 
-    async def assign_project_role(
-        self, org_id: str, user_id: str, role: str
-    ) -> None:
+    async def assign_project_role(self, org_id: str, user_id: str, role: str) -> None:
         """Assign a project role to a user within an organization.
 
         Args:
@@ -177,7 +175,10 @@ class ZitadelService:
             response.raise_for_status()
 
     async def remove_project_role(
-        self, org_id: str, user_id: str, role: str  # noqa: ARG002
+        self,
+        org_id: str,
+        user_id: str,
+        role: str,  # noqa: ARG002
     ) -> None:
         """Remove a project role grant from a user.
 

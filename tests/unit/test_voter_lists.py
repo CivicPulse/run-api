@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.core.time import utcnow
-from app.models.voter_list import ListType, VoterList, VoterListMember
+from app.models.voter_list import ListType, VoterList
 
 
 class TestVoterListService:

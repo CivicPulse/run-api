@@ -6,8 +6,6 @@ functions from import_service.py.
 
 from __future__ import annotations
 
-import pytest
-
 from app.services.import_service import (
     normalize_phone,
     parse_propensity,
@@ -132,21 +130,25 @@ class TestVotingHistoryParsing:
 
     def test_mixed_voted_and_not_voted(self):
         """Y/A/E count as voted; N does not."""
-        result = parse_voting_history({
-            "General_2024": "Y",
-            "Primary_2022": "A",
-            "General_2020": "N",
-            "Primary_2020": "E",
-            "Some_Other_Col": "value",
-        })
+        result = parse_voting_history(
+            {
+                "General_2024": "Y",
+                "Primary_2022": "A",
+                "General_2020": "N",
+                "Primary_2020": "E",
+                "Some_Other_Col": "value",
+            }
+        )
         assert result == ["General_2024", "Primary_2020", "Primary_2022"]
 
     def test_no_voted_entries(self):
         """All N values returns empty list."""
-        result = parse_voting_history({
-            "General_2024": "N",
-            "Primary_2022": "N",
-        })
+        result = parse_voting_history(
+            {
+                "General_2024": "N",
+                "Primary_2022": "N",
+            }
+        )
         assert result == []
 
     def test_empty_dict(self):
@@ -160,12 +162,14 @@ class TestVotingHistoryParsing:
 
     def test_sorted_output(self):
         """Output list is sorted alphabetically."""
-        result = parse_voting_history({
-            "Primary_2024": "Y",
-            "General_2020": "Y",
-            "General_2024": "Y",
-            "Primary_2020": "A",
-        })
+        result = parse_voting_history(
+            {
+                "Primary_2024": "Y",
+                "General_2020": "Y",
+                "General_2024": "Y",
+                "Primary_2020": "A",
+            }
+        )
         assert result == [
             "General_2020",
             "General_2024",
@@ -175,21 +179,25 @@ class TestVotingHistoryParsing:
 
     def test_ignores_non_election_columns(self):
         """Only General_YYYY and Primary_YYYY patterns match."""
-        result = parse_voting_history({
-            "General_2024": "Y",
-            "Runoff_2024": "Y",
-            "Special_2023": "Y",
-            "Municipal_2022": "Y",
-        })
+        result = parse_voting_history(
+            {
+                "General_2024": "Y",
+                "Runoff_2024": "Y",
+                "Special_2023": "Y",
+                "Municipal_2022": "Y",
+            }
+        )
         assert result == ["General_2024"]
 
     def test_case_insensitive_values(self):
         """Lowercase y, a, e also count as voted."""
-        result = parse_voting_history({
-            "General_2024": "y",
-            "Primary_2022": "a",
-            "General_2020": "e",
-        })
+        result = parse_voting_history(
+            {
+                "General_2024": "y",
+                "Primary_2022": "a",
+                "General_2020": "e",
+            }
+        )
         assert result == ["General_2020", "General_2024", "Primary_2022"]
 
     def test_empty_value_not_counted(self):

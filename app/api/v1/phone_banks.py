@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
+from app.models.call_list import CallList
+from app.models.phone_bank import SessionCaller
 from app.schemas.call_list import CallListEntryResponse
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.phone_bank import (
@@ -25,8 +27,6 @@ from app.schemas.phone_bank import (
     SessionCallerResponse,
     SessionProgressResponse,
 )
-from app.models.call_list import CallList
-from app.models.phone_bank import SessionCaller
 from app.services.phone_bank import PhoneBankService
 
 router = APIRouter()
@@ -106,8 +106,7 @@ async def list_sessions(
     call_list_names: dict[uuid.UUID, str] = {}
     if call_list_ids:
         names_result = await db.execute(
-            select(CallList.id, CallList.name)
-            .where(CallList.id.in_(call_list_ids))
+            select(CallList.id, CallList.name).where(CallList.id.in_(call_list_ids))
         )
         call_list_names = dict(names_result.all())
 
@@ -115,7 +114,9 @@ async def list_sessions(
         PhoneBankSessionResponse(
             **{
                 k: v
-                for k, v in PhoneBankSessionResponse.model_validate(s).model_dump().items()
+                for k, v in PhoneBankSessionResponse.model_validate(s)
+                .model_dump()
+                .items()
                 if k not in ("caller_count", "call_list_name")
             },
             caller_count=caller_counts.get(s.id, 0),
@@ -185,9 +186,7 @@ async def update_session(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        pb_session = await _phone_bank_service.update_session(
-            db, session_id, body
-        )
+        pb_session = await _phone_bank_service.update_session(db, session_id, body)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -225,9 +224,7 @@ async def assign_caller(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        caller = await _phone_bank_service.assign_caller(
-            db, session_id, body.user_id
-        )
+        caller = await _phone_bank_service.assign_caller(db, session_id, body.user_id)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,

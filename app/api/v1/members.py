@@ -92,9 +92,7 @@ async def update_member_role(
                 "Admins can only assign manager role and below"
             )
     else:
-        raise InsufficientPermissionsError(
-            "Only admins and owners can update roles"
-        )
+        raise InsufficientPermissionsError("Only admins and owners can update roles")
 
     # Verify member exists
     result = await db.execute(
@@ -115,9 +113,7 @@ async def update_member_role(
     zitadel = request.app.state.zitadel_service
 
     # Remove old role and assign new one in ZITADEL
-    await zitadel.remove_project_role(
-        str(member.campaign_id), member.user_id, "member"
-    )
+    await zitadel.remove_project_role(str(member.campaign_id), member.user_id, "member")
     await zitadel.assign_project_role(
         str(member.campaign_id), member.user_id, data.role
     )
@@ -168,9 +164,7 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_project_role(
-        str(campaign_id), member_user_id, "member"
-    )
+    await zitadel.remove_project_role(str(campaign_id), member_user_id, "member")
     await db.delete(member)
     await db.commit()
 
@@ -222,12 +216,8 @@ async def transfer_ownership(
     await zitadel.assign_project_role(str(campaign_id), user.id, "admin")
 
     # Promote target to owner in ZITADEL
-    await zitadel.remove_project_role(
-        str(campaign_id), data.new_owner_id, "admin"
-    )
-    await zitadel.assign_project_role(
-        str(campaign_id), data.new_owner_id, "owner"
-    )
+    await zitadel.remove_project_role(str(campaign_id), data.new_owner_id, "admin")
+    await zitadel.assign_project_role(str(campaign_id), data.new_owner_id, "owner")
 
     # Update campaign.created_by
     campaign.created_by = data.new_owner_id

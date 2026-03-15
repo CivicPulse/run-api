@@ -116,8 +116,11 @@ async def list_shifts(
     # For list view, return with zero counts (or fetch per-shift)
     items = [
         ShiftResponse.model_validate(
-            {**{c.key: getattr(s, c.key) for c in s.__table__.columns},
-             "signed_up_count": 0, "waitlist_count": 0}
+            {
+                **{c.key: getattr(s, c.key) for c in s.__table__.columns},
+                "signed_up_count": 0,
+                "waitlist_count": 0,
+            }
         )
         for s in shifts
     ]
@@ -298,9 +301,7 @@ async def signup_for_shift(
         )
 
     try:
-        shift_vol = await _shift_service.signup_volunteer(
-            db, shift_id, volunteer.id
-        )
+        shift_vol = await _shift_service.signup_volunteer(db, shift_id, volunteer.id)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -333,9 +334,7 @@ async def assign_volunteer(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        shift_vol = await _shift_service.manager_assign(
-            db, shift_id, volunteer_id
-        )
+        shift_vol = await _shift_service.manager_assign(db, shift_id, volunteer_id)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -531,8 +530,12 @@ async def adjust_hours(
     await set_campaign_context(db, str(campaign_id))
     try:
         shift_vol = await _shift_service.adjust_hours(
-            db, shift_id, volunteer_id,
-            body.adjusted_hours, body.adjustment_reason, user.id
+            db,
+            shift_id,
+            volunteer_id,
+            body.adjusted_hours,
+            body.adjustment_reason,
+            user.id,
         )
     except ValueError as exc:
         return problem.ProblemResponse(

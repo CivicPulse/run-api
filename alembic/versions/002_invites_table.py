@@ -75,9 +75,7 @@ def upgrade() -> None:
     )
 
     # Grant permissions to app_user
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON invites TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON invites TO app_user")
 
 
 def downgrade() -> None:

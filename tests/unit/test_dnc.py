@@ -145,9 +145,7 @@ class TestDNCBulkImport:
         campaign_id = uuid.uuid4()
 
         csv_content = (
-            "phone_number,reason\n"
-            "5551111111,manual\n"
-            "5552222222,registry_import\n"
+            "phone_number,reason\n5551111111,manual\n5552222222,registry_import\n"
         )
 
         # No existing entries for any phone

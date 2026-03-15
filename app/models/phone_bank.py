@@ -29,9 +29,7 @@ class PhoneBankSession(Base):
     """
 
     __tablename__ = "phone_bank_sessions"
-    __table_args__ = (
-        Index("ix_phone_bank_sessions_campaign_id", "campaign_id"),
-    )
+    __table_args__ = (Index("ix_phone_bank_sessions_campaign_id", "campaign_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
@@ -46,9 +44,7 @@ class PhoneBankSession(Base):
     )
     scheduled_start: Mapped[datetime | None] = mapped_column(nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -59,17 +55,13 @@ class SessionCaller(Base):
     """A caller assigned to a phone bank session with check-in/out tracking."""
 
     __tablename__ = "session_callers"
-    __table_args__ = (
-        Index("ix_session_callers_session_id", "session_id"),
-    )
+    __table_args__ = (Index("ix_session_callers_session_id", "session_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("phone_bank_sessions.id"), nullable=False
     )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     check_in_at: Mapped[datetime | None] = mapped_column(nullable=True)
     check_out_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

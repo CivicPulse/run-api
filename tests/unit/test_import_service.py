@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import csv
-import io
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 
-from app.models.voter import Voter
-from app.services.import_service import ImportService, _UPSERT_EXCLUDE
+from app.services.import_service import ImportService
 
 
 class TestDetectColumns:
@@ -71,7 +68,12 @@ class TestProcessCsvBatch:
     def test_apply_mapping_to_rows(self, service, campaign_id, basic_mapping):
         """Maps CSV columns to canonical voter fields."""
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "City": "Austin", "VoterID": "V001"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "City": "Austin",
+                "VoterID": "V001",
+            },
         ]
         mapped = service.apply_field_mapping(rows, basic_mapping, campaign_id, "csv")
         assert len(mapped) == 1
@@ -122,10 +124,17 @@ class TestProcessCsvBatch:
         assert mapped[0].get("error") is None
         assert mapped[0]["voter"]["last_name"] == "Doe"
 
-    def test_campaign_id_and_source_type_added(self, service, campaign_id, basic_mapping):
+    def test_campaign_id_and_source_type_added(
+        self, service, campaign_id, basic_mapping
+    ):
         """campaign_id and source_type are set on every voter dict."""
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "City": "Austin", "VoterID": "V001"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "City": "Austin",
+                "VoterID": "V001",
+            },
         ]
         mapped = service.apply_field_mapping(rows, basic_mapping, campaign_id, "l2")
         voter = mapped[0]["voter"]
@@ -189,9 +198,7 @@ class TestUpsertSetClause:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=capture_execute)
 
-        await service.process_csv_batch(
-            rows, mapping, campaign_id, "csv", session
-        )
+        await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
         # Compile the captured statement to SQL text
         assert captured_stmt is not None
@@ -232,9 +239,7 @@ class TestUpsertSetClause:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=capture_execute)
 
-        await service.process_csv_batch(
-            rows, mapping, campaign_id, "csv", session
-        )
+        await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
         assert captured_stmt is not None
         compiled = captured_stmt.compile(dialect=pg_dialect())
@@ -270,7 +275,8 @@ class TestUpsertSetClause:
 
 
 class TestApplyFieldMappingEnhancements:
-    """Tests for phone routing, propensity parsing, and voting history in apply_field_mapping."""
+    """Tests for phone routing, propensity parsing,
+    and voting history in apply_field_mapping."""
 
     @pytest.fixture
     def service(self):
@@ -281,7 +287,7 @@ class TestApplyFieldMappingEnhancements:
         return str(uuid.uuid4())
 
     def test_cell_phone_routing_in_apply_field_mapping(self, service, campaign_id):
-        """__cell_phone mapped column routes to result['phone_value'], not voter dict."""
+        """__cell_phone mapped column routes to phone_value."""
         mapping = {
             "First_Name": "first_name",
             "Last_Name": "last_name",
@@ -289,7 +295,12 @@ class TestApplyFieldMappingEnhancements:
             "VoterID": "source_id",
         }
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "Cell": "555-123-4567", "VoterID": "V001"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "Cell": "555-123-4567",
+                "VoterID": "V001",
+            },
         ]
         results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
         result = results[0]
@@ -314,7 +325,7 @@ class TestApplyFieldMappingEnhancements:
         assert "phone_value" not in results[0]
 
     def test_propensity_parsing_in_apply_field_mapping(self, service, campaign_id):
-        """Propensity strings like '77%' are parsed to integers during mapping."""
+        """Propensity strings like '77%' are parsed to ints."""
         mapping = {
             "First_Name": "first_name",
             "Last_Name": "last_name",
@@ -322,13 +333,15 @@ class TestApplyFieldMappingEnhancements:
             "Pri_Score": "propensity_primary",
             "Comb_Score": "propensity_combined",
         }
-        rows = [{
-            "First_Name": "Jane",
-            "Last_Name": "Doe",
-            "Gen_Score": "77%",
-            "Pri_Score": "42",
-            "Comb_Score": "Not Eligible",
-        }]
+        rows = [
+            {
+                "First_Name": "Jane",
+                "Last_Name": "Doe",
+                "Gen_Score": "77%",
+                "Pri_Score": "42",
+                "Comb_Score": "Not Eligible",
+            }
+        ]
         results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
         voter = results[0]["voter"]
         assert voter["propensity_general"] == 77
@@ -336,18 +349,21 @@ class TestApplyFieldMappingEnhancements:
         assert voter["propensity_combined"] is None
 
     def test_voting_history_parsing_in_apply_field_mapping(self, service, campaign_id):
-        """CSV rows with General_YYYY/Primary_YYYY columns produce voting_history array."""
+        """CSV rows with General_YYYY/Primary_YYYY columns
+        produce voting_history array."""
         mapping = {
             "First_Name": "first_name",
             "Last_Name": "last_name",
         }
-        rows = [{
-            "First_Name": "John",
-            "Last_Name": "Doe",
-            "General_2024": "Y",
-            "Primary_2022": "A",
-            "General_2020": "N",
-        }]
+        rows = [
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "General_2024": "Y",
+                "Primary_2022": "A",
+                "General_2020": "N",
+            }
+        ]
         results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
         voter = results[0]["voter"]
         assert voter["voting_history"] == ["General_2024", "Primary_2022"]
@@ -358,13 +374,16 @@ class TestApplyFieldMappingEnhancements:
             "First_Name": "first_name",
             "Last_Name": "last_name",
         }
-        rows = [{
-            "First_Name": "John",
-            "Last_Name": "Doe",
-        }]
+        rows = [
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+            }
+        ]
         results = service.apply_field_mapping(rows, mapping, campaign_id, "csv")
         voter = results[0]["voter"]
-        # voting_history should NOT be present -- avoids wiping existing data on re-import
+        # voting_history should NOT be present -- avoids
+        # wiping existing data on re-import
         assert "voting_history" not in voter
 
 
@@ -389,7 +408,12 @@ class TestPhoneCreationInBatch:
             "Cell": "__cell_phone",
         }
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "123"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "VoterID": "V001",
+                "Cell": "123",
+            },
         ]
 
         voter_id = uuid.uuid4()
@@ -427,7 +451,12 @@ class TestPhoneCreationInBatch:
             "Cell": "__cell_phone",
         }
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "(555) 123-4567"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "VoterID": "V001",
+                "Cell": "(555) 123-4567",
+            },
         ]
 
         voter_id = uuid.uuid4()
@@ -453,7 +482,9 @@ class TestPhoneCreationInBatch:
         assert len(captured_stmts) == 2
 
     @pytest.mark.asyncio
-    async def test_is_primary_excluded_from_phone_upsert_set(self, service, campaign_id):
+    async def test_is_primary_excluded_from_phone_upsert_set(
+        self, service, campaign_id
+    ):
         """Phone upsert ON CONFLICT SET clause does NOT include is_primary."""
         mapping = {
             "First_Name": "first_name",
@@ -462,7 +493,12 @@ class TestPhoneCreationInBatch:
             "Cell": "__cell_phone",
         }
         rows = [
-            {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001", "Cell": "555-123-4567"},
+            {
+                "First_Name": "John",
+                "Last_Name": "Doe",
+                "VoterID": "V001",
+                "Cell": "555-123-4567",
+            },
         ]
 
         voter_id = uuid.uuid4()
@@ -477,9 +513,7 @@ class TestPhoneCreationInBatch:
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=capture_execute)
 
-        await service.process_csv_batch(
-            rows, mapping, campaign_id, "csv", session
-        )
+        await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
         # The second statement is the phone upsert
         assert len(captured_stmts) == 2
@@ -489,5 +523,9 @@ class TestPhoneCreationInBatch:
 
         # The ON CONFLICT SET clause should NOT reference is_primary
         # Split at ON CONFLICT to examine only the SET portion
-        on_conflict_part = sql_text.upper().split("ON CONFLICT")[1] if "ON CONFLICT" in sql_text.upper() else ""
+        on_conflict_part = (
+            sql_text.upper().split("ON CONFLICT")[1]
+            if "ON CONFLICT" in sql_text.upper()
+            else ""
+        )
         assert "IS_PRIMARY" not in on_conflict_part

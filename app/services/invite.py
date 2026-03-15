@@ -56,9 +56,7 @@ class InviteService:
         if creator.role == CampaignRole.OWNER:
             # Owner can invite any role except owner
             if invited_role == CampaignRole.OWNER:
-                raise InsufficientPermissionsError(
-                    "Cannot invite with owner role"
-                )
+                raise InsufficientPermissionsError("Cannot invite with owner role")
         elif creator.role == CampaignRole.ADMIN:
             # Admin can invite manager and below
             if invited_role > CampaignRole.MANAGER:
@@ -123,9 +121,7 @@ class InviteService:
         Returns:
             The Invite if valid, None otherwise.
         """
-        result = await db.execute(
-            select(Invite).where(Invite.token == token)
-        )
+        result = await db.execute(select(Invite).where(Invite.token == token))
         invite = result.scalar_one_or_none()
         if invite is None:
             return None
@@ -186,9 +182,7 @@ class InviteService:
             db.add(member)
 
         # Assign ZITADEL project role
-        await zitadel.assign_project_role(
-            str(invite.campaign_id), user.id, invite.role
-        )
+        await zitadel.assign_project_role(str(invite.campaign_id), user.id, invite.role)
 
         invite.accepted_at = utcnow()
         await db.commit()
@@ -218,9 +212,7 @@ class InviteService:
         Raises:
             ValueError: If invite not found.
         """
-        result = await db.execute(
-            select(Invite).where(Invite.id == invite_id)
-        )
+        result = await db.execute(select(Invite).where(Invite.id == invite_id))
         invite = result.scalar_one_or_none()
         if invite is None:
             msg = "Invite not found"

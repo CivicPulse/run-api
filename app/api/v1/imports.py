@@ -378,12 +378,16 @@ async def list_mapping_templates(
     await ensure_user_synced(user, db)
     await set_campaign_context(db, str(campaign_id))
 
-    query = select(FieldMappingTemplate).where(
-        or_(
-            FieldMappingTemplate.campaign_id == campaign_id,
-            FieldMappingTemplate.campaign_id.is_(None),
+    query = (
+        select(FieldMappingTemplate)
+        .where(
+            or_(
+                FieldMappingTemplate.campaign_id == campaign_id,
+                FieldMappingTemplate.campaign_id.is_(None),
+            )
         )
-    ).order_by(FieldMappingTemplate.is_system.desc(), FieldMappingTemplate.name)
+        .order_by(FieldMappingTemplate.is_system.desc(), FieldMappingTemplate.name)
+    )
 
     result = await db.execute(query)
     templates = list(result.scalars().all())

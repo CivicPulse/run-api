@@ -8,9 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import literal_column
 
-from app.models.voter import Voter, VoterTag, VoterTagMember
+from app.models.voter import Voter
 from app.schemas.voter_filter import VoterFilter
 
 
@@ -94,12 +93,14 @@ class TestBuildVoterQuery:
         """build_voter_query with logic='OR' produces OR combination."""
         from app.services.voter import build_voter_query
 
-        q = build_voter_query(VoterFilter(logic="OR", party="DEM", registration_city="Austin"))
+        q = build_voter_query(
+            VoterFilter(logic="OR", party="DEM", registration_city="Austin")
+        )
         sql = self._compiled_sql(q)
         assert "or" in sql.lower()
 
     def test_exact_match_fields(self):
-        """build_voter_query handles exact match fields: precinct, registration_city, registration_state, registration_zip, registration_county, congressional_district, gender."""
+        """build_voter_query handles exact match fields."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(
@@ -132,7 +133,8 @@ class TestBuildVoterQuery:
         assert "registration_date" in sql.lower()
 
     def test_empty_filter_returns_base_query(self):
-        """build_voter_query with no filters returns a select without WHERE conditions."""
+        """build_voter_query with no filters returns a
+        select without WHERE conditions."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter())
@@ -144,7 +146,9 @@ class TestBuildVoterQuery:
         from app.services.voter import build_voter_query
 
         q = build_voter_query(
-            VoterFilter(party="DEM", registration_city="Austin", age_min=25, logic="AND")
+            VoterFilter(
+                party="DEM", registration_city="Austin", age_min=25, logic="AND"
+            )
         )
         sql = self._compiled_sql(q)
         assert "party" in sql.lower()
@@ -154,10 +158,13 @@ class TestBuildVoterQuery:
     # --- Propensity range filters ---
 
     def test_propensity_general_range(self):
-        """VoterFilter(propensity_general_min=60, propensity_general_max=90) produces >= and <= conditions."""
+        """Propensity general range produces >= and <=
+        conditions."""
         from app.services.voter import build_voter_query
 
-        q = build_voter_query(VoterFilter(propensity_general_min=60, propensity_general_max=90))
+        q = build_voter_query(
+            VoterFilter(propensity_general_min=60, propensity_general_max=90)
+        )
         sql = self._compiled_sql(q)
         assert "propensity_general" in sql.lower()
         assert ">=" in sql
@@ -188,7 +195,8 @@ class TestBuildVoterQuery:
     # --- Multi-select demographic filters ---
 
     def test_ethnicities_multi_select(self):
-        """VoterFilter(ethnicities=["Hispanic","Asian"]) produces lower(ethnicity) IN clause."""
+        """Ethnicities filter produces lower(ethnicity)
+        IN clause."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(ethnicities=["Hispanic", "Asian"]))
@@ -200,7 +208,8 @@ class TestBuildVoterQuery:
         assert "asian" in sql.lower()
 
     def test_spoken_languages_filter(self):
-        """VoterFilter(spoken_languages=["Spanish"]) produces lower(spoken_language) IN clause."""
+        """Spoken languages produces lower(spoken_language)
+        IN clause."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(spoken_languages=["Spanish"]))
@@ -211,7 +220,8 @@ class TestBuildVoterQuery:
         assert "spanish" in sql.lower()
 
     def test_military_statuses_filter(self):
-        """VoterFilter(military_statuses=["Active"]) produces lower(military_status) IN clause."""
+        """Military statuses produces lower(military_status)
+        IN clause."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(military_statuses=["Active"]))
@@ -224,7 +234,8 @@ class TestBuildVoterQuery:
     # --- Mailing address filters ---
 
     def test_mailing_city_filter(self):
-        """VoterFilter(mailing_city="Atlanta") produces lower(mailing_city) = 'atlanta'."""
+        """Mailing city produces lower(mailing_city) =
+        'atlanta'."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(mailing_city="Atlanta"))
@@ -233,7 +244,8 @@ class TestBuildVoterQuery:
         assert "mailing_city" in sql.lower()
 
     def test_mailing_state_filter(self):
-        """VoterFilter(mailing_state="GA") produces lower(mailing_state) = 'ga'."""
+        """Mailing state produces lower(mailing_state) =
+        'ga'."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(mailing_state="GA"))
@@ -242,7 +254,7 @@ class TestBuildVoterQuery:
         assert "mailing_state" in sql.lower()
 
     def test_mailing_zip_filter(self):
-        """VoterFilter(mailing_zip="30301") produces mailing_zip = '30301' (exact match)."""
+        """Mailing zip produces exact match."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(mailing_zip="30301"))
@@ -258,7 +270,8 @@ class TestBuildVoterQuery:
     # --- Registration address case-insensitive updates ---
 
     def test_registration_city_case_insensitive(self):
-        """VoterFilter(registration_city="AUSTIN") produces lower(registration_city) condition."""
+        """Registration city produces case-insensitive
+        condition."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(registration_city="AUSTIN"))
@@ -267,7 +280,8 @@ class TestBuildVoterQuery:
         assert "registration_city" in sql.lower()
 
     def test_registration_state_case_insensitive(self):
-        """VoterFilter(registration_state="tx") produces lower(registration_state) condition."""
+        """Registration state produces case-insensitive
+        condition."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(registration_state="tx"))
@@ -276,7 +290,7 @@ class TestBuildVoterQuery:
         assert "registration_state" in sql.lower()
 
     def test_registration_zip_unchanged(self):
-        """VoterFilter(registration_zip="78701") stays exact match (no lower)."""
+        """Registration zip stays exact match (no lower)."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(registration_zip="78701"))
@@ -288,7 +302,8 @@ class TestBuildVoterQuery:
         assert not sql_before_zip.rstrip().endswith("lower(")
 
     def test_registration_county_case_insensitive(self):
-        """VoterFilter(registration_county="TRAVIS") produces lower(registration_county) condition."""
+        """Registration county produces case-insensitive
+        condition."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(registration_county="TRAVIS"))
@@ -299,7 +314,8 @@ class TestBuildVoterQuery:
     # --- Voting history year-aware expansion tests (FILT-05) ---
 
     def test_voted_in_year_only_expansion(self):
-        """VoterFilter(voted_in=["2024"]) produces SQL with General_2024 and Primary_2024 using overlap (&&)."""
+        """Year-only voted_in produces overlap (&&)
+        with General_2024 and Primary_2024."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(voted_in=["2024"]))
@@ -310,7 +326,8 @@ class TestBuildVoterQuery:
         assert "&&" in sql or "overlap" in sql.lower()
 
     def test_voted_in_canonical_unchanged(self):
-        """VoterFilter(voted_in=["General_2024"]) produces contains (@>) for General_2024 only (no Primary)."""
+        """Canonical voted_in produces contains (@>)
+        for General_2024 only (no Primary)."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(voted_in=["General_2024"]))
@@ -322,7 +339,8 @@ class TestBuildVoterQuery:
         assert "@>" in sql or "contains" in sql.lower()
 
     def test_voted_in_mixed(self):
-        """VoterFilter(voted_in=["2024", "General_2022"]) produces overlap for 2024 AND contains for General_2022."""
+        """Mixed voted_in produces overlap for 2024 AND
+        contains for General_2022."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(voted_in=["2024", "General_2022"]))
@@ -334,7 +352,8 @@ class TestBuildVoterQuery:
         assert "general_2022" in sql.lower()
 
     def test_not_voted_in_year_expansion(self):
-        """VoterFilter(not_voted_in=["2024"]) produces two NOT contains: NOT General_2024 AND NOT Primary_2024."""
+        """Year-only not_voted_in produces two NOT
+        contains conditions."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(not_voted_in=["2024"]))
@@ -345,7 +364,8 @@ class TestBuildVoterQuery:
         assert sql.lower().count("not") >= 2
 
     def test_not_voted_in_canonical_unchanged(self):
-        """VoterFilter(not_voted_in=["General_2024"]) produces single NOT contains for General_2024."""
+        """Canonical not_voted_in produces single NOT
+        contains for General_2024."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(not_voted_in=["General_2024"]))
@@ -356,7 +376,8 @@ class TestBuildVoterQuery:
         assert "not" in sql.lower()
 
     def test_not_voted_in_mixed(self):
-        """VoterFilter(not_voted_in=["2024", "General_2022"]) produces two NOT contains for 2024 AND one NOT contains for General_2022."""
+        """Mixed not_voted_in produces two NOT contains
+        for 2024 AND one NOT contains for General_2022."""
         from app.services.voter import build_voter_query
 
         q = build_voter_query(VoterFilter(not_voted_in=["2024", "General_2022"]))
@@ -536,10 +557,18 @@ class TestVoterSearchBody:
         from app.schemas.voter_filter import VoterSearchBody
 
         columns = [
-            "last_name", "first_name", "party", "age",
-            "registration_city", "registration_state", "registration_zip",
-            "created_at", "updated_at",
-            "propensity_general", "propensity_primary", "propensity_combined",
+            "last_name",
+            "first_name",
+            "party",
+            "age",
+            "registration_city",
+            "registration_state",
+            "registration_zip",
+            "created_at",
+            "updated_at",
+            "propensity_general",
+            "propensity_primary",
+            "propensity_combined",
         ]
         for col in columns:
             body = VoterSearchBody(sort_by=col, sort_dir="desc")
@@ -630,7 +659,8 @@ class TestDynamicCursor:
         assert isinstance(val, int)
 
     def test_decode_cursor_propensity_int_column(self):
-        """decode_cursor roundtrips correctly for integer columns (propensity_general)."""
+        """decode_cursor roundtrips correctly for integer
+        columns (propensity_general)."""
         from app.services.voter import decode_cursor
 
         cursor = "75|12345678-1234-5678-1234-567812345678"

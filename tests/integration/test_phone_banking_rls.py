@@ -59,15 +59,37 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
 
     # Campaigns
     for cid, org, name, ctype, created_by in [
-        (campaign_a_id, f"org-pa-{campaign_a_id.hex[:8]}", "Phone Campaign A", "state", user_a_id),
-        (campaign_b_id, f"org-pb-{campaign_b_id.hex[:8]}", "Phone Campaign B", "federal", user_b_id),
+        (
+            campaign_a_id,
+            f"org-pa-{campaign_a_id.hex[:8]}",
+            "Phone Campaign A",
+            "state",
+            user_a_id,
+        ),
+        (
+            campaign_b_id,
+            f"org-pb-{campaign_b_id.hex[:8]}",
+            "Phone Campaign B",
+            "federal",
+            user_b_id,
+        ),
     ]:
         await session.execute(
             text(
-                "INSERT INTO campaigns (id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :org_id, :name, :type, 'active', :created_by, :now, :now)"
+                "INSERT INTO campaigns (id, zitadel_org_id, name,"
+                " type, status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :org_id, :name, :type,"
+                " 'active', :created_by, :now, :now)"
             ),
-            {"id": cid, "org_id": org, "name": name, "type": ctype, "created_by": created_by, "now": now},
+            {
+                "id": cid,
+                "org_id": org,
+                "name": name,
+                "type": ctype,
+                "created_by": created_by,
+                "now": now,
+            },
         )
 
     # Campaign members
@@ -84,8 +106,11 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
     for vid, cid in [(voter_a_id, campaign_a_id), (voter_b_id, campaign_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voters (id, campaign_id, source_type, first_name, last_name, created_at, updated_at) "
-                "VALUES (:id, :cid, 'manual', 'Test', 'Voter', :now, :now)"
+                "INSERT INTO voters (id, campaign_id,"
+                " source_type, first_name, last_name,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, 'manual', 'Test',"
+                " 'Voter', :now, :now)"
             ),
             {"id": vid, "cid": cid, "now": now},
         )
@@ -97,9 +122,14 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO call_lists (id, campaign_id, name, status, total_entries, completed_entries, "
-                "max_attempts, claim_timeout_minutes, cooldown_minutes, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :name, 'active', 1, 0, 3, 30, 60, :uid, :now, :now)"
+                "INSERT INTO call_lists (id, campaign_id,"
+                " name, status, total_entries,"
+                " completed_entries, max_attempts,"
+                " claim_timeout_minutes,"
+                " cooldown_minutes, created_by,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, :name, 'active',"
+                " 1, 0, 3, 30, 60, :uid, :now, :now)"
             ),
             {"id": clid, "cid": cid, "name": name, "uid": uid, "now": now},
         )
@@ -111,9 +141,12 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO call_list_entries (id, call_list_id, voter_id, priority_score, "
-                "phone_numbers, status, attempt_count) "
-                "VALUES (:id, :clid, :vid, 50, '[]'::jsonb, 'available', 0)"
+                "INSERT INTO call_list_entries (id,"
+                " call_list_id, voter_id,"
+                " priority_score, phone_numbers,"
+                " status, attempt_count) "
+                "VALUES (:id, :clid, :vid, 50,"
+                " '[]'::jsonb, 'available', 0)"
             ),
             {"id": eid, "clid": clid, "vid": vid},
         )
@@ -125,9 +158,12 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO phone_bank_sessions (id, campaign_id, call_list_id, name, status, "
-                "created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :clid, :name, 'active', :uid, :now, :now)"
+                "INSERT INTO phone_bank_sessions (id,"
+                " campaign_id, call_list_id, name,"
+                " status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :clid, :name,"
+                " 'active', :uid, :now, :now)"
             ),
             {"id": sid, "cid": cid, "clid": clid, "name": name, "uid": uid, "now": now},
         )
@@ -152,8 +188,11 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO do_not_call (id, campaign_id, phone_number, reason, added_by, added_at) "
-                "VALUES (:id, :cid, :phone, 'manual', :uid, :now)"
+                "INSERT INTO do_not_call (id, campaign_id,"
+                " phone_number, reason, added_by,"
+                " added_at) "
+                "VALUES (:id, :cid, :phone, 'manual',"
+                " :uid, :now)"
             ),
             {"id": did, "cid": cid, "phone": phone, "uid": uid, "now": now},
         )

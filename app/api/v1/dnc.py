@@ -138,9 +138,7 @@ async def delete_dnc_entry(
 async def check_dnc(
     campaign_id: uuid.UUID,
     body: DNCCheckRequest,
-    user: AuthenticatedUser = Depends(
-        require_role("volunteer")
-    ),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """Check if a phone number is on the DNC list.
@@ -151,6 +149,4 @@ async def check_dnc(
     from app.db.rls import set_campaign_context
 
     await set_campaign_context(db, str(campaign_id))
-    return await _dnc_service.check_number(
-        db, campaign_id, body.phone_number
-    )
+    return await _dnc_service.check_number(db, campaign_id, body.phone_number)

@@ -43,15 +43,11 @@ class VoterInteraction(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     type: Mapped[InteractionType] = mapped_column(
         Enum(InteractionType, name="interaction_type", native_enum=False),
         nullable=False,
     )
     payload: Mapped[dict] = mapped_column(JSONB, default=dict)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

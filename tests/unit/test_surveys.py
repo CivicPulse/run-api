@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -12,13 +12,11 @@ from app.models.survey import (
     QuestionType,
     ScriptStatus,
     SurveyQuestion,
-    SurveyResponse,
     SurveyScript,
 )
 from app.models.voter_interaction import InteractionType
 from app.schemas.survey import (
     QuestionCreate,
-    QuestionUpdate,
     ResponseCreate,
     ScriptCreate,
     ScriptUpdate,
@@ -69,7 +67,8 @@ def _make_question(
 
 
 class TestSurveyService:
-    """Tests for survey script lifecycle, question CRUD, type validation, and response recording."""
+    """Tests for survey script lifecycle, question CRUD,
+    type validation, and response recording."""
 
     @pytest.fixture
     def mock_db(self):
@@ -94,13 +93,11 @@ class TestSurveyService:
     def user_id(self):
         return "user-abc-123"
 
-    async def test_create_survey_script(
-        self, service, mock_db, campaign_id, user_id
-    ):
+    async def test_create_survey_script(self, service, mock_db, campaign_id, user_id):
         """CANV-07: Create script in draft status."""
         data = ScriptCreate(title="Voter Survey", description="Door knocking survey")
 
-        result = await service.create_script(
+        await service.create_script(
             session=mock_db,
             campaign_id=campaign_id,
             data=data,
@@ -116,9 +113,7 @@ class TestSurveyService:
         assert added.created_by == user_id
         mock_db.flush.assert_awaited_once()
 
-    async def test_script_lifecycle_transitions(
-        self, service, mock_db, campaign_id
-    ):
+    async def test_script_lifecycle_transitions(self, service, mock_db, campaign_id):
         """CANV-07: draft->active->archived only."""
         # draft -> active: allowed
         draft_script = _make_script(status=ScriptStatus.DRAFT)
@@ -164,9 +159,7 @@ class TestSurveyService:
                 data=ScriptUpdate(status=ScriptStatus.DRAFT),
             )
 
-    async def test_question_crud_draft_only(
-        self, service, mock_db, campaign_id
-    ):
+    async def test_question_crud_draft_only(self, service, mock_db, campaign_id):
         """CANV-07: Questions editable only in draft."""
         active_script = _make_script(status=ScriptStatus.ACTIVE)
         mock_result = MagicMock()
@@ -188,9 +181,7 @@ class TestSurveyService:
         """CANV-07: MC options, scale range validated."""
         # MC requires choices
         with pytest.raises(ValueError, match="choices"):
-            service._validate_question_options(
-                QuestionType.MULTIPLE_CHOICE, None
-            )
+            service._validate_question_options(QuestionType.MULTIPLE_CHOICE, None)
 
         with pytest.raises(ValueError, match="choices"):
             service._validate_question_options(
@@ -212,9 +203,7 @@ class TestSurveyService:
             )
 
         # Scale valid
-        service._validate_question_options(
-            QuestionType.SCALE, {"min": 1, "max": 10}
-        )
+        service._validate_question_options(QuestionType.SCALE, {"min": 1, "max": 10})
 
         # Free text: None options OK
         service._validate_question_options(QuestionType.FREE_TEXT, None)
@@ -225,9 +214,7 @@ class TestSurveyService:
         question_id = uuid.uuid4()
 
         # Setup: script is active, question belongs to script
-        active_script = _make_script(
-            status=ScriptStatus.ACTIVE, script_id=script_id
-        )
+        active_script = _make_script(status=ScriptStatus.ACTIVE, script_id=script_id)
         mc_question = _make_question(
             script_id=script_id,
             question_id=question_id,
@@ -341,9 +328,7 @@ class TestSurveyService:
         q1_id = uuid.uuid4()
         q2_id = uuid.uuid4()
 
-        active_script = _make_script(
-            status=ScriptStatus.ACTIVE, script_id=script_id
-        )
+        active_script = _make_script(status=ScriptStatus.ACTIVE, script_id=script_id)
         question1 = _make_question(
             script_id=script_id,
             question_id=q1_id,
@@ -380,9 +365,7 @@ class TestSurveyService:
         service._interaction_service.record_interaction = AsyncMock()
 
         responses = [
-            ResponseCreate(
-                question_id=q1_id, voter_id=voter_id, answer_value="Yes"
-            ),
+            ResponseCreate(question_id=q1_id, voter_id=voter_id, answer_value="Yes"),
             ResponseCreate(
                 question_id=q2_id, voter_id=voter_id, answer_value="Great candidate"
             ),
@@ -401,9 +384,7 @@ class TestSurveyService:
 
         # Verify interaction event was emitted
         service._interaction_service.record_interaction.assert_awaited_once()
-        call_kwargs = (
-            service._interaction_service.record_interaction.call_args.kwargs
-        )
+        call_kwargs = service._interaction_service.record_interaction.call_args.kwargs
         assert call_kwargs["interaction_type"] == InteractionType.SURVEY_RESPONSE
         assert call_kwargs["voter_id"] == voter_id
         assert call_kwargs["payload"]["script_id"] == str(script_id)

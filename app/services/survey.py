@@ -190,9 +190,7 @@ class SurveyService:
         if "status" in update_fields:
             new_status = update_fields["status"]
             if (script.status, new_status) not in _VALID_TRANSITIONS:
-                msg = (
-                    f"Invalid status transition: {script.status} -> {new_status}"
-                )
+                msg = f"Invalid status transition: {script.status} -> {new_status}"
                 raise ValueError(msg)
             script.status = new_status
 

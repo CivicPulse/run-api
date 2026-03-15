@@ -54,9 +54,7 @@ class Volunteer(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     first_name: Mapped[str] = mapped_column(String(255), nullable=False)
     last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -78,9 +76,7 @@ class Volunteer(Base):
     skills: Mapped[list[str]] = mapped_column(
         ARRAY(String), default=list, nullable=False
     )
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -91,9 +87,7 @@ class VolunteerTag(Base):
     """Free-form campaign-scoped tag for categorizing volunteers."""
 
     __tablename__ = "volunteer_tags"
-    __table_args__ = (
-        Index("ix_volunteer_tags_campaign_id", "campaign_id"),
-    )
+    __table_args__ = (Index("ix_volunteer_tags_campaign_id", "campaign_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(

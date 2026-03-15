@@ -42,6 +42,7 @@ export function DestructiveConfirmDialog({
   // Reset input whenever the dialog opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset confirmation input when dialog opens
       setInputValue("")
     }
   }, [open])

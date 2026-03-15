@@ -151,15 +151,11 @@ class TestAcceptInviteEndpoint:
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[validate_result, member_result])
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(
-                f"/api/v1/invites/{invite.token}/accept"
-            )
+            resp = await client.post(f"/api/v1/invites/{invite.token}/accept")
 
         assert resp.status_code == 200
         data = resp.json()

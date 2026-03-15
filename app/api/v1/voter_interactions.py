@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced, get_campaign_from_token
+from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.rls import set_campaign_context
 from app.db.session import get_db
@@ -51,7 +51,7 @@ async def get_voter_interactions(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid interaction type: {type}",
-            )
+            ) from None
 
     page = await _service.get_voter_history(
         session=db,
