@@ -38,7 +38,7 @@ import {
   formatMultiSelectChip,
   CATEGORY_CLASSES,
 } from "@/lib/filterChipUtils"
-import type { Voter, VoterFilter, VoterCreate, VoterSearchBody } from "@/types/voter"
+import type { Voter, VoterFilter, VoterCreate, VoterSearchBody, SortableColumn } from "@/types/voter"
 
 // ─── Create form schema ───────────────────────────────────────────────────────
 
@@ -523,7 +523,7 @@ function buildColumns(
 
 // ─── Sort column mapping ─────────────────────────────────────────────────────
 
-const SORT_COLUMN_MAP: Record<string, string> = {
+const SORT_COLUMN_MAP: Record<string, SortableColumn> = {
   full_name: "last_name",
   party: "party",
   city: "registration_city",
@@ -551,7 +551,7 @@ function VotersPage() {
   const sortBy = sorting[0]?.id
   const sortDir = sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined
 
-  const mappedSortBy = sortBy ? SORT_COLUMN_MAP[sortBy] ?? sortBy : undefined
+  const mappedSortBy = sortBy ? SORT_COLUMN_MAP[sortBy] ?? (sortBy as SortableColumn) : undefined
   const searchBody: VoterSearchBody = {
     filters,
     cursor,

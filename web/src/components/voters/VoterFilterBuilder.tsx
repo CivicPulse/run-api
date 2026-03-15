@@ -45,6 +45,7 @@ function countSectionFilters(value: VoterFilter, section: string): number {
       if (value.registration_city) count++
       if (value.registration_state) count++
       if (value.registration_zip) count++
+      if (value.registration_county) count++
       if (value.precinct) count++
       if (value.mailing_city) count++
       if (value.mailing_state) count++
@@ -483,6 +484,14 @@ export function VoterFilterBuilder({
                   placeholder="ZIP code"
                   value={value.registration_zip ?? ""}
                   onChange={(e) => update({ registration_zip: e.target.value || undefined })}
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Registration County</Label>
+                <Input
+                  placeholder="County"
+                  value={value.registration_county ?? ""}
+                  onChange={(e) => update({ registration_county: e.target.value || undefined })}
                 />
               </div>
               <div>

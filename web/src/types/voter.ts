@@ -187,11 +187,25 @@ export interface VoterCreate {
 
 export interface VoterUpdate extends Partial<VoterCreate> {}
 
+export type SortableColumn =
+  | "last_name"
+  | "first_name"
+  | "party"
+  | "age"
+  | "registration_city"
+  | "registration_state"
+  | "registration_zip"
+  | "created_at"
+  | "updated_at"
+  | "propensity_general"
+  | "propensity_primary"
+  | "propensity_combined"
+
 export interface VoterSearchBody {
   filters: VoterFilter
   cursor?: string
   limit?: number
-  sort_by?: string
+  sort_by?: SortableColumn
   sort_dir?: "asc" | "desc"
 }
 
