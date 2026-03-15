@@ -1,10 +1,11 @@
 ---
 phase: 26
 slug: frontend-updates
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-14
+updated: 2026-03-15
 ---
 
 # Phase 26 — Validation Strategy
@@ -38,14 +39,14 @@ created: 2026-03-14
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 26-01-01 | 01 | 1 | FRNT-05 | compiler | `cd web && npx tsc --noEmit` | N/A | ⬜ pending |
-| 26-01-02 | 01 | 1 | FRNT-05 | compiler | `cd web && npx tsc --noEmit` | N/A | ⬜ pending |
-| 26-02-01 | 02 | 1 | FRNT-01 | e2e | `cd web && npx playwright test e2e/phase26-voter-detail.spec.ts` | ❌ W0 | ⬜ pending |
-| 26-02-02 | 02 | 1 | FRNT-01 | e2e | `cd web && npx playwright test e2e/phase26-voter-detail.spec.ts` | ❌ W0 | ⬜ pending |
-| 26-03-01 | 03 | 2 | FRNT-02 | unit | `cd web && npx vitest run src/components/voters/VoterFilterBuilder.test.tsx` | ✅ (needs update) | ⬜ pending |
-| 26-03-02 | 03 | 2 | FRNT-02 | unit | `cd web && npx vitest run src/components/voters/VoterFilterBuilder.test.tsx` | ✅ (needs update) | ⬜ pending |
-| 26-04-01 | 04 | 2 | FRNT-03 | unit | `cd web && npx vitest run src/components/voters/VoterEditSheet.test.tsx` | ❌ W0 | ⬜ pending |
-| 26-05-01 | 05 | 2 | FRNT-04 | unit | `cd web && npx vitest run src/components/voters/ColumnMappingTable.test.tsx` | ✅ (needs update) | ⬜ pending |
+| 26-01-01 | 01 | 1 | FRNT-05 | compiler | `cd web && npx tsc --noEmit` | N/A | ✅ green |
+| 26-01-02 | 01 | 1 | FRNT-05 | compiler | `cd web && npx tsc --noEmit` | N/A | ✅ green |
+| 26-02-01 | 02 | 1 | FRNT-01 | unit | `cd web && npx vitest run src/components/voters/VoterDetail.test.tsx --reporter=verbose` | ✅ | ✅ green |
+| 26-02-02 | 02 | 1 | FRNT-01 | unit | `cd web && npx vitest run src/components/voters/VoterDetail.test.tsx --reporter=verbose` | ✅ | ✅ green |
+| 26-03-01 | 03 | 2 | FRNT-02 | unit | `cd web && npx vitest run src/components/voters/VoterFilterBuilder.test.tsx --reporter=verbose` | ✅ | ✅ green |
+| 26-03-02 | 03 | 2 | FRNT-02 | unit | `cd web && npx vitest run src/components/voters/VoterFilterBuilder.test.tsx --reporter=verbose` | ✅ | ✅ green |
+| 26-04-01 | 04 | 2 | FRNT-03 | unit | `cd web && npx vitest run src/components/voters/VoterEditSheet.test.tsx --reporter=verbose` | ✅ | ✅ green |
+| 26-05-01 | 05 | 2 | FRNT-04 | unit | `cd web && npx vitest run src/components/voters/ColumnMappingTable.test.tsx --reporter=verbose` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,9 +54,11 @@ created: 2026-03-14
 
 ## Wave 0 Requirements
 
-- [ ] `cd web && npx shadcn@latest add accordion slider collapsible` — install shadcn wrapper components
-- [ ] `web/src/components/voters/VoterFilterBuilder.test.tsx` — update existing tests for accordion structure
-- [ ] `web/src/components/voters/ColumnMappingTable.test.tsx` — update for grouped dropdown and expanded fields
+- [x] `cd web && npx shadcn@latest add accordion slider collapsible` — installed in Plan 01
+- [x] `web/src/components/voters/VoterFilterBuilder.test.tsx` — updated in Plan 03 (9 tests, all green)
+- [x] `web/src/components/voters/ColumnMappingTable.test.tsx` — updated in Plan 04 (11 tests, all green)
+- [x] `web/src/components/voters/VoterDetail.test.tsx` — created by Nyquist auditor (26 tests, all green)
+- [x] `web/src/components/voters/VoterEditSheet.test.tsx` — created by Nyquist auditor (35 tests, all green)
 
 *Existing infrastructure covers compiler checks and e2e framework.*
 
@@ -74,11 +77,11 @@ created: 2026-03-14
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-03-15 — Nyquist auditor filled 2 gaps (26-02-01/02, 26-04-01). All 319 unit tests green.
