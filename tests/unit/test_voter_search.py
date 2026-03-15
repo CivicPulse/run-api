@@ -546,6 +546,168 @@ class TestVoterSearchBody:
             assert body.sort_by == col
 
 
+class TestDynamicCursor:
+    """Tests for encode_cursor and decode_cursor helper functions."""
+
+    def test_encode_cursor_default_created_at(self):
+        """encode_cursor with sort_by=None produces iso_timestamp|uuid."""
+        from app.services.voter import encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+        item.created_at = datetime(2025, 6, 15, 10, 30, 0, tzinfo=UTC)
+
+        cursor = encode_cursor(item, sort_by=None)
+        assert "|" in cursor
+        parts = cursor.split("|", 1)
+        assert parts[1] == "12345678-1234-5678-1234-567812345678"
+        # First part should be an ISO timestamp
+        datetime.fromisoformat(parts[0])
+
+    def test_encode_cursor_string_column(self):
+        """encode_cursor with sort_by='last_name' produces 'Smith|uuid'."""
+        from app.services.voter import encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+        item.last_name = "Smith"
+
+        cursor = encode_cursor(item, sort_by="last_name")
+        parts = cursor.split("|", 1)
+        assert parts[0] == "Smith"
+        assert parts[1] == "12345678-1234-5678-1234-567812345678"
+
+    def test_encode_cursor_int_column(self):
+        """encode_cursor with sort_by='age' produces '45|uuid'."""
+        from app.services.voter import encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+        item.age = 45
+
+        cursor = encode_cursor(item, sort_by="age")
+        parts = cursor.split("|", 1)
+        assert parts[0] == "45"
+
+    def test_encode_cursor_none_value(self):
+        """encode_cursor with NULL sort value produces 'None|uuid'."""
+        from app.services.voter import encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+        item.age = None
+
+        cursor = encode_cursor(item, sort_by="age")
+        parts = cursor.split("|", 1)
+        assert parts[0] == "None"
+
+    def test_decode_cursor_default_created_at(self):
+        """decode_cursor roundtrips correctly for datetime columns (created_at)."""
+        from app.services.voter import decode_cursor
+
+        ts = datetime(2025, 6, 15, 10, 30, 0, tzinfo=UTC)
+        cursor = f"{ts.isoformat()}|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by=None)
+        assert val == ts
+        assert cid == uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+    def test_decode_cursor_string_column(self):
+        """decode_cursor roundtrips correctly for string columns (last_name)."""
+        from app.services.voter import decode_cursor
+
+        cursor = "Smith|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by="last_name")
+        assert val == "Smith"
+        assert cid == uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+    def test_decode_cursor_int_column(self):
+        """decode_cursor roundtrips correctly for integer columns (age)."""
+        from app.services.voter import decode_cursor
+
+        cursor = "45|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by="age")
+        assert val == 45
+        assert isinstance(val, int)
+
+    def test_decode_cursor_propensity_int_column(self):
+        """decode_cursor roundtrips correctly for integer columns (propensity_general)."""
+        from app.services.voter import decode_cursor
+
+        cursor = "75|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by="propensity_general")
+        assert val == 75
+        assert isinstance(val, int)
+
+    def test_decode_cursor_none_value(self):
+        """decode_cursor handles NULL values encoded as 'None'."""
+        from app.services.voter import decode_cursor
+
+        cursor = "None|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by="last_name")
+        assert val is None
+        assert cid == uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+    def test_decode_cursor_none_int_column(self):
+        """decode_cursor handles NULL values for integer columns."""
+        from app.services.voter import decode_cursor
+
+        cursor = "None|12345678-1234-5678-1234-567812345678"
+        val, cid = decode_cursor(cursor, sort_by="age")
+        assert val is None
+
+    def test_encode_decode_roundtrip_string(self):
+        """encode_cursor -> decode_cursor roundtrips for string columns."""
+        from app.services.voter import decode_cursor, encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789")
+        item.last_name = "Johnson"
+
+        cursor = encode_cursor(item, sort_by="last_name")
+        val, cid = decode_cursor(cursor, sort_by="last_name")
+        assert val == "Johnson"
+        assert cid == item.id
+
+    def test_encode_decode_roundtrip_datetime(self):
+        """encode_cursor -> decode_cursor roundtrips for datetime columns."""
+        from app.services.voter import decode_cursor, encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789")
+        item.created_at = datetime(2025, 3, 14, 12, 0, 0, tzinfo=UTC)
+
+        cursor = encode_cursor(item, sort_by=None)
+        val, cid = decode_cursor(cursor, sort_by=None)
+        assert val == item.created_at
+        assert cid == item.id
+
+    def test_encode_decode_roundtrip_int(self):
+        """encode_cursor -> decode_cursor roundtrips for integer columns."""
+        from app.services.voter import decode_cursor, encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789")
+        item.age = 33
+
+        cursor = encode_cursor(item, sort_by="age")
+        val, cid = decode_cursor(cursor, sort_by="age")
+        assert val == 33
+        assert cid == item.id
+
+    def test_encode_decode_roundtrip_none(self):
+        """encode_cursor -> decode_cursor roundtrips for NULL values."""
+        from app.services.voter import decode_cursor, encode_cursor
+
+        item = MagicMock()
+        item.id = uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789")
+        item.propensity_general = None
+
+        cursor = encode_cursor(item, sort_by="propensity_general")
+        val, cid = decode_cursor(cursor, sort_by="propensity_general")
+        assert val is None
+        assert cid == item.id
+
+
 class TestVoterServiceCRUD:
     """Tests for VoterService CRUD operations."""
 

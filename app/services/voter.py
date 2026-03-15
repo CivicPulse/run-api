@@ -23,6 +23,55 @@ if TYPE_CHECKING:
 
 _YEAR_ONLY_RE = re.compile(r"^\d{4}$")
 
+# Columns that are stored as integers and need int() parsing in cursor decode.
+_INT_SORT_COLUMNS = frozenset({
+    "age",
+    "propensity_general",
+    "propensity_primary",
+    "propensity_combined",
+    "household_size",
+})
+
+# Columns that are stored as datetimes and need fromisoformat() parsing.
+_DATETIME_SORT_COLUMNS = frozenset({"created_at", "updated_at"})
+
+
+def encode_cursor(item: object, sort_by: str | None) -> str:
+    """Encode a cursor from the last item in a result set.
+
+    Format: ``sort_column_value|id``.  For datetime values the ISO
+    representation is used.  ``None`` values are encoded as the literal
+    string ``"None"``.
+    """
+    col = sort_by or "created_at"
+    val = getattr(item, col)
+    if isinstance(val, datetime):
+        val = val.isoformat()
+    elif val is None:
+        val = "None"
+    else:
+        val = str(val)
+    return f"{val}|{item.id}"
+
+
+def decode_cursor(cursor: str, sort_by: str | None) -> tuple:
+    """Decode a cursor string into ``(sort_value, id)``."""
+    val_str, id_str = cursor.split("|", 1)
+    cursor_id = uuid.UUID(id_str)
+    col = sort_by or "created_at"
+
+    if val_str == "None":
+        return None, cursor_id
+
+    if col in _DATETIME_SORT_COLUMNS:
+        cursor_val = datetime.fromisoformat(val_str)
+    elif col in _INT_SORT_COLUMNS:
+        cursor_val = int(val_str)
+    else:
+        cursor_val = val_str
+
+    return cursor_val, cursor_id
+
 
 def build_voter_query(filters: VoterFilter) -> Select:
     """Build a composable SQLAlchemy query from structured voter filters.
@@ -240,20 +289,50 @@ class VoterService:
             PaginatedResponse with VoterResponse items.
         """
         query = build_voter_query(filters)
-        query = query.order_by(Voter.created_at.desc(), Voter.id.desc())
 
+        # Dynamic sort column with tiebreaker on id
+        sort_col = getattr(Voter, sort_by) if sort_by else Voter.created_at
+        is_desc = (sort_dir or "desc") == "desc"
+
+        if is_desc:
+            query = query.order_by(sort_col.desc(), Voter.id.desc())
+        else:
+            query = query.order_by(
+                sort_col.asc().nullslast(), Voter.id.asc()
+            )
+
+        # Cursor-based pagination with dynamic column
         if cursor:
-            parts = cursor.split("|", 1)
-            if len(parts) == 2:
-                cursor_ts = datetime.fromisoformat(parts[0])
-                cursor_id = uuid.UUID(parts[1])
-                query = query.where(
-                    (Voter.created_at < cursor_ts)
-                    | (
-                        (Voter.created_at == cursor_ts)
-                        & (Voter.id < cursor_id)
+            cursor_val, cursor_id = decode_cursor(cursor, sort_by)
+
+            if cursor_val is None:
+                # NULL sort value: only compare by id among NULL rows
+                if is_desc:
+                    query = query.where(
+                        (sort_col.is_not(None))
+                        | ((sort_col.is_(None)) & (Voter.id < cursor_id))
                     )
-                )
+                else:
+                    query = query.where(
+                        (sort_col.is_(None)) & (Voter.id > cursor_id)
+                    )
+            else:
+                if is_desc:
+                    query = query.where(
+                        (sort_col < cursor_val)
+                        | (
+                            (sort_col == cursor_val)
+                            & (Voter.id < cursor_id)
+                        )
+                    )
+                else:
+                    query = query.where(
+                        (sort_col > cursor_val)
+                        | (
+                            (sort_col == cursor_val)
+                            & (Voter.id > cursor_id)
+                        )
+                    )
 
         query = query.limit(limit + 1)
         result = await db.execute(query)
@@ -265,8 +344,7 @@ class VoterService:
 
         next_cursor = None
         if has_more and items:
-            last = items[-1]
-            next_cursor = f"{last.created_at.isoformat()}|{last.id}"
+            next_cursor = encode_cursor(items[-1], sort_by)
 
         return PaginatedResponse[VoterResponse](
             items=[VoterResponse.model_validate(v) for v in items],
