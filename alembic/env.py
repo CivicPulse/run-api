@@ -22,7 +22,8 @@ config = context.config
 # Override alembic.ini URL with env var if set (for containerized environments)
 db_url = os.environ.get("DATABASE_URL_SYNC")
 if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+    # Escape percent signs for configparser interpolation
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
