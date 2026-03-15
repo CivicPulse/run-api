@@ -162,8 +162,11 @@ Plans:
   2. Clicking a filter chip removes the corresponding filter and refreshes results
   3. ImportJob TypeScript type includes phones_created field
   4. VoterCreate TypeScript interface includes all 12 fields present in backend VoterCreateRequest
+**Plans**: 2 plans
 
-Plans: TBD (run `/gsd:plan-phase 28`)
+Plans:
+- [ ] 28-01-PLAN.md — Shared filterChipUtils utility with unit tests, VoterCreate/ImportJob type alignment, phones_created import UI display
+- [ ] 28-02-PLAN.md — Wire filter chips into voter list page, voter list detail page, and dynamic list dialogs; Playwright E2E tests
 
 ## Progress
 
@@ -199,4 +202,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
 | 25. Filter Builder & Query Enhancement | v1.3 | 2/2 | Complete | 2026-03-14 |
 | 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
 | 27. Wire Advanced Filters to Backend | 3/3 | Complete    | 2026-03-15 | - |
-| 28. Filter Chips & Frontend Type Coverage | v1.3 | 0/0 | Pending | - |
+| 28. Filter Chips & Frontend Type Coverage | v1.3 | 0/2 | Pending | - |
