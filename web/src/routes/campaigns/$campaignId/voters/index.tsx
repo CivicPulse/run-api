@@ -6,7 +6,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import type { ColumnDef, SortingState } from "@tanstack/react-table"
 
-import { useVotersQuery, useCreateVoter } from "@/hooks/useVoters"
+import { useVoterSearch, useCreateVoter } from "@/hooks/useVoters"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { DataTable } from "@/components/shared/DataTable"
 import { VoterFilterBuilder } from "@/components/voters/VoterFilterBuilder"
@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Users } from "lucide-react"
-import type { Voter, VoterFilter, VoterCreate } from "@/types/voter"
+import type { Voter, VoterFilter, VoterCreate, VoterSearchBody } from "@/types/voter"
 
 // ─── Create form schema ───────────────────────────────────────────────────────
 
@@ -329,6 +329,15 @@ function buildColumns(
   ]
 }
 
+// ─── Sort column mapping ─────────────────────────────────────────────────────
+
+const SORT_COLUMN_MAP: Record<string, string> = {
+  full_name: "last_name",
+  party: "party",
+  city: "registration_city",
+  age: "age",
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function VotersPage() {
@@ -350,13 +359,15 @@ function VotersPage() {
   const sortBy = sorting[0]?.id
   const sortDir = sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined
 
-  const { data, isLoading } = useVotersQuery(campaignId, {
-    cursor,
-    pageSize: 50,
-    sortBy,
-    sortDir,
+  const mappedSortBy = sortBy ? SORT_COLUMN_MAP[sortBy] ?? sortBy : undefined
+  const searchBody: VoterSearchBody = {
     filters,
-  })
+    cursor,
+    limit: 50,
+    sort_by: mappedSortBy,
+    sort_dir: sortDir,
+  }
+  const { data, isLoading } = useVoterSearch(campaignId, searchBody)
 
   const voters = data?.items ?? []
   const hasNextPage = data?.pagination.has_more ?? false

@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useVoters } from "@/hooks/useVoters"
+import { useVoterSearch } from "@/hooks/useVoters"
 import { useAddListMembers } from "@/hooks/useVoterLists"
-import type { Voter } from "@/types/voter"
+import type { Voter, VoterSearchBody } from "@/types/voter"
 
 interface AddVotersDialogProps {
   campaignId: string
@@ -40,10 +40,13 @@ export function AddVotersDialog({
 
   const debouncedSearch = useDebounce(search, 300)
 
-  const { data: searchData } = useVoters(campaignId, { search: debouncedSearch })
+  const searchBody: VoterSearchBody = {
+    filters: { search: debouncedSearch },
+    limit: 20,
+  }
+  const { data: searchData } = useVoterSearch(campaignId, searchBody)
 
-  // Take results from the first page only (max 20)
-  const results: Voter[] = (searchData?.pages[0]?.items ?? []).slice(0, 20)
+  const results: Voter[] = searchData?.items ?? []
 
   const addMembers = useAddListMembers(campaignId, listId)
 
