@@ -9,6 +9,7 @@ from app.api.v1 import (
     campaigns,
     dashboard,
     dnc,
+    field,
     imports,
     invites,
     members,
@@ -47,3 +48,4 @@ router.include_router(phone_banks.router, tags=["phone-banks"])
 router.include_router(volunteers.router, tags=["volunteers"])
 router.include_router(shifts.router, tags=["shifts"])
 router.include_router(dashboard.router, tags=["dashboard"])
+router.include_router(field.router, tags=["field"])
