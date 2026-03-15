@@ -1,6 +1,3 @@
-// Canvassing types - shared between canvassing wizard and phone banking
-// Created as dependency for field components (Plan 01 parallel artifact)
-
 export type DoorKnockResultCode =
   | "not_home"
   | "refused"
@@ -47,68 +44,89 @@ export interface Household {
   entries: EnrichedWalkListEntry[]
 }
 
-export const OUTCOME_COLORS: Record<
-  DoorKnockResultCode,
-  { bg: string; text: string; border: string }
-> = {
-  supporter: { bg: "bg-green-50", text: "text-green-800", border: "border-green-300" },
-  undecided: { bg: "bg-yellow-50", text: "text-yellow-800", border: "border-yellow-300" },
-  not_home: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-300" },
-  come_back_later: { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-300" },
-  refused: { bg: "bg-orange-50", text: "text-orange-800", border: "border-orange-300" },
-  opposed: { bg: "bg-red-50", text: "text-red-800", border: "border-red-300" },
-  moved: { bg: "bg-purple-50", text: "text-purple-800", border: "border-purple-300" },
-  deceased: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-400" },
-  inaccessible: { bg: "bg-stone-50", text: "text-stone-700", border: "border-stone-300" },
+/** Contact outcomes that trigger survey panel */
+export const SURVEY_TRIGGER_OUTCOMES = new Set<DoorKnockResultCode>([
+  "supporter", "undecided", "opposed", "refused",
+])
+
+/** Non-contact outcomes that auto-advance without survey */
+export const AUTO_ADVANCE_OUTCOMES = new Set<DoorKnockResultCode>([
+  "not_home", "come_back_later", "moved", "deceased", "inaccessible",
+])
+
+/** Color map for outcome buttons per UI-SPEC */
+export const OUTCOME_COLORS: Record<DoorKnockResultCode, { bg: string; text: string; border: string }> = {
+  supporter:       { bg: "bg-green-100", text: "text-green-800", border: "border-green-300" },
+  undecided:       { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
+  come_back_later: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
+  refused:         { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
+  opposed:         { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
+  not_home:        { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
+  moved:           { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
+  deceased:        { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
+  inaccessible:    { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
 }
 
+/** Human-readable labels for outcome codes */
 export const OUTCOME_LABELS: Record<DoorKnockResultCode, string> = {
+  not_home: "Not Home",
+  refused: "Refused",
   supporter: "Supporter",
   undecided: "Undecided",
-  not_home: "Not Home",
-  come_back_later: "Come Back Later",
-  refused: "Refused",
   opposed: "Opposed",
   moved: "Moved",
   deceased: "Deceased",
+  come_back_later: "Come Back",
   inaccessible: "Inaccessible",
 }
 
+/** Group flat entries list by household_key into address-based Household objects */
+export function groupByHousehold(entries: EnrichedWalkListEntry[]): Household[] {
+  const map = new Map<string, EnrichedWalkListEntry[]>()
+  for (const entry of entries) {
+    const key = entry.household_key || entry.id  // null household_key = own group
+    const group = map.get(key) || []
+    group.push(entry)
+    map.set(key, group)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => a[1][0].sequence - b[1][0].sequence)
+    .map(([key, entries]) => ({
+      householdKey: key,
+      address: formatAddress(entries[0].voter),
+      entries,
+    }))
+}
+
+/** Format voter registration address into a single display string */
 export function formatAddress(voter: VoterDetail): string {
-  const parts = [
+  return [
     voter.registration_line1,
-    voter.registration_line2,
     voter.registration_city,
     voter.registration_state,
     voter.registration_zip,
-  ].filter(Boolean)
-  return parts.join(", ") || "Unknown Address"
+  ].filter(Boolean).join(", ")
 }
 
+/** Google Maps navigation URL using street address per project feedback */
 export function getGoogleMapsUrl(voter: VoterDetail): string {
   const address = formatAddress(voter)
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
 }
 
-export function getPropensityDisplay(
-  score: number | null
-): { label: string; color: string } {
-  if (score === null) return { label: "N/A", color: "bg-gray-100 text-gray-600" }
-  if (score >= 80) return { label: "High", color: "bg-green-100 text-green-800" }
-  if (score >= 50) return { label: "Med", color: "bg-yellow-100 text-yellow-800" }
-  return { label: "Low", color: "bg-red-100 text-red-800" }
+/** Propensity score display with color badge */
+export function getPropensityDisplay(score: number | null): { label: string; color: string } {
+  if (score == null) return { label: "N/A", color: "bg-gray-100 text-gray-600" }
+  if (score >= 70) return { label: `${score}%`, color: "bg-green-100 text-green-700" }
+  if (score >= 40) return { label: `${score}%`, color: "bg-yellow-100 text-yellow-700" }
+  return { label: `${score}%`, color: "bg-red-100 text-red-700" }
 }
 
-export function getPartyColor(
-  party: string | null
-): { bg: string; text: string } {
-  if (!party) return { bg: "bg-gray-100", text: "text-gray-700" }
-  const p = party.toLowerCase()
-  if (p === "dem" || p === "democrat" || p === "democratic")
-    return { bg: "bg-blue-100", text: "text-blue-800" }
-  if (p === "rep" || p === "republican")
-    return { bg: "bg-red-100", text: "text-red-800" }
-  if (p === "ind" || p === "independent" || p === "npa" || p === "unaffiliated")
-    return { bg: "bg-purple-100", text: "text-purple-800" }
+/** Party badge color */
+export function getPartyColor(party: string | null): { bg: string; text: string } {
+  if (!party) return { bg: "bg-gray-50", text: "text-gray-500" }
+  const lower = party.toLowerCase()
+  if (lower.includes("democrat")) return { bg: "bg-blue-100", text: "text-blue-800" }
+  if (lower.includes("republican")) return { bg: "bg-red-100", text: "text-red-800" }
   return { bg: "bg-gray-100", text: "text-gray-700" }
 }
