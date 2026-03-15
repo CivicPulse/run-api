@@ -1,6 +1,7 @@
 import { useAuthStore } from "@/stores/authStore"
 import { useParams } from "@tanstack/react-router"
 import { useMyCampaignRole } from "./useUsers"
+import { getConfig } from "@/config"
 import type { CampaignRole } from "@/types/auth"
 
 export type { CampaignRole }
@@ -34,7 +35,7 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
   let role: CampaignRole = "viewer"
 
   if (user) {
-    const projectId = import.meta.env.VITE_ZITADEL_PROJECT_ID ?? ""
+    const projectId = getConfig().zitadel_project_id
     const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
     const claims = user.profile as Record<string, unknown>
 

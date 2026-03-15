@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: run-api-config
-  namespace: run-api
+  namespace: civpulse-prod
 data:
   APP_NAME: "CivicPulse Run API"
   DEBUG: "false"

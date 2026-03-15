@@ -1,0 +1,85 @@
+# CI auto-updates the image tag on every main push
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-api
+  namespace: civpulse-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-api
+  template:
+    metadata:
+      labels:
+        app: run-api
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: migrate
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb8
+          command: ["python", "-m", "alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Alembic temp files
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: run-api
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb8
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "development"
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Static file serving
+            capabilities:
+              drop: ["ALL"]

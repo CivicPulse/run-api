@@ -4,13 +4,19 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - 'k8s/**'
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
   packages: write
 
 jobs:
-  build-and-push:
+  build-push:
     name: Build & Push to GHCR
     runs-on: ubuntu-latest
     steps:
@@ -37,7 +43,7 @@ jobs:
         with:
           images: ghcr.io/civicpulse/run-api
           tags: |
-            type=sha,format=long
+            type=sha,prefix=sha-
             type=raw,value=latest
             type=ref,event=tag
 
@@ -54,16 +60,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Update K8s manifest
-        if: github.ref == 'refs/heads/main'
-        run: |
-          sed -i "s|image: ghcr.io/civicpulse/run-api:.*|image: ghcr.io/civicpulse/run-api:sha-${{ github.sha }}|" k8s/deployment.yaml
+  deploy:
+    name: Update K8s Manifests
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      - name: Commit manifest update
-        if: github.ref == 'refs/heads/main'
+      - name: Update image tag in manifests
         run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE="ghcr.io/civicpulse/run-api:sha-${SHORT_SHA}"
+          sed -i "s|image: ghcr.io/civicpulse/run-api:.*|image: ${IMAGE}|g" \
+            k8s/apps/run-api-dev/deployment.yaml \
+            k8s/apps/run-api-prod/deployment.yaml
+
+      - name: Commit and push
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/deployment.yaml
-          git diff --staged --quiet || git commit -m "ci: update deployment image to sha-${{ github.sha }}"
+          git add k8s/apps/run-api-dev/deployment.yaml k8s/apps/run-api-prod/deployment.yaml
+          git diff --staged --quiet || git commit -m "chore: update run-api image to sha-${SHORT_SHA} [skip ci]"
+          git pull --rebase origin main
           git push

@@ -1,0 +1,26 @@
+# ArgoCD Application for run-api dev environment
+#
+# Apply once manually:
+#   kubectl apply -n argocd -f argocd/run-api-dev-app.yaml
+#
+# After that, ArgoCD watches k8s/apps/run-api-dev/ and auto-syncs changes.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: run-api-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/civicpulse/run-api.git
+    targetRevision: main
+    path: k8s/apps/run-api-dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: civpulse-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
