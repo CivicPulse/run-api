@@ -1,40 +1,16 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { api } from "@/api/client"
-import type { Voter, VoterFilter, VoterInteraction, VoterCreate, VoterUpdate, VoterSearchRequest } from "@/types/voter"
+import type { Voter, VoterInteraction, VoterCreate, VoterUpdate, VoterSearchBody } from "@/types/voter"
 import type { PaginatedResponse } from "@/types/common"
 
-export function useVoters(campaignId: string, filters?: VoterFilter) {
-  const searchParams = new URLSearchParams()
-  if (filters) {
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== "") {
-        if (Array.isArray(value)) {
-          for (const v of value) {
-            searchParams.append(key, v)
-          }
-        } else {
-          searchParams.set(key, String(value))
-        }
-      }
-    }
-  }
-  const queryString = searchParams.toString()
-
-  return useInfiniteQuery({
-    queryKey: ["voters", campaignId, filters],
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams(queryString)
-      if (pageParam) {
-        params.set("cursor", pageParam)
-      }
-      const qs = params.toString()
-      return api
-        .get(`api/v1/campaigns/${campaignId}/voters${qs ? `?${qs}` : ""}`)
-        .json<PaginatedResponse<Voter>>()
-    },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.pagination.has_more ? lastPage.pagination.next_cursor ?? undefined : undefined,
+export function useVoterSearch(campaignId: string, body: VoterSearchBody) {
+  return useQuery({
+    queryKey: ["voters", campaignId, "search", body],
+    queryFn: () =>
+      api
+        .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: body })
+        .json<PaginatedResponse<Voter>>(),
+    placeholderData: keepPreviousData,
     enabled: !!campaignId,
   })
 }
@@ -99,48 +75,6 @@ export function useUpdateVoter(campaignId: string, voterId: string) {
   })
 }
 
-export interface VotersPaginatedOptions {
-  cursor?: string
-  pageSize?: number
-  sortBy?: string
-  sortDir?: "asc" | "desc"
-  filters?: VoterFilter
-}
-
-/**
- * Cursor-based paginated voter query (replaces useInfiniteQuery pattern for DataTable).
- * Uses GET /voters when no filters are active, or includes filter params in query string.
- */
-export function useVotersQuery(campaignId: string, options: VotersPaginatedOptions = {}) {
-  const { cursor, pageSize = 50, sortBy, sortDir, filters } = options
-  return useQuery({
-    queryKey: ["voters", campaignId, "paginated", cursor, pageSize, sortBy, sortDir, filters],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (cursor) params.set("cursor", cursor)
-      if (pageSize) params.set("page_size", String(pageSize))
-      if (sortBy) params.set("sort_by", sortBy)
-      if (sortDir) params.set("sort_dir", sortDir)
-      if (filters) {
-        for (const [key, value] of Object.entries(filters)) {
-          if (value !== undefined && value !== null && value !== "") {
-            if (Array.isArray(value)) {
-              for (const v of value) params.append(key, v)
-            } else {
-              params.set(key, String(value))
-            }
-          }
-        }
-      }
-      const qs = params.toString()
-      return api
-        .get(`api/v1/campaigns/${campaignId}/voters${qs ? `?${qs}` : ""}`)
-        .json<PaginatedResponse<Voter>>()
-    },
-    enabled: !!campaignId,
-  })
-}
-
 // ─── Distinct Values ─────────────────────────────────────────────────────────
 
 interface DistinctValueEntry {
@@ -164,15 +98,3 @@ export function useDistinctValues(campaignId: string, fields: string[]) {
   })
 }
 
-export function useSearchVoters(campaignId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (data: VoterSearchRequest) =>
-      api
-        .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: data })
-        .json<PaginatedResponse<Voter>>(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
-    },
-  })
-}

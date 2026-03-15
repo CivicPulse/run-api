@@ -162,9 +162,12 @@ export interface VoterCreate {
 
 export interface VoterUpdate extends Partial<VoterCreate> {}
 
-export interface VoterSearchRequest {
-  filters?: VoterFilter
-  query?: string
+export interface VoterSearchBody {
+  filters: VoterFilter
+  cursor?: string
+  limit?: number
+  sort_by?: string
+  sort_dir?: "asc" | "desc"
 }
 
 export interface VoterInteraction {
