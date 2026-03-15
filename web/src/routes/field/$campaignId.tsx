@@ -1,16 +1,20 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
 import { FieldHeader } from "@/components/field/FieldHeader"
+import { useFieldMe } from "@/hooks/useFieldMe"
 
 function FieldLayout() {
   const { campaignId } = Route.useParams()
   const location = useRouterState({ select: (s) => s.location })
+  const { data } = useFieldMe(campaignId)
 
   // Hub is when there's no sub-path after the campaignId
   const isHub = location.pathname.replace(/\/$/, "") === `/field/${campaignId}`
 
-  // Derive title from the sub-path segment
+  // Derive title based on context
   let title = "Field"
-  if (!isHub) {
+  if (isHub) {
+    title = data?.campaign_name || "Field"
+  } else {
     const subPath = location.pathname
       .replace(`/field/${campaignId}/`, "")
       .split("/")[0]
