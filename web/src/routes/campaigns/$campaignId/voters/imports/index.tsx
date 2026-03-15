@@ -47,7 +47,7 @@ function ImportsHistoryPage() {
 
   const columns: ColumnDef<ImportJob>[] = [
     {
-      accessorKey: "filename",
+      accessorKey: "original_filename",
       header: "Filename",
     },
     {
@@ -63,10 +63,6 @@ function ImportsHistoryPage() {
     {
       accessorKey: "imported_rows",
       header: "Imported",
-    },
-    {
-      accessorKey: "error_count",
-      header: "Errors",
     },
     {
       accessorKey: "phones_created",

@@ -10,14 +10,17 @@ export type ImportStatus =
 export interface ImportJob {
   id: string
   campaign_id: string
-  filename: string
+  original_filename: string
   status: ImportStatus
   total_rows: number | null
   imported_rows: number
   skipped_rows: number
-  error_count: number
   error_report_key: string | null
+  error_message: string | null
   phones_created: number | null
+  source_type: string
+  field_mapping: Record<string, string> | null
+  created_by: string
   created_at: string
   updated_at: string
 }
