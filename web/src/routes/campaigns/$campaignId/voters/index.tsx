@@ -216,6 +216,14 @@ function buildFilterChips(
     })
   }
 
+  if (filters.registration_county) {
+    chips.push({
+      label: `County: ${filters.registration_county}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ registration_county: undefined }),
+    })
+  }
+
   if (filters.precinct) {
     chips.push({
       label: `Precinct: ${filters.precinct}`,
@@ -281,6 +289,14 @@ function buildFilterChips(
       label: `Tags (all): ${filters.tags.length}`,
       className: CATEGORY_CLASSES.other,
       onDismiss: () => update({ tags: undefined }),
+    })
+  }
+
+  if (filters.tags_any && filters.tags_any.length > 0) {
+    chips.push({
+      label: `Tags (any): ${filters.tags_any.length}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ tags_any: undefined }),
     })
   }
 

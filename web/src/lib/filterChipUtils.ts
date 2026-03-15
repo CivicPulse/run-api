@@ -180,6 +180,10 @@ export function buildStaticChipDescriptors(filters: VoterFilter): ChipDescriptor
     push(`Zip: ${filters.registration_zip}`, "location")
   }
 
+  if (filters.registration_county) {
+    push(`County: ${filters.registration_county}`, "location")
+  }
+
   if (filters.precinct) {
     push(`Precinct: ${filters.precinct}`, "location")
   }

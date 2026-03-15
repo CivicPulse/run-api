@@ -147,6 +147,9 @@ function buildDialogChips(
   if (filters.registration_zip) {
     chips.push({ label: `Zip: ${filters.registration_zip}`, className: CATEGORY_CLASSES.location, onDismiss: () => update({ registration_zip: undefined }) })
   }
+  if (filters.registration_county) {
+    chips.push({ label: `County: ${filters.registration_county}`, className: CATEGORY_CLASSES.location, onDismiss: () => update({ registration_county: undefined }) })
+  }
   if (filters.precinct) {
     chips.push({ label: `Precinct: ${filters.precinct}`, className: CATEGORY_CLASSES.location, onDismiss: () => update({ precinct: undefined }) })
   }
@@ -174,6 +177,9 @@ function buildDialogChips(
   // ── Other ───────────────────────────────────────────────────────────────
   if (filters.tags && filters.tags.length > 0) {
     chips.push({ label: `Tags (all): ${filters.tags.length}`, className: CATEGORY_CLASSES.other, onDismiss: () => update({ tags: undefined }) })
+  }
+  if (filters.tags_any && filters.tags_any.length > 0) {
+    chips.push({ label: `Tags (any): ${filters.tags_any.length}`, className: CATEGORY_CLASSES.other, onDismiss: () => update({ tags_any: undefined }) })
   }
   if (filters.registered_after) {
     chips.push({ label: `Registered after: ${filters.registered_after}`, className: CATEGORY_CLASSES.other, onDismiss: () => update({ registered_after: undefined }) })
