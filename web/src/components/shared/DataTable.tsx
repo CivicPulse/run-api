@@ -72,8 +72,9 @@ export function DataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const hasPaginationProps =
-    hasNextPage !== undefined || hasPreviousPage !== undefined
+  const showPagination =
+    (hasNextPage !== undefined || hasPreviousPage !== undefined) &&
+    (hasNextPage || hasPreviousPage)
 
   return (
     <div>
@@ -153,7 +154,7 @@ export function DataTable<TData>({
         </TableBody>
       </Table>
 
-      {hasPaginationProps && (
+      {showPagination && (
         <div className="mt-4">
           <PaginationControls
             hasNextPage={hasNextPage ?? false}

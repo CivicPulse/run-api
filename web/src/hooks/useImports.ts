@@ -56,7 +56,9 @@ export function useInitiateImport(campaignId: string) {
   return useMutation({
     mutationFn: (data: { filename: string }) =>
       api
-        .post(`api/v1/campaigns/${campaignId}/imports`, { json: data })
+        .post(`api/v1/campaigns/${campaignId}/imports`, {
+          searchParams: { original_filename: data.filename },
+        })
         .json<ImportUploadResponse>(),
     onSuccess: () => qc.invalidateQueries({ queryKey: importKeys.all(campaignId) }),
   })
@@ -137,7 +139,7 @@ export function useImports(campaignId: string) {
     refetchInterval: (query) => {
       const items = query.state.data?.items ?? []
       const hasActive = items.some(
-        (j) => j.status === "queued" || j.status === "processing",
+        (j) => j.status !== "completed" && j.status !== "failed",
       )
       return hasActive ? 3000 : false
     },
