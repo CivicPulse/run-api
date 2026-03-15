@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-10)
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
-- 🚧 **v1.3 Voter Model & Import Enhancement** — Phases 23-28 (in progress)
+- 🚧 **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (in progress)
 
 ## Phases
 
@@ -65,6 +65,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 - [x] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping (completed 2026-03-14)
 - [x] **Phase 27: Wire Advanced Filters to Backend** - Fix VoterSearchRequest body format, wire voter list to POST /voters/search, E2E filter validation (completed 2026-03-15)
 - [x] **Phase 28: Filter Chips & Frontend Type Coverage** - Add filter chips for 12 new dimensions, update ImportJob and VoterCreate TS types (completed 2026-03-15)
+- [ ] **Phase 29: Integration Polish & Tech Debt Cleanup** - Fix ImportJob TS type, add tags_any chip, registration_county UI, sort_by type safety, docs fix
 
 ## Phase Details
 
@@ -168,6 +169,18 @@ Plans:
 - [ ] 28-01-PLAN.md — Shared filterChipUtils utility with unit tests, VoterCreate/ImportJob type alignment, phones_created import UI display
 - [ ] 28-02-PLAN.md — Wire filter chips into voter list page, voter list detail page, and dynamic list dialogs; Playwright E2E tests
 
+### Phase 29: Integration Polish & Tech Debt Cleanup
+**Goal**: Fix integration mismatches between frontend types and backend schemas, surface missing UI controls, and clean up documentation
+**Depends on**: Phase 28
+**Requirements**: (none — all requirements satisfied; this closes integration gaps and tech debt)
+**Gap Closure:** Closes INT-01, INT-02, INT-03 from v1.3 milestone audit + type safety and documentation tech debt
+**Success Criteria** (what must be TRUE):
+  1. Import history table displays Filename column correctly (using `original_filename` from backend) and no longer shows blank Errors column
+  2. Selecting a `tags_any` filter shows a dismissible chip on both the voter list page and dynamic list dialogs
+  3. VoterFilterBuilder Location section includes a Registration County text input that filters voters by `registration_county`
+  4. `VoterSearchBody.sort_by` is typed as a union of valid column names, and TypeScript compilation succeeds
+  5. REQUIREMENTS.md Coverage section accurately reflects 27/27 satisfied with 0 pending
+
 ## Progress
 
 **Execution Order:**
@@ -203,3 +216,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
 | 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
 | 27. Wire Advanced Filters to Backend | 3/3 | Complete    | 2026-03-15 | - |
 | 28. Filter Chips & Frontend Type Coverage | 2/2 | Complete    | 2026-03-15 | - |
+| 29. Integration Polish & Tech Debt Cleanup | v1.3 | 0/1 | Pending | - |

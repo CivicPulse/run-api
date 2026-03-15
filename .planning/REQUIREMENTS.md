@@ -104,8 +104,8 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 **Coverage:**
 - v1.3 requirements: 27 total
-- Satisfied: 21
-- Pending (gap closure): 6 (FILT-01..05, FRNT-02)
+- Satisfied: 27
+- Pending: 0
 - Mapped to phases: 27
 - Unmapped: 0
 
