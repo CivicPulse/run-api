@@ -4,6 +4,7 @@ import {
   getPropensityDisplay,
   getPartyColor,
   OUTCOME_LABELS,
+  CANVASSING_OUTCOMES,
 } from "@/types/canvassing"
 import { OutcomeGrid } from "@/components/field/OutcomeGrid"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +14,7 @@ interface VoterCardProps {
   entry: EnrichedWalkListEntry
   isActive: boolean
   recordedOutcome?: string
-  onOutcomeSelect?: (result: DoorKnockResultCode) => void
+  onOutcomeSelect?: (result: string) => void
 }
 
 function ordinal(n: number): string {
@@ -101,7 +102,7 @@ export function VoterCard({
       {/* Active state: show outcome grid */}
       {isActive && !isCompleted && !isSkipped && onOutcomeSelect && (
         <div className="mt-3">
-          <OutcomeGrid onSelect={onOutcomeSelect} />
+          <OutcomeGrid outcomes={CANVASSING_OUTCOMES} onSelect={onOutcomeSelect} />
         </div>
       )}
 

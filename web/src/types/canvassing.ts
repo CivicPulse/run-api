@@ -1,3 +1,5 @@
+import type { OutcomeConfig } from "@/types/calling"
+
 export type DoorKnockResultCode =
   | "not_home"
   | "refused"
@@ -79,6 +81,19 @@ export const OUTCOME_LABELS: Record<DoorKnockResultCode, string> = {
   come_back_later: "Come Back",
   inaccessible: "Inaccessible",
 }
+
+/** Canvassing outcome configs for generalized OutcomeGrid */
+export const CANVASSING_OUTCOMES: OutcomeConfig[] = [
+  { code: "supporter",       label: "Supporter",    color: OUTCOME_COLORS.supporter },
+  { code: "undecided",       label: "Undecided",    color: OUTCOME_COLORS.undecided },
+  { code: "not_home",        label: "Not Home",     color: OUTCOME_COLORS.not_home },
+  { code: "come_back_later", label: "Come Back",    color: OUTCOME_COLORS.come_back_later },
+  { code: "refused",         label: "Refused",      color: OUTCOME_COLORS.refused },
+  { code: "opposed",         label: "Opposed",      color: OUTCOME_COLORS.opposed },
+  { code: "moved",           label: "Moved",        color: OUTCOME_COLORS.moved },
+  { code: "deceased",        label: "Deceased",     color: OUTCOME_COLORS.deceased },
+  { code: "inaccessible",    label: "Inaccessible", color: OUTCOME_COLORS.inaccessible },
+]
 
 /** Group flat entries list by household_key into address-based Household objects */
 export function groupByHousehold(entries: EnrichedWalkListEntry[]): Household[] {

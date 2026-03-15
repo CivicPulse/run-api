@@ -1,6 +1,5 @@
 import {
   type Household,
-  type DoorKnockResultCode,
   getGoogleMapsUrl,
 } from "@/types/canvassing"
 import { VoterCard } from "@/components/field/VoterCard"
@@ -16,7 +15,7 @@ interface HouseholdCardProps {
   onOutcomeSelect: (
     entryId: string,
     voterId: string,
-    result: DoorKnockResultCode
+    result: string
   ) => void
   onSkip: () => void
 }

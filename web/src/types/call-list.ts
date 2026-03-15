@@ -36,6 +36,7 @@ export interface CallListEntry {
   claimed_by: string | null
   claimed_at: string | null
   last_attempt_at: string | null
+  phone_attempts: Record<string, { result: string; at: string }> | null
 }
 
 export interface CallListCreate {

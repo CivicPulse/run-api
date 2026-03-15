@@ -124,8 +124,8 @@ function Canvassing() {
   }, [handlePostSurveyAdvance])
 
   const handleOutcomeWithBulk = useCallback(
-    (entryId: string, voterId: string, result: DoorKnockResultCode) => {
-      const response = handleOutcome(entryId, voterId, result)
+    (entryId: string, voterId: string, result: string) => {
+      const response = handleOutcome(entryId, voterId, result as DoorKnockResultCode)
 
       // ARIA: announce outcome
       const voterEntry = currentHousehold?.entries.find(
@@ -137,7 +137,7 @@ function Canvassing() {
             .filter(Boolean)
             .join(" ") || "Unknown Voter"
         setAriaAnnouncement(
-          `${OUTCOME_LABELS[result]} recorded for ${voterName}.`,
+          `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
         )
       }
 
@@ -176,7 +176,7 @@ function Canvassing() {
       }
 
       // Check for survey trigger
-      if (SURVEY_TRIGGER_OUTCOMES.has(result) && scriptId) {
+      if (SURVEY_TRIGGER_OUTCOMES.has(result as DoorKnockResultCode) && scriptId) {
         setSurveyVoterId(voterId)
         setSurveyOpen(true)
         return
