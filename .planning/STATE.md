@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
-status: ready_to_plan
-stopped_at: null
-last_updated: "2026-03-15"
+status: planning
+stopped_at: Phase 30 context gathered
+last_updated: "2026-03-15T19:36:49.340Z"
 last_activity: 2026-03-15 — Created v1.4 roadmap (6 phases, 38 requirements)
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 30 of 35 (Field Layout Shell & Volunteer Landing)
+Phase: 30 of 36 (Field Layout Shell & Volunteer Landing)
 Plan: 0 of 0 in current phase (plans TBD)
 Status: Ready to plan
 Last activity: 2026-03-15 — Created v1.4 roadmap (6 phases, 38 requirements)
 
-Progress: [░░░░░░░░░░] 0% (0/6 v1.4 phases)
+Progress: [░░░░░░░░░░] 0% (0/7 v1.4 phases)
 
 ## Performance Metrics
 
@@ -47,7 +47,7 @@ Progress: [░░░░░░░░░░] 0% (0/6 v1.4 phases)
 | v1.1 Dev/Deploy | 4 | 7 | 2 days |
 | v1.2 Full UI | 11 | 43 | 4 days |
 | v1.3 Voter Model | 7 | 18 | 3 days |
-| v1.4 Field Mode | 6 | TBD | — |
+| v1.4 Field Mode | 7 | TBD | — |
 
 ## Accumulated Context
 
@@ -61,6 +61,10 @@ Recent decisions affecting current work:
 - [v1.4 Research]: Zustand persist + sessionStorage for wizard state (not useState)
 - [v1.4 Research]: Canvassing before phone banking (produces shared components)
 
+### Roadmap Evolution
+
+- Phase 36 added: Google Maps Navigation Link for Canvassing
+
 ### Blockers/Concerns
 
 - [Research flag]: Verify `useWalkListEntries` performance for 500+ entry walk lists on 3G
@@ -69,6 +73,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15
-Stopped at: Created v1.4 roadmap — ready to plan Phase 30
-Resume file: None
+Last session: 2026-03-15T19:36:49.334Z
+Stopped at: Phase 30 context gathered
+Resume file: .planning/phases/30-field-layout-shell-volunteer-landing/30-CONTEXT.md
