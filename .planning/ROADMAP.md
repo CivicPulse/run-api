@@ -110,12 +110,14 @@ Plans:
   3. Volunteer can answer inline survey questions after a "Contact Made" outcome, with the option to skip
   4. Volunteer sees progress ("12 of 47 doors") and can resume where they left off after a phone interruption or app switch
   5. Screen reader users hear state transitions announced via ARIA live regions as the wizard advances between doors
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 31-01: TBD
-- [ ] 31-02: TBD
-- [ ] 31-03: TBD
+- [ ] 31-01-PLAN.md — Backend enriched entries endpoint + frontend types, Zustand store, React Query hooks
+- [ ] 31-02-PLAN.md — Shared field components: OutcomeGrid, VoterCard, HouseholdCard, FieldProgress
+- [ ] 31-03-PLAN.md — Canvassing wizard route with household navigation, outcome recording, auto-advance
+- [ ] 31-04-PLAN.md — InlineSurvey, ResumePrompt, DoorListView + ARIA live regions
+- [ ] 31-05-PLAN.md — Playwright e2e tests and Vitest unit tests for all requirements
 
 ### Phase 32: Phone Banking Field Mode
 **Goal**: Volunteers can work through a phone banking session from their phone, calling voters and recording outcomes without switching between apps
@@ -216,7 +218,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete    | 2026-03-15 | - |
-| 31. Canvassing Wizard | v1.4 | 0/0 | Not started | - |
+| 31. Canvassing Wizard | v1.4 | 0/5 | Not started | - |
 | 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
 | 34. Guided Onboarding Tour | v1.4 | 0/0 | Not started | - |
