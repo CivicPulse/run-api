@@ -180,11 +180,16 @@ Plans:
   3. VoterFilterBuilder Location section includes a Registration County text input that filters voters by `registration_county`
   4. `VoterSearchBody.sort_by` is typed as a union of valid column names, and TypeScript compilation succeeds
   5. REQUIREMENTS.md Coverage section accurately reflects 27/27 satisfied with 0 pending
+**Plans**: 2 plans
+
+Plans:
+- [ ] 29-01-PLAN.md — ImportJob type alignment (rename filename, remove error_count, add missing fields), import table and progress component fixes
+- [ ] 29-02-PLAN.md — tags_any and registration_county chips, Registration County filter input, sort_by type narrowing, docs update
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
+Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28 → 29
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -214,6 +219,6 @@ Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
 | 24. Import Pipeline Enhancement | v1.3 | 3/3 | Complete | 2026-03-13 |
 | 25. Filter Builder & Query Enhancement | v1.3 | 2/2 | Complete | 2026-03-14 |
 | 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
-| 27. Wire Advanced Filters to Backend | 3/3 | Complete    | 2026-03-15 | - |
-| 28. Filter Chips & Frontend Type Coverage | 2/2 | Complete    | 2026-03-15 | - |
-| 29. Integration Polish & Tech Debt Cleanup | v1.3 | 0/1 | Pending | - |
+| 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
+| 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
+| 29. Integration Polish & Tech Debt Cleanup | v1.3 | 0/2 | Pending | - |
