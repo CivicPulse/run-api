@@ -28,9 +28,7 @@ class VoterPhone(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     value: Mapped[str] = mapped_column(String(50), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # home/work/cell
     is_primary: Mapped[bool] = mapped_column(default=False)
@@ -50,9 +48,7 @@ class VoterEmail(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     value: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # home/work
     is_primary: Mapped[bool] = mapped_column(default=False)
@@ -72,17 +68,13 @@ class VoterAddress(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("campaigns.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     address_line1: Mapped[str] = mapped_column(String(500), nullable=False)
     address_line2: Mapped[str | None] = mapped_column(String(500))
     city: Mapped[str] = mapped_column(String(255), nullable=False)
     state: Mapped[str] = mapped_column(String(2), nullable=False)
     zip_code: Mapped[str] = mapped_column(String(10), nullable=False)
-    type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # home/work/mailing
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # home/work/mailing
     is_primary: Mapped[bool] = mapped_column(default=False)
     source: Mapped[str] = mapped_column(String(50), nullable=False)  # import/manual
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -96,7 +96,7 @@ function SurveysIndex() {
           {scripts.map((script) => (
             <Card key={script.id} className="group relative">
               <Link
-                to={`/campaigns/${campaignId}/surveys/${script.id}` as any}
+                to={`/campaigns/${campaignId}/surveys/${script.id}` as string}
                 className="absolute inset-0 z-10"
               />
               <CardHeader>

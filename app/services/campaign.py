@@ -110,9 +110,7 @@ class CampaignService:
                 )
             raise
 
-    async def get_campaign(
-        self, db: AsyncSession, campaign_id: uuid.UUID
-    ) -> Campaign:
+    async def get_campaign(self, db: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
         """Get a campaign by ID.
 
         Args:
@@ -125,9 +123,7 @@ class CampaignService:
         Raises:
             CampaignNotFoundError: If campaign does not exist.
         """
-        result = await db.execute(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
         campaign = result.scalar_one_or_none()
         if campaign is None:
             raise CampaignNotFoundError(campaign_id)
@@ -151,9 +147,11 @@ class CampaignService:
         Returns:
             Tuple of (campaigns list, pagination metadata).
         """
-        query = select(Campaign).where(
-            Campaign.status != CampaignStatus.DELETED
-        ).order_by(Campaign.created_at.desc(), Campaign.id.desc())
+        query = (
+            select(Campaign)
+            .where(Campaign.status != CampaignStatus.DELETED)
+            .order_by(Campaign.created_at.desc(), Campaign.id.desc())
+        )
 
         if cursor:
             parts = cursor.split("|", 1)
@@ -162,10 +160,7 @@ class CampaignService:
                 cursor_id = uuid.UUID(parts[1])
                 query = query.where(
                     (Campaign.created_at < cursor_ts)
-                    | (
-                        (Campaign.created_at == cursor_ts)
-                        & (Campaign.id < cursor_id)
-                    )
+                    | ((Campaign.created_at == cursor_ts) & (Campaign.id < cursor_id))
                 )
 
         # Fetch one extra to check has_more
@@ -223,9 +218,7 @@ class CampaignService:
         Raises:
             CampaignNotFoundError: If campaign does not exist.
         """
-        result = await db.execute(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
         campaign = result.scalar_one_or_none()
         if campaign is None:
             raise CampaignNotFoundError(campaign_id)
@@ -275,9 +268,7 @@ class CampaignService:
             InsufficientPermissionsError: If user is not the campaign creator.
             ZitadelUnavailableError: If ZITADEL is unreachable.
         """
-        result = await db.execute(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
         campaign = result.scalar_one_or_none()
         if campaign is None:
             raise CampaignNotFoundError(campaign_id)

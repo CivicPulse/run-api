@@ -121,7 +121,10 @@ class VolunteerService:
             )
         )
         if existing.scalar_one_or_none() is not None:
-            msg = f"User {user_id} already registered as volunteer for campaign {campaign_id}"
+            msg = (
+                f"User {user_id} already registered as"
+                f" volunteer for campaign {campaign_id}"
+            )
             raise ValueError(msg)
 
         return await self.create_volunteer(

@@ -56,7 +56,9 @@ class CanvassService:
         )
         entry = entry_result.scalar_one_or_none()
         if entry is None:
-            msg = f"Entry {data.walk_list_entry_id} not found in walk list {walk_list_id}"
+            msg = (
+                f"Entry {data.walk_list_entry_id} not found in walk list {walk_list_id}"
+            )
             raise ValueError(msg)
 
         # Record VoterInteraction with DOOR_KNOCK type
@@ -86,7 +88,8 @@ class CanvassService:
 
         await session.flush()
 
-        # Compute attempt_number on read: count of DOOR_KNOCK interactions for this voter
+        # Compute attempt_number on read: count of DOOR_KNOCK
+        # interactions for this voter
         count_result = await session.execute(
             select(func.count(VoterInteraction.id)).where(
                 VoterInteraction.voter_id == data.voter_id,

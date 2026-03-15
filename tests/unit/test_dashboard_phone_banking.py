@@ -121,7 +121,8 @@ async def test_phone_banking_summary_returns_schema():
         mappings_one=_summary_row(calls=80, contacts=30),
     )
     result = await PhoneBankingDashboardService.get_summary(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert isinstance(result, PhoneBankingSummary)
@@ -137,7 +138,8 @@ async def test_phone_banking_summary_empty_returns_zeros():
         mappings_one=_summary_row(calls=0, contacts=0),
     )
     result = await PhoneBankingDashboardService.get_summary(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert result.calls_made == 0
@@ -155,7 +157,8 @@ async def test_phone_banking_by_session_returns_list():
     ]
     session = _mock_session(mappings_all=rows)
     result = await PhoneBankingDashboardService.get_by_session(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 2
@@ -172,7 +175,8 @@ async def test_phone_banking_by_caller_returns_list():
     ]
     session = _mock_session(mappings_all=rows)
     result = await PhoneBankingDashboardService.get_by_caller(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 2
@@ -185,7 +189,8 @@ async def test_phone_banking_by_call_list_returns_list():
     rows = [_call_list_row(call_list_name="List A")]
     session = _mock_session(mappings_all=rows)
     result = await PhoneBankingDashboardService.get_by_call_list(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 1

@@ -6,7 +6,8 @@ from pathlib import Path
 
 
 def test_all_models_imported_in_base():
-    """Every .py file in app/models/ (except __init__.py) has a matching import in base.py."""
+    """Every .py file in app/models/ (except __init__.py) has
+    a matching import in base.py."""
     models_dir = Path("app/models")
     base_path = Path("app/db/base.py")
     base_content = base_path.read_text()

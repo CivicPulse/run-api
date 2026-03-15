@@ -1,12 +1,12 @@
 import { create } from "zustand"
 import { UserManager, WebStorageStateStore } from "oidc-client-ts"
 import type { User } from "oidc-client-ts"
+import { loadConfig } from "@/config"
 
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
   isInitialized: boolean
-  userManager: UserManager
 
   initialize: () => Promise<void>
   login: () => Promise<void>
@@ -15,63 +15,80 @@ interface AuthState {
   getAccessToken: () => string | null
 }
 
-const userManager = new UserManager({
-  authority: import.meta.env.VITE_ZITADEL_ISSUER || "https://auth.civpulse.org",
-  client_id: import.meta.env.VITE_ZITADEL_CLIENT_ID || "",
-  redirect_uri: `${globalThis.location.origin}/callback`,
-  post_logout_redirect_uri: globalThis.location.origin,
-  response_type: "code",
-  scope: `openid profile email urn:zitadel:iam:user:resourceowner urn:zitadel:iam:org:project:id:${import.meta.env.VITE_ZITADEL_PROJECT_ID}:aud urn:zitadel:iam:org:project:id:${import.meta.env.VITE_ZITADEL_PROJECT_ID}:roles urn:zitadel:iam:org:projects:roles`,
-  automaticSilentRenew: true,
-  userStore: new WebStorageStateStore({ store: localStorage }),
-})
+// UserManager created lazily in initialize() after fetching runtime config
+let _userManager: UserManager | null = null
+let _initPromise: Promise<void> | null = null
+
+async function ensureUserManager(): Promise<UserManager> {
+  if (_initPromise) await _initPromise
+  if (!_userManager)
+    throw new Error("Auth not initialized — call initialize() first")
+  return _userManager
+}
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isInitialized: false,
-  userManager,
 
   initialize: async () => {
-    // Guard against duplicate calls (e.g. StrictMode double-mount)
-    // which would register event listeners multiple times
     if (get().isInitialized) return
+    if (_initPromise) return _initPromise
 
-    try {
-      const user = await userManager.getUser()
-      if (user && !user.expired) {
-        set({ user, isAuthenticated: true })
+    _initPromise = (async () => {
+      const config = await loadConfig()
+      _userManager = new UserManager({
+        authority: config.zitadel_issuer,
+        client_id: config.zitadel_client_id,
+        redirect_uri: `${globalThis.location.origin}/callback`,
+        post_logout_redirect_uri: globalThis.location.origin,
+        response_type: "code",
+        scope: `openid profile email urn:zitadel:iam:user:resourceowner urn:zitadel:iam:org:project:id:${config.zitadel_project_id}:aud urn:zitadel:iam:org:project:id:${config.zitadel_project_id}:roles urn:zitadel:iam:org:projects:roles`,
+        automaticSilentRenew: true,
+        userStore: new WebStorageStateStore({ store: localStorage }),
+      })
+
+      try {
+        const user = await _userManager.getUser()
+        if (user && !user.expired) {
+          set({ user, isAuthenticated: true })
+        }
+      } catch {
+        // No stored user or expired
       }
-    } catch {
-      // No stored user or expired
-    }
-    set({ isInitialized: true })
+      set({ isInitialized: true })
 
-    // Listen for token renewal
-    userManager.events.addUserLoaded((user) => {
-      set({ user, isAuthenticated: true })
-    })
-    userManager.events.addUserUnloaded(() => {
-      set({ user: null, isAuthenticated: false })
-    })
-    userManager.events.addAccessTokenExpired(() => {
-      // Clear local state only — don't call signoutRedirect() which
-      // destroys all OIDC state (including pending callback state)
-      set({ user: null, isAuthenticated: false })
-    })
+      // Listen for token renewal
+      _userManager.events.addUserLoaded((user) => {
+        set({ user, isAuthenticated: true })
+      })
+      _userManager.events.addUserUnloaded(() => {
+        set({ user: null, isAuthenticated: false })
+      })
+      _userManager.events.addAccessTokenExpired(() => {
+        // Clear local state only — don't call signoutRedirect() which
+        // destroys all OIDC state (including pending callback state)
+        set({ user: null, isAuthenticated: false })
+      })
+    })()
+
+    return _initPromise
   },
 
   login: async () => {
-    await userManager.signinRedirect()
+    const mgr = await ensureUserManager()
+    await mgr.signinRedirect()
   },
 
   handleCallback: async (url?: string) => {
-    const user = await userManager.signinRedirectCallback(url)
+    const mgr = await ensureUserManager()
+    const user = await mgr.signinRedirectCallback(url)
     set({ user, isAuthenticated: true })
   },
 
   logout: async () => {
-    await userManager.signoutRedirect()
+    const mgr = await ensureUserManager()
+    await mgr.signoutRedirect()
     set({ user: null, isAuthenticated: false })
   },
 

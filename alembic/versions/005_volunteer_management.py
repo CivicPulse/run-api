@@ -65,9 +65,7 @@ def upgrade() -> None:
         sa.Column("emergency_contact_name", sa.String(255), nullable=True),
         sa.Column("emergency_contact_phone", sa.String(50), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="pending"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="pending"),
         sa.Column("skills", ARRAY(sa.String()), nullable=False, server_default="{}"),
         sa.Column(
             "created_by",
@@ -86,12 +84,8 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_volunteers_campaign_id", "volunteers", ["campaign_id"]
-    )
-    op.create_index(
-        "ix_volunteers_user_id", "volunteers", ["user_id"]
-    )
+    op.create_index("ix_volunteers_campaign_id", "volunteers", ["campaign_id"])
+    op.create_index("ix_volunteers_user_id", "volunteers", ["user_id"])
 
     # -- 2. Create volunteer_tags table --
     op.create_table(
@@ -115,9 +109,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_volunteer_tags_campaign_id", "volunteer_tags", ["campaign_id"]
-    )
+    op.create_index("ix_volunteer_tags_campaign_id", "volunteer_tags", ["campaign_id"])
 
     # -- 3. Create volunteer_tag_members table --
     op.create_table(
@@ -178,9 +170,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.String(1000), nullable=True),
         sa.Column("type", sa.String(50), nullable=False),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="scheduled"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="scheduled"),
         sa.Column("start_at", sa.DateTime(), nullable=False),
         sa.Column("end_at", sa.DateTime(), nullable=False),
         sa.Column("max_volunteers", sa.Integer(), nullable=False),
@@ -220,12 +210,8 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_shifts_campaign_id", "shifts", ["campaign_id"]
-    )
-    op.create_index(
-        "ix_shifts_campaign_start", "shifts", ["campaign_id", "start_at"]
-    )
+    op.create_index("ix_shifts_campaign_id", "shifts", ["campaign_id"])
+    op.create_index("ix_shifts_campaign_start", "shifts", ["campaign_id", "start_at"])
 
     # -- 6. Create shift_volunteers table --
     op.create_table(
@@ -271,13 +257,9 @@ def upgrade() -> None:
             sa.DateTime(),
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "shift_id", "volunteer_id", name="uq_shift_volunteer"
-        ),
+        sa.UniqueConstraint("shift_id", "volunteer_id", name="uq_shift_volunteer"),
     )
-    op.create_index(
-        "ix_shift_volunteers_shift_id", "shift_volunteers", ["shift_id"]
-    )
+    op.create_index("ix_shift_volunteers_shift_id", "shift_volunteers", ["shift_id"])
 
     # -- 7. RLS policies --
     # Direct campaign_id isolation
@@ -285,25 +267,15 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         rls_using = (
-            "campaign_id = "
-            "current_setting('app.current_campaign_id', true)::uuid"
+            "campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         )
-        op.execute(
-            f"CREATE POLICY {table}_isolation ON {table} "
-            f"USING ({rls_using})"
-        )
-        op.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user"
-        )
+        op.execute(f"CREATE POLICY {table}_isolation ON {table} USING ({rls_using})")
+        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user")
 
     # Subquery isolation for child tables
     # volunteer_tag_members via volunteer_tags
-    op.execute(
-        "ALTER TABLE volunteer_tag_members ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE volunteer_tag_members FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE volunteer_tag_members ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE volunteer_tag_members FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY volunteer_tag_members_isolation ON volunteer_tag_members "
         "USING (tag_id IN ("
@@ -316,12 +288,8 @@ def upgrade() -> None:
     )
 
     # volunteer_availability via volunteers
-    op.execute(
-        "ALTER TABLE volunteer_availability ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE volunteer_availability FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE volunteer_availability ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE volunteer_availability FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY volunteer_availability_isolation ON volunteer_availability "
         "USING (volunteer_id IN ("
@@ -334,12 +302,8 @@ def upgrade() -> None:
     )
 
     # shift_volunteers via shifts
-    op.execute(
-        "ALTER TABLE shift_volunteers ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE shift_volunteers FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE shift_volunteers ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE shift_volunteers FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY shift_volunteers_isolation ON shift_volunteers "
         "USING (shift_id IN ("
@@ -347,9 +311,7 @@ def upgrade() -> None:
         "WHERE campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         "))"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON shift_volunteers TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON shift_volunteers TO app_user")
 
 
 def downgrade() -> None:

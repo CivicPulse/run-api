@@ -312,7 +312,6 @@ export function VoterFilterBuilder({
   // Attempt to get campaignId from URL params if not provided as prop
   let resolvedCampaignId = campaignIdProp ?? ""
   try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const params = useParams({ strict: false }) as { campaignId?: string }
     if (!resolvedCampaignId && params.campaignId) {
       resolvedCampaignId = params.campaignId

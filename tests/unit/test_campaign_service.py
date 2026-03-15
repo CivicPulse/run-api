@@ -92,9 +92,7 @@ class TestZitadelService:
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch(
-                "app.services.zitadel.httpx.AsyncClient", return_value=mock_client
-            ),
+            patch("app.services.zitadel.httpx.AsyncClient", return_value=mock_client),
             pytest.raises(ZitadelUnavailableError),
         ):
             await zitadel_service.create_organization("Test Campaign")
@@ -248,9 +246,7 @@ class TestCampaignService:
         )
 
         assert sample_campaign.status == CampaignStatus.DELETED
-        mock_zitadel.deactivate_organization.assert_awaited_once_with(
-            "zitadel-org-123"
-        )
+        mock_zitadel.deactivate_organization.assert_awaited_once_with("zitadel-org-123")
         mock_db.commit.assert_awaited()
 
     async def test_delete_campaign_only_owner(

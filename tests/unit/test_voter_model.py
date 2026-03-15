@@ -7,23 +7,31 @@ that VoterPhone has the required unique constraint. No database connection neede
 
 from __future__ import annotations
 
-import pytest
 from sqlalchemy import SmallInteger, String, UniqueConstraint
 
 
 class TestPropensityColumns:
     """VMOD-01: Voter model has propensity score columns as SmallInteger."""
 
-    def test_propensity_columns_exist_with_smallinteger_type(self):
-        """Voter model exposes propensity_general, propensity_primary, propensity_combined as SmallInteger columns."""
+    def test_propensity_columns_exist_with_smallinteger_type(
+        self,
+    ):
+        """Voter model exposes propensity columns as
+        SmallInteger columns."""
         from app.models.voter import Voter
 
         table = Voter.__table__
-        for col_name in ("propensity_general", "propensity_primary", "propensity_combined"):
+        for col_name in (
+            "propensity_general",
+            "propensity_primary",
+            "propensity_combined",
+        ):
             assert col_name in table.c, f"Column {col_name!r} missing from Voter model"
             col = table.c[col_name]
             assert isinstance(col.type, SmallInteger), (
-                f"Column {col_name!r} should be SmallInteger, got {type(col.type).__name__}"
+                f"Column {col_name!r} should be"
+                f" SmallInteger, got"
+                f" {type(col.type).__name__}"
             )
             assert col.nullable is True, f"Column {col_name!r} should be nullable"
 
@@ -32,7 +40,8 @@ class TestMailingAddressColumns:
     """VMOD-02: Voter model has all 8 mailing address columns."""
 
     def test_mailing_address_columns_exist(self):
-        """Voter model exposes all 8 mailing address columns with correct String types."""
+        """Voter model exposes all 8 mailing address
+        columns with correct String types."""
         from app.models.voter import Voter
 
         table = Voter.__table__
@@ -53,7 +62,9 @@ class TestMailingAddressColumns:
                 f"Column {col_name!r} should be String, got {type(col.type).__name__}"
             )
             assert col.type.length == expected_length, (
-                f"Column {col_name!r} length should be {expected_length}, got {col.type.length}"
+                f"Column {col_name!r} length should be"
+                f" {expected_length},"
+                f" got {col.type.length}"
             )
             assert col.nullable is True, f"Column {col_name!r} should be nullable"
 
@@ -62,11 +73,14 @@ class TestSpokenLanguageColumn:
     """VMOD-03: Voter model has spoken_language column."""
 
     def test_spoken_language_column_exists_as_string(self):
-        """Voter model exposes spoken_language as a nullable String(100) column."""
+        """Voter model exposes spoken_language as a
+        nullable String(100) column."""
         from app.models.voter import Voter
 
         table = Voter.__table__
-        assert "spoken_language" in table.c, "Column 'spoken_language' missing from Voter model"
+        assert "spoken_language" in table.c, (
+            "Column 'spoken_language' missing from Voter model"
+        )
         col = table.c["spoken_language"]
         assert isinstance(col.type, String), (
             f"spoken_language should be String, got {type(col.type).__name__}"
@@ -78,10 +92,13 @@ class TestSpokenLanguageColumn:
 
 
 class TestDemographicColumns:
-    """VMOD-04: Voter model has marital_status, military_status, party_change_indicator."""
+    """VMOD-04: Voter model has marital_status,
+    military_status, party_change_indicator."""
 
     def test_demographic_columns_exist(self):
-        """Voter model exposes marital_status, military_status, party_change_indicator as nullable String columns."""
+        """Voter model exposes marital_status,
+        military_status, party_change_indicator as
+        nullable String columns."""
         from app.models.voter import Voter
 
         table = Voter.__table__
@@ -97,7 +114,9 @@ class TestDemographicColumns:
                 f"Column {col_name!r} should be String, got {type(col.type).__name__}"
             )
             assert col.type.length == expected_length, (
-                f"Column {col_name!r} length should be {expected_length}, got {col.type.length}"
+                f"Column {col_name!r} length should be"
+                f" {expected_length},"
+                f" got {col.type.length}"
             )
             assert col.nullable is True, f"Column {col_name!r} should be nullable"
 
@@ -106,7 +125,8 @@ class TestCellPhoneConfidenceColumn:
     """VMOD-05: Voter model has cell_phone_confidence as SmallInteger."""
 
     def test_cell_phone_confidence_is_smallinteger(self):
-        """Voter model exposes cell_phone_confidence as a nullable SmallInteger column."""
+        """Voter model exposes cell_phone_confidence as
+        a nullable SmallInteger column."""
         from app.models.voter import Voter
 
         table = Voter.__table__
@@ -115,16 +135,20 @@ class TestCellPhoneConfidenceColumn:
         )
         col = table.c["cell_phone_confidence"]
         assert isinstance(col.type, SmallInteger), (
-            f"cell_phone_confidence should be SmallInteger, got {type(col.type).__name__}"
+            "cell_phone_confidence should be"
+            f" SmallInteger, got"
+            f" {type(col.type).__name__}"
         )
         assert col.nullable is True, "cell_phone_confidence should be nullable"
 
 
 class TestHouseholdColumns:
-    """VMOD-06: Voter model has household_party_registration, household_size (SmallInteger), family_id."""
+    """VMOD-06: Voter model has household_party_registration,
+    household_size (SmallInteger), family_id."""
 
     def test_household_columns_exist_with_correct_types(self):
-        """Voter model exposes household_party_registration (String), household_size (SmallInteger), and family_id (String)."""
+        """Voter model exposes household columns with
+        correct types."""
         from app.models.voter import Voter
 
         table = Voter.__table__
@@ -135,12 +159,15 @@ class TestHouseholdColumns:
         )
         hpr = table.c["household_party_registration"]
         assert isinstance(hpr.type, String), (
-            f"household_party_registration should be String, got {type(hpr.type).__name__}"
+            "household_party_registration should be"
+            f" String, got {type(hpr.type).__name__}"
         )
         assert hpr.nullable is True, "household_party_registration should be nullable"
 
         # household_size: SmallInteger
-        assert "household_size" in table.c, "Column 'household_size' missing from Voter model"
+        assert "household_size" in table.c, (
+            "Column 'household_size' missing from Voter model"
+        )
         hs = table.c["household_size"]
         assert isinstance(hs.type, SmallInteger), (
             f"household_size should be SmallInteger, got {type(hs.type).__name__}"
@@ -157,10 +184,15 @@ class TestHouseholdColumns:
 
 
 class TestZip4AndApartmentTypeColumns:
-    """VMOD-07: Voter model has registration_zip4 (String(4)) and registration_apartment_type (String(20))."""
+    """VMOD-07: Voter model has registration_zip4 (String(4))
+    and registration_apartment_type (String(20))."""
 
-    def test_zip4_and_apartment_type_exist_with_correct_lengths(self):
-        """Voter model exposes registration_zip4 as String(4) and registration_apartment_type as String(20)."""
+    def test_zip4_and_apartment_type_exist_with_correct_lengths(
+        self,
+    ):
+        """Voter model exposes registration_zip4 as
+        String(4) and registration_apartment_type as
+        String(20)."""
         from app.models.voter import Voter
 
         table = Voter.__table__
@@ -182,7 +214,8 @@ class TestZip4AndApartmentTypeColumns:
         )
         apt = table.c["registration_apartment_type"]
         assert isinstance(apt.type, String), (
-            f"registration_apartment_type should be String, got {type(apt.type).__name__}"
+            "registration_apartment_type should be"
+            f" String, got {type(apt.type).__name__}"
         )
         assert apt.type.length == 20, (
             f"registration_apartment_type length should be 20, got {apt.type.length}"
@@ -193,25 +226,32 @@ class TestZip4AndApartmentTypeColumns:
 class TestVoterPhoneUniqueConstraint:
     """VMOD-10: VoterPhone has UniqueConstraint on (campaign_id, voter_id, value)."""
 
-    def test_voter_phone_has_unique_constraint_on_campaign_voter_value(self):
-        """VoterPhone model has a UniqueConstraint named 'uq_voter_phone_campaign_voter_value' covering campaign_id, voter_id, value."""
+    def test_voter_phone_has_unique_constraint_on_campaign_voter_value(
+        self,
+    ):
+        """VoterPhone has UniqueConstraint on
+        (campaign_id, voter_id, value)."""
         from app.models.voter_contact import VoterPhone
 
         constraints = VoterPhone.__table__.constraints
-        unique_constraints = [
-            c for c in constraints if isinstance(c, UniqueConstraint)
-        ]
+        unique_constraints = [c for c in constraints if isinstance(c, UniqueConstraint)]
         assert unique_constraints, "VoterPhone has no UniqueConstraint at all"
 
         target = next(
-            (c for c in unique_constraints if c.name == "uq_voter_phone_campaign_voter_value"),
+            (
+                c
+                for c in unique_constraints
+                if c.name == "uq_voter_phone_campaign_voter_value"
+            ),
             None,
         )
         assert target is not None, (
-            "VoterPhone missing UniqueConstraint named 'uq_voter_phone_campaign_voter_value'"
+            "VoterPhone missing UniqueConstraint named"
+            " 'uq_voter_phone_campaign_voter_value'"
         )
 
         constrained_cols = {col.name for col in target.columns}
-        assert constrained_cols == {"campaign_id", "voter_id", "value"}, (
-            f"UniqueConstraint columns should be (campaign_id, voter_id, value), got {constrained_cols}"
+        expected = {"campaign_id", "voter_id", "value"}
+        assert constrained_cols == expected, (
+            f"UniqueConstraint columns should be {expected}, got {constrained_cols}"
         )

@@ -133,15 +133,11 @@ def upgrade() -> None:
         ["campaign_id", "source_type", "source_id"],
         unique=True,
     )
-    op.create_index(
-        "ix_voters_campaign_party", "voters", ["campaign_id", "party"]
-    )
+    op.create_index("ix_voters_campaign_party", "voters", ["campaign_id", "party"])
     op.create_index(
         "ix_voters_campaign_precinct", "voters", ["campaign_id", "precinct"]
     )
-    op.create_index(
-        "ix_voters_campaign_zip", "voters", ["campaign_id", "zip_code"]
-    )
+    op.create_index("ix_voters_campaign_zip", "voters", ["campaign_id", "zip_code"])
     op.create_index(
         "ix_voters_campaign_last_name", "voters", ["campaign_id", "last_name"]
     )
@@ -162,9 +158,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.UniqueConstraint(
-            "campaign_id", "name", name="uq_voter_tag_campaign_name"
-        ),
+        sa.UniqueConstraint("campaign_id", "name", name="uq_voter_tag_campaign_name"),
     )
 
     # --- voter_tag_members ---
@@ -427,9 +421,7 @@ def upgrade() -> None:
         ),
         sa.Column("file_key", sa.String(500), nullable=False),
         sa.Column("original_filename", sa.String(500), nullable=False),
-        sa.Column(
-            "source_type", sa.String(50), nullable=False, server_default="csv"
-        ),
+        sa.Column("source_type", sa.String(50), nullable=False, server_default="csv"),
         sa.Column("field_mapping", JSONB, nullable=True),
         sa.Column("detected_columns", JSONB, nullable=True),
         sa.Column("suggested_mapping", JSONB, nullable=True),
@@ -476,9 +468,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("source_type", sa.String(50), nullable=False),
         sa.Column("mapping", JSONB, nullable=False),
-        sa.Column(
-            "is_system", sa.Boolean(), nullable=False, server_default="false"
-        ),
+        sa.Column("is_system", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column(
             "created_by",
             sa.String(255),
@@ -533,9 +523,7 @@ def upgrade() -> None:
 
     # --- Grant permissions to app_user ---
     for table in _CAMPAIGN_TABLES:
-        op.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user"
-        )
+        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user")
 
     # --- Seed L2 system mapping template ---
     op.execute(

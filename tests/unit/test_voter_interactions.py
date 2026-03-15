@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -47,7 +47,7 @@ class TestVoterInteractionService:
         self, service, mock_db, voter_id, campaign_id, user_id
     ):
         """record_interaction creates a VoterInteraction record with correct fields."""
-        result = await service.record_interaction(
+        await service.record_interaction(
             session=mock_db,
             campaign_id=campaign_id,
             voter_id=voter_id,
@@ -70,7 +70,8 @@ class TestVoterInteractionService:
     async def test_record_interaction_sets_created_at_explicitly(
         self, service, mock_db, voter_id, campaign_id, user_id
     ):
-        """record_interaction sets created_at explicitly (not relying on server_default)."""
+        """record_interaction sets created_at explicitly
+        (not relying on server_default)."""
         before = utcnow()
         await service.record_interaction(
             session=mock_db,

@@ -1,6 +1,7 @@
 import { useAuthStore } from "@/stores/authStore"
 import { useParams } from "@tanstack/react-router"
 import { useMyCampaignRole } from "./useUsers"
+import { getConfig } from "@/config"
 import type { CampaignRole } from "@/types/auth"
 
 export type { CampaignRole }
@@ -34,34 +35,44 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
   let role: CampaignRole = "viewer"
 
   if (user) {
-    const projectId = import.meta.env.VITE_ZITADEL_PROJECT_ID ?? ""
-    const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
-    const claims = user.profile as Record<string, unknown>
+    let projectId: string | undefined
+    try {
+      projectId = getConfig().zitadel_project_id
+    } catch {
+      // Config not yet loaded — fall back to API role
+    }
 
-    if (claimKey in claims) {
-      const roleMap = claims[claimKey] as Record<string, unknown>
-      const foundRoles = Object.keys(roleMap).filter(
-        (r): r is CampaignRole => r in ROLE_HIERARCHY
-      )
-      if (foundRoles.length > 0) {
-        // Pick the highest role
-        role = foundRoles.reduce((best, r) =>
-          ROLE_HIERARCHY[r as CampaignRole] > ROLE_HIERARCHY[best]
-            ? (r as CampaignRole)
-            : best
-        , foundRoles[0] as CampaignRole)
+    if (projectId) {
+      const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
+      const claims = user.profile as Record<string, unknown>
+
+      if (claimKey in claims) {
+        const roleMap = claims[claimKey] as Record<string, unknown>
+        const foundRoles = Object.keys(roleMap).filter(
+          (r): r is CampaignRole => r in ROLE_HIERARCHY
+        )
+        if (foundRoles.length > 0) {
+          // Pick the highest role
+          role = foundRoles.reduce((best, r) =>
+            ROLE_HIERARCHY[r as CampaignRole] > ROLE_HIERARCHY[best]
+              ? (r as CampaignRole)
+              : best
+          , foundRoles[0] as CampaignRole)
+        } else {
+          role = "viewer"
+        }
       } else {
-        role = "viewer"
+        // Claim key not present — fall back to API
+        if (!_warnedMissingClaim) {
+          console.warn("Role claim missing from JWT, falling back to API")
+          _warnedMissingClaim = true
+        }
+        if (apiRole && apiRole in ROLE_HIERARCHY) {
+          role = apiRole as CampaignRole
+        }
       }
-    } else {
-      // Claim key not present — fall back to API
-      if (!_warnedMissingClaim) {
-        console.warn("Role claim missing from JWT, falling back to API")
-        _warnedMissingClaim = true
-      }
-      if (apiRole && apiRole in ROLE_HIERARCHY) {
-        role = apiRole as CampaignRole
-      }
+    } else if (apiRole && apiRole in ROLE_HIERARCHY) {
+      role = apiRole as CampaignRole
     }
   }
 

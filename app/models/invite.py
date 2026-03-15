@@ -37,9 +37,7 @@ class Invite(Base):
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
     accepted_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
     )

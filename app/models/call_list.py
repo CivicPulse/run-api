@@ -53,9 +53,7 @@ class CallList(Base):
     """
 
     __tablename__ = "call_lists"
-    __table_args__ = (
-        Index("ix_call_lists_campaign_id", "campaign_id"),
-    )
+    __table_args__ = (Index("ix_call_lists_campaign_id", "campaign_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
@@ -76,9 +74,7 @@ class CallList(Base):
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     claim_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30)
     cooldown_minutes: Mapped[int] = mapped_column(Integer, default=60)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -110,9 +106,7 @@ class CallListEntry(Base):
     call_list_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("call_lists.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     priority_score: Mapped[int] = mapped_column(Integer, default=0)
     phone_numbers: Mapped[list] = mapped_column(JSONB, default=list)
     status: Mapped[str] = mapped_column(

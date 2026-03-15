@@ -9,7 +9,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = ConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     # Application
     app_name: str = "CivicPulse Run API"
@@ -21,11 +23,14 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://postgres:postgres@localhost:5432/run_api"
     )
 
-    # ZITADEL
+    # ZITADEL (service account for backend API calls)
     zitadel_issuer: str = "https://auth.civpulse.org"
     zitadel_project_id: str = ""
     zitadel_service_client_id: str = ""
     zitadel_service_client_secret: str = ""
+
+    # ZITADEL SPA (public OIDC client for browser)
+    zitadel_spa_client_id: str = ""
 
     # CORS
     cors_allowed_origins: list[str] = ["http://localhost:5173"]

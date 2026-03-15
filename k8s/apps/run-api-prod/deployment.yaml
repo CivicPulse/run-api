@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: run-api
-  namespace: run-api
+  namespace: civpulse-prod
 spec:
   replicas: 1
   selector:
@@ -14,9 +14,17 @@ spec:
       labels:
         app: run-api
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: ghcr.io/civicpulse/run-api:sha-b44bdb819c71a80c6f2fa36e21f27e4f77e66470
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb8
           command: ["python", "-m", "alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
@@ -30,11 +38,20 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "200m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Alembic temp files
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: run-api
-          image: ghcr.io/civicpulse/run-api:sha-b44bdb819c71a80c6f2fa36e21f27e4f77e66470
+          image: ghcr.io/civicpulse/run-api:sha-b44bdb8
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "production"
           envFrom:
             - configMapRef:
                 name: run-api-config
@@ -62,4 +79,7 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           securityContext:
-            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Static file serving
+            capabilities:
+              drop: ["ALL"]

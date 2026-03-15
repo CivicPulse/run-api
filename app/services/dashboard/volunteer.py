@@ -31,20 +31,20 @@ class VolunteerDashboardService:
         # Active and total volunteer counts (no date filter on volunteers themselves)
         vol_q = select(
             func.count().label("total_volunteers"),
-            func.count(
-                case((Volunteer.status == VolunteerStatus.ACTIVE, 1))
-            ).label("active_volunteers"),
+            func.count(case((Volunteer.status == VolunteerStatus.ACTIVE, 1))).label(
+                "active_volunteers"
+            ),
         ).where(Volunteer.campaign_id == campaign_id)
         vol_result = (await session.execute(vol_q)).mappings().one()
 
         # Shift counts with date filter on start_at
         shift_q = select(
-            func.count(
-                case((Shift.status == ShiftStatus.SCHEDULED, 1))
-            ).label("scheduled_shifts"),
-            func.count(
-                case((Shift.status == ShiftStatus.COMPLETED, 1))
-            ).label("completed_shifts"),
+            func.count(case((Shift.status == ShiftStatus.SCHEDULED, 1))).label(
+                "scheduled_shifts"
+            ),
+            func.count(case((Shift.status == ShiftStatus.COMPLETED, 1))).label(
+                "completed_shifts"
+            ),
         ).where(Shift.campaign_id == campaign_id)
         shift_q = apply_date_filter(shift_q, Shift.start_at, start_date, end_date)
         shift_result = (await session.execute(shift_q)).mappings().one()
@@ -163,10 +163,12 @@ class VolunteerDashboardService:
                 func.count(
                     case(
                         (
-                            ShiftVolunteer.status.in_([
-                                SignupStatus.CHECKED_IN,
-                                SignupStatus.CHECKED_OUT,
-                            ]),
+                            ShiftVolunteer.status.in_(
+                                [
+                                    SignupStatus.CHECKED_IN,
+                                    SignupStatus.CHECKED_OUT,
+                                ]
+                            ),
                             1,
                         )
                     )

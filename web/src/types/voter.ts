@@ -185,7 +185,7 @@ export interface VoterCreate {
   source_type?: string
 }
 
-export interface VoterUpdate extends Partial<VoterCreate> {}
+export type VoterUpdate = Partial<VoterCreate>
 
 export type SortableColumn =
   | "last_name"

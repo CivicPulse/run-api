@@ -69,9 +69,7 @@ async def generate_call_list(
 )
 async def list_call_lists(
     campaign_id: uuid.UUID,
-    user: AuthenticatedUser = Depends(
-        require_role("volunteer")
-    ),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List call lists for a campaign.
@@ -82,13 +80,9 @@ async def list_call_lists(
     from app.db.rls import set_campaign_context
 
     await set_campaign_context(db, str(campaign_id))
-    items = await _call_list_service.list_call_lists(
-        db, campaign_id
-    )
+    items = await _call_list_service.list_call_lists(db, campaign_id)
     return PaginatedResponse[CallListSummaryResponse](
-        items=[
-            CallListSummaryResponse.model_validate(cl) for cl in items
-        ],
+        items=[CallListSummaryResponse.model_validate(cl) for cl in items],
         pagination=PaginationResponse(next_cursor=None, has_more=False),
     )
 
@@ -100,9 +94,7 @@ async def list_call_lists(
 async def get_call_list(
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
-    user: AuthenticatedUser = Depends(
-        require_role("volunteer")
-    ),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """Get call list detail.
@@ -113,9 +105,7 @@ async def get_call_list(
     from app.db.rls import set_campaign_context
 
     await set_campaign_context(db, str(campaign_id))
-    call_list = await _call_list_service.get_call_list(
-        db, call_list_id
-    )
+    call_list = await _call_list_service.get_call_list(db, call_list_id)
     if call_list is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -177,9 +167,10 @@ async def list_call_list_entries(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
+    from sqlalchemy import select as sa_select
+
     from app.db.rls import set_campaign_context
     from app.models.voter import Voter
-    from sqlalchemy import select as sa_select
 
     await set_campaign_context(db, str(campaign_id))
     entries = await _call_list_service.list_entries(db, call_list_id, entry_status)
@@ -238,9 +229,7 @@ async def delete_call_list(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        await _call_list_service.delete_call_list(
-            db, call_list_id
-        )
+        await _call_list_service.delete_call_list(db, call_list_id)
     except ValueError:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -260,9 +249,7 @@ async def claim_entries(
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     body: ClaimEntriesRequest,
-    user: AuthenticatedUser = Depends(
-        require_role("volunteer")
-    ),
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """Claim a batch of entries for calling.
@@ -285,9 +272,7 @@ async def claim_entries(
             type="claim-failed",
         )
     await db.commit()
-    return [
-        CallListEntryResponse.model_validate(e) for e in entries
-    ]
+    return [CallListEntryResponse.model_validate(e) for e in entries]
 
 
 @router.post(

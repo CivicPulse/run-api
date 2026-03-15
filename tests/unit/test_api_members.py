@@ -127,12 +127,8 @@ class TestListMembers:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
-            resp = await client.get(
-                f"/api/v1/campaigns/{CAMPAIGN_ID}/members"
-            )
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/members")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -155,9 +151,7 @@ class TestUpdateMemberRole:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.patch(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/members/member-1/role",
                 json={"role": "manager"},
@@ -172,9 +166,7 @@ class TestUpdateMemberRole:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.patch(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/members/member-1/role",
                 json={"role": "owner"},
@@ -188,9 +180,7 @@ class TestUpdateMemberRole:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.patch(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/members/member-1/role",
                 json={"role": "admin"},
@@ -214,18 +204,14 @@ class TestRemoveMember:
         mock_db.execute = AsyncMock(return_value=campaign_result)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.delete(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/members/owner-1"
             )
 
         assert resp.status_code == 400
 
-    async def test_admin_can_remove_regular_member(
-        self, mock_db, mock_zitadel
-    ):
+    async def test_admin_can_remove_regular_member(self, mock_db, mock_zitadel):
         """Admin can remove a non-owner member."""
         user = _make_user(role=CampaignRole.ADMIN)
         campaign = _make_campaign(created_by="owner-1")
@@ -237,14 +223,10 @@ class TestRemoveMember:
         campaign_result.scalar_one_or_none.return_value = campaign
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = member
-        mock_db.execute = AsyncMock(
-            side_effect=[campaign_result, member_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[campaign_result, member_result])
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.delete(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/members/regular-member"
             )
@@ -266,14 +248,10 @@ class TestTransferOwnership:
         campaign_result.scalar_one_or_none.return_value = campaign
         target_result = MagicMock()
         target_result.scalar_one_or_none.return_value = target_member
-        mock_db.execute = AsyncMock(
-            side_effect=[campaign_result, target_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[campaign_result, target_result])
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/transfer-ownership",
                 json={"new_owner_id": "new-owner"},
@@ -291,9 +269,7 @@ class TestTransferOwnership:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/transfer-ownership",
                 json={"new_owner_id": "someone"},

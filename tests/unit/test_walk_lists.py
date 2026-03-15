@@ -1,9 +1,10 @@
-"""Unit tests for walk list generation, clustering, and assignment -- CANV-02, CANV-03, CANV-06."""
+"""Unit tests for walk list generation, clustering,
+and assignment -- CANV-02, CANV-03, CANV-06."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -12,7 +13,8 @@ from app.services.turf import household_key, parse_address_sort_key
 
 
 class TestWalkListService:
-    """Tests for walk list generation, household clustering, sort order, and canvasser assignment."""
+    """Tests for walk list generation, household clustering,
+    sort order, and canvasser assignment."""
 
     @pytest.mark.asyncio
     async def test_generate_walk_list_from_turf(self) -> None:
@@ -31,12 +33,20 @@ class TestWalkListService:
 
         # Mock voter results
         voter1 = SimpleNamespace(
-            id="v1", registration_line1="100 Main St", last_name="Smith",
-            registration_zip="12345", household_id=None, geom="fake-geom",
+            id="v1",
+            registration_line1="100 Main St",
+            last_name="Smith",
+            registration_zip="12345",
+            household_id=None,
+            geom="fake-geom",
         )
         voter2 = SimpleNamespace(
-            id="v2", registration_line1="200 Oak Ave", last_name="Jones",
-            registration_zip="12345", household_id=None, geom="fake-geom",
+            id="v2",
+            registration_line1="200 Oak Ave",
+            last_name="Jones",
+            registration_zip="12345",
+            household_id=None,
+            geom="fake-geom",
         )
 
         # First execute: turf lookup, second: voter query
@@ -54,7 +64,9 @@ class TestWalkListService:
             turf_id="turf-1", voter_list_id=None, script_id=None, name="Test Walk List"
         )
 
-        walk_list = await service.generate_walk_list(session, "campaign-1", data, "user-1")
+        walk_list = await service.generate_walk_list(
+            session, "campaign-1", data, "user-1"
+        )
         assert walk_list.total_entries == 2
         assert walk_list.name == "Test Walk List"
         assert walk_list.visited_entries == 0
@@ -74,16 +86,24 @@ class TestWalkListService:
         """CANV-03: Same-address voters grouped as household."""
         # Test address-based household key generation
         v1 = SimpleNamespace(
-            registration_line1="100 Main St", registration_zip="12345", household_id=None
+            registration_line1="100 Main St",
+            registration_zip="12345",
+            household_id=None,
         )
         v2 = SimpleNamespace(
-            registration_line1="100 MAIN ST", registration_zip="12345-6789", household_id=None
+            registration_line1="100 MAIN ST",
+            registration_zip="12345-6789",
+            household_id=None,
         )
         v3 = SimpleNamespace(
-            registration_line1="200 Oak Ave", registration_zip="12345", household_id=None
+            registration_line1="200 Oak Ave",
+            registration_zip="12345",
+            household_id=None,
         )
         v4 = SimpleNamespace(
-            registration_line1="100 Main St", registration_zip="12345", household_id="HH-ABC"
+            registration_line1="100 Main St",
+            registration_zip="12345",
+            household_id="HH-ABC",
         )
 
         # Same normalized address -> same household key
@@ -143,6 +163,8 @@ class TestWalkListService:
     def test_household_key_normalization(self) -> None:
         """Whitespace and case normalization for household keys."""
         v = SimpleNamespace(
-            registration_line1="  100 main st  ", registration_zip="  12345  ", household_id=None
+            registration_line1="  100 main st  ",
+            registration_zip="  12345  ",
+            household_id=None,
         )
         assert household_key(v) == "100 MAIN ST|12345"

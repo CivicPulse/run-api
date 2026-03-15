@@ -299,10 +299,10 @@ class TestShiftSignup:
         volunteer = _make_volunteer(status=VolunteerStatus.ACTIVE)
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift),       # _get_shift_raw
-            _mock_scalar_result(volunteer),    # _get_volunteer
-            _mock_scalar_result(None),         # check existing signup
-            _mock_count_result(3),             # signed_up count
+            _mock_scalar_result(shift),  # _get_shift_raw
+            _mock_scalar_result(volunteer),  # _get_volunteer
+            _mock_scalar_result(None),  # check existing signup
+            _mock_count_result(3),  # signed_up count
         ]
 
         result = await svc.signup_volunteer(db, shift.id, volunteer.id)
@@ -320,11 +320,11 @@ class TestShiftSignup:
         volunteer = _make_volunteer(status=VolunteerStatus.ACTIVE)
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift),       # _get_shift_raw
-            _mock_scalar_result(volunteer),    # _get_volunteer
-            _mock_scalar_result(None),         # check existing signup
-            _mock_count_result(2),             # signed_up count (at capacity)
-            _mock_count_result(1),             # max waitlist position (coalesce)
+            _mock_scalar_result(shift),  # _get_shift_raw
+            _mock_scalar_result(volunteer),  # _get_volunteer
+            _mock_scalar_result(None),  # check existing signup
+            _mock_count_result(2),  # signed_up count (at capacity)
+            _mock_count_result(1),  # max waitlist position (coalesce)
         ]
 
         result = await svc.signup_volunteer(db, shift.id, volunteer.id)
@@ -341,9 +341,9 @@ class TestShiftSignup:
         volunteer = _make_volunteer(status=VolunteerStatus.ACTIVE)
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift),       # _get_shift_raw
-            _mock_scalar_result(volunteer),    # _get_volunteer
-            _mock_scalar_result(None),         # check existing
+            _mock_scalar_result(shift),  # _get_shift_raw
+            _mock_scalar_result(volunteer),  # _get_volunteer
+            _mock_scalar_result(None),  # check existing
         ]
 
         result = await svc.manager_assign(db, shift.id, volunteer.id)
@@ -388,7 +388,7 @@ class TestShiftSignup:
             _mock_scalar_result(shift),
             _mock_scalar_result(volunteer),
             _mock_scalar_result(None),  # no existing signup
-            _mock_count_result(0),      # signed_up count
+            _mock_count_result(0),  # signed_up count
         ]
 
         result = await svc.signup_volunteer(db, shift.id, volunteer.id)
@@ -409,10 +409,10 @@ class TestShiftCancel:
         volunteer = _make_volunteer(user_id="user-1")
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift),       # _get_shift_raw
-            _mock_scalar_result(shift_vol),   # _get_shift_volunteer
-            _mock_scalar_result(volunteer),   # _get_volunteer (for is_self check)
-            _mock_scalar_result(None),        # _promote_from_waitlist
+            _mock_scalar_result(shift),  # _get_shift_raw
+            _mock_scalar_result(shift_vol),  # _get_shift_volunteer
+            _mock_scalar_result(volunteer),  # _get_volunteer (for is_self check)
+            _mock_scalar_result(None),  # _promote_from_waitlist
         ]
 
         from app.core.security import CampaignRole
@@ -487,9 +487,9 @@ class TestShiftCancel:
         )
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift),       # _get_shift_raw (cancel_signup)
-            _mock_scalar_result(shift_vol),   # _get_shift_volunteer
-            _mock_scalar_result(volunteer),   # _get_volunteer
+            _mock_scalar_result(shift),  # _get_shift_raw (cancel_signup)
+            _mock_scalar_result(shift_vol),  # _get_shift_volunteer
+            _mock_scalar_result(volunteer),  # _get_volunteer
             _mock_scalar_result(waitlisted),  # _promote_from_waitlist
         ]
 
@@ -517,7 +517,7 @@ class TestCheckInOut:
 
         db.execute.side_effect = [
             _mock_scalar_result(shift_vol),  # _get_shift_volunteer
-            _mock_scalar_result(shift),      # _get_shift_raw
+            _mock_scalar_result(shift),  # _get_shift_raw
             _mock_scalar_result(volunteer),  # _get_volunteer
         ]
 
@@ -538,10 +538,10 @@ class TestCheckInOut:
         volunteer = _make_volunteer(user_id="canvasser-1")
 
         db.execute.side_effect = [
-            _mock_scalar_result(shift_vol),    # _get_shift_volunteer
-            _mock_scalar_result(shift),        # _get_shift_raw
-            _mock_scalar_result(volunteer),    # _get_volunteer
-            _mock_scalar_result(walk_list_id), # walk list query
+            _mock_scalar_result(shift_vol),  # _get_shift_volunteer
+            _mock_scalar_result(shift),  # _get_shift_raw
+            _mock_scalar_result(volunteer),  # _get_volunteer
+            _mock_scalar_result(walk_list_id),  # walk list query
         ]
 
         result = await svc.check_in(db, shift.id, volunteer.id)
@@ -551,6 +551,7 @@ class TestCheckInOut:
         db.add.assert_called()
         # Find the WalkListCanvasser add call
         from app.models.walk_list import WalkListCanvasser
+
         added_objects = [call.args[0] for call in db.add.call_args_list]
         canvasser_added = any(
             isinstance(obj, WalkListCanvasser) for obj in added_objects
@@ -572,7 +573,7 @@ class TestCheckInOut:
 
         db.execute.side_effect = [
             _mock_scalar_result(shift_vol),  # _get_shift_volunteer
-            _mock_scalar_result(shift),      # _get_shift_raw
+            _mock_scalar_result(shift),  # _get_shift_raw
             _mock_scalar_result(volunteer),  # _get_volunteer
         ]
 
@@ -581,10 +582,9 @@ class TestCheckInOut:
         assert result.status == SignupStatus.CHECKED_IN
         # SessionCaller should have been added
         from app.models.phone_bank import SessionCaller
+
         added_objects = [call.args[0] for call in db.add.call_args_list]
-        caller_added = any(
-            isinstance(obj, SessionCaller) for obj in added_objects
-        )
+        caller_added = any(isinstance(obj, SessionCaller) for obj in added_objects)
         assert caller_added
 
     @pytest.mark.asyncio
@@ -601,7 +601,7 @@ class TestCheckInOut:
 
         db.execute.side_effect = [
             _mock_scalar_result(shift_vol),  # _get_shift_volunteer
-            _mock_scalar_result(shift),      # _get_shift_raw
+            _mock_scalar_result(shift),  # _get_shift_raw
             _mock_scalar_result(volunteer),  # _get_volunteer
         ]
 
@@ -719,8 +719,12 @@ class TestHoursTracking:
         db.execute.return_value = _mock_scalar_result(shift_vol)
 
         result = await svc.adjust_hours(
-            db, shift_vol.shift_id, shift_vol.volunteer_id,
-            5.0, "Arrived early, not captured in system", "manager-1"
+            db,
+            shift_vol.shift_id,
+            shift_vol.volunteer_id,
+            5.0,
+            "Arrived early, not captured in system",
+            "manager-1",
         )
 
         assert result.adjusted_hours == 5.0

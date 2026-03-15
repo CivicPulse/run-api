@@ -16,18 +16,14 @@ from sqlalchemy import text
 class TestRLSCampaignIsolation:
     """Verify RLS prevents cross-campaign data access."""
 
-    async def test_campaigns_isolated_by_context(
-        self, app_user_session, two_campaigns
-    ):
+    async def test_campaigns_isolated_by_context(self, app_user_session, two_campaigns):
         """Setting context to Campaign A hides Campaign B."""
         session = app_user_session
         data = two_campaigns
 
         # Set context to Campaign A
         await session.execute(
-            text(
-                "SELECT set_config('app.current_campaign_id', :cid, false)"
-            ),
+            text("SELECT set_config('app.current_campaign_id', :cid, false)"),
             {"cid": str(data["campaign_a_id"])},
         )
 
@@ -38,18 +34,14 @@ class TestRLSCampaignIsolation:
         assert data["campaign_a_id"] in campaign_ids
         assert data["campaign_b_id"] not in campaign_ids
 
-    async def test_campaign_members_isolated(
-        self, app_user_session, two_campaigns
-    ):
+    async def test_campaign_members_isolated(self, app_user_session, two_campaigns):
         """Campaign members only visible for active campaign context."""
         session = app_user_session
         data = two_campaigns
 
         # Set context to Campaign A
         await session.execute(
-            text(
-                "SELECT set_config('app.current_campaign_id', :cid, false)"
-            ),
+            text("SELECT set_config('app.current_campaign_id', :cid, false)"),
             {"cid": str(data["campaign_a_id"])},
         )
 
@@ -69,15 +61,11 @@ class TestRLSCampaignIsolation:
 
         # Set context to Campaign A
         await session.execute(
-            text(
-                "SELECT set_config('app.current_campaign_id', :cid, false)"
-            ),
+            text("SELECT set_config('app.current_campaign_id', :cid, false)"),
             {"cid": str(data["campaign_a_id"])},
         )
 
-        result = await session.execute(
-            text("SELECT email, campaign_id FROM invites")
-        )
+        result = await session.execute(text("SELECT email, campaign_id FROM invites"))
         rows = result.all()
 
         emails = [row[0] for row in rows]
@@ -93,30 +81,22 @@ class TestRLSCampaignIsolation:
 
         # Start with Campaign A
         await session.execute(
-            text(
-                "SELECT set_config('app.current_campaign_id', :cid, false)"
-            ),
+            text("SELECT set_config('app.current_campaign_id', :cid, false)"),
             {"cid": str(data["campaign_a_id"])},
         )
 
-        result_a = await session.execute(
-            text("SELECT name FROM campaigns")
-        )
+        result_a = await session.execute(text("SELECT name FROM campaigns"))
         names_a = [row[0] for row in result_a.all()]
         assert "Campaign A" in names_a
         assert "Campaign B" not in names_a
 
         # Switch to Campaign B
         await session.execute(
-            text(
-                "SELECT set_config('app.current_campaign_id', :cid, false)"
-            ),
+            text("SELECT set_config('app.current_campaign_id', :cid, false)"),
             {"cid": str(data["campaign_b_id"])},
         )
 
-        result_b = await session.execute(
-            text("SELECT name FROM campaigns")
-        )
+        result_b = await session.execute(text("SELECT name FROM campaigns"))
         names_b = [row[0] for row in result_b.all()]
         assert "Campaign B" in names_b
         assert "Campaign A" not in names_b

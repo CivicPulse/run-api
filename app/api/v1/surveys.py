@@ -87,7 +87,7 @@ async def list_scripts(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status filter: {status_filter}",
-            )
+            ) from None
 
     items, next_cursor, has_more = await _service.list_scripts(
         session=db,
@@ -158,7 +158,7 @@ async def update_script(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return ScriptResponse.model_validate(script)
@@ -184,7 +184,7 @@ async def delete_script(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -219,7 +219,7 @@ async def add_question(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return QuestionResponse.model_validate(question)
@@ -249,7 +249,7 @@ async def update_question(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return QuestionResponse.model_validate(question)
@@ -276,7 +276,7 @@ async def delete_question(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -305,7 +305,7 @@ async def reorder_questions(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return [QuestionResponse.model_validate(q) for q in questions]
@@ -345,7 +345,7 @@ async def record_batch_responses(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
+        ) from exc
     await db.commit()
 
     return [SurveyResponseOut.model_validate(r) for r in results]

@@ -13,7 +13,8 @@ from app.models.voter_interaction import InteractionType
 
 
 class TestVoterContactService:
-    """Tests for contact management with primary flag cascading and interaction events."""
+    """Tests for contact management with primary flag
+    cascading and interaction events."""
 
     @pytest.fixture
     def mock_db(self):
@@ -49,9 +50,7 @@ class TestVoterContactService:
     ):
         """add_phone creates a VoterPhone and emits a contact_updated interaction."""
         # Mock the interaction service record_interaction
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             # No existing primary phones
@@ -59,7 +58,7 @@ class TestVoterContactService:
             mock_result.scalars.return_value.all.return_value = []
             mock_db.execute = AsyncMock(return_value=mock_result)
 
-            result = await service.add_phone(
+            await service.add_phone(
                 session=mock_db,
                 campaign_id=campaign_id,
                 voter_id=voter_id,
@@ -85,7 +84,10 @@ class TestVoterContactService:
             # Verify interaction event emitted
             mock_interaction.record_interaction.assert_awaited_once()
             call_kwargs = mock_interaction.record_interaction.call_args
-            assert call_kwargs.kwargs["interaction_type"] == InteractionType.CONTACT_UPDATED
+            assert (
+                call_kwargs.kwargs["interaction_type"]
+                == InteractionType.CONTACT_UPDATED
+            )
             assert call_kwargs.kwargs["payload"]["action"] == "added"
             assert call_kwargs.kwargs["payload"]["contact_type"] == "phone"
 
@@ -105,9 +107,7 @@ class TestVoterContactService:
             updated_at=utcnow(),
         )
 
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             # Return existing primary phone
@@ -133,9 +133,7 @@ class TestVoterContactService:
         self, service, mock_db, voter_id, campaign_id, user_id
     ):
         """add_email creates a VoterEmail and emits a contact_updated interaction."""
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             mock_result = MagicMock()
@@ -163,10 +161,9 @@ class TestVoterContactService:
     async def test_add_address_creates_record_and_emits_interaction(
         self, service, mock_db, voter_id, campaign_id, user_id
     ):
-        """add_address creates a VoterAddress and emits a contact_updated interaction."""
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        """add_address creates a VoterAddress and emits
+        a contact_updated interaction."""
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             mock_result = MagicMock()
@@ -212,9 +209,7 @@ class TestVoterContactService:
             updated_at=utcnow(),
         )
 
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             mock_result = MagicMock()
@@ -313,9 +308,7 @@ class TestVoterContactService:
             updated_at=utcnow(),
         )
 
-        with patch.object(
-            service, "_interaction_service"
-        ) as mock_interaction:
+        with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
 
             # First call: get all phones for the voter (to unset primary)

@@ -52,9 +52,7 @@ class SurveyScript(Base):
     status: Mapped[ScriptStatus] = mapped_column(
         String(50), default=ScriptStatus.DRAFT, nullable=False
     )
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -65,9 +63,7 @@ class SurveyQuestion(Base):
     """Individual question within a survey script."""
 
     __tablename__ = "survey_questions"
-    __table_args__ = (
-        Index("ix_survey_questions_script_pos", "script_id", "position"),
-    )
+    __table_args__ = (Index("ix_survey_questions_script_pos", "script_id", "position"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     script_id: Mapped[uuid.UUID] = mapped_column(
@@ -75,9 +71,7 @@ class SurveyQuestion(Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
-    question_type: Mapped[QuestionType] = mapped_column(
-        String(50), nullable=False
-    )
+    question_type: Mapped[QuestionType] = mapped_column(String(50), nullable=False)
     options: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
 
@@ -104,11 +98,7 @@ class SurveyResponse(Base):
     question_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("survey_questions.id"), nullable=False
     )
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("voters.id"), nullable=False
-    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("voters.id"), nullable=False)
     answer_value: Mapped[str] = mapped_column(Text, nullable=False)
-    answered_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    answered_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     answered_at: Mapped[datetime] = mapped_column(server_default=func.now())

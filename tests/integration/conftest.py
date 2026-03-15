@@ -21,13 +21,9 @@ from app.core.time import utcnow
 
 # Database URLs for integration tests
 # Superuser connection for setup/teardown
-SUPERUSER_URL = (
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/run_api"
-)
+SUPERUSER_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/run_api"
 # app_user connection for RLS verification
-APP_USER_URL = (
-    "postgresql+asyncpg://app_user:app_password@localhost:5432/run_api"
-)
+APP_USER_URL = "postgresql+asyncpg://app_user:app_password@localhost:5432/run_api"
 
 
 @pytest.fixture(scope="session")

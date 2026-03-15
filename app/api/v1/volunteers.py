@@ -6,15 +6,14 @@ import uuid
 
 import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Response, status
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
-from app.schemas.common import PaginatedResponse, PaginationResponse
-from sqlalchemy import select as sa_select
-
 from app.models.volunteer import Volunteer
+from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.volunteer import (
     AvailabilityCreate,
     AvailabilityResponse,
@@ -216,9 +215,7 @@ async def update_volunteer(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        volunteer = await _volunteer_service.update_volunteer(
-            db, volunteer_id, body
-        )
+        volunteer = await _volunteer_service.update_volunteer(db, volunteer_id, body)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -290,9 +287,7 @@ async def add_availability(
 
     await set_campaign_context(db, str(campaign_id))
     try:
-        availability = await _volunteer_service.add_availability(
-            db, volunteer_id, body
-        )
+        availability = await _volunteer_service.add_availability(db, volunteer_id, body)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,

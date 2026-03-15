@@ -1,4 +1,5 @@
-"""Walk list generation, entry management, canvasser assignment, and door-knock endpoints."""
+"""Walk list generation, entry management, canvasser assignment,
+and door-knock endpoints."""
 
 from __future__ import annotations
 

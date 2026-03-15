@@ -73,7 +73,5 @@ async def process_import(import_job_id: str) -> dict:
                     job.error_message = "Import processing failed unexpectedly"
                     await session.commit()
             except Exception:
-                logger.exception(
-                    "Failed to update job status for {}", import_job_id
-                )
+                logger.exception("Failed to update job status for {}", import_job_id)
             raise

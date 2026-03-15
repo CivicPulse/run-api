@@ -63,21 +63,15 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="draft"
-        ),
-        sa.Column(
-            "total_entries", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
+        sa.Column("total_entries", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "completed_entries",
             sa.Integer(),
             nullable=False,
             server_default="0",
         ),
-        sa.Column(
-            "max_attempts", sa.Integer(), nullable=False, server_default="3"
-        ),
+        sa.Column("max_attempts", sa.Integer(), nullable=False, server_default="3"),
         sa.Column(
             "claim_timeout_minutes",
             sa.Integer(),
@@ -107,9 +101,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_call_lists_campaign_id", "call_lists", ["campaign_id"]
-    )
+    op.create_index("ix_call_lists_campaign_id", "call_lists", ["campaign_id"])
 
     # -- 2. Create call_list_entries table --
     op.create_table(
@@ -194,9 +186,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="draft"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
         sa.Column("scheduled_start", sa.DateTime(), nullable=True),
         sa.Column("scheduled_end", sa.DateTime(), nullable=True),
         sa.Column(
@@ -296,25 +286,15 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         rls_using = (
-            "campaign_id = "
-            "current_setting('app.current_campaign_id', true)::uuid"
+            "campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         )
-        op.execute(
-            f"CREATE POLICY {table}_isolation ON {table} "
-            f"USING ({rls_using})"
-        )
-        op.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user"
-        )
+        op.execute(f"CREATE POLICY {table}_isolation ON {table} USING ({rls_using})")
+        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user")
 
     # Subquery isolation for child tables
     # call_list_entries via call_lists
-    op.execute(
-        "ALTER TABLE call_list_entries ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE call_list_entries FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE call_list_entries ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE call_list_entries FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY call_list_entries_isolation ON call_list_entries "
         "USING (call_list_id IN ("
@@ -322,17 +302,11 @@ def upgrade() -> None:
         "WHERE campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         "))"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON call_list_entries TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON call_list_entries TO app_user")
 
     # session_callers via phone_bank_sessions
-    op.execute(
-        "ALTER TABLE session_callers ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE session_callers FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE session_callers ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE session_callers FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY session_callers_isolation ON session_callers "
         "USING (session_id IN ("
@@ -340,9 +314,7 @@ def upgrade() -> None:
         "WHERE campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         "))"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON session_callers TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON session_callers TO app_user")
 
 
 def downgrade() -> None:

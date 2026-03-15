@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.services.import_service import suggest_field_mapping
 
 
@@ -12,9 +10,7 @@ class TestSuggestFieldMapping:
 
     def test_standard_column_names(self):
         """Standard CSV column names map to canonical fields."""
-        result = suggest_field_mapping(
-            ["First_Name", "Last_Name", "DOB", "ZIP"]
-        )
+        result = suggest_field_mapping(["First_Name", "Last_Name", "DOB", "ZIP"])
         assert result["First_Name"] == "first_name"
         assert result["Last_Name"] == "last_name"
         assert result["DOB"] == "date_of_birth"
@@ -91,9 +87,7 @@ class TestSuggestFieldMapping:
 
     def test_political_fields(self):
         """Political/district columns map correctly."""
-        result = suggest_field_mapping(
-            ["party", "precinct", "congressional_district"]
-        )
+        result = suggest_field_mapping(["party", "precinct", "congressional_district"])
         assert result["party"] == "party"
         assert result["precinct"] == "precinct"
         assert result["congressional_district"] == "congressional_district"
