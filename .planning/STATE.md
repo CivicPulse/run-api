@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 31-04 inline survey, resume, door list, ARIA
-last_updated: "2026-03-15T21:18:19.612Z"
-last_activity: 2026-03-15 — Completed 31-01 data foundation
+stopped_at: Completed 31-05-PLAN.md
+last_updated: "2026-03-15T21:22:49.016Z"
+last_activity: 2026-03-15 — Completed 31-04 inline survey, resume, door list, ARIA
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 63
+  completed_plans: 8
+  percent: 88
 ---
 
 # Project State
@@ -53,6 +53,7 @@ Progress: [█████████░] 88% (7/8 v1.4 plans)
 | Phase 31 P01 | 3min | 2 tasks | 6 files |
 | Phase 31 P03 | 2min | 2 tasks | 2 files |
 | Phase 31 P04 | 3min | 2 tasks | 4 files |
+| Phase 31 P05 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ Recent decisions affecting current work:
 - [Phase 31]: Orchestrator hook returns OutcomeResult signals (bulkPrompt/surveyTrigger) instead of callback nesting
 - [31-04]: Scale questions use button grid (not Slider) for better mobile tap targets
 - [31-04]: FieldProgress kept separate; All Doors button in own row below to avoid modifying shared component
+- [Phase 31]: Store tests use getState() directly without React rendering context
 
 ### Roadmap Evolution
 
@@ -93,6 +95,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:17:36Z
-Stopped at: Completed 31-04 inline survey, resume, door list, ARIA
+Last session: 2026-03-15T21:22:49.011Z
+Stopped at: Completed 31-05-PLAN.md
 Resume file: None
