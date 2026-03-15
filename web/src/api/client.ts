@@ -15,7 +15,7 @@ export class PermissionError extends Error {
 }
 
 export const api = ky.create({
-  prefixUrl: undefined,
+  prefixUrl: "/",
   hooks: {
     beforeRequest: [
       async (request) => {
