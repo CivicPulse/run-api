@@ -1,402 +1,276 @@
-# Domain Pitfalls: v1.3 Voter Model & Import Enhancement
+# Pitfalls Research
 
-**Domain:** Expanding an existing voter model with ~20 new columns, multi-table import pipeline, voting history parsing, propensity score normalization, and sensitive demographic data handling
-**Researched:** 2026-03-13
-**Confidence:** HIGH (analysis based on direct codebase inspection of all affected files)
-
----
+**Domain:** Volunteer field mode for existing campaign management app
+**Researched:** 2026-03-15
+**Confidence:** HIGH (based on codebase analysis of existing call screen, walk list, layout, permissions + ecosystem research)
 
 ## Critical Pitfalls
 
-Mistakes that cause data corruption, require rewrites, or break existing functionality.
+### Pitfall 1: Two-Panel Desktop Layout Shipped as "Mobile-Friendly"
 
-### Pitfall 1: Upsert SET Clause Derived from First Row Instead of Full Column Set
+**What goes wrong:**
+The existing phone banking call screen uses a `flex gap-6 min-h-[500px]` two-panel layout (voter info left at `w-80 shrink-0`, survey+outcomes right). The canvassing walk list uses a full `<Table>` with five columns. Wrapping these in a responsive container or slapping `flex-col` on mobile does not produce a usable field experience. Volunteers in the field are holding phones one-handed, often in sunlight, often walking between houses. A shrunk-down admin UI is fundamentally different from a purpose-built field UI.
 
-**What goes wrong:** The `process_csv_batch` method in `import_service.py` (lines 401-406) dynamically builds the `ON CONFLICT DO UPDATE SET` clause from `valid_voters[0].keys()` -- the keys present in the first valid voter dict of the batch. When adding ~20 new columns, the chance that different rows in a batch have different mapped column sets increases substantially. L2 files with propensity scores, mailing addresses, and demographic fields will have varying column completeness across rows. If row 0 lacks `propensity_score` but row 47 has it, the SET clause will not include `propensity_score` and row 47's score is silently dropped into `extra_data` instead of the typed column, or worse -- the INSERT succeeds with the value but the ON CONFLICT UPDATE path ignores it.
+**Why it happens:**
+Developers reuse existing components because the data and API calls are identical. The admin call screen already "works" -- it claims entries, records outcomes, shows surveys. The temptation is to make it responsive rather than build a separate flow.
 
-**Why it happens:** The current pattern was adequate when all mapped rows had roughly the same shape (the ~20 original fields are present in most voter files). With 40+ potential columns, column sparsity across rows within a single batch becomes the norm, not the exception.
+**How to avoid:**
+Build the field mode as entirely new route trees (`/campaigns/$campaignId/field/...`) with dedicated components. Share hooks (`useClaimEntry`, `useRecordCall`, `useWalkListEntries`) and API clients, but not page-level components. The field canvassing wizard and field phone banking screen should be new files that import existing hooks but render completely different layouts optimized for single-column, large touch targets, and linear flow.
 
-**Consequences:** Partial data on reimport. A campaign imports an L2 file, gets all fields populated. Later they reimport an updated file where some rows have new propensity scores but the first row in a batch does not. The UPDATE clause silently skips the propensity column, and previously-set values are preserved (which is actually OK in that case) -- but the reverse is the real problem: if the first row HAS a column that subsequent rows do NOT have, the SET clause includes it, and rows without that column get `NULL` written over their existing values.
+**Warning signs:**
+- Field mode routes importing components from `components/canvassing/` or existing phone banking pages
+- Responsive breakpoints being added to existing admin pages instead of new field pages
+- Walk list entries rendered in a `<Table>` on mobile instead of a card/stack layout
+- The `VoterInfoPanel` component from `call.tsx` being reused in field mode without redesign
 
-**Prevention:**
-1. Build `update_cols` from `_VOTER_COLUMNS` (the full set of known model columns), not from `valid_voters[0].keys()`.
-2. Ensure `apply_field_mapping` always produces dicts with a consistent key set -- include all `_VOTER_COLUMNS` keys with `None` for unmapped values, rather than omitting them.
-3. Alternatively, exclude columns with `None` values per-row from the SET clause -- but this requires per-row upsert statements (incompatible with batch insert). The consistent-key-set approach is simpler and preserves batch performance.
-
-**Detection:** Write a test importing a batch where row 0 has only core fields and row 1 has propensity scores. Verify row 1's scores land in the typed column, not `extra_data`.
-
-**Phase:** Must be fixed in the model/migration phase, before any import pipeline changes. This is a prerequisite.
-
----
-
-### Pitfall 2: Multi-Table Import Transaction -- Getting Voter IDs Back for VoterPhone Creation
-
-**What goes wrong:** The current import pipeline fires `session.execute(stmt)` on the voter upsert without `RETURNING`. To auto-create VoterPhone records during import, you need the voter's UUID -- which you do not have for newly inserted rows. The voter_id is server-generated (`default=uuid.uuid4` / `gen_random_uuid()`). Without it, you cannot INSERT into `voter_phones`.
-
-**Why it happens:** The batch `INSERT ... ON CONFLICT DO UPDATE` was designed as a fire-and-forget upsert. VoterPhone creation was not part of the original pipeline.
-
-**Consequences:**
-- Without RETURNING: Cannot create VoterPhone records for newly imported voters. Only re-imported (already existing) voters could get phones via a second query.
-- Naive two-pass (upsert voters, then SELECT all by source_id, then insert phones): Doubles query count per batch, may hit timeouts on large files.
-- If phone INSERT fails mid-batch without savepoints: Either the entire batch rolls back (losing voter upserts) or orphaned voters exist without their phone records.
-
-**Prevention:**
-1. Add `RETURNING id, source_id` to the voter upsert statement. PostgreSQL supports RETURNING on INSERT ... ON CONFLICT DO UPDATE. In SQLAlchemy: `stmt = stmt.returning(Voter.id, Voter.source_id)`.
-2. Execute the upsert and collect the result: `result = await session.execute(stmt); rows = result.fetchall()`.
-3. Build a `source_id -> voter_id` mapping from the returned rows.
-4. Use that mapping to construct a batch VoterPhone INSERT for all phone numbers in the batch.
-5. Wrap the voter upsert + phone insert in the same transaction (which the current session pattern already provides). Use a per-batch savepoint only if you want phone failures to be non-fatal.
-
-**Detection:** Import a file with phone numbers where all voters are new (no existing records). Verify VoterPhone records are created with correct voter_id FK references.
-
-**Phase:** Import pipeline enhancement phase. This is the hardest engineering change in the milestone.
+**Phase to address:**
+Phase 1 (Foundation) -- establish the `/field/` route tree and the principle of shared hooks, separate UIs from day one.
 
 ---
 
-### Pitfall 3: VoterPhone Duplicates on Reimport
+### Pitfall 2: Wizard State Lost on Accidental Navigation or Browser Kill
 
-**What goes wrong:** The `voter_phones` table has no unique constraint on `(voter_id, value)` or `(campaign_id, voter_id, value)`. When the same voter file is reimported (common for data refreshes), the voter upsert correctly updates existing rows via the `(campaign_id, source_type, source_id)` unique index. But VoterPhone INSERTs would create duplicate phone records every time -- the same number appearing 2, 3, N times per voter.
+**What goes wrong:**
+A canvassing volunteer is mid-door-knock: they recorded an outcome, filled in 3 of 5 survey answers, typed notes. Their phone rings (switching apps), they accidentally swipe back, or the browser is killed by the OS for memory. All state is gone. They must re-knock or skip the voter entirely. This is the single most damaging UX failure for field operations.
 
-**Why it happens:** VoterPhone was designed for manual entry through the UI, where the user interface prevents duplicates naturally. Batch import bypasses this.
+**Why it happens:**
+The existing call screen stores all state in React `useState` -- `CallingState`, `surveyResponses`, `notes` are pure in-memory state (see `call.tsx` lines 261-262). This is fine for an admin at a desk but catastrophic for field use where interruptions are constant.
 
-**Consequences:** Duplicate phone numbers per voter. Call list generation queries `voter_phones` and would create multiple call list entries for the same number. DNC filtering that expects one record per number misses duplicates.
+**How to avoid:**
+1. Use Zustand with `persist` middleware (already in `package.json` dependencies) to save wizard state to `sessionStorage`. Key the store by `campaignId + assignmentId` so multiple campaigns do not collide.
+2. On field mode mount, check for persisted state and offer to resume ("You have an in-progress door knock at 123 Main St. Resume?").
+3. Extend the existing `useFormGuard` hook (used in 15 existing files) to cover field wizard routes -- block both TanStack Router navigation and `beforeunload`.
+4. For the canvassing wizard: save after each step transition, not just on final submit. Each step (knock outcome, survey question, notes) should persist immediately.
 
-**Prevention:**
-1. Add a unique constraint on `voter_phones(campaign_id, voter_id, value)` in the migration.
-2. Use `INSERT ... ON CONFLICT (campaign_id, voter_id, value) DO UPDATE SET type = EXCLUDED.type, source = EXCLUDED.source, updated_at = now()` for phone upserts during import.
-3. This preserves idempotent reimport behavior -- same file imported twice produces the same result.
+**Warning signs:**
+- Wizard state managed with `useState` instead of a persisted store
+- No resume prompt when re-entering field mode
+- `useFormGuard` not applied to field routes
+- State only saved on final "Submit" action
 
-**Detection:** Import the same file twice. Verify `SELECT count(*) FROM voter_phones WHERE voter_id = X` returns the same count both times.
-
-**Phase:** Same phase as VoterPhone auto-creation. The unique constraint must be in the migration.
-
----
-
-### Pitfall 4: Voting History Normalization Breaks Existing Filters and Saved Lists
-
-**What goes wrong:** The existing `voting_history` column is `ARRAY(String)` containing election identifiers. The frontend `VoterFilterBuilder` (line 38-39) generates year strings ("2026", "2025", ...) as filter values. The backend `build_voter_query` (lines 77-87) uses `Voter.voting_history.contains([election])` for array containment. If L2 voting history columns are parsed into entries like `"General_2024_11_05"` or `"Primary_2022_05_24"`, they will NOT match existing year-only filter values like `"2024"`. All existing dynamic voter lists with `voted_in` filters silently return wrong results.
-
-**Why it happens:** L2 files encode voting history as separate columns: `General_2024`, `Primary_2022_06_28`, `Municipal_2023`. The column name IS the election identifier. There is no single standard format across states. Without an explicit normalization strategy, parsed values vary in format.
-
-**Consequences:**
-- Saved dynamic voter lists (stored as `filter_query` JSONB on `voter_lists` table) with `voted_in: ["2024"]` stop matching voters whose history now contains `"General_2024"` instead of `"2024"`.
-- Frontend voting history checkboxes (year-based) no longer correspond to actual array values.
-- Breaking change for existing campaigns that already have voting history data.
-
-**Prevention:**
-1. Define a canonical election identifier format now: `"{Type}_{Year}"` (e.g., `"General_2024"`, `"Primary_2022"`).
-2. Parse L2 column names: `"General_2024_11_05"` -> extract type (`General`) and year (`2024`) -> store `"General_2024"`.
-3. Update the backend `build_voter_query` to support BOTH formats: year-only (`"2024"`) should match any election in that year. Use a LIKE or regex check: `voting_history @> ARRAY['General_2024']` for exact match, or use `ANY(voting_history) LIKE '%_2024'` for year-based filter.
-4. Update the frontend filter to show election type + year rather than just year. Fetch available election identifiers from the backend (aggregated from actual data) instead of hardcoding year ranges.
-5. Provide backward compatibility: if a saved filter has `voted_in: ["2024"]`, interpret it as "any election in 2024."
-
-**Detection:** Import an L2 file with voting history columns. Apply an existing year-based filter. Verify results include voters with the new format.
-
-**Phase:** Voting history parsing must be its own focused sub-phase with explicit format specification agreed upon BEFORE implementation.
+**Phase to address:**
+Phase 2 (Canvassing Wizard) -- must be baked in from the start, not added later.
 
 ---
 
-### Pitfall 5: Alembic Migration -- Non-Nullable Column on Table with Existing Data
+### Pitfall 3: tel: Links Silently Fail or Behave Inconsistently
 
-**What goes wrong:** Adding a column with `nullable=False` and no `server_default` to the `voters` table will fail immediately if the table has existing rows, because PostgreSQL cannot satisfy the NOT NULL constraint for existing rows.
+**What goes wrong:**
+`<a href="tel:+15551234567">` has multiple failure modes: (1) Desktop browsers either do nothing or open a random app. (2) iOS handles `tel:` fine in Safari but some in-app browsers (WebView) silently swallow it. (3) Android Chrome shows `ERR_UNKNOWN_URL_SCHEME` in certain WebView contexts. (4) Phone numbers with formatting characters (parentheses, dashes, spaces) behave differently across platforms. (5) The existing phone banking screen displays phone numbers as `<Button>` elements for selection (lines 73-89 of `call.tsx`) but has no `tel:` link -- the volunteer mode needs to add tap-to-call, which is a new interaction pattern.
 
-**Why it happens:** Copy-paste from a model definition that uses `Mapped[str]` (non-nullable in SQLAlchemy 2.0) instead of `Mapped[str | None]` (nullable). Or a Pydantic schema field that says `str` getting unconsciously mirrored in the model.
+**Why it happens:**
+`tel:` links appear trivially simple, so developers add them without testing on actual devices. The iOS simulator cannot test `tel:` links (no dialer). Android emulators can simulate but behavior differs from real devices.
 
-**Consequences:** Migration fails on any database with existing voter records. In production, this means a failed deployment. If Alembic is not configured with transactional DDL, the migration can be half-applied.
+**How to avoid:**
+1. Strip all non-digit characters except leading `+` before constructing the `tel:` URL. Store the display format separately from the dial format.
+2. Use `window.location.href = 'tel:...'` as fallback if `<a>` click does not trigger navigation.
+3. Show a "Copy number" fallback button alongside every tap-to-call button so volunteers can manually dial if `tel:` fails.
+4. On desktop browsers, detect non-mobile UA and show the number as copyable text instead of a tel: link.
+5. Test on real iOS and Android devices, not just simulators. Add a Playwright test that verifies the `href` attribute is correctly formatted.
 
-**Prevention:**
-1. ALL new columns MUST be `nullable=True`. The existing pattern uses `Mapped[str | None]` consistently -- follow it.
-2. No `server_default` is needed for nullable columns (but will not cause harm if present).
-3. Test the migration against the Macon-Bibb demo dataset before merging.
-4. Write a single migration file for all new columns, not separate migrations per column.
+**Warning signs:**
+- Phone numbers passed to `tel:` with parentheses, dashes, or spaces still in them
+- No fallback for desktop or WebView contexts
+- Only tested in Chrome DevTools mobile emulation
+- No `formatForDial()` utility function
 
-**Detection:** Run `alembic upgrade head` against a seeded database. If it succeeds, the constraint is satisfied.
-
-**Phase:** First phase (model + migration). Must be verified before any subsequent work.
-
----
-
-## Moderate Pitfalls
-
-### Pitfall 6: Propensity Score Parsing -- "77%" vs "Not Eligible" vs Empty String
-
-**What goes wrong:** L2 propensity scores are string values: `"77%"`, `"45%"`, `"Not Eligible"`, `"N/A"`, `""`, `"0%"`. Storing as `String` makes numeric filtering impossible (cannot query "propensity > 60"). Storing as `Integer` loses the "Not Eligible" semantic. Naive `int("77%".rstrip("%"))` crashes on `"Not Eligible"`.
-
-**Why it happens:** Vendor data mixes numeric values with categorical status strings in the same column. No parsing is applied -- the raw value goes straight to the database.
-
-**Prevention:**
-1. Store as `Integer` (0-100 range), nullable. `NULL` means unknown or not eligible.
-2. Create a dedicated `parse_propensity(raw: str) -> int | None` function:
-   - Strip whitespace, strip `%` suffix.
-   - Try `int()` conversion. If it succeeds and is 0-100, return the value.
-   - If conversion fails or value is out of range, return `None`.
-   - Log non-numeric values (like "Not Eligible") to the import error/warning report for transparency.
-3. Test the parser with a matrix: `"77%"` -> 77, `"0%"` -> 0, `"100"` -> 100, `""` -> None, `"Not Eligible"` -> None, `"N/A"` -> None, `"  45 %  "` -> 45.
-
-**Phase:** Model phase (column type decision) and import parsing phase (parser function).
+**Phase to address:**
+Phase 3 (Phone Banking Field Mode) -- the tap-to-call feature is central to this phase.
 
 ---
 
-### Pitfall 7: Mailing Address -- Inline Columns vs. VoterAddress Table
+### Pitfall 4: Tour Library Breaks on Dynamic/Async Content
 
-**What goes wrong:** The Voter model already has inline residential address fields (`address_line1` through `zip_code`). The `VoterAddress` table also exists for multi-address support. Adding mailing address creates a design fork: (a) add `mail_address_line1`, `mail_city`, `mail_state`, `mail_zip_code` as inline columns on Voter (6 new columns), or (b) insert a row into `voter_addresses` with `type='mailing'`. If the wrong choice is made, either the import pipeline becomes significantly more complex (option b -- now touching THREE tables per batch) or the data model becomes denormalized in a way that requires maintaining two address patterns (option a).
+**What goes wrong:**
+React-joyride (the most popular React tour library, 400K+ weekly npm downloads) has a well-documented failure mode: if the target element for the first step does not exist in the DOM when the tour starts, the entire tour is silently skipped (GitHub issue #585). For subsequent steps, missing targets cause step-skipping without user feedback (issue #519). In the field mode, tour targets will be inside wizard steps that are conditionally rendered -- the "record outcome" buttons do not exist until a voter is claimed, the survey questions do not exist until the script loads.
 
-**Why it happens:** The original design put the primary residential address inline on the Voter model for query convenience, then also created the VoterAddress table for extensibility. This dual pattern was not harmful before, but mailing address forces a choice.
+**Why it happens:**
+Tour libraries attach to DOM elements by CSS selector. Field mode UIs are heavily stateful -- content appears and disappears as the wizard progresses. Developers write tour steps referencing elements that exist in the "happy path" render state but not at tour initialization time.
 
-**Prevention:** Use inline columns on the Voter model because:
-- The import pipeline already handles flat column -> Voter model mapping. No new table writes needed.
-- Filtering on mailing state/zip is a simple WHERE clause, not a JOIN.
-- Campaigns need at most 2 addresses (residential + mailing). The VoterAddress table can remain for any future address types.
-- Prefix all mailing columns: `mail_address_line1`, `mail_address_line2`, `mail_city`, `mail_state`, `mail_zip_code`.
+**How to avoid:**
+1. Use react-joyride in controlled mode (`stepIndex` managed in state) rather than uncontrolled mode. Advance `stepIndex` only when the target element is confirmed rendered.
+2. Split the tour into segment tours per wizard phase rather than one monolithic tour. Example: "Welcome tour" (landing page elements only), "First knock tour" (triggered after first claim), "Recording tour" (triggered when outcome panel renders).
+3. Store tour completion state per-segment in localStorage keyed by `userId + campaignId`. Check `tourComplete['welcome']` before showing.
+4. Add a `data-tour="step-name"` attribute convention for all tour target elements. This avoids brittle CSS class selectors that break during refactoring.
+5. Provide a "Replay tour" button in the field mode header that resets segment completion flags.
 
-**Phase:** Model definition phase. This is a design decision that must be made before writing the migration.
+**Warning signs:**
+- Tour steps defined as a single static array covering the entire field mode
+- Tour targets using class names or auto-generated IDs instead of `data-tour` attributes
+- Tour starts on page mount without checking if target elements exist in DOM
+- No way to replay the tour after completion
+- react-shepherd used instead of react-joyride (requires paid commercial license, React 19 wrapper incompatibility)
 
----
-
-### Pitfall 8: CANONICAL_FIELDS and _VOTER_COLUMNS Drift from Voter Model
-
-**What goes wrong:** The import service maintains two hardcoded data structures: `CANONICAL_FIELDS` (50+ aliases mapping to canonical column names) and `_VOTER_COLUMNS` (set of 23 valid Voter model column names). Adding ~20 new columns means updating BOTH. Forgetting to add a column to `_VOTER_COLUMNS` means mapped values silently go to `extra_data` instead of the typed column. Forgetting to add aliases to `CANONICAL_FIELDS` means CSV columns with standard names (like `"MilitaryStatus"`) do not auto-map.
-
-**Why it happens:** Two manually-maintained lists that must stay synchronized with the model. No automated validation.
-
-**Prevention:**
-1. Derive `_VOTER_COLUMNS` from the Voter model at import time rather than hardcoding:
-   ```python
-   _EXCLUDED = {"id", "campaign_id", "created_at", "updated_at", "geom"}
-   _VOTER_COLUMNS = {c.key for c in Voter.__table__.columns} - _EXCLUDED
-   ```
-2. Add a test that asserts every key in `CANONICAL_FIELDS` is also in `_VOTER_COLUMNS`: `assert set(CANONICAL_FIELDS.keys()).issubset(_VOTER_COLUMNS | {"source_id"})`.
-3. Add L2-specific aliases for every new field. L2 column names are documented and predictable.
-
-**Phase:** Import enhancement phase. But the derive-from-model change should happen first in the model phase since it eliminates the manual sync requirement entirely.
+**Phase to address:**
+Phase 4 (Guided Onboarding) -- but `data-tour` attributes should be added to elements in Phases 1-3 as they are built.
 
 ---
 
-### Pitfall 9: Ethnicity -- "Likely" Prefix Makes Filtering Miss Records
+### Pitfall 5: Admin Navigation Chrome Shown in Field Mode
 
-**What goes wrong:** L2 ethnicity values include a qualifier prefix: `"Likely African-American"`, `"Likely Hispanic and Portuguese"`, `"East and South Asian"`, `"European"`. If stored as-is in the existing `ethnicity` column (`String(100)`), a filter for `ethnicity = "African-American"` returns zero results because no record has exactly that value -- they all have `"Likely African-American"`.
+**What goes wrong:**
+The existing app has a full navigation structure with links to Voters (32-filter search), Canvassing (turf management), Phone Banking (session/call-list management), Volunteers (roster/shifts), and Settings. If field mode routes are nested under the same layout, volunteers see the full admin nav. They click "Voters" out of curiosity, land in the 23-dimension filter chip interface, get confused, and cannot find their way back to their assignment. Or worse: a volunteer with elevated permissions accidentally modifies campaign settings.
 
-**Why it happens:** The frontend or API filter sends a normalized category name, but the stored value includes the vendor's qualifier prefix. No normalization layer exists.
+**Why it happens:**
+TanStack Router uses nested layouts. The existing `__root.tsx` wraps all campaign routes with navigation chrome. Adding field routes under the same parent inherits the same layout.
 
-**Prevention:**
-1. Store the raw vendor value in the existing `ethnicity` column for display purposes.
-2. Optionally add an `ethnicity_category` column with normalized categories: strip `"Likely "` prefix, map compound values to primary category.
-3. Or: Normalize on storage -- strip the `"Likely "` prefix before saving. Since the `"Likely"` qualifier applies to nearly all L2 ethnicity values, it adds no information value for campaign operations.
-4. Use `ILIKE` or case-insensitive matching in the filter builder rather than exact match.
+**How to avoid:**
+1. Create a dedicated field layout route (e.g., `campaigns/$campaignId/field.tsx` as a layout route) that renders a minimal header: campaign name, assignment name, progress indicator, and a single "Exit Field Mode" button. No sidebar. No admin nav links.
+2. The field layout should use the existing `RequireRole` component but with a focused concern: verify the user has at least `volunteer` role, then render only field-appropriate UI.
+3. The "Exit Field Mode" link should go to the volunteer dashboard, not the admin campaign view.
 
-**Phase:** Model phase (decide on normalization strategy) and import parsing phase (apply normalization).
+**Warning signs:**
+- Field routes using the same layout component as admin routes
+- Full sidebar visible on field mode pages
+- Volunteers able to navigate to voter search, settings, or other admin pages from field mode
+- No distinct field layout route file
 
----
-
-### Pitfall 10: New Filterable Columns Without Indexes
-
-**What goes wrong:** Adding 20 columns is a metadata-only operation in PostgreSQL (fast). But when the VoterFilterBuilder adds filter dimensions for ethnicity, language, propensity score ranges, etc., queries against a 500K-row voter table without indexes on these columns degrade to sequential scans. The query planner cannot use the existing indexes (which cover campaign_id + party, precinct, zip_code, last_name) for new filter dimensions.
-
-**Why it happens:** The column addition migration is focused on schema changes, not performance. Index planning is deferred and forgotten.
-
-**Prevention:**
-1. Add composite indexes ONLY for columns that will appear in `build_voter_query` filter conditions:
-   - `(campaign_id, ethnicity_category)` -- if ethnicity filtering is implemented.
-   - `(campaign_id, language)` -- if language filtering is implemented.
-2. Do NOT add indexes for every new column. Columns that are display-only (like `mail_city`) do not need indexes.
-3. For propensity scores (numeric range queries on `Integer` columns), a standard B-tree index on `(campaign_id, propensity_score)` is sufficient. BRIN indexes only help if data is physically ordered, which voter data is not.
-
-**Phase:** Migration phase. Add indexes in the same migration as columns.
+**Phase to address:**
+Phase 1 (Foundation) -- the field layout is infrastructure that all other field phases depend on.
 
 ---
 
-### Pitfall 11: L2 System Mapping Template Not Updated
+### Pitfall 6: Poor Connectivity Causes Silent Data Loss
 
-**What goes wrong:** The L2 field mapping template was seeded in migration `002b` via an INSERT with a JSONB mapping of 22 L2 column names to voter model fields. Adding ~20 new columns means the L2 mapping needs ~20 new entries (e.g., `"MilitaryStatus" -> "military_status"`, `"CommercialData_EstimatedHHIncome" -> "estimated_hh_income"`, `"Mail_Addresses_City" -> "mail_city"`). If the template is not updated, L2 imports will map the old 22 fields but put all new fields into `extra_data`.
+**What goes wrong:**
+A canvasser records a door knock outcome and survey at a house with no cell service. The API call to POST the result fails. If the failure is not handled well, the data is lost. With the existing `handleOutcome` function in `call.tsx`, a failed `recordCall.mutateAsync` shows `toast.error("Failed to record call")` and stays in the "claimed" state -- but if the volunteer does not notice the toast (outdoors, glare, walking), they might hit "Next Voter" thinking it saved.
 
-**Why it happens:** The system template is baked into a migration. There is no mechanism to update it outside of writing a new migration.
+**Why it happens:**
+The existing app assumes reliable connectivity because admins use it from an office. The error handling pattern (try/catch with toast) is appropriate for desktop but insufficient for field use where failures are frequent and attention is divided.
 
-**Prevention:**
-1. Write an UPDATE statement in the new migration that replaces the L2 template's `mapping` JSONB with the expanded mapping.
-2. Use `UPDATE field_mapping_templates SET mapping = :new_mapping WHERE is_system = true AND source_type = 'l2'`.
-3. Include ALL new L2 column name -> model field mappings.
+**How to avoid:**
+1. Implement an outbox pattern: when a mutation fails due to network error, queue it in a local store (Zustand persist or IndexedDB) and retry automatically when connectivity returns. Show a persistent badge ("2 results pending sync") rather than a fleeting toast.
+2. Use TanStack Query's built-in `networkMode: 'offlineFirst'` for field mode mutations. Paused mutations resume when online.
+3. Add a `navigator.onLine` listener and show a persistent "Offline" banner in the field mode header when connectivity is lost. Do not auto-dismiss it -- keep it visible until connectivity returns.
+4. Make the wizard optimistic: advance to the next voter immediately after recording locally, even if the server has not confirmed. The outbox handles eventual sync.
+5. Never block the volunteer's workflow on a network response. The most important thing is that they keep moving door to door.
 
-**Phase:** Migration phase, same migration file that adds new columns.
+**Warning signs:**
+- Field mode mutations using the default TanStack Query settings (online-first networkMode)
+- No offline indicator in the field mode header
+- Mutation errors shown only as toasts with no retry queue
+- Volunteer workflow blocked while waiting for server response
+- No sync status indicator for pending mutations
 
----
-
-### Pitfall 12: `extra_data` Contains Data That Should Now Be in First-Class Columns
-
-**What goes wrong:** Previously imported voter files put propensity scores, detailed ethnicity, language, military status, etc. into the `extra_data` JSONB blob because no typed columns existed. After adding first-class columns, these old records have data in `extra_data` but NULL in the new columns. Queries filtering on the new columns miss all previously imported voters. The campaign has 200K voters imported last week -- all with empty propensity scores in the new column, but valid scores in `extra_data.propensity_score`.
-
-**Why it happens:** Schema migration adds columns. Data migration (copying from JSONB to typed columns) is a separate step that is easy to forget or defer.
-
-**Prevention:**
-1. Write a data migration step (in the same or a follow-up migration) that copies known keys from `extra_data` into the new typed columns:
-   ```sql
-   UPDATE voters SET propensity_score = (extra_data->>'propensity_score')::integer
-   WHERE extra_data ? 'propensity_score' AND propensity_score IS NULL;
-   ```
-2. Apply the same propensity/ethnicity parsing logic to the data migration that the import pipeline uses -- do not just copy raw strings if the new column expects parsed values.
-3. Optionally remove migrated keys from `extra_data` to avoid confusion: `UPDATE voters SET extra_data = extra_data - 'propensity_score'`.
-4. This only matters for campaigns that have already imported L2 files with these fields. If no campaigns have imported yet, skip the data migration.
-
-**Phase:** Post-schema-migration step. Can be a management command or a separate Alembic migration.
+**Phase to address:**
+Phase 2 (Canvassing Wizard) for the outbox pattern and offline indicator. Phase 3 (Phone Banking) extends the same pattern.
 
 ---
 
-## Minor Pitfalls
+## Technical Debt Patterns
 
-### Pitfall 13: Pydantic Schema Explosion -- Three Schemas with Identical Field Lists
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Reusing admin page components in field mode with responsive CSS | Faster initial delivery | Two UX contexts fighting in one component; mobile regressions break admin, admin changes break mobile | Never -- share hooks, not UI components |
+| Storing wizard state in useState only | Simpler code, no persist dependency | Data loss on any interruption; volunteers lose work constantly | Never for field mode; fine for admin |
+| Single monolithic tour covering all field mode pages | One tour definition, simple to write | Breaks when any step target is missing; cannot replay segments; all-or-nothing completion | Never -- split into per-phase segment tours |
+| Skipping offline handling ("we'll add it later") | Ship faster | Fundamental architecture change later; must retrofit outbox into every mutation | Only if outbox is added in the immediately next phase |
+| Using the same layout for field and admin | One fewer layout file | Volunteers see admin navigation, get lost, accidentally modify data | Never -- field mode must have its own layout |
 
-**What goes wrong:** `VoterResponse`, `VoterCreateRequest`, and `VoterUpdateRequest` all need ~20 new fields. All three currently list every voter field independently. Adding 20 fields to 3 schemas is 60 lines of boilerplate that can drift out of sync.
+## Integration Gotchas
 
-**Prevention:**
-1. Create a `VoterFields` mixin/base with all the optional voter fields.
-2. Have each schema inherit from it: `class VoterResponse(VoterFields, BaseSchema)`, etc.
-3. Or: Write a test that asserts all three schemas have the same voter-related field names (excluding id, campaign_id, timestamps).
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| tel: links | Passing formatted phone numbers (`(555) 123-4567`) directly to `href="tel:"` | Strip to digits-only (e.g., `+15551234567`) for dial, keep formatted version for display |
+| react-joyride + TanStack Router | Mounting tour at top level and expecting it to work across route changes | Mount tour provider inside the field layout route; reset tour state on route transitions; use controlled mode |
+| react-joyride + React 19 | Using react-joyride with unverified React 19 compatibility | Verify compatibility before adoption; react-joyride is the safest choice (react-shepherd wrapper has known React 19 issues) |
+| Zustand persist + sessionStorage | Using `localStorage` for wizard state, causing stale state across tabs | Use `sessionStorage` for in-progress wizard state (tab-scoped); `localStorage` only for tour completion and preferences |
+| TanStack Query + offline mutations | Default `networkMode: 'online'` pauses mutations silently with no user feedback | Set `networkMode: 'offlineFirst'` for field mode mutations and display sync status UI |
+| useFormGuard + wizard navigation | Applying form guard to the entire wizard, blocking intentional step transitions | Apply form guard only to exits from the wizard; wizard's own state machine manages internal step navigation |
+| Existing hooks in field context | Using `useWalkListEntries` to fetch full 500-entry list on mount | Use claim-on-fetch pattern (already in phone banking); fetch only the current/next entry for canvassing wizard |
 
-**Phase:** Schema update phase, alongside model changes.
+## Performance Traps
 
----
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Loading full walk list on wizard mount | 3-5s skeleton on 3G for 500+ entry lists | Fetch only next entry via claim pattern; prefetch next 1-2 entries | Walk lists > 100 entries on slow connections |
+| Re-fetching survey questions per voter | Redundant API call for same script on each "Next Voter" tap | Cache with long `staleTime` in TanStack Query; script never changes mid-session | Large surveys (10+ questions) on slow connections |
+| Tour overlay causing layout reflow | Jank/stutter when spotlight renders, especially on low-end Android | Set `disableScrolling: true` where scroll is not needed; avoid targeting elements in scrollable containers | Low-end Android devices (< 4GB RAM) |
+| Full voter detail fetch in field mode | Loading all 22+ columns when field only needs name, address, phone | Return only needed fields from API (sparse fieldset or dedicated endpoint) | Walk lists with 200+ voters on slow connections |
+| Persisting every keystroke to storage | UI lag on notes/text fields as Zustand persist writes to sessionStorage | Debounce persist writes (300ms); persist on step transition, not on every change | Devices with slow storage I/O |
 
-### Pitfall 14: Frontend Type + Filter Interface Mismatch
+## Security Mistakes
 
-**What goes wrong:** The TypeScript `Voter` interface in `web/src/types/voter.ts` must gain all ~20 new fields. The `VoterFilter` interface must gain new filter dimensions. The `VoterFilterBuilder` component must render new filter controls. If any of these three are out of sync, either data is fetched but not displayed, or filters are shown but do not work.
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Field mode routes accessible without role check | Non-volunteers or unauthenticated users access field operations | Apply `RequireRole` with `volunteer` minimum at field layout level; verify backend endpoints also enforce role |
+| Persisted wizard state containing PII in localStorage | Voter names, addresses, phone numbers on shared/lost device survive browser close | Use `sessionStorage` (cleared on tab close); clear all field state on explicit "End Session"; never persist to localStorage |
+| Phone numbers in browser history via tel: links | Browser history shows `tel:+15551234567` entries accessible to anyone with device access | Use `window.location.href` assignment or `<a>` with `onClick` handler to avoid history entries |
+| Admin endpoints reachable via URL bar from field mode | Volunteer manually types admin URL paths | Field layout should have its own route guard; `RequireRole` hiding is not the same as route blocking |
+| Outbox data persisted unencrypted | Queued mutation payloads (voter contact results) stored in plaintext in browser storage | Encrypt outbox entries or scope them to session; clear on logout |
 
-**Prevention:**
-1. Add all new fields to the `Voter` interface as `type | null`.
-2. Add filter dimensions to `VoterFilter` only for fields that have backend query support in `build_voter_query`.
-3. Do not add a filter UI control without first implementing the backend filter condition.
-4. Use TypeScript strict mode to catch missing fields at compile time.
+## UX Pitfalls
 
-**Phase:** UI update phase (final phase). Must exactly match backend schema and filter support.
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Touch targets smaller than 44x44px | Missed taps, rage taps, wrong outcomes recorded while walking | Minimum 48x48px touch targets; outcome buttons should be full-width on mobile; follow WCAG 2.5.5 |
+| Fleeting toast for critical errors | Volunteer misses "Failed to save" toast outdoors in sunlight while walking | Persistent inline banners for errors requiring action; toasts only for confirmations ("Saved!") |
+| No progress indicator in canvassing wizard | Volunteer does not know how many houses remain or where they are in the list | Persistent progress bar in field header: "12 of 47 doors visited" |
+| "Loading..." text instead of skeleton | Perceived slowness on poor connections; volunteer waits instead of acting | Show optimistic wizard frame immediately; use skeletons for data that is loading |
+| Tour that cannot be dismissed | Experienced volunteers frustrated by forced onboarding | Make tour skippable after first step; remember completion per-user; keep tours under 5 steps per segment |
+| No "End Session" or unclear exit | Volunteer stuck in field mode, cannot return to dashboard | Prominent "End Session" button that syncs pending data and navigates to volunteer home |
+| Survey questions requiring scroll to submit | Volunteer fills answers at top of page, cannot see or reach "Submit" button without scrolling | Pin action buttons (Next/Submit) to bottom of viewport; keep survey questions in scrollable area above |
+| Outcome buttons using color only for meaning | Color-blind volunteers cannot distinguish "Connected" (default) from "Terminal" (destructive) | Add text labels AND icons to outcome categories; do not rely solely on button variant colors |
 
----
+## "Looks Done But Isn't" Checklist
 
-### Pitfall 15: Import Performance Regression from Multi-Table Writes
-
-**What goes wrong:** Current import: 1 batch INSERT per 1000 rows (voters only). After changes: 1 batch INSERT for voters + RETURNING, then 1 batch INSERT for phones per batch. This doubles the SQL statements per batch. For a 200K-row file with 200 batches, that is 200 extra INSERT statements. The progress UI (which updates after each batch flush) may appear to stall.
-
-**Prevention:**
-1. Batch phone inserts the same way voters are batched -- collect all phones for the batch and do a single bulk INSERT.
-2. If performance degrades noticeably, reduce batch size from 1000 to 500 rows.
-3. Benchmark import time before and after the change with the Macon-Bibb demo dataset.
-
-**Phase:** Import pipeline phase. Benchmark after implementation.
-
----
-
-### Pitfall 16: Phone Number Format Inconsistency Breaks DNC Filtering
-
-**What goes wrong:** L2 phone numbers come in varying formats: `"(478) 555-1234"`, `"4785551234"`, `"+14785551234"`, `"478-555-1234"`. The VoterPhone `value` column stores whatever is provided. The DNC list stores normalized numbers. The call list generation joins VoterPhone to DNC entries. If imported phone numbers are not normalized, DNC lookups produce false negatives (phone is on DNC list but does not match because of formatting).
-
-**Why it happens:** The existing frontend DNC search strips non-digits client-side (noted in PROJECT.md as a key decision). But the import pipeline has no phone normalization. These two paths produce different formats for the same number.
-
-**Prevention:**
-1. Create a `normalize_phone(raw: str) -> str | None` utility:
-   - Strip all non-digit characters.
-   - If 11 digits starting with `1`, strip leading `1`.
-   - If 10 digits, return as-is.
-   - Otherwise return `None` (invalid).
-2. Apply normalization during import before inserting into VoterPhone.
-3. Verify DNC import also applies the same normalization.
-4. Validate that `call_list.py`'s phone query matches normalized values.
-
-**Phase:** Import pipeline phase, VoterPhone auto-creation sub-task.
-
----
-
-### Pitfall 17: VoterFilterBuilder UI Becomes Overwhelming
-
-**What goes wrong:** The current filter builder has 13 filter dimensions (party, age, voting history, tags, city, zip, state, gender, precinct, congressional district, phone, registered after/before, logic). Adding ethnicity, language, propensity score ranges, military status, and mailing address filters would push it to 18+ dimensions. The component already uses a "More filters" toggle -- adding more to the expanded section makes it a wall of inputs.
-
-**Prevention:**
-1. Group filters into collapsible sections: Demographics (age, gender, ethnicity, language), Geography (city, state, zip, precinct, district), Political (party, registration, voting history), Scores (propensity), Contact (phone), Tags.
-2. Keep the 4 most-used filters always visible (party, age, city, voting history).
-3. Use an "Add filter" pattern: new dimensions default to hidden and users activate them explicitly.
-4. Extract `FilterSection` sub-components to keep the main component manageable.
-
-**Phase:** UI update phase (final phase of milestone).
-
----
-
-### Pitfall 18: Household ID Already Exists -- Adding household_size Without Confusion
-
-**What goes wrong:** `household_id` already exists on the Voter model. If adding `household_size`, campaigns may expect it to be computed from the count of voters sharing the same `household_id` in their campaign. But L2 provides `household_size` as a pre-computed value from their full national file. If a campaign imports only a subset of voters, the computed count and the vendor value disagree.
-
-**Prevention:**
-1. Store L2's household_size as-is. Do not auto-compute.
-2. Name the column clearly: `household_size` (vendor-provided). Document that it reflects the vendor's data, not the campaign's imported subset.
-3. If campaigns also want the imported household count, that is a derived metric (computed at query time via `COUNT(*) OVER (PARTITION BY household_id)`) -- do not store it.
-
-**Phase:** Model definition phase.
-
----
-
-## Integration Pitfalls (Cross-Cutting Concerns)
-
-### Call List Generation After Model Changes
-
-The `CallListService.generate_call_list` method queries VoterPhone records to build call entries. If VoterPhone auto-creation during import works correctly, call lists will automatically include more voters (previously, voters without manually-added phones were excluded from phone banking). This is the desired outcome -- but verify that:
-1. DNC filtering works against normalized phone numbers (Pitfall 16).
-2. Duplicate phone records do not create duplicate call list entries (Pitfall 3).
-3. The call list entry count increases as expected after importing a file with phone data.
-
-### Walk List and Turf Operations
-
-Walk lists use `Voter.geom` for PostGIS spatial queries (`ST_Contains`). New columns (mailing address, propensity scores, demographics) do not affect spatial operations. The residential address and lat/long remain the source of truth for canvassing. No action needed -- but do NOT import mailing address coordinates into the `latitude`/`longitude` columns.
-
-### Dynamic Voter Lists with Saved Filters
-
-The `filter_query` JSONB on `voter_lists` stores serialized `VoterFilter` objects. Adding new filter dimensions is additive -- old saved filters continue to work because they simply do not include the new keys. However:
-1. Do NOT rename any existing filter keys (`party`, `age_min`, `voted_in`, etc.).
-2. Do NOT change the semantics of existing keys (e.g., do not change `voted_in` from exact-match to partial-match without handling backward compat).
-3. New filter keys should be optional and default to `None` (no filtering) when absent from saved filters.
-
-### Voter Detail View
-
-The frontend voter detail page displays all voter fields. Adding ~20 new fields to a flat display creates an overwhelming detail page. Group fields into sections (Personal, Residential Address, Mailing Address, Political, Demographics, Scores, Voting History) with collapsible panels.
-
----
-
-## Phase-Specific Warnings
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Model + Migration | Pitfall 5 (non-nullable column), Pitfall 7 (mailing address design) | All columns nullable; decide inline vs VoterAddress BEFORE writing migration |
-| Migration (indexes + L2 template) | Pitfall 10 (missing indexes), Pitfall 11 (stale L2 template) | Add indexes for filterable fields only; update L2 template in same migration |
-| Data backfill | Pitfall 12 (extra_data to columns) | Separate data migration from schema migration; apply same parsing logic |
-| Import pipeline -- voter upsert | Pitfall 1 (SET clause drift) | Derive update_cols from full column set, not first row |
-| Import pipeline -- VoterPhone | Pitfall 2 (missing voter IDs), Pitfall 3 (phone dedup), Pitfall 16 (phone normalization) | Add RETURNING; add unique constraint; normalize phone numbers |
-| Voting history parsing | Pitfall 4 (format breaks existing filters) | Define canonical format first; support backward-compat year-only lookups |
-| Propensity/demographic parsing | Pitfall 6 (percent parsing), Pitfall 9 (ethnicity prefix) | Dedicated parser functions with exhaustive test matrices |
-| Schema/API update | Pitfall 8 (CANONICAL_FIELDS sync), Pitfall 13 (schema explosion) | Derive _VOTER_COLUMNS from model; use schema mixin |
-| Frontend update | Pitfall 14 (type mismatch), Pitfall 17 (filter UX) | Exact type parity; grouped filter sections |
-| Performance | Pitfall 10 (missing indexes), Pitfall 15 (import slowdown) | Benchmark with realistic data after implementation |
-
----
+- [ ] **Canvassing wizard:** Often missing "resume in-progress" -- verify that closing and reopening the app restores wizard state with resume prompt
+- [ ] **Phone banking tap-to-call:** Often missing desktop fallback -- verify that non-mobile browsers show "Copy Number" instead of broken tel: link
+- [ ] **Guided tour:** Often missing segment reset -- verify "Replay Tour" works and individual segments can be replayed independently
+- [ ] **Offline handling:** Often missing sync indicator -- verify pending mutations are visible to user and auto-sync when connectivity returns
+- [ ] **Field layout:** Often missing deep link handling -- verify a direct link to `/field/canvass` for a volunteer not checked in redirects to check-in, not 404
+- [ ] **Touch targets:** Often missing on secondary actions -- verify "Skip", "Back", and "Notes" buttons meet 44px minimum, not just primary action buttons
+- [ ] **Field mode permissions:** Often missing backend enforcement -- verify field API calls rejected for non-volunteers even if UI hides routes
+- [ ] **Survey in wizard:** Often missing validation -- verify required survey questions block "Next" button with inline errors, not just a toast
+- [ ] **Session cleanup:** Often missing on logout -- verify logging out clears all persisted field state (wizard progress, tour completion, outbox)
+- [ ] **Landscape orientation:** Often untested -- verify field mode works when phone is rotated; pinned bottom buttons should still be accessible
+- [ ] **Back button behavior:** Often broken -- verify Android hardware back button navigates to previous wizard step, not out of the wizard entirely
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| SET clause drift (Pitfall 1) | LOW | Fix update_cols derivation; reimport affected files |
-| Missing voter IDs for phones (Pitfall 2) | MEDIUM | Add RETURNING; backfill phones for voters imported without them |
-| Duplicate phones (Pitfall 3) | LOW | Add unique constraint; deduplicate with `DELETE FROM voter_phones WHERE id NOT IN (SELECT MIN(id) ...)` |
-| Broken voting history filters (Pitfall 4) | HIGH | Must migrate all voting_history arrays to new format; update all saved filter_query JSONB; hardest to fix retroactively |
-| Non-nullable migration failure (Pitfall 5) | LOW | Fix column definition; re-run migration |
-| Stale extra_data (Pitfall 12) | MEDIUM | Run data migration script to copy JSONB keys to typed columns |
-| Unnormalized phone numbers (Pitfall 16) | MEDIUM | Run UPDATE to normalize existing VoterPhone values; verify DNC matches |
+| Admin layout leaking into field mode | LOW | Extract field layout into its own route tree; 1-2 day refactor if caught early |
+| useState wizard state (no persistence) | MEDIUM | Retrofit Zustand persist; requires touching every state mutation; 2-3 day refactor |
+| Monolithic tour that breaks on dynamic content | MEDIUM | Split into segment tours; retroactively add data-tour attributes; 2-3 days |
+| tel: links with formatting characters | LOW | Single `formatForDial()` utility applied at all call sites; < 1 day |
+| No offline handling | HIGH | Retrofitting outbox requires mutation wrapper, sync UI, conflict resolution; 4-5 days |
+| Shared admin/field UI components | HIGH | Untangling responsive overrides from admin is harder than building field components fresh; 5+ day rewrite |
+| Tour library incompatible with React 19 | MEDIUM | If react-joyride works, no issue. If not, switching to vanilla shepherd.js (no React wrapper) takes 2-3 days |
 
----
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Admin layout in field mode | Phase 1 (Foundation) | Field routes render without sidebar; Playwright test confirms no admin nav links present |
+| Touch targets too small | Phase 1 (Foundation) | Audit all field mode buttons with browser DevTools; none below 44x44px |
+| Wizard state loss | Phase 2 (Canvassing Wizard) | Kill browser mid-wizard, reopen, verify resume prompt appears with correct address |
+| No offline handling | Phase 2 (Canvassing Wizard) | Toggle airplane mode mid-session; verify data queued locally and synced when online |
+| PII in browser storage | Phase 2 (Canvassing Wizard) | Verify sessionStorage used (not localStorage) for voter data; verify cleared on logout |
+| tel: link edge cases | Phase 3 (Phone Banking) | Test on real iOS + Android devices; verify copy-number fallback on desktop |
+| Tour breaks on async content | Phase 4 (Guided Onboarding) | Tour completes all steps without skipping; replay works; data-tour attributes on all targets |
+| data-tour attributes missing | Phases 1-3 (add incrementally) | Grep for `data-tour` in all field mode components before starting Phase 4 |
 
 ## Sources
 
-- Direct codebase inspection: `app/models/voter.py` (Voter model, 96 lines), `app/services/import_service.py` (import pipeline, 554 lines), `app/services/voter.py` (query builder, 385 lines), `app/schemas/voter_filter.py` (filter schema, 35 lines) -- HIGH confidence
-- Direct codebase inspection: `alembic/versions/002_voter_data_models.py` (RLS policies, L2 template seeding) -- HIGH confidence
-- Direct codebase inspection: `app/models/voter_contact.py` (VoterPhone schema, no unique constraint on value) -- HIGH confidence
-- Direct codebase inspection: `web/src/components/voters/VoterFilterBuilder.tsx` (349 lines, year-based voting history filter) -- HIGH confidence
-- Direct codebase inspection: `app/services/call_list.py` (VoterPhone query pattern for call list generation) -- HIGH confidence
-- PostgreSQL documentation: `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` is supported -- HIGH confidence
-- PostgreSQL documentation: `ADD COLUMN` with `NULL` default is metadata-only (no table rewrite) -- HIGH confidence
-- SQLAlchemy 2.0: `Mapped[T | None]` infers `nullable=True` automatically -- HIGH confidence
+- Direct codebase analysis: `web/src/routes/.../call.tsx` (phone banking call screen, state machine pattern, two-panel layout)
+- Direct codebase analysis: `web/src/routes/.../walk-lists/$walkListId.tsx` (canvassing walk list, table-based UI)
+- Direct codebase analysis: `web/src/hooks/useFormGuard.ts` (used in 15 files, route blocking + beforeunload)
+- Direct codebase analysis: `web/src/components/shared/RequireRole.tsx` (hides unauthorized content)
+- Direct codebase analysis: `web/package.json` (zustand, react 19, tanstack query v5 already in deps)
+- [react-joyride: Tour hangs if first step target missing (GitHub #585)](https://github.com/gilbarbara/react-joyride/issues/585)
+- [react-joyride: Overlay not rendering when steps skipped (GitHub #519)](https://github.com/gilbarbara/react-joyride/issues/519)
+- [react-joyride: Error with dynamically added elements (GitHub #109)](https://github.com/gilbarbara/react-joyride/issues/109)
+- [Evaluating tour libraries for React -- Sandro Roth](https://sandroroth.com/blog/evaluating-tour-libraries/)
+- [react-shepherd React 19 incompatibility noted](https://npm-compare.com/react-joyride,react-shepherd)
+- [CSS-Tricks: Current State of Telephone Links](https://css-tricks.com/the-current-state-of-telephone-links/)
+- [W3C WCAG 2.5.5: Target Size guidelines (44x44px minimum)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html)
+- [Smashing Magazine: Accessible Tap Target Sizes](https://www.smashingmagazine.com/2023/04/accessible-tap-target-sizes-rage-taps-clicks/)
+- [TanStack Query: Optimistic Updates documentation](https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates)
+- [TanStack Query: Offline discussion (#4296)](https://github.com/TanStack/query/discussions/4296)
+- [TanStack Query: Service worker integration challenges (#7897)](https://github.com/TanStack/query/issues/7897)
+- [Zustand + React Hook Form multi-step pattern (Discussion #6382)](https://github.com/orgs/react-hook-form/discussions/6382)
 
 ---
-*Pitfalls research for: v1.3 Voter Model & Import Enhancement*
-*Researched: 2026-03-13*
+*Pitfalls research for: v1.4 Volunteer Field Mode added to existing CivicPulse campaign management app*
+*Researched: 2026-03-15*

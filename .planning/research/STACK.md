@@ -1,311 +1,326 @@
-# Technology Stack
+# Technology Stack: v1.4 Volunteer Field Mode
 
-**Project:** CivicPulse Run v1.3 -- Voter Model & Import Enhancement
-**Researched:** 2026-03-13
+**Project:** CivicPulse Run API
+**Researched:** 2026-03-15
 **Confidence:** HIGH
 
 ## Context
 
-This research covers ONLY the backend changes needed for v1.3. The existing validated stack is not re-evaluated. This milestone is primarily a schema expansion + import pipeline enhancement -- no new libraries are required.
+This research covers ONLY the frontend additions needed for v1.4 Volunteer Field Mode. The existing validated stack is not re-evaluated. This milestone is 100% frontend work -- no new backend endpoints, models, or migrations are needed.
 
-**Already installed and validated (DO NOT ADD):**
-- FastAPI >=0.135.1, Uvicorn >=0.41.0
-- SQLAlchemy >=2.0.48 (async, mapped_column style)
-- asyncpg >=0.31.0, psycopg2-binary >=2.9.11
-- PostgreSQL + PostGIS (via GeoAlchemy2 >=0.18.4)
-- Alembic >=1.18.4 (migration management)
-- RapidFuzz >=3.14.3 (fuzzy field matching at 75% threshold)
-- Pydantic >=2.12.5, pydantic-settings >=2.13.1
-- aioboto3 >=15.5.0 (MinIO/S3 for file storage)
-- TaskIQ >=0.12.1 (background job processing)
-- Loguru >=0.7.3
+**Already installed and validated (DO NOT re-research):**
+- React ^19.2.0, React DOM ^19.2.0
+- TanStack Router ^1.159.5, TanStack Query ^5.90.21, TanStack Table ^8.21.3
+- shadcn/ui (via radix-ui ^1.4.3) with 27 components already generated
+- Zustand ^5.0.11 (state management)
+- Tailwind CSS ^4.1.18 (styling)
+- vaul ^1.1.2 (drawer/bottom sheet -- installed but unused)
+- lucide-react ^0.563.0 (icons)
+- sonner ^2.0.7 (toast notifications)
+- Vite ^7.3.1, TypeScript ~5.9.3
 
-## Recommended Stack Changes
+## Recommended Stack Additions
 
-### Zero New Dependencies Required
+### ONE New Package: driver.js (Guided Tour)
 
-This milestone requires **no new Python packages**. All capabilities needed for the voter model expansion and import pipeline enhancement are provided by the existing stack:
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| driver.js | ^1.4.0 | One-time guided onboarding tour, element highlighting | Lightweight (~5kB gzipped), zero dependencies, framework-agnostic, 25K+ GitHub stars, 436K+ weekly npm downloads. Works cleanly with React 19 via useEffect -- no React-specific bindings means no deprecated API risk. |
 
-| Capability Needed | Provided By | Already Installed |
-|---|---|---|
-| New Voter model columns (propensity scores) | SQLAlchemy `SmallInteger` / `Integer` | Yes (>=2.0.48) |
-| New Voter model columns (strings) | SQLAlchemy `String` / `mapped_column` | Yes (>=2.0.48) |
-| Alembic ADD COLUMN migration | Alembic `op.add_column()` | Yes (>=1.18.4) |
-| Expanded L2 field mapping aliases | RapidFuzz `fuzz.ratio` (existing pattern) | Yes (>=3.14.3) |
-| Phone number parsing/normalization | Python `re` stdlib | Yes (stdlib) |
-| Voting history Y/N column detection | Python `re` stdlib + string ops | Yes (stdlib) |
-| Batch VoterPhone upsert during import | SQLAlchemy `insert().on_conflict_do_update()` | Yes (>=2.0.48) |
-| Updated Pydantic schemas | Pydantic `BaseModel` | Yes (>=2.12.5) |
+**Critical finding: react-joyride is BROKEN on React 19.** It uses deprecated `unmountComponentAtNode` and `unstable_renderSubtreeIntoContainer` APIs. The library has been unmaintained for 9+ months. A `next` branch exists but is unreliable. This eliminates the most popular React tour library from consideration.
 
-## Column Type Decisions for New Voter Fields
+**Why driver.js over alternatives:**
 
-### Propensity Scores: Use `SmallInteger` (not Numeric, not Float)
+| Library | Weekly Downloads | React 19 | Bundle | Verdict |
+|---------|-----------------|----------|--------|---------|
+| react-joyride | ~340K | BROKEN | ~45kB | Eliminated -- deprecated React APIs |
+| driver.js | ~436K | Works (framework-agnostic) | ~5kB | Recommended |
+| Shepherd.js (React wrapper) | ~30K | Untested | ~25kB | Too heavy, small React community |
+| @reactour/tour | ~40K | Unverified | ~15kB | React 19 compat not confirmed in docs |
 
-L2 propensity scores are expressed in deciles from 10 to 100 (representing 0-10th percentile through 90-99th percentile). They are integer values, never fractional.
+**Integration pattern:**
 
-| Decision | Rationale |
-|---|---|
-| Use `SmallInteger` | Scores are integers 0-100. SmallInteger uses 2 bytes vs Integer's 4 bytes -- saves ~40 bytes per voter row across ~20 score columns. At 500K voters, that is 20MB savings. |
-| NOT `Numeric(5,2)` | Propensity scores from L2 are integer deciles (10, 20, ..., 100), never 85.73. Numeric adds Decimal overhead in Python (serialization complexity, Pydantic string coercion in JSON) for no benefit. |
-| NOT `Float` | Float has IEEE 754 rounding issues. Scores are exact integers. Also, Float uses 8 bytes vs SmallInteger's 2 bytes. |
+```typescript
+// hooks/useTour.ts -- thin React wrapper around driver.js
+import { useEffect } from "react";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 
-**SQLAlchemy pattern:**
-```python
-# In Voter model -- ~20 propensity score columns
-propensity_turnout: Mapped[int | None] = mapped_column(SmallInteger)
-propensity_partisan: Mapped[int | None] = mapped_column(SmallInteger)
-# ... etc.
+export function useTour(tourId: string, steps: StepConfig[]) {
+  const { hasCompleted, markComplete } = useOnboardingStore();
+
+  useEffect(() => {
+    if (hasCompleted(tourId)) return;
+
+    const driverObj = driver({
+      showProgress: true,
+      steps,
+      onDestroyStarted: () => {
+        markComplete(tourId);
+        driverObj.destroy();
+      },
+    });
+
+    // Delay to ensure DOM elements are rendered after route transitions
+    const timer = setTimeout(() => driverObj.drive(), 500);
+    return () => clearTimeout(timer);
+  }, [tourId]);
+}
 ```
 
-**Pydantic pattern:**
-```python
-# In VoterResponse schema -- no special handling needed
-propensity_turnout: int | None = None
-propensity_partisan: int | None = None
+**Styling:** driver.js supports CSS class overrides via `popoverClass` (global or per-step). Override `.driver-popover` with Tailwind utility values matching shadcn/ui design tokens (border-radius, colors, font, shadows). Approximately 30 lines of CSS. The driver.js theming system also supports CSS custom properties for quick color swaps.
+
+### Tour State Persistence: Zustand Persist Middleware (No New Package)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| zustand/middleware (persist) | Already installed (zustand ^5.0.11) | Persist tour completion state and field mode preferences to localStorage | Zero new dependencies. Built-in middleware, supports `partialize` for selective persistence. Project already uses zustand for auth state. |
+
+**Why NOT a custom localStorage hook:** The project already uses zustand. Adding a separate `usePersistedState` pattern creates two state management approaches. zustand persist keeps everything in one pattern.
+
+**Store design:**
+
+```typescript
+// stores/onboardingStore.ts
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+interface OnboardingState {
+  completedTours: Record<string, boolean>;
+  hasCompleted: (tourId: string) => boolean;
+  markComplete: (tourId: string) => void;
+  resetTour: (tourId: string) => void;  // "revisit tour" requirement
+  resetAll: () => void;
+}
+
+export const useOnboardingStore = create<OnboardingState>()(
+  persist(
+    (set, get) => ({
+      completedTours: {},
+      hasCompleted: (id) => !!get().completedTours[id],
+      markComplete: (id) =>
+        set((s) => ({
+          completedTours: { ...s.completedTours, [id]: true },
+        })),
+      resetTour: (id) =>
+        set((s) => {
+          const { [id]: _, ...rest } = s.completedTours;
+          return { completedTours: rest };
+        }),
+      resetAll: () => set({ completedTours: {} }),
+    }),
+    { name: "civicpulse-onboarding" }
+  )
+);
 ```
 
-**Why this matters:** Using `Numeric` would cause Pydantic v2 to serialize scores as strings in JSON (Pydantic v2 serializes `Decimal` as strings by default). That would require either custom serializers on every score field or `asdecimal=False` on the SQLAlchemy column. `SmallInteger` avoids this entirely -- scores serialize as plain JSON integers.
+### Mobile Drawer / Bottom Sheet: vaul via shadcn/ui Drawer (No New Package)
 
-**Confidence:** HIGH -- L2's own documentation states scores are decile integers 10-100. SmallInteger is the correct PostgreSQL type for this range.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| vaul (via shadcn/ui Drawer) | Already installed (^1.1.2) | Mobile-optimized bottom sheet for canvassing wizard, outcome recording, survey display | Already in package.json but not yet used. shadcn/ui Drawer wraps vaul with project-consistent styling. Snap points provide natural mobile UX (half-screen preview, full expand). Touch-friendly drag-to-dismiss. |
 
-### String Demographic Fields: Use `String` (not Enum)
+**Action needed:** Generate the shadcn/ui Drawer component (vaul is installed as a dependency, but the component wrapper has not been generated yet):
 
-| Field | Type | Size | Rationale |
-|---|---|---|---|
-| `language_preference` | `String(100)` | Variable | L2 has dozens of language values. Enum would require ALTER TYPE for new values. Project convention is `native_enum=False` for all enums anyway. Plain String is simpler and consistent. |
-| `marital_status` | `String(50)` | Variable | Values: Single, Married, Divorced, etc. Same rationale as language. |
-| `military_status` | `String(50)` | Variable | Values: Active, Veteran, Reserves, etc. Small value set but may expand. |
-| `occupation` | `String(255)` | Variable | Free-text from L2 commercial data. |
-| `education` | `String(100)` | Variable | Values from L2 modeling. |
-| `home_owner_renter` | `String(50)` | Variable | Owner/Renter/Unknown. |
-| `estimated_hh_income` | `String(100)` | Variable | L2 encodes as range strings like "$50K-$75K". Store as-is, not as numeric. |
-
-**Why String over StrEnum:** The existing project uses `native_enum=False` for all StrEnum columns (documented in Key Decisions). For demographic fields with vendor-provided values, plain `String` is even simpler -- no Python enum class needed, values pass through from import directly. If the UI later needs validated dropdown values, those can be driven from a frontend enum or a lookup table without schema changes.
-
-**Confidence:** HIGH -- consistent with the existing `native_enum=False` project convention.
-
-### Mailing Address Fields: Inline on Voter Model (not VoterAddress)
-
-| Field | Type | Size | Why |
-|---|---|---|---|
-| `mail_address_line1` | `String(500)` | Variable | L2 provides separate mailing address distinct from residence. |
-| `mail_address_line2` | `String(500)` | Variable | Secondary line. |
-| `mail_city` | `String(255)` | Variable | Mailing city. |
-| `mail_state` | `String(2)` | Fixed | Mailing state abbreviation. |
-| `mail_zip_code` | `String(10)` | Variable | Mailing ZIP. |
-
-**Why inline on Voter instead of using VoterAddress model:** The VoterAddress model is for user-managed contact records with CRUD operations, primary flags, and interaction event emission. L2 mailing addresses are imported data, not user-editable contacts. Mixing imported vendor data into the contact CRUD model creates confusion about data provenance and bloats the contact service with non-interactive records.
-
-**Confidence:** HIGH -- architecture decision based on existing data model separation.
-
-### ZIP+4 and Household Enrichment: Column Additions
-
-| Field | Type | Size | Why |
-|---|---|---|---|
-| `zip4` | `String(4)` | Fixed | L2 provides +4 extension separately from ZIP. Existing `zip_code` is `String(10)` so it *could* hold "12345-6789", but L2 sends them in separate columns. Store separately for clean filtering and avoid requiring users to parse ZIP+4 format. |
-| `household_size` | `SmallInteger` | 2 bytes | Integer count of household members. SmallInteger is sufficient (max 32,767). |
-| `num_children` | `SmallInteger` | 2 bytes | Count of children in household. |
-| `dwelling_type` | `String(50)` | Variable | Single Family, Multi-Family, etc. |
-| `home_value` | `String(100)` | Variable | L2 encodes as range strings. Store as-is. |
-
-**Confidence:** HIGH -- straightforward column additions following existing patterns.
-
-### Complete New Column List (~20 columns)
-
-**Propensity Scores (SmallInteger, all nullable):**
-1. `propensity_turnout` -- General election turnout propensity
-2. `propensity_partisan` -- Partisan propensity (higher = more R-leaning in L2 encoding)
-3. `propensity_primary` -- Primary election turnout propensity
-4. `propensity_caucus` -- Caucus participation propensity
-5. `propensity_gun_owner` -- Gun ownership propensity
-6. `propensity_religious` -- Religious propensity
-
-**Demographics (String, all nullable):**
-7. `language_preference` -- Primary language
-8. `marital_status` -- Marital status
-9. `military_status` -- Military/veteran status
-10. `occupation` -- Occupation
-11. `education` -- Education level
-12. `home_owner_renter` -- Homeownership status
-13. `estimated_hh_income` -- Estimated household income range
-
-**Mailing Address (String, all nullable):**
-14. `mail_address_line1` -- Mailing street address
-15. `mail_address_line2` -- Mailing secondary line
-16. `mail_city` -- Mailing city
-17. `mail_state` -- Mailing state
-18. `mail_zip_code` -- Mailing ZIP
-
-**Household/Residence Enrichment (various, all nullable):**
-19. `zip4` -- ZIP+4 extension
-20. `household_size` -- Household member count
-21. `num_children` -- Children in household
-22. `dwelling_type` -- Dwelling classification
-23. `home_value` -- Home value range
-
-## Import Pipeline Enhancements (No New Libraries)
-
-### Auto-Create VoterPhone During Import
-
-**Approach:** Extend `ImportService.process_csv_batch()` to detect phone columns, normalize phone numbers, and batch-insert VoterPhone records in the same transaction.
-
-**Implementation uses existing tools:**
-- Phone number detection: Add phone-related entries to `CANONICAL_FIELDS` mapping (e.g., `"phone"`, `"cell_phone"`, `"home_phone"`)
-- Phone normalization: Python `re.sub(r'[^0-9]', '', value)` to strip non-digits. No library needed.
-- Phone insertion: `insert(VoterPhone).values(...)` with `on_conflict_do_nothing()` -- same pattern as the existing voter upsert
-- Transaction boundary: Use `session.flush()` after voter upsert (to get voter IDs), then insert phones in the same session -- no new transaction management needed
-
-**Critical design choice:** Use `on_conflict_do_nothing()` for phones (not `on_conflict_do_update()`). Phone numbers from import should not overwrite user-edited phone records. The VoterPhone table has no unique constraint on (voter_id, value) currently, so one will need to be added via migration.
-
-**Why not a phone number library (python-phonenumbers):** L2 and most US voter files provide 10-digit US phone numbers. The strip-non-digits approach handles the common cases (dashes, parens, spaces). International phone validation (E.164) is not needed for US voter files. Adding a 10MB library (python-phonenumbers includes the entire Google libphonenumber database) for strip-and-validate-length is not justified.
-
-**Confidence:** HIGH -- phone normalization is string manipulation, not a library problem.
-
-### Voting History Y/N Column Parsing
-
-**Approach:** Detect columns matching election patterns (e.g., `General_2024`, `Primary_2022`, `General_2020_11_03`) where values are "Y" or "N", and convert them into the existing `voting_history` ARRAY.
-
-**Implementation uses existing tools:**
-- Column detection: `re.match(r'^(General|Primary|Municipal|Special|Runoff)_\d{4}', col)` pattern matching
-- Value parsing: Simple `value.strip().upper() == 'Y'` check
-- Array building: Collect matching election identifiers into a list, assign to `voting_history` field
-- Integration point: New step in `apply_field_mapping()` that runs after standard field mapping, before the row is yielded
-
-**Why regex pattern matching instead of fuzzy matching for election columns:** Election columns follow a strict naming convention in L2 files (`General_YYYY_MM_DD` or `General_YYYY`). Fuzzy matching would be wrong here -- we need exact pattern recognition. A column named "General_2024" should map to a voting history entry, not fuzzy-match against a canonical field.
-
-**Confidence:** HIGH -- pattern matching on election column names is deterministic.
-
-### Expanded L2 Field Mapping
-
-**Approach:** Add new aliases to the existing `CANONICAL_FIELDS` dictionary and the `_L2_MAPPING` template. No structural changes to the mapping system.
-
-New CANONICAL_FIELDS entries to add:
-```python
-"language_preference": [
-    "language_preference", "language", "primary_language",
-    "languages_description",
-],
-"marital_status": [
-    "marital_status", "marital", "voters_maritalstatus",
-],
-"military_status": [
-    "military_status", "military", "commercialdata_militarystatus",
-],
-"mail_address_line1": [
-    "mail_address_line1", "mailing_address", "mail_address",
-    "mail_addresses_addressline",
-],
-# ... etc. for all new fields
+```bash
+npx shadcn@latest add drawer
 ```
 
-New L2 mapping template entries:
-```python
-"Languages_Description": "language_preference",
-"Voters_MaritalStatus": "marital_status",
-"CommercialData_MilitaryStatus": "military_status",
-"Mail_Addresses_AddressLine": "mail_address_line1",
-"Mail_Addresses_City": "mail_city",
-"Mail_Addresses_State": "mail_state",
-"Mail_Addresses_Zip": "mail_zip_code",
-"Residence_Addresses_Zip4": "zip4",
-# ... propensity scores ...
-"Modeled_TurnoutScore": "propensity_turnout",
-"Modeled_PartisanScore": "propensity_partisan",
-# ... etc.
+This creates `web/src/components/ui/drawer.tsx` providing `Drawer`, `DrawerContent`, `DrawerHeader`, `DrawerFooter`, `DrawerTitle`, `DrawerDescription` -- all built on vaul with shadcn/ui styling.
+
+**Use for:** Canvassing wizard step containers on mobile (snap points at `["355px", 1]` for half/full screen), outcome recording panels, inline survey display. On desktop viewports, fall back to Dialog or inline content -- the Drawer is specifically for the mobile touch UX.
+
+### Tap-to-Call: Native tel: URI (No Package Needed)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| HTML `tel:` URI scheme | Web standard | Phone banking tap-to-call on mobile | Zero dependencies. `<a href="tel:+14045551234">` is universally supported on mobile browsers. Phone's native dialer handles the call. International format required (+country code). |
+
+**No library needed.** Implementation is a small React component:
+
+```typescript
+function TapToCall({ phone, children }: { phone: string; children: React.ReactNode }) {
+  const formatted = formatE164(phone); // strip non-digits, prepend +1 for US
+  return (
+    <a
+      href={`tel:${formatted}`}
+      className="inline-flex items-center gap-2 rounded-md bg-primary
+                 px-4 py-3 text-primary-foreground min-h-[44px] min-w-[44px]"
+    >
+      {children}
+    </a>
+  );
+}
 ```
 
-**Confidence:** MEDIUM for exact L2 column names -- L2's data dictionary is behind institutional access. The naming convention follows the established pattern in the existing L2 mapping (CamelCase with category prefixes). Exact names should be verified against an actual L2 file during implementation. The fuzzy matching system will handle minor naming variations.
+**Desktop handling:** On desktop, `tel:` links may open a VoIP app or do nothing. Detect touch device via `window.matchMedia("(pointer: coarse)")` and show the number as copyable text on desktop. The existing phone banking UI already displays phone numbers -- this adds a clickable wrapper for mobile only.
 
-## Database Migration Strategy
+### Contextual Help / Tooltips: Existing Radix Tooltip (No New Package)
 
-### Single Alembic Migration for All Column Additions
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Radix UI Tooltip (shadcn/ui) | Already installed (radix-ui ^1.4.3) | Contextual help icons, inline hints throughout field mode | Already exists at `web/src/components/ui/tooltip.tsx`. Accessible, keyboard-navigable, auto-positioned. |
 
-**Approach:** One migration file using `op.add_column()` for each new column. All columns are nullable (no default values needed), so this is an instant metadata-only operation in PostgreSQL -- no table rewrite.
+**Pattern:** Create a reusable `HelpTip` component composing existing Tooltip + lucide-react `HelpCircle` icon:
 
-```python
-# Pattern for the migration
-op.add_column("voters", sa.Column("propensity_turnout", sa.SmallInteger(), nullable=True))
-op.add_column("voters", sa.Column("propensity_partisan", sa.SmallInteger(), nullable=True))
-# ... ~20 more add_column calls
+```typescript
+function HelpTip({ content }: { content: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className="inline-flex items-center justify-center size-5
+                           rounded-full text-muted-foreground hover:text-foreground">
+          <HelpCircle className="size-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">{content}</TooltipContent>
+    </Tooltip>
+  );
+}
 ```
 
-**Critical:** PostgreSQL ADD COLUMN with no DEFAULT and nullable=True is a metadata-only operation. It does NOT rewrite the table or lock it. This means:
-- Safe to run on tables with millions of rows
-- Near-instant execution
-- No downtime required
+For mobile (no hover): Radix Tooltip responds to tap/focus events. For longer help text, use the existing Popover component (`web/src/components/ui/popover.tsx`) instead of Tooltip.
 
-**Index additions:** Add composite indexes on high-cardinality filter fields:
-```python
-op.create_index("ix_voters_campaign_language", "voters", ["campaign_id", "language_preference"])
-op.create_index("ix_voters_campaign_military", "voters", ["campaign_id", "military_status"])
+### Wizard / Stepper Progress: Custom Component (No Library)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Custom component (~30 lines) | N/A | Linear canvassing wizard progress indicator | shadcn/ui has no official stepper. The canvassing flow is strictly linear (address -> knock -> outcome -> survey -> next) -- no branching, no skip-ahead, no form validation between steps. A stepper library would be over-engineered. |
+
+**Why NOT a stepper library (stepperize, etc.):** Linear flows need `currentStep: number` in component state, not a state machine. The entire stepper UI is a flex row of colored dots:
+
+```typescript
+function WizardProgress({ current, total }: { current: number; total: number }) {
+  return (
+    <div className="flex items-center gap-1">
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          className={cn(
+            "h-1.5 flex-1 rounded-full transition-colors",
+            i < current ? "bg-primary" : i === current ? "bg-primary/60" : "bg-muted"
+          )}
+        />
+      ))}
+    </div>
+  );
+}
 ```
 
-Also add the unique constraint for VoterPhone deduplication:
-```python
-op.create_unique_constraint(
-    "uq_voter_phone_voter_value",
-    "voter_phones",
-    ["campaign_id", "voter_id", "value"],
-)
+### Progressive Disclosure: Existing Components (No New Packages)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Radix Accordion (shadcn/ui) | Already installed | Collapsible sections for advanced options | Already at `web/src/components/ui/accordion.tsx`, used in v1.3 filter builder |
+| Radix Collapsible (shadcn/ui) | Already installed | Show more/less toggles | Already at `web/src/components/ui/collapsible.tsx` |
+
+Progressive disclosure is a UX pattern, not a library concern. Use Accordion for grouped options, Collapsible for individual expand/collapse, and conditional rendering for role-based content (RequireRole already exists).
+
+### Mobile Touch Optimization: Tailwind CSS (No New Packages)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Tailwind CSS | Already installed (^4.1.18) | 44px minimum touch targets, mobile-first responsive layout | Pure CSS. `min-h-[44px] min-w-[44px]` on interactive elements. `@media (pointer: coarse)` for touch-specific styles. |
+
+**Key CSS patterns to establish as utility classes or component variants:**
+
+```css
+/* Touch-friendly interactive elements (44px minimum per WCAG) */
+.touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
+/* Larger action buttons for field mode */
+@media (pointer: coarse) {
+  .field-action-btn {
+    @apply text-lg py-4 px-6;
+  }
+}
 ```
 
-**Confidence:** HIGH -- Alembic `add_column` is the established migration pattern in this project.
+**Viewport meta tag** should already include `width=device-width, initial-scale=1.0`. Verify it does NOT include `maximum-scale=1` or `user-scalable=no` (accessibility violation -- users must be able to zoom).
+
+## Installation Summary
+
+```bash
+# ONE new package
+npm install driver.js
+
+# ONE shadcn component to generate (vaul already installed as dependency)
+npx shadcn@latest add drawer
+```
+
+**Total new runtime dependencies: 1 (driver.js, ~5kB gzipped)**
+
+Everything else uses existing installed packages.
+
+## Alternatives Considered
+
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| Guided tour | driver.js | react-joyride | Broken on React 19, uses deprecated APIs, unmaintained 9+ months |
+| Guided tour | driver.js | Shepherd.js | Heavier bundle, 10x smaller React community than driver.js |
+| Guided tour | driver.js | @reactour/tour | React 19 compatibility unverified in official documentation |
+| Tour state | zustand persist | Custom localStorage hook | Project already uses zustand; avoid splitting state patterns |
+| Wizard container | vaul Drawer | Dialog/Sheet | Drawer has mobile-native drag/snap UX that Dialog lacks |
+| Stepper | Custom 30-line component | stepperize / third-party | Over-engineered for linear, non-branching flow |
+| Tap-to-call | Native tel: URI | Twilio SDK | Telephony integration is explicitly out of scope |
+| Tooltips | Existing Radix Tooltip | Tippy.js / Floating UI | Already installed and used, accessible, works |
+| Progressive disclosure | Existing Accordion/Collapsible | Custom show/hide | Already installed, animated, accessible |
 
 ## What NOT to Add
 
-| Avoid | Why | Use Instead |
+| Library | Why People Suggest It | Why Skip It |
+|---------|----------------------|-------------|
+| Framer Motion / Motion | Animations for wizard transitions | Tailwind CSS `animate-*` and `transition-*` classes handle slide/fade. Adding ~30kB animation library for 3 transitions is unjustified. vaul already uses its own animation internally. |
+| react-swipeable | Swipe gestures for wizard step navigation | vaul handles swipe on drawers. For step navigation, prev/next buttons with 44px touch targets are more reliable than swipe (prevents accidental triggers). |
+| @capacitor/core or PWA toolkit | "Feel native" on mobile | Out of scope per PROJECT.md. This is a mobile-optimized web app, not a native wrapper. Viewport meta + touch targets + Drawer is sufficient. |
+| react-spring | Physics-based animations | Same rationale as Framer Motion -- overkill for this use case. |
+| Any additional toast library | Field status messages | sonner (^2.0.7) is already installed and used throughout the app. |
+| cmdk (additional use) | Command palette for field mode | Already installed for member/caller pickers. Field mode should be linear and guided, not command-palette driven. Volunteers should not need to search for actions. |
+
+## Backend: No Changes Required
+
+The v1.4 features are entirely frontend. Existing APIs already support:
+
+| Capability Needed | Existing Endpoint | Status |
 |---|---|---|
-| `python-phonenumbers` (10MB) | US voter files have 10-digit numbers. Strip non-digits + validate length is sufficient. | `re.sub(r'[^0-9]', '', value)` + length check |
-| `pandas` for CSV processing | The existing `csv.DictReader` + batch upsert pipeline works well. Pandas would add a 50MB+ dependency for no benefit over the streaming batch approach. | Existing `csv.DictReader` + `process_csv_batch()` |
-| `SQLAlchemy Numeric` for scores | Propensity scores are integers. Numeric adds Decimal serialization complexity. | `SmallInteger` -- 2 bytes, native int |
-| `StrEnum` classes for demographics | Vendor values vary. Plain `String` with validation at the API layer is more flexible. Consistent with `native_enum=False` project convention. | `String(N)` with Pydantic validation if needed |
-| `phonenumbers` or `E.164` validation | Voter files are US-only. Full international phone validation is overkill. | Regex strip + 10-digit validation |
-| Any ORM relationship changes | New columns are all on the Voter model (flat). VoterPhone creation during import uses direct `insert()` statements, not ORM relationships. | Direct `insert(VoterPhone).values(...)` |
+| Volunteer active assignment lookup | GET /volunteers, GET /shifts | Built in v1.0 Phase 5 |
+| Walk list entries with addresses | GET /turfs/{id}/walk-list | Built in v1.0 Phase 3 |
+| Door-knock outcome recording | POST /canvassing/door-knocks | Built in v1.0 Phase 3 |
+| Survey questions + response recording | GET /surveys/{id}, POST /survey-responses | Built in v1.0 Phase 3 |
+| Call list entry claiming | POST /call-lists/{id}/claim | Built in v1.0 Phase 4 (SKIP LOCKED) |
+| Call result recording | POST /call-lists/{id}/entries/{id}/result | Built in v1.0 Phase 4 |
+| Volunteer shift check-in/out | POST /shifts/{id}/check-in, POST /shifts/{id}/check-out | Built in v1.0 Phase 5 |
 
-## Integration Points
+No new backend endpoints, models, or migrations needed.
 
-### Files That Change
+## Confidence Assessment
 
-| File | Change Type | What Changes |
-|---|---|---|
-| `app/models/voter.py` | Modify | Add ~23 new `mapped_column` fields |
-| `app/schemas/voter.py` | Modify | Add fields to VoterResponse, VoterCreateRequest, VoterUpdateRequest |
-| `app/schemas/voter_filter.py` | Modify | Add new filter fields (language, military_status, propensity ranges, etc.) |
-| `app/services/voter.py` | Modify | Extend `build_voter_query()` with new filter conditions |
-| `app/services/import_service.py` | Modify | Add phone extraction, voting history parsing, new CANONICAL_FIELDS entries |
-| `alembic/versions/006_*.py` | New | Migration for new voter columns + VoterPhone unique constraint |
-| L2 mapping template | Modify | Update system template in migration with new field mappings |
-
-### Files That Do NOT Change
-
-| File | Why Not |
-|---|---|
-| `app/models/voter_contact.py` | VoterPhone model is unchanged. New unique constraint is migration-only. |
-| `app/services/voter_contact.py` | Contact CRUD service is unchanged. Import creates phones directly. |
-| `app/db/base.py` | No new models, just new columns on existing Voter model. |
-| `pyproject.toml` | No new dependencies. |
-
-## Installation
-
-```bash
-# No new packages to install.
-# The existing stack covers all v1.3 requirements.
-
-# To verify current versions:
-uv pip list | grep -E "sqlalchemy|alembic|rapidfuzz|pydantic"
-```
+| Decision | Confidence | Basis |
+|----------|------------|-------|
+| driver.js for tours | HIGH | Multiple sources confirm react-joyride React 19 breakage; driver.js is framework-agnostic, actively maintained, highest weekly downloads |
+| zustand persist for state | HIGH | Official zustand documentation, middleware is built-in, project already uses zustand |
+| vaul/Drawer for wizard | HIGH | Already installed as dependency, shadcn/ui official integration |
+| tel: for tap-to-call | HIGH | Web standard, web.dev documentation, universal mobile support |
+| No stepper library | HIGH | Linear non-branching flow does not justify library overhead |
+| No animation library | MEDIUM | Could reconsider if CSS-only transitions feel insufficient, but Tailwind animate utilities are well-proven |
+| No backend changes | HIGH | Reviewed all v1.0-v1.3 API surface; all required endpoints exist |
 
 ## Sources
 
-- [SQLAlchemy 2.0 Type Hierarchy -- Numeric vs Float vs Integer](https://docs.sqlalchemy.org/en/20/core/type_basics.html) -- Column type selection reference
-- [Pydantic v2 Decimal Serialization Issue #7457](https://github.com/pydantic/pydantic/issues/7457) -- Confirms Decimal-as-string serialization in JSON
-- [L2 Partisanship Models](https://www.l2-data.com/l2-modeled-partisanship-models/) -- Confirms propensity scores are decile integers 10-100
-- [L2 Data Dictionary Reference](https://www.l2-data.com/datamapping/voter-data-dictionary/) -- Field naming conventions (full dictionary behind institutional access)
-- [L2 2025 Voter Data Dictionary](https://www.l2-data.com/wp-content/uploads/2025/08/L2-2025-VOTER-DATA-DICTIONARY-1.pdf) -- Current field listing (698 demographic variables)
-- [PostgreSQL ADD COLUMN performance](https://www.postgresql.org/docs/current/sql-altertable.html) -- Confirms nullable ADD COLUMN is metadata-only
-- [SQLAlchemy insert().on_conflict_do_nothing()](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html) -- Pattern for VoterPhone dedup during import
-- Existing codebase: `app/models/voter.py`, `app/services/import_service.py`, `alembic/versions/002_voter_data_models.py` -- Established patterns
+- [driver.js official documentation](https://driverjs.com)
+- [driver.js GitHub (25K+ stars, 436K+ weekly downloads)](https://github.com/kamranahmedse/driver.js)
+- [OnboardJS -- 5 Best React Onboarding Libraries (2026)](https://onboardjs.com/blog/5-best-react-onboarding-libraries-in-2025-compared)
+- [Sandro Roth -- Evaluating tour libraries for React](https://sandroroth.com/blog/evaluating-tour-libraries/)
+- [npm trends -- driver.js vs react-joyride vs shepherd](https://npmtrends.com/driver.js-vs-hopscotch-vs-intro.js-vs-shepherd)
+- [shadcn/ui Drawer component (vaul)](https://ui.shadcn.com/docs/components/radix/drawer)
+- [web.dev -- Click to Call best practices](https://web.dev/articles/click-to-call)
+- [Zustand persist middleware official docs](https://zustand.docs.pmnd.rs/reference/middlewares/persist)
+- [MDN -- Viewport meta tag](https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag)
+- [Touch target optimization (44px minimum)](https://www.seo-day.de/wiki/technisches-seo/mobile-technical/touch.php?lang=en)
 
 ---
-*Stack research for: CivicPulse Run v1.3 Voter Model & Import Enhancement -- backend changes only*
-*Researched: 2026-03-13*
+*Stack research for: CivicPulse Run v1.4 Volunteer Field Mode -- frontend additions only*
+*Researched: 2026-03-15*
