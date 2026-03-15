@@ -81,6 +81,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   handleCallback: async (url?: string) => {
+    await get().initialize()
     const mgr = await ensureUserManager()
     const user = await mgr.signinRedirectCallback(url)
     set({ user, isAuthenticated: true })
