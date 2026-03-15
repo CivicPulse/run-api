@@ -75,7 +75,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** A dedicated, zero-training mobile-first experience for volunteers actively canvassing or phone banking in the field.
 
-- [ ] **Phase 30: Field Layout Shell & Volunteer Landing** - Mobile shell layout with no admin chrome, assignment-aware volunteer hub
+- [x] **Phase 30: Field Layout Shell & Volunteer Landing** - Mobile shell layout with no admin chrome, assignment-aware volunteer hub (completed 2026-03-15)
 - [ ] **Phase 31: Canvassing Wizard** - Linear door-to-door wizard with household grouping, inline survey, persistent state, and shared field components
 - [ ] **Phase 32: Phone Banking Field Mode** - Mobile calling experience with tap-to-call, outcome recording, and inline survey reuse
 - [ ] **Phase 33: Offline Queue & Sync** - Local outcome queue with automatic sync on connectivity resume
@@ -215,7 +215,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
-| 30. Field Layout Shell & Volunteer Landing | 2/3 | In Progress|  | - |
+| 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete   | 2026-03-15 | - |
 | 31. Canvassing Wizard | v1.4 | 0/0 | Not started | - |
 | 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
@@ -227,7 +227,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)
