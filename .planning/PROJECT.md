@@ -69,7 +69,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(None — planning next milestone)
+#### Current Milestone: v1.4 Volunteer Field Mode
+
+**Goal:** A dedicated, zero-training mobile-first experience for volunteers actively canvassing or phone banking in the field.
+
+**Target features:**
+- Volunteer landing page that routes to active assignment (canvassing or phone banking)
+- Linear canvassing wizard (next address → knock → record outcome → inline survey → next)
+- Phone banking mode with start/stop, tap-to-call tel: links, result recording, inline survey
+- One-time guided onboarding tour with option to revisit
+- Built-in tooltips and contextual help throughout
+- Mobile-optimized touch targets and progressive disclosure
 
 ### Out of Scope
 
@@ -90,7 +100,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Shipped v1.3 Voter Model & Import Enhancement on 2026-03-15. All 4 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model).
+Shipped v1.3 Voter Model & Import Enhancement on 2026-03-15. All 4 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model). Starting v1.4 Volunteer Field Mode.
 
 ## Context
 
@@ -149,4 +159,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-15 after v1.3 milestone*
+*Last updated: 2026-03-15 after v1.4 milestone start*

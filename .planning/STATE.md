@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Voter Model & Import Enhancement
-status: archived
-stopped_at: Milestone v1.3 complete
+milestone: v1.4
+milestone_name: Volunteer Field Mode
+status: defining_requirements
+stopped_at: null
 last_updated: "2026-03-15"
-last_activity: 2026-03-15 — Milestone v1.3 archived
+last_activity: 2026-03-15 — Milestone v1.4 started
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.4 Volunteer Field Mode
 
 ## Current Position
 
-Milestone: v1.3 Voter Model & Import Enhancement — SHIPPED 2026-03-15
-All 4 milestones complete (v1.0, v1.1, v1.2, v1.3).
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-15 — Milestone v1.4 started
 
 ## Accumulated Context
 
@@ -45,5 +45,5 @@ Decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Milestone v1.3 archived
+Stopped at: Defining requirements for v1.4
 Resume file: None
