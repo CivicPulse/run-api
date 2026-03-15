@@ -32,11 +32,11 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 
 ### Filter & Query
 
-- [ ] **FILT-01**: VoterFilter supports propensity_general_min/max, propensity_primary_min/max, propensity_combined_min/max range filters
-- [ ] **FILT-02**: VoterFilter supports ethnicity, spoken_language, military_status as multi-select list filters
-- [ ] **FILT-03**: VoterFilter supports mailing_city, mailing_state, mailing_zip as exact-match filters
-- [ ] **FILT-04**: build_voter_query handles all new filter dimensions following existing pattern
-- [ ] **FILT-05**: Voting history filter maintains backward compatibility (year-only values still match "{Type}_{Year}" entries)
+- [x] **FILT-01**: VoterFilter supports propensity_general_min/max, propensity_primary_min/max, propensity_combined_min/max range filters
+- [x] **FILT-02**: VoterFilter supports ethnicity, spoken_language, military_status as multi-select list filters
+- [x] **FILT-03**: VoterFilter supports mailing_city, mailing_state, mailing_zip as exact-match filters
+- [x] **FILT-04**: build_voter_query handles all new filter dimensions following existing pattern
+- [x] **FILT-05**: Voting history filter maintains backward compatibility (year-only values still match "{Type}_{Year}" entries)
 
 ### Frontend
 
@@ -91,11 +91,11 @@ Requirements for Voter Model & Import Enhancement milestone. Each maps to roadma
 | IMPT-05 | Phase 24 | Complete |
 | IMPT-06 | Phase 24 | Complete |
 | IMPT-07 | Phase 24 | Complete |
-| FILT-01 | Phase 27 | Pending |
-| FILT-02 | Phase 27 | Pending |
-| FILT-03 | Phase 27 | Pending |
-| FILT-04 | Phase 27 | Pending |
-| FILT-05 | Phase 27 | Pending |
+| FILT-01 | Phase 27 | Complete |
+| FILT-02 | Phase 27 | Complete |
+| FILT-03 | Phase 27 | Complete |
+| FILT-04 | Phase 27 | Complete |
+| FILT-05 | Phase 27 | Complete |
 | FRNT-01 | Phase 26 | Complete |
 | FRNT-02 | Phase 27, 28 | Pending |
 | FRNT-03 | Phase 26 | Complete |

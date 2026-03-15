@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
-status: completed
-stopped_at: Phase 27 context gathered
-last_updated: "2026-03-15T02:54:13.201Z"
-last_activity: 2026-03-14 — Completed 26-04 ColumnMappingTable grouped dropdown
+status: executing
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-03-15T03:39:22Z"
+last_activity: 2026-03-15 — Completed 27-01 VoterSearchBody schema and dynamic sort
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 91
+  total_plans: 14
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-13)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.3 Phase 26 — Frontend Updates
+**Current focus:** v1.3 Phase 27 — Wire Advanced Filters to Backend
 
 ## Current Position
 
-Phase: 26 of 26 (Frontend Updates)
-Plan: 4 of 4
-Status: Plan 04 Complete
-Last activity: 2026-03-14 — Completed 26-04 ColumnMappingTable grouped dropdown
+Phase: 27 of 27 (Wire Advanced Filters to Backend)
+Plan: 1 of 3
+Status: Plan 01 Complete
+Last activity: 2026-03-15 — Completed 27-01 VoterSearchBody schema and dynamic sort
 
-Progress: [█████████░] 91%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 91%
 | Phase 26 P03 | 3min | 2 tasks | 2 files |
 | Phase 26 P02 | 3min | 2 tasks | 2 files |
 | Phase 26 P04 | 3min | 2 tasks | 2 files |
+| Phase 27 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 26]: onValueCommit for propensity sliders (avoids mount-time firing, cleaner commit semantics than onValueChange guard)
 - [Phase 26]: Voting history table placed inside Registration & Districts card with Separator, not standalone
 - [Phase 26]: CANONICAL_FIELDS derived from FIELD_GROUPS.flat() for single source of truth
+- [Phase 27]: SORTABLE_COLUMNS uses Literal type with 12 columns for compile-time validation
+- [Phase 27]: encode_cursor/decode_cursor as module-level helpers for independent testability
+- [Phase 27]: NULLS LAST for ascending sort only (PostgreSQL default for DESC is acceptable)
 
 ### Research Flags
 
@@ -106,6 +110,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T02:54:13.194Z
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-wire-advanced-filters-to-backend/27-CONTEXT.md
+Last session: 2026-03-15T03:39:22Z
+Stopped at: Completed 27-01-PLAN.md
+Resume file: .planning/phases/27-wire-advanced-filters-to-backend/27-01-SUMMARY.md
