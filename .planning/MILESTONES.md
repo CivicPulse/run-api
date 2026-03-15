@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.3 Voter Model & Import Enhancement (Shipped: 2026-03-15)
+
+**Phases completed:** 7 phases, 18 plans
+**Timeline:** 3 days (2026-03-13 → 2026-03-15)
+**Files modified:** 45 | **Lines added:** 6,771 | **Commits:** 104
+**Git range:** `feat(23-01)` → `feat(29-02)`
+
+**Key accomplishments:**
+1. Expanded voter model with 22 new first-class columns (propensity scores, mailing address, demographics, household data, military status) via single Alembic migration with indexes
+2. Enhanced import pipeline — auto-VoterPhone creation via RETURNING clause, voting history parsing from L2 General/Primary columns, propensity percentage parsing, fixed upsert SET clause bug
+3. Extended composable filter system with 15 new query conditions (propensity ranges, demographic multi-select, mailing address exact-match) plus backward-compatible year-only voting history expansion
+4. Complete frontend overhaul — voter detail page with 7 organized cards, accordion filter builder with dual-handle sliders and dynamic checkboxes, expanded edit sheet with 27 fields, grouped column mapping dropdown
+5. End-to-end filter wiring via POST /voters/search with Literal-validated sort_by, dynamic cursor pagination, and Playwright E2E tests for all filter dimensions
+6. 23-dimension filter chip system with category colors, ImportJob type alignment, registration county UI, and sort_by type narrowing
+
+**Tech debt accepted:** 3 human verification items — live L2 import with phone/voting-history/propensity, propensity badge colors and slider interaction, chip category colors and tooltip hover
+
+**Audit:** .planning/milestones/v1.3-MILESTONE-AUDIT.md (status: tech_debt, 27/27 requirements satisfied, 6/6 phases Nyquist compliant)
+
+---
+
 ## v1.2 Full UI (Shipped: 2026-03-13)
 
 **Phases completed:** 11 phases, 43 plans

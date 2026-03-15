@@ -147,6 +147,52 @@
 
 ---
 
+## Milestone: v1.3 — Voter Model & Import Enhancement
+
+**Shipped:** 2026-03-15
+**Phases:** 7 | **Plans:** 18
+
+### What Was Built
+- Expanded voter model with 22 new first-class columns via Alembic migration 006 (propensity scores, mailing address, demographics, household, military)
+- Enhanced import pipeline: auto-VoterPhone creation via RETURNING clause, voting history parsing, propensity percentage parsing, fixed SET clause bug
+- 15 new composable filter conditions with backward-compatible voting history year expansion
+- Complete frontend overhaul: voter detail page (7 cards), accordion filter builder (sliders, dynamic checkboxes), expanded edit sheet (27 fields), grouped column mapping
+- POST /voters/search with Literal-typed sort_by, dynamic cursor pagination, and Playwright E2E tests
+- 23-dimension filter chip system with category colors, plus ImportJob type alignment and integration polish (Phase 29)
+
+### What Worked
+- Milestone audit process caught 3 real integration gaps (INT-01/02/03) that Phase 29 fixed before shipping — audit-driven gap closure is now a proven pattern across all 4 milestones
+- Phase 23's single migration approach (renames + 22 new columns in one file) was clean and avoided multi-migration coordination
+- func.lower() pattern for case-insensitive filters applied consistently across registration and mailing address fields
+- RETURNING clause for voter-to-phone linking was a single-round-trip solution per batch
+- Nyquist validation enforced from the start — all 7 phases compliant with wave_0_complete
+
+### What Was Inefficient
+- Summary files still lack `one_liner` field — automated extraction returns null, requiring manual reading during milestone completion
+- ROADMAP.md plan checkboxes still show `[ ]` after execution (Phases 23-29) — same issue from v1.0/v1.1
+- Phase 29 row in ROADMAP.md progress table had malformed columns (missing milestone column) — recurring formatting issue
+- Milestone audit file status remained `tech_debt` even after Phase 29 closed all integration gaps — no re-audit step in workflow
+
+### Patterns Established
+- POST body for complex search (replaces GET query params when filter count exceeds URL comfort)
+- Literal-typed sort columns for compile-time validation without runtime overhead
+- filterChipUtils shared utility pattern for centralized chip formatting across multiple pages
+- Year-only voting history expansion via PostgreSQL overlap operator for backward compatibility
+- SET clause derived from model columns (Voter.__table__.columns) instead of first batch row keys
+
+### Key Lessons
+1. Audit-driven gap closure phases are standard practice — every milestone since v1.0 has needed at least one
+2. POST /voters/search was the right call once filter count exceeded 19 dimensions — GET query params don't scale
+3. Single-migration approach for column expansion is preferable when all columns are nullable and related
+4. Summary files need a `one_liner` field — this has been a pain point for 4 consecutive milestones
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 3 days from Phase 23 start to milestone completion
+- Notable: 18 plans across 7 phases in 3 days; 6,771 lines added across 45 files
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -156,6 +202,7 @@
 | v1.0 | 7 | 20 | Established GSD workflow with phase verification and milestone audit |
 | v1.1 | 4 | 7 | Infrastructure-as-code phases; clean milestone audit (zero gaps) |
 | v1.2 | 11 | 43 | Full Nyquist compliance, 3-source verification, gap closure phases as standard practice |
+| v1.3 | 7 | 18 | POST body for complex search, Literal-typed sort columns, audit-driven gap closure confirmed as pattern |
 
 ### Cumulative Quality
 
@@ -164,6 +211,7 @@
 | v1.0 | 236+ passing | 24+ written (not executed) | 56,653 | — |
 | v1.1 | 268 passing | — | +1,512 (infra) | — |
 | v1.2 | 252 passing (frontend) | 284 passing (backend) | — | 30,691 TypeScript |
+| v1.3 | 252+ (frontend) | 284+ (backend) | ~34K Python + ~34K TS | +6,771 lines (45 files) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -173,3 +221,5 @@
 4. Keep ROADMAP.md checkboxes and progress table updated during execution — manual fixups during archival are wasteful
 5. Build shared infrastructure early — Phase 12's 3-plan investment in RequireRole, DataTable, useFormGuard saved massive duplication across 10 subsequent phases
 6. Gap closure phases are healthy — they mean the audit process works, not that planning failed
+7. POST body search is the right pattern once filter dimensions exceed ~20 — GET query params don't scale
+8. Summary files should include a `one_liner` field — verified as pain point across all 4 milestones

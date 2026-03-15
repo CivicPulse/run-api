@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard, canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns.
+A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips.
 
 ## Core Value
 
@@ -43,7 +43,6 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Kubernetes manifests with init container migrations, Service, and Secret template — v1.1
 - ✓ Traefik IngressRoute and ArgoCD Application for GitOps deployment — v1.1
 - ✓ Seed data script for Macon-Bibb County demo dataset — v1.1
-
 - ✓ Permission-gated UI with RequireRole component and usePermissions hook — v1.2
 - ✓ Form navigation protection with useFormGuard (route blocking + beforeunload) — v1.2
 - ✓ Reusable DataTable with server-side sorting, filtering, and pagination — v1.2
@@ -55,18 +54,22 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Phone banking UI (session CRUD, member picker caller assignment, active calling screen with claim/record/skip, progress dashboards) — v1.2
 - ✓ Volunteer management UI (roster, self-registration, availability, tags, hours tracking) — v1.2
 - ✓ Shift management UI (scheduling with date groups, signup/assign, check-in/out, roster, hours adjustment) — v1.2
+- ✓ Expanded voter model with 22 first-class columns (propensity scores, mailing address, demographics, household, military status) — v1.3
+- ✓ Import pipeline auto-creates VoterPhone records from L2 cell phone columns — v1.3
+- ✓ Voting history parsing from L2 General/Primary columns into canonical format — v1.3
+- ✓ Propensity percentage parsing (string to integer) during import — v1.3
+- ✓ Fixed upsert SET clause to derive from model columns, not first batch row — v1.3
+- ✓ 15 new composable filter conditions (propensity ranges, demographic multi-select, mailing address) — v1.3
+- ✓ Backward-compatible voting history filtering (year-only → General+Primary expansion) — v1.3
+- ✓ Voter detail page with propensity badges, mailing address, demographics, household cards — v1.3
+- ✓ Accordion filter builder with dual-handle sliders and dynamic checkboxes — v1.3
+- ✓ POST /voters/search with Literal-validated sort_by and dynamic cursor pagination — v1.3
+- ✓ 23-dimension filter chip system with category colors and dismissible chips — v1.3
+- ✓ Grouped column mapping dropdown with 45+ canonical fields for import wizard — v1.3
 
 ### Active
 
-## Current Milestone: v1.3 Voter Model & Import Enhancement
-
-**Goal:** Expand the voter model with first-class columns for all high-value L2 voter file fields (propensity scores, demographics, mailing address, household data, military status) and upgrade the import pipeline to auto-create phone contacts, parse voting history, and handle enriched field mapping.
-
-**Target features:**
-- Expanded voter model with propensity scores, ethnicity, language, mailing address, household, military status
-- Import pipeline enhancements: auto-create VoterPhone records, parse voting history columns, improved L2 mapping
-- Updated voter search/filter to leverage new first-class fields
-- UI updates to display and filter on new voter data
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -81,20 +84,21 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Actual cluster deployment — manifests only, deployment is a separate operational step
 - Helm/Kustomize — plain manifests following contact-api pattern
 - Local ZITADEL instance — use existing dev org at auth.civpulse.org
+- Self-computed propensity scores — vendor problem; import vendor data as-is
+- BISG/fBISG ethnicity prediction — 14-26% error rates, legal/ethical concerns
+- Normalized ethnicity/language enums — L2 has 50+ values, fixed enums break with vendor data
 
 ## Current State
 
-Shipped v1.2 Full UI on 2026-03-13. All 3 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI).
-Starting v1.3 Voter Model & Import Enhancement on 2026-03-13.
+Shipped v1.3 Voter Model & Import Enhancement on 2026-03-15. All 4 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model).
 
 ## Context
 
-Shipped v1.0 MVP (39 requirements, 7 phases), v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases), and v1.2 Full UI (66 requirements, 11 phases) over 6 days.
+Shipped v1.0 MVP (39 requirements, 7 phases), v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases), v1.2 Full UI (66 requirements, 11 phases), and v1.3 Voter Model & Import Enhancement (27 requirements, 7 phases) over 8 days.
 Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ (backend); React + TanStack Router/Query + shadcn/ui (frontend).
-Codebase: ~58K LOC Python backend + ~31K LOC TypeScript frontend.
-Frontend: 335 files modified, 61K lines added across 11 phases and 43 plans.
+Codebase: ~34K LOC Python backend + ~34K LOC TypeScript frontend.
 Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s manifests with ArgoCD GitOps.
-18 tech debt items from v1.0 (integration tests need live infrastructure). 7 low-severity tech debt items from v1.2.
+18 tech debt items from v1.0 (integration tests need live infrastructure). 7 low-severity tech debt items from v1.2. 3 human verification items from v1.3.
 
 ## Constraints
 
@@ -122,7 +126,6 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Compensating transactions | ZITADEL org creation + DB insert with rollback on failure | ✓ Good — tested with mocks, needs live validation |
 | Claim-on-fetch with SKIP LOCKED | Concurrent call list entry claiming without contention | ✓ Good — PostgreSQL advisory locking pattern |
 | Late imports for cross-phase models | Avoid circular deps between volunteer/canvassing/phone banking | ✓ Good — ShiftService.check_in() imports at call site |
-
 | Embed web frontend in API container | Temporary convenience; avoids separate static hosting setup for now | ⚠️ Revisit — will move to Cloudflare Pages |
 | GHCR for container images | GitHub-native, free for public repos, matches contact-api pattern | ✓ Good — SHA + latest tagging with CI auto-publish |
 | Plain K8s manifests (no Helm) | Simplicity, matches contact-api pattern, ArgoCD handles sync | ✓ Good — ArgoCD auto-sync works well |
@@ -136,6 +139,14 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Popover+Command combobox pattern | Member/volunteer pickers use cmdk for search with Popover container | ✓ Good — reused in caller picker, volunteer assignment |
 | Client-side DNC search | Strip non-digits before comparing; no backend search endpoint | ✓ Good — DNC lists are campaign-scoped, small enough for client |
 | it.todo test stubs | Wave 0 stubs with no imports keep suite green during development | ✓ Good — Nyquist compliance without blocking progress |
+| Single migration for voter expansion | Migration 006 handles all renames + 22 new columns in one file | ✓ Good — simpler than splitting across multiple migrations |
+| func.lower() for filter equality | Case-insensitive matching on registration/mailing address and demographics | ✓ Good — consistent pattern, zip stays exact match |
+| SET clause from model columns | Upsert derives SET from Voter.__table__.columns, not first batch row | ✓ Good — fixed silent column omission bug |
+| RETURNING clause for phone linking | Voter upsert returns IDs for VoterPhone bulk creation | ✓ Good — single round-trip per batch |
+| Year-only voting history expansion | voted_in: ["2024"] expands to General_2024 + Primary_2024 with overlap | ✓ Good — backward compatible with saved filters |
+| POST /voters/search | Body-based search replaces GET query params for complex filters | ✓ Good — all 32 filter dimensions fit cleanly in body |
+| Literal-typed sort_by | 12-column union type with compile-time validation | ✓ Good — type safety without runtime overhead |
+| filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-13 after v1.3 milestone start*
+*Last updated: 2026-03-15 after v1.3 milestone*

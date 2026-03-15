@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
-status: completed
-stopped_at: Completed 29-01-PLAN.md
-last_updated: "2026-03-15T06:36:34.858Z"
-last_activity: 2026-03-15 — Completed 29-02 filter chip completion and sort type narrowing
+status: archived
+stopped_at: Milestone v1.3 complete
+last_updated: "2026-03-15"
+last_activity: 2026-03-15 — Milestone v1.3 archived
 progress:
   total_phases: 7
   completed_phases: 7
@@ -18,52 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-13)
+See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.3 Phase 29 — Integration Polish & Tech Debt Cleanup
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 29 of 29 (Integration Polish & Tech Debt Cleanup)
-Plan: 2 of 2
-Status: Phase 29 complete — all plans executed
-Last activity: 2026-03-15 — Completed 29-02 filter chip completion and sort type narrowing
+Milestone: v1.3 Voter Model & Import Enhancement — SHIPPED 2026-03-15
+All 4 milestones complete (v1.0, v1.1, v1.2, v1.3).
 
 Progress: [██████████] 100%
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 6 (v1.3)
-- Average duration: 3.2min
-- Total execution time: 19min
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 23 | 2 | 8min | 4min |
-| 24 | 1 | 2min | 2min |
-| 25 | 2 | 5min | 2.5min |
-| 26 | 3/4 | 7min | 2.3min |
-
-*Updated after each plan completion*
-| Phase 24 P01 | 3min | 1 tasks | 3 files |
-| Phase 24 P03 | 4min | 2 tasks | 2 files |
-| Phase 25 P01 | 3min | 2 tasks | 3 files |
-| Phase 25 P02 | 2min | 1 tasks | 2 files |
-| Phase 26 P01 | 4min | 2 tasks | 11 files |
-| Phase 26 P03 | 3min | 2 tasks | 2 files |
-| Phase 26 P02 | 3min | 2 tasks | 2 files |
-| Phase 26 P04 | 3min | 2 tasks | 2 files |
-| Phase 27 P01 | 3min | 2 tasks | 4 files |
-| Phase 27 P02 | 3min | 2 tasks | 4 files |
-| Phase 27 P03 | 2min | 1 tasks | 1 files |
-| Phase 28 P01 | 3min | 2 tasks | 8 files |
-| Phase 28 P02 | 3min | 2 tasks | 4 files |
-| Phase 29 P02 | 2min | 2 tasks | 6 files |
-| Phase 29 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -71,61 +36,14 @@ Progress: [██████████] 100%
 
 Decisions logged in PROJECT.md Key Decisions table.
 
-Recent decisions affecting current work:
-- [v1.0]: Multi-source voter import with RapidFuzz auto-mapping at 75% threshold
-- [v1.0]: native_enum=False for all StrEnum columns (VARCHAR for migration extensibility)
-- [v1.2]: XHR for MinIO uploads (ky interceptors break presigned URL auth)
-- [Phase 23]: Single migration 006 for all renames + adds (simpler than splitting)
-- [Phase 23]: Mailing indexes (zip, city, state) created in migration 006 for Phase 25 filter queries
-- [Phase 23]: No Pydantic aliases for backward compat -- frontend field renames deferred to Phase 26
-- [Phase 23]: Old field names kept as CANONICAL_FIELDS aliases for backward-compatible CSV import
-- [Phase 24]: JSONB || concatenation for L2 template updates (no-op if template missing)
-- [Phase 24]: ARRAY[]::text[] cast for downgrade key removal (cleaner than chained - operators)
-- [Phase 24]: Utility functions placed at module level for independent testability (parse_propensity, normalize_phone, parse_voting_history)
-- [Phase 24]: SET clause derived from Voter.__table__.columns with _UPSERT_EXCLUDE (not first row keys)
-- [Phase 24]: VoterPhone upsert excludes is_primary from SET to preserve manual edits
-- [Phase 25]: func.lower() for case-insensitive equality/IN on voter filters (registration + mailing address, demographics)
-- [Phase 25]: Zip codes stay exact match (no case variation in numeric strings)
-- [Phase 25]: registration_county updated to case-insensitive alongside city/state
-- [Phase 25]: Year-only voted_in uses .overlap() for OR semantics; not_voted_in uses dual ~.contains() for AND-NOT semantics
-- [Phase 25]: Voting history year expansion covers General and Primary only (no Runoff/Special in L2 data)
-- [Phase 26]: Keep GET /voters query param names (city/state/county) for backward compat, map to registration_* in VoterFilter
-- [Phase 26]: ContactsTab address references are VoterAddress model fields, not Voter model -- left unchanged
-- [Phase 26]: onValueCommit for propensity sliders (avoids mount-time firing, cleaner commit semantics than onValueChange guard)
-- [Phase 26]: Voting history table placed inside Registration & Districts card with Separator, not standalone
-- [Phase 26]: CANONICAL_FIELDS derived from FIELD_GROUPS.flat() for single source of truth
-- [Phase 27]: SORTABLE_COLUMNS uses Literal type with 12 columns for compile-time validation
-- [Phase 27]: encode_cursor/decode_cursor as module-level helpers for independent testability
-- [Phase 27]: NULLS LAST for ascending sort only (PostgreSQL default for DESC is acceptable)
-- [Phase 27]: useQuery with POST for idempotent search (body in queryKey enables automatic refetch on filter changes)
-- [Phase 27]: placeholderData: keepPreviousData (TanStack v5) for smooth loading transitions
-- [Phase 27]: SORT_COLUMN_MAP maps frontend column IDs to backend sort columns
-- [Phase 27]: Network interception (waitForRequest + postDataJSON) for E2E POST body validation
-- [Phase 27]: Keyboard-driven Radix Slider interaction (ArrowRight/ArrowLeft) for deterministic E2E testing
-- [Phase 28]: VoterCreate aligned with all 16 missing backend fields for complete schema coverage
-- [Phase 28]: phones_created labeled 'Phones' (short), blue in table/progress, green in completion view
-- [Phase 28]: FilterChip duplicated inline in lists/index.tsx (20 lines, 2 consumers) rather than extracting to shared module
-- [Phase 29]: SortableColumn placed in voter.ts alongside VoterSearchBody for co-location
-- [Phase 29]: No backward compat aliases -- clean rename from filename to original_filename
-
-### Research Flags
-
-- Phase 24 (RETURNING clause): Structurally novel — verify with new voter inserts against real test data
-- Phase 24 (Voting history format): Lock in "{Type}_{Year}" canonical format before coding
-- Phase 25 (Backward compat): Existing saved filters with year-only voted_in values must still work
-
-### Pending Todos
-
-None.
-
 ### Blockers/Concerns
 
 - 18 tech debt items from v1.0: integration tests need live infrastructure
 - 7 low-severity tech debt items from v1.2
-- Phase 23: Assess whether extra_data backfill script needed for previously-imported L2 files
+- 3 human verification items from v1.3: live L2 import, propensity UI, chip UX
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:34:12.006Z
-Stopped at: Completed 29-01-PLAN.md
+Last session: 2026-03-15
+Stopped at: Milestone v1.3 archived
 Resume file: None
