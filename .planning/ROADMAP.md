@@ -145,8 +145,12 @@ Plans:
   3. Selecting mailing address filters returns matching voters
   4. Combining new filter fields with legacy filters works correctly
   5. VoterSearchRequest sends the correct body format to POST /voters/search
+**Plans**: 3 plans
 
-Plans: TBD (run `/gsd:plan-phase 27`)
+Plans:
+- [ ] 27-01-PLAN.md — VoterSearchBody schema, POST endpoint update, dynamic sort/cursor in search_voters, unit tests
+- [ ] 27-02-PLAN.md — Frontend hooks migration (useVoterSearch), voter list page and AddVotersDialog wiring, type cleanup
+- [ ] 27-03-PLAN.md — Playwright E2E tests for filter wiring (propensity, demographic, mailing, combined, GET backward compat)
 
 ### Phase 28: Filter Chips & Frontend Type Coverage
 **Goal**: Filter chips display for all filter dimensions and TypeScript interfaces match backend schemas
@@ -164,7 +168,7 @@ Plans: TBD (run `/gsd:plan-phase 28`)
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 23 → 24 → 25 → 26
+Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -190,9 +194,9 @@ Phases execute in numeric order: 23 → 24 → 25 → 26
 | 20. Caller Picker UX | v1.2 | 2/2 | Complete | 2026-03-12 |
 | 21. Integration Polish | v1.2 | 1/1 | Complete | 2026-03-12 |
 | 22. Final Integration Fixes | v1.2 | 1/1 | Complete | 2026-03-13 |
-| 23. Schema Foundation | 2/2 | Complete    | 2026-03-13 | - |
-| 24. Import Pipeline Enhancement | 3/3 | Complete    | 2026-03-13 | - |
-| 25. Filter Builder & Query Enhancement | 2/2 | Complete    | 2026-03-14 | - |
-| 26. Frontend Updates | 4/4 | Complete    | 2026-03-14 | - |
-| 27. Wire Advanced Filters to Backend | v1.3 | 0/0 | Pending | - |
+| 23. Schema Foundation | v1.3 | 2/2 | Complete | 2026-03-13 |
+| 24. Import Pipeline Enhancement | v1.3 | 3/3 | Complete | 2026-03-13 |
+| 25. Filter Builder & Query Enhancement | v1.3 | 2/2 | Complete | 2026-03-14 |
+| 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
+| 27. Wire Advanced Filters to Backend | v1.3 | 0/3 | Pending | - |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 0/0 | Pending | - |
