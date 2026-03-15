@@ -52,7 +52,7 @@ Exceptions:
 |------|------|--------|-------------|-------|
 | Address heading | 18px (`text-lg`) | 600 (`font-semibold`) | 1.75 (`leading-7`) | Household address header — prominently displayed |
 | Body | 16px (`text-base`) | 400 (`font-normal`) | 1.5 (`leading-6`) | Voter name, survey question text |
-| Label | 14px (`text-sm`) | 500 (`font-medium`) | 1.25 (`leading-5`) | Outcome button labels, progress text, badge text |
+| Label | 14px (`text-sm`) | 400 (`font-normal`) | 1.25 (`leading-5`) | Outcome button labels, progress text, badge text |
 | Caption | 12px (`text-xs`) | 400 (`font-normal`) | 1.33 (`leading-4`) | Prior interaction history, "Tap to navigate" hint |
 | Header title | 14px (`text-sm`) | 600 (`font-semibold`) | 1.25 | FieldHeader title (existing pattern) |
 
@@ -124,7 +124,7 @@ These use Tailwind utility classes directly (not CSS variables) per CONTEXT.md d
 | Skip all cancel | "No" |
 | Survey panel heading | "Survey Questions" |
 | Survey skip CTA | "Skip Survey" |
-| Survey submit CTA | "Submit" |
+| Survey submit CTA | "Save Answers" |
 | List view button | "All Doors" |
 | List view heading | "Walk List" |
 | List view status: pending | "Pending" |
@@ -186,7 +186,7 @@ These use Tailwind utility classes directly (not CSS variables) per CONTEXT.md d
 - Renders inside HouseholdCard as a stacked sub-card
 - Active voter: full card with OutcomeGrid inline below voter info
 - Completed voter: compact card showing name + recorded outcome badge + checkmark
-- Voter info layout: name (text-base font-medium) on first line, party badge + propensity badge + age on second line, prior interaction on third line
+- Voter info layout: name (text-base font-normal) on first line, party badge + propensity badge + age on second line, prior interaction on third line
 - All badges use `text-xs` with `px-2 py-0.5` (existing Badge sizing)
 
 ### HouseholdCard
@@ -208,7 +208,7 @@ These use Tailwind utility classes directly (not CSS variables) per CONTEXT.md d
   - `multiple_choice`: radio group with `min-h-11` tap targets per option
   - `scale`: slider component
   - `free_text`: textarea with `min-h-[80px]`
-- Footer pinned at bottom: "Skip Survey" (variant="ghost") left, "Submit" (variant="default") right
+- Footer pinned at bottom: "Skip Survey" (variant="ghost") left, "Save Answers" (variant="default") right
 - Overlay dims card content behind: `bg-black/50` (default Sheet overlay)
 
 ### FieldProgress
