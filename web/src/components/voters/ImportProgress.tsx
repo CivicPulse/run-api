@@ -49,10 +49,6 @@ export function ImportProgress({ job, onComplete, onFailed }: ImportProgressProp
           <span className="font-medium text-yellow-600">{job.skipped_rows}</span>{" "}
           skipped
         </span>
-        <span>
-          <span className="font-medium text-destructive">{job.error_count}</span>{" "}
-          errors
-        </span>
         {job.phones_created != null && job.phones_created > 0 && (
           <span>
             <span className="font-medium text-blue-600">
@@ -66,11 +62,6 @@ export function ImportProgress({ job, onComplete, onFailed }: ImportProgressProp
       {job.status === "failed" && (
         <div className="rounded-md bg-destructive/10 p-3">
           <p className="text-sm font-medium text-destructive">Import failed</p>
-          {job.error_count > 0 && (
-            <p className="text-sm text-destructive">
-              {job.error_count} error{job.error_count !== 1 ? "s" : ""} encountered
-            </p>
-          )}
         </div>
       )}
     </div>

@@ -319,11 +319,6 @@ export function ImportWizardPage() {
                       phones created
                     </p>
                   )}
-                  {jobQuery.data.error_count > 0 && (
-                    <p className="text-sm text-destructive">
-                      {jobQuery.data.error_count} rows had errors
-                    </p>
-                  )}
                   {jobQuery.data.error_report_key && (
                     <a
                       href={`/api/v1/campaigns/${campaignId}/imports/${jobId}/error-report`}
