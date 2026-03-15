@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 31-02 shared field components
-last_updated: "2026-03-15T21:08:53.608Z"
-last_activity: 2026-03-15 — Completed 31-02 shared field components
+stopped_at: Completed 31-01 data foundation
+last_updated: "2026-03-15T21:09:00Z"
+last_activity: 2026-03-15 — Completed 31-01 data foundation (enriched entries endpoint + wizard store)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 Phase: 31 of 36 (Canvassing Wizard)
 Plan: 2 of 5 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Completed 31-02 shared field components
+Last activity: 2026-03-15 — Completed 31-01 data foundation
 
-Progress: [█████░░░░░] 50% (4/8 v1.4 plans)
+Progress: [██████░░░░] 63% (5/8 v1.4 plans)
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [█████░░░░░] 50% (4/8 v1.4 plans)
 | v1.4 Field Mode | 7 | TBD | — |
 | Phase 30 P03 | 2min | 2 tasks | 6 files |
 | Phase 31 P02 | 2min | 2 tasks | 5 files |
+| Phase 31 P01 | 3min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 30]: Volunteer auto-redirect uses JWT role claim with API campaign fetch fallback
 - [31-02]: Created canvassing.ts types inline (Rule 3) since Plan 01 runs in parallel
 - [31-02]: Positive/neutral outcomes first in grid order for ergonomic thumb reach
+- [31-01]: Correlated subqueries for interaction aggregation (no lateral join for walk list sizes up to 500)
+- [31-01]: 500-entry cap on enriched endpoint, no pagination needed for wizard
+- [31-01]: sessionStorage for wizard state (clears on tab close, fresh start each session)
 
 ### Roadmap Evolution
 
@@ -83,6 +87,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:07:30Z
-Stopped at: Completed 31-02 shared field components
-Resume file: .planning/phases/31-canvassing-wizard/31-02-SUMMARY.md
+Last session: 2026-03-15T21:09:00Z
+Stopped at: Completed 31-01 data foundation
+Resume file: .planning/phases/31-canvassing-wizard/31-01-SUMMARY.md

@@ -20,7 +20,7 @@
 - [x] **CANV-04**: Volunteer sees a progress indicator (e.g., "12 of 47 doors")
 - [ ] **CANV-05**: Volunteer can answer inline survey questions after a contact outcome (skippable)
 - [x] **CANV-06**: Volunteer sees multiple voters at the same address grouped by household
-- [ ] **CANV-07**: Volunteer's wizard state persists across phone interruptions and app switching
+- [x] **CANV-07**: Volunteer's wizard state persists across phone interruptions and app switching
 - [ ] **CANV-08**: Volunteer sees a resume prompt when returning to an interrupted session
 
 ### Phone Banking
@@ -97,7 +97,7 @@
 | CANV-04 | Phase 31 | Complete |
 | CANV-05 | Phase 31 | Pending |
 | CANV-06 | Phase 31 | Complete |
-| CANV-07 | Phase 31 | Pending |
+| CANV-07 | Phase 31 | Complete |
 | CANV-08 | Phase 31 | Pending |
 | PHONE-01 | Phase 32 | Pending |
 | PHONE-02 | Phase 32 | Pending |
