@@ -5,12 +5,21 @@ interface AppConfig {
 }
 
 let _config: AppConfig | null = null
+let _configPromise: Promise<AppConfig> | null = null
 
 export async function loadConfig(): Promise<AppConfig> {
   if (_config) return _config
-  const res = await fetch("/api/v1/config/public")
-  _config = await res.json()
-  return _config!
+  if (_configPromise) return _configPromise
+  _configPromise = (async () => {
+    const res = await fetch("/api/v1/config/public")
+    if (!res.ok) {
+      _configPromise = null
+      throw new Error(`Failed to load config: ${res.status} ${res.statusText}`)
+    }
+    _config = await res.json()
+    return _config!
+  })()
+  return _configPromise
 }
 
 export function getConfig(): AppConfig {
