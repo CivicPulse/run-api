@@ -220,7 +220,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete    | 2026-03-15 | - |
 | 31. Canvassing Wizard | 5/5 | Complete    | 2026-03-15 | - |
-| 32. Phone Banking Field Mode | 1/3 | In Progress|  | - |
+| 32. Phone Banking Field Mode | 2/3 | In Progress|  | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
 | 34. Guided Onboarding Tour | v1.4 | 0/0 | Not started | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
@@ -230,7 +230,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)

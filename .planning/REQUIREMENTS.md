@@ -25,12 +25,12 @@
 
 ### Phone Banking
 
-- [ ] **PHONE-01**: Volunteer starts and stops a phone banking session with obvious controls
-- [ ] **PHONE-02**: Volunteer taps a phone number to initiate a call via native dialer (tel: link)
-- [ ] **PHONE-03**: Volunteer records call outcome via large touch-target buttons after a call
-- [ ] **PHONE-04**: Volunteer can answer inline survey questions after a contact outcome (skippable)
-- [ ] **PHONE-05**: Volunteer sees session progress (calls completed / remaining)
-- [ ] **PHONE-06**: Volunteer can copy a phone number to clipboard as fallback when tel: is unsupported
+- [x] **PHONE-01**: Volunteer starts and stops a phone banking session with obvious controls
+- [x] **PHONE-02**: Volunteer taps a phone number to initiate a call via native dialer (tel: link)
+- [x] **PHONE-03**: Volunteer records call outcome via large touch-target buttons after a call
+- [x] **PHONE-04**: Volunteer can answer inline survey questions after a contact outcome (skippable)
+- [x] **PHONE-05**: Volunteer sees session progress (calls completed / remaining)
+- [x] **PHONE-06**: Volunteer can copy a phone number to clipboard as fallback when tel: is unsupported
 - [x] **PHONE-07**: Phone numbers are formatted to E.164 for dialing and display-formatted for reading
 
 ### Onboarding & Help
@@ -56,7 +56,7 @@
 - [ ] **A11Y-02**: All interactive elements meet WCAG 2.5.5 minimum touch target size (44x44px)
 - [ ] **A11Y-03**: All field mode screens have sufficient color contrast (WCAG AA minimum)
 - [x] **A11Y-04**: Canvassing wizard state transitions are announced to screen readers via live regions
-- [ ] **A11Y-05**: Phone banking caller info and outcome buttons are accessible without visual context
+- [x] **A11Y-05**: Phone banking caller info and outcome buttons are accessible without visual context
 
 ### Polish & Celebrations
 
@@ -99,12 +99,12 @@
 | CANV-06 | Phase 31 | Complete |
 | CANV-07 | Phase 31 | Complete |
 | CANV-08 | Phase 31 | Complete |
-| PHONE-01 | Phase 32 | Pending |
-| PHONE-02 | Phase 32 | Pending |
-| PHONE-03 | Phase 32 | Pending |
-| PHONE-04 | Phase 32 | Pending |
-| PHONE-05 | Phase 32 | Pending |
-| PHONE-06 | Phase 32 | Pending |
+| PHONE-01 | Phase 32 | Complete |
+| PHONE-02 | Phase 32 | Complete |
+| PHONE-03 | Phase 32 | Complete |
+| PHONE-04 | Phase 32 | Complete |
+| PHONE-05 | Phase 32 | Complete |
+| PHONE-06 | Phase 32 | Complete |
 | PHONE-07 | Phase 32 | Complete |
 | TOUR-01 | Phase 34 | Pending |
 | TOUR-02 | Phase 34 | Pending |
@@ -121,7 +121,7 @@
 | A11Y-02 | Phase 35 | Pending |
 | A11Y-03 | Phase 35 | Pending |
 | A11Y-04 | Phase 31 | Complete |
-| A11Y-05 | Phase 32 | Pending |
+| A11Y-05 | Phase 32 | Complete |
 | POLISH-01 | Phase 35 | Pending |
 | POLISH-02 | Phase 35 | Pending |
 | POLISH-03 | Phase 35 | Pending |

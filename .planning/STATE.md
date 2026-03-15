@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Phase 32 UI-SPEC approved
-last_updated: "2026-03-15T22:38:20.125Z"
-last_activity: 2026-03-15 — Completed 31-04 inline survey, resume, door list, ARIA
+stopped_at: Completed 32-02-PLAN.md
+last_updated: "2026-03-15T22:43:53.115Z"
+last_activity: 2026-03-15 — Completed 32-02 calling flow UI with orchestrator hook and route
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
-  percent: 88
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 32 of 36 (Phone Banking Field Mode)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Completed 32-01 calling types, store, OutcomeGrid generalization
+Last activity: 2026-03-15 — Completed 32-02 calling flow UI with orchestrator hook and route
 
-Progress: [████████░░] 82% (9/11 v1.4 plans)
+Progress: [█████████░] 91% (10/11 v1.4 plans)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [████████░░] 82% (9/11 v1.4 plans)
 | Phase 31 P04 | 3min | 2 tasks | 4 files |
 | Phase 31 P05 | 3min | 2 tasks | 2 files |
 | Phase 32 P01 | 3min | 2 tasks | 8 files |
+| Phase 32 P02 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Recent decisions affecting current work:
 - [Phase 31]: Store tests use getState() directly without React rendering context
 - [32-01]: OutcomeGrid uses string callback type with domain-specific casting at call sites
 - [32-01]: CANVASSING_OUTCOMES built from existing OUTCOME_COLORS map to avoid duplication
+- [Phase 32]: Custom header replaces FieldHeader in main calling view to intercept back arrow for end session confirmation
 
 ### Roadmap Evolution
 
@@ -98,6 +100,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:37:42Z
-Stopped at: Completed 32-01-PLAN.md
-Resume file: .planning/phases/32-phone-banking-field-mode/32-02-PLAN.md
+Last session: 2026-03-15T22:43:53.110Z
+Stopped at: Completed 32-02-PLAN.md
+Resume file: None
