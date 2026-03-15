@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
-status: planning
-stopped_at: Phase 30 context gathered
-last_updated: "2026-03-15T19:36:49.340Z"
-last_activity: 2026-03-15 — Created v1.4 roadmap (6 phases, 38 requirements)
+status: executing
+stopped_at: Completed 30-02-PLAN.md
+last_updated: "2026-03-15T19:55:29.696Z"
+last_activity: 2026-03-15 — Completed 30-02 field layout shell
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 30 of 36 (Field Layout Shell & Volunteer Landing)
-Plan: 0 of 0 in current phase (plans TBD)
-Status: Ready to plan
-Last activity: 2026-03-15 — Created v1.4 roadmap (6 phases, 38 requirements)
+Plan: 2 of 3 in current phase
+Status: Executing
+Last activity: 2026-03-15 — Completed 30-02 field layout shell
 
-Progress: [░░░░░░░░░░] 0% (0/7 v1.4 phases)
+Progress: [███░░░░░░░] 33% (1/3 v1.4 plans)
 
 ## Performance Metrics
 
@@ -60,6 +60,8 @@ Recent decisions affecting current work:
 - [v1.4 Research]: Separate /field/ route tree with own layout (no admin chrome)
 - [v1.4 Research]: Zustand persist + sessionStorage for wizard state (not useState)
 - [v1.4 Research]: Canvassing before phone banking (produces shared components)
+- [30-02]: Field routes bypass admin sidebar via isFieldRoute check in __root.tsx
+- [30-02]: FieldHeader derives sub-route title from pathname via titleMap lookup
 
 ### Roadmap Evolution
 
@@ -73,6 +75,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:36:49.334Z
-Stopped at: Phase 30 context gathered
-Resume file: .planning/phases/30-field-layout-shell-volunteer-landing/30-CONTEXT.md
+Last session: 2026-03-15T19:55:02Z
+Stopped at: Completed 30-02-PLAN.md
+Resume file: .planning/phases/30-field-layout-shell-volunteer-landing/30-02-SUMMARY.md
