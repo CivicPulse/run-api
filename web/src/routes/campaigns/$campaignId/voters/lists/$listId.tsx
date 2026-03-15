@@ -5,6 +5,7 @@ import { Users } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { buildStaticChipDescriptors } from "@/lib/filterChipUtils"
 import {
   Dialog,
   DialogContent,
@@ -80,9 +81,7 @@ function ListDetailPage() {
   const parsedFilters: VoterFilter =
     list?.filter_query ? (JSON.parse(list.filter_query) as VoterFilter) : {}
 
-  const filterChips = Object.entries(parsedFilters).filter(
-    ([, val]) => val !== undefined && val !== null && (!Array.isArray(val) || val.length > 0),
-  )
+  const chipDescriptors = buildStaticChipDescriptors(parsedFilters)
 
   const memberColumns: ColumnDef<Voter, unknown>[] = [
     {
@@ -190,18 +189,15 @@ function ListDetailPage() {
           <p className="text-sm font-medium text-muted-foreground">
             Filter Criteria
           </p>
-          {filterChips.length === 0 ? (
+          {chipDescriptors.length === 0 ? (
             <p className="text-sm text-muted-foreground">No filters set — matches all voters.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {filterChips.map(([key, val]) => {
-                const display = Array.isArray(val) ? val.join(", ") : String(val)
-                return (
-                  <Badge key={key} variant="secondary">
-                    {key}: {display}
-                  </Badge>
-                )
-              })}
+              {chipDescriptors.map((d) => (
+                <Badge key={d.label} variant="secondary" className={d.className}>
+                  {d.label}
+                </Badge>
+              ))}
             </div>
           )}
           <p className="text-sm text-muted-foreground">
