@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Voter Model & Import Enhancement
 status: completed
-stopped_at: Phase 29 context gathered
-last_updated: "2026-03-15T06:15:59.011Z"
-last_activity: 2026-03-15 — Completed 28-02 filter chip wiring and E2E tests
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-03-15T06:34:12.011Z"
+last_activity: 2026-03-15 — Completed 29-02 filter chip completion and sort type narrowing
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 16
-  completed_plans: 16
+  completed_phases: 7
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-13)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.3 Phase 28 — Filter Chips & Frontend Type Coverage
+**Current focus:** v1.3 Phase 29 — Integration Polish & Tech Debt Cleanup
 
 ## Current Position
 
-Phase: 28 of 28 (Filter Chips & Frontend Type Coverage)
+Phase: 29 of 29 (Integration Polish & Tech Debt Cleanup)
 Plan: 2 of 2
-Status: Phase 28 complete — all plans executed
-Last activity: 2026-03-15 — Completed 28-02 filter chip wiring and E2E tests
+Status: Phase 29 complete — all plans executed
+Last activity: 2026-03-15 — Completed 29-02 filter chip completion and sort type narrowing
 
 Progress: [██████████] 100%
 
@@ -62,6 +62,8 @@ Progress: [██████████] 100%
 | Phase 27 P03 | 2min | 1 tasks | 1 files |
 | Phase 28 P01 | 3min | 2 tasks | 8 files |
 | Phase 28 P02 | 3min | 2 tasks | 4 files |
+| Phase 29 P02 | 2min | 2 tasks | 6 files |
+| Phase 29 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -103,6 +105,8 @@ Recent decisions affecting current work:
 - [Phase 28]: VoterCreate aligned with all 16 missing backend fields for complete schema coverage
 - [Phase 28]: phones_created labeled 'Phones' (short), blue in table/progress, green in completion view
 - [Phase 28]: FilterChip duplicated inline in lists/index.tsx (20 lines, 2 consumers) rather than extracting to shared module
+- [Phase 29]: SortableColumn placed in voter.ts alongside VoterSearchBody for co-location
+- [Phase 29]: No backward compat aliases -- clean rename from filename to original_filename
 
 ### Research Flags
 
@@ -122,6 +126,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:15:59.001Z
-Stopped at: Phase 29 context gathered
-Resume file: .planning/phases/29-integration-polish-tech-debt-cleanup/29-CONTEXT.md
+Last session: 2026-03-15T06:34:12.006Z
+Stopped at: Completed 29-01-PLAN.md
+Resume file: None

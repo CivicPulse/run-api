@@ -65,7 +65,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 - [x] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping (completed 2026-03-14)
 - [x] **Phase 27: Wire Advanced Filters to Backend** - Fix VoterSearchRequest body format, wire voter list to POST /voters/search, E2E filter validation (completed 2026-03-15)
 - [x] **Phase 28: Filter Chips & Frontend Type Coverage** - Add filter chips for 12 new dimensions, update ImportJob and VoterCreate TS types (completed 2026-03-15)
-- [ ] **Phase 29: Integration Polish & Tech Debt Cleanup** - Fix ImportJob TS type, add tags_any chip, registration_county UI, sort_by type safety, docs fix
+- [x] **Phase 29: Integration Polish & Tech Debt Cleanup** - Fix ImportJob TS type, add tags_any chip, registration_county UI, sort_by type safety, docs fix (completed 2026-03-15)
 
 ## Phase Details
 
@@ -221,4 +221,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28 → 29
 | 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
 | 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
-| 29. Integration Polish & Tech Debt Cleanup | v1.3 | 0/2 | Pending | - |
+| 29. Integration Polish & Tech Debt Cleanup | 2/2 | Complete   | 2026-03-15 | - |
