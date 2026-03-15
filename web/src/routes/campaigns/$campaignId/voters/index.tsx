@@ -15,6 +15,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -27,6 +32,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Users } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  formatPropensityChip,
+  formatMultiSelectChip,
+  CATEGORY_CLASSES,
+} from "@/lib/filterChipUtils"
 import type { Voter, VoterFilter, VoterCreate, VoterSearchBody } from "@/types/voter"
 
 // ─── Create form schema ───────────────────────────────────────────────────────
@@ -59,11 +70,13 @@ type VoterFormData = z.infer<typeof voterSchema>
 interface FilterChipProps {
   label: string
   onDismiss: () => void
+  className?: string
+  tooltip?: string
 }
 
-function FilterChip({ label, onDismiss }: FilterChipProps) {
-  return (
-    <Badge variant="secondary" className="gap-1 pr-1">
+function FilterChip({ label, onDismiss, className, tooltip }: FilterChipProps) {
+  const badge = (
+    <Badge variant="secondary" className={cn("gap-1 pr-1", className)}>
       {label}
       <button
         type="button"
@@ -71,10 +84,19 @@ function FilterChip({ label, onDismiss }: FilterChipProps) {
         className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
         aria-label={`Remove ${label} filter`}
       >
-        ×
+        {"\u00d7"}
       </button>
     </Badge>
   )
+  if (tooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    )
+  }
+  return badge
 }
 
 function buildFilterChips(
@@ -83,70 +105,214 @@ function buildFilterChips(
 ) {
   const chips: FilterChipProps[] = []
 
+  // ── Demographics ──────────────────────────────────────────────────────────
+
   if (filters.parties && filters.parties.length > 0) {
     chips.push({
       label: `Party: ${filters.parties.join(", ")}`,
+      className: CATEGORY_CLASSES.demographics,
       onDismiss: () => update({ parties: undefined }),
     })
   }
+
   if (filters.age_min !== undefined || filters.age_max !== undefined) {
     chips.push({
-      label: `Age: ${filters.age_min ?? ""}–${filters.age_max ?? ""}`,
+      label: `Age: ${filters.age_min ?? ""}\u2013${filters.age_max ?? ""}`,
+      className: CATEGORY_CLASSES.demographics,
       onDismiss: () => update({ age_min: undefined, age_max: undefined }),
     })
   }
-  if (filters.voted_in && filters.voted_in.length > 0) {
-    chips.push({
-      label: `Voted in: ${filters.voted_in.join(", ")}`,
-      onDismiss: () => update({ voted_in: undefined }),
-    })
-  }
-  if (filters.not_voted_in && filters.not_voted_in.length > 0) {
-    chips.push({
-      label: `Not voted in: ${filters.not_voted_in.join(", ")}`,
-      onDismiss: () => update({ not_voted_in: undefined }),
-    })
-  }
-  if (filters.tags && filters.tags.length > 0) {
-    chips.push({
-      label: `Tags (all): ${filters.tags.length}`,
-      onDismiss: () => update({ tags: undefined }),
-    })
-  }
-  if (filters.registration_city) {
-    chips.push({
-      label: `City: ${filters.registration_city}`,
-      onDismiss: () => update({ registration_city: undefined }),
-    })
-  }
-  if (filters.registration_zip) {
-    chips.push({
-      label: `Zip: ${filters.registration_zip}`,
-      onDismiss: () => update({ registration_zip: undefined }),
-    })
-  }
-  if (filters.registration_state) {
-    chips.push({
-      label: `State: ${filters.registration_state}`,
-      onDismiss: () => update({ registration_state: undefined }),
-    })
-  }
+
   if (filters.gender) {
     chips.push({
       label: `Gender: ${filters.gender}`,
+      className: CATEGORY_CLASSES.demographics,
       onDismiss: () => update({ gender: undefined }),
     })
   }
+
+  if (filters.ethnicities && filters.ethnicities.length > 0) {
+    const { display, tooltip } = formatMultiSelectChip("Ethnicity", filters.ethnicities)
+    chips.push({
+      label: display,
+      className: CATEGORY_CLASSES.demographics,
+      tooltip,
+      onDismiss: () => update({ ethnicities: undefined }),
+    })
+  }
+
+  if (filters.spoken_languages && filters.spoken_languages.length > 0) {
+    const { display, tooltip } = formatMultiSelectChip("Language", filters.spoken_languages)
+    chips.push({
+      label: display,
+      className: CATEGORY_CLASSES.demographics,
+      tooltip,
+      onDismiss: () => update({ spoken_languages: undefined }),
+    })
+  }
+
+  if (filters.military_statuses && filters.military_statuses.length > 0) {
+    const { display, tooltip } = formatMultiSelectChip("Military", filters.military_statuses)
+    chips.push({
+      label: display,
+      className: CATEGORY_CLASSES.demographics,
+      tooltip,
+      onDismiss: () => update({ military_statuses: undefined }),
+    })
+  }
+
+  // ── Scoring ───────────────────────────────────────────────────────────────
+
+  const genLabel = formatPropensityChip("Gen.", filters.propensity_general_min, filters.propensity_general_max)
+  if (genLabel) {
+    chips.push({
+      label: genLabel,
+      className: CATEGORY_CLASSES.scoring,
+      onDismiss: () => update({ propensity_general_min: undefined, propensity_general_max: undefined }),
+    })
+  }
+
+  const priLabel = formatPropensityChip("Pri.", filters.propensity_primary_min, filters.propensity_primary_max)
+  if (priLabel) {
+    chips.push({
+      label: priLabel,
+      className: CATEGORY_CLASSES.scoring,
+      onDismiss: () => update({ propensity_primary_min: undefined, propensity_primary_max: undefined }),
+    })
+  }
+
+  const combLabel = formatPropensityChip("Comb.", filters.propensity_combined_min, filters.propensity_combined_max)
+  if (combLabel) {
+    chips.push({
+      label: combLabel,
+      className: CATEGORY_CLASSES.scoring,
+      onDismiss: () => update({ propensity_combined_min: undefined, propensity_combined_max: undefined }),
+    })
+  }
+
+  // ── Location ──────────────────────────────────────────────────────────────
+
+  if (filters.registration_city) {
+    chips.push({
+      label: `City: ${filters.registration_city}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ registration_city: undefined }),
+    })
+  }
+
+  if (filters.registration_state) {
+    chips.push({
+      label: `State: ${filters.registration_state}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ registration_state: undefined }),
+    })
+  }
+
+  if (filters.registration_zip) {
+    chips.push({
+      label: `Zip: ${filters.registration_zip}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ registration_zip: undefined }),
+    })
+  }
+
   if (filters.precinct) {
     chips.push({
       label: `Precinct: ${filters.precinct}`,
+      className: CATEGORY_CLASSES.location,
       onDismiss: () => update({ precinct: undefined }),
     })
   }
+
+  if (filters.mailing_city) {
+    chips.push({
+      label: `Mail City: ${filters.mailing_city}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ mailing_city: undefined }),
+    })
+  }
+
+  if (filters.mailing_state) {
+    chips.push({
+      label: `Mail State: ${filters.mailing_state}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ mailing_state: undefined }),
+    })
+  }
+
+  if (filters.mailing_zip) {
+    chips.push({
+      label: `Mail Zip: ${filters.mailing_zip}`,
+      className: CATEGORY_CLASSES.location,
+      onDismiss: () => update({ mailing_zip: undefined }),
+    })
+  }
+
+  // ── Voting ────────────────────────────────────────────────────────────────
+
+  if (filters.voted_in && filters.voted_in.length > 0) {
+    chips.push({
+      label: `Voted in: ${filters.voted_in.join(", ")}`,
+      className: CATEGORY_CLASSES.voting,
+      onDismiss: () => update({ voted_in: undefined }),
+    })
+  }
+
+  if (filters.not_voted_in && filters.not_voted_in.length > 0) {
+    chips.push({
+      label: `Not voted in: ${filters.not_voted_in.join(", ")}`,
+      className: CATEGORY_CLASSES.voting,
+      onDismiss: () => update({ not_voted_in: undefined }),
+    })
+  }
+
   if (filters.congressional_district) {
     chips.push({
       label: `CD: ${filters.congressional_district}`,
+      className: CATEGORY_CLASSES.voting,
       onDismiss: () => update({ congressional_district: undefined }),
+    })
+  }
+
+  // ── Other ─────────────────────────────────────────────────────────────────
+
+  if (filters.tags && filters.tags.length > 0) {
+    chips.push({
+      label: `Tags (all): ${filters.tags.length}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ tags: undefined }),
+    })
+  }
+
+  if (filters.registered_after) {
+    chips.push({
+      label: `Registered after: ${filters.registered_after}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ registered_after: undefined }),
+    })
+  }
+
+  if (filters.registered_before) {
+    chips.push({
+      label: `Registered before: ${filters.registered_before}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ registered_before: undefined }),
+    })
+  }
+
+  if (filters.has_phone !== undefined) {
+    chips.push({
+      label: `Has phone: ${filters.has_phone ? "Yes" : "No"}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ has_phone: undefined }),
+    })
+  }
+
+  if (filters.logic && filters.logic !== "AND") {
+    chips.push({
+      label: `Match: ${filters.logic}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: () => update({ logic: undefined }),
     })
   }
 
