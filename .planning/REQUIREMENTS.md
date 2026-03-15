@@ -8,7 +8,7 @@
 ### Field Layout & Navigation
 
 - [x] **NAV-01**: Volunteer sees a dedicated field mode layout with no sidebar or admin navigation
-- [ ] **NAV-02**: Volunteer sees an assignment-aware landing page that routes to canvassing or phone banking
+- [x] **NAV-02**: Volunteer sees an assignment-aware landing page that routes to canvassing or phone banking
 - [x] **NAV-03**: Volunteer can navigate back to the landing hub from any field screen
 - [x] **NAV-04**: Volunteer sees a persistent help button to replay the guided tour
 
@@ -88,7 +88,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | NAV-01 | Phase 30 | Complete |
-| NAV-02 | Phase 30 | Pending |
+| NAV-02 | Phase 30 | Complete |
 | NAV-03 | Phase 30 | Complete |
 | NAV-04 | Phase 30 | Complete |
 | CANV-01 | Phase 31 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-03-15T19:55:29.696Z"
-last_activity: 2026-03-15 — Completed 30-02 field layout shell
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-03-15T19:55:15.000Z"
+last_activity: 2026-03-15 — Completed 30-01 field/me data layer
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 30 of 36 (Field Layout Shell & Volunteer Landing)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-15 — Completed 30-02 field layout shell
+Last activity: 2026-03-15 — Completed 30-01 field/me data layer
 
-Progress: [███░░░░░░░] 33% (1/3 v1.4 plans)
+Progress: [██████░░░░] 67% (2/3 v1.4 plans)
 
 ## Performance Metrics
 
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - [v1.4 Research]: Canvassing before phone banking (produces shared components)
 - [30-02]: Field routes bypass admin sidebar via isFieldRoute check in __root.tsx
 - [30-02]: FieldHeader derives sub-route title from pathname via titleMap lookup
+- [30-01]: Volunteer name fallback: display_name -> email -> "Volunteer"
+- [30-01]: Phone banking progress uses CallList denormalized counters
 
 ### Roadmap Evolution
 
@@ -75,6 +77,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:55:02Z
-Stopped at: Completed 30-02-PLAN.md
-Resume file: .planning/phases/30-field-layout-shell-volunteer-landing/30-02-SUMMARY.md
+Last session: 2026-03-15T19:55:15Z
+Stopped at: Completed 30-01-PLAN.md
+Resume file: .planning/phases/30-field-layout-shell-volunteer-landing/30-01-SUMMARY.md
