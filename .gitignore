@@ -216,3 +216,6 @@ init.md
 data/
 screenshots/
 .claude/
+
+# hatchkit
+.hatchkit/cache/
