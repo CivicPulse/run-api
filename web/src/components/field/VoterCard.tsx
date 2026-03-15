@@ -1,0 +1,124 @@
+import {
+  type EnrichedWalkListEntry,
+  type DoorKnockResultCode,
+  getPropensityDisplay,
+  getPartyColor,
+  OUTCOME_LABELS,
+} from "@/types/canvassing"
+import { OutcomeGrid } from "@/components/field/OutcomeGrid"
+import { Badge } from "@/components/ui/badge"
+import { Check } from "lucide-react"
+
+interface VoterCardProps {
+  entry: EnrichedWalkListEntry
+  isActive: boolean
+  recordedOutcome?: string
+  onOutcomeSelect?: (result: DoorKnockResultCode) => void
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"]
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+function formatDateShort(dateStr: string | null): string {
+  if (!dateStr) return ""
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  } catch {
+    return dateStr
+  }
+}
+
+export function VoterCard({
+  entry,
+  isActive,
+  recordedOutcome,
+  onOutcomeSelect,
+}: VoterCardProps) {
+  const { voter, prior_interactions } = entry
+
+  const voterName =
+    `${voter.first_name || ""} ${voter.last_name || ""}`.trim() || "Unknown Voter"
+
+  const partyColor = getPartyColor(voter.party)
+  const propensity = getPropensityDisplay(voter.propensity_combined)
+
+  const isSkipped = entry.status === "skipped"
+  const isCompleted = !!recordedOutcome
+
+  // Prior interaction text
+  let interactionText: string
+  if (prior_interactions.attempt_count > 0) {
+    const visitNum = ordinal(prior_interactions.attempt_count + 1)
+    const lastLabel =
+      OUTCOME_LABELS[prior_interactions.last_result as DoorKnockResultCode] ||
+      prior_interactions.last_result ||
+      "Unknown"
+    const lastDate = formatDateShort(prior_interactions.last_date)
+    interactionText = `${visitNum} visit — last: ${lastLabel}${lastDate ? `, ${lastDate}` : ""}`
+  } else {
+    interactionText = "First visit"
+  }
+
+  return (
+    <div
+      className={
+        isSkipped
+          ? "opacity-40 py-2"
+          : isCompleted
+            ? "opacity-60 py-2"
+            : "py-2"
+      }
+    >
+      {/* Voter name */}
+      <p className="text-base font-normal">{voterName}</p>
+
+      {/* Badges row */}
+      <div className="flex items-center gap-2 mt-1">
+        <Badge
+          className={`text-xs px-2 py-0.5 ${partyColor.bg} ${partyColor.text}`}
+        >
+          {voter.party || "Unknown"}
+        </Badge>
+        <Badge
+          className={`text-xs px-2 py-0.5 ${propensity.color}`}
+        >
+          {propensity.label}
+        </Badge>
+        {voter.age && (
+          <span className="text-xs text-muted-foreground">
+            Age {voter.age}
+          </span>
+        )}
+      </div>
+
+      {/* Prior interactions */}
+      <p className="text-xs text-muted-foreground mt-1">{interactionText}</p>
+
+      {/* Active state: show outcome grid */}
+      {isActive && !isCompleted && !isSkipped && onOutcomeSelect && (
+        <div className="mt-3">
+          <OutcomeGrid onSelect={onOutcomeSelect} />
+        </div>
+      )}
+
+      {/* Completed state: show checkmark + outcome */}
+      {isCompleted && !isSkipped && (
+        <div className="flex items-center gap-2 mt-2">
+          <Check className="h-4 w-4 text-green-600" />
+          <Badge variant="secondary" className="text-xs">
+            {OUTCOME_LABELS[recordedOutcome as DoorKnockResultCode] || recordedOutcome}
+          </Badge>
+        </div>
+      )}
+
+      {/* Skipped state */}
+      {isSkipped && (
+        <p className="text-xs text-muted-foreground mt-1">Skipped</p>
+      )}
+    </div>
+  )
+}
