@@ -129,11 +129,12 @@ Plans:
   3. Volunteer records call outcome via large touch-target buttons and can answer inline survey questions after a contact
   4. Volunteer sees session progress (calls completed / remaining) and phone numbers are displayed in readable format while dialing uses E.164
   5. Phone banking caller info and outcome buttons are usable by screen reader users without relying on visual context
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 32-01: TBD
-- [ ] 32-02: TBD
+- [ ] 32-01-PLAN.md — Calling types, Zustand store, OutcomeGrid generalization
+- [ ] 32-02-PLAN.md — Orchestrator hook, CallingVoterCard, PhoneNumberList, CompletionSummary, phone-banking route
+- [ ] 32-03-PLAN.md — Playwright e2e tests and Vitest unit tests for all requirements
 
 ### Phase 33: Offline Queue & Sync
 **Goal**: Volunteers can continue recording outcomes when they lose cell signal, and their data syncs automatically when connectivity returns
@@ -219,7 +220,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 30. Field Layout Shell & Volunteer Landing | 3/3 | Complete    | 2026-03-15 | - |
 | 31. Canvassing Wizard | 5/5 | Complete    | 2026-03-15 | - |
-| 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
+| 32. Phone Banking Field Mode | v1.4 | 0/3 | Not started | - |
 | 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
 | 34. Guided Onboarding Tour | v1.4 | 0/0 | Not started | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
