@@ -36,8 +36,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libgeos-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Non-root user
-RUN useradd --create-home --shell /bin/bash app
+# Non-root user (home dir must be world-readable for K8s runAsUser override)
+RUN useradd --create-home --shell /bin/bash app \
+    && chmod 755 /home/app
 
 WORKDIR /home/app
 
