@@ -87,50 +87,50 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| NAV-04 | — | Pending |
-| CANV-01 | — | Pending |
-| CANV-02 | — | Pending |
-| CANV-03 | — | Pending |
-| CANV-04 | — | Pending |
-| CANV-05 | — | Pending |
-| CANV-06 | — | Pending |
-| CANV-07 | — | Pending |
-| CANV-08 | — | Pending |
-| PHONE-01 | — | Pending |
-| PHONE-02 | — | Pending |
-| PHONE-03 | — | Pending |
-| PHONE-04 | — | Pending |
-| PHONE-05 | — | Pending |
-| PHONE-06 | — | Pending |
-| PHONE-07 | — | Pending |
-| TOUR-01 | — | Pending |
-| TOUR-02 | — | Pending |
-| TOUR-03 | — | Pending |
-| TOUR-04 | — | Pending |
-| TOUR-05 | — | Pending |
-| TOUR-06 | — | Pending |
-| SYNC-01 | — | Pending |
-| SYNC-02 | — | Pending |
-| SYNC-03 | — | Pending |
-| SYNC-04 | — | Pending |
-| SYNC-05 | — | Pending |
-| A11Y-01 | — | Pending |
-| A11Y-02 | — | Pending |
-| A11Y-03 | — | Pending |
-| A11Y-04 | — | Pending |
-| A11Y-05 | — | Pending |
-| POLISH-01 | — | Pending |
-| POLISH-02 | — | Pending |
-| POLISH-03 | — | Pending |
+| NAV-01 | Phase 30 | Pending |
+| NAV-02 | Phase 30 | Pending |
+| NAV-03 | Phase 30 | Pending |
+| NAV-04 | Phase 30 | Pending |
+| CANV-01 | Phase 31 | Pending |
+| CANV-02 | Phase 31 | Pending |
+| CANV-03 | Phase 31 | Pending |
+| CANV-04 | Phase 31 | Pending |
+| CANV-05 | Phase 31 | Pending |
+| CANV-06 | Phase 31 | Pending |
+| CANV-07 | Phase 31 | Pending |
+| CANV-08 | Phase 31 | Pending |
+| PHONE-01 | Phase 32 | Pending |
+| PHONE-02 | Phase 32 | Pending |
+| PHONE-03 | Phase 32 | Pending |
+| PHONE-04 | Phase 32 | Pending |
+| PHONE-05 | Phase 32 | Pending |
+| PHONE-06 | Phase 32 | Pending |
+| PHONE-07 | Phase 32 | Pending |
+| TOUR-01 | Phase 34 | Pending |
+| TOUR-02 | Phase 34 | Pending |
+| TOUR-03 | Phase 34 | Pending |
+| TOUR-04 | Phase 34 | Pending |
+| TOUR-05 | Phase 34 | Pending |
+| TOUR-06 | Phase 34 | Pending |
+| SYNC-01 | Phase 33 | Pending |
+| SYNC-02 | Phase 33 | Pending |
+| SYNC-03 | Phase 33 | Pending |
+| SYNC-04 | Phase 33 | Pending |
+| SYNC-05 | Phase 33 | Pending |
+| A11Y-01 | Phase 35 | Pending |
+| A11Y-02 | Phase 35 | Pending |
+| A11Y-03 | Phase 35 | Pending |
+| A11Y-04 | Phase 31 | Pending |
+| A11Y-05 | Phase 32 | Pending |
+| POLISH-01 | Phase 35 | Pending |
+| POLISH-02 | Phase 35 | Pending |
+| POLISH-03 | Phase 35 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38 ⚠️
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*

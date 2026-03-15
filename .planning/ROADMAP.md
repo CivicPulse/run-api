@@ -6,6 +6,7 @@
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
 - ✅ **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (shipped 2026-03-15)
+- 🚧 **v1.4 Volunteer Field Mode** — Phases 30-35 (in progress)
 
 ## Phases
 
@@ -70,7 +71,117 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v1.4 Volunteer Field Mode (In Progress)
+
+**Milestone Goal:** A dedicated, zero-training mobile-first experience for volunteers actively canvassing or phone banking in the field.
+
+- [ ] **Phase 30: Field Layout Shell & Volunteer Landing** - Mobile shell layout with no admin chrome, assignment-aware volunteer hub
+- [ ] **Phase 31: Canvassing Wizard** - Linear door-to-door wizard with household grouping, inline survey, persistent state, and shared field components
+- [ ] **Phase 32: Phone Banking Field Mode** - Mobile calling experience with tap-to-call, outcome recording, and inline survey reuse
+- [ ] **Phase 33: Offline Queue & Sync** - Local outcome queue with automatic sync on connectivity resume
+- [ ] **Phase 34: Guided Onboarding Tour** - Step-by-step driver.js tour with per-segment completion and replay
+- [ ] **Phase 35: Accessibility Audit & Polish** - WCAG compliance sweep, milestone celebrations, and touch target verification
+
+## Phase Details
+
+### Phase 30: Field Layout Shell & Volunteer Landing
+**Goal**: Volunteers can enter field mode and see their active assignment without encountering any admin UI
+**Depends on**: Nothing (first phase of v1.4; builds on v1.2 frontend infrastructure)
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04
+**Success Criteria** (what must be TRUE):
+  1. Volunteer navigating to /field sees a mobile-optimized layout with no sidebar, no admin navigation, and no data tables
+  2. Volunteer sees their active assignment (canvassing or phone banking) on the landing page and can tap to enter it
+  3. Volunteer can navigate back to the landing hub from any field screen via a persistent back control
+  4. Volunteer sees a help button in the field header (wired to tour replay in Phase 34; renders as disabled/placeholder until then)
+**Plans**: TBD
+
+Plans:
+- [ ] 30-01: TBD
+- [ ] 30-02: TBD
+
+### Phase 31: Canvassing Wizard
+**Goal**: Volunteers can work through an entire walk list door-by-door from their phone, recording outcomes and answering surveys without losing progress
+**Depends on**: Phase 30
+**Requirements**: CANV-01, CANV-02, CANV-03, CANV-04, CANV-05, CANV-06, CANV-07, CANV-08, A11Y-04
+**Success Criteria** (what must be TRUE):
+  1. Volunteer sees the next address with voter name, party, and propensity context, and multiple voters at the same address are grouped by household
+  2. Volunteer records a door-knock outcome via large touch-target buttons and automatically advances to the next door
+  3. Volunteer can answer inline survey questions after a "Contact Made" outcome, with the option to skip
+  4. Volunteer sees progress ("12 of 47 doors") and can resume where they left off after a phone interruption or app switch
+  5. Screen reader users hear state transitions announced via ARIA live regions as the wizard advances between doors
+**Plans**: TBD
+
+Plans:
+- [ ] 31-01: TBD
+- [ ] 31-02: TBD
+- [ ] 31-03: TBD
+
+### Phase 32: Phone Banking Field Mode
+**Goal**: Volunteers can work through a phone banking session from their phone, calling voters and recording outcomes without switching between apps
+**Depends on**: Phase 31 (reuses OutcomeGrid, InlineSurvey, FieldProgress, VoterCard components)
+**Requirements**: PHONE-01, PHONE-02, PHONE-03, PHONE-04, PHONE-05, PHONE-06, PHONE-07, A11Y-05
+**Success Criteria** (what must be TRUE):
+  1. Volunteer can start and stop a phone banking session with obvious, large controls
+  2. Volunteer taps a phone number to call via the native dialer, or copies it to clipboard as a fallback
+  3. Volunteer records call outcome via large touch-target buttons and can answer inline survey questions after a contact
+  4. Volunteer sees session progress (calls completed / remaining) and phone numbers are displayed in readable format while dialing uses E.164
+  5. Phone banking caller info and outcome buttons are usable by screen reader users without relying on visual context
+**Plans**: TBD
+
+Plans:
+- [ ] 32-01: TBD
+- [ ] 32-02: TBD
+
+### Phase 33: Offline Queue & Sync
+**Goal**: Volunteers can continue recording outcomes when they lose cell signal, and their data syncs automatically when connectivity returns
+**Depends on**: Phase 31, Phase 32 (queues outcomes from both canvassing and phone banking)
+**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05
+**Success Criteria** (what must be TRUE):
+  1. Volunteer can record door-knock and phone banking outcomes while offline; they queue locally without error
+  2. Queued interactions automatically sync to the server when connectivity resumes, without volunteer intervention
+  3. Volunteer sees a visible offline indicator when connectivity is lost and it disappears when connectivity returns
+  4. Volunteer receives updated walk list status (houses contacted by others) when connectivity resumes
+**Plans**: TBD
+
+Plans:
+- [ ] 33-01: TBD
+- [ ] 33-02: TBD
+
+### Phase 34: Guided Onboarding Tour
+**Goal**: Volunteers understand how to use field mode without any training or documentation
+**Depends on**: Phase 30, Phase 31, Phase 32 (tour targets elements on all field screens)
+**Requirements**: TOUR-01, TOUR-02, TOUR-03, TOUR-04, TOUR-05, TOUR-06
+**Success Criteria** (what must be TRUE):
+  1. Volunteer sees a guided step-by-step tour on first visit that walks through field mode capabilities
+  2. Tour runs in contextual segments (welcome, canvassing, phone banking) so each segment targets only screens the volunteer is on
+  3. Tour only runs once per volunteer per campaign and the completion state persists across sessions
+  4. Volunteer can replay the tour at any time via the help button and sees contextual tooltip icons on key actions
+  5. Volunteer sees brief quick-start instructions before beginning canvassing or phone banking
+**Plans**: TBD
+
+Plans:
+- [ ] 34-01: TBD
+- [ ] 34-02: TBD
+
+### Phase 35: Accessibility Audit & Polish
+**Goal**: Field mode meets WCAG AA standards and delights volunteers with milestone celebrations and rich voter context
+**Depends on**: Phase 31, Phase 32, Phase 33, Phase 34 (final pass over all field screens)
+**Requirements**: A11Y-01, A11Y-02, A11Y-03, POLISH-01, POLISH-02, POLISH-03
+**Success Criteria** (what must be TRUE):
+  1. All field mode screens are navigable via screen reader with proper ARIA labels, roles, and live regions
+  2. All interactive elements meet WCAG 2.5.5 minimum touch target size (44x44px) and WCAG AA color contrast, verified via audit
+  3. Volunteer sees milestone celebration toasts at 25%, 50%, 75%, and 100% completion of their assignment
+  4. Voter context card shows name, party, age, and propensity before each interaction in both canvassing and phone banking
+**Plans**: TBD
+
+Plans:
+- [ ] 35-01: TBD
+- [ ] 35-02: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -103,3 +214,9 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 | 27. Wire Advanced Filters to Backend | v1.3 | 3/3 | Complete | 2026-03-15 |
 | 28. Filter Chips & Frontend Type Coverage | v1.3 | 2/2 | Complete | 2026-03-15 |
 | 29. Integration Polish & Tech Debt Cleanup | v1.3 | 2/2 | Complete | 2026-03-15 |
+| 30. Field Layout Shell & Volunteer Landing | v1.4 | 0/0 | Not started | - |
+| 31. Canvassing Wizard | v1.4 | 0/0 | Not started | - |
+| 32. Phone Banking Field Mode | v1.4 | 0/0 | Not started | - |
+| 33. Offline Queue & Sync | v1.4 | 0/0 | Not started | - |
+| 34. Guided Onboarding Tour | v1.4 | 0/0 | Not started | - |
+| 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
