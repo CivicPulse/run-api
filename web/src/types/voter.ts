@@ -150,13 +150,38 @@ export interface VoterCreate {
   congressional_district?: string
   state_senate_district?: string
   state_house_district?: string
+  registration_date?: string
+  party_change_indicator?: string
+
+  // Voting history
+  voting_history?: string[]
+
+  // Propensity Scores
+  propensity_general?: number
+  propensity_primary?: number
+  propensity_combined?: number
 
   // Demographics
   ethnicity?: string
+  age?: number
   spoken_language?: string
   marital_status?: string
   military_status?: string
+  cell_phone_confidence?: number
 
+  // Geographic
+  latitude?: number
+  longitude?: number
+
+  // Household
+  household_id?: string
+  household_party_registration?: string
+  household_size?: number
+  family_id?: string
+
+  // Extras
+  extra_data?: Record<string, unknown>
+  source_id?: string
   source_type?: string
 }
 

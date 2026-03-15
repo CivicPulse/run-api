@@ -311,6 +311,14 @@ export function ImportWizardPage() {
                     </span>{" "}
                     rows imported successfully
                   </p>
+                  {jobQuery.data.phones_created != null && jobQuery.data.phones_created > 0 && (
+                    <p className="text-sm">
+                      <span className="font-medium text-green-600">
+                        {jobQuery.data.phones_created.toLocaleString()}
+                      </span>{" "}
+                      phones created
+                    </p>
+                  )}
                   {jobQuery.data.error_count > 0 && (
                     <p className="text-sm text-destructive">
                       {jobQuery.data.error_count} rows had errors

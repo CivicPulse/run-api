@@ -53,6 +53,14 @@ export function ImportProgress({ job, onComplete, onFailed }: ImportProgressProp
           <span className="font-medium text-destructive">{job.error_count}</span>{" "}
           errors
         </span>
+        {job.phones_created != null && job.phones_created > 0 && (
+          <span>
+            <span className="font-medium text-blue-600">
+              {job.phones_created.toLocaleString()}
+            </span>{" "}
+            phones
+          </span>
+        )}
       </div>
 
       {job.status === "failed" && (

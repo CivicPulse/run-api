@@ -69,6 +69,16 @@ function ImportsHistoryPage() {
       header: "Errors",
     },
     {
+      accessorKey: "phones_created",
+      header: "Phones",
+      cell: ({ row }) => {
+        const count = row.original.phones_created
+        if (count === null) return <span className="text-muted-foreground">{"\u2014"}</span>
+        if (count === 0) return null
+        return <span className="font-medium text-blue-600">{count.toLocaleString()}</span>
+      },
+    },
+    {
       accessorKey: "created_at",
       header: "Started",
       cell: ({ row }) =>

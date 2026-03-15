@@ -17,6 +17,7 @@ export interface ImportJob {
   skipped_rows: number
   error_count: number
   error_report_key: string | null
+  phones_created: number | null
   created_at: string
   updated_at: string
 }

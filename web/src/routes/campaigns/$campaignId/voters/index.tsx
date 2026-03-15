@@ -40,6 +40,16 @@ const voterSchema = z.object({
   registration_city: z.string().optional(),
   registration_state: z.string().optional(),
   registration_zip: z.string().optional(),
+  registration_date: z.string().optional(),
+  propensity_general: z.number().optional(),
+  propensity_primary: z.number().optional(),
+  propensity_combined: z.number().optional(),
+  age: z.number().optional(),
+  party_change_indicator: z.string().optional(),
+  cell_phone_confidence: z.number().optional(),
+  household_party_registration: z.string().optional(),
+  household_size: z.number().optional(),
+  family_id: z.string().optional(),
 })
 
 type VoterFormData = z.infer<typeof voterSchema>
