@@ -14,12 +14,12 @@
 
 ### Canvassing Wizard
 
-- [ ] **CANV-01**: Volunteer sees the next address to visit with voter name, party, and propensity context
-- [ ] **CANV-02**: Volunteer records a door-knock outcome via large touch-target buttons (Not Home, Contact, Refused, etc.)
+- [x] **CANV-01**: Volunteer sees the next address to visit with voter name, party, and propensity context
+- [x] **CANV-02**: Volunteer records a door-knock outcome via large touch-target buttons (Not Home, Contact, Refused, etc.)
 - [ ] **CANV-03**: Volunteer advances to the next door automatically after recording an outcome
-- [ ] **CANV-04**: Volunteer sees a progress indicator (e.g., "12 of 47 doors")
+- [x] **CANV-04**: Volunteer sees a progress indicator (e.g., "12 of 47 doors")
 - [ ] **CANV-05**: Volunteer can answer inline survey questions after a contact outcome (skippable)
-- [ ] **CANV-06**: Volunteer sees multiple voters at the same address grouped by household
+- [x] **CANV-06**: Volunteer sees multiple voters at the same address grouped by household
 - [ ] **CANV-07**: Volunteer's wizard state persists across phone interruptions and app switching
 - [ ] **CANV-08**: Volunteer sees a resume prompt when returning to an interrupted session
 
@@ -91,12 +91,12 @@
 | NAV-02 | Phase 30 | Complete |
 | NAV-03 | Phase 30 | Complete |
 | NAV-04 | Phase 30 | Complete |
-| CANV-01 | Phase 31 | Pending |
-| CANV-02 | Phase 31 | Pending |
+| CANV-01 | Phase 31 | Complete |
+| CANV-02 | Phase 31 | Complete |
 | CANV-03 | Phase 31 | Pending |
-| CANV-04 | Phase 31 | Pending |
+| CANV-04 | Phase 31 | Complete |
 | CANV-05 | Phase 31 | Pending |
-| CANV-06 | Phase 31 | Pending |
+| CANV-06 | Phase 31 | Complete |
 | CANV-07 | Phase 31 | Pending |
 | CANV-08 | Phase 31 | Pending |
 | PHONE-01 | Phase 32 | Pending |
