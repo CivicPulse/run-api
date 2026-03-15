@@ -13,7 +13,7 @@ from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.common import PaginatedResponse
 from app.schemas.voter import VoterCreateRequest, VoterResponse, VoterUpdateRequest
-from app.schemas.voter_filter import VoterFilter
+from app.schemas.voter_filter import VoterFilter, VoterSearchBody
 from app.services.voter import VoterService
 
 router = APIRouter()
@@ -67,22 +67,28 @@ async def list_voters(
 )
 async def search_voters(
     campaign_id: uuid.UUID,
-    body: VoterFilter,
-    cursor: str | None = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    body: VoterSearchBody,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
     """Search and filter voters with composable query builder.
 
-    Accepts a VoterFilter JSON body with AND/OR logic.
+    Accepts a VoterSearchBody JSON body wrapping VoterFilter with
+    pagination and sorting fields.
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
     from app.db.rls import set_campaign_context
 
     await set_campaign_context(db, str(campaign_id))
-    return await _service.search_voters(db, body, cursor=cursor, limit=limit)
+    return await _service.search_voters(
+        db,
+        body.filters,
+        cursor=body.cursor,
+        limit=body.limit,
+        sort_by=body.sort_by,
+        sort_dir=body.sort_dir,
+    )
 
 
 ALLOWED_DISTINCT_FIELDS = {"ethnicity", "spoken_language", "military_status"}

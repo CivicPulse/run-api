@@ -223,14 +223,18 @@ class VoterService:
         filters: VoterFilter,
         cursor: str | None = None,
         limit: int = 50,
+        sort_by: str | None = None,
+        sort_dir: str | None = None,
     ) -> PaginatedResponse[VoterResponse]:
         """Search voters with composable filters and cursor pagination.
 
         Args:
             db: Async database session (with RLS context set).
             filters: Structured voter filter.
-            cursor: Opaque cursor string (created_at|id format).
+            cursor: Opaque cursor string (sort_value|id format).
             limit: Maximum number of items to return.
+            sort_by: Column name to sort by (None defaults to created_at).
+            sort_dir: Sort direction - "asc" or "desc" (None defaults to "desc").
 
         Returns:
             PaginatedResponse with VoterResponse items.

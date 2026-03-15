@@ -474,6 +474,78 @@ class TestVoterFilterSchema:
         assert len(VoterFilter.model_fields) == 32
 
 
+class TestVoterSearchBody:
+    """Tests for VoterSearchBody Pydantic schema validation."""
+
+    def test_default_values(self):
+        """VoterSearchBody() creates empty filters with all defaults."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        body = VoterSearchBody()
+        assert body.filters == VoterFilter()
+        assert body.cursor is None
+        assert body.limit == 50
+        assert body.sort_by is None
+        assert body.sort_dir is None
+
+    def test_with_filters_and_limit(self):
+        """VoterSearchBody(filters=VoterFilter(), limit=50) is valid with defaults."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        body = VoterSearchBody(filters=VoterFilter(), limit=50)
+        assert body.limit == 50
+
+    def test_sort_by_valid_column(self):
+        """VoterSearchBody(sort_by="last_name", sort_dir="asc") is valid."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        body = VoterSearchBody(sort_by="last_name", sort_dir="asc")
+        assert body.sort_by == "last_name"
+        assert body.sort_dir == "asc"
+
+    def test_sort_by_invalid_column(self):
+        """VoterSearchBody(sort_by="invalid_column") raises ValidationError."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        with pytest.raises(ValidationError):
+            VoterSearchBody(sort_by="invalid_column")
+
+    def test_sort_dir_invalid(self):
+        """VoterSearchBody(sort_dir="invalid") raises ValidationError."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        with pytest.raises(ValidationError):
+            VoterSearchBody(sort_dir="invalid")
+
+    def test_limit_zero_rejected(self):
+        """VoterSearchBody(limit=0) raises ValidationError (ge=1)."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        with pytest.raises(ValidationError):
+            VoterSearchBody(limit=0)
+
+    def test_limit_over_200_rejected(self):
+        """VoterSearchBody(limit=201) raises ValidationError (le=200)."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        with pytest.raises(ValidationError):
+            VoterSearchBody(limit=201)
+
+    def test_all_sortable_columns_accepted(self):
+        """All whitelisted sortable columns are accepted."""
+        from app.schemas.voter_filter import VoterSearchBody
+
+        columns = [
+            "last_name", "first_name", "party", "age",
+            "registration_city", "registration_state", "registration_zip",
+            "created_at", "updated_at",
+            "propensity_general", "propensity_primary", "propensity_combined",
+        ]
+        for col in columns:
+            body = VoterSearchBody(sort_by=col, sort_dir="desc")
+            assert body.sort_by == col
+
+
 class TestVoterServiceCRUD:
     """Tests for VoterService CRUD operations."""
 

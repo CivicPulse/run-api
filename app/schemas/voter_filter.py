@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -51,3 +53,29 @@ class VoterFilter(BaseModel):
     mailing_zip: str | None = None
 
     logic: str = Field(default="AND", pattern="^(AND|OR)$")
+
+
+SORTABLE_COLUMNS = Literal[
+    "last_name",
+    "first_name",
+    "party",
+    "age",
+    "registration_city",
+    "registration_state",
+    "registration_zip",
+    "created_at",
+    "updated_at",
+    "propensity_general",
+    "propensity_primary",
+    "propensity_combined",
+]
+
+
+class VoterSearchBody(BaseModel):
+    """Wrapper for POST /voters/search with pagination and sorting."""
+
+    filters: VoterFilter = Field(default_factory=VoterFilter)
+    cursor: str | None = None
+    limit: int = Field(default=50, ge=1, le=200)
+    sort_by: SORTABLE_COLUMNS | None = None
+    sort_dir: Literal["asc", "desc"] | None = None
