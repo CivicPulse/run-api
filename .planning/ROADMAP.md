@@ -64,7 +64,7 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 - [x] **Phase 25: Filter Builder & Query Enhancement** - Propensity range filters, demographic multi-select, mailing address filters, voting history backward compat (completed 2026-03-14)
 - [x] **Phase 26: Frontend Updates** - TypeScript types, voter detail display, filter builder UI, edit sheet, column mapping (completed 2026-03-14)
 - [x] **Phase 27: Wire Advanced Filters to Backend** - Fix VoterSearchRequest body format, wire voter list to POST /voters/search, E2E filter validation (completed 2026-03-15)
-- [ ] **Phase 28: Filter Chips & Frontend Type Coverage** - Add filter chips for 12 new dimensions, update ImportJob and VoterCreate TS types
+- [x] **Phase 28: Filter Chips & Frontend Type Coverage** - Add filter chips for 12 new dimensions, update ImportJob and VoterCreate TS types (completed 2026-03-15)
 
 ## Phase Details
 
@@ -202,4 +202,4 @@ Phases execute in numeric order: 23 → 24 → 25 → 26 → 27 → 28
 | 25. Filter Builder & Query Enhancement | v1.3 | 2/2 | Complete | 2026-03-14 |
 | 26. Frontend Updates | v1.3 | 4/4 | Complete | 2026-03-14 |
 | 27. Wire Advanced Filters to Backend | 3/3 | Complete    | 2026-03-15 | - |
-| 28. Filter Chips & Frontend Type Coverage | 1/2 | In Progress|  | - |
+| 28. Filter Chips & Frontend Type Coverage | 2/2 | Complete   | 2026-03-15 | - |
