@@ -12,8 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FieldCampaignIdRouteImport } from './routes/field/$campaignId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsCampaignIdRouteImport } from './routes/campaigns/$campaignId'
+import { Route as FieldCampaignIdIndexRouteImport } from './routes/field/$campaignId/index'
+import { Route as FieldCampaignIdPhoneBankingRouteImport } from './routes/field/$campaignId/phone-banking'
+import { Route as FieldCampaignIdCanvassingRouteImport } from './routes/field/$campaignId/canvassing'
 import { Route as CampaignsCampaignIdVotersRouteImport } from './routes/campaigns/$campaignId/voters'
 import { Route as CampaignsCampaignIdVolunteersRouteImport } from './routes/campaigns/$campaignId/volunteers'
 import { Route as CampaignsCampaignIdSurveysRouteImport } from './routes/campaigns/$campaignId/surveys'
@@ -69,6 +73,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FieldCampaignIdRoute = FieldCampaignIdRouteImport.update({
+  id: '/field/$campaignId',
+  path: '/field/$campaignId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsNewRoute = CampaignsNewRouteImport.update({
   id: '/campaigns/new',
   path: '/campaigns/new',
@@ -79,6 +88,23 @@ const CampaignsCampaignIdRoute = CampaignsCampaignIdRouteImport.update({
   path: '/campaigns/$campaignId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FieldCampaignIdIndexRoute = FieldCampaignIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FieldCampaignIdRoute,
+} as any)
+const FieldCampaignIdPhoneBankingRoute =
+  FieldCampaignIdPhoneBankingRouteImport.update({
+    id: '/phone-banking',
+    path: '/phone-banking',
+    getParentRoute: () => FieldCampaignIdRoute,
+  } as any)
+const FieldCampaignIdCanvassingRoute =
+  FieldCampaignIdCanvassingRouteImport.update({
+    id: '/canvassing',
+    path: '/canvassing',
+    getParentRoute: () => FieldCampaignIdRoute,
+  } as any)
 const CampaignsCampaignIdVotersRoute =
   CampaignsCampaignIdVotersRouteImport.update({
     id: '/voters',
@@ -320,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
+  '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRouteWithChildren
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
@@ -327,6 +354,9 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId/surveys': typeof CampaignsCampaignIdSurveysRouteWithChildren
   '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRouteWithChildren
   '/campaigns/$campaignId/voters': typeof CampaignsCampaignIdVotersRouteWithChildren
+  '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
+  '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
+  '/field/$campaignId/': typeof FieldCampaignIdIndexRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -367,6 +397,9 @@ export interface FileRoutesByTo {
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
+  '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
+  '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
+  '/field/$campaignId': typeof FieldCampaignIdIndexRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -407,6 +440,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
+  '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRouteWithChildren
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
@@ -414,6 +448,9 @@ export interface FileRoutesById {
   '/campaigns/$campaignId/surveys': typeof CampaignsCampaignIdSurveysRouteWithChildren
   '/campaigns/$campaignId/volunteers': typeof CampaignsCampaignIdVolunteersRouteWithChildren
   '/campaigns/$campaignId/voters': typeof CampaignsCampaignIdVotersRouteWithChildren
+  '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
+  '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
+  '/field/$campaignId/': typeof FieldCampaignIdIndexRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -455,6 +492,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/field/$campaignId'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -462,6 +500,9 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/surveys'
     | '/campaigns/$campaignId/volunteers'
     | '/campaigns/$campaignId/voters'
+    | '/field/$campaignId/canvassing'
+    | '/field/$campaignId/phone-banking'
+    | '/field/$campaignId/'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -502,6 +543,9 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/campaigns/$campaignId/dashboard'
+    | '/field/$campaignId/canvassing'
+    | '/field/$campaignId/phone-banking'
+    | '/field/$campaignId'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -541,6 +585,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/field/$campaignId'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -548,6 +593,9 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId/surveys'
     | '/campaigns/$campaignId/volunteers'
     | '/campaigns/$campaignId/voters'
+    | '/field/$campaignId/canvassing'
+    | '/field/$campaignId/phone-banking'
+    | '/field/$campaignId/'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -588,6 +636,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   CampaignsCampaignIdRoute: typeof CampaignsCampaignIdRouteWithChildren
   CampaignsNewRoute: typeof CampaignsNewRoute
+  FieldCampaignIdRoute: typeof FieldCampaignIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -613,6 +662,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/field/$campaignId': {
+      id: '/field/$campaignId'
+      path: '/field/$campaignId'
+      fullPath: '/field/$campaignId'
+      preLoaderRoute: typeof FieldCampaignIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns/new': {
       id: '/campaigns/new'
       path: '/campaigns/new'
@@ -626,6 +682,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/campaigns/$campaignId'
       preLoaderRoute: typeof CampaignsCampaignIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/field/$campaignId/': {
+      id: '/field/$campaignId/'
+      path: '/'
+      fullPath: '/field/$campaignId/'
+      preLoaderRoute: typeof FieldCampaignIdIndexRouteImport
+      parentRoute: typeof FieldCampaignIdRoute
+    }
+    '/field/$campaignId/phone-banking': {
+      id: '/field/$campaignId/phone-banking'
+      path: '/phone-banking'
+      fullPath: '/field/$campaignId/phone-banking'
+      preLoaderRoute: typeof FieldCampaignIdPhoneBankingRouteImport
+      parentRoute: typeof FieldCampaignIdRoute
+    }
+    '/field/$campaignId/canvassing': {
+      id: '/field/$campaignId/canvassing'
+      path: '/canvassing'
+      fullPath: '/field/$campaignId/canvassing'
+      preLoaderRoute: typeof FieldCampaignIdCanvassingRouteImport
+      parentRoute: typeof FieldCampaignIdRoute
     }
     '/campaigns/$campaignId/voters': {
       id: '/campaigns/$campaignId/voters'
@@ -1096,12 +1173,29 @@ const CampaignsCampaignIdRouteChildren: CampaignsCampaignIdRouteChildren = {
 const CampaignsCampaignIdRouteWithChildren =
   CampaignsCampaignIdRoute._addFileChildren(CampaignsCampaignIdRouteChildren)
 
+interface FieldCampaignIdRouteChildren {
+  FieldCampaignIdCanvassingRoute: typeof FieldCampaignIdCanvassingRoute
+  FieldCampaignIdPhoneBankingRoute: typeof FieldCampaignIdPhoneBankingRoute
+  FieldCampaignIdIndexRoute: typeof FieldCampaignIdIndexRoute
+}
+
+const FieldCampaignIdRouteChildren: FieldCampaignIdRouteChildren = {
+  FieldCampaignIdCanvassingRoute: FieldCampaignIdCanvassingRoute,
+  FieldCampaignIdPhoneBankingRoute: FieldCampaignIdPhoneBankingRoute,
+  FieldCampaignIdIndexRoute: FieldCampaignIdIndexRoute,
+}
+
+const FieldCampaignIdRouteWithChildren = FieldCampaignIdRoute._addFileChildren(
+  FieldCampaignIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallbackRoute: CallbackRoute,
   LoginRoute: LoginRoute,
   CampaignsCampaignIdRoute: CampaignsCampaignIdRouteWithChildren,
   CampaignsNewRoute: CampaignsNewRoute,
+  FieldCampaignIdRoute: FieldCampaignIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

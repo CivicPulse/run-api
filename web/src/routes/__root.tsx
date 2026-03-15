@@ -226,6 +226,17 @@ function RootLayout() {
     )
   }
 
+  // Field routes use a mobile-optimized layout with no admin chrome
+  const isFieldRoute = location.pathname.startsWith("/field")
+  if (isFieldRoute) {
+    return (
+      <div className="min-h-svh bg-background text-foreground">
+        <Outlet />
+        <Toaster />
+      </div>
+    )
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
