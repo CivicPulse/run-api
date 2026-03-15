@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 31-03 canvassing wizard assembly
-last_updated: "2026-03-15T21:14:09.904Z"
+stopped_at: Completed 31-04 inline survey, resume, door list, ARIA
+last_updated: "2026-03-15T21:18:19.612Z"
 last_activity: 2026-03-15 — Completed 31-01 data foundation
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 63
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 31 of 36 (Canvassing Wizard)
-Plan: 2 of 5 in current phase
+Plan: 5 of 5 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Completed 31-01 data foundation
+Last activity: 2026-03-15 — Completed 31-04 inline survey, resume, door list, ARIA
 
-Progress: [██████░░░░] 63% (5/8 v1.4 plans)
+Progress: [█████████░] 88% (7/8 v1.4 plans)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████░░░░] 63% (5/8 v1.4 plans)
 | Phase 31 P02 | 2min | 2 tasks | 5 files |
 | Phase 31 P01 | 3min | 2 tasks | 6 files |
 | Phase 31 P03 | 2min | 2 tasks | 2 files |
+| Phase 31 P04 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [31-01]: sessionStorage for wizard state (clears on tab close, fresh start each session)
 - [Phase 31]: Bulk Not Home uses sonner toast with action/cancel buttons (not modal dialog)
 - [Phase 31]: Orchestrator hook returns OutcomeResult signals (bulkPrompt/surveyTrigger) instead of callback nesting
+- [31-04]: Scale questions use button grid (not Slider) for better mobile tap targets
+- [31-04]: FieldProgress kept separate; All Doors button in own row below to avoid modifying shared component
 
 ### Roadmap Evolution
 
@@ -90,6 +93,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:14:09.899Z
-Stopped at: Completed 31-03 canvassing wizard assembly
+Last session: 2026-03-15T21:17:36Z
+Stopped at: Completed 31-04 inline survey, resume, door list, ARIA
 Resume file: None

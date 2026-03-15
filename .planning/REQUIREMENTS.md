@@ -18,10 +18,10 @@
 - [x] **CANV-02**: Volunteer records a door-knock outcome via large touch-target buttons (Not Home, Contact, Refused, etc.)
 - [x] **CANV-03**: Volunteer advances to the next door automatically after recording an outcome
 - [x] **CANV-04**: Volunteer sees a progress indicator (e.g., "12 of 47 doors")
-- [ ] **CANV-05**: Volunteer can answer inline survey questions after a contact outcome (skippable)
+- [x] **CANV-05**: Volunteer can answer inline survey questions after a contact outcome (skippable)
 - [x] **CANV-06**: Volunteer sees multiple voters at the same address grouped by household
 - [x] **CANV-07**: Volunteer's wizard state persists across phone interruptions and app switching
-- [ ] **CANV-08**: Volunteer sees a resume prompt when returning to an interrupted session
+- [x] **CANV-08**: Volunteer sees a resume prompt when returning to an interrupted session
 
 ### Phone Banking
 
@@ -55,7 +55,7 @@
 - [ ] **A11Y-01**: All field mode screens are navigable via screen reader (ARIA labels, roles, live regions)
 - [ ] **A11Y-02**: All interactive elements meet WCAG 2.5.5 minimum touch target size (44x44px)
 - [ ] **A11Y-03**: All field mode screens have sufficient color contrast (WCAG AA minimum)
-- [ ] **A11Y-04**: Canvassing wizard state transitions are announced to screen readers via live regions
+- [x] **A11Y-04**: Canvassing wizard state transitions are announced to screen readers via live regions
 - [ ] **A11Y-05**: Phone banking caller info and outcome buttons are accessible without visual context
 
 ### Polish & Celebrations
@@ -95,10 +95,10 @@
 | CANV-02 | Phase 31 | Complete |
 | CANV-03 | Phase 31 | Complete |
 | CANV-04 | Phase 31 | Complete |
-| CANV-05 | Phase 31 | Pending |
+| CANV-05 | Phase 31 | Complete |
 | CANV-06 | Phase 31 | Complete |
 | CANV-07 | Phase 31 | Complete |
-| CANV-08 | Phase 31 | Pending |
+| CANV-08 | Phase 31 | Complete |
 | PHONE-01 | Phase 32 | Pending |
 | PHONE-02 | Phase 32 | Pending |
 | PHONE-03 | Phase 32 | Pending |
@@ -120,7 +120,7 @@
 | A11Y-01 | Phase 35 | Pending |
 | A11Y-02 | Phase 35 | Pending |
 | A11Y-03 | Phase 35 | Pending |
-| A11Y-04 | Phase 31 | Pending |
+| A11Y-04 | Phase 31 | Complete |
 | A11Y-05 | Phase 32 | Pending |
 | POLISH-01 | Phase 35 | Pending |
 | POLISH-02 | Phase 35 | Pending |
