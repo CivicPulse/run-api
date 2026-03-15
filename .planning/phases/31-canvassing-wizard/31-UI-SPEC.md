@@ -1,7 +1,8 @@
 ---
 phase: 31
 slug: canvassing-wizard
-status: draft
+status: approved
+reviewed_at: 2026-03-15
 shadcn_initialized: true
 preset: new-york
 created: 2026-03-15
