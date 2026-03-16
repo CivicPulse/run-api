@@ -44,10 +44,10 @@
 
 ### Offline & Sync
 
-- [x] **SYNC-01**: Volunteer can record door-knock outcomes while offline; they queue locally
+- [ ] **SYNC-01**: Volunteer can record door-knock outcomes while offline; they queue locally
 - [x] **SYNC-02**: Queued interactions automatically sync when connectivity resumes
 - [x] **SYNC-03**: Volunteer sees a visible offline indicator when connectivity is lost
-- [x] **SYNC-04**: Volunteer receives updated walk list status (houses contacted by others) when connectivity resumes
+- [ ] **SYNC-04**: Volunteer receives updated walk list status (houses contacted by others) when connectivity resumes
 - [x] **SYNC-05**: Volunteer can record phone banking outcomes while offline; they queue locally
 
 ### Accessibility
@@ -112,10 +112,10 @@
 | TOUR-04 | Phase 34 | Complete |
 | TOUR-05 | Phase 34 | Complete |
 | TOUR-06 | Phase 34 | Complete |
-| SYNC-01 | Phase 33 | Complete |
+| SYNC-01 | Phase 33, Phase 37 | Pending |
 | SYNC-02 | Phase 33 | Complete |
 | SYNC-03 | Phase 33 | Complete |
-| SYNC-04 | Phase 33 | Complete |
+| SYNC-04 | Phase 33, Phase 37 | Pending |
 | SYNC-05 | Phase 33 | Complete |
 | A11Y-01 | Phase 35 | Complete |
 | A11Y-02 | Phase 35 | Complete |
@@ -133,4 +133,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-16 after gap closure phase creation*

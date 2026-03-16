@@ -6,7 +6,7 @@
 - ✅ **v1.1 Local Dev & Deployment Readiness** — Phases 8-11 (shipped 2026-03-10)
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
 - ✅ **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (shipped 2026-03-15)
-- 🚧 **v1.4 Volunteer Field Mode** — Phases 30-35 (in progress)
+- 🚧 **v1.4 Volunteer Field Mode** — Phases 30-38 (in progress)
 
 ## Phases
 
@@ -201,10 +201,39 @@ Plans:
 - [ ] 36-01-PLAN.md — Utility refactor, HouseholdCard Navigate button, DoorListView map icon, e2e tests
 - [ ] 36-02-PLAN.md — Admin-side "View on Map" links on voter detail and walk list detail pages
 
+### Phase 37: Offline Sync Integration Fixes
+**Goal**: Fix offline sync integration defects so optimistic UI stays consistent and hub progress updates after sync
+**Depends on**: Phase 33, Phase 36
+**Requirements**: SYNC-01, SYNC-04
+**Gap Closure:** Closes INT-01, INT-02 from milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Recording a canvassing outcome while offline does not revert the optimistic UI — the door stays marked as completed
+  2. After offline queue drains, hub AssignmentCard progress counters update automatically without pull-to-refresh
+**Plans**: 1 plan
+
+Plans:
+- [ ] 37-01-PLAN.md — Fix double onError in useDoorKnockMutation, add field-me invalidation to drainQueue
+
+### Phase 38: Tech Debt Cleanup
+**Goal**: Resolve accumulated tech debt items from milestone audit — test stubs, lint warnings, selector ambiguity
+**Depends on**: Phase 37
+**Requirements**: None (quality/maintenance)
+**Gap Closure:** Closes tech debt from milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Playwright test for survey questions uses unambiguous selector (no double-match on "Survey Questions")
+  2. useCallingSession.ts useCallback dependency array includes campaignId and sessionId
+  3. All 36 test stubs in tourStore.test.ts, useTour.test.ts, and tour-onboarding.spec.ts are implemented (no .todo/.fixme)
+  4. Unused isRunning variable removed from canvassing.tsx
+**Plans**: 2 plans
+
+Plans:
+- [ ] 38-01-PLAN.md — Playwright selector fix, useCallback deps fix, TS warning cleanup
+- [ ] 38-02-PLAN.md — Implement 36 tour test stubs
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35 → 36
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -244,3 +273,5 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35 → 36
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
 | 35. Accessibility Audit & Polish | 4/4 | Complete    | 2026-03-16 | - |
 | 36. Google Maps Navigation Link for Canvassing | 2/2 | Complete    | 2026-03-16 | - |
+| 37. Offline Sync Integration Fixes | v1.4 | 0/1 | Pending | - |
+| 38. Tech Debt Cleanup | v1.4 | 0/2 | Pending | - |
