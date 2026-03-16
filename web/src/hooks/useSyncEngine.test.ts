@@ -375,6 +375,66 @@ describe("drainQueue", () => {
     })
   })
 
+  test("after drain with items synced, invalidateQueries is called for field-me", async () => {
+    const mockJson = vi.fn().mockResolvedValue({});
+    (api.post as Mock).mockReturnValue({ json: mockJson })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+    await drainQueue(queryClient as any)
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["field-me", "c1"],
+    })
+  })
+
+  test("after drain with items from multiple campaigns, invalidates field-me for each", async () => {
+    const mockJson = vi.fn().mockResolvedValue({});
+    (api.post as Mock).mockReturnValue({ json: mockJson })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e2", result_code: "not_home" },
+      campaignId: "c2",
+      resourceId: "wl-2",
+    })
+    await drainQueue(queryClient as any)
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["field-me", "c1"],
+    })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["field-me", "c2"],
+    })
+  })
+
+  test("after drain with call_record items, invalidates field-me for campaign", async () => {
+    const mockJson = vi.fn().mockResolvedValue({});
+    (api.post as Mock).mockReturnValue({ json: mockJson })
+    useOfflineQueueStore.getState().push({
+      type: "call_record",
+      payload: {
+        call_list_entry_id: "cle-1",
+        result_code: "answered",
+        phone_number_used: "555",
+        call_started_at: "2024-01-01T10:00:00Z",
+        call_ended_at: "2024-01-01T10:05:00Z",
+      },
+      campaignId: "c1",
+      resourceId: "sess-1",
+    })
+    await drainQueue(queryClient as any)
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["field-me", "c1"],
+    })
+  })
+
   test('toast "All caught up!" fires when queue drains to empty', async () => {
     const mockJson = vi.fn().mockResolvedValue({});
     (api.post as Mock).mockReturnValue({ json: mockJson })
