@@ -37,7 +37,7 @@ export function CanvassingCompletionSummary({ stats, campaignId }: CanvassingCom
         </div>
 
         <Button asChild>
-          <Link to={`/field/${campaignId}`}>Back to Hub</Link>
+          <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
         </Button>
       </Card>
     </div>
