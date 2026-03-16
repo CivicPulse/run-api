@@ -29,6 +29,7 @@ export function AssignmentCard({
     <Link
       to={`/field/${campaignId}/${type}`}
       className="block min-h-[100px] rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+      data-tour="assignment-card"
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">

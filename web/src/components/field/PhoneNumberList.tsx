@@ -4,6 +4,7 @@ import { Phone } from "lucide-react"
 import { toast } from "sonner"
 import { formatPhoneDisplay, getPhoneStatus } from "@/types/calling"
 import type { PhoneAttempt } from "@/types/calling"
+import { TooltipIcon } from "@/components/field/TooltipIcon"
 
 interface PhoneNumberListProps {
   phones: Array<{
@@ -41,7 +42,10 @@ export function PhoneNumberList({
   onCallStarted,
 }: PhoneNumberListProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div data-tour="phone-number-list" className="flex flex-col gap-2">
+      <div className="flex items-center justify-end">
+        <TooltipIcon content="Tap a number to call. If your phone doesn't support tap-to-call, long-press to copy it." side="top" />
+      </div>
       {phones.map((phone) => (
         <PhoneRow
           key={phone.phone_id}

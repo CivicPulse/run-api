@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { MapPin, SkipForward } from "lucide-react"
+import { TooltipIcon } from "@/components/field/TooltipIcon"
 
 interface HouseholdCardProps {
   household: Household
@@ -28,7 +29,7 @@ export function HouseholdCard({
   onSkip,
 }: HouseholdCardProps) {
   return (
-    <Card className="p-4">
+    <Card className="p-4" data-tour="household-card">
       {/* Address header */}
       <a
         href={getGoogleMapsUrl(household.entries[0].voter)}
@@ -61,11 +62,13 @@ export function HouseholdCard({
       </div>
 
       {/* Footer with skip button */}
-      <div className="flex justify-end mt-3">
+      <div className="flex items-center justify-end mt-3 gap-1">
+        <TooltipIcon content="Skipped doors stay on your list. You can come back to them anytime." side="right" />
         <Button
           variant="ghost"
           onClick={onSkip}
           className="text-sm text-muted-foreground min-h-11"
+          data-tour="skip-button"
         >
           <SkipForward className="h-4 w-4 mr-1" />
           Skip
