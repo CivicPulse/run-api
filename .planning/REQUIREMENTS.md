@@ -60,7 +60,7 @@
 
 ### Polish & Celebrations
 
-- [ ] **POLISH-01**: Volunteer sees milestone celebration toasts at 25%, 50%, 75%, and 100% completion
+- [x] **POLISH-01**: Volunteer sees milestone celebration toasts at 25%, 50%, 75%, and 100% completion
 - [ ] **POLISH-02**: Voter context card shows name, party, age, and propensity before each interaction
 - [ ] **POLISH-03**: All field mode elements have minimum 44px touch targets verified via audit
 
@@ -122,7 +122,7 @@
 | A11Y-03 | Phase 35 | Pending |
 | A11Y-04 | Phase 31 | Complete |
 | A11Y-05 | Phase 32 | Complete |
-| POLISH-01 | Phase 35 | Pending |
+| POLISH-01 | Phase 35 | Complete |
 | POLISH-02 | Phase 35 | Pending |
 | POLISH-03 | Phase 35 | Pending |
 
