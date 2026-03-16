@@ -131,10 +131,10 @@ export function getGoogleMapsUrl(voter: VoterDetail): string {
 
 /** Propensity score display with color badge */
 export function getPropensityDisplay(score: number | null): { label: string; color: string } {
-  if (score == null) return { label: "N/A", color: "bg-gray-100 text-gray-600" }
-  if (score >= 70) return { label: `${score}%`, color: "bg-green-100 text-green-700" }
-  if (score >= 40) return { label: `${score}%`, color: "bg-yellow-100 text-yellow-700" }
-  return { label: `${score}%`, color: "bg-red-100 text-red-700" }
+  if (score == null) return { label: "N/A", color: "bg-gray-100 text-gray-700" }
+  if (score >= 70) return { label: `${score}%`, color: "bg-green-100 text-green-800" }
+  if (score >= 40) return { label: `${score}%`, color: "bg-yellow-100 text-yellow-800" }
+  return { label: `${score}%`, color: "bg-red-100 text-red-800" }
 }
 
 /** Party badge color */
