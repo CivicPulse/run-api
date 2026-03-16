@@ -26,7 +26,7 @@ export function QuickStartCard({ type, onDismiss }: QuickStartCardProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-1 top-1 h-8 w-8 min-h-8 min-w-8"
+        className="absolute right-1 top-1 min-h-11 min-w-11"
         onClick={onDismiss}
         aria-label="Dismiss quick start tips"
       >

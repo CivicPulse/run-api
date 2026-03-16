@@ -15,7 +15,7 @@ export function TooltipIcon({ content, side = "top" }: TooltipIconProps) {
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="inline-flex items-center justify-center min-h-7 min-w-7 p-1"
+          className="inline-flex items-center justify-center min-h-11 min-w-11 p-1"
           aria-label="More info"
           type="button"
         >
