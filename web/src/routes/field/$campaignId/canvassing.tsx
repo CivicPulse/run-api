@@ -7,6 +7,8 @@ import { InlineSurvey } from "@/components/field/InlineSurvey"
 import { useResumePrompt } from "@/components/field/ResumePrompt"
 import { DoorListView } from "@/components/field/DoorListView"
 import { QuickStartCard } from "@/components/field/QuickStartCard"
+import { checkMilestone } from "@/lib/milestones"
+import { CanvassingCompletionSummary } from "@/components/field/CanvassingCompletionSummary"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useWalkList } from "@/hooks/useWalkLists"
@@ -129,7 +131,7 @@ function Canvassing() {
   useEffect(() => {
     if (currentHousehold) {
       setAriaAnnouncement(
-        `Door ${currentAddressIndex + 1} of ${totalAddresses}. ${currentHousehold.address}. ${activeVoterName}.`,
+        `Now at ${currentHousehold.address}, door ${currentAddressIndex + 1} of ${totalAddresses}`,
       )
     }
     if (isComplete) {
@@ -144,6 +146,13 @@ function Canvassing() {
     totalAddresses,
     activeVoterName,
   ])
+
+  // Milestone celebration toasts
+  useEffect(() => {
+    if (totalAddresses === 0 || !walkListId) return
+    const key = `milestones-fired-canvassing-${walkListId}`
+    checkMilestone(completedAddresses, totalAddresses, key)
+  }, [completedAddresses, totalAddresses, walkListId])
 
   // Survey handlers
   const handleSurveyComplete = useCallback(() => {
@@ -283,21 +292,24 @@ function Canvassing() {
 
   // Completion state
   if (isComplete) {
+    const contactOutcomes = new Set(["supporter", "undecided", "opposed", "refused"])
+    const entries = Object.values(completedEntries)
+    const contacted = entries.filter((code) => contactOutcomes.has(code)).length
+    const notHomeCount = entries.filter((code) => code === "not_home").length
+    const otherCount = entries.length - contacted - notHomeCount
+
     return (
       <div className="flex flex-col h-full">
         <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
-        <div className="flex flex-1 items-center justify-center p-4">
-          <Card className="p-6 text-center max-w-sm">
-            <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-600" />
-            <h2 className="text-xl font-semibold mb-2">Walk List Complete</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              You&apos;ve finished all {totalAddresses} doors. Great work!
-            </p>
-            <Button asChild>
-              <Link to={`/field/${campaignId}`}>Back to Hub</Link>
-            </Button>
-          </Card>
-        </div>
+        <CanvassingCompletionSummary
+          stats={{
+            totalDoors: totalAddresses,
+            contacted,
+            notHome: notHomeCount,
+            other: otherCount,
+          }}
+          campaignId={campaignId}
+        />
       </div>
     )
   }
@@ -364,6 +376,7 @@ function Canvassing() {
           open={surveyOpen}
           onComplete={handleSurveyComplete}
           onSkip={handleSurveySkip}
+          voterName={activeVoterName}
         />
       )}
 

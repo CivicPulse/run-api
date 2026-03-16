@@ -6,6 +6,7 @@ import { OutcomeGrid } from "@/components/field/OutcomeGrid"
 import { CallingVoterCard } from "@/components/field/CallingVoterCard"
 import { CompletionSummary } from "@/components/field/CompletionSummary"
 import { InlineSurvey } from "@/components/field/InlineSurvey"
+import { checkMilestone } from "@/lib/milestones"
 import { useCallingSession } from "@/hooks/useCallingSession"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { CALL_OUTCOME_CONFIGS } from "@/types/calling"
@@ -100,6 +101,13 @@ function PhoneBanking() {
       )
     }
   }, [currentEntry])
+
+  // Milestone celebration toasts
+  useEffect(() => {
+    if (displayTotal === 0 || !sessionId) return
+    const key = `milestones-fired-phonebanking-${sessionId}`
+    checkMilestone(completedCount, displayTotal, key)
+  }, [completedCount, displayTotal, sessionId])
 
   // Outcome selection handler
   const handleOutcomeSelect = useCallback(
