@@ -294,7 +294,7 @@ function MembersSettings() {
     },
   ]
 
-  const members = membersData?.items ?? []
+  const members = membersData ?? []
   const invites = invitesData?.items ?? []
 
   return (

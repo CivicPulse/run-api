@@ -34,7 +34,7 @@ function makeWrapper() {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const mockLists = [
+const mockListItems = [
   {
     id: "list-1",
     campaign_id: "campaign-1",
@@ -45,6 +45,11 @@ const mockLists = [
     updated_at: "2026-01-01T00:00:00Z",
   },
 ]
+
+const mockLists = {
+  items: mockListItems,
+  pagination: { next_cursor: null, has_more: false },
+}
 
 describe("useVoterLists URL", () => {
   beforeEach(() => {
@@ -73,7 +78,7 @@ describe("useCreateVoterList", () => {
   })
 
   it("POSTs to .../lists with name, list_type, filter_query", async () => {
-    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(mockLists[0]) })
+    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(mockListItems[0]) })
     mockApi.get.mockReturnValue({ json: vi.fn().mockResolvedValue(mockLists) })
 
     const { result } = renderHook(() => useCreateVoterList("campaign-1"), {
@@ -101,7 +106,7 @@ describe("useCreateVoterList", () => {
     const filterObj = { party: "DEM", logic: "AND" }
     const filterString = JSON.stringify(filterObj)
 
-    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue({ ...mockLists[0], filter_query: filterString }) })
+    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue({ ...mockListItems[0], filter_query: filterString }) })
     mockApi.get.mockReturnValue({ json: vi.fn().mockResolvedValue(mockLists) })
 
     const { result } = renderHook(() => useCreateVoterList("campaign-1"), {

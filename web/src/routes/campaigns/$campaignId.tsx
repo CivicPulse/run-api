@@ -15,7 +15,7 @@ import type { Campaign } from "@/types/campaign"
 function CampaignLayout() {
   const { campaignId } = useParams({ from: "/campaigns/$campaignId" })
 
-  const { data: campaign, isLoading } = useQuery({
+  const { data: campaign, isLoading, isError } = useQuery({
     queryKey: ["campaigns", campaignId],
     queryFn: () => api.get(`api/v1/campaigns/${campaignId}`).json<Campaign>(),
   })
@@ -24,6 +24,17 @@ function CampaignLayout() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (isError || !campaign) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <p className="text-muted-foreground">Campaign not found</p>
+        <Link to="/" className="text-sm text-primary hover:underline">
+          Back to campaigns
+        </Link>
       </div>
     )
   }

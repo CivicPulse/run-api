@@ -100,6 +100,8 @@ export function ImportWizardPage() {
   useEffect(() => {
     if (!jobId || !jobQuery.data) return
     const correctStep = deriveStep(jobQuery.data.status)
+    // Don't redirect away from Preview (2.5) when the API still reports "uploaded" (step 2)
+    if (correctStep === 2 && step === 2.5) return
     if (correctStep !== step) {
       navigate({
         search: { jobId, step: correctStep },

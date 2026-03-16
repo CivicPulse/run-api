@@ -49,7 +49,7 @@ function NewCampaignPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
-      type: undefined,
+      type: "" as FormValues["type"],
       candidate_name: "",
       party_affiliation: "",
       jurisdiction_name: "",
