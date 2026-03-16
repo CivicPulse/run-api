@@ -236,7 +236,7 @@ function RootLayout() {
           <div className="flex-1" />
           <UserMenu />
         </header>
-        <main className="flex-1 p-4">
+        <main className="flex-1 overflow-x-hidden p-4">
           <Outlet />
         </main>
       </SidebarInset>

@@ -169,7 +169,7 @@ function DNCListPage() {
   return (
     <div className="p-6 space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">DNC List</h1>
         <div className="flex items-center gap-2">
           <RequireRole minimum="manager">
