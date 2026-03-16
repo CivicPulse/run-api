@@ -79,7 +79,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 - [x] **Phase 31: Canvassing Wizard** - Linear door-to-door wizard with household grouping, inline survey, persistent state, and shared field components (completed 2026-03-15)
 - [x] **Phase 32: Phone Banking Field Mode** - Mobile calling experience with tap-to-call, outcome recording, and inline survey reuse (completed 2026-03-15)
 - [x] **Phase 33: Offline Queue & Sync** - Local outcome queue with automatic sync on connectivity resume (completed 2026-03-16)
-- [ ] **Phase 34: Guided Onboarding Tour** - Step-by-step driver.js tour with per-segment completion and replay
+- [x] **Phase 34: Guided Onboarding Tour** - Step-by-step driver.js tour with per-segment completion and replay (completed 2026-03-16)
 - [ ] **Phase 35: Accessibility Audit & Polish** - WCAG compliance sweep, milestone celebrations, and touch target verification
 
 ## Phase Details
@@ -224,7 +224,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 31. Canvassing Wizard | 5/5 | Complete    | 2026-03-15 | - |
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
-| 34. Guided Onboarding Tour | 3/4 | In Progress|  | - |
+| 34. Guided Onboarding Tour | 4/4 | Complete   | 2026-03-16 | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
@@ -232,7 +232,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)
