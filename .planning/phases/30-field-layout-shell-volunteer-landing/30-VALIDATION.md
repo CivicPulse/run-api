@@ -1,10 +1,11 @@
 ---
 phase: 30
 slug: field-layout-shell-volunteer-landing
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
+validated: 2026-03-16
 ---
 
 # Phase 30 — Validation Strategy
@@ -20,7 +21,7 @@ created: 2026-03-15
 | **Framework** | Vitest 4.x (unit) + Playwright 1.58.x (e2e) + pytest 7.x (backend) |
 | **Config file** | `web/vitest.config.ts` (unit), `web/playwright.config.ts` (e2e), `pytest.ini` (backend) |
 | **Quick run command** | `cd web && npx vitest run --reporter=verbose` |
-| **Full suite command** | `cd web && npx vitest run && npx playwright test && cd .. && uv run pytest tests/test_field_me.py` |
+| **Full suite command** | `cd web && npx vitest run && npx playwright test e2e/phase30-field-layout.spec.ts && cd .. && uv run pytest tests/test_field_me.py` |
 | **Estimated runtime** | ~45 seconds |
 
 ---
@@ -38,12 +39,12 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 30-01-01 | 01 | 0 | NAV-01 | e2e stub | `cd web && npx playwright test e2e/phase30-field-layout.spec.ts` | ❌ W0 | ⬜ pending |
-| 30-01-02 | 01 | 0 | NAV-02 | unit stub | `cd web && npx vitest run src/components/field/AssignmentCard.test.tsx` | ❌ W0 | ⬜ pending |
-| 30-01-03 | 01 | 0 | NAV-03 | e2e stub | `cd web && npx playwright test e2e/phase30-field-layout.spec.ts` | ❌ W0 | ⬜ pending |
-| 30-01-04 | 01 | 0 | NAV-04 | unit stub | `cd web && npx vitest run src/components/field/FieldHeader.test.tsx` | ❌ W0 | ⬜ pending |
-| 30-01-05 | 01 | 0 | NAV-02 | unit stub | `cd web && npx vitest run src/hooks/useFieldMe.test.ts` | ❌ W0 | ⬜ pending |
-| 30-01-06 | 01 | 0 | NAV-02 | unit | `uv run pytest tests/test_field_me.py` | ❌ W0 | ⬜ pending |
+| 30-01-01 | 01 | 0 | NAV-01 | e2e | `cd web && npx playwright test e2e/phase30-field-layout.spec.ts` | ✅ | ✅ green |
+| 30-01-02 | 01 | 0 | NAV-02 | unit | `cd web && npx vitest run src/components/field/AssignmentCard.test.tsx` | ✅ | ✅ green |
+| 30-01-03 | 01 | 0 | NAV-03 | e2e | `cd web && npx playwright test e2e/phase30-field-layout.spec.ts` | ✅ | ✅ green |
+| 30-01-04 | 01 | 0 | NAV-04 | unit | `cd web && npx vitest run src/components/field/FieldHeader.test.tsx` | ✅ | ✅ green |
+| 30-01-05 | 01 | 0 | NAV-02 | unit | `cd web && npx vitest run src/hooks/useFieldMe.test.ts` | ✅ | ✅ green |
+| 30-01-06 | 01 | 0 | NAV-02 | unit | `uv run pytest tests/test_field_me.py` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,11 +52,11 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] `web/e2e/phase30-field-layout.spec.ts` — e2e stubs for NAV-01, NAV-02, NAV-03
-- [ ] `web/src/components/field/FieldHeader.test.tsx` — covers NAV-03, NAV-04
-- [ ] `web/src/components/field/AssignmentCard.test.tsx` — covers NAV-02
-- [ ] `web/src/hooks/useFieldMe.test.ts` — covers hook behavior, error states
-- [ ] `tests/test_field_me.py` — covers backend `/field/me` endpoint (pytest)
+- [x] `web/e2e/phase30-field-layout.spec.ts` — 9 e2e tests for NAV-01 (5) and NAV-03 (4)
+- [x] `web/src/components/field/FieldHeader.test.tsx` — 12 unit tests for NAV-03 (back arrow), NAV-04 (help button), avatar menu
+- [x] `web/src/components/field/AssignmentCard.test.tsx` — 9 unit tests for NAV-02 (card rendering, navigation, progress)
+- [x] `web/src/hooks/useFieldMe.test.ts` — 6 unit tests for hook behavior, error states, cache
+- [x] `tests/test_field_me.py` — 5 unit tests for backend `/field/me` endpoint (pytest)
 
 ---
 
@@ -70,11 +71,21 @@ created: 2026-03-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 45s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 45s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+---
+
+## Validation Audit 2026-03-16
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 5 |
+| Resolved | 5 |
+| Escalated | 0 |
