@@ -150,11 +150,11 @@ export function useImports(campaignId: string) {
 // useDeleteImport — DELETE /api/v1/campaigns/{campaignId}/imports/{jobId}
 // Returns 204 No Content.
 // ---------------------------------------------------------------------------
-export function useDeleteImport(campaignId: string, jobId: string) {
+export function useDeleteImport(campaignId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api.delete(`api/v1/campaigns/${campaignId}/imports/${jobId}`).json(),
+    mutationFn: (jobId: string) =>
+      api.delete(`api/v1/campaigns/${campaignId}/imports/${jobId}`).then(() => undefined),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: importKeys.all(campaignId) }),
   })

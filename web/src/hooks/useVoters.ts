@@ -80,7 +80,7 @@ export function useDeleteVoter(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (voterId: string) =>
-      api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}`).json<void>(),
+      api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}`).then(() => undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
       toast.success("Voter deleted")

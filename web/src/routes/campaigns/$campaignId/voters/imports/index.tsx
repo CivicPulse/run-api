@@ -50,12 +50,12 @@ function ImportsHistoryPage() {
 
   // Delete dialog state
   const [deleteJob, setDeleteJob] = useState<ImportJob | null>(null)
-  const deleteImport = useDeleteImport(campaignId, deleteJob?.id ?? "")
+  const deleteImport = useDeleteImport(campaignId)
 
   const handleDelete = async () => {
     if (!deleteJob) return
     try {
-      await deleteImport.mutateAsync()
+      await deleteImport.mutateAsync(deleteJob.id)
       toast.success("Import deleted")
       setDeleteJob(null)
     } catch {

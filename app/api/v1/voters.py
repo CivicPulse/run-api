@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -221,5 +222,11 @@ async def delete_voter(
         await _service.delete_voter(db, voter_id)
     except ValueError as exc:
         raise VoterNotFoundError(voter_id) from exc
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete voter: related records still exist",
+        ) from exc
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

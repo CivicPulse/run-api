@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,8 @@ from app.models.voter_interaction import InteractionType
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter_interaction import InteractionCreateRequest, InteractionResponse
 from app.services.voter_interaction import VoterInteractionService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -74,6 +77,13 @@ async def get_voter_interactions(
         for uid, display_name in user_result.all():
             if display_name:
                 user_name_map[uid] = display_name
+
+        unresolved = user_ids - set(user_name_map.keys())
+        if unresolved:
+            logger.warning(
+                "Could not resolve display names for user IDs: %s",
+                unresolved,
+            )
 
     items = []
     for e in page.items:

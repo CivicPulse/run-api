@@ -207,7 +207,7 @@ function VoterDetailPage() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Age</dt>
-                      <dd className="font-medium">{voter.age ?? (voter.date_of_birth ? calculateAge(voter.date_of_birth) : "-")}</dd>
+                      <dd className="font-medium">{voter.age ?? (voter.date_of_birth ? calculateAge(voter.date_of_birth) : null) ?? "-"}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Gender</dt>

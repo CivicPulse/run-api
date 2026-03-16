@@ -327,6 +327,12 @@ async def delete_import(
             detail="Import job not found",
         )
 
+    if job.status in (ImportStatus.QUEUED, ImportStatus.PROCESSING):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete an import that is currently in progress",
+        )
+
     await db.delete(job)
     await db.commit()
 

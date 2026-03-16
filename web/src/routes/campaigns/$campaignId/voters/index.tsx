@@ -477,7 +477,8 @@ function buildColumns(
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => {
         const v = row.original
-        return v.age ?? (v.date_of_birth ? calculateAge(v.date_of_birth) : <span className="text-muted-foreground">—</span>)
+        const computed = v.date_of_birth ? calculateAge(v.date_of_birth) : null
+        return v.age ?? computed ?? <span className="text-muted-foreground">—</span>
       },
     },
     {
@@ -612,11 +613,16 @@ function VotersPage() {
 
   const handleDelete = async () => {
     if (!deleteVoter) return
-    await deleteVoterMutation.mutateAsync(deleteVoter.id)
-    setDeleteVoter(null)
+    try {
+      await deleteVoterMutation.mutateAsync(deleteVoter.id)
+    } catch {
+      // Error toast is handled by useDeleteVoter's onError
+    } finally {
+      setDeleteVoter(null)
+    }
   }
 
-  const columns = useMemo(() => buildColumns(campaignId, navigate, setDeleteVoter), [campaignId, navigate])
+  const columns = useMemo(() => buildColumns(campaignId, navigate, setDeleteVoter), [campaignId, navigate, setDeleteVoter])
 
   const filterChips = buildFilterChips(filters, filterUpdate)
 

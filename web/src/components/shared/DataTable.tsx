@@ -92,7 +92,7 @@ export function DataTable<TData>({
                     onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     className={cn(
                       canSort && "cursor-pointer select-none",
-                      (header.column.columnDef.meta as Record<string, string> | undefined)?.className,
+                      header.column.columnDef.meta?.className,
                     )}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -152,7 +152,7 @@ export function DataTable<TData>({
                     key={cell.id}
                     className={cn(
                       "py-3",
-                      (cell.column.columnDef.meta as Record<string, string> | undefined)?.className,
+                      cell.column.columnDef.meta?.className,
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
