@@ -18,7 +18,7 @@ export function useEnrichedEntries(campaignId: string, walkListId: string) {
 
 export function useDoorKnockMutation(campaignId: string, walkListId: string) {
   const queryClient = useQueryClient()
-  const { recordOutcome, revertOutcome } = useCanvassingStore.getState()
+  const { recordOutcome } = useCanvassingStore.getState()
 
   return useMutation({
     mutationFn: (data: DoorKnockCreate) =>
@@ -27,10 +27,8 @@ export function useDoorKnockMutation(campaignId: string, walkListId: string) {
       // Optimistic: record in Zustand store immediately
       recordOutcome(data.walk_list_entry_id, data.result_code)
     },
-    onError: (_err, data) => {
-      revertOutcome(data.walk_list_entry_id)
-      toast.error("Failed to save outcome. Please try again.")
-    },
+    // onError removed — call sites (useCanvassingWizard handleOutcome, handleBulkNotHome)
+    // handle errors with context-specific logic (offline queue vs revert)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["walk-list-entries-enriched", campaignId, walkListId] })
     },

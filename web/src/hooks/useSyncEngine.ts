@@ -114,6 +114,15 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
       }
     }
 
+    // Invalidate hub assignment data so progress counters refresh
+    for (const campaignId of syncedCampaignIds) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ["field-me", campaignId],
+        })
+      )
+    }
+
     await Promise.all(invalidationPromises)
 
     // Check if queue is now empty
