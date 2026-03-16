@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, ClipboardList, Plus, Trash2, UserMinus, Users } from "lucide-react"
+import { ArrowLeft, ClipboardList, ExternalLink, Plus, Trash2, UserMinus, Users } from "lucide-react"
 import { useState } from "react"
 
 function WalkListDetailPage() {
@@ -128,6 +128,7 @@ function WalkListDetailPage() {
                 <TableHead>Household</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
+                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -138,6 +139,19 @@ function WalkListDetailPage() {
                   <TableCell>{entry.household_key ?? "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{entry.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {entry.household_key && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(entry.household_key)}&travelmode=walking`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                        aria-label={`View ${entry.household_key} on map`}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Button

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { createFileRoute, useParams } from "@tanstack/react-router"
-import { Check, Minus, Pencil, PlusCircle } from "lucide-react"
+import { Check, ExternalLink, Minus, Pencil, PlusCircle } from "lucide-react"
 import { useVoter, useVoterInteractions } from "@/hooks/useVoters"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RequireRole } from "@/components/shared/RequireRole"
+import { getGoogleMapsUrl, hasAddress } from "@/types/canvassing"
 import { ContactsTab } from "@/components/voters/ContactsTab"
 import { TagsTab } from "@/components/voters/TagsTab"
 import { HistoryTab } from "@/components/voters/HistoryTab"
@@ -282,6 +283,17 @@ function VoterDetailPage() {
                         <dd className="font-medium">{voter.registration_apartment_type ?? "-"}</dd>
                       </div>
                     </dl>
+                    {hasAddress(voter) && (
+                      <a
+                        href={getGoogleMapsUrl(voter)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mt-3"
+                      >
+                        View on Map
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </CardContent>
                 </Card>
               )}
