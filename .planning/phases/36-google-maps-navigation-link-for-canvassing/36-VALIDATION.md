@@ -1,9 +1,9 @@
 ---
 phase: 36
 slug: google-maps-navigation-link-for-canvassing
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-16
 ---
 
@@ -21,7 +21,7 @@ created: 2026-03-16
 | **Config file** | `web/playwright.config.ts` |
 | **Quick run command** | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` |
 | **Full suite command** | `cd web && npx playwright test` |
-| **Estimated runtime** | ~15 seconds |
+| **Estimated runtime** | ~11 seconds |
 
 ---
 
@@ -38,11 +38,11 @@ created: 2026-03-16
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 36-01-01 | 01 | 1 | P36-01 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ❌ W0 | ⬜ pending |
-| 36-01-02 | 01 | 1 | P36-02 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ❌ W0 | ⬜ pending |
-| 36-02-01 | 02 | 1 | P36-03 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ❌ W0 | ⬜ pending |
-| 36-02-02 | 02 | 1 | P36-04 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ❌ W0 | ⬜ pending |
-| 36-03-01 | 03 | 2 | P36-05 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ❌ W0 | ⬜ pending |
+| 36-01-01 | 01 | 1 | P36-01 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ✅ | ✅ green |
+| 36-01-02 | 01 | 1 | P36-02 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ✅ | ✅ green |
+| 36-02-01 | 02 | 1 | P36-03 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ✅ | ✅ green |
+| 36-02-02 | 02 | 1 | P36-04 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ✅ | ✅ green |
+| 36-03-01 | 02 | 2 | P36-05 | e2e | `cd web && npx playwright test e2e/phase36-navigate.spec.ts -x` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,10 +50,7 @@ created: 2026-03-16
 
 ## Wave 0 Requirements
 
-- [ ] `web/e2e/phase36-navigate.spec.ts` — stubs for P36-01 through P36-05
-- [ ] Uses `page.route()` API mocking (established pattern from phases 32, 33, 35)
-
-*Existing Playwright infrastructure covers framework and config needs.*
+Existing infrastructure covers all phase requirements.
 
 ---
 
@@ -67,11 +64,24 @@ created: 2026-03-16
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-03-16
+
+---
+
+## Validation Audit 2026-03-16
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 6 Playwright tests pass (P36-01 through P36-05 + bonus stopPropagation test).
+Test file: `web/e2e/phase36-navigate.spec.ts`
