@@ -8,12 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import ensure_user_synced
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import (
     AuthenticatedUser,
     CampaignRole,
     require_role,
 )
+from app.db.rls import set_campaign_context
 from app.db.session import get_db
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
@@ -29,7 +31,7 @@ router = APIRouter()
 )
 async def list_members(
     campaign_id: uuid.UUID,
-    user: AuthenticatedUser = Depends(require_role("viewer")),  # noqa: ARG001
+    user: AuthenticatedUser = Depends(require_role("viewer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List campaign members with their roles. Requires viewer+ role.
@@ -38,6 +40,8 @@ async def list_members(
     Since we don't store roles in campaign_members, we return the role from
     the join context. This is simplified -- production would call ZITADEL API.
     """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
     result = await db.execute(
         select(CampaignMember, User)
         .join(User, CampaignMember.user_id == User.id)

@@ -415,10 +415,12 @@ class VoterService:
         Returns:
             The created Voter.
         """
+        # Use exclude_none (not exclude_unset) so that schema defaults
+        # like source_type="manual" are included in the INSERT.
         voter = Voter(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
-            **data.model_dump(exclude_unset=True),
+            **data.model_dump(exclude_none=True),
         )
         db.add(voter)
         await db.commit()
