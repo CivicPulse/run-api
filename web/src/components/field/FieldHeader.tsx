@@ -15,9 +15,10 @@ interface FieldHeaderProps {
   campaignId: string
   title: string
   showBack?: boolean
+  onHelpClick?: () => void
 }
 
-export function FieldHeader({ campaignId, title, showBack = false }: FieldHeaderProps) {
+export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }: FieldHeaderProps) {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
@@ -60,11 +61,13 @@ export function FieldHeader({ campaignId, title, showBack = false }: FieldHeader
       <Button
         variant="ghost"
         size="icon"
-        disabled
         className="min-h-11 min-w-11"
         aria-label="Help"
+        data-tour="help-button"
+        disabled={!onHelpClick}
+        onClick={onHelpClick}
       >
-        <HelpCircle className="h-5 w-5 text-muted-foreground/50" />
+        <HelpCircle className={`h-5 w-5 ${onHelpClick ? "text-muted-foreground" : "text-muted-foreground/50"}`} />
       </Button>
 
       <DropdownMenu>
@@ -73,6 +76,7 @@ export function FieldHeader({ campaignId, title, showBack = false }: FieldHeader
             variant="ghost"
             className="relative h-8 w-8 min-h-11 min-w-11 rounded-full"
             aria-label="User menu"
+            data-tour="avatar-menu"
           >
             <Avatar className="h-8 w-8">
               <AvatarFallback>{initials}</AvatarFallback>
