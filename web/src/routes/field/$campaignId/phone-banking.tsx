@@ -97,10 +97,10 @@ function PhoneBanking() {
   useEffect(() => {
     if (currentEntry) {
       setAriaAnnouncement(
-        `Now calling ${currentEntry.voter_name || "Unknown Voter"}`,
+        `Now calling ${currentEntry.voter_name || "Unknown Voter"}, call ${completedCount + 1} of ${displayTotal}`,
       )
     }
-  }, [currentEntry])
+  }, [currentEntry, completedCount, displayTotal])
 
   // Milestone celebration toasts
   useEffect(() => {
@@ -236,6 +236,7 @@ function PhoneBanking() {
   return (
     <div className="flex flex-col h-full">
       {/* Custom header with back arrow that opens end session dialog */}
+      <nav aria-label="Field navigation">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background px-4">
         <Button
           variant="ghost"
@@ -262,6 +263,7 @@ function PhoneBanking() {
         {/* Spacer for avatar (not shown in calling view) */}
         <div className="w-11" />
       </header>
+      </nav>
 
       <FieldProgress current={completedCount} total={displayTotal} unit="calls" />
 
@@ -302,6 +304,7 @@ function PhoneBanking() {
               <OutcomeGrid
                 outcomes={CALL_OUTCOME_CONFIGS}
                 onSelect={handleOutcomeSelect}
+                voterName={currentEntry?.voter_name || "Unknown Voter"}
               />
             </div>
           </div>
@@ -353,6 +356,7 @@ function PhoneBanking() {
           open={surveyOpen}
           onComplete={handleSurveyComplete}
           onSkip={handleSurveySkip}
+          voterName={currentEntry?.voter_name || "Unknown Voter"}
         />
       )}
     </div>

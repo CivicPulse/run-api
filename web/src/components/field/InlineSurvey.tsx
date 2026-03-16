@@ -19,6 +19,7 @@ interface InlineSurveyProps {
   open: boolean
   onComplete: () => void
   onSkip: () => void
+  voterName?: string
 }
 
 function ScaleQuestion({
@@ -62,6 +63,7 @@ export function InlineSurvey({
   open,
   onComplete,
   onSkip,
+  voterName,
 }: InlineSurveyProps) {
   const { data: scriptDetail } = useSurveyScript(campaignId, scriptId)
   const recordMutation = useRecordResponses(campaignId, scriptId)
@@ -114,6 +116,7 @@ export function InlineSurvey({
       <SheetContent
         side="bottom"
         className="max-h-[70dvh] rounded-t-2xl flex flex-col"
+        aria-label={voterName ? `Survey questions for ${voterName}` : "Survey questions"}
       >
         <SheetHeader>
           <SheetTitle>Survey Questions</SheetTitle>

@@ -73,6 +73,7 @@ export function DoorListView({
                   onJump(index)
                   onOpenChange(false)
                 }}
+                aria-label={`Jump to door ${index + 1}, ${household.address}, ${status.label}`}
                 className={cn(
                   "flex items-center w-full px-4 py-3 min-h-11 text-left border-b",
                   index === currentAddressIndex && "bg-accent",

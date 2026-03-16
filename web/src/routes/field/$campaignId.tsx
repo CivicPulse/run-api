@@ -62,7 +62,7 @@ function FieldLayout() {
         onHelpClick={userId ? handleHelpClick : undefined}
       />
       <OfflineBanner />
-      <main className="flex-1 px-4 pb-4">
+      <main className="flex-1 px-4 pb-4" aria-label="Field mode content">
         <Outlet />
       </main>
     </div>

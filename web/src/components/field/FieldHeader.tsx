@@ -38,6 +38,7 @@ export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }
   }
 
   return (
+    <nav aria-label="Field navigation">
     <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background px-4">
       {showBack ? (
         <Button
@@ -102,5 +103,6 @@ export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
+    </nav>
   )
 }

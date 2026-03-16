@@ -6,9 +6,10 @@ interface OutcomeGridProps {
   outcomes: OutcomeConfig[]
   onSelect: (code: string) => void
   disabled?: boolean
+  voterName?: string
 }
 
-export function OutcomeGrid({ outcomes, onSelect, disabled }: OutcomeGridProps) {
+export function OutcomeGrid({ outcomes, onSelect, disabled, voterName }: OutcomeGridProps) {
   return (
     <div data-tour="outcome-grid">
       <div className="flex items-center justify-end mb-1">
@@ -24,7 +25,7 @@ export function OutcomeGrid({ outcomes, onSelect, disabled }: OutcomeGridProps) 
             className={`min-h-11 min-w-11 text-sm font-normal border ${outcome.color.bg} ${outcome.color.text} ${outcome.color.border}`}
             onClick={() => onSelect(outcome.code)}
             disabled={disabled}
-            aria-label={`Record outcome: ${outcome.label}`}
+            aria-label={voterName ? `Record ${outcome.label} for ${voterName}` : `Record outcome: ${outcome.label}`}
           >
             {outcome.label}
           </Button>

@@ -102,7 +102,7 @@ export function VoterCard({
       {/* Active state: show outcome grid */}
       {isActive && !isCompleted && !isSkipped && onOutcomeSelect && (
         <div className="mt-3">
-          <OutcomeGrid outcomes={CANVASSING_OUTCOMES} onSelect={onOutcomeSelect} />
+          <OutcomeGrid outcomes={CANVASSING_OUTCOMES} onSelect={onOutcomeSelect} voterName={voterName} />
         </div>
       )}
 
