@@ -77,7 +77,7 @@ export function DataTable<TData>({
     (hasNextPage || hasPreviousPage)
 
   return (
-    <div>
+    <div className="min-w-0">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

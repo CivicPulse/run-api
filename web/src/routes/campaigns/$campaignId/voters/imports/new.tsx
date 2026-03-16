@@ -55,7 +55,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 {stepNum}
               </span>
               <span
-                className={`text-sm ${isActive ? "font-medium" : "text-muted-foreground"}`}
+                className={`text-sm ${isActive ? "font-medium" : "text-muted-foreground"} ${!isActive ? "hidden sm:inline" : ""}`}
               >
                 {label}
               </span>

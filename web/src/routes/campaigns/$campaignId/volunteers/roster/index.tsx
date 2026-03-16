@@ -245,10 +245,10 @@ function RosterPage() {
       </div>
 
       {/* Filter controls */}
-      <div className="flex items-center gap-3">
+      <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
         <Input
           placeholder="Search by name..."
-          className="w-64"
+          className="col-span-2 md:w-64"
           value={nameSearch}
           onChange={(e) => setNameSearch(e.target.value)}
         />
@@ -259,7 +259,7 @@ function RosterPage() {
             setStatusFilter(val === "all" ? undefined : val)
           }
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="md:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -274,7 +274,7 @@ function RosterPage() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-40 justify-start">
+            <Button variant="outline" className="justify-start md:w-40">
               Skills
               {skillsFilter.length > 0 && (
                 <Badge variant="secondary" className="ml-auto">
