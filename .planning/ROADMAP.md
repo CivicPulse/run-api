@@ -224,7 +224,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 31. Canvassing Wizard | 5/5 | Complete    | 2026-03-15 | - |
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
-| 34. Guided Onboarding Tour | 1/4 | In Progress|  | - |
+| 34. Guided Onboarding Tour | 3/4 | In Progress|  | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
@@ -232,7 +232,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)
