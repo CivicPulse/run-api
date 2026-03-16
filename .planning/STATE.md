@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: executing
-stopped_at: Completed 35-02 milestone celebration toasts
-last_updated: "2026-03-16T19:15:24.000Z"
+stopped_at: Completed 35-01-PLAN.md
+last_updated: "2026-03-16T19:18:21.082Z"
 last_activity: 2026-03-16 — Completed 35-02 milestone celebration toasts
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 90
 ---
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 90% (18/20 v1.4 plans)
 | Phase 34 P01 | 2min | 2 tasks | 4 files |
 | Phase 34 P03 | 3min | 2 tasks | 5 files |
 | Phase 35 P02 | 1min | 2 tasks | 4 files |
+| Phase 35 P01 | 3min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [34-03]: Session counting fires on key change (mount-equivalent) not on data change
 - [35-02]: Contact outcomes set (supporter/undecided/opposed/refused) for canvassing stats categorization
 - [35-02]: Milestone sessionStorage key includes entity ID for per-assignment tracking
+- [Phase 35]: Nav landmark wraps header (not replaces) to preserve sticky positioning
+- [Phase 35]: voterName prop is optional on OutcomeGrid/InlineSurvey for backward compatibility
+- [Phase 35]: WCAG AA contrast: use -800 text on -100 backgrounds for colored badges
 
 ### Roadmap Evolution
 
@@ -121,6 +125,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-16T19:15:24.000Z
-Stopped at: Completed 35-02-PLAN.md
-Resume file: .planning/phases/35-accessibility-audit-polish/35-03-PLAN.md
+Last session: 2026-03-16T19:18:21.076Z
+Stopped at: Completed 35-01-PLAN.md
+Resume file: None
