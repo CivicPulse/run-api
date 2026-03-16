@@ -418,7 +418,7 @@ function QuestionFormDialog({
             <div className="space-y-2">
               <Label>Choices (one per line)</Label>
               <Textarea
-                placeholder={"Strongly Agree\nAgree\nDisagree\nStrongly Disagree"}
+                placeholder="Enter one choice per line"
                 value={optionsText}
                 onChange={(e) => onOptionsTextChange(e.target.value)}
               />

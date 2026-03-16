@@ -11,8 +11,13 @@ from sqlalchemy import Select, and_, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utcnow
+from app.models.call_list import CallListEntry
+from app.models.survey import SurveyResponse
 from app.models.voter import Voter, VoterTag, VoterTagMember
-from app.models.voter_contact import VoterPhone
+from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
+from app.models.voter_interaction import VoterInteraction
+from app.models.voter_list import VoterListMember
+from app.models.walk_list import WalkListEntry
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter import VoterResponse
 from app.schemas.voter_filter import VoterFilter
@@ -454,6 +459,44 @@ class VoterService:
         await db.commit()
         await db.refresh(voter)
         return voter
+
+    async def delete_voter(
+        self,
+        db: AsyncSession,
+        voter_id: uuid.UUID,
+    ) -> None:
+        """Delete a voter and all child records in dependency order.
+
+        Manually cascades deletes because the DB schema lacks ON DELETE CASCADE
+        on the foreign keys referencing voters.id.
+
+        Args:
+            db: Async database session.
+            voter_id: The voter UUID.
+
+        Raises:
+            ValueError: If voter not found.
+        """
+        voter = await self.get_voter(db, voter_id)
+
+        # Delete child records in dependency order (leaves first)
+        for child_model in (
+            SurveyResponse,
+            CallListEntry,
+            WalkListEntry,
+            VoterInteraction,
+            VoterListMember,
+            VoterTagMember,
+            VoterAddress,
+            VoterEmail,
+            VoterPhone,
+        ):
+            await db.execute(
+                delete(child_model).where(child_model.voter_id == voter_id)
+            )
+
+        await db.delete(voter)
+        await db.flush()
 
     # --- Tag operations ---
 

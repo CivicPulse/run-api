@@ -1,7 +1,7 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
 import { useTurf, useUpdateTurf, useDeleteTurf } from "@/hooks/useTurfs"
 import { TurfForm } from "@/components/canvassing/TurfForm"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Trash2 } from "lucide-react"
@@ -57,13 +57,13 @@ function TurfDetailPage() {
         }
       />
 
-      <ConfirmDialog
+      <DestructiveConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Delete Turf"
         description="Are you sure? This cannot be undone."
+        confirmText={turf.name}
         confirmLabel="Delete"
-        variant="destructive"
         isPending={deleteTurf.isPending}
         onConfirm={() =>
           deleteTurf.mutate(turfId, {

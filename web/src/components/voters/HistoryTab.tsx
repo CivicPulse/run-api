@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { MessageSquare } from "lucide-react"
 import { toast } from "sonner"
+import { HTTPError } from "ky"
+import { formatEventType } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -40,8 +42,17 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
       await createInteraction.mutateAsync({ type: "note", payload: { text } })
       setNoteText("")
       toast.success("Note added")
-    } catch {
-      toast.error("Failed to add note")
+    } catch (err) {
+      let detail: string | null = null
+      if (err instanceof HTTPError) {
+        try {
+          const body = await err.response.json()
+          detail = body.detail
+        } catch {
+          // response not JSON
+        }
+      }
+      toast.error(detail || "Failed to add note")
     }
   }
 
@@ -92,8 +103,8 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
                 className="border rounded-lg p-3 space-y-1"
               >
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {interaction.type}
+                  <Badge variant="outline" className="text-xs">
+                    {formatEventType(interaction.type)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {formatTimestamp(interaction.created_at)}
@@ -103,7 +114,9 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
                   <p className="text-sm text-foreground">{interaction.payload.text}</p>
                 )}
                 {interaction.created_by && (
-                  <p className="text-xs text-muted-foreground">by {interaction.created_by}</p>
+                  <p className="text-xs text-muted-foreground">
+                    by {interaction.created_by_name || interaction.created_by}
+                  </p>
                 )}
               </div>
             ))}

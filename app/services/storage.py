@@ -124,6 +124,14 @@ class StorageService:
                 ContentType=content_type,
             )
 
+    async def delete_object(self, key: str) -> None:
+        """Delete an object from S3."""
+        async with self.session.client(**self._client_kwargs()) as s3:
+            await s3.delete_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
+
     async def ensure_bucket(self) -> None:
         """Create the configured bucket if it does not exist.
 
