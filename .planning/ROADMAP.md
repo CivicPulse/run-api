@@ -80,7 +80,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 - [x] **Phase 32: Phone Banking Field Mode** - Mobile calling experience with tap-to-call, outcome recording, and inline survey reuse (completed 2026-03-15)
 - [x] **Phase 33: Offline Queue & Sync** - Local outcome queue with automatic sync on connectivity resume (completed 2026-03-16)
 - [x] **Phase 34: Guided Onboarding Tour** - Step-by-step driver.js tour with per-segment completion and replay (completed 2026-03-16)
-- [ ] **Phase 35: Accessibility Audit & Polish** - WCAG compliance sweep, milestone celebrations, and touch target verification
+- [x] **Phase 35: Accessibility Audit & Polish** - WCAG compliance sweep, milestone celebrations, and touch target verification (completed 2026-03-16)
 
 ## Phase Details
 
@@ -226,14 +226,14 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
-| 35. Accessibility Audit & Polish | 2/3 | In Progress|  | - |
+| 35. Accessibility Audit & Polish | 3/3 | Complete   | 2026-03-16 | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
 
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)
