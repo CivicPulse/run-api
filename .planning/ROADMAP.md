@@ -161,9 +161,10 @@ Plans:
   3. Tour only runs once per volunteer per campaign and the completion state persists across sessions
   4. Volunteer can replay the tour at any time via the help button and sees contextual tooltip icons on key actions
   5. Volunteer sees brief quick-start instructions before beginning canvassing or phone banking
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
+- [ ] 34-00-PLAN.md — Wave 0: install driver.js + create test stub files (Nyquist compliance)
 - [ ] 34-01-PLAN.md — Tour store, useTour hook, step definitions, driver.js CSS overrides
 - [ ] 34-02-PLAN.md — QuickStartCard, TooltipIcon components + data-tour attributes on field components
 - [ ] 34-03-PLAN.md — Route integration: tour triggers, help button wiring, QuickStartCard placement
@@ -223,7 +224,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 31. Canvassing Wizard | 5/5 | Complete    | 2026-03-15 | - |
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
-| 34. Guided Onboarding Tour | v1.4 | 0/3 | Not started | - |
+| 34. Guided Onboarding Tour | v1.4 | 0/4 | Not started | - |
 | 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
