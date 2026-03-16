@@ -36,6 +36,8 @@ import {
 import type { CallListSummary, CallListCreate, CallListUpdate } from "@/types/call-list"
 import type { ColumnDef } from "@tanstack/react-table"
 
+const ALL_VALUE = "__all__"
+
 export const Route = createFileRoute("/campaigns/$campaignId/phone-banking/call-lists/")({
   component: CallListsPage,
 })
@@ -78,7 +80,7 @@ function CallListDialog({
   const form = useForm<CallListFormValues>({
     defaultValues: {
       name: editList?.name ?? "",
-      voter_list_id: "",
+      voter_list_id: ALL_VALUE,
       max_attempts: 3,
       claim_timeout_minutes: 30,
       cooldown_minutes: 60,
@@ -102,7 +104,7 @@ function CallListDialog({
     if (!nextOpen) {
       form.reset({
         name: "",
-        voter_list_id: "",
+        voter_list_id: ALL_VALUE,
         max_attempts: 3,
         claim_timeout_minutes: 30,
         cooldown_minutes: 60,
@@ -117,17 +119,18 @@ function CallListDialog({
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
+      const voterListId = values.voter_list_id === ALL_VALUE ? undefined : values.voter_list_id
       if (isEdit) {
         const updateData: CallListUpdate = {
           name: values.name,
-          voter_list_id: values.voter_list_id || null,
+          voter_list_id: voterListId ?? null,
         }
         await updateMutation.mutateAsync(updateData)
         toast.success("Call list updated")
       } else {
         const createData: CallListCreate = {
           name: values.name,
-          voter_list_id: values.voter_list_id || undefined,
+          voter_list_id: voterListId,
           max_attempts: values.max_attempts,
           claim_timeout_minutes: values.claim_timeout_minutes,
           cooldown_minutes: values.cooldown_minutes,
@@ -174,7 +177,7 @@ function CallListDialog({
                 <SelectValue placeholder="All voters" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All voters</SelectItem>
+                <SelectItem value={ALL_VALUE}>All voters</SelectItem>
                 {voterLists.map((vl) => (
                   <SelectItem key={vl.id} value={vl.id}>
                     {vl.name}

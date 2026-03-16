@@ -732,7 +732,7 @@ function SessionDetailPage() {
 
   const membersById = useMemo(() => {
     const map = new Map<string, CampaignMember>()
-    for (const m of membersData?.items ?? []) {
+    for (const m of membersData ?? []) {
       map.set(m.user_id, m)
     }
     return map
@@ -788,7 +788,7 @@ function SessionDetailPage() {
             campaignId={campaignId}
             sessionId={sessionId}
             membersById={membersById}
-            members={membersData?.items ?? []}
+            members={membersData ?? []}
           />
         </TabsContent>
         <TabsContent value="progress" className="mt-6">
