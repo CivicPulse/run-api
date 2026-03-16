@@ -10,8 +10,8 @@ progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 11
-  completed_plans: 12
-  percent: 85
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 33 of 36 (Offline Queue & Sync)
-Plan: 1 of 2 in current phase -- COMPLETE
+Phase: 33 of 36 (Offline Queue & Sync) -- COMPLETE
+Plan: 2 of 2 in current phase -- COMPLETE
 Status: In Progress
-Last activity: 2026-03-16 — Completed 33-01 offline queue foundations (store, hook, banner)
+Last activity: 2026-03-16 — Completed 33-02 sync engine and mutation interception
 
-Progress: [████████░░] 85% (12/14 v1.4 plans)
+Progress: [█████████░] 93% (13/14 v1.4 plans)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 85% (12/14 v1.4 plans)
 | Phase 32 P02 | 3min | 2 tasks | 5 files |
 | Phase 32 P03 | 27min | 2 tasks | 3 files |
 | Phase 33 P01 | 3min | 2 tasks | 6 files |
+| Phase 33 P02 | 19min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [33-01]: Zustand persist with localStorage (not sessionStorage) for offline queue cross-session survival
 - [33-01]: partialize excludes isSyncing from persistence to prevent stale sync state on reload
 - [33-01]: State 5 (online, items remain) reuses offline-style appearance for consistency
+- [33-02]: Extracted drainQueue as standalone function for direct unit testing without React hook context
+- [33-02]: Call-site onError override on .mutate() prevents default revertOutcome during offline queueing
+- [33-02]: syncedEntryIds set distinguishes our synced entries from entries completed by other volunteers for auto-skip
 
 ### Roadmap Evolution
 
@@ -107,6 +111,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-16T16:05:26Z
-Stopped at: Completed 33-01-PLAN.md
-Resume file: .planning/phases/33-offline-queue-sync/33-02-PLAN.md
+Last session: 2026-03-16T16:27:56Z
+Stopped at: Completed 33-02-PLAN.md
+Resume file: .planning/phases/34-*/34-01-PLAN.md
