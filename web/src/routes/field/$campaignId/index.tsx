@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { RefreshCw } from "lucide-react"
 import { useFieldMe } from "@/hooks/useFieldMe"
+import { useAuthStore } from "@/stores/authStore"
+import { useTourStore, tourKey } from "@/stores/tourStore"
+import { useTour } from "@/hooks/useTour"
+import { welcomeSteps } from "@/components/field/tour/tourSteps"
 import { AssignmentCard } from "@/components/field/AssignmentCard"
 import { AssignmentCardSkeleton } from "@/components/field/AssignmentCardSkeleton"
 import { FieldEmptyState } from "@/components/field/FieldEmptyState"
@@ -14,6 +18,22 @@ function FieldHub() {
   const { campaignId } = Route.useParams()
   const { data, isLoading, isError, refetch } = useFieldMe(campaignId)
   const queryClient = useQueryClient()
+
+  // Tour auto-trigger
+  const user = useAuthStore((state) => state.user)
+  const userId = user?.profile?.sub
+  const key = userId ? tourKey(campaignId, userId) : ""
+  const { startSegment } = useTour(key)
+
+  useEffect(() => {
+    if (!key || !data || isLoading) return
+    const { isSegmentComplete } = useTourStore.getState()
+    if (isSegmentComplete(key, "welcome")) return
+    const timer = setTimeout(() => {
+      startSegment("welcome", welcomeSteps)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [key, data, isLoading, startSegment])
 
   // Pull-to-refresh state
   const [pullState, setPullState] = useState<PullState>("idle")
@@ -96,7 +116,7 @@ function FieldHub() {
       {/* Success state */}
       {data && (
         <>
-          <h2 className="mb-4 text-2xl font-bold">Hey {firstName}!</h2>
+          <h2 data-tour="hub-greeting" className="mb-4 text-2xl font-bold">Hey {firstName}!</h2>
 
           {hasAssignments ? (
             <div className="flex flex-col gap-4">

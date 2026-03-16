@@ -23,7 +23,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { Loader2, AlertCircle, ArrowLeft, SkipForward } from "lucide-react"
+import { Loader2, AlertCircle, ArrowLeft, SkipForward, HelpCircle } from "lucide-react"
+import { useAuthStore } from "@/stores/authStore"
+import { useTourStore, tourKey } from "@/stores/tourStore"
+import { useTour } from "@/hooks/useTour"
+import { phoneBankingSteps } from "@/components/field/tour/tourSteps"
+import { QuickStartCard } from "@/components/field/QuickStartCard"
 
 function PhoneBanking() {
   const { campaignId } = Route.useParams()
@@ -48,6 +53,35 @@ function PhoneBanking() {
     handleCallStarted,
     noEntriesAvailable,
   } = useCallingSession(campaignId, sessionId)
+
+  // Tour auto-trigger
+  const user = useAuthStore((state) => state.user)
+  const userId = user?.profile?.sub
+  const key = userId ? tourKey(campaignId, userId) : ""
+  const { startSegment } = useTour(key)
+
+  const shouldShowQS = useTourStore((s) => {
+    if (!key || s.isRunning) return false
+    const counts = s.sessionCounts[key]
+    const dismissed = s.dismissedThisSession[key]
+    return (counts?.phoneBanking ?? 0) < 3 && !dismissed?.phoneBanking
+  })
+
+  useEffect(() => {
+    if (!key || !currentEntry) return
+    const { isSegmentComplete } = useTourStore.getState()
+    if (isSegmentComplete(key, "phoneBanking")) return
+    const timer = setTimeout(() => {
+      startSegment("phoneBanking", phoneBankingSteps)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [key, currentEntry, startSegment])
+
+  useEffect(() => {
+    if (!key || !currentEntry) return
+    const { incrementSession } = useTourStore.getState()
+    incrementSession(key, "phoneBanking")
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Local state
   const [surveyOpen, setSurveyOpen] = useState(false)
@@ -207,8 +241,17 @@ function PhoneBanking() {
         <h1 className="flex-1 text-center text-sm font-semibold truncate">
           Phone Banking
         </h1>
-        {/* Spacer to balance layout */}
-        <div className="w-11" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="min-h-11 min-w-11"
+          aria-label="Help"
+          data-tour="help-button"
+          onClick={() => key && startSegment("phoneBanking", phoneBankingSteps)}
+        >
+          <HelpCircle className="h-5 w-5 text-muted-foreground" />
+        </Button>
+        {/* Spacer for avatar (not shown in calling view) */}
         <div className="w-11" />
       </header>
 
@@ -223,6 +266,15 @@ function PhoneBanking() {
       >
         {ariaAnnouncement}
       </div>
+
+      {shouldShowQS && (
+        <div className="px-4 pt-2">
+          <QuickStartCard
+            type="phoneBanking"
+            onDismiss={() => useTourStore.getState().dismissQuickStart(key, "phoneBanking")}
+          />
+        </div>
+      )}
 
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto p-4">
@@ -255,6 +307,7 @@ function PhoneBanking() {
           className="min-h-11"
           onClick={handleSkip}
           aria-label="Skip this voter and move to next"
+          data-tour="skip-button"
         >
           <SkipForward className="h-4 w-4 mr-1" />
           Skip
@@ -262,7 +315,7 @@ function PhoneBanking() {
 
         <AlertDialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" className="min-h-11">
+            <Button variant="outline" className="min-h-11" data-tour="end-session-button">
               End Session
             </Button>
           </AlertDialogTrigger>

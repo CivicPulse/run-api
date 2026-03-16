@@ -6,10 +6,15 @@ import { HouseholdCard } from "@/components/field/HouseholdCard"
 import { InlineSurvey } from "@/components/field/InlineSurvey"
 import { useResumePrompt } from "@/components/field/ResumePrompt"
 import { DoorListView } from "@/components/field/DoorListView"
+import { QuickStartCard } from "@/components/field/QuickStartCard"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useWalkList } from "@/hooks/useWalkLists"
+import { useTour } from "@/hooks/useTour"
 import { useCanvassingStore } from "@/stores/canvassingStore"
+import { useAuthStore } from "@/stores/authStore"
+import { useTourStore, tourKey } from "@/stores/tourStore"
+import { canvassingSteps } from "@/components/field/tour/tourSteps"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Link } from "@tanstack/react-router"
@@ -41,6 +46,36 @@ function Canvassing() {
     handleBulkNotHome,
     handleJumpToAddress,
   } = useCanvassingWizard(campaignId, walkListId)
+
+  // Tour auto-trigger
+  const user = useAuthStore((state) => state.user)
+  const userId = user?.profile?.sub
+  const key = userId ? tourKey(campaignId, userId) : ""
+  const { startSegment } = useTour(key)
+  const isRunning = useTourStore((s) => s.isRunning)
+
+  const shouldShowQS = useTourStore((s) => {
+    if (!key || s.isRunning) return false
+    const counts = s.sessionCounts[key]
+    const dismissed = s.dismissedThisSession[key]
+    return (counts?.canvassing ?? 0) < 3 && !dismissed?.canvassing
+  })
+
+  useEffect(() => {
+    if (!key || !currentHousehold) return
+    const { isSegmentComplete } = useTourStore.getState()
+    if (isSegmentComplete(key, "canvassing")) return
+    const timer = setTimeout(() => {
+      startSegment("canvassing", canvassingSteps)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [key, currentHousehold, startSegment])
+
+  useEffect(() => {
+    if (!key || !currentHousehold) return
+    const { incrementSession } = useTourStore.getState()
+    incrementSession(key, "canvassing")
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Walk list detail for script_id
   const { data: walkListDetail } = useWalkList(campaignId, walkListId)
@@ -279,11 +314,21 @@ function Canvassing() {
           size="sm"
           onClick={() => setListViewOpen(true)}
           className="min-h-11"
+          data-tour="door-list-button"
         >
           <List className="h-4 w-4 mr-1" />
           All Doors
         </Button>
       </div>
+
+      {shouldShowQS && (
+        <div className="px-4 pt-2">
+          <QuickStartCard
+            type="canvassing"
+            onDismiss={() => useTourStore.getState().dismissQuickStart(key, "canvassing")}
+          />
+        </div>
+      )}
 
       <div
         aria-live="polite"
