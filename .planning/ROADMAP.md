@@ -178,11 +178,12 @@ Plans:
   2. All interactive elements meet WCAG 2.5.5 minimum touch target size (44x44px) and WCAG AA color contrast, verified via audit
   3. Volunteer sees milestone celebration toasts at 25%, 50%, 75%, and 100% completion of their assignment
   4. Voter context card shows name, party, age, and propensity before each interaction in both canvassing and phone banking
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 35-01: TBD
-- [ ] 35-02: TBD
+- [ ] 35-01-PLAN.md — ARIA landmarks, screen reader labels, and color contrast fixes
+- [ ] 35-02-PLAN.md — Milestone celebration toasts and canvassing CompletionSummary
+- [ ] 35-03-PLAN.md — Touch target fixes and Playwright CI audit test
 
 ## Progress
 
@@ -225,7 +226,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
-| 35. Accessibility Audit & Polish | v1.4 | 0/0 | Not started | - |
+| 35. Accessibility Audit & Polish | v1.4 | 0/3 | Not started | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
 
