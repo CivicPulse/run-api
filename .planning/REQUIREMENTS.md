@@ -44,11 +44,11 @@
 
 ### Offline & Sync
 
-- [ ] **SYNC-01**: Volunteer can record door-knock outcomes while offline; they queue locally
+- [x] **SYNC-01**: Volunteer can record door-knock outcomes while offline; they queue locally
 - [ ] **SYNC-02**: Queued interactions automatically sync when connectivity resumes
-- [ ] **SYNC-03**: Volunteer sees a visible offline indicator when connectivity is lost
+- [x] **SYNC-03**: Volunteer sees a visible offline indicator when connectivity is lost
 - [ ] **SYNC-04**: Volunteer receives updated walk list status (houses contacted by others) when connectivity resumes
-- [ ] **SYNC-05**: Volunteer can record phone banking outcomes while offline; they queue locally
+- [x] **SYNC-05**: Volunteer can record phone banking outcomes while offline; they queue locally
 
 ### Accessibility
 
@@ -112,11 +112,11 @@
 | TOUR-04 | Phase 34 | Pending |
 | TOUR-05 | Phase 34 | Pending |
 | TOUR-06 | Phase 34 | Pending |
-| SYNC-01 | Phase 33 | Pending |
+| SYNC-01 | Phase 33 | Complete |
 | SYNC-02 | Phase 33 | Pending |
-| SYNC-03 | Phase 33 | Pending |
+| SYNC-03 | Phase 33 | Complete |
 | SYNC-04 | Phase 33 | Pending |
-| SYNC-05 | Phase 33 | Pending |
+| SYNC-05 | Phase 33 | Complete |
 | A11Y-01 | Phase 35 | Pending |
 | A11Y-02 | Phase 35 | Pending |
 | A11Y-03 | Phase 35 | Pending |
