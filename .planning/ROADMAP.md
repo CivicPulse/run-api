@@ -185,10 +185,26 @@ Plans:
 - [ ] 35-02-PLAN.md — Milestone celebration toasts and canvassing CompletionSummary
 - [ ] 35-03-PLAN.md — Touch target fixes and Playwright CI audit test
 
+### Phase 36: Google Maps Navigation Link for Canvassing
+**Goal:** Dedicated Navigate buttons in field mode and "View on Map" links on admin pages give canvassers and managers one-tap Google Maps walking directions to voter addresses
+**Depends on:** Phase 35
+**Requirements**: P36-01, P36-02, P36-03, P36-04, P36-05
+**Success Criteria** (what must be TRUE):
+  1. HouseholdCard shows a dedicated "Navigate to Address" button instead of tappable address text
+  2. Navigate button opens Google Maps with walking directions in a new tab
+  3. Navigate button is disabled with tooltip when all address fields are null/empty
+  4. DoorListView rows have MapPin icon buttons linking to Google Maps
+  5. Voter detail page shows "View on Map" link below registration address
+**Plans:** 2 plans
+
+Plans:
+- [ ] 36-01-PLAN.md — Utility refactor, HouseholdCard Navigate button, DoorListView map icon, e2e tests
+- [ ] 36-02-PLAN.md — Admin-side "View on Map" links on voter detail and walk list detail pages
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35 → 36
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -227,13 +243,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
 | 35. Accessibility Audit & Polish | 4/4 | Complete    | 2026-03-16 | - |
-
-### Phase 36: Google Maps Navigation Link for Canvassing
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 35
-**Plans:** 4/4 plans complete
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 36 to break down)
+| 36. Google Maps Navigation Link for Canvassing | v1.4 | 0/2 | In Progress | - |
