@@ -48,11 +48,11 @@ Exceptions: All interactive touch targets must have a minimum 44x44px hit area (
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (text-sm) | 400 (font-normal) | 1.5 |
-| Label | 14px (text-sm) | 500 (font-medium) | 1.5 |
+| Label | 14px (text-sm) | 600 (font-semibold) | 1.5 |
 | Heading | 20px (text-xl) | 600 (font-semibold) | 1.2 |
 | Caption | 12px (text-xs) | 400 (font-normal) | 1.5 |
 
-Note: This phase does not introduce new typography. Existing field mode typography is confirmed correct. FieldHeader title uses `text-sm font-semibold`. Completion headings use `text-xl font-semibold`. Body content uses `text-sm` or `text-base`.
+Two-weight scale: 400 (font-normal) for body and caption text, 600 (font-semibold) for labels and headings. No intermediate weights. This phase does not introduce new typography. Existing field mode typography is confirmed correct. FieldHeader title uses `text-sm font-semibold`. Completion headings use `text-xl font-semibold`. Body content uses `text-sm` or `text-base`.
 
 ---
 
@@ -207,7 +207,7 @@ New component modeled on existing phone banking `CompletionSummary`:
 | Not Home | Count of not_home outcomes |
 | Other | Remaining outcome count |
 
-Layout: Same as phone banking CompletionSummary -- centered Card with CheckCircle2 icon, heading, body, stats list, "Back to Hub" button.
+Layout: Same as phone banking CompletionSummary -- centered Card with CheckCircle2 icon, heading, body, stats list, "Back to Hub" button. Focal point: The `CheckCircle2` icon (rendered at 48px in the accent/success color) paired with the "Great work!" heading serves as the primary visual anchor, drawing the eye to the center of the card before the user scans the stats below. This mirrors the established phone banking CompletionSummary visual hierarchy.
 
 ---
 
