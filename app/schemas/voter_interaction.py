@@ -24,4 +24,5 @@ class InteractionResponse(BaseSchema):
     type: str
     payload: dict
     created_by: str
+    created_by_name: str | None = None
     created_at: datetime

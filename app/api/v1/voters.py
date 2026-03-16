@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -197,3 +197,29 @@ async def update_voter(
     except ValueError as exc:
         raise VoterNotFoundError(voter_id) from exc
     return VoterResponse.model_validate(voter)
+
+
+@router.delete(
+    "/campaigns/{campaign_id}/voters/{voter_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_voter(
+    campaign_id: uuid.UUID,
+    voter_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a voter record.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        await _service.delete_voter(db, voter_id)
+    except ValueError as exc:
+        raise VoterNotFoundError(voter_id) from exc
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

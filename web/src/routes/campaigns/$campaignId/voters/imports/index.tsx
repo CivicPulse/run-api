@@ -1,4 +1,6 @@
+import { useState } from "react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { MoreHorizontal, Upload } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -9,10 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { DataTable } from "@/components/shared/DataTable"
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { RequireRole } from "@/components/shared/RequireRole"
-import { useImports } from "@/hooks/useImports"
+import { useImports, useDeleteImport } from "@/hooks/useImports"
 import type { ImportJob, ImportStatus } from "@/types/import-job"
 
 // ---------------------------------------------------------------------------
@@ -44,6 +47,21 @@ function ImportsHistoryPage() {
 
   const { data, isLoading } = useImports(campaignId)
   const items = data?.items ?? []
+
+  // Delete dialog state
+  const [deleteJob, setDeleteJob] = useState<ImportJob | null>(null)
+  const deleteImport = useDeleteImport(campaignId, deleteJob?.id ?? "")
+
+  const handleDelete = async () => {
+    if (!deleteJob) return
+    try {
+      await deleteImport.mutateAsync()
+      toast.success("Import deleted")
+      setDeleteJob(null)
+    } catch {
+      toast.error("Failed to delete import")
+    }
+  }
 
   const columns: ColumnDef<ImportJob>[] = [
     {
@@ -110,6 +128,12 @@ function ImportsHistoryPage() {
                   Download error report
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeleteJob(job)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -156,6 +180,19 @@ function ImportsHistoryPage() {
         ) : (
           <DataTable columns={columns} data={items} isLoading={isLoading} />
         )}
+
+        {/* Delete Import Dialog */}
+        <DestructiveConfirmDialog
+          open={!!deleteJob}
+          onOpenChange={(open) => {
+            if (!open) setDeleteJob(null)
+          }}
+          title={`Delete import "${deleteJob?.original_filename ?? "import"}"?`}
+          description="This will permanently remove the import record. Voters already imported will not be affected."
+          confirmText={deleteJob?.original_filename ?? ""}
+          onConfirm={handleDelete}
+          isPending={deleteImport.isPending}
+        />
       </div>
     </RequireRole>
   )

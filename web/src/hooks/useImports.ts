@@ -147,6 +147,20 @@ export function useImports(campaignId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// useDeleteImport — DELETE /api/v1/campaigns/{campaignId}/imports/{jobId}
+// Returns 204 No Content.
+// ---------------------------------------------------------------------------
+export function useDeleteImport(campaignId: string, jobId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.delete(`api/v1/campaigns/${campaignId}/imports/${jobId}`).json(),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: importKeys.all(campaignId) }),
+  })
+}
+
+// ---------------------------------------------------------------------------
 // useImportTemplates — GET /api/v1/campaigns/{campaignId}/imports/templates
 // Returns ImportTemplate[]
 // ---------------------------------------------------------------------------

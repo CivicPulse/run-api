@@ -126,6 +126,8 @@ function VolunteerRegisterPage() {
         const result = await createVolunteer.mutateAsync(
           payload as unknown as Parameters<typeof createVolunteer.mutateAsync>[0],
         )
+        form.reset()
+        setPreFilled(false)
         toast.success("Volunteer created")
         navigate({
           to: "/campaigns/$campaignId/volunteers/$volunteerId",
@@ -135,6 +137,8 @@ function VolunteerRegisterPage() {
         const result = await selfRegister.mutateAsync(
           payload as unknown as Parameters<typeof selfRegister.mutateAsync>[0],
         )
+        form.reset()
+        setPreFilled(false)
         toast.success("You're registered!")
         navigate({
           to: "/campaigns/$campaignId/volunteers/$volunteerId",

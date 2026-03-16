@@ -51,11 +51,13 @@ async def list_members(
 
     members = []
     for member, member_user in rows:
+        display_name = member_user.display_name or ""
+        email = member_user.email or ""
         members.append(
             MemberResponse(
                 user_id=member.user_id,
-                display_name=member_user.display_name,
-                email=member_user.email,
+                display_name=display_name if display_name.strip() else "Unknown",
+                email=email if email.strip() else "",
                 role="member",  # Default; real role comes from ZITADEL
                 synced_at=member.synced_at,
             )

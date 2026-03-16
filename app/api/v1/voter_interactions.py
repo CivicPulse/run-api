@@ -5,12 +5,14 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.rls import set_campaign_context
 from app.db.session import get_db
+from app.models.user import User
 from app.models.voter_interaction import InteractionType
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter_interaction import InteractionCreateRequest, InteractionResponse
@@ -62,8 +64,25 @@ async def get_voter_interactions(
         limit=limit,
     )
 
+    # Resolve user display names for created_by IDs
+    user_ids = {e.created_by for e in page.items}
+    user_name_map: dict[str, str] = {}
+    if user_ids:
+        user_result = await db.execute(
+            select(User.id, User.display_name).where(User.id.in_(user_ids))
+        )
+        for uid, display_name in user_result.all():
+            if display_name:
+                user_name_map[uid] = display_name
+
+    items = []
+    for e in page.items:
+        resp = InteractionResponse.model_validate(e)
+        resp.created_by_name = user_name_map.get(e.created_by)
+        items.append(resp)
+
     return PaginatedResponse[InteractionResponse](
-        items=[InteractionResponse.model_validate(e) for e in page.items],
+        items=items,
         pagination=PaginationResponse(
             next_cursor=page.next_cursor,
             has_more=page.has_more,
@@ -108,4 +127,13 @@ async def create_voter_interaction(
     )
     await db.commit()
 
-    return InteractionResponse.model_validate(interaction)
+    resp = InteractionResponse.model_validate(interaction)
+    # Resolve display name for the creating user
+    user_result = await db.execute(
+        select(User.display_name).where(User.id == user.id)
+    )
+    display_name = user_result.scalar_one_or_none()
+    if display_name:
+        resp.created_by_name = display_name
+
+    return resp

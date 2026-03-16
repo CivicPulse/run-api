@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { api } from "@/api/client"
 import type { Voter, VoterInteraction, VoterCreate, VoterUpdate, VoterSearchBody } from "@/types/voter"
 import type { PaginatedResponse } from "@/types/common"
@@ -72,6 +73,19 @@ export function useUpdateVoter(campaignId: string, voterId: string) {
       queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
       queryClient.invalidateQueries({ queryKey: ["voters", campaignId, voterId] })
     },
+  })
+}
+
+export function useDeleteVoter(campaignId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (voterId: string) =>
+      api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}`).json<void>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voters", campaignId] })
+      toast.success("Voter deleted")
+    },
+    onError: () => toast.error("Failed to delete voter"),
   })
 }
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -292,6 +292,45 @@ async def get_import_status(
         )
 
     return response
+
+
+@router.delete(
+    "/campaigns/{campaign_id}/imports/{import_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_import(
+    campaign_id: uuid.UUID,
+    import_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an import job record.
+
+    Requires admin role.
+
+    Args:
+        campaign_id: Campaign UUID.
+        import_id: Import job UUID.
+        user: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        204 No Content on success.
+    """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
+
+    job = await db.get(ImportJob, import_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Import job not found",
+        )
+
+    await db.delete(job)
+    await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

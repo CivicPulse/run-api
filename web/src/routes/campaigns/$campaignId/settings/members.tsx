@@ -160,16 +160,33 @@ function MembersSettings() {
       accessorKey: "display_name",
       header: "Name",
       enableSorting: true,
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.display_name}</span>
-      ),
+      cell: ({ row }) => {
+        const name = row.original.display_name
+        return (
+          <div>
+            <span className="font-medium">
+              {name || "Unknown"}
+            </span>
+            {!name && (
+              <span className="block text-xs text-muted-foreground" title={row.original.user_id}>
+                {row.original.user_id.slice(0, 12)}...
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "email",
       header: "Email",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{row.original.email}</span>
-      ),
+      cell: ({ row }) => {
+        const email = row.original.email
+        return (
+          <span className="text-muted-foreground">
+            {email || "No email"}
+          </span>
+        )
+      },
     },
     {
       accessorKey: "role",

@@ -455,6 +455,24 @@ class VoterService:
         await db.refresh(voter)
         return voter
 
+    async def delete_voter(
+        self,
+        db: AsyncSession,
+        voter_id: uuid.UUID,
+    ) -> None:
+        """Delete a voter record.
+
+        Args:
+            db: Async database session.
+            voter_id: The voter UUID.
+
+        Raises:
+            ValueError: If voter not found.
+        """
+        voter = await self.get_voter(db, voter_id)
+        await db.delete(voter)
+        await db.flush()
+
     # --- Tag operations ---
 
     async def create_tag(

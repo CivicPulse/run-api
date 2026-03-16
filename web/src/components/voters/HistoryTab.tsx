@@ -23,6 +23,9 @@ function formatTimestamp(dateStr: string): string {
   })
 }
 
+const formatEventType = (type: string) =>
+  type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+
 export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
   const [noteText, setNoteText] = useState("")
 
@@ -92,8 +95,8 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
                 className="border rounded-lg p-3 space-y-1"
               >
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {interaction.type}
+                  <Badge variant="outline" className="text-xs">
+                    {formatEventType(interaction.type)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {formatTimestamp(interaction.created_at)}
@@ -103,7 +106,9 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
                   <p className="text-sm text-foreground">{interaction.payload.text}</p>
                 )}
                 {interaction.created_by && (
-                  <p className="text-xs text-muted-foreground">by {interaction.created_by}</p>
+                  <p className="text-xs text-muted-foreground">
+                    by {interaction.created_by_name || interaction.created_by}
+                  </p>
                 )}
               </div>
             ))}

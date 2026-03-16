@@ -41,7 +41,7 @@ export function useVoterListVoters(campaignId: string, listId: string) {
     queryKey: listKeys.members(campaignId, listId),
     queryFn: () =>
       api
-        .get(`api/v1/campaigns/${campaignId}/lists/${listId}/members`)
+        .get(`api/v1/campaigns/${campaignId}/lists/${listId}/voters`)
         .json<PaginatedResponse<Voter>>(),
     enabled: !!campaignId && !!listId,
   })

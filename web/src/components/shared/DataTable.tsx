@@ -6,6 +6,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
+import { cn } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -77,7 +78,7 @@ export function DataTable<TData>({
     (hasNextPage || hasPreviousPage)
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 overflow-x-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -89,7 +90,10 @@ export function DataTable<TData>({
                   <TableHead
                     key={header.id}
                     onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                    className={canSort ? "cursor-pointer select-none" : undefined}
+                    className={cn(
+                      canSort && "cursor-pointer select-none",
+                      (header.column.columnDef.meta as Record<string, string> | undefined)?.className,
+                    )}
                   >
                     <span className="inline-flex items-center gap-1">
                       {header.isPlaceholder
@@ -144,7 +148,13 @@ export function DataTable<TData>({
                 onClick={() => onRowClick?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-3">
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "py-3",
+                      (cell.column.columnDef.meta as Record<string, string> | undefined)?.className,
+                    )}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
