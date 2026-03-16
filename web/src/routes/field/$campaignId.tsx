@@ -1,11 +1,16 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
 import { FieldHeader } from "@/components/field/FieldHeader"
+import { OfflineBanner } from "@/components/field/OfflineBanner"
+import { useSyncEngine } from "@/hooks/useSyncEngine"
 import { useFieldMe } from "@/hooks/useFieldMe"
 
 function FieldLayout() {
   const { campaignId } = Route.useParams()
   const location = useRouterState({ select: (s) => s.location })
   const { data } = useFieldMe(campaignId)
+
+  // Activate offline sync engine for all field screens
+  useSyncEngine()
 
   // Hub is when there's no sub-path after the campaignId
   const isHub = location.pathname.replace(/\/$/, "") === `/field/${campaignId}`
@@ -32,6 +37,7 @@ function FieldLayout() {
         title={title}
         showBack={!isHub}
       />
+      <OfflineBanner />
       <main className="flex-1 px-4 pb-4">
         <Outlet />
       </main>

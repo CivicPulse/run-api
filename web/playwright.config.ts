@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
 
+// Allow self-signed certs for local HTTPS preview server
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -9,7 +12,8 @@ export default defineConfig({
   reporter: process.env.CI ? "html" : "list",
 
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: "https://localhost:4173",
+    ignoreHTTPSErrors: true,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -23,8 +27,8 @@ export default defineConfig({
 
   webServer: {
     command: "npm run preview",
-    url: "http://localhost:4173",
+    url: "https://localhost:4173",
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 })
