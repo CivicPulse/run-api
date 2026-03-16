@@ -195,7 +195,7 @@ Plans:
   3. Navigate button is disabled with tooltip when all address fields are null/empty
   4. DoorListView rows have MapPin icon buttons linking to Google Maps
   5. Voter detail page shows "View on Map" link below registration address
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 36-01-PLAN.md — Utility refactor, HouseholdCard Navigate button, DoorListView map icon, e2e tests
@@ -243,4 +243,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35 → 36
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
 | 35. Accessibility Audit & Polish | 4/4 | Complete    | 2026-03-16 | - |
-| 36. Google Maps Navigation Link for Canvassing | v1.4 | 0/2 | In Progress | - |
+| 36. Google Maps Navigation Link for Canvassing | 1/2 | In Progress|  | - |

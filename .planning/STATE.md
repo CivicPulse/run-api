@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: completed
-stopped_at: Phase 36 context gathered
-last_updated: "2026-03-16T20:34:10.910Z"
-last_activity: 2026-03-16 — Completed 35-04 gap closure TypeScript fixes
+stopped_at: Completed 36-01-PLAN.md
+last_updated: "2026-03-16T21:06:10Z"
+last_activity: 2026-03-16 — Completed 36-01 Google Maps navigation links
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 21
-  completed_plans: 21
+  completed_phases: 7
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 35 — Accessibility Audit & Polish
+**Current focus:** Phase 36 — Google Maps Navigation Link for Canvassing
 
 ## Current Position
 
-Phase: 35 of 36 (Accessibility Audit & Polish)
-Plan: 4 of 4 in current phase (gap closure complete)
+Phase: 36 of 36 (Google Maps Navigation Link for Canvassing)
+Plan: 1 of 1 in current phase (complete)
 Status: Phase Complete
-Last activity: 2026-03-16 — Completed 35-04 gap closure TypeScript fixes
+Last activity: 2026-03-16 — Completed 36-01 Google Maps navigation links
 
-Progress: [██████████] 100% (21/21 v1.4 plans)
+Progress: [██████████] 100% (22/22 v1.4 plans)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100% (21/21 v1.4 plans)
 | Phase 35 P01 | 3min | 2 tasks | 9 files |
 | Phase 35 P03 | 17min | 2 tasks | 3 files |
 | Phase 35 P04 | 2min | 1 tasks | 2 files |
+| Phase 36 P01 | 15min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ Recent decisions affecting current work:
 - [Phase 35]: WCAG AA contrast: use -800 text on -100 backgrounds for colored badges
 - [35-03]: Touch target Playwright test uses page.route() mocking for CI-compatible field route auditing
 - [35-04]: Only fix phase-35-introduced TS errors; pre-existing errors left untouched per plan scope
+- [36-01]: HasRegistrationAddress Pick type enables reuse across VoterDetail and Voter types
+- [36-01]: Walking travelmode default since canvassers are on foot
+- [36-01]: Disabled button wrapped in span for tooltip hover on non-interactive disabled element
 
 ### Roadmap Evolution
 
@@ -129,6 +133,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-16T20:34:10.899Z
-Stopped at: Phase 36 context gathered
-Resume file: .planning/phases/36-google-maps-navigation-link-for-canvassing/36-CONTEXT.md
+Last session: 2026-03-16T21:06:10Z
+Stopped at: Completed 36-01-PLAN.md
+Resume file: .planning/phases/36-google-maps-navigation-link-for-canvassing/36-01-SUMMARY.md
