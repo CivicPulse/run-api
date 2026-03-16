@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: completed
 stopped_at: Completed 36-02-PLAN.md
-last_updated: "2026-03-16T21:39:44Z"
+last_updated: "2026-03-16T21:44:41.733Z"
 last_activity: 2026-03-16 — Completed 36-02 Admin View on Map links
 progress:
   total_phases: 7
