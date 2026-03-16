@@ -1,10 +1,11 @@
 ---
 phase: 35
 slug: accessibility-audit-polish
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-16
+nyquist_filled: 2026-03-16
 ---
 
 # Phase 35 — Validation Strategy
@@ -38,12 +39,12 @@ created: 2026-03-16
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 35-01-01 | 01 | 1 | A11Y-01 | e2e | `npx playwright test --grep "aria-label\|landmark"` | ❌ W0 | ⬜ pending |
-| 35-01-02 | 01 | 1 | A11Y-02 | e2e | `npx playwright test --grep "touch-target"` | ❌ W0 | ⬜ pending |
-| 35-01-03 | 01 | 1 | A11Y-03 | e2e | `npx playwright test --grep "contrast"` | ❌ W0 | ⬜ pending |
-| 35-02-01 | 02 | 1 | POLISH-01 | e2e | `npx playwright test --grep "milestone"` | ❌ W0 | ⬜ pending |
-| 35-02-02 | 02 | 1 | POLISH-02 | e2e | `npx playwright test --grep "voter-context"` | ❌ W0 | ⬜ pending |
-| 35-02-03 | 02 | 1 | POLISH-03 | e2e | `npx playwright test --grep "completion"` | ❌ W0 | ⬜ pending |
+| 35-01-01 | 01 | 1 | A11Y-01 | e2e | `cd web && npx playwright test e2e/phase35-a11y-audit.spec.ts` | ✅ | ✅ green |
+| 35-01-02 | 01 | 1 | A11Y-02 | e2e | `cd web && npx playwright test e2e/phase35-touch-targets.spec.ts` | ✅ | ✅ green |
+| 35-01-03 | 01 | 1 | A11Y-03 | e2e | `cd web && npx playwright test e2e/phase35-a11y-audit.spec.ts` | ✅ | ✅ green |
+| 35-02-01 | 02 | 1 | POLISH-01 | e2e | `cd web && npx playwright test e2e/phase35-milestone-toasts.spec.ts` | ✅ | ✅ green |
+| 35-02-02 | 02 | 1 | POLISH-02 | e2e | `cd web && npx playwright test e2e/phase35-voter-context.spec.ts` | ✅ | ✅ green |
+| 35-02-03 | 02 | 1 | POLISH-03 | e2e | `cd web && npx playwright test e2e/phase35-voter-context.spec.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,11 +52,17 @@ created: 2026-03-16
 
 ## Wave 0 Requirements
 
-- [ ] `web/e2e/phase35-a11y-audit.spec.ts` — stubs for A11Y-01, A11Y-02, A11Y-03
-- [ ] `web/e2e/phase35-milestone-toasts.spec.ts` — stubs for POLISH-01
-- [ ] `web/e2e/phase35-voter-context.spec.ts` — stubs for POLISH-02, POLISH-03
+- [x] `web/e2e/phase35-a11y-audit.spec.ts` — A11Y-01 (ARIA landmarks, voter name labels), A11Y-03 (contrast classes)
+- [x] `web/e2e/phase35-milestone-toasts.spec.ts` — POLISH-01 (milestone toasts, sessionStorage dedup, auto-dismiss)
+- [x] `web/e2e/phase35-voter-context.spec.ts` — POLISH-02 (VoterCard/CallingVoterCard fields), POLISH-03 (CanvassingCompletionSummary)
 
 *Existing Playwright infrastructure covers framework needs — only test files needed.*
+
+---
+
+## Nyquist Notes
+
+**POLISH-01 toast behavior clarification:** `checkMilestone` fires thresholds sequentially (one per call, lowest-first). At 100% completion with no prior milestones, the first call fires the 25% toast. Subsequent `checkMilestone` calls fire 50%, 75%, 100% in order. Tests verify this correct implementation behavior. The `sessionStorage` key is populated immediately on first threshold fire.
 
 ---
 
@@ -70,11 +77,21 @@ created: 2026-03-16
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 45s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 45s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** green — all gaps filled by Nyquist audit 2026-03-16
+
+---
+
+## Validation Audit 2026-03-16
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 5 |
+| Resolved | 5 |
+| Escalated | 0 |
