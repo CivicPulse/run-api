@@ -295,3 +295,85 @@ test.describe("Phase 36: Google Maps Navigation Links", () => {
     await expect(firstAddress).toBeVisible()
   })
 })
+
+test.describe("P36-05: Admin View on Map links", () => {
+  test("Voter detail shows View on Map link with Google Maps URL", async ({ page }) => {
+    // Mock campaign endpoint and catch-all API to prevent 500s from missing backend
+    await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}`, (route) => {
+      const url = route.request().url()
+      // Only match the exact campaign endpoint, not sub-paths
+      if (url.endsWith(`/campaigns/${CAMPAIGN_ID}`) || url.endsWith(`/campaigns/${CAMPAIGN_ID}/`)) {
+        return route.fulfill({
+          json: {
+            id: CAMPAIGN_ID,
+            name: "Test Campaign",
+            type: "general",
+            status: "active",
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        })
+      }
+      return route.fallback()
+    })
+
+    const MOCK_VOTER = {
+      id: "v1",
+      campaign_id: CAMPAIGN_ID,
+      source_type: "import",
+      source_id: null,
+      first_name: "Alice",
+      middle_name: null,
+      last_name: "Smith",
+      suffix: null,
+      date_of_birth: "1984-03-15",
+      gender: "F",
+      party: "DEM",
+      age: 42,
+      registration_line1: "123 Elm St",
+      registration_line2: null,
+      registration_city: "Springfield",
+      registration_state: "OH",
+      registration_zip: "45501",
+      registration_zip4: null,
+      registration_county: "Clark",
+      registration_apartment_type: null,
+      registration_date: "2010-01-15",
+      mailing_line1: null, mailing_line2: null, mailing_city: null,
+      mailing_state: null, mailing_zip: null, mailing_zip4: null,
+      mailing_country: null, mailing_type: null,
+      precinct: null, congressional_district: null,
+      state_senate_district: null, state_house_district: null,
+      propensity_general: null, propensity_primary: null, propensity_combined: null,
+      ethnicity: null, spoken_language: null, marital_status: null,
+      military_status: null, household_size: null,
+      household_party_registration: null, family_id: null,
+      cell_phone_confidence: null, voting_history: null,
+      party_change_indicator: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    }
+
+    await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}/voters/v1`, (route) =>
+      route.fulfill({ json: MOCK_VOTER })
+    )
+    await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}/voters/v1/interactions*`, (route) =>
+      route.fulfill({ json: { items: [] } })
+    )
+
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/v1`)
+
+    // Find "View on Map" link
+    const mapLink = page.getByRole("link", { name: /view on map/i })
+    await expect(mapLink).toBeVisible()
+
+    // Verify href
+    const href = await mapLink.getAttribute("href")
+    expect(href).toContain("google.com/maps/dir/")
+    expect(href).toContain("travelmode=walking")
+    expect(href).toContain("destination=")
+
+    // Verify opens in new tab
+    await expect(mapLink).toHaveAttribute("target", "_blank")
+  })
+})

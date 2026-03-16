@@ -29,6 +29,7 @@ export default defineConfig({
     command: "npm run preview",
     url: "https://localhost:4173",
     reuseExistingServer: !process.env.CI,
+    ignoreHTTPSErrors: true,
     timeout: 60_000,
   },
 })
