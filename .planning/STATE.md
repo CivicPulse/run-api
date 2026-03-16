@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: completed
-stopped_at: Completed 36-02-PLAN.md
-last_updated: "2026-03-16T21:44:41.733Z"
-last_activity: 2026-03-16 — Completed 36-02 Admin View on Map links
+stopped_at: Completed 37-01-PLAN.md
+last_updated: "2026-03-16T23:13:54.256Z"
+last_activity: 2026-03-16 — Completed 37-01 Offline Sync Integration Fixes
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 23
-  completed_plans: 23
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 24
+  completed_plans: 24
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 36 — Google Maps Navigation Link for Canvassing
+**Current focus:** Phase 37 — Offline Sync Integration Fixes
 
 ## Current Position
 
-Phase: 36 of 36 (Google Maps Navigation Link for Canvassing)
-Plan: 2 of 2 in current phase (complete)
+Phase: 37 of 38 (Offline Sync Integration Fixes)
+Plan: 1 of 1 in current phase (complete)
 Status: Phase Complete
-Last activity: 2026-03-16 — Completed 36-02 Admin View on Map links
+Last activity: 2026-03-16 — Completed 37-01 Offline Sync Integration Fixes
 
-Progress: [██████████] 100% (23/23 v1.4 plans)
+Progress: [██████████] 100% (24/24 v1.4 plans)
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [██████████] 100% (23/23 v1.4 plans)
 | Phase 35 P04 | 2min | 1 tasks | 2 files |
 | Phase 36 P01 | 15min | 2 tasks | 4 files |
 | Phase 36 P02 | 31min | 2 tasks | 4 files |
+| Phase 37 P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Recent decisions affecting current work:
 - [36-01]: Disabled button wrapped in span for tooltip hover on non-interactive disabled element
 - [36-02]: Admin page e2e tests must mock campaign API endpoint for root route data fetching
 - [36-02]: Playwright webServer ignoreHTTPSErrors needed for self-signed cert health checks
+- [Phase 37]: Hook-level onError removed; call sites own error handling for offline-aware context
+- [Phase 37]: field-me invalidation covers all syncedCampaignIds (door_knock and call_record)
 
 ### Roadmap Evolution
 
@@ -136,6 +139,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-16T21:39:44Z
-Stopped at: Completed 36-02-PLAN.md
-Resume file: .planning/phases/36-google-maps-navigation-link-for-canvassing/36-02-SUMMARY.md
+Last session: 2026-03-16T23:13:54.249Z
+Stopped at: Completed 37-01-PLAN.md
+Resume file: None
