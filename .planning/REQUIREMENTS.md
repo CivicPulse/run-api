@@ -35,12 +35,12 @@
 
 ### Onboarding & Help
 
-- [ ] **TOUR-01**: Volunteer sees a guided step-by-step tour on first visit to field mode
-- [ ] **TOUR-02**: Tour is split into segments (welcome, canvassing, phone banking) that run contextually
-- [ ] **TOUR-03**: Tour completion state persists so it only runs once per volunteer per campaign
-- [ ] **TOUR-04**: Volunteer can replay the tour at any time via the help button
-- [ ] **TOUR-05**: Volunteer sees contextual tooltip icons on key actions explaining what they do
-- [ ] **TOUR-06**: Volunteer sees brief quick-start instructions before beginning canvassing or phone banking
+- [x] **TOUR-01**: Volunteer sees a guided step-by-step tour on first visit to field mode
+- [x] **TOUR-02**: Tour is split into segments (welcome, canvassing, phone banking) that run contextually
+- [x] **TOUR-03**: Tour completion state persists so it only runs once per volunteer per campaign
+- [x] **TOUR-04**: Volunteer can replay the tour at any time via the help button
+- [x] **TOUR-05**: Volunteer sees contextual tooltip icons on key actions explaining what they do
+- [x] **TOUR-06**: Volunteer sees brief quick-start instructions before beginning canvassing or phone banking
 
 ### Offline & Sync
 
@@ -106,12 +106,12 @@
 | PHONE-05 | Phase 32 | Complete |
 | PHONE-06 | Phase 32 | Complete |
 | PHONE-07 | Phase 32 | Complete |
-| TOUR-01 | Phase 34 | Pending |
-| TOUR-02 | Phase 34 | Pending |
-| TOUR-03 | Phase 34 | Pending |
-| TOUR-04 | Phase 34 | Pending |
-| TOUR-05 | Phase 34 | Pending |
-| TOUR-06 | Phase 34 | Pending |
+| TOUR-01 | Phase 34 | Complete |
+| TOUR-02 | Phase 34 | Complete |
+| TOUR-03 | Phase 34 | Complete |
+| TOUR-04 | Phase 34 | Complete |
+| TOUR-05 | Phase 34 | Complete |
+| TOUR-06 | Phase 34 | Complete |
 | SYNC-01 | Phase 33 | Complete |
 | SYNC-02 | Phase 33 | Complete |
 | SYNC-03 | Phase 33 | Complete |
