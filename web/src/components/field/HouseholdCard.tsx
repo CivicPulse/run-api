@@ -1,12 +1,19 @@
 import {
   type Household,
   getGoogleMapsUrl,
+  hasAddress,
 } from "@/types/canvassing"
 import { VoterCard } from "@/components/field/VoterCard"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { MapPin, SkipForward } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { MapPin, Navigation2, SkipForward } from "lucide-react"
 import { TooltipIcon } from "@/components/field/TooltipIcon"
 
 interface HouseholdCardProps {
@@ -30,19 +37,49 @@ export function HouseholdCard({
 }: HouseholdCardProps) {
   return (
     <Card className="p-4" data-tour="household-card">
-      {/* Address header */}
-      <a
-        href={getGoogleMapsUrl(household.entries[0].voter)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 cursor-pointer min-h-11"
-      >
+      {/* Address header (plain, non-interactive) */}
+      <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
         <span className="text-lg font-semibold">{household.address}</span>
-      </a>
-      <p className="text-xs text-muted-foreground ml-7">
-        Tap address to navigate
-      </p>
+      </div>
+
+      {/* Navigate button */}
+      {hasAddress(household.entries[0].voter) ? (
+        <Button
+          variant="outline"
+          className="w-full min-h-11 mt-2"
+          asChild
+        >
+          <a
+            href={getGoogleMapsUrl(household.entries[0].voter)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Navigate to ${household.address}`}
+          >
+            <Navigation2 className="h-4 w-4 mr-2" />
+            Navigate to Address
+          </a>
+        </Button>
+      ) : (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="w-full inline-block mt-2">
+                <Button
+                  variant="outline"
+                  className="w-full min-h-11"
+                  disabled
+                  aria-label="Navigate to address (no address available)"
+                >
+                  <Navigation2 className="h-4 w-4 mr-2" />
+                  Navigate to Address
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>No address available</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       {/* Voter sub-cards */}
       <div className="mt-3">

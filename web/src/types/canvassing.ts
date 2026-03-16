@@ -113,8 +113,21 @@ export function groupByHousehold(entries: EnrichedWalkListEntry[]): Household[] 
     }))
 }
 
+/** Any object with registration address fields — works with both VoterDetail and Voter types */
+export type HasRegistrationAddress = Pick<VoterDetail,
+  'registration_line1' | 'registration_city' | 'registration_state' | 'registration_zip'
+>
+
+/** Returns true if voter has at least one address component */
+export function hasAddress(voter: HasRegistrationAddress): boolean {
+  return Boolean(
+    voter.registration_line1 || voter.registration_city ||
+    voter.registration_state || voter.registration_zip
+  )
+}
+
 /** Format voter registration address into a single display string */
-export function formatAddress(voter: VoterDetail): string {
+export function formatAddress(voter: HasRegistrationAddress): string {
   return [
     voter.registration_line1,
     voter.registration_city,
@@ -123,10 +136,10 @@ export function formatAddress(voter: VoterDetail): string {
   ].filter(Boolean).join(", ")
 }
 
-/** Google Maps navigation URL using street address per project feedback */
-export function getGoogleMapsUrl(voter: VoterDetail): string {
+/** Google Maps navigation URL with walking directions per project feedback */
+export function getGoogleMapsUrl(voter: HasRegistrationAddress): string {
   const address = formatAddress(voter)
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=walking`
 }
 
 /** Propensity score display with color badge */

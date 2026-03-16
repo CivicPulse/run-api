@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { Household } from "@/types/canvassing"
+import { type Household, getGoogleMapsUrl } from "@/types/canvassing"
+import { MapPin } from "lucide-react"
 
 interface DoorListViewProps {
   households: Household[]
@@ -89,6 +90,16 @@ export function DoorListView({
                 >
                   {status.label}
                 </Badge>
+                <a
+                  href={getGoogleMapsUrl(household.entries[0].voter)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 shrink-0"
+                  aria-label={`Navigate to ${household.address}`}
+                >
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </a>
               </button>
             )
           })}
