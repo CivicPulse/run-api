@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Volunteer Field Mode
 status: completed
-stopped_at: Completed 36-01-PLAN.md
-last_updated: "2026-03-16T21:06:10Z"
-last_activity: 2026-03-16 — Completed 36-01 Google Maps navigation links
+stopped_at: Completed 36-02-PLAN.md
+last_updated: "2026-03-16T21:39:44Z"
+last_activity: 2026-03-16 — Completed 36-02 Admin View on Map links
 progress:
   total_phases: 7
   completed_phases: 7
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 23
+  completed_plans: 23
   percent: 100
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 36 of 36 (Google Maps Navigation Link for Canvassing)
-Plan: 1 of 1 in current phase (complete)
+Plan: 2 of 2 in current phase (complete)
 Status: Phase Complete
-Last activity: 2026-03-16 — Completed 36-01 Google Maps navigation links
+Last activity: 2026-03-16 — Completed 36-02 Admin View on Map links
 
-Progress: [██████████] 100% (22/22 v1.4 plans)
+Progress: [██████████] 100% (23/23 v1.4 plans)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100% (22/22 v1.4 plans)
 | Phase 35 P03 | 17min | 2 tasks | 3 files |
 | Phase 35 P04 | 2min | 1 tasks | 2 files |
 | Phase 36 P01 | 15min | 2 tasks | 4 files |
+| Phase 36 P02 | 31min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [36-01]: HasRegistrationAddress Pick type enables reuse across VoterDetail and Voter types
 - [36-01]: Walking travelmode default since canvassers are on foot
 - [36-01]: Disabled button wrapped in span for tooltip hover on non-interactive disabled element
+- [36-02]: Admin page e2e tests must mock campaign API endpoint for root route data fetching
+- [36-02]: Playwright webServer ignoreHTTPSErrors needed for self-signed cert health checks
 
 ### Roadmap Evolution
 
@@ -133,6 +136,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-16T21:06:10Z
-Stopped at: Completed 36-01-PLAN.md
-Resume file: .planning/phases/36-google-maps-navigation-link-for-canvassing/36-01-SUMMARY.md
+Last session: 2026-03-16T21:39:44Z
+Stopped at: Completed 36-02-PLAN.md
+Resume file: .planning/phases/36-google-maps-navigation-link-for-canvassing/36-02-SUMMARY.md
