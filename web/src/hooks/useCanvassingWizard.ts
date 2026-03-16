@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useEffect, useRef } from "react"
 import { useCanvassingStore } from "@/stores/canvassingStore"
+import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
   useEnrichedEntries,
   useDoorKnockMutation,
@@ -15,6 +16,7 @@ import type {
   DoorKnockResultCode,
   EnrichedWalkListEntry,
 } from "@/types/canvassing"
+import { toast } from "sonner"
 
 interface OutcomeResult {
   bulkPrompt?: boolean
@@ -96,9 +98,27 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
 
   const handleOutcome = useCallback(
     (entryId: string, voterId: string, result: DoorKnockResultCode): OutcomeResult => {
-      doorKnockMutation.mutate({
+      const payload = {
         walk_list_entry_id: entryId,
         result_code: result,
+      }
+      doorKnockMutation.mutate(payload, {
+        onError: (err) => {
+          // Network error: queue for offline sync instead of reverting
+          if (err instanceof TypeError) {
+            useOfflineQueueStore.getState().push({
+              type: "door_knock",
+              payload,
+              campaignId,
+              resourceId: walkListId,
+            })
+            // Do NOT revert optimistic update -- it stays in canvassingStore
+          } else {
+            // Server error: revert as before
+            useCanvassingStore.getState().revertOutcome(entryId)
+            toast.error("Failed to save outcome. Please try again.")
+          }
+        },
       })
 
       // Check for bulk Not Home prompt at multi-voter household
@@ -138,7 +158,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
 
       return {}
     },
-    [doorKnockMutation, currentHousehold, completedEntries],
+    [doorKnockMutation, currentHousehold, completedEntries, campaignId, walkListId],
   )
 
   const handlePostSurveyAdvance = useCallback(() => {
@@ -169,14 +189,29 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const handleBulkNotHome = useCallback(
     (entries: EnrichedWalkListEntry[]) => {
       for (const entry of entries) {
-        doorKnockMutation.mutate({
+        const payload = {
           walk_list_entry_id: entry.id,
           result_code: "not_home",
+        }
+        doorKnockMutation.mutate(payload, {
+          onError: (err) => {
+            if (err instanceof TypeError) {
+              useOfflineQueueStore.getState().push({
+                type: "door_knock",
+                payload,
+                campaignId,
+                resourceId: walkListId,
+              })
+            } else {
+              useCanvassingStore.getState().revertOutcome(entry.id)
+              toast.error("Failed to save outcome. Please try again.")
+            }
+          },
         })
       }
       setTimeout(() => advanceRef.current(), 500)
     },
-    [doorKnockMutation],
+    [doorKnockMutation, campaignId, walkListId],
   )
 
   const handleJumpToAddress = useCallback(

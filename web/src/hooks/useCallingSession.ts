@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useMemo } from "react"
 import { useCallingStore } from "@/stores/callingStore"
+import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
   useCheckIn,
   useCheckOut,
@@ -205,12 +206,26 @@ export function useCallingSession(campaignId: string, sessionId: string) {
       const startedAt = callStartedAt || now
       const phone = phoneNumberUsed || ""
 
-      recordCall.mutate({
+      const callPayload = {
         call_list_entry_id: entryId,
         result_code: resultCode,
         phone_number_used: phone,
         call_started_at: startedAt,
         call_ended_at: now,
+      }
+      recordCall.mutate(callPayload, {
+        onError: (err) => {
+          if (err instanceof TypeError) {
+            useOfflineQueueStore.getState().push({
+              type: "call_record",
+              payload: callPayload,
+              campaignId,
+              resourceId: sessionId,
+            })
+            // Optimistic UI stays via callingStore.recordOutcome() called below
+          }
+          // Server errors: no special handling; callingStore already recorded outcome optimistically
+        },
       })
 
       recordOutcome(entryId, resultCode)
