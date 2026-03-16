@@ -20,3 +20,6 @@ export function calculateAge(dob: string): number | null {
   }
   return age
 }
+
+export const formatEventType = (type: string) =>
+  type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())

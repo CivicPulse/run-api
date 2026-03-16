@@ -1,6 +1,5 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { toast } from "sonner"
 import { MoreHorizontal, Upload } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -54,16 +53,11 @@ function ImportsHistoryPage() {
 
   const handleDelete = async () => {
     if (!deleteJob) return
-    try {
-      await deleteImport.mutateAsync(deleteJob.id)
-      toast.success("Import deleted")
-      setDeleteJob(null)
-    } catch {
-      toast.error("Failed to delete import")
-    }
+    await deleteImport.mutateAsync(deleteJob.id).catch(() => {})
+    setDeleteJob(null)
   }
 
-  const columns: ColumnDef<ImportJob>[] = [
+  const columns: ColumnDef<ImportJob>[] = useMemo(() => [
     {
       accessorKey: "original_filename",
       header: "Filename",
@@ -139,7 +133,7 @@ function ImportsHistoryPage() {
         )
       },
     },
-  ]
+  ], [campaignId, navigate])
 
   return (
     <RequireRole minimum="admin">

@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { HTTPError } from "ky"
 import { api } from "@/api/client"
 import type { PaginatedResponse } from "@/types/common"
 import type {
@@ -155,8 +157,22 @@ export function useDeleteImport(campaignId: string) {
   return useMutation({
     mutationFn: (jobId: string) =>
       api.delete(`api/v1/campaigns/${campaignId}/imports/${jobId}`).then(() => undefined),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: importKeys.all(campaignId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: importKeys.all(campaignId) })
+      toast.success("Import deleted")
+    },
+    onError: async (err) => {
+      let detail: string | null = null
+      if (err instanceof HTTPError) {
+        try {
+          const body = await err.response.json()
+          detail = body.detail
+        } catch {
+          // response not JSON
+        }
+      }
+      toast.error(detail || "Failed to delete import")
+    },
   })
 }
 

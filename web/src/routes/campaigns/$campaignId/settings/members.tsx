@@ -160,21 +160,9 @@ function MembersSettings() {
       accessorKey: "display_name",
       header: "Name",
       enableSorting: true,
-      cell: ({ row }) => {
-        const name = row.original.display_name
-        return (
-          <div>
-            <span className="font-medium">
-              {name || "Unknown"}
-            </span>
-            {!name && (
-              <span className="block text-xs text-muted-foreground" title={row.original.user_id}>
-                {row.original.user_id.slice(0, 12)}...
-              </span>
-            )}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.display_name}</span>
+      ),
     },
     {
       accessorKey: "email",

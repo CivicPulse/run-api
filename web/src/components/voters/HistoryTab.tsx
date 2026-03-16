@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { MessageSquare } from "lucide-react"
 import { toast } from "sonner"
+import { HTTPError } from "ky"
+import { formatEventType } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -23,9 +25,6 @@ function formatTimestamp(dateStr: string): string {
   })
 }
 
-const formatEventType = (type: string) =>
-  type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-
 export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
   const [noteText, setNoteText] = useState("")
 
@@ -43,8 +42,17 @@ export function HistoryTab({ campaignId, voterId }: HistoryTabProps) {
       await createInteraction.mutateAsync({ type: "note", payload: { text } })
       setNoteText("")
       toast.success("Note added")
-    } catch {
-      toast.error("Failed to add note")
+    } catch (err) {
+      let detail: string | null = null
+      if (err instanceof HTTPError) {
+        try {
+          const body = await err.response.json()
+          detail = body.detail
+        } catch {
+          // response not JSON
+        }
+      }
+      toast.error(detail || "Failed to add note")
     }
   }
 

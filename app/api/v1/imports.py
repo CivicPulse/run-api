@@ -7,10 +7,12 @@ list mapping templates.
 
 from __future__ import annotations
 
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -31,6 +33,8 @@ from app.schemas.import_job import (
 )
 from app.services.import_service import ImportService, suggest_field_mapping
 from app.tasks.import_task import process_import
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 _service = ImportService()
@@ -301,6 +305,7 @@ async def get_import_status(
 async def delete_import(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
+    request: Request,
     user: AuthenticatedUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -311,6 +316,7 @@ async def delete_import(
     Args:
         campaign_id: Campaign UUID.
         import_id: Import job UUID.
+        request: FastAPI request.
         user: Authenticated admin user.
         db: Database session.
 
@@ -321,7 +327,7 @@ async def delete_import(
     await set_campaign_context(db, str(campaign_id))
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -333,10 +339,28 @@ async def delete_import(
             detail="Cannot delete an import that is currently in progress",
         )
 
-    await db.delete(job)
-    await db.commit()
+    # Clean up S3 objects before deleting the DB record
+    storage = request.app.state.storage_service
+    if job.file_key:
+        try:
+            await storage.delete_object(job.file_key)
+        except Exception:
+            logger.warning("Failed to delete S3 object %s", job.file_key)
+    if job.error_report_key:
+        try:
+            await storage.delete_object(job.error_report_key)
+        except Exception:
+            logger.warning("Failed to delete S3 error report %s", job.error_report_key)
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        await db.delete(job)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete import: related records still exist",
+        ) from exc
 
 
 @router.get(

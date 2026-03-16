@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { calculateAge } from "@/lib/utils"
+import { calculateAge, formatEventType } from "@/lib/utils"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { ContactsTab } from "@/components/voters/ContactsTab"
 import { TagsTab } from "@/components/voters/TagsTab"
@@ -502,7 +502,7 @@ function VoterDetailPage() {
                           className="flex items-start gap-3 rounded-md border p-3"
                         >
                           <Badge variant="outline" className="mt-0.5 shrink-0">
-                            {interaction.type}
+                            {formatEventType(interaction.type)}
                           </Badge>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs text-muted-foreground">

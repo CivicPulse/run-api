@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,9 +33,9 @@ _service = VoterInteractionService()
 async def get_voter_interactions(
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
-    type: str | None = None,
+    interaction_type: str | None = Query(None, alias="type"),
     cursor: str | None = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -49,13 +49,13 @@ async def get_voter_interactions(
     await set_campaign_context(db, str(campaign_id))
 
     type_filter = None
-    if type is not None:
+    if interaction_type is not None:
         try:
-            type_filter = InteractionType(type)
+            type_filter = InteractionType(interaction_type)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid interaction type: {type}",
+                detail=f"Invalid interaction type: {interaction_type}",
             ) from None
 
     page = await _service.get_voter_history(
@@ -139,11 +139,14 @@ async def create_voter_interaction(
 
     resp = InteractionResponse.model_validate(interaction)
     # Resolve display name for the creating user
-    user_result = await db.execute(
-        select(User.display_name).where(User.id == user.id)
-    )
+    user_result = await db.execute(select(User.display_name).where(User.id == user.id))
     display_name = user_result.scalar_one_or_none()
     if display_name:
         resp.created_by_name = display_name
+    else:
+        logger.warning(
+            "Could not resolve display_name for user %s",
+            user.id,
+        )
 
     return resp

@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from pydantic import Field
+
 from app.schemas.common import BaseSchema
 
 
@@ -12,7 +14,7 @@ class InteractionCreateRequest(BaseSchema):
     """Create a manual interaction event (note only via API)."""
 
     type: str = "note"
-    payload: dict = {}
+    payload: dict = Field(default_factory=dict)
 
 
 class InteractionResponse(BaseSchema):

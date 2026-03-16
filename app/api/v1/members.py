@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -21,6 +22,8 @@ from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
 from app.schemas.member import MemberResponse, OwnershipTransfer, RoleUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -53,6 +56,11 @@ async def list_members(
     for member, member_user in rows:
         display_name = member_user.display_name or ""
         email = member_user.email or ""
+        if not display_name.strip():
+            logger.warning(
+                "display_name empty for user %s, falling back to 'Unknown'",
+                member.user_id,
+            )
         members.append(
             MemberResponse(
                 user_id=member.user_id,
@@ -124,10 +132,17 @@ async def update_member_role(
         str(member.campaign_id), member.user_id, data.role
     )
 
+    display_name = member_user.display_name or ""
+    email = member_user.email or ""
+    if not display_name.strip():
+        logger.warning(
+            "display_name empty for user %s, falling back to 'Unknown'",
+            member.user_id,
+        )
     return MemberResponse(
         user_id=member.user_id,
-        display_name=member_user.display_name,
-        email=member_user.email,
+        display_name=display_name if display_name.strip() else "Unknown",
+        email=email if email.strip() else "",
         role=data.role,
         synced_at=member.synced_at,
     )
