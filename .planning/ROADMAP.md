@@ -226,14 +226,14 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 32. Phone Banking Field Mode | 3/3 | Complete    | 2026-03-15 | - |
 | 33. Offline Queue & Sync | 2/2 | Complete    | 2026-03-16 | - |
 | 34. Guided Onboarding Tour | 4/4 | Complete    | 2026-03-16 | - |
-| 35. Accessibility Audit & Polish | 3/3 | Complete   | 2026-03-16 | - |
+| 35. Accessibility Audit & Polish | 4/4 | Complete   | 2026-03-16 | - |
 
 ### Phase 36: Google Maps Navigation Link for Canvassing
 
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 3/3 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 36 to break down)
