@@ -43,7 +43,7 @@ const editVolunteerSchema = z.object({
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
   notes: z.string().optional(),
-  skills: z.array(z.string()).default([]),
+  skills: z.array(z.string()),
 })
 
 type EditVolunteerFormValues = z.infer<typeof editVolunteerSchema>

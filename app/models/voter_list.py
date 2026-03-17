@@ -35,9 +35,7 @@ class VoterList(Base):
         Enum(ListType, name="list_type", native_enum=False), nullable=False
     )
     filter_query: Mapped[dict | None] = mapped_column(JSONB)
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()

@@ -58,15 +58,37 @@ async def two_campaigns_with_volunteer_data(superuser_session):
 
     # Campaigns
     for cid, org, name, ctype, created_by in [
-        (campaign_a_id, f"org-va-{campaign_a_id.hex[:8]}", "Vol Campaign A", "state", user_a_id),
-        (campaign_b_id, f"org-vb-{campaign_b_id.hex[:8]}", "Vol Campaign B", "federal", user_b_id),
+        (
+            campaign_a_id,
+            f"org-va-{campaign_a_id.hex[:8]}",
+            "Vol Campaign A",
+            "state",
+            user_a_id,
+        ),
+        (
+            campaign_b_id,
+            f"org-vb-{campaign_b_id.hex[:8]}",
+            "Vol Campaign B",
+            "federal",
+            user_b_id,
+        ),
     ]:
         await session.execute(
             text(
-                "INSERT INTO campaigns (id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :org_id, :name, :type, 'active', :created_by, :now, :now)"
+                "INSERT INTO campaigns (id, zitadel_org_id, name,"
+                " type, status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :org_id, :name, :type,"
+                " 'active', :created_by, :now, :now)"
             ),
-            {"id": cid, "org_id": org, "name": name, "type": ctype, "created_by": created_by, "now": now},
+            {
+                "id": cid,
+                "org_id": org,
+                "name": name,
+                "type": ctype,
+                "created_by": created_by,
+                "now": now,
+            },
         )
 
     # Campaign members
@@ -86,9 +108,12 @@ async def two_campaigns_with_volunteer_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO volunteers (id, campaign_id, first_name, last_name, status, "
-                "skills, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :fname, 'Tester', 'active', "
+                "INSERT INTO volunteers (id, campaign_id,"
+                " first_name, last_name, status, "
+                "skills, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :fname, 'Tester',"
+                " 'active', "
                 "'{}'::varchar[], :uid, :now, :now)"
             ),
             {"id": vid, "cid": cid, "fname": fname, "uid": uid, "now": now},
@@ -127,9 +152,12 @@ async def two_campaigns_with_volunteer_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO shifts (id, campaign_id, name, type, status, start_at, end_at, "
-                "max_volunteers, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :name, 'general', 'scheduled', :start, :end, "
+                "INSERT INTO shifts (id, campaign_id, name,"
+                " type, status, start_at, end_at, "
+                "max_volunteers, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :name, 'general',"
+                " 'scheduled', :start, :end, "
                 "10, :uid, :now, :now)"
             ),
             {
@@ -150,8 +178,10 @@ async def two_campaigns_with_volunteer_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO shift_volunteers (id, shift_id, volunteer_id, status, signed_up_at) "
-                "VALUES (:id, :sid, :vid, 'signed_up', :now)"
+                "INSERT INTO shift_volunteers (id, shift_id,"
+                " volunteer_id, status, signed_up_at) "
+                "VALUES (:id, :sid, :vid,"
+                " 'signed_up', :now)"
             ),
             {"id": svid, "sid": sid, "vid": vid, "now": now},
         )
@@ -163,7 +193,8 @@ async def two_campaigns_with_volunteer_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO volunteer_availability (id, volunteer_id, start_at, end_at) "
+                "INSERT INTO volunteer_availability (id,"
+                " volunteer_id, start_at, end_at) "
                 "VALUES (:id, :vid, :start, :end)"
             ),
             {

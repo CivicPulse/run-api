@@ -79,9 +79,7 @@ class Shift(Base):
     phone_bank_session_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("phone_bank_sessions.id"), nullable=True
     )
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -98,24 +96,18 @@ class ShiftVolunteer(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    shift_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("shifts.id"), nullable=False
-    )
+    shift_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shifts.id"), nullable=False)
     volunteer_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("volunteers.id"), nullable=False
     )
     status: Mapped[str] = mapped_column(
         String(50), default=SignupStatus.SIGNED_UP, nullable=False
     )
-    waitlist_position: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    waitlist_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
     check_in_at: Mapped[datetime | None] = mapped_column(nullable=True)
     check_out_at: Mapped[datetime | None] = mapped_column(nullable=True)
     adjusted_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
-    adjustment_reason: Mapped[str | None] = mapped_column(
-        String(500), nullable=True
-    )
+    adjustment_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     adjusted_by: Mapped[str | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )

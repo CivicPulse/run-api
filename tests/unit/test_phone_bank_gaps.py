@@ -6,7 +6,8 @@ TDD RED phase - these tests fail until implementation is added.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -159,11 +160,11 @@ class TestCallerCountSchema:
     def test_phone_bank_session_response_caller_count_defaults_to_zero(self):
         """PhoneBankSessionResponse.caller_count defaults to 0."""
         import uuid as _uuid
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from app.schemas.phone_bank import PhoneBankSessionResponse
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         resp = PhoneBankSessionResponse(
             id=_uuid.uuid4(),
             name="Test",

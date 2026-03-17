@@ -1,9 +1,10 @@
-"""Unit tests for phone bank sessions, calling, and supervisor ops -- PHONE-02 to PHONE-05."""
+"""Unit tests for phone bank sessions, calling,
+and supervisor ops -- PHONE-02 to PHONE-05."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -22,6 +23,7 @@ from app.services.phone_bank import PhoneBankService
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_session_obj(**overrides) -> MagicMock:
     """Create a mock PhoneBankSession with sensible defaults."""
@@ -69,8 +71,18 @@ def _make_entry(**overrides) -> MagicMock:
         "voter_id": uuid.uuid4(),
         "priority_score": 50,
         "phone_numbers": [
-            {"phone_id": str(uuid.uuid4()), "value": "5551234567", "type": "cell", "is_primary": True},
-            {"phone_id": str(uuid.uuid4()), "value": "5559876543", "type": "home", "is_primary": False},
+            {
+                "phone_id": str(uuid.uuid4()),
+                "value": "5551234567",
+                "type": "cell",
+                "is_primary": True,
+            },
+            {
+                "phone_id": str(uuid.uuid4()),
+                "value": "5559876543",
+                "type": "home",
+                "is_primary": False,
+            },
         ],
         "status": EntryStatus.IN_PROGRESS,
         "attempt_count": 0,
@@ -148,6 +160,7 @@ class TestPhoneBankSession:
         campaign_id = uuid.uuid4()
 
         from app.schemas.phone_bank import PhoneBankSessionCreate
+
         data = PhoneBankSessionCreate(
             name="Evening Calls",
             call_list_id=uuid.uuid4(),
@@ -162,7 +175,8 @@ class TestPhoneBankSession:
 
     @pytest.mark.asyncio
     async def test_session_status_lifecycle(self) -> None:
-        """Session lifecycle: draft->active, active->paused, paused->active, active->completed."""
+        """Session lifecycle: draft->active, active->paused,
+        paused->active, active->completed."""
         db = _mock_db()
         svc = PhoneBankService()
 
@@ -170,32 +184,43 @@ class TestPhoneBankSession:
         session_obj = _make_session_obj(status=SessionStatus.DRAFT)
         db.execute.return_value = _mock_scalar_result(session_obj)
         from app.schemas.phone_bank import PhoneBankSessionUpdate
-        result = await svc.update_session(db, session_obj.id, PhoneBankSessionUpdate(status="active"))
+
+        result = await svc.update_session(
+            db, session_obj.id, PhoneBankSessionUpdate(status="active")
+        )
         assert result.status == SessionStatus.ACTIVE
 
         # active -> paused: allowed
         session_obj2 = _make_session_obj(status=SessionStatus.ACTIVE)
         db.execute.return_value = _mock_scalar_result(session_obj2)
-        result = await svc.update_session(db, session_obj2.id, PhoneBankSessionUpdate(status="paused"))
+        result = await svc.update_session(
+            db, session_obj2.id, PhoneBankSessionUpdate(status="paused")
+        )
         assert result.status == SessionStatus.PAUSED
 
         # paused -> active: allowed
         session_obj3 = _make_session_obj(status=SessionStatus.PAUSED)
         db.execute.return_value = _mock_scalar_result(session_obj3)
-        result = await svc.update_session(db, session_obj3.id, PhoneBankSessionUpdate(status="active"))
+        result = await svc.update_session(
+            db, session_obj3.id, PhoneBankSessionUpdate(status="active")
+        )
         assert result.status == SessionStatus.ACTIVE
 
         # active -> completed: allowed (should force-release entries)
         session_obj4 = _make_session_obj(status=SessionStatus.ACTIVE)
         db.execute.return_value = _mock_scalar_result(session_obj4)
-        result = await svc.update_session(db, session_obj4.id, PhoneBankSessionUpdate(status="completed"))
+        result = await svc.update_session(
+            db, session_obj4.id, PhoneBankSessionUpdate(status="completed")
+        )
         assert result.status == SessionStatus.COMPLETED
 
         # completed -> active: NOT allowed
         session_obj5 = _make_session_obj(status=SessionStatus.COMPLETED)
         db.execute.return_value = _mock_scalar_result(session_obj5)
         with pytest.raises(ValueError, match="Invalid status transition"):
-            await svc.update_session(db, session_obj5.id, PhoneBankSessionUpdate(status="active"))
+            await svc.update_session(
+                db, session_obj5.id, PhoneBankSessionUpdate(status="active")
+            )
 
     @pytest.mark.asyncio
     async def test_session_with_script(self) -> None:
@@ -235,7 +260,10 @@ class TestPhoneBankSession:
         db.execute.return_value = _mock_scalar_result(session_obj)
 
         from app.schemas.phone_bank import PhoneBankSessionUpdate
-        await svc.update_session(db, session_obj.id, PhoneBankSessionUpdate(status="completed"))
+
+        await svc.update_session(
+            db, session_obj.id, PhoneBankSessionUpdate(status="completed")
+        )
 
         # Verify an UPDATE query was issued to release entries
         # The service should have called execute to release IN_PROGRESS entries
@@ -298,11 +326,13 @@ class TestCallRecording:
         session_id = uuid.uuid4()
         entry = _make_entry(claimed_by="caller-1")
         call_list = _make_call_list(id=entry.call_list_id)
-        session_obj = _make_session_obj(id=session_id, call_list_id=call_list.id)
+        _make_session_obj(id=session_id, call_list_id=call_list.id)
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
 
         # DB calls: get entry, get call list, get session
         db.execute.side_effect = [
@@ -311,6 +341,7 @@ class TestCallRecording:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
@@ -336,7 +367,9 @@ class TestCallRecording:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
 
         db.execute.side_effect = [
             _mock_scalar_result(entry),
@@ -344,6 +377,7 @@ class TestCallRecording:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.NO_ANSWER,
@@ -351,14 +385,15 @@ class TestCallRecording:
             call_started_at=utcnow(),
             call_ended_at=utcnow(),
         )
-        result = await svc.record_call(db, campaign_id, session_id, data, "caller-1")
+        await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
         assert entry.attempt_count == 1
         assert entry.status == EntryStatus.AVAILABLE
 
     @pytest.mark.asyncio
     async def test_record_call_with_survey(self) -> None:
-        """ANSWERED + survey_responses -> records interaction + calls SurveyService."""
+        """ANSWERED + survey_responses -> records interaction
+        + calls SurveyService."""
         db = _mock_db()
         svc = PhoneBankService()
         campaign_id = uuid.uuid4()
@@ -369,7 +404,9 @@ class TestCallRecording:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
         svc._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         db.execute.side_effect = [
@@ -378,6 +415,7 @@ class TestCallRecording:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         survey_data = [{"question_id": str(uuid.uuid4()), "answer_value": "Yes"}]
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
@@ -397,7 +435,8 @@ class TestCallRecording:
 
     @pytest.mark.asyncio
     async def test_partial_survey_saved(self) -> None:
-        """ANSWERED + survey_responses + survey_complete=False -> partial survey saved."""
+        """ANSWERED + survey_responses + survey_complete=False
+        -> partial survey saved."""
         db = _mock_db()
         svc = PhoneBankService()
         campaign_id = uuid.uuid4()
@@ -408,7 +447,9 @@ class TestCallRecording:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
         svc._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         db.execute.side_effect = [
@@ -417,13 +458,16 @@ class TestCallRecording:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
             call_started_at=utcnow(),
             call_ended_at=utcnow(),
-            survey_responses=[{"question_id": str(uuid.uuid4()), "answer_value": "Maybe"}],
+            survey_responses=[
+                {"question_id": str(uuid.uuid4()), "answer_value": "Maybe"}
+            ],
             survey_complete=False,
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
@@ -434,7 +478,8 @@ class TestCallRecording:
 
     @pytest.mark.asyncio
     async def test_wrong_number_marks_phone_only(self) -> None:
-        """WRONG_NUMBER marks only that phone; entry stays AVAILABLE if other phones remain."""
+        """WRONG_NUMBER marks only that phone; entry stays
+        AVAILABLE if other phones remain."""
         db = _mock_db()
         svc = PhoneBankService()
         campaign_id = uuid.uuid4()
@@ -443,8 +488,18 @@ class TestCallRecording:
         entry = _make_entry(
             claimed_by="caller-1",
             phone_numbers=[
-                {"phone_id": "ph1", "value": "5551234567", "type": "cell", "is_primary": True},
-                {"phone_id": "ph2", "value": "5559876543", "type": "home", "is_primary": False},
+                {
+                    "phone_id": "ph1",
+                    "value": "5551234567",
+                    "type": "cell",
+                    "is_primary": True,
+                },
+                {
+                    "phone_id": "ph2",
+                    "value": "5559876543",
+                    "type": "home",
+                    "is_primary": False,
+                },
             ],
             phone_attempts=None,
         )
@@ -452,7 +507,9 @@ class TestCallRecording:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
 
         db.execute.side_effect = [
             _mock_scalar_result(entry),
@@ -460,6 +517,7 @@ class TestCallRecording:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.WRONG_NUMBER,
@@ -491,7 +549,9 @@ class TestInteractionEvents:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
 
         db.execute.side_effect = [
             _mock_scalar_result(entry),
@@ -500,6 +560,7 @@ class TestInteractionEvents:
 
         from app.models.voter_interaction import InteractionType
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
@@ -531,7 +592,9 @@ class TestInteractionEvents:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
         svc._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         db.execute.side_effect = [
@@ -540,13 +603,16 @@ class TestInteractionEvents:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.ANSWERED,
             phone_number_used="5551234567",
             call_started_at=utcnow(),
             call_ended_at=utcnow(),
-            survey_responses=[{"question_id": str(uuid.uuid4()), "answer_value": "Yes"}],
+            survey_responses=[
+                {"question_id": str(uuid.uuid4()), "answer_value": "Yes"}
+            ],
         )
         await svc.record_call(db, campaign_id, session_id, data, "caller-1")
 
@@ -565,7 +631,9 @@ class TestInteractionEvents:
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
         svc._dnc_service.add_entry = AsyncMock()
 
         db.execute.side_effect = [
@@ -574,6 +642,7 @@ class TestInteractionEvents:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.REFUSED,
@@ -603,21 +672,31 @@ class TestSupervisorOps:
         db.execute.side_effect = [
             _mock_scalar_result(session_obj),
             # Entry stats: total, completed, in_progress, available
-            MagicMock(all=MagicMock(return_value=[
-                (EntryStatus.AVAILABLE, 5),
-                (EntryStatus.IN_PROGRESS, 3),
-                (EntryStatus.COMPLETED, 2),
-            ])),
+            MagicMock(
+                all=MagicMock(
+                    return_value=[
+                        (EntryStatus.AVAILABLE, 5),
+                        (EntryStatus.IN_PROGRESS, 3),
+                        (EntryStatus.COMPLETED, 2),
+                    ]
+                )
+            ),
             # Callers for the session
-            _mock_scalars_result([
-                _make_caller(user_id="caller-1", check_in_at=utcnow()),
-                _make_caller(user_id="caller-2"),
-            ]),
+            _mock_scalars_result(
+                [
+                    _make_caller(user_id="caller-1", check_in_at=utcnow()),
+                    _make_caller(user_id="caller-2"),
+                ]
+            ),
             # Call counts per caller
-            MagicMock(all=MagicMock(return_value=[
-                ("caller-1", 5),
-                ("caller-2", 2),
-            ])),
+            MagicMock(
+                all=MagicMock(
+                    return_value=[
+                        ("caller-1", 5),
+                        ("caller-2", 2),
+                    ]
+                )
+            ),
         ]
 
         result = await svc.get_progress(db, session_obj.id)
@@ -662,15 +741,27 @@ class TestSupervisorOps:
         entry = _make_entry(
             claimed_by="caller-1",
             phone_numbers=[
-                {"phone_id": "ph1", "value": "5551234567", "type": "cell", "is_primary": True},
-                {"phone_id": "ph2", "value": "5559876543", "type": "home", "is_primary": False},
+                {
+                    "phone_id": "ph1",
+                    "value": "5551234567",
+                    "type": "cell",
+                    "is_primary": True,
+                },
+                {
+                    "phone_id": "ph2",
+                    "value": "5559876543",
+                    "type": "home",
+                    "is_primary": False,
+                },
             ],
         )
         call_list = _make_call_list(id=entry.call_list_id)
 
         interaction = MagicMock()
         interaction.id = uuid.uuid4()
-        svc._interaction_service.record_interaction = AsyncMock(return_value=interaction)
+        svc._interaction_service.record_interaction = AsyncMock(
+            return_value=interaction
+        )
 
         db.execute.side_effect = [
             _mock_scalar_result(entry),
@@ -678,6 +769,7 @@ class TestSupervisorOps:
         ]
 
         from app.schemas.phone_bank import CallRecordCreate
+
         data = CallRecordCreate(
             call_list_entry_id=entry.id,
             result_code=CallResultCode.DECEASED,

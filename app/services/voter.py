@@ -7,13 +7,17 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from loguru import logger
 from sqlalchemy import Select, and_, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utcnow
+from app.models.call_list import CallListEntry
+from app.models.survey import SurveyResponse
 from app.models.voter import Voter, VoterTag, VoterTagMember
-from app.models.voter_contact import VoterPhone
+from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
+from app.models.voter_interaction import VoterInteraction
+from app.models.voter_list import VoterListMember
+from app.models.walk_list import WalkListEntry
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter import VoterResponse
 from app.schemas.voter_filter import VoterFilter
@@ -24,13 +28,15 @@ if TYPE_CHECKING:
 _YEAR_ONLY_RE = re.compile(r"^\d{4}$")
 
 # Columns that are stored as integers and need int() parsing in cursor decode.
-_INT_SORT_COLUMNS = frozenset({
-    "age",
-    "propensity_general",
-    "propensity_primary",
-    "propensity_combined",
-    "household_size",
-})
+_INT_SORT_COLUMNS = frozenset(
+    {
+        "age",
+        "propensity_general",
+        "propensity_primary",
+        "propensity_combined",
+        "household_size",
+    }
+)
 
 # Columns that are stored as datetimes and need fromisoformat() parsing.
 _DATETIME_SORT_COLUMNS = frozenset({"created_at", "updated_at"})
@@ -200,8 +206,12 @@ def build_voter_query(filters: VoterFilter) -> Select:
             if _YEAR_ONLY_RE.match(election):
                 # Year-only: voter did NOT vote in ANY election that year
                 # Two separate NOT CONTAINS (AND semantics: skipped BOTH)
-                conditions.append(~Voter.voting_history.contains([f"General_{election}"]))
-                conditions.append(~Voter.voting_history.contains([f"Primary_{election}"]))
+                conditions.append(
+                    ~Voter.voting_history.contains([f"General_{election}"])
+                )
+                conditions.append(
+                    ~Voter.voting_history.contains([f"Primary_{election}"])
+                )
             else:
                 # Canonical format: exact NOT containment (existing behavior)
                 conditions.append(~Voter.voting_history.contains([election]))
@@ -235,9 +245,9 @@ def build_voter_query(filters: VoterFilter) -> Select:
 
     # Phone existence
     if filters.has_phone is not None:
-        phone_subquery = select(VoterPhone).where(
-            VoterPhone.voter_id == Voter.id
-        ).correlate(Voter)
+        phone_subquery = (
+            select(VoterPhone).where(VoterPhone.voter_id == Voter.id).correlate(Voter)
+        )
         if filters.has_phone:
             conditions.append(exists(phone_subquery))
         else:
@@ -297,9 +307,7 @@ class VoterService:
         if is_desc:
             query = query.order_by(sort_col.desc(), Voter.id.desc())
         else:
-            query = query.order_by(
-                sort_col.asc().nullslast(), Voter.id.asc()
-            )
+            query = query.order_by(sort_col.asc().nullslast(), Voter.id.asc())
 
         # Cursor-based pagination with dynamic column
         if cursor:
@@ -313,25 +321,17 @@ class VoterService:
                         | ((sort_col.is_(None)) & (Voter.id < cursor_id))
                     )
                 else:
-                    query = query.where(
-                        (sort_col.is_(None)) & (Voter.id > cursor_id)
-                    )
+                    query = query.where((sort_col.is_(None)) & (Voter.id > cursor_id))
             else:
                 if is_desc:
                     query = query.where(
                         (sort_col < cursor_val)
-                        | (
-                            (sort_col == cursor_val)
-                            & (Voter.id < cursor_id)
-                        )
+                        | ((sort_col == cursor_val) & (Voter.id < cursor_id))
                     )
                 else:
                     query = query.where(
                         (sort_col > cursor_val)
-                        | (
-                            (sort_col == cursor_val)
-                            & (Voter.id > cursor_id)
-                        )
+                        | ((sort_col == cursor_val) & (Voter.id > cursor_id))
                     )
 
         query = query.limit(limit + 1)
@@ -381,9 +381,7 @@ class VoterService:
                 .order_by(func.count().desc())
             )
             rows = await db.execute(stmt)
-            result[field] = [
-                {"value": str(row[0]), "count": row[1]} for row in rows
-            ]
+            result[field] = [{"value": str(row[0]), "count": row[1]} for row in rows]
         return result
 
     async def get_voter(self, db: AsyncSession, voter_id: uuid.UUID) -> Voter:
@@ -422,10 +420,12 @@ class VoterService:
         Returns:
             The created Voter.
         """
+        # Use exclude_none (not exclude_unset) so that schema defaults
+        # like source_type="manual" are included in the INSERT.
         voter = Voter(
             id=uuid.uuid4(),
             campaign_id=campaign_id,
-            **data.model_dump(exclude_unset=True),
+            **data.model_dump(exclude_none=True),
         )
         db.add(voter)
         await db.commit()
@@ -459,6 +459,44 @@ class VoterService:
         await db.commit()
         await db.refresh(voter)
         return voter
+
+    async def delete_voter(
+        self,
+        db: AsyncSession,
+        voter_id: uuid.UUID,
+    ) -> None:
+        """Delete a voter and all child records in dependency order.
+
+        Manually cascades deletes because the DB schema lacks ON DELETE CASCADE
+        on the foreign keys referencing voters.id.
+
+        Args:
+            db: Async database session.
+            voter_id: The voter UUID.
+
+        Raises:
+            ValueError: If voter not found.
+        """
+        voter = await self.get_voter(db, voter_id)
+
+        # Delete child records in dependency order (leaves first)
+        for child_model in (
+            SurveyResponse,
+            CallListEntry,
+            WalkListEntry,
+            VoterInteraction,
+            VoterListMember,
+            VoterTagMember,
+            VoterAddress,
+            VoterEmail,
+            VoterPhone,
+        ):
+            await db.execute(
+                delete(child_model).where(child_model.voter_id == voter_id)
+            )
+
+        await db.delete(voter)
+        await db.flush()
 
     # --- Tag operations ---
 

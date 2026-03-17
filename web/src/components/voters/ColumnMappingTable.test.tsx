@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { ColumnMappingTable, CANONICAL_FIELDS, FIELD_GROUPS } from "./ColumnMappingTable"
+import { ColumnMappingTable } from "./ColumnMappingTable"
+import { CANONICAL_FIELDS, FIELD_GROUPS } from "./column-mapping-constants"
 
 const columns = ["First Name", "Email"]
 const suggestedMapping: Record<string, string | null> = {

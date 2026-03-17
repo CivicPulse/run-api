@@ -63,15 +63,37 @@ async def two_campaigns_with_canvassing_data(superuser_session):
 
     # Campaigns
     for cid, org, name, ctype, created_by in [
-        (campaign_a_id, f"org-ca-{campaign_a_id.hex[:8]}", "Canvass Campaign A", "state", user_a_id),
-        (campaign_b_id, f"org-cb-{campaign_b_id.hex[:8]}", "Canvass Campaign B", "federal", user_b_id),
+        (
+            campaign_a_id,
+            f"org-ca-{campaign_a_id.hex[:8]}",
+            "Canvass Campaign A",
+            "state",
+            user_a_id,
+        ),
+        (
+            campaign_b_id,
+            f"org-cb-{campaign_b_id.hex[:8]}",
+            "Canvass Campaign B",
+            "federal",
+            user_b_id,
+        ),
     ]:
         await session.execute(
             text(
-                "INSERT INTO campaigns (id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :org_id, :name, :type, 'active', :created_by, :now, :now)"
+                "INSERT INTO campaigns (id, zitadel_org_id, name,"
+                " type, status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :org_id, :name, :type,"
+                " 'active', :created_by, :now, :now)"
             ),
-            {"id": cid, "org_id": org, "name": name, "type": ctype, "created_by": created_by, "now": now},
+            {
+                "id": cid,
+                "org_id": org,
+                "name": name,
+                "type": ctype,
+                "created_by": created_by,
+                "now": now,
+            },
         )
 
     # Campaign members
@@ -88,23 +110,37 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     for vid, cid in [(voter_a_id, campaign_a_id), (voter_b_id, campaign_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voters (id, campaign_id, source_type, first_name, last_name, created_at, updated_at) "
-                "VALUES (:id, :cid, 'manual', 'Test', 'Canvasser', :now, :now)"
+                "INSERT INTO voters (id, campaign_id, source_type,"
+                " first_name, last_name, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, 'manual', 'Test',"
+                " 'Canvasser', :now, :now)"
             ),
             {"id": vid, "cid": cid, "now": now},
         )
 
     # Turfs (PostGIS polygon -- simple square)
     polygon_wkt = "SRID=4326;POLYGON((-90 40, -90 41, -89 41, -89 40, -90 40))"
-    for tid, cid, name in [(turf_a_id, campaign_a_id, "Turf A"), (turf_b_id, campaign_b_id, "Turf B")]:
+    for tid, cid, name in [
+        (turf_a_id, campaign_a_id, "Turf A"),
+        (turf_b_id, campaign_b_id, "Turf B"),
+    ]:
         await session.execute(
             text(
-                "INSERT INTO turfs (id, campaign_id, name, status, boundary, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :name, 'active', ST_GeomFromEWKT(:geom), :uid, :now, :now)"
+                "INSERT INTO turfs (id, campaign_id, name,"
+                " status, boundary, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :name, 'active',"
+                " ST_GeomFromEWKT(:geom), :uid, :now,"
+                " :now)"
             ),
             {
-                "id": tid, "cid": cid, "name": name, "geom": polygon_wkt,
-                "uid": user_a_id if cid == campaign_a_id else user_b_id, "now": now,
+                "id": tid,
+                "cid": cid,
+                "name": name,
+                "geom": polygon_wkt,
+                "uid": user_a_id if cid == campaign_a_id else user_b_id,
+                "now": now,
             },
         )
 
@@ -115,12 +151,19 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO walk_lists (id, campaign_id, turf_id, name, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :tid, :name, 'pending', :uid, :now, :now)"
+                "INSERT INTO walk_lists (id, campaign_id,"
+                " turf_id, name, status, created_by,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, :tid, :name,"
+                " 'pending', :uid, :now, :now)"
             ),
             {
-                "id": wid, "cid": cid, "tid": tid, "name": name,
-                "uid": user_a_id if cid == campaign_a_id else user_b_id, "now": now,
+                "id": wid,
+                "cid": cid,
+                "tid": tid,
+                "name": name,
+                "uid": user_a_id if cid == campaign_a_id else user_b_id,
+                "now": now,
             },
         )
 
@@ -131,7 +174,9 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO walk_list_entries (id, walk_list_id, voter_id, position, status) "
+                "INSERT INTO walk_list_entries (id,"
+                " walk_list_id, voter_id, position,"
+                " status) "
                 "VALUES (:id, :wid, :vid, 1, 'pending')"
             ),
             {"id": eid, "wid": wid, "vid": vid},
@@ -144,7 +189,8 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO walk_list_canvassers (id, walk_list_id, user_id, assigned_at) "
+                "INSERT INTO walk_list_canvassers (id,"
+                " walk_list_id, user_id, assigned_at) "
                 "VALUES (:id, :wid, :uid, :now)"
             ),
             {"id": uuid.uuid4(), "wid": wid, "uid": uid, "now": now},
@@ -157,12 +203,18 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO survey_scripts (id, campaign_id, title, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :title, 'active', :uid, :now, :now)"
+                "INSERT INTO survey_scripts (id, campaign_id,"
+                " title, status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :title, 'active',"
+                " :uid, :now, :now)"
             ),
             {
-                "id": sid, "cid": cid, "title": title,
-                "uid": user_a_id if cid == campaign_a_id else user_b_id, "now": now,
+                "id": sid,
+                "cid": cid,
+                "title": title,
+                "uid": user_a_id if cid == campaign_a_id else user_b_id,
+                "now": now,
             },
         )
 
@@ -173,23 +225,52 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO survey_questions (id, script_id, position, question_text, question_type) "
-                "VALUES (:id, :sid, 1, :text, 'free_text')"
+                "INSERT INTO survey_questions (id, script_id,"
+                " position, question_text,"
+                " question_type) "
+                "VALUES (:id, :sid, 1, :text,"
+                " 'free_text')"
             ),
             {"id": qid, "sid": sid, "text": text_val},
         )
 
     # Survey responses (direct campaign_id RLS)
     for rid, cid, sid, qid, vid, uid in [
-        (response_a_id, campaign_a_id, script_a_id, question_a_id, voter_a_id, user_a_id),
-        (response_b_id, campaign_b_id, script_b_id, question_b_id, voter_b_id, user_b_id),
+        (
+            response_a_id,
+            campaign_a_id,
+            script_a_id,
+            question_a_id,
+            voter_a_id,
+            user_a_id,
+        ),
+        (
+            response_b_id,
+            campaign_b_id,
+            script_b_id,
+            question_b_id,
+            voter_b_id,
+            user_b_id,
+        ),
     ]:
         await session.execute(
             text(
-                "INSERT INTO survey_responses (id, campaign_id, script_id, question_id, voter_id, answer_value, answered_by, answered_at) "
-                "VALUES (:id, :cid, :sid, :qid, :vid, 'test answer', :uid, :now)"
+                "INSERT INTO survey_responses (id,"
+                " campaign_id, script_id, question_id,"
+                " voter_id, answer_value, answered_by,"
+                " answered_at) "
+                "VALUES (:id, :cid, :sid, :qid, :vid,"
+                " 'test answer', :uid, :now)"
             ),
-            {"id": rid, "cid": cid, "sid": sid, "qid": qid, "vid": vid, "uid": uid, "now": now},
+            {
+                "id": rid,
+                "cid": cid,
+                "sid": sid,
+                "qid": qid,
+                "vid": vid,
+                "uid": uid,
+                "now": now,
+            },
         )
 
     await session.commit()
@@ -375,9 +456,7 @@ class TestCanvassingRLSIsolation:
         assert data["response_a_id"] in ids
         assert data["response_b_id"] not in ids
 
-    async def test_voter_geom_column_exists(
-        self, superuser_session
-    ):
+    async def test_voter_geom_column_exists(self, superuser_session):
         """Verify voter geom column exists in the voters table schema."""
         session = superuser_session
 
@@ -389,4 +468,6 @@ class TestCanvassingRLSIsolation:
         )
         row = result.one_or_none()
         assert row is not None, "geom column should exist on voters table"
-        assert row[1] == "geometry", f"geom column type should be geometry, got {row[1]}"
+        assert row[1] == "geometry", (
+            f"geom column type should be geometry, got {row[1]}"
+        )

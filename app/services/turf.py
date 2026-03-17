@@ -68,7 +68,9 @@ def _wkb_to_geojson(wkb: WKBElement) -> dict[str, Any]:
     return mapping(geom)
 
 
-def parse_address_sort_key(address: str | None, last_name: str | None = None) -> tuple[str, int, str]:
+def parse_address_sort_key(
+    address: str | None, last_name: str | None = None
+) -> tuple[str, int, str]:
     """Extract (street_name, house_number, last_name) for walk order sorting.
 
     Args:
@@ -158,9 +160,7 @@ class TurfService:
         Returns:
             The Turf or None.
         """
-        result = await session.execute(
-            select(Turf).where(Turf.id == turf_id)
-        )
+        result = await session.execute(select(Turf).where(Turf.id == turf_id))
         return result.scalar_one_or_none()
 
     async def list_turfs(
@@ -199,10 +199,7 @@ class TurfService:
                 cursor_id = uuid.UUID(parts[1])
                 query = query.where(
                     (Turf.created_at < cursor_ts)
-                    | (
-                        (Turf.created_at == cursor_ts)
-                        & (Turf.id < cursor_id)
-                    )
+                    | ((Turf.created_at == cursor_ts) & (Turf.id < cursor_id))
                 )
 
         query = query.limit(limit + 1)
@@ -237,7 +234,8 @@ class TurfService:
             The updated Turf.
 
         Raises:
-            ValueError: If turf not found, invalid boundary, or invalid status transition.
+            ValueError: If turf not found, invalid boundary,
+                or invalid status transition.
         """
         turf = await self.get_turf(session, turf_id)
         if turf is None:
@@ -302,12 +300,9 @@ class TurfService:
         turf_boundary = (
             select(Turf.boundary).where(Turf.id == turf_id).scalar_subquery()
         )
-        query = (
-            select(func.count(Voter.id))
-            .where(
-                Voter.geom.is_not(None),
-                func.ST_Contains(turf_boundary, Voter.geom),
-            )
+        query = select(func.count(Voter.id)).where(
+            Voter.geom.is_not(None),
+            func.ST_Contains(turf_boundary, Voter.geom),
         )
         result = await session.execute(query)
         return result.scalar_one()

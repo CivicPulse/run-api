@@ -39,9 +39,7 @@ class ImportJob(Base):
     )
     file_key: Mapped[str] = mapped_column(String(500), nullable=False)
     original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
-    source_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="csv"
-    )
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False, default="csv")
     field_mapping: Mapped[dict | None] = mapped_column(JSONB)
     detected_columns: Mapped[list | None] = mapped_column(JSONB)
     suggested_mapping: Mapped[dict | None] = mapped_column(JSONB)
@@ -54,9 +52,7 @@ class ImportJob(Base):
     error_report_key: Mapped[str | None] = mapped_column(String(500))
     error_message: Mapped[str | None] = mapped_column()
 
-    created_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()

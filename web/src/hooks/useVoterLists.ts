@@ -21,7 +21,8 @@ export function useVoterLists(campaignId: string) {
   return useQuery({
     queryKey: listKeys.all(campaignId),
     queryFn: () =>
-      api.get(`api/v1/campaigns/${campaignId}/lists`).json<VoterList[]>(),
+      api.get(`api/v1/campaigns/${campaignId}/lists`).json<PaginatedResponse<VoterList>>(),
+    select: (data) => data.items,
     enabled: !!campaignId,
   })
 }
@@ -40,7 +41,7 @@ export function useVoterListVoters(campaignId: string, listId: string) {
     queryKey: listKeys.members(campaignId, listId),
     queryFn: () =>
       api
-        .get(`api/v1/campaigns/${campaignId}/lists/${listId}/members`)
+        .get(`api/v1/campaigns/${campaignId}/lists/${listId}/voters`)
         .json<PaginatedResponse<Voter>>(),
     enabled: !!campaignId && !!listId,
   })

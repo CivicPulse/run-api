@@ -1,0 +1,14 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: run-api
+  namespace: civpulse-dev
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`run-dev.civpulse.org`)
+      kind: Rule
+      services:
+        - name: run-api
+          port: 8000

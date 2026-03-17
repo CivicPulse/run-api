@@ -116,13 +116,10 @@ class CallListService:
         dnc_numbers = set(dnc_result.scalars().all())
 
         # Step 4: Get interaction counts per voter for priority scoring
-        interaction_query = (
-            select(
-                VoterInteraction.voter_id,
-                VoterInteraction.id,
-            )
-            .where(VoterInteraction.campaign_id == campaign_id)
-        )
+        interaction_query = select(
+            VoterInteraction.voter_id,
+            VoterInteraction.id,
+        ).where(VoterInteraction.campaign_id == campaign_id)
         if voter_ids is not None:
             interaction_query = interaction_query.where(
                 VoterInteraction.voter_id.in_(voter_ids)
@@ -142,12 +139,14 @@ class CallListService:
             # Exclude DNC numbers
             if phone_value in dnc_numbers:
                 continue
-            voter_phones[row.voter_id].append({
-                "phone_id": str(row.phone_id),
-                "value": phone_value,
-                "type": row.phone_type,
-                "is_primary": row.is_primary,
-            })
+            voter_phones[row.voter_id].append(
+                {
+                    "phone_id": str(row.phone_id),
+                    "value": phone_value,
+                    "type": row.phone_type,
+                    "is_primary": row.is_primary,
+                }
+            )
 
         # Step 6: Create call list
         call_list = CallList(
@@ -240,9 +239,7 @@ class CallListService:
             raise ValueError(msg)
 
         # Release stale claims
-        stale_cutoff = utcnow() - timedelta(
-            minutes=call_list.claim_timeout_minutes
-        )
+        stale_cutoff = utcnow() - timedelta(minutes=call_list.claim_timeout_minutes)
         await session.execute(
             update(CallListEntry)
             .where(
@@ -361,7 +358,7 @@ class CallListService:
         self,
         session: AsyncSession,
         call_list_id: uuid.UUID,
-        update: "CallListUpdate",
+        update: CallListUpdate,
         new_status: str | None = None,
     ) -> CallList:
         """Update call list name, voter_list_id, and/or status.
@@ -539,8 +536,7 @@ class CallListService:
             select(
                 VoterInteraction.voter_id,
                 VoterInteraction.id,
-            )
-            .where(
+            ).where(
                 VoterInteraction.campaign_id == campaign_id,
                 VoterInteraction.voter_id.in_(candidate_voter_ids),
             )
@@ -557,12 +553,14 @@ class CallListService:
                 continue
             if phone_value in dnc_numbers:
                 continue
-            voter_phones[row.voter_id].append({
-                "phone_id": str(row.phone_id),
-                "value": phone_value,
-                "type": row.phone_type,
-                "is_primary": row.is_primary,
-            })
+            voter_phones[row.voter_id].append(
+                {
+                    "phone_id": str(row.phone_id),
+                    "value": phone_value,
+                    "type": row.phone_type,
+                    "is_primary": row.is_primary,
+                }
+            )
 
         # Create entries for voters with valid non-DNC phones
         added_count = 0
@@ -631,8 +629,6 @@ class CallListService:
         from sqlalchemy import delete
 
         await session.execute(
-            delete(CallListEntry).where(
-                CallListEntry.call_list_id == call_list_id
-            )
+            delete(CallListEntry).where(CallListEntry.call_list_id == call_list_id)
         )
         await session.delete(call_list)

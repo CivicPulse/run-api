@@ -110,7 +110,9 @@ class VoterContactService:
         Raises:
             ValueError: If the phone record is not found.
         """
-        phone = await self._get_contact(session, VoterPhone, phone_id, campaign_id, voter_id)
+        phone = await self._get_contact(
+            session, VoterPhone, phone_id, campaign_id, voter_id
+        )
 
         if kwargs.get("is_primary"):
             await self._unset_primary(session, VoterPhone, campaign_id, voter_id)
@@ -126,7 +128,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "updated", "contact_type": "phone", "phone_id": str(phone_id)},
+            payload={
+                "action": "updated",
+                "contact_type": "phone",
+                "phone_id": str(phone_id),
+            },
             user_id=user_id,
         )
 
@@ -152,7 +158,9 @@ class VoterContactService:
         Raises:
             ValueError: If the phone record is not found.
         """
-        phone = await self._get_contact(session, VoterPhone, phone_id, campaign_id, voter_id)
+        phone = await self._get_contact(
+            session, VoterPhone, phone_id, campaign_id, voter_id
+        )
 
         await session.delete(phone)
         await session.flush()
@@ -162,7 +170,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "removed", "contact_type": "phone", "value": phone.value},
+            payload={
+                "action": "removed",
+                "contact_type": "phone",
+                "value": phone.value,
+            },
             user_id=user_id,
         )
 
@@ -250,7 +262,9 @@ class VoterContactService:
         Raises:
             ValueError: If the email record is not found.
         """
-        email = await self._get_contact(session, VoterEmail, email_id, campaign_id, voter_id)
+        email = await self._get_contact(
+            session, VoterEmail, email_id, campaign_id, voter_id
+        )
 
         if kwargs.get("is_primary"):
             await self._unset_primary(session, VoterEmail, campaign_id, voter_id)
@@ -266,7 +280,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "updated", "contact_type": "email", "email_id": str(email_id)},
+            payload={
+                "action": "updated",
+                "contact_type": "email",
+                "email_id": str(email_id),
+            },
             user_id=user_id,
         )
 
@@ -292,7 +310,9 @@ class VoterContactService:
         Raises:
             ValueError: If the email record is not found.
         """
-        email = await self._get_contact(session, VoterEmail, email_id, campaign_id, voter_id)
+        email = await self._get_contact(
+            session, VoterEmail, email_id, campaign_id, voter_id
+        )
 
         await session.delete(email)
         await session.flush()
@@ -302,7 +322,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "removed", "contact_type": "email", "value": email.value},
+            payload={
+                "action": "removed",
+                "contact_type": "email",
+                "value": email.value,
+            },
             user_id=user_id,
         )
 
@@ -371,7 +395,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "added", "contact_type": "address", "value": address_line1},
+            payload={
+                "action": "added",
+                "contact_type": "address",
+                "value": address_line1,
+            },
             user_id=user_id,
         )
 
@@ -402,7 +430,9 @@ class VoterContactService:
         Raises:
             ValueError: If the address record is not found.
         """
-        address = await self._get_contact(session, VoterAddress, address_id, campaign_id, voter_id)
+        address = await self._get_contact(
+            session, VoterAddress, address_id, campaign_id, voter_id
+        )
 
         if kwargs.get("is_primary"):
             await self._unset_primary(session, VoterAddress, campaign_id, voter_id)
@@ -418,7 +448,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "updated", "contact_type": "address", "address_id": str(address_id)},
+            payload={
+                "action": "updated",
+                "contact_type": "address",
+                "address_id": str(address_id),
+            },
             user_id=user_id,
         )
 
@@ -444,7 +478,9 @@ class VoterContactService:
         Raises:
             ValueError: If the address record is not found.
         """
-        address = await self._get_contact(session, VoterAddress, address_id, campaign_id, voter_id)
+        address = await self._get_contact(
+            session, VoterAddress, address_id, campaign_id, voter_id
+        )
 
         await session.delete(address)
         await session.flush()
@@ -454,7 +490,11 @@ class VoterContactService:
             campaign_id=campaign_id,
             voter_id=voter_id,
             interaction_type=InteractionType.CONTACT_UPDATED,
-            payload={"action": "removed", "contact_type": "address", "value": address.address_line1},
+            payload={
+                "action": "removed",
+                "contact_type": "address",
+                "value": address.address_line1,
+            },
             user_id=user_id,
         )
 
@@ -537,7 +577,9 @@ class VoterContactService:
 
         await self._unset_primary(session, model, campaign_id, voter_id)
 
-        target = await self._get_contact(session, model, contact_id, campaign_id, voter_id)
+        target = await self._get_contact(
+            session, model, contact_id, campaign_id, voter_id
+        )
         target.is_primary = True
         target.updated_at = utcnow()
         await session.flush()

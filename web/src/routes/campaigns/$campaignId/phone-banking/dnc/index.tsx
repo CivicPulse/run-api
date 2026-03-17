@@ -7,7 +7,6 @@ import { useDNCEntries, useAddDNCEntry, useDeleteDNCEntry, useImportDNC } from "
 import { useFormGuard } from "@/hooks/useFormGuard"
 import { usePermissions } from "@/hooks/usePermissions"
 import { DataTable } from "@/components/shared/DataTable"
-import { EmptyState } from "@/components/shared/EmptyState"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -170,7 +169,7 @@ function DNCListPage() {
   return (
     <div className="p-6 space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">DNC List</h1>
         <div className="flex items-center gap-2">
           <RequireRole minimum="manager">

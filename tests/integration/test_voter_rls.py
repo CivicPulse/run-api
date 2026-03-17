@@ -54,15 +54,37 @@ async def two_campaigns_with_voter_data(superuser_session):
 
     # Campaigns
     for cid, org, name, ctype, created_by in [
-        (campaign_a_id, f"org-va-{campaign_a_id.hex[:8]}", "Voter Campaign A", "state", user_a_id),
-        (campaign_b_id, f"org-vb-{campaign_b_id.hex[:8]}", "Voter Campaign B", "federal", user_b_id),
+        (
+            campaign_a_id,
+            f"org-va-{campaign_a_id.hex[:8]}",
+            "Voter Campaign A",
+            "state",
+            user_a_id,
+        ),
+        (
+            campaign_b_id,
+            f"org-vb-{campaign_b_id.hex[:8]}",
+            "Voter Campaign B",
+            "federal",
+            user_b_id,
+        ),
     ]:
         await session.execute(
             text(
-                "INSERT INTO campaigns (id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :org_id, :name, :type, 'active', :created_by, :now, :now)"
+                "INSERT INTO campaigns (id, zitadel_org_id, name,"
+                " type, status, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :org_id, :name, :type,"
+                " 'active', :created_by, :now, :now)"
             ),
-            {"id": cid, "org_id": org, "name": name, "type": ctype, "created_by": created_by, "now": now},
+            {
+                "id": cid,
+                "org_id": org,
+                "name": name,
+                "type": ctype,
+                "created_by": created_by,
+                "now": now,
+            },
         )
 
     # Campaign members
@@ -79,14 +101,20 @@ async def two_campaigns_with_voter_data(superuser_session):
     for vid, cid in [(voter_a_id, campaign_a_id), (voter_b_id, campaign_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voters (id, campaign_id, source_type, first_name, last_name, created_at, updated_at) "
-                "VALUES (:id, :cid, 'manual', 'Test', 'Voter', :now, :now)"
+                "INSERT INTO voters (id, campaign_id,"
+                " source_type, first_name, last_name,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, 'manual', 'Test',"
+                " 'Voter', :now, :now)"
             ),
             {"id": vid, "cid": cid, "now": now},
         )
 
     # Voter tags
-    for tid, cid, name in [(tag_a_id, campaign_a_id, "Tag A"), (tag_b_id, campaign_b_id, "Tag B")]:
+    for tid, cid, name in [
+        (tag_a_id, campaign_a_id, "Tag A"),
+        (tag_b_id, campaign_b_id, "Tag B"),
+    ]:
         await session.execute(
             text(
                 "INSERT INTO voter_tags (id, campaign_id, name, created_at) "
@@ -106,13 +134,25 @@ async def two_campaigns_with_voter_data(superuser_session):
         )
 
     # Voter lists
-    for lid, cid, name in [(list_a_id, campaign_a_id, "List A"), (list_b_id, campaign_b_id, "List B")]:
+    for lid, cid, name in [
+        (list_a_id, campaign_a_id, "List A"),
+        (list_b_id, campaign_b_id, "List B"),
+    ]:
         await session.execute(
             text(
-                "INSERT INTO voter_lists (id, campaign_id, name, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, :name, :created_by, :now, :now)"
+                "INSERT INTO voter_lists (id, campaign_id,"
+                " name, created_by, created_at,"
+                " updated_at) "
+                "VALUES (:id, :cid, :name, :created_by,"
+                " :now, :now)"
             ),
-            {"id": lid, "cid": cid, "name": name, "created_by": user_a_id if cid == campaign_a_id else user_b_id, "now": now},
+            {
+                "id": lid,
+                "cid": cid,
+                "name": name,
+                "created_by": user_a_id if cid == campaign_a_id else user_b_id,
+                "now": now,
+            },
         )
 
     # Voter list members
@@ -126,31 +166,49 @@ async def two_campaigns_with_voter_data(superuser_session):
         )
 
     # Voter interactions
-    for vid, cid, uid in [(voter_a_id, campaign_a_id, user_a_id), (voter_b_id, campaign_b_id, user_b_id)]:
+    for vid, cid, uid in [
+        (voter_a_id, campaign_a_id, user_a_id),
+        (voter_b_id, campaign_b_id, user_b_id),
+    ]:
         await session.execute(
             text(
-                "INSERT INTO voter_interactions (id, campaign_id, voter_id, type, payload, created_by, created_at) "
-                "VALUES (:id, :cid, :vid, 'note', '{}'::jsonb, :uid, :now)"
+                "INSERT INTO voter_interactions (id,"
+                " campaign_id, voter_id, type, payload,"
+                " created_by, created_at) "
+                "VALUES (:id, :cid, :vid, 'note',"
+                " '{}'::jsonb, :uid, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "vid": vid, "uid": uid, "now": now},
         )
 
     # Voter phones
-    for vid, cid, val in [(voter_a_id, campaign_a_id, "+15551111"), (voter_b_id, campaign_b_id, "+15552222")]:
+    for vid, cid, val in [
+        (voter_a_id, campaign_a_id, "+15551111"),
+        (voter_b_id, campaign_b_id, "+15552222"),
+    ]:
         await session.execute(
             text(
-                "INSERT INTO voter_phones (id, campaign_id, voter_id, value, type, is_primary, source, created_at, updated_at) "
-                "VALUES (:id, :cid, :vid, :val, 'cell', true, 'manual', :now, :now)"
+                "INSERT INTO voter_phones (id, campaign_id,"
+                " voter_id, value, type, is_primary,"
+                " source, created_at, updated_at) "
+                "VALUES (:id, :cid, :vid, :val, 'cell',"
+                " true, 'manual', :now, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "vid": vid, "val": val, "now": now},
         )
 
     # Voter emails
-    for vid, cid, val in [(voter_a_id, campaign_a_id, "a@test.com"), (voter_b_id, campaign_b_id, "b@test.com")]:
+    for vid, cid, val in [
+        (voter_a_id, campaign_a_id, "a@test.com"),
+        (voter_b_id, campaign_b_id, "b@test.com"),
+    ]:
         await session.execute(
             text(
-                "INSERT INTO voter_emails (id, campaign_id, voter_id, value, type, is_primary, source, created_at, updated_at) "
-                "VALUES (:id, :cid, :vid, :val, 'home', true, 'manual', :now, :now)"
+                "INSERT INTO voter_emails (id, campaign_id,"
+                " voter_id, value, type, is_primary,"
+                " source, created_at, updated_at) "
+                "VALUES (:id, :cid, :vid, :val, 'home',"
+                " true, 'manual', :now, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "vid": vid, "val": val, "now": now},
         )
@@ -159,8 +217,14 @@ async def two_campaigns_with_voter_data(superuser_session):
     for vid, cid in [(voter_a_id, campaign_a_id), (voter_b_id, campaign_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voter_addresses (id, campaign_id, voter_id, address_line1, city, state, zip_code, type, is_primary, source, created_at, updated_at) "
-                "VALUES (:id, :cid, :vid, '123 Main St', 'Springfield', 'IL', '62701', 'home', true, 'manual', :now, :now)"
+                "INSERT INTO voter_addresses (id, campaign_id,"
+                " voter_id, address_line1, city, state,"
+                " zip_code, type, is_primary, source,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, :vid,"
+                " '123 Main St', 'Springfield', 'IL',"
+                " '62701', 'home', true, 'manual',"
+                " :now, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "vid": vid, "now": now},
         )
@@ -169,8 +233,12 @@ async def two_campaigns_with_voter_data(superuser_session):
     for cid, uid in [(campaign_a_id, user_a_id), (campaign_b_id, user_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO import_jobs (id, campaign_id, file_name, file_path, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, 'test.csv', 's3://test', 'pending', :uid, :now, :now)"
+                "INSERT INTO import_jobs (id, campaign_id,"
+                " file_name, file_path, status,"
+                " created_by, created_at, updated_at) "
+                "VALUES (:id, :cid, 'test.csv',"
+                " 's3://test', 'pending', :uid,"
+                " :now, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "uid": uid, "now": now},
         )
@@ -179,8 +247,11 @@ async def two_campaigns_with_voter_data(superuser_session):
     for cid in [campaign_a_id, campaign_b_id]:
         await session.execute(
             text(
-                "INSERT INTO field_mapping_templates (id, campaign_id, name, mapping, created_at, updated_at) "
-                "VALUES (:id, :cid, 'Template', '{}'::jsonb, :now, :now)"
+                "INSERT INTO field_mapping_templates (id,"
+                " campaign_id, name, mapping,"
+                " created_at, updated_at) "
+                "VALUES (:id, :cid, 'Template',"
+                " '{}'::jsonb, :now, :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "now": now},
         )
@@ -401,7 +472,11 @@ class TestVoterRLSIsolation:
 
         await self._set_context(session, data["campaign_a_id"])
         result = await session.execute(
-            text("SELECT campaign_id FROM field_mapping_templates WHERE campaign_id IS NOT NULL")
+            text(
+                "SELECT campaign_id"
+                " FROM field_mapping_templates"
+                " WHERE campaign_id IS NOT NULL"
+            )
         )
         campaign_ids = [row[0] for row in result.all()]
 

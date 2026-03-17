@@ -110,9 +110,7 @@ class ShiftService:
         Returns:
             Dict with shift, signed_up_count, waitlist_count, or None.
         """
-        result = await session.execute(
-            select(Shift).where(Shift.id == shift_id)
-        )
+        result = await session.execute(select(Shift).where(Shift.id == shift_id))
         shift = result.scalar_one_or_none()
         if shift is None:
             return None
@@ -120,12 +118,12 @@ class ShiftService:
         # Compute signup counts
         count_result = await session.execute(
             select(
-                func.count(ShiftVolunteer.id).filter(
-                    ShiftVolunteer.status == SignupStatus.SIGNED_UP
-                ).label("signed_up_count"),
-                func.count(ShiftVolunteer.id).filter(
-                    ShiftVolunteer.status == SignupStatus.WAITLISTED
-                ).label("waitlist_count"),
+                func.count(ShiftVolunteer.id)
+                .filter(ShiftVolunteer.status == SignupStatus.SIGNED_UP)
+                .label("signed_up_count"),
+                func.count(ShiftVolunteer.id)
+                .filter(ShiftVolunteer.status == SignupStatus.WAITLISTED)
+                .label("waitlist_count"),
             ).where(ShiftVolunteer.shift_id == shift_id)
         )
         row = count_result.one()
@@ -142,9 +140,7 @@ class ShiftService:
         shift_id: uuid.UUID,
     ) -> Shift | None:
         """Fetch shift model directly (no counts)."""
-        result = await session.execute(
-            select(Shift).where(Shift.id == shift_id)
-        )
+        result = await session.execute(select(Shift).where(Shift.id == shift_id))
         return result.scalar_one_or_none()
 
     async def update_shift(
@@ -172,7 +168,10 @@ class ShiftService:
             raise ValueError(msg)
 
         if shift.status != ShiftStatus.SCHEDULED:
-            msg = f"Shift can only be updated when SCHEDULED, current status: {shift.status}"
+            msg = (
+                "Shift can only be updated when SCHEDULED,"
+                f" current status: {shift.status}"
+            )
             raise ValueError(msg)
 
         update_fields = data.model_dump(exclude_unset=True)
@@ -260,9 +259,7 @@ class ShiftService:
 
         if cursor:
             cursor_time, cursor_id = cursor
-            stmt = stmt.where(
-                (Shift.start_at, Shift.id) > (cursor_time, cursor_id)
-            )
+            stmt = stmt.where((Shift.start_at, Shift.id) > (cursor_time, cursor_id))
 
         stmt = stmt.order_by(Shift.start_at, Shift.id).limit(limit)
 
@@ -343,7 +340,10 @@ class ShiftService:
 
         # Gate: volunteer must be ACTIVE
         if volunteer.status != VolunteerStatus.ACTIVE:
-            msg = f"Volunteer must be ACTIVE to sign up, current status: {volunteer.status}"
+            msg = (
+                "Volunteer must be ACTIVE to sign up,"
+                f" current status: {volunteer.status}"
+            )
             raise ValueError(msg)
 
         # Gate: emergency contact for field shifts
@@ -378,7 +378,9 @@ class ShiftService:
             signup_status = SignupStatus.WAITLISTED
             # Get max waitlist position
             max_pos_result = await session.execute(
-                select(func.coalesce(func.max(ShiftVolunteer.waitlist_position), 0)).where(
+                select(
+                    func.coalesce(func.max(ShiftVolunteer.waitlist_position), 0)
+                ).where(
                     ShiftVolunteer.shift_id == shift_id,
                     ShiftVolunteer.status == SignupStatus.WAITLISTED,
                 )
@@ -435,10 +437,13 @@ class ShiftService:
         volunteer = await self._get_volunteer(session, volunteer_id)
         is_self = volunteer.user_id == requester_id
 
-        if is_self and requester_role < CampaignRole.MANAGER:
-            if shift.start_at <= utcnow():
-                msg = "Cannot self-cancel after shift has started"
-                raise ValueError(msg)
+        if (
+            is_self
+            and requester_role < CampaignRole.MANAGER
+            and shift.start_at <= utcnow()
+        ):
+            msg = "Cannot self-cancel after shift has started"
+            raise ValueError(msg)
 
         was_signed_up = shift_vol.status == SignupStatus.SIGNED_UP
         shift_vol.status = SignupStatus.CANCELLED
@@ -760,13 +765,15 @@ class ShiftService:
 
             total_hours += hours
             shifts_worked += 1
-            shifts.append({
-                "shift_id": row.shift_id,
-                "shift_name": row.shift_name,
-                "hours": round(hours, 2),
-                "check_in_at": row.check_in_at,
-                "check_out_at": row.check_out_at,
-            })
+            shifts.append(
+                {
+                    "shift_id": row.shift_id,
+                    "shift_name": row.shift_name,
+                    "hours": round(hours, 2),
+                    "check_in_at": row.check_in_at,
+                    "check_out_at": row.check_out_at,
+                }
+            )
 
         return {
             "volunteer_id": volunteer_id,
@@ -838,10 +845,12 @@ class ShiftService:
     @staticmethod
     def _enforce_emergency_contact(volunteer: Volunteer, shift: Shift) -> None:
         """Raise ValueError if field shift requires emergency contact."""
-        if shift.type in (ShiftType.CANVASSING, ShiftType.PHONE_BANKING):
-            if not volunteer.emergency_contact_name or not volunteer.emergency_contact_phone:
-                msg = (
-                    "Emergency contact required for field shift signup "
-                    "(canvassing/phone banking)"
-                )
-                raise ValueError(msg)
+        if shift.type in (ShiftType.CANVASSING, ShiftType.PHONE_BANKING) and (
+            not volunteer.emergency_contact_name
+            or not volunteer.emergency_contact_phone
+        ):
+            msg = (
+                "Emergency contact required for field shift signup "
+                "(canvassing/phone banking)"
+            )
+            raise ValueError(msg)

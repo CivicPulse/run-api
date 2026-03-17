@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import { createFileRoute, useParams } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { DropZone } from "@/components/voters/DropZone"
@@ -55,7 +55,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 {stepNum}
               </span>
               <span
-                className={`text-sm ${isActive ? "font-medium" : "text-muted-foreground"}`}
+                className={`text-sm ${isActive ? "font-medium" : "text-muted-foreground"} ${!isActive ? "hidden sm:inline" : ""}`}
               >
                 {label}
               </span>
@@ -76,7 +76,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 export function ImportWizardPage() {
   const { campaignId } = useParams({ strict: false }) as { campaignId: string }
   const { jobId, step } = Route.useSearch()
-  const navigate = useNavigate()
+  const navigate = Route.useNavigate()
 
   // Upload state
   const [uploading, setUploading] = useState(false)
@@ -100,9 +100,11 @@ export function ImportWizardPage() {
   useEffect(() => {
     if (!jobId || !jobQuery.data) return
     const correctStep = deriveStep(jobQuery.data.status)
+    // Don't redirect away from Preview (2.5) when the API still reports "uploaded" (step 2)
+    if (correctStep === 2 && step === 2.5) return
     if (correctStep !== step) {
       navigate({
-        search: (prev) => ({ ...prev, step: correctStep }),
+        search: { jobId, step: correctStep },
         replace: true,
       })
     }
@@ -126,7 +128,7 @@ export function ImportWizardPage() {
 
       // Update jobId in URL immediately
       await navigate({
-        search: (prev) => ({ ...prev, jobId: job_id }),
+        search: { jobId: job_id, step },
         replace: true,
       })
 
@@ -154,7 +156,7 @@ export function ImportWizardPage() {
       // 1-second flash then advance to step 2
       setTimeout(() => {
         navigate({
-          search: (prev) => ({ ...prev, step: 2 }),
+          search: { jobId: job_id, step: 2 },
         })
       }, 1000)
     } catch (err) {
@@ -177,23 +179,23 @@ export function ImportWizardPage() {
     )
     try {
       await confirmMapping.mutateAsync({ field_mapping })
-      navigate({ search: (prev) => ({ ...prev, step: 3 }) })
+      navigate({ search: { jobId, step: 3 } })
     } catch {
       toast.error("Failed to confirm mapping. Please try again.")
     }
   }
 
   function handleImportComplete() {
-    navigate({ search: (prev) => ({ ...prev, step: 4 }) })
+    navigate({ search: { jobId, step: 4 } })
   }
 
   function handleImportFailed() {
-    navigate({ search: (prev) => ({ ...prev, step: 4 }) })
+    navigate({ search: { jobId, step: 4 } })
   }
 
   function handleImportAnother() {
     navigate({
-      search: () => ({ jobId: "", step: 1 }),
+      search: { jobId: "", step: 1 },
     })
   }
 
@@ -246,7 +248,7 @@ export function ImportWizardPage() {
                   type="button"
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   onClick={() =>
-                    navigate({ search: (prev) => ({ ...prev, step: 2.5 }) })
+                    navigate({ search: { jobId, step: 2.5 } })
                   }
                 >
                   Next →
@@ -268,7 +270,7 @@ export function ImportWizardPage() {
                   type="button"
                   className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
                   onClick={() =>
-                    navigate({ search: (prev) => ({ ...prev, step: 2 }) })
+                    navigate({ search: { jobId, step: 2 } })
                   }
                 >
                   Back

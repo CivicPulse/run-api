@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import ensure_user_synced
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import (
     AuthenticatedUser,
     CampaignRole,
     require_role,
 )
+from app.db.rls import set_campaign_context
 from app.db.session import get_db
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
 from app.schemas.member import MemberResponse, OwnershipTransfer, RoleUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -29,7 +34,7 @@ router = APIRouter()
 )
 async def list_members(
     campaign_id: uuid.UUID,
-    user: AuthenticatedUser = Depends(require_role("viewer")),  # noqa: ARG001
+    user: AuthenticatedUser = Depends(require_role("viewer")),
     db: AsyncSession = Depends(get_db),
 ):
     """List campaign members with their roles. Requires viewer+ role.
@@ -38,6 +43,8 @@ async def list_members(
     Since we don't store roles in campaign_members, we return the role from
     the join context. This is simplified -- production would call ZITADEL API.
     """
+    await ensure_user_synced(user, db)
+    await set_campaign_context(db, str(campaign_id))
     result = await db.execute(
         select(CampaignMember, User)
         .join(User, CampaignMember.user_id == User.id)
@@ -47,11 +54,18 @@ async def list_members(
 
     members = []
     for member, member_user in rows:
+        display_name = member_user.display_name or ""
+        email = member_user.email or ""
+        if not display_name.strip():
+            logger.warning(
+                "display_name empty for user %s, falling back to 'Unknown'",
+                member.user_id,
+            )
         members.append(
             MemberResponse(
                 user_id=member.user_id,
-                display_name=member_user.display_name,
-                email=member_user.email,
+                display_name=display_name if display_name.strip() else "Unknown",
+                email=email if email.strip() else "",
                 role="member",  # Default; real role comes from ZITADEL
                 synced_at=member.synced_at,
             )
@@ -92,9 +106,7 @@ async def update_member_role(
                 "Admins can only assign manager role and below"
             )
     else:
-        raise InsufficientPermissionsError(
-            "Only admins and owners can update roles"
-        )
+        raise InsufficientPermissionsError("Only admins and owners can update roles")
 
     # Verify member exists
     result = await db.execute(
@@ -115,17 +127,22 @@ async def update_member_role(
     zitadel = request.app.state.zitadel_service
 
     # Remove old role and assign new one in ZITADEL
-    await zitadel.remove_project_role(
-        str(member.campaign_id), member.user_id, "member"
-    )
+    await zitadel.remove_project_role(str(member.campaign_id), member.user_id, "member")
     await zitadel.assign_project_role(
         str(member.campaign_id), member.user_id, data.role
     )
 
+    display_name = member_user.display_name or ""
+    email = member_user.email or ""
+    if not display_name.strip():
+        logger.warning(
+            "display_name empty for user %s, falling back to 'Unknown'",
+            member.user_id,
+        )
     return MemberResponse(
         user_id=member.user_id,
-        display_name=member_user.display_name,
-        email=member_user.email,
+        display_name=display_name if display_name.strip() else "Unknown",
+        email=email if email.strip() else "",
         role=data.role,
         synced_at=member.synced_at,
     )
@@ -168,9 +185,7 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_project_role(
-        str(campaign_id), member_user_id, "member"
-    )
+    await zitadel.remove_project_role(str(campaign_id), member_user_id, "member")
     await db.delete(member)
     await db.commit()
 
@@ -222,12 +237,8 @@ async def transfer_ownership(
     await zitadel.assign_project_role(str(campaign_id), user.id, "admin")
 
     # Promote target to owner in ZITADEL
-    await zitadel.remove_project_role(
-        str(campaign_id), data.new_owner_id, "admin"
-    )
-    await zitadel.assign_project_role(
-        str(campaign_id), data.new_owner_id, "owner"
-    )
+    await zitadel.remove_project_role(str(campaign_id), data.new_owner_id, "admin")
+    await zitadel.assign_project_role(str(campaign_id), data.new_owner_id, "owner")
 
     # Update campaign.created_by
     campaign.created_by = data.new_owner_id

@@ -66,9 +66,7 @@ async def list_campaigns(
     Requires viewer+ role.
     """
     await ensure_user_synced(user, db)
-    items, pagination = await _service.list_campaigns(
-        db=db, limit=limit, cursor=cursor
-    )
+    items, pagination = await _service.list_campaigns(db=db, limit=limit, cursor=cursor)
     return PaginatedResponse[CampaignResponse](
         items=[CampaignResponse.model_validate(c) for c in items],
         pagination=pagination,

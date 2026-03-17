@@ -124,6 +124,14 @@ class StorageService:
                 ContentType=content_type,
             )
 
+    async def delete_object(self, key: str) -> None:
+        """Delete an object from S3."""
+        async with self.session.client(**self._client_kwargs()) as s3:
+            await s3.delete_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
+
     async def ensure_bucket(self) -> None:
         """Create the configured bucket if it does not exist.
 
@@ -133,11 +141,7 @@ class StorageService:
         async with self.session.client(**self._client_kwargs()) as s3:
             try:
                 await s3.head_bucket(Bucket=settings.s3_bucket)
-                logger.debug(
-                    "Bucket {} exists", settings.s3_bucket
-                )
+                logger.debug("Bucket {} exists", settings.s3_bucket)
             except ClientError:
                 await s3.create_bucket(Bucket=settings.s3_bucket)
-                logger.info(
-                    "Created bucket {}", settings.s3_bucket
-                )
+                logger.info("Created bucket {}", settings.s3_bucket)

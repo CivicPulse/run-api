@@ -74,9 +74,7 @@ def _make_entry(**overrides) -> MagicMock:
     return entry
 
 
-def _phone_row(
-    voter_id, phone_id, value, phone_type="cell", is_primary=True
-):
+def _phone_row(voter_id, phone_id, value, phone_type="cell", is_primary=True):
     """Create a mock phone query result row."""
     return MagicMock(
         voter_id=voter_id,
@@ -105,9 +103,7 @@ class TestCallListGeneration:
         voter_list_obj = MagicMock()
         voter_list_obj.filter_query = {"party": "D"}
         voter_list_obj.list_type = "dynamic"
-        voter_list_result.scalar_one_or_none.return_value = (
-            voter_list_obj
-        )
+        voter_list_result.scalar_one_or_none.return_value = voter_list_obj
 
         # Mock voter+phone query: two voters with valid phones
         v1 = uuid.uuid4()
@@ -127,12 +123,14 @@ class TestCallListGeneration:
         interaction_result = MagicMock()
         interaction_result.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            voter_list_result,
-            voter_phone_result,
-            dnc_result,
-            interaction_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                voter_list_result,
+                voter_phone_result,
+                dnc_result,
+                interaction_result,
+            ]
+        )
 
         from app.schemas.call_list import CallListCreate
 
@@ -141,9 +139,7 @@ class TestCallListGeneration:
             voter_list_id=voter_list_id,
         )
 
-        result = await svc.generate_call_list(
-            session, campaign_id, data, "user-1"
-        )
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
 
         assert result is not None
         assert result.status == CallListStatus.DRAFT
@@ -175,19 +171,19 @@ class TestCallListGeneration:
         interaction_result = MagicMock()
         interaction_result.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            voter_phone_result,
-            dnc_result,
-            interaction_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                voter_phone_result,
+                dnc_result,
+                interaction_result,
+            ]
+        )
 
         from app.schemas.call_list import CallListCreate
 
         data = CallListCreate(name="Phone Validation Test")
 
-        result = await svc.generate_call_list(
-            session, campaign_id, data, "user-1"
-        )
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
 
         # Only v2 included (v1's only phone is invalid)
         assert result.total_entries == 1
@@ -212,26 +208,24 @@ class TestCallListGeneration:
 
         # v1's phone is on DNC
         dnc_result = MagicMock()
-        dnc_result.scalars.return_value.all.return_value = [
-            "5551111111"
-        ]
+        dnc_result.scalars.return_value.all.return_value = ["5551111111"]
 
         interaction_result = MagicMock()
         interaction_result.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            voter_phone_result,
-            dnc_result,
-            interaction_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                voter_phone_result,
+                dnc_result,
+                interaction_result,
+            ]
+        )
 
         from app.schemas.call_list import CallListCreate
 
         data = CallListCreate(name="DNC Filter Test")
 
-        result = await svc.generate_call_list(
-            session, campaign_id, data, "user-1"
-        )
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
 
         # Only v2 should be included (v1 fully DNC'd)
         assert result.total_entries == 1
@@ -261,19 +255,19 @@ class TestCallListGeneration:
         interaction_result = MagicMock()
         interaction_result.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            voter_phone_result,
-            dnc_result,
-            interaction_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                voter_phone_result,
+                dnc_result,
+                interaction_result,
+            ]
+        )
 
         from app.schemas.call_list import CallListCreate
 
         data = CallListCreate(name="Multi Phone Test")
 
-        result = await svc.generate_call_list(
-            session, campaign_id, data, "user-1"
-        )
+        result = await svc.generate_call_list(session, campaign_id, data, "user-1")
 
         assert result.total_entries == 1
         # Find the entry that was added
@@ -317,33 +311,25 @@ class TestCallListClaiming:
         stale_result.rowcount = 0
 
         entries = [
-            _make_entry(
-                call_list_id=call_list_id, priority_score=90
-            ),
-            _make_entry(
-                call_list_id=call_list_id, priority_score=70
-            ),
-            _make_entry(
-                call_list_id=call_list_id, priority_score=50
-            ),
+            _make_entry(call_list_id=call_list_id, priority_score=90),
+            _make_entry(call_list_id=call_list_id, priority_score=70),
+            _make_entry(call_list_id=call_list_id, priority_score=50),
         ]
         entries_result = MagicMock()
-        entries_result.scalars.return_value.all.return_value = (
-            entries
-        )
+        entries_result.scalars.return_value.all.return_value = entries
 
         claim_result = MagicMock()
 
-        session.execute = AsyncMock(side_effect=[
-            cl_result,
-            stale_result,
-            entries_result,
-            claim_result,
-        ])
-
-        result = await svc.claim_entries(
-            session, call_list_id, caller_id, batch_size=3
+        session.execute = AsyncMock(
+            side_effect=[
+                cl_result,
+                stale_result,
+                entries_result,
+                claim_result,
+            ]
         )
+
+        result = await svc.claim_entries(session, call_list_id, caller_id, batch_size=3)
 
         assert len(result) == 3
         for entry in result:
@@ -374,15 +360,15 @@ class TestCallListClaiming:
         entries_result = MagicMock()
         entries_result.scalars.return_value.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            cl_result,
-            stale_result,
-            entries_result,
-        ])
-
-        await svc.claim_entries(
-            session, call_list_id, "caller-1", batch_size=5
+        session.execute = AsyncMock(
+            side_effect=[
+                cl_result,
+                stale_result,
+                entries_result,
+            ]
         )
+
+        await svc.claim_entries(session, call_list_id, "caller-1", batch_size=5)
 
         assert session.execute.call_count >= 2
 
@@ -395,9 +381,7 @@ class TestCallListClaiming:
         session = AsyncMock()
         call_list_id = uuid.uuid4()
 
-        call_list = _make_call_list(
-            id=call_list_id, status=CallListStatus.ACTIVE
-        )
+        call_list = _make_call_list(id=call_list_id, status=CallListStatus.ACTIVE)
 
         cl_result = MagicMock()
         cl_result.scalar_one_or_none.return_value = call_list
@@ -406,26 +390,23 @@ class TestCallListClaiming:
         stale_result.rowcount = 0
 
         entries = [
-            _make_entry(
-                call_list_id=call_list_id, priority_score=100
-            ),
-            _make_entry(
-                call_list_id=call_list_id, priority_score=80
-            ),
-            _make_entry(
-                call_list_id=call_list_id, priority_score=60
-            ),
+            _make_entry(call_list_id=call_list_id, priority_score=100),
+            _make_entry(call_list_id=call_list_id, priority_score=80),
+            _make_entry(call_list_id=call_list_id, priority_score=60),
         ]
         entries_result = MagicMock()
-        entries_result.scalars.return_value.all.return_value = (
-            entries
-        )
+        entries_result.scalars.return_value.all.return_value = entries
 
         claim_result = MagicMock()
 
-        session.execute = AsyncMock(side_effect=[
-            cl_result, stale_result, entries_result, claim_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                cl_result,
+                stale_result,
+                entries_result,
+                claim_result,
+            ]
+        )
 
         result = await svc.claim_entries(
             session, call_list_id, "caller-1", batch_size=5
@@ -468,15 +449,18 @@ class TestCallListEntryStatus:
             last_attempt_at=utcnow() - timedelta(hours=2),
         )
         entries_result = MagicMock()
-        entries_result.scalars.return_value.all.return_value = [
-            cooled_entry
-        ]
+        entries_result.scalars.return_value.all.return_value = [cooled_entry]
 
         claim_result = MagicMock()
 
-        session.execute = AsyncMock(side_effect=[
-            cl_result, stale_result, entries_result, claim_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                cl_result,
+                stale_result,
+                entries_result,
+                claim_result,
+            ]
+        )
 
         result = await svc.claim_entries(
             session, call_list_id, "caller-1", batch_size=5
@@ -493,9 +477,7 @@ class TestCallListEntryStatus:
         session = AsyncMock()
         call_list_id = uuid.uuid4()
 
-        call_list = _make_call_list(
-            id=call_list_id, status=CallListStatus.ACTIVE
-        )
+        call_list = _make_call_list(id=call_list_id, status=CallListStatus.ACTIVE)
 
         cl_result = MagicMock()
         cl_result.scalar_one_or_none.return_value = call_list
@@ -506,9 +488,13 @@ class TestCallListEntryStatus:
         entries_result = MagicMock()
         entries_result.scalars.return_value.all.return_value = []
 
-        session.execute = AsyncMock(side_effect=[
-            cl_result, stale_result, entries_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                cl_result,
+                stale_result,
+                entries_result,
+            ]
+        )
 
         result = await svc.claim_entries(
             session, call_list_id, "caller-1", batch_size=5
@@ -530,9 +516,7 @@ class TestCallListEntryStatus:
         session.execute = AsyncMock(return_value=cl_result)
 
         # Draft -> Active should succeed
-        result = await svc.update_status(
-            session, call_list.id, CallListStatus.ACTIVE
-        )
+        result = await svc.update_status(session, call_list.id, CallListStatus.ACTIVE)
         assert result.status == CallListStatus.ACTIVE
 
         # Active -> Completed should succeed
@@ -553,9 +537,7 @@ class TestCallListEntryStatus:
         session.execute = AsyncMock(return_value=cl_result3)
 
         with pytest.raises(ValueError, match="Invalid status"):
-            await svc.update_status(
-                session, cl_done.id, CallListStatus.ACTIVE
-            )
+            await svc.update_status(session, cl_done.id, CallListStatus.ACTIVE)
 
 
 class TestCalculatePriorityScore:

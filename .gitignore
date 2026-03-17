@@ -137,6 +137,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.run-api.secrets
 .envrc
 .venv
 env/
@@ -216,3 +217,6 @@ init.md
 data/
 screenshots/
 .claude/
+
+# hatchkit
+.hatchkit/cache/

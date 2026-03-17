@@ -4,7 +4,6 @@ import { toast } from "sonner"
 import { HTTPError } from "ky"
 import {
   ArrowLeft,
-  Loader2,
   MoreHorizontal,
   Pencil,
   UserPlus,

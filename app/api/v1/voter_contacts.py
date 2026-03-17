@@ -371,7 +371,10 @@ async def set_primary(
     if contact_type not in ("phones", "emails", "addresses"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid contact type: {contact_type}. Must be phones, emails, or addresses.",
+            detail=(
+                f"Invalid contact type: {contact_type}."
+                " Must be phones, emails, or addresses."
+            ),
         )
 
     await _service.set_primary(

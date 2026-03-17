@@ -204,7 +204,7 @@ describe("CallListDetailPage - claimed_by display", () => {
     })
     mockUseAppendFromList.mockReturnValue(makeMutation())
     mockUseMembers.mockReturnValue({
-      data: { items: [], total: 0, page: 1, size: 50, pages: 0 },
+      data: [],
       isLoading: false,
     })
     mockUseVoterLists.mockReturnValue({ data: [], isLoading: false })
@@ -219,7 +219,7 @@ describe("CallListDetailPage - claimed_by display", () => {
       isLoading: false,
     })
     mockUseMembers.mockReturnValue({
-      data: { items: [member], total: 1, page: 1, size: 50, pages: 1 },
+      data: [member],
       isLoading: false,
     })
 
@@ -241,7 +241,7 @@ describe("CallListDetailPage - claimed_by display", () => {
     })
     // No members that match this UUID
     mockUseMembers.mockReturnValue({
-      data: { items: [], total: 0, page: 1, size: 50, pages: 0 },
+      data: [],
       isLoading: false,
     })
 

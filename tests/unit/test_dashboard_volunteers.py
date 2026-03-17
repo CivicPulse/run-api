@@ -65,7 +65,8 @@ async def test_volunteer_summary_returns_schema():
         {"total_hours": 32.5},
     )
     result = await VolunteerDashboardService.get_summary(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert isinstance(result, VolunteerSummary)
@@ -85,7 +86,8 @@ async def test_volunteer_summary_empty_returns_zeros():
         {"total_hours": 0.0},
     )
     result = await VolunteerDashboardService.get_summary(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert result.active_volunteers == 0
@@ -116,7 +118,8 @@ async def test_volunteer_by_volunteer_returns_list():
     ]
     session = _mock_session_all(rows)
     result = await VolunteerDashboardService.get_by_volunteer(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 2
@@ -142,7 +145,8 @@ async def test_volunteer_by_shift_returns_list():
     ]
     session = _mock_session_all(rows)
     result = await VolunteerDashboardService.get_by_shift(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert len(result) == 1
@@ -171,7 +175,8 @@ async def test_hours_uses_adjusted_hours_override():
     ]
     session = _mock_session_all(rows)
     result = await VolunteerDashboardService.get_by_volunteer(
-        session, CAMPAIGN_ID,
+        session,
+        CAMPAIGN_ID,
     )
 
     assert result[0].hours_worked == 8.25

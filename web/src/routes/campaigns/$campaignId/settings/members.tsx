@@ -167,9 +167,14 @@ function MembersSettings() {
     {
       accessorKey: "email",
       header: "Email",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{row.original.email}</span>
-      ),
+      cell: ({ row }) => {
+        const email = row.original.email
+        return (
+          <span className="text-muted-foreground">
+            {email || "No email"}
+          </span>
+        )
+      },
     },
     {
       accessorKey: "role",
@@ -294,7 +299,7 @@ function MembersSettings() {
     },
   ]
 
-  const members = membersData?.items ?? []
+  const members = membersData ?? []
   const invites = invitesData?.items ?? []
 
   return (

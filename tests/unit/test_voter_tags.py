@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.models.voter import VoterTag, VoterTagMember
+from app.models.voter import VoterTag
 
 
 class TestVoterTagOperations:
@@ -28,7 +28,7 @@ class TestVoterTagOperations:
 
         service = VoterService()
         campaign_id = uuid.uuid4()
-        tag = await service.create_tag(mock_db, campaign_id, "yard-sign")
+        await service.create_tag(mock_db, campaign_id, "yard-sign")
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()
 

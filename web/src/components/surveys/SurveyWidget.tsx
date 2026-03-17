@@ -47,6 +47,7 @@ export function SurveyWidget({
       for (const r of existingResponses) {
         prefilled[r.question_id] = r.answer_value
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: pre-fill form state from fetched server data
       setAnswers(prefilled)
       setSubmitted(true)
     }
@@ -54,6 +55,7 @@ export function SurveyWidget({
 
   // Reset when voter changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset form when voter prop changes
     setAnswers({})
     setSubmitted(false)
   }, [voterId])

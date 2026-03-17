@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.models.volunteer import VolunteerTag, VolunteerTagMember
+from app.models.volunteer import VolunteerTag
 from app.services.volunteer import VolunteerService
 
 
@@ -99,10 +99,10 @@ class TestSelfRegister409Enrichment:
 
     @pytest.mark.asyncio
     async def test_self_register_409_includes_volunteer_id(self):
-        """409 self-register response body includes volunteer_id field via ProblemResponse extras."""
+        """409 self-register response body includes
+        volunteer_id field via ProblemResponse extras."""
         import fastapi_problem_details as problem
         from fastapi import status
-        from starlette.testclient import TestClient
 
         # We test the ProblemResponse with volunteer_id extra field
         # to confirm it serializes correctly

@@ -28,12 +28,11 @@ if TYPE_CHECKING:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan handler -- initializes shared resources."""
     # Import here to avoid circular imports at module level
+    from app.core.errors import ZitadelUnavailableError
     from app.core.security import JWKSManager
     from app.services.storage import StorageService
-    from app.tasks.broker import broker
-
-    from app.core.errors import ZitadelUnavailableError
     from app.services.zitadel import ZitadelService
+    from app.tasks.broker import broker
 
     logger.info("Starting {}", settings.app_name)
 
@@ -41,7 +40,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.jwks_manager = JWKSManager(issuer=settings.zitadel_issuer)
 
     # ZITADEL service account (fail-fast validation)
-    if not settings.zitadel_service_client_id or not settings.zitadel_service_client_secret:
+    if (
+        not settings.zitadel_service_client_id
+        or not settings.zitadel_service_client_secret
+    ):
         raise RuntimeError(
             "ZITADEL service account not configured: "
             "set ZITADEL_SERVICE_CLIENT_ID and ZITADEL_SERVICE_CLIENT_SECRET"
@@ -51,17 +53,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         issuer=settings.zitadel_issuer,
         client_id=settings.zitadel_service_client_id,
         client_secret=settings.zitadel_service_client_secret,
+        base_url=settings.zitadel_base_url,
     )
     try:
         await zitadel_service._get_token()
     except httpx.HTTPStatusError as exc:
-        raise RuntimeError(
-            f"ZITADEL credentials invalid: {exc}"
-        ) from exc
+        raise RuntimeError(f"ZITADEL credentials invalid: {exc}") from exc
     except ZitadelUnavailableError as exc:
-        raise RuntimeError(
-            f"ZITADEL unreachable: {exc}"
-        ) from exc
+        raise RuntimeError(f"ZITADEL unreachable: {exc}") from exc
     app.state.zitadel_service = zitadel_service
     logger.info("ZitadelService initialized successfully")
 
@@ -102,7 +101,9 @@ def create_app() -> FastAPI:
 
     # Serve built frontend in production (static/ exists only in Docker image)
     if STATIC_DIR.exists():
-        app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+        app.mount(
+            "/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets"
+        )
 
         @app.get("/{path:path}")
         async def spa_fallback(path: str) -> FileResponse:

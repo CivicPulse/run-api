@@ -6,9 +6,10 @@ import { z } from "zod"
 import { toast } from "sonner"
 import type { ColumnDef, SortingState } from "@tanstack/react-table"
 
-import { useVoterSearch, useCreateVoter } from "@/hooks/useVoters"
+import { useVoterSearch, useCreateVoter, useDeleteVoter } from "@/hooks/useVoters"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { DataTable } from "@/components/shared/DataTable"
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { VoterFilterBuilder } from "@/components/voters/VoterFilterBuilder"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
@@ -32,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Users } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, calculateAge } from "@/lib/utils"
 import {
   formatPropensityChip,
   formatMultiSelectChip,
@@ -354,7 +356,7 @@ function VoterCreateForm({ campaignId, onSuccess }: VoterCreateFormProps) {
   const onSubmit = async (data: VoterFormData) => {
     const payload: VoterCreate = {}
     for (const [k, v] of Object.entries(data)) {
-      if (v) (payload as Record<string, string>)[k] = v
+      if (v !== undefined && v !== "") (payload as Record<string, string | number>)[k] = v
     }
     try {
       await createVoter.mutateAsync(payload)
@@ -416,7 +418,8 @@ function VoterCreateForm({ campaignId, onSuccess }: VoterCreateFormProps) {
 
 function buildColumns(
   campaignId: string,
-  navigate: ReturnType<typeof useNavigate>
+  navigate: ReturnType<typeof useNavigate>,
+  onDelete: (voter: Voter) => void,
 ): ColumnDef<Voter, unknown>[] {
   return [
     {
@@ -461,6 +464,7 @@ function buildColumns(
     {
       id: "district",
       header: "District",
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) =>
         row.original.congressional_district ?? (
           <span className="text-muted-foreground">—</span>
@@ -470,8 +474,12 @@ function buildColumns(
       id: "age",
       header: "Age",
       enableSorting: true,
-      cell: ({ row }) =>
-        row.original.age ?? <span className="text-muted-foreground">—</span>,
+      meta: { className: "hidden md:table-cell" },
+      cell: ({ row }) => {
+        const v = row.original
+        const computed = v.date_of_birth ? calculateAge(v.date_of_birth) : null
+        return v.age ?? computed ?? <span className="text-muted-foreground">—</span>
+      },
     },
     {
       id: "actions",
@@ -511,6 +519,12 @@ function buildColumns(
                   }
                 >
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => onDelete(voter)}
+                >
+                  Delete
                 </DropdownMenuItem>
               </RequireRole>
             </DropdownMenuContent>
@@ -593,7 +607,22 @@ function VotersPage() {
     setPrevCursors([])
   }
 
-  const columns = useMemo(() => buildColumns(campaignId, navigate), [campaignId, navigate])
+  // Delete voter state
+  const [deleteVoter, setDeleteVoter] = useState<Voter | null>(null)
+  const deleteVoterMutation = useDeleteVoter(campaignId)
+
+  const handleDelete = async () => {
+    if (!deleteVoter) return
+    try {
+      await deleteVoterMutation.mutateAsync(deleteVoter.id)
+    } catch {
+      // Error toast is handled by useDeleteVoter's onError
+    } finally {
+      setDeleteVoter(null)
+    }
+  }
+
+  const columns = useMemo(() => buildColumns(campaignId, navigate, setDeleteVoter), [campaignId, navigate, setDeleteVoter])
 
   const filterChips = buildFilterChips(filters, filterUpdate)
 
@@ -686,6 +715,7 @@ function VotersPage() {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>New Voter</SheetTitle>
+            <SheetDescription>Add a new voter to this campaign.</SheetDescription>
           </SheetHeader>
           <VoterCreateForm
             campaignId={campaignId}
@@ -693,6 +723,19 @@ function VotersPage() {
           />
         </SheetContent>
       </Sheet>
+
+      {/* Delete Voter Dialog */}
+      <DestructiveConfirmDialog
+        open={!!deleteVoter}
+        onOpenChange={(open) => {
+          if (!open) setDeleteVoter(null)
+        }}
+        title={`Delete "${[deleteVoter?.first_name, deleteVoter?.last_name].filter(Boolean).join(" ") || "voter"}"?`}
+        description="This will permanently remove the voter and all associated data."
+        confirmText={[deleteVoter?.first_name, deleteVoter?.last_name].filter(Boolean).join(" ") || "voter"}
+        onConfirm={handleDelete}
+        isPending={deleteVoterMutation.isPending}
+      />
     </div>
   )
 }

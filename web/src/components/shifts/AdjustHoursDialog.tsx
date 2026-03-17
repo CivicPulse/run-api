@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -28,7 +28,7 @@ interface AdjustHoursDialogProps {
 
 const adjustHoursSchema = z.object({
   adjusted_hours: z.coerce
-    .number({ invalid_type_error: "Must be a number" })
+    .number({ error: "Must be a number" })
     .positive("Hours must be greater than 0"),
   adjustment_reason: z
     .string()
@@ -49,7 +49,7 @@ export function AdjustHoursDialog({
   const adjustMutation = useAdjustHours(campaignId, shiftId)
 
   const form = useForm<AdjustHoursFormValues>({
-    resolver: zodResolver(adjustHoursSchema),
+    resolver: zodResolver(adjustHoursSchema) as Resolver<AdjustHoursFormValues>,
     defaultValues: {
       adjusted_hours: computedHours ?? 0,
       adjustment_reason: "",

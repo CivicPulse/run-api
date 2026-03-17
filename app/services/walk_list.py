@@ -65,13 +65,10 @@ class WalkListService:
         turf_boundary = (
             select(Turf.boundary).where(Turf.id == data.turf_id).scalar_subquery()
         )
-        query = (
-            select(Voter)
-            .where(
-                Voter.campaign_id == campaign_id,
-                Voter.geom.is_not(None),
-                func.ST_Contains(turf_boundary, Voter.geom),
-            )
+        query = select(Voter).where(
+            Voter.campaign_id == campaign_id,
+            Voter.geom.is_not(None),
+            func.ST_Contains(turf_boundary, Voter.geom),
         )
 
         # Optional voter list intersection
@@ -85,7 +82,9 @@ class WalkListService:
         voters = list(result.scalars().all())
 
         # Sort by street address: (street_name, house_number, last_name)
-        voters.sort(key=lambda v: parse_address_sort_key(v.registration_line1, v.last_name))
+        voters.sort(
+            key=lambda v: parse_address_sort_key(v.registration_line1, v.last_name)
+        )
 
         # Create walk list record
         now = utcnow()
@@ -177,10 +176,7 @@ class WalkListService:
                 cursor_id = uuid.UUID(parts[1])
                 query = query.where(
                     (WalkList.created_at < cursor_ts)
-                    | (
-                        (WalkList.created_at == cursor_ts)
-                        & (WalkList.id < cursor_id)
-                    )
+                    | ((WalkList.created_at == cursor_ts) & (WalkList.id < cursor_id))
                 )
 
         query = query.limit(limit + 1)
@@ -377,7 +373,9 @@ class WalkListService:
             delete(WalkListEntry).where(WalkListEntry.walk_list_id == walk_list_id)
         )
         await session.execute(
-            delete(WalkListCanvasser).where(WalkListCanvasser.walk_list_id == walk_list_id)
+            delete(WalkListCanvasser).where(
+                WalkListCanvasser.walk_list_id == walk_list_id
+            )
         )
         await session.delete(walk_list)
         await session.flush()

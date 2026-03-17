@@ -30,9 +30,7 @@ class DoNotCallEntry(Base):
 
     __tablename__ = "do_not_call"
     __table_args__ = (
-        UniqueConstraint(
-            "campaign_id", "phone_number", name="uq_dnc_campaign_phone"
-        ),
+        UniqueConstraint("campaign_id", "phone_number", name="uq_dnc_campaign_phone"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -41,7 +39,5 @@ class DoNotCallEntry(Base):
     )
     phone_number: Mapped[str] = mapped_column(String(50), nullable=False)
     reason: Mapped[str] = mapped_column(String(50), nullable=False)
-    added_by: Mapped[str] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    added_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     added_at: Mapped[datetime] = mapped_column(server_default=func.now())

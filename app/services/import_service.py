@@ -10,7 +10,6 @@ import csv
 import io
 import re
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -396,10 +395,17 @@ def parse_voting_history(row: dict[str, str]) -> list[str]:
 
 
 # Columns excluded from the upsert SET clause (identity + auto-managed)
-_UPSERT_EXCLUDE = frozenset({
-    "id", "campaign_id", "source_type", "source_id",
-    "created_at", "updated_at", "geom",
-})
+_UPSERT_EXCLUDE = frozenset(
+    {
+        "id",
+        "campaign_id",
+        "source_type",
+        "source_id",
+        "created_at",
+        "updated_at",
+        "geom",
+    }
+)
 
 # Canonical field names that exist as columns on the Voter model
 _VOTER_COLUMNS: set[str] = {
@@ -575,7 +581,11 @@ class ImportService:
                     extra_data[csv_col] = value
 
             # Parse propensity strings to integers
-            for prop_field in ("propensity_general", "propensity_primary", "propensity_combined"):
+            for prop_field in (
+                "propensity_general",
+                "propensity_primary",
+                "propensity_combined",
+            ):
                 raw = voter.get(prop_field)
                 if isinstance(raw, str):
                     voter[prop_field] = parse_propensity(raw)
@@ -588,14 +598,28 @@ class ImportService:
             voter["extra_data"] = extra_data
 
             # Validate: must have at least first_name or last_name
-            has_first = bool(voter.get("first_name", "").strip()) if voter.get("first_name") else False
-            has_last = bool(voter.get("last_name", "").strip()) if voter.get("last_name") else False
+            has_first = (
+                bool(voter.get("first_name", "").strip())
+                if voter.get("first_name")
+                else False
+            )
+            has_last = (
+                bool(voter.get("last_name", "").strip())
+                if voter.get("last_name")
+                else False
+            )
 
             if not has_first and not has_last:
-                result_dict.update({
-                    "voter": voter,
-                    "error": "Missing required field: at least one of first_name or last_name is required",
-                })
+                result_dict.update(
+                    {
+                        "voter": voter,
+                        "error": (
+                            "Missing required field: at least"
+                            " one of first_name or last_name"
+                            " is required"
+                        ),
+                    }
+                )
             else:
                 result_dict["voter"] = voter
 
@@ -639,10 +663,12 @@ class ImportService:
 
         for i, result in enumerate(mapped_results):
             if result.get("error"):
-                errors.append({
-                    "row": rows[i] if i < len(rows) else {},
-                    "reason": result["error"],
-                })
+                errors.append(
+                    {
+                        "row": rows[i] if i < len(rows) else {},
+                        "reason": result["error"],
+                    }
+                )
             else:
                 voter = result["voter"]
                 # Ensure source_id has a value for upsert; generate if missing
@@ -679,14 +705,16 @@ class ImportService:
                 if phone_raw and i < len(voter_ids):
                     normalized = normalize_phone(phone_raw)
                     if normalized is not None:
-                        phone_records.append({
-                            "campaign_id": valid_voters[i]["campaign_id"],
-                            "voter_id": voter_ids[i],
-                            "value": normalized,
-                            "type": "cell",
-                            "source": "import",
-                            "is_primary": True,
-                        })
+                        phone_records.append(
+                            {
+                                "campaign_id": valid_voters[i]["campaign_id"],
+                                "voter_id": voter_ids[i],
+                                "value": normalized,
+                                "type": "cell",
+                                "source": "import",
+                                "is_primary": True,
+                            }
+                        )
 
             if phone_records:
                 phone_stmt = insert(VoterPhone).values(phone_records)
@@ -840,7 +868,8 @@ class ImportService:
         await session.flush()
 
         logger.info(
-            "Import {} complete: {} imported, {} phones created, {} skipped out of {} total",
+            "Import %s complete: %s imported, %s phones created,"
+            " %s skipped out of %s total",
             import_job_id,
             total_imported,
             total_phones_created,

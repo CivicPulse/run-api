@@ -1,13 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import type { CampaignMember } from "@/types/campaign"
-import type { PaginatedResponse } from "@/types/common"
 
 export function useMembers(campaignId: string) {
   return useQuery({
     queryKey: ["campaigns", campaignId, "members"],
     queryFn: () =>
-      api.get(`api/v1/campaigns/${campaignId}/members`).json<PaginatedResponse<CampaignMember>>(),
+      api.get(`api/v1/campaigns/${campaignId}/members`).json<CampaignMember[]>(),
     enabled: !!campaignId,
   })
 }

@@ -14,7 +14,8 @@ from app.models.walk_list import DoorKnockResult, WalkListEntryStatus
 
 
 class TestCanvassService:
-    """Tests for door knock recording, entry status updates, and contact attempt tracking."""
+    """Tests for door knock recording, entry status updates,
+    and contact attempt tracking."""
 
     @pytest.mark.asyncio
     async def test_record_door_knock(self) -> None:
@@ -150,7 +151,6 @@ class TestCanvassService:
     @pytest.mark.asyncio
     async def test_door_knock_increments_visited_count(self) -> None:
         """CANV-04: Walk list visited_entries incremented."""
-        from app.models.walk_list import WalkList
         from app.services.canvass import CanvassService
 
         service = CanvassService()
@@ -209,8 +209,10 @@ class TestCanvassService:
     def test_contact_attempts(self) -> None:
         """CANV-05: Multiple knocks tracked per voter."""
         # Verify each door knock creates a separate VoterInteraction
-        # This is implicit in the append-only model: VoterInteraction has no unique
-        # constraint on (voter_id, type), so multiple DOOR_KNOCK events per voter are allowed
+        # This is implicit in the append-only model:
+        # VoterInteraction has no unique constraint on
+        # (voter_id, type), so multiple DOOR_KNOCK events
+        # per voter are allowed
         assert hasattr(VoterInteraction, "voter_id")
         assert hasattr(VoterInteraction, "type")
         assert hasattr(VoterInteraction, "created_at")

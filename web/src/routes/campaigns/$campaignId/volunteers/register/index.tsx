@@ -46,7 +46,7 @@ const volunteerRegisterSchema = z.object({
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
   notes: z.string().optional(),
-  skills: z.array(z.string()).default([]),
+  skills: z.array(z.string()),
   status: z.string().optional(),
 })
 
@@ -124,8 +124,10 @@ function VolunteerRegisterPage() {
     try {
       if (isManager) {
         const result = await createVolunteer.mutateAsync(
-          payload as Parameters<typeof createVolunteer.mutateAsync>[0],
+          payload as unknown as Parameters<typeof createVolunteer.mutateAsync>[0],
         )
+        form.reset()
+        setPreFilled(false)
         toast.success("Volunteer created")
         navigate({
           to: "/campaigns/$campaignId/volunteers/$volunteerId",
@@ -133,8 +135,10 @@ function VolunteerRegisterPage() {
         })
       } else {
         const result = await selfRegister.mutateAsync(
-          payload as Parameters<typeof selfRegister.mutateAsync>[0],
+          payload as unknown as Parameters<typeof selfRegister.mutateAsync>[0],
         )
+        form.reset()
+        setPreFilled(false)
         toast.success("You're registered!")
         navigate({
           to: "/campaigns/$campaignId/volunteers/$volunteerId",

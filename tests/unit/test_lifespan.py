@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -14,7 +13,7 @@ from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
-from app.models.campaign import Campaign, CampaignStatus, CampaignType
+from app.models.campaign import Campaign
 from app.models.user import User
 
 
@@ -52,7 +51,9 @@ async def test_zitadel_service_initialized(_mock_settings, _mock_infra):
     """Lifespan sets app.state.zitadel_service to a ZitadelService instance."""
     from app.services.zitadel import ZitadelService
 
-    with patch.object(ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"):
+    with patch.object(
+        ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"
+    ):
         app = create_app()
         async with app.router.lifespan_context(app):
             assert hasattr(app.state, "zitadel_service")
@@ -69,7 +70,9 @@ async def test_startup_fails_missing_config_client_id(_mock_infra):
         mock_s.zitadel_service_client_secret = "valid-secret"
 
         app = create_app()
-        with pytest.raises(RuntimeError, match="ZITADEL service account not configured"):
+        with pytest.raises(
+            RuntimeError, match="ZITADEL service account not configured"
+        ):
             async with app.router.lifespan_context(app):
                 pass
 
@@ -84,7 +87,9 @@ async def test_startup_fails_missing_config_client_secret(_mock_infra):
         mock_s.zitadel_service_client_secret = ""
 
         app = create_app()
-        with pytest.raises(RuntimeError, match="ZITADEL service account not configured"):
+        with pytest.raises(
+            RuntimeError, match="ZITADEL service account not configured"
+        ):
             async with app.router.lifespan_context(app):
                 pass
 
@@ -95,9 +100,13 @@ async def test_startup_fails_invalid_credentials(_mock_settings, _mock_infra):
     from app.services.zitadel import ZitadelService
 
     response_401 = httpx.Response(401, request=httpx.Request("POST", "https://x"))
-    exc = httpx.HTTPStatusError("401", request=response_401.request, response=response_401)
+    exc = httpx.HTTPStatusError(
+        "401", request=response_401.request, response=response_401
+    )
 
-    with patch.object(ZitadelService, "_get_token", new_callable=AsyncMock, side_effect=exc):
+    with patch.object(
+        ZitadelService, "_get_token", new_callable=AsyncMock, side_effect=exc
+    ):
         app = create_app()
         with pytest.raises(RuntimeError, match="ZITADEL credentials invalid"):
             async with app.router.lifespan_context(app):
@@ -168,8 +177,12 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     mock_db.rollback = AsyncMock()
     mock_db.execute = AsyncMock(
         side_effect=[
-            MagicMock(scalar_one_or_none=MagicMock(return_value=local_user)),  # user lookup
-            MagicMock(scalar_one_or_none=MagicMock(return_value=None)),  # campaign lookup
+            MagicMock(
+                scalar_one_or_none=MagicMock(return_value=local_user)
+            ),  # user lookup
+            MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None)
+            ),  # campaign lookup
         ]
     )
 
@@ -181,33 +194,37 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
 
     mock_db.refresh = AsyncMock(side_effect=fake_refresh)
 
-    with patch.object(ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"):
-        with patch.object(
+    with (
+        patch.object(
+            ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"
+        ),
+        patch.object(
             ZitadelService,
             "create_organization",
             new_callable=AsyncMock,
             return_value={"id": ORG_ID},
+        ),
+    ):
+        app = create_app()
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        async def _get_db():
+            yield mock_db
+
+        app.dependency_overrides[get_db] = _get_db
+
+        transport = httpx.ASGITransport(app=app)
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(transport=transport, base_url="http://test") as client,
         ):
-            app = create_app()
-            app.dependency_overrides[get_current_user] = lambda: user
+            resp = await client.post(
+                "/api/v1/campaigns",
+                json={"name": "E2E Campaign", "type": "federal"},
+            )
 
-            async def _get_db():
-                yield mock_db
-
-            app.dependency_overrides[get_db] = _get_db
-
-            transport = httpx.ASGITransport(app=app)
-            async with app.router.lifespan_context(app):
-                async with httpx.AsyncClient(
-                    transport=transport, base_url="http://test"
-                ) as client:
-                    resp = await client.post(
-                        "/api/v1/campaigns",
-                        json={"name": "E2E Campaign", "type": "federal"},
-                    )
-
-            assert resp.status_code == 201
-            data = resp.json()
-            assert data["name"] == "E2E Campaign"
-            # Prove ZitadelService was accessible from the route handler
-            ZitadelService.create_organization.assert_called_once()
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "E2E Campaign"
+        # Prove ZitadelService was accessible from the route handler
+        ZitadelService.create_organization.assert_called_once()

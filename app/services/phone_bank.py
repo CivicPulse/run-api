@@ -147,8 +147,7 @@ class PhoneBankService:
         )
         if assigned_to_me_user_id is not None:
             query = (
-                query
-                .join(
+                query.join(
                     SessionCaller,
                     SessionCaller.session_id == PhoneBankSession.id,
                 )
@@ -192,7 +191,10 @@ class PhoneBankService:
             new_status = update_fields.pop("status")
             valid_targets = _VALID_TRANSITIONS.get(pb_session.status, set())
             if new_status not in valid_targets:
-                msg = f"Invalid status transition from {pb_session.status} to {new_status}"
+                msg = (
+                    f"Invalid status transition from"
+                    f" {pb_session.status} to {new_status}"
+                )
                 raise ValueError(msg)
             pb_session.status = new_status
 
@@ -266,7 +268,9 @@ class PhoneBankService:
         # Release caller's claimed entries
         pb_session = await self.get_session(session, session_id)
         if pb_session is not None:
-            await self._release_caller_entries(session, pb_session.call_list_id, user_id)
+            await self._release_caller_entries(
+                session, pb_session.call_list_id, user_id
+            )
 
         await session.delete(caller)
 
@@ -320,7 +324,9 @@ class PhoneBankService:
         # Release caller's claimed entries
         pb_session = await self.get_session(session, session_id)
         if pb_session is not None:
-            await self._release_caller_entries(session, pb_session.call_list_id, user_id)
+            await self._release_caller_entries(
+                session, pb_session.call_list_id, user_id
+            )
 
         return caller
 
@@ -479,8 +485,7 @@ class PhoneBankService:
         # Auto-DNC on refused
         if result_code == CallResultCode.REFUSED:
             await self._dnc_service.add_entry(
-                session, campaign_id, data.phone_number_used,
-                DNCReason.REFUSED, user_id
+                session, campaign_id, data.phone_number_used, DNCReason.REFUSED, user_id
             )
 
         # Survey recording
@@ -489,6 +494,7 @@ class PhoneBankService:
             if script_id:
                 # Convert survey responses to ResponseCreate objects
                 from app.schemas.survey import ResponseCreate
+
                 response_creates = [
                     ResponseCreate(
                         question_id=uuid.UUID(r["question_id"]),
@@ -561,13 +567,13 @@ class PhoneBankService:
 
         # Callers for the session
         callers_result = await session.execute(
-            select(SessionCaller)
-            .where(SessionCaller.session_id == session_id)
+            select(SessionCaller).where(SessionCaller.session_id == session_id)
         )
         callers = list(callers_result.scalars().all())
 
         # Call counts per caller (count of PHONE_CALL interactions by user)
         from app.models.voter_interaction import VoterInteraction
+
         call_counts_result = await session.execute(
             select(VoterInteraction.created_by, func.count(VoterInteraction.id))
             .where(

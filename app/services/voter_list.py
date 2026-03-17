@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from loguru import logger
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +14,6 @@ from app.models.voter_list import ListType, VoterList, VoterListMember
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter import VoterResponse
 from app.schemas.voter_filter import VoterFilter
-from app.schemas.voter_list import VoterListResponse
 from app.services.voter import build_voter_query
 
 
@@ -69,9 +67,7 @@ class VoterListService:
         Raises:
             ValueError: If list not found.
         """
-        result = await db.execute(
-            select(VoterList).where(VoterList.id == list_id)
-        )
+        result = await db.execute(select(VoterList).where(VoterList.id == list_id))
         voter_list = result.scalar_one_or_none()
         if voter_list is None:
             msg = f"Voter list {list_id} not found"
@@ -123,9 +119,7 @@ class VoterListService:
         voter_list = await self.get_list(db, list_id)
         # Delete members first
         await db.execute(
-            delete(VoterListMember).where(
-                VoterListMember.voter_list_id == list_id
-            )
+            delete(VoterListMember).where(VoterListMember.voter_list_id == list_id)
         )
         await db.delete(voter_list)
         await db.commit()
@@ -157,10 +151,7 @@ class VoterListService:
                 cursor_id = uuid.UUID(parts[1])
                 query = query.where(
                     (VoterList.created_at < cursor_ts)
-                    | (
-                        (VoterList.created_at == cursor_ts)
-                        & (VoterList.id < cursor_id)
-                    )
+                    | ((VoterList.created_at == cursor_ts) & (VoterList.id < cursor_id))
                 )
 
         query = query.limit(limit + 1)
@@ -268,15 +259,12 @@ class VoterListService:
             query = build_voter_query(filters)
         else:
             # Static list: join through voter_list_members
-            query = (
-                select(Voter)
-                .join(
-                    VoterListMember,
-                    and_(
-                        VoterListMember.voter_id == Voter.id,
-                        VoterListMember.voter_list_id == list_id,
-                    ),
-                )
+            query = select(Voter).join(
+                VoterListMember,
+                and_(
+                    VoterListMember.voter_id == Voter.id,
+                    VoterListMember.voter_list_id == list_id,
+                ),
             )
 
         query = query.order_by(Voter.created_at.desc(), Voter.id.desc())
@@ -288,10 +276,7 @@ class VoterListService:
                 cursor_id = uuid.UUID(parts[1])
                 query = query.where(
                     (Voter.created_at < cursor_ts)
-                    | (
-                        (Voter.created_at == cursor_ts)
-                        & (Voter.id < cursor_id)
-                    )
+                    | ((Voter.created_at == cursor_ts) & (Voter.id < cursor_id))
                 )
 
         query = query.limit(limit + 1)

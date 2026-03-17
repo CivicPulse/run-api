@@ -79,6 +79,7 @@ function SessionDialog({
   campaignId: string
 }) {
   const isEdit = !!editSession
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<SessionFormValues>({
     defaultValues: {
@@ -101,7 +102,7 @@ function SessionDialog({
   const createMutation = useCreatePhoneBankSession(campaignId)
   const updateMutation = useUpdateSessionStatus(campaignId, editSession?.id ?? "")
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = isSubmitting || createMutation.isPending || updateMutation.isPending
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -118,6 +119,7 @@ function SessionDialog({
   const handleSubmit = form.handleSubmit(async (values) => {
     const toNullableISO = (val: string) => (val ? new Date(val).toISOString() : null)
 
+    setIsSubmitting(true)
     try {
       if (isEdit) {
         const updateData: SessionUpdate = {
@@ -140,6 +142,8 @@ function SessionDialog({
       handleOpenChange(false)
     } catch {
       toast.error("Failed to save session")
+    } finally {
+      setIsSubmitting(false)
     }
   })
 

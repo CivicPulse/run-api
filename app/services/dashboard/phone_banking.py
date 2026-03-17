@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import case, func, select
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.call_list import CallList, CallResultCode
@@ -14,19 +14,21 @@ from app.models.phone_bank import PhoneBankSession
 from app.models.user import User
 from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.schemas.dashboard import (
+    CallerBreakdown,
     CallListBreakdown,
     CallOutcomeBreakdown,
-    CallerBreakdown,
     PhoneBankingSummary,
     SessionBreakdown,
     apply_date_filter,
 )
 
 # Result codes that count as a "contact" (person was actually reached)
-CONTACT_RESULTS = frozenset({
-    CallResultCode.ANSWERED.value,
-    CallResultCode.REFUSED.value,
-})
+CONTACT_RESULTS = frozenset(
+    {
+        CallResultCode.ANSWERED.value,
+        CallResultCode.REFUSED.value,
+    }
+)
 
 
 def _result_code_col():  # noqa: ANN202
@@ -37,10 +39,7 @@ def _result_code_col():  # noqa: ANN202
 def _call_outcome_columns():
     """Return SQLAlchemy aggregation columns for each CallResultCode value."""
     rc = _result_code_col()
-    return {
-        r.value: func.count(case((rc == r.value, 1)))
-        for r in CallResultCode
-    }
+    return {r.value: func.count(case((rc == r.value, 1))) for r in CallResultCode}
 
 
 def _build_call_outcome(row_mapping: dict) -> CallOutcomeBreakdown:
@@ -106,7 +105,7 @@ class PhoneBankingDashboardService:
         rc = _result_code_col()
         outcome_cols = _call_outcome_columns()
         pbs_id_col = VoterInteraction.payload["session_id"].astext.cast(
-            PgUUID(as_uuid=True)
+            PG_UUID(as_uuid=True)
         )
 
         q = (
@@ -124,7 +123,9 @@ class PhoneBankingDashboardService:
             .join(PhoneBankSession, PhoneBankSession.id == pbs_id_col)
             .where(VoterInteraction.campaign_id == campaign_id)
             .where(VoterInteraction.type == InteractionType.PHONE_CALL)
-            .group_by(PhoneBankSession.id, PhoneBankSession.name, PhoneBankSession.status)
+            .group_by(
+                PhoneBankSession.id, PhoneBankSession.name, PhoneBankSession.status
+            )
             .order_by(PhoneBankSession.id)
             .limit(limit)
         )
@@ -208,7 +209,7 @@ class PhoneBankingDashboardService:
     ) -> list[CallListBreakdown]:
         rc = _result_code_col()
         cl_id_col = VoterInteraction.payload["call_list_id"].astext.cast(
-            PgUUID(as_uuid=True)
+            PG_UUID(as_uuid=True)
         )
 
         q = (

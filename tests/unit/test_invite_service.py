@@ -108,9 +108,7 @@ class TestCreateInvite:
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()
 
-    async def test_rejects_if_caller_role_below_invited_role(
-        self, service, mock_db
-    ):
+    async def test_rejects_if_caller_role_below_invited_role(self, service, mock_db):
         """Admin cannot invite another admin or owner."""
         creator = _make_user(role=CampaignRole.ADMIN)
 
@@ -158,9 +156,7 @@ class TestValidateInvite:
 
     async def test_returns_none_for_expired_token(self, service, mock_db):
         """Expired token returns None."""
-        invite = _make_invite(
-            expires_at=utcnow() - timedelta(hours=1)
-        )
+        invite = _make_invite(expires_at=utcnow() - timedelta(hours=1))
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = invite
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -195,22 +191,16 @@ class TestAcceptInvite:
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[validate_result, member_result])
 
-        result = await service.accept_invite(
-            mock_db, invite.token, user, mock_zitadel
-        )
+        result = await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
 
         assert result.accepted_at is not None
         mock_db.add.assert_called_once()  # New CampaignMember
         mock_zitadel.assign_project_role.assert_awaited_once()
         mock_db.commit.assert_awaited_once()
 
-    async def test_rejects_if_email_doesnt_match(
-        self, service, mock_db, mock_zitadel
-    ):
+    async def test_rejects_if_email_doesnt_match(self, service, mock_db, mock_zitadel):
         """Accept rejects if authenticated user email doesn't match invite."""
         invite = _make_invite(email="correct@test.com")
         user = _make_user(email="wrong@test.com")
@@ -220,9 +210,7 @@ class TestAcceptInvite:
         mock_db.execute = AsyncMock(return_value=validate_result)
 
         with pytest.raises(ValueError, match="Email does not match"):
-            await service.accept_invite(
-                mock_db, invite.token, user, mock_zitadel
-            )
+            await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
 
 
 class TestRevokeInvite:

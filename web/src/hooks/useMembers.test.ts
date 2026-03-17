@@ -32,25 +32,22 @@ function makeWrapper() {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const mockMembers = {
-  items: [
-    {
-      user_id: "user-1",
-      display_name: "Alice Smith",
-      email: "alice@example.com",
-      role: "admin",
-      synced_at: "2026-03-01T00:00:00Z",
-    },
-    {
-      user_id: "user-2",
-      display_name: "Bob Jones",
-      email: "bob@example.com",
-      role: "owner",
-      synced_at: "2026-03-01T00:00:00Z",
-    },
-  ],
-  pagination: { next_cursor: null, has_more: false },
-}
+const mockMembers = [
+  {
+    user_id: "user-1",
+    display_name: "Alice Smith",
+    email: "alice@example.com",
+    role: "admin",
+    synced_at: "2026-03-01T00:00:00Z",
+  },
+  {
+    user_id: "user-2",
+    display_name: "Bob Jones",
+    email: "bob@example.com",
+    role: "owner",
+    synced_at: "2026-03-01T00:00:00Z",
+  },
+]
 
 describe("useMembers", () => {
   beforeEach(() => {

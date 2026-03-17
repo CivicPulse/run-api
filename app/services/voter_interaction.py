@@ -75,7 +75,7 @@ class VoterInteractionService:
         type_filter: InteractionType | None = None,
         cursor: str | None = None,
         limit: int = 50,
-    ) -> PaginatedResponse[VoterInteraction]:
+    ) -> InteractionPage:
         """Retrieve voter interaction history ordered by created_at DESC.
 
         Args:

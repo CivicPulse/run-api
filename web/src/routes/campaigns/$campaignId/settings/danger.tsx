@@ -25,7 +25,6 @@ import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirm
 import { useCampaign, useDeleteCampaign, useTransferOwnership } from "@/hooks/useCampaigns"
 import { api } from "@/api/client"
 import type { CampaignMember } from "@/types/campaign"
-import type { PaginatedResponse } from "@/types/common"
 
 function DangerZone() {
   const { campaignId } = useParams({ from: "/campaigns/$campaignId/settings/danger" })
@@ -48,11 +47,11 @@ function DangerZone() {
     queryFn: () =>
       api
         .get(`api/v1/campaigns/${campaignId}/members`)
-        .json<PaginatedResponse<CampaignMember>>(),
+        .json<CampaignMember[]>(),
     enabled: transferDialogOpen,
   })
 
-  const adminMembers = (membersData?.items ?? []).filter(
+  const adminMembers = (membersData ?? []).filter(
     (m) => m.role === "admin"
   )
 

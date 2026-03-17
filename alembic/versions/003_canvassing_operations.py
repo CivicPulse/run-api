@@ -44,9 +44,7 @@ def upgrade() -> None:
         "voters",
         sa.Column("geom", Geometry("POINT", srid=4326), nullable=True),
     )
-    op.create_index(
-        "ix_voters_geom", "voters", ["geom"], postgresql_using="gist"
-    )
+    op.create_index("ix_voters_geom", "voters", ["geom"], postgresql_using="gist")
 
     # -- 3. Backfill voter geom from lat/long --
     op.execute(
@@ -76,9 +74,7 @@ def upgrade() -> None:
         ),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="draft"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
         sa.Column(
             "boundary",
             Geometry("POLYGON", srid=4326),
@@ -101,12 +97,8 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_turfs_campaign_status", "turfs", ["campaign_id", "status"]
-    )
-    op.create_index(
-        "ix_turfs_boundary", "turfs", ["boundary"], postgresql_using="gist"
-    )
+    op.create_index("ix_turfs_campaign_status", "turfs", ["campaign_id", "status"])
+    op.create_index("ix_turfs_boundary", "turfs", ["boundary"], postgresql_using="gist")
 
     # -- 5. Create survey_scripts table (before walk_lists due to FK) --
     op.create_table(
@@ -125,9 +117,7 @@ def upgrade() -> None:
         ),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column(
-            "status", sa.String(50), nullable=False, server_default="draft"
-        ),
+        sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
         sa.Column(
             "created_by",
             sa.String(),
@@ -258,9 +248,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column(
-            "total_entries", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("total_entries", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "visited_entries",
             sa.Integer(),
@@ -279,9 +267,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_walk_lists_campaign_id", "walk_lists", ["campaign_id"]
-    )
+    op.create_index("ix_walk_lists_campaign_id", "walk_lists", ["campaign_id"])
 
     # -- 9. Create walk_list_entries table --
     op.create_table(
@@ -347,25 +333,15 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         rls_using = (
-            "campaign_id = "
-            "current_setting('app.current_campaign_id', true)::uuid"
+            "campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         )
-        op.execute(
-            f"CREATE POLICY {table}_isolation ON {table} "
-            f"USING ({rls_using})"
-        )
-        op.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user"
-        )
+        op.execute(f"CREATE POLICY {table}_isolation ON {table} USING ({rls_using})")
+        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user")
 
     # Subquery isolation for child tables
     # walk_list_entries via walk_lists
-    op.execute(
-        "ALTER TABLE walk_list_entries ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE walk_list_entries FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE walk_list_entries ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE walk_list_entries FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY walk_list_entries_isolation ON walk_list_entries "
         "USING (walk_list_id IN ("
@@ -373,17 +349,11 @@ def upgrade() -> None:
         "WHERE campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         "))"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON walk_list_entries TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON walk_list_entries TO app_user")
 
     # walk_list_canvassers via walk_lists
-    op.execute(
-        "ALTER TABLE walk_list_canvassers ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE walk_list_canvassers FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE walk_list_canvassers ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE walk_list_canvassers FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY walk_list_canvassers_isolation ON walk_list_canvassers "
         "USING (walk_list_id IN ("
@@ -396,12 +366,8 @@ def upgrade() -> None:
     )
 
     # survey_questions via survey_scripts
-    op.execute(
-        "ALTER TABLE survey_questions ENABLE ROW LEVEL SECURITY"
-    )
-    op.execute(
-        "ALTER TABLE survey_questions FORCE ROW LEVEL SECURITY"
-    )
+    op.execute("ALTER TABLE survey_questions ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE survey_questions FORCE ROW LEVEL SECURITY")
     op.execute(
         "CREATE POLICY survey_questions_isolation ON survey_questions "
         "USING (script_id IN ("
@@ -409,9 +375,7 @@ def upgrade() -> None:
         "WHERE campaign_id = current_setting('app.current_campaign_id', true)::uuid"
         "))"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON survey_questions TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON survey_questions TO app_user")
 
 
 def downgrade() -> None:
