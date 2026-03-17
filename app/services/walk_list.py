@@ -7,13 +7,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, desc, func, select
-from sqlalchemy.orm import aliased
 
 from app.core.time import utcnow
 from app.models.turf import Turf
 from app.models.voter import Voter
-from app.models.voter_list import VoterListMember
 from app.models.voter_interaction import InteractionType, VoterInteraction
+from app.models.voter_list import VoterListMember
 from app.models.walk_list import (
     WalkList,
     WalkListCanvasser,

@@ -13,7 +13,11 @@ from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.models.walk_list import WalkListEntryStatus
-from app.schemas.canvass import DoorKnockCreate, DoorKnockResponse, EnrichedEntryResponse
+from app.schemas.canvass import (
+    DoorKnockCreate,
+    DoorKnockResponse,
+    EnrichedEntryResponse,
+)
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.walk_list import (
     CanvasserAssignment,
