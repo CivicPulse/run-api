@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FieldHeader } from "@/components/field/FieldHeader"
 import { FieldProgress } from "@/components/field/FieldProgress"
 import { HouseholdCard } from "@/components/field/HouseholdCard"
 import { InlineSurvey } from "@/components/field/InlineSurvey"
@@ -238,7 +237,6 @@ function Canvassing() {
   if (fieldMeQuery.isLoading || (walkListId && isLoading)) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -250,7 +248,6 @@ function Canvassing() {
   if (!walkListId) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -274,7 +271,6 @@ function Canvassing() {
   if (isError) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-destructive" />
@@ -298,7 +294,6 @@ function Canvassing() {
 
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
         <CanvassingCompletionSummary
           stats={{
             totalDoors: totalAddresses,
@@ -315,8 +310,6 @@ function Canvassing() {
   // Main wizard layout
   return (
     <div className="flex flex-col h-full">
-      <FieldHeader campaignId={campaignId} title="Canvassing" showBack />
-
       <FieldProgress current={completedAddresses} total={totalAddresses} />
       <div className="flex items-center justify-end px-4 py-1 border-b">
         <Button

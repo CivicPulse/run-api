@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
-import { FieldHeader } from "@/components/field/FieldHeader"
 import { FieldProgress } from "@/components/field/FieldProgress"
 import { OutcomeGrid } from "@/components/field/OutcomeGrid"
 import { CallingVoterCard } from "@/components/field/CallingVoterCard"
@@ -149,7 +148,6 @@ function PhoneBanking() {
   if (fieldMeQuery.isLoading || (sessionId && isLoading)) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Phone Banking" showBack />
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -161,7 +159,6 @@ function PhoneBanking() {
   if (!sessionId) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Phone Banking" showBack />
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -185,7 +182,6 @@ function PhoneBanking() {
   if (isError) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Phone Banking" showBack />
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-destructive" />
@@ -204,7 +200,6 @@ function PhoneBanking() {
   if (noEntriesAvailable) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Phone Banking" showBack />
         <div className="flex flex-1 items-center justify-center p-4">
           <Card className="p-6 text-center max-w-sm">
             <AlertCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -226,7 +221,6 @@ function PhoneBanking() {
   if (isComplete) {
     return (
       <div className="flex flex-col h-full">
-        <FieldHeader campaignId={campaignId} title="Phone Banking" showBack />
         <CompletionSummary stats={sessionStats} campaignId={campaignId} />
       </div>
     )
