@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi, type Mock } from "vitest"
+import { describe, test, expect, beforeEach, vi } from "vitest"
 
 // vi.hoisted runs before vi.mock factories, making these variables available inside
 // the mock factory closures without hoisting violations.
