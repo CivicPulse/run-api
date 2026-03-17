@@ -34,10 +34,15 @@ class Settings(BaseSettings):
     zitadel_spa_client_id: str = ""
 
     # CORS
-    cors_allowed_origins: list[str] = ["http://localhost:5173"]
+    cors_allowed_origins: list[str] = [
+        "http://localhost:5173",
+        "https://dev.tailb56d83.ts.net:5173",
+        "https://dev.tailb56d83.ts.net:8000",
+    ]
 
     # S3-compatible object storage (MinIO local, Cloudflare R2 production)
     s3_endpoint_url: str = "http://localhost:9000"
+    s3_presign_endpoint_url: str | None = None
     s3_access_key_id: str = "minioadmin"
     s3_secret_access_key: str = "minioadmin"
     s3_bucket: str = "voter-imports"

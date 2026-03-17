@@ -16,12 +16,14 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/run_api
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
       S3_ENDPOINT_URL: http://minio:9000
+      S3_PRESIGN_ENDPOINT_URL: http://localhost:9000
     volumes:
       - ./app:/home/app/app
       - ./main.py:/home/app/main.py
       - ./alembic:/home/app/alembic
       - ./alembic.ini:/home/app/alembic.ini
       - ./scripts:/home/app/scripts
+      - ./certs:/home/app/certs:ro
     depends_on:
       postgres:
         condition: service_healthy

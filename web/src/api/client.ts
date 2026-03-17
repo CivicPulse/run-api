@@ -14,8 +14,11 @@ export class PermissionError extends Error {
   }
 }
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || window.location.origin
+
 export const api = ky.create({
-  prefixUrl: "/",
+  prefixUrl: API_BASE_URL,
   hooks: {
     beforeRequest: [
       async (request) => {

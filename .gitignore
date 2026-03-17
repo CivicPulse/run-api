@@ -213,6 +213,9 @@ marimo/_lsp/
 __marimo__/
 init.md
 
+# TLS certificates (machine-specific, from Tailscale)
+certs/
+
 # Project local data and artifacts
 data/
 screenshots/

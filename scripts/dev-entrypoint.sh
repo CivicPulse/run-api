@@ -23,4 +23,9 @@ except ClientError:
 "
 
 echo "==> Starting uvicorn with hot-reload..."
-exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level info
+SSL_ARGS=""
+if [ -f /home/app/certs/dev.tailb56d83.ts.net.crt ]; then
+  echo "    (TLS enabled via Tailscale certs)"
+  SSL_ARGS="--ssl-certfile /home/app/certs/dev.tailb56d83.ts.net.crt --ssl-keyfile /home/app/certs/dev.tailb56d83.ts.net.key"
+fi
+exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level info $SSL_ARGS

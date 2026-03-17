@@ -38,6 +38,18 @@ class StorageService:
             "config": _S3_CONFIG,
         }
 
+    def _presign_client_kwargs(self) -> dict:
+        """Return kwargs for an S3 client used to generate presigned URLs.
+
+        Uses ``s3_presign_endpoint_url`` when set so that presigned URLs
+        target a browser-accessible endpoint (e.g. a reverse proxy) while
+        server-side operations continue to use the internal endpoint.
+        """
+        kwargs = self._client_kwargs()
+        if settings.s3_presign_endpoint_url:
+            kwargs["endpoint_url"] = settings.s3_presign_endpoint_url
+        return kwargs
+
     async def generate_upload_url(
         self,
         key: str,
@@ -52,7 +64,7 @@ class StorageService:
         Returns:
             Pre-signed PUT URL valid for 1 hour.
         """
-        async with self.session.client(**self._client_kwargs()) as s3:
+        async with self.session.client(**self._presign_client_kwargs()) as s3:
             url: str = await s3.generate_presigned_url(
                 "put_object",
                 Params={
@@ -73,7 +85,7 @@ class StorageService:
         Returns:
             Pre-signed GET URL valid for 1 hour.
         """
-        async with self.session.client(**self._client_kwargs()) as s3:
+        async with self.session.client(**self._presign_client_kwargs()) as s3:
             url: str = await s3.generate_presigned_url(
                 "get_object",
                 Params={
