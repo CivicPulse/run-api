@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips.
+A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips. A dedicated mobile-first volunteer field mode provides zero-training canvassing and phone banking experiences with offline support, guided onboarding, and WCAG AA accessibility.
 
 ## Core Value
 
@@ -66,20 +66,18 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ POST /voters/search with Literal-validated sort_by and dynamic cursor pagination — v1.3
 - ✓ 23-dimension filter chip system with category colors and dismissible chips — v1.3
 - ✓ Grouped column mapping dropdown with 45+ canonical fields for import wizard — v1.3
+- ✓ Mobile-first field layout shell with zero admin chrome and assignment-aware volunteer hub — v1.4
+- ✓ Linear canvassing wizard with household grouping, inline survey, auto-advance, and persistent state — v1.4
+- ✓ Phone banking field mode with tap-to-call, clipboard fallback, E.164 formatting, and outcome recording — v1.4
+- ✓ Offline outcome queue with localStorage persistence and automatic sync on connectivity resume — v1.4
+- ✓ Guided onboarding tour via driver.js with per-segment completion and help button replay — v1.4
+- ✓ WCAG AA accessibility audit — ARIA landmarks, 44px touch targets, color contrast, live regions — v1.4
+- ✓ Milestone celebration toasts and voter context cards in canvassing and phone banking — v1.4
+- ✓ Google Maps navigation links (walking directions) in field mode and admin pages — v1.4
 
 ### Active
 
-#### Current Milestone: v1.4 Volunteer Field Mode
-
-**Goal:** A dedicated, zero-training mobile-first experience for volunteers actively canvassing or phone banking in the field.
-
-**Target features:**
-- Volunteer landing page that routes to active assignment (canvassing or phone banking)
-- Linear canvassing wizard (next address → knock → record outcome → inline survey → next)
-- Phone banking mode with start/stop, tap-to-call tel: links, result recording, inline survey
-- One-time guided onboarding tour with option to revisit
-- Built-in tooltips and contextual help throughout
-- Mobile-optimized touch targets and progressive disclosure
+(No active milestone — run `/gsd:new-milestone` to start v1.5)
 
 ### Out of Scope
 
@@ -100,13 +98,13 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Shipped v1.3 Voter Model & Import Enhancement on 2026-03-15. All 4 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model). Starting v1.4 Volunteer Field Mode.
+Shipped v1.4 Volunteer Field Mode on 2026-03-17. All 5 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model, v1.4 Field Mode). 38 phases, 114 plans shipped across 10 days.
 
 ## Context
 
-Shipped v1.0 MVP (39 requirements, 7 phases), v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases), v1.2 Full UI (66 requirements, 11 phases), and v1.3 Voter Model & Import Enhancement (27 requirements, 7 phases) over 8 days.
-Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ (backend); React + TanStack Router/Query + shadcn/ui (frontend).
-Codebase: ~34K LOC Python backend + ~34K LOC TypeScript frontend.
+Shipped v1.0 MVP (39 requirements, 7 phases), v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases), v1.2 Full UI (66 requirements, 11 phases), v1.3 Voter Model & Import Enhancement (27 requirements, 7 phases), and v1.4 Volunteer Field Mode (38 requirements, 9 phases) over 10 days.
+Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ (backend); React + TanStack Router/Query + shadcn/ui + Zustand + driver.js (frontend).
+Codebase: ~34K LOC Python backend + ~58K LOC TypeScript frontend.
 Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s manifests with ArgoCD GitOps.
 18 tech debt items from v1.0 (integration tests need live infrastructure). 7 low-severity tech debt items from v1.2. 3 human verification items from v1.3.
 
@@ -149,6 +147,13 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Popover+Command combobox pattern | Member/volunteer pickers use cmdk for search with Popover container | ✓ Good — reused in caller picker, volunteer assignment |
 | Client-side DNC search | Strip non-digits before comparing; no backend search endpoint | ✓ Good — DNC lists are campaign-scoped, small enough for client |
 | it.todo test stubs | Wave 0 stubs with no imports keep suite green during development | ✓ Good — Nyquist compliance without blocking progress |
+| Separate /field/ route tree | Zero admin chrome for volunteers; isFieldRoute bypass in __root.tsx | ✓ Good — clean mobile UX with no sidebar or data tables |
+| Zustand + sessionStorage for wizard | Persist canvassing state across phone interruptions; fresh start each session | ✓ Good — resume prompt works reliably, clears on tab close |
+| driver.js over react-joyride | React 19 incompatibility with react-joyride; driver.js is framework-agnostic | ✓ Good — works with React 19, CSS-only customization |
+| Offline queue in localStorage | Cross-session survival for queued outcomes during connectivity loss | ✓ Good — survives app close, drains automatically on reconnect |
+| OutcomeGrid string callback type | Generalize outcome grid for both canvassing and phone banking domains | ✓ Good — single component serves both field modes |
+| Canvassing before phone banking | Phase ordering produces shared components (OutcomeGrid, VoterCard, InlineSurvey) | ✓ Good — 5 components reused across both field modes |
+| Walking travelmode for Maps links | Canvassers are on foot; Google Maps defaults to driving | ✓ Good — one-tap walking directions from HouseholdCard |
 | Single migration for voter expansion | Migration 006 handles all renames + 22 new columns in one file | ✓ Good — simpler than splitting across multiple migrations |
 | func.lower() for filter equality | Case-insensitive matching on registration/mailing address and demographics | ✓ Good — consistent pattern, zip stays exact match |
 | SET clause from model columns | Upsert derives SET from Voter.__table__.columns, not first batch row | ✓ Good — fixed silent column omission bug |
@@ -159,4 +164,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-15 after v1.4 milestone start*
+*Last updated: 2026-03-17 after v1.4 milestone completion*

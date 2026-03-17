@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.4 Volunteer Field Mode (Shipped: 2026-03-17)
+
+**Phases completed:** 9 phases, 26 plans
+**Timeline:** 3 days (2026-03-15 → 2026-03-17)
+**Files modified:** 304 | **Lines added:** 23,659 | **Commits:** 117
+**Git range:** `feat(30-01)` → `fix(260317-w3n)`
+
+**Key accomplishments:**
+1. Mobile-first field layout shell with zero admin chrome, assignment-aware volunteer hub with pull-to-refresh, and volunteer auto-redirect after OIDC login
+2. Linear canvassing wizard — door-by-door with household grouping, inline survey, auto-advance, progress tracking, persistent state via sessionStorage, and resume prompt
+3. Phone banking field mode — tap-to-call via tel: links, clipboard fallback, E.164 formatting, outcome recording with shared OutcomeGrid/InlineSurvey components, session progress
+4. Offline queue with localStorage persistence and automatic sync on connectivity resume for both canvassing and phone banking, with optimistic UI and offline banner
+5. Guided onboarding tour via driver.js with per-segment completion (welcome/canvassing/phone banking), contextual tooltips, quick-start cards, and help button replay
+6. WCAG AA accessibility — ARIA landmarks, screen reader labels, live regions, 44px touch targets, color contrast fixes, milestone celebration toasts, and Google Maps navigation links
+
+**Tech debt accepted:** All 3 audit items resolved in quick task 260317-w3n (hasAddress guard, double FieldHeader, stale VALIDATION.md)
+
+**Audit:** .planning/milestones/v1.4-MILESTONE-AUDIT.md (status: tech_debt, 38/38 requirements satisfied, 8/9 phases Nyquist compliant)
+
+---
+
 ## v1.3 Voter Model & Import Enhancement (Shipped: 2026-03-15)
 
 **Phases completed:** 7 phases, 18 plans
