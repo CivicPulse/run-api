@@ -54,8 +54,6 @@ function Canvassing() {
   const userId = user?.profile?.sub
   const key = userId ? tourKey(campaignId, userId) : ""
   const { startSegment } = useTour(key)
-  const isRunning = useTourStore((s) => s.isRunning)
-
   const shouldShowQS = useTourStore((s) => {
     if (!key || s.isRunning) return false
     const counts = s.sessionCounts[key]
