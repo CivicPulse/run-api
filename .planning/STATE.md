@@ -66,9 +66,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260317-whd | Create getting started documentation for system admins, campaign managers, and volunteers | 2026-03-17 | baab93e | [260317-whd-create-getting-started-documentation-for](./quick/260317-whd-create-getting-started-documentation-for/) |
+| 260317-wpb | Fix failing GH Actions build by removing unused Mock type import | 2026-03-17 | d894042 | [260317-wpb-address-the-failing-build-step-in-gh-act](./quick/260317-wpb-address-the-failing-build-step-in-gh-act/) |
 
 ## Session Continuity
 
 Last session: 2026-03-17
-Stopped at: Milestone v1.4 archived
+Stopped at: Completed quick task 260317-wpb: Fix failing CI build
 Resume file: None
