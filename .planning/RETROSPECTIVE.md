@@ -193,6 +193,60 @@
 
 ---
 
+## Milestone: v1.4 — Volunteer Field Mode
+
+**Shipped:** 2026-03-17
+**Phases:** 9 | **Plans:** 26
+
+### What Was Built
+- Mobile-first field layout shell with zero admin chrome, assignment-aware volunteer hub with pull-to-refresh
+- Linear canvassing wizard: door-by-door with household grouping, voter context cards, inline survey, auto-advance, persistent sessionStorage state, resume prompt
+- Phone banking field mode: tap-to-call via tel: links, clipboard fallback, E.164 formatting, shared OutcomeGrid/InlineSurvey components, session progress
+- Offline outcome queue with localStorage persistence and automatic sync engine for both canvassing and phone banking
+- Guided onboarding tour via driver.js: per-segment completion (welcome/canvassing/phone banking), contextual tooltips, quick-start cards, help button replay
+- WCAG AA accessibility: ARIA landmarks, screen reader labels, live regions, 44px touch targets, color contrast, milestone celebration toasts
+- Google Maps navigation links with walking directions in field mode (HouseholdCard, DoorListView) and admin pages (voter detail, walk list detail)
+- Integration fixes: offline sync optimistic UI consistency, hub progress updates after sync drain
+- Tech debt cleanup: Playwright selector ambiguity, useCallback deps, 36 tour test stub implementations
+
+### What Worked
+- Canvassing-first phase ordering (Phase 31 before 32) produced 5 shared components (OutcomeGrid, VoterCard, InlineSurvey, FieldProgress, HouseholdCard) reused directly in phone banking
+- Milestone audit caught 2 integration issues + 3 tech debt items — all resolved before archival via gap closure phases (37, 38) and quick task 260317-w3n
+- driver.js choice over react-joyride validated — framework-agnostic, works with React 19, CSS-only customization
+- Offline queue architecture (Zustand + localStorage with call-site onError override) handled both canvassing and phone banking with minimal code
+- Playwright page.route() API mocking pattern enabled CI-compatible e2e testing without live backend across all field mode phases
+
+### What Was Inefficient
+- Summary files still lack `one_liner` field — 5th consecutive milestone with this pain point during milestone completion
+- ROADMAP.md plan checkboxes still show `[ ]` after execution (phases 30-38) — same recurring issue from all prior milestones
+- Phase 35 had a 4th unplanned plan (35-04) for TypeScript error cleanup — introduced complexity could have been handled in Phase 38
+- Some e2e tests required complex sessionStorage/localStorage seeding for auth state — suggests a shared test utility would reduce duplication
+- Phase 36 took longest (46min combined) due to admin page e2e test complexity with campaign API mocking
+
+### Patterns Established
+- Separate /field/ route tree with isFieldRoute bypass in __root.tsx for zero-admin-chrome mobile UX
+- Zustand + sessionStorage for wizard state (clears on tab close, fresh start each session)
+- Zustand + localStorage for offline queue (survives app close, drains on reconnect)
+- Orchestrator hook pattern: returns signal objects (bulkPrompt, surveyTrigger) instead of callback nesting
+- OutcomeGrid string callback type for domain-agnostic outcome recording across canvassing and phone banking
+- driver.js tour with per-segment completion tracking in localStorage
+- HasRegistrationAddress Pick type for reusable address-dependent component props
+- Call-site onError override on .mutate() for offline-aware error handling
+
+### Key Lessons
+1. Phase ordering for maximum component reuse pays off — 5 shared field components avoided significant duplication
+2. driver.js is the right tour library for React 19+ projects — react-joyride's React 18 dependency is a blocker
+3. Offline queue architecture should use localStorage (not sessionStorage) for cross-session survival
+4. page.route() API mocking is the Playwright pattern for CI-compatible field mode testing
+5. Milestone audit + gap closure phases + quick tasks form a reliable quality pipeline: audit catches issues, gap phases fix integration bugs, quick tasks handle tech debt
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 3 days from Phase 30 start to milestone completion
+- Notable: 23,659 lines added across 304 files; 117 commits; 9 phases with 26 plans
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -203,6 +257,7 @@
 | v1.1 | 4 | 7 | Infrastructure-as-code phases; clean milestone audit (zero gaps) |
 | v1.2 | 11 | 43 | Full Nyquist compliance, 3-source verification, gap closure phases as standard practice |
 | v1.3 | 7 | 18 | POST body for complex search, Literal-typed sort columns, audit-driven gap closure confirmed as pattern |
+| v1.4 | 9 | 26 | Mobile-first field mode, offline queue + sync, driver.js tours, WCAG AA, shared component reuse across domains |
 
 ### Cumulative Quality
 
@@ -212,6 +267,7 @@
 | v1.1 | 268 passing | — | +1,512 (infra) | — |
 | v1.2 | 252 passing (frontend) | 284 passing (backend) | — | 30,691 TypeScript |
 | v1.3 | 252+ (frontend) | 284+ (backend) | ~34K Python + ~34K TS | +6,771 lines (45 files) |
+| v1.4 | 300+ (frontend) | 284+ (backend) | ~34K Python + ~58K TS | +23,659 lines (304 files) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -222,4 +278,6 @@
 5. Build shared infrastructure early — Phase 12's 3-plan investment in RequireRole, DataTable, useFormGuard saved massive duplication across 10 subsequent phases
 6. Gap closure phases are healthy — they mean the audit process works, not that planning failed
 7. POST body search is the right pattern once filter dimensions exceed ~20 — GET query params don't scale
-8. Summary files should include a `one_liner` field — verified as pain point across all 4 milestones
+8. Summary files should include a `one_liner` field — verified as pain point across all 5 milestones
+9. Phase ordering for maximum component reuse (canvassing before phone banking) avoids duplication across domains
+10. Offline queue architecture: localStorage for cross-session survival, sessionStorage for per-session state
