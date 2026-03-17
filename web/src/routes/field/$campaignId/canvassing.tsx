@@ -167,7 +167,7 @@ function Canvassing() {
 
   const handleOutcomeWithBulk = useCallback(
     (entryId: string, voterId: string, result: string) => {
-      const response = handleOutcome(entryId, voterId, result as DoorKnockResultCode)
+      handleOutcome(entryId, voterId, result as DoorKnockResultCode)
 
       // ARIA: announce outcome
       const voterEntry = currentHousehold?.entries.find(
@@ -262,7 +262,7 @@ function Canvassing() {
               or contact your campaign organizer.
             </p>
             <Button asChild>
-              <Link to={`/field/${campaignId}`}>Back to Hub</Link>
+              <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
         </div>

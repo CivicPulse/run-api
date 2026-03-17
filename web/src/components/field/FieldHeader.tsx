@@ -47,7 +47,7 @@ export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }
           className="min-h-11 min-w-11"
           asChild
         >
-          <Link to={`/field/${campaignId}`} aria-label="Back to hub">
+          <Link to="/field/$campaignId" params={{ campaignId }} aria-label="Back to hub">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>

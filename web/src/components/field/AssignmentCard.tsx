@@ -13,7 +13,6 @@ interface AssignmentCardProps {
 
 export function AssignmentCard({
   type,
-  id,
   name,
   total,
   completed,
@@ -27,7 +26,8 @@ export function AssignmentCard({
 
   return (
     <Link
-      to={`/field/${campaignId}/${type}`}
+      to={type === "canvassing" ? "/field/$campaignId/canvassing" : "/field/$campaignId/phone-banking"}
+      params={{ campaignId }}
       className="block min-h-[100px] rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
       data-tour="assignment-card"
     >

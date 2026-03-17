@@ -3,8 +3,6 @@ import { renderHook, act } from "@testing-library/react"
 import { useConnectivityStatus } from "@/hooks/useConnectivityStatus"
 
 describe("useConnectivityStatus", () => {
-  let originalOnLine: boolean
-
   afterEach(() => {
     // Restore original navigator.onLine
     Object.defineProperty(navigator, "onLine", {

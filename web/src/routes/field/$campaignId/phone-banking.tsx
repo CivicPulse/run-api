@@ -142,7 +142,7 @@ function PhoneBanking() {
 
   const handleConfirmEndSession = useCallback(() => {
     handleEndSession()
-    navigate({ to: `/field/${campaignId}` })
+    navigate({ to: "/field/$campaignId", params: { campaignId } })
   }, [handleEndSession, navigate, campaignId])
 
   // Loading state
@@ -173,7 +173,7 @@ function PhoneBanking() {
               later or contact your campaign organizer.
             </p>
             <Button asChild>
-              <Link to={`/field/${campaignId}`}>Back to Hub</Link>
+              <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
         </div>
@@ -214,7 +214,7 @@ function PhoneBanking() {
               other callers. Head back to the hub.
             </p>
             <Button asChild>
-              <Link to={`/field/${campaignId}`}>Back to Hub</Link>
+              <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
         </div>

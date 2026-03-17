@@ -4,7 +4,6 @@ import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
   useCheckIn,
   useCheckOut,
-  useClaimEntry,
   useRecordCall,
   useSelfReleaseEntry,
   usePhoneBankSession,
@@ -63,7 +62,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     entries,
     currentEntryIndex,
     completedCalls,
-    skippedEntries,
+    skippedEntries: _skippedEntries,
     callStartedAt,
     phoneNumberUsed,
     startSession,

@@ -12,7 +12,6 @@ import {
   AUTO_ADVANCE_OUTCOMES,
 } from "@/types/canvassing"
 import type {
-  Household,
   DoorKnockResultCode,
   EnrichedWalkListEntry,
 } from "@/types/canvassing"
@@ -88,16 +87,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const advanceRef = useRef(advanceAddress)
   advanceRef.current = advanceAddress
 
-  const isAllHandled = useCallback(
-    (household: Household) =>
-      household.entries.every(
-        (e) => completedEntries[e.id] !== undefined || skippedEntries.includes(e.id),
-      ),
-    [completedEntries, skippedEntries],
-  )
-
   const handleOutcome = useCallback(
-    (entryId: string, voterId: string, result: DoorKnockResultCode): OutcomeResult => {
+    (entryId: string, _voterId: string, result: DoorKnockResultCode): OutcomeResult => {
       const payload = {
         walk_list_entry_id: entryId,
         result_code: result,
