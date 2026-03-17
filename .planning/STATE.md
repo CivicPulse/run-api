@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 Phase: All v1.4 phases complete (30-38)
 Status: Milestone Archived
-Last activity: 2026-03-17 - Milestone v1.4 Volunteer Field Mode archived
+Last activity: 2026-03-17 - Completed quick task 260317-whd: Create getting started documentation for system admins, campaign managers, and volunteers
 
 Progress: [██████████] 100% (26/26 v1.4 plans)
 
@@ -60,6 +60,12 @@ Decisions logged in PROJECT.md Key Decisions table.
 - [Research flag]: Verify driver.js CSS override specificity with Tailwind v4
 - [Tech debt]: 3 human verification items from v1.3 still pending
 - [Tech debt]: 18 integration test items from v1.0 still pending (need live infrastructure)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260317-whd | Create getting started documentation for system admins, campaign managers, and volunteers | 2026-03-17 | baab93e | [260317-whd-create-getting-started-documentation-for](./quick/260317-whd-create-getting-started-documentation-for/) |
 
 ## Session Continuity
 
