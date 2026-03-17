@@ -338,7 +338,7 @@ test.describe("Phone Banking Field Mode", () => {
 
     // Verify InlineSurvey sheet opens with "Survey Questions" title
     await expect(
-      page.getByText("Survey Questions"),
+      page.getByRole("heading", { name: "Survey Questions" }),
     ).toBeVisible({ timeout: 10_000 })
 
     // Verify question text renders

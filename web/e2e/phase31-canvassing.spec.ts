@@ -150,7 +150,7 @@ test.describe("Canvassing Wizard", () => {
     await page.waitForTimeout(1000)
 
     // Check if survey panel opened (depends on whether walk list has a script)
-    const surveyHeading = page.getByText("Survey Questions")
+    const surveyHeading = page.getByRole("heading", { name: "Survey Questions" })
     const hasSurvey = await surveyHeading.isVisible().catch(() => false)
 
     if (hasSurvey) {

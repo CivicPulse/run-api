@@ -238,7 +238,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
       setTimeout(() => advanceRef.current(), 300)
       return { surveyTrigger: false }
     },
-    [currentEntry, callStartedAt, phoneNumberUsed, recordCall, recordOutcome],
+    [currentEntry, callStartedAt, phoneNumberUsed, recordCall, recordOutcome, campaignId, sessionId],
   )
 
   const handlePostSurveyAdvance = useCallback(() => {
