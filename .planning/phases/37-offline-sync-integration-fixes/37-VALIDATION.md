@@ -1,10 +1,11 @@
 ---
 phase: 37
 slug: offline-sync-integration-fixes
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-16
+audited: 2026-03-17
 ---
 
 # Phase 37 — Validation Strategy
@@ -38,9 +39,9 @@ created: 2026-03-16
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 37-01-01 | 01 | 1 | SYNC-01 | unit | `cd web && npx vitest run src/hooks/useCanvassing.test.ts -x` | ❌ W0 | ⬜ pending |
-| 37-01-02 | 01 | 1 | SYNC-01 | unit | `cd web && npx vitest run src/hooks/useSyncEngine.test.ts -t "does not revert" -x` | ❌ W0 | ⬜ pending |
-| 37-01-03 | 01 | 1 | SYNC-04 | unit | `cd web && npx vitest run src/hooks/useSyncEngine.test.ts -t "field-me" -x` | ❌ W0 | ⬜ pending |
+| 37-01-01 | 01 | 1 | SYNC-01 | unit | `cd web && npx vitest run src/hooks/useCanvassing.test.ts -x` | ✅ | ✅ green |
+| 37-01-02 | 01 | 1 | SYNC-01 | unit | `cd web && npx vitest run src/hooks/useCanvassing.test.ts -t "does not revert" -x` | ✅ | ✅ green |
+| 37-01-03 | 01 | 1 | SYNC-04 | unit | `cd web && npx vitest run src/hooks/useSyncEngine.test.ts -t "field-me" -x` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -48,11 +49,9 @@ created: 2026-03-16
 
 ## Wave 0 Requirements
 
-- [ ] `web/src/hooks/useSyncEngine.test.ts` — add test for field-me invalidation after drain (SYNC-04)
-- [ ] `web/src/hooks/useSyncEngine.test.ts` — add test verifying optimistic UI not reverted when hook-level onError absent (SYNC-01)
-- [ ] `web/src/hooks/useCanvassing.test.ts` — create if needed for standalone useDoorKnockMutation hook tests (SYNC-01)
-
-*Existing infrastructure in `useSyncEngine.test.ts` covers most needs; only 2-3 new test cases required*
+- [x] `web/src/hooks/useSyncEngine.test.ts` — add test for field-me invalidation after drain (SYNC-04) — 3 tests added
+- [x] `web/src/hooks/useCanvassing.test.ts` — add test verifying optimistic UI not reverted when hook-level onError absent (SYNC-01) — "does not revert" test added
+- [x] `web/src/hooks/useCanvassing.test.ts` — created with 4 tests for standalone useDoorKnockMutation hook (SYNC-01)
 
 ---
 
@@ -67,11 +66,21 @@ created: 2026-03-16
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-03-17
+
+---
+
+## Validation Audit 2026-03-17
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 2 |
+| Resolved | 2 |
+| Escalated | 0 |
