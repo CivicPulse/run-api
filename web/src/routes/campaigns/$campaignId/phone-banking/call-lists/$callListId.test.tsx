@@ -147,6 +147,7 @@ function makeEntry(overrides: Partial<CallListEntry> = {}): CallListEntry {
     claimed_by: null,
     claimed_at: null,
     last_attempt_at: null,
+    phone_attempts: null,
     ...overrides,
   }
 }

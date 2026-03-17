@@ -164,7 +164,7 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
 export function useSyncEngine(): void {
   const isOnline = useConnectivityStatus()
   const queryClient = useQueryClient()
-  const drainRef = useRef<() => void>()
+  const drainRef = useRef<(() => void) | undefined>(undefined)
 
   const drain = useCallback(() => {
     drainQueue(queryClient)
