@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { useCallList, useCallListEntries, useAppendFromList } from "@/hooks/useCallLists"
+import { formatPhoneDisplay } from "@/types/calling"
 import { useMembers } from "@/hooks/useMembers"
 import { useVoterLists } from "@/hooks/useVoterLists"
 import { useFormGuard } from "@/hooks/useFormGuard"
@@ -209,7 +210,7 @@ function CallListDetailPage() {
       cell: ({ row }) => {
         const primary = row.original.phone_numbers.find((p) => p.is_primary)
         const phone = primary?.value ?? row.original.phone_numbers[0]?.value ?? "—"
-        return <span className="text-muted-foreground">{phone}</span>
+        return <span className="text-muted-foreground">{phone === "—" ? phone : formatPhoneDisplay(phone)}</span>
       },
     },
     {

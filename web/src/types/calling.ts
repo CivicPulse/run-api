@@ -38,6 +38,12 @@ export function formatPhoneDisplay(e164: string): string {
     const line = digits.slice(7)
     return `(${area}) ${prefix}-${line}`
   }
+  if (digits.length === 10) {
+    const area = digits.slice(0, 3)
+    const prefix = digits.slice(3, 6)
+    const line = digits.slice(6)
+    return `(${area}) ${prefix}-${line}`
+  }
   return e164
 }
 
