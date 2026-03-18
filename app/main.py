@@ -37,7 +37,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info("Starting {}", settings.app_name)
 
     # Auth
-    app.state.jwks_manager = JWKSManager(issuer=settings.zitadel_issuer)
+    app.state.jwks_manager = JWKSManager(
+        issuer=settings.zitadel_issuer,
+        base_url=settings.zitadel_base_url,
+    )
 
     # ZITADEL service account (fail-fast validation)
     if (

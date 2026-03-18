@@ -43,9 +43,10 @@ class AuthenticatedUser(BaseModel):
 class JWKSManager:
     """Manages JWKS fetching with caching and key rotation support."""
 
-    def __init__(self, issuer: str) -> None:
+    def __init__(self, issuer: str, base_url: str = "") -> None:
         self.issuer = issuer
-        self.oidc_config_url = f"{issuer}/.well-known/openid-configuration"
+        self._base_url = base_url.rstrip("/") if base_url else issuer
+        self.oidc_config_url = f"{self._base_url}/.well-known/openid-configuration"
         self._jwks: dict | None = None
         self._jwks_uri: str | None = None
 
@@ -66,7 +67,12 @@ class JWKSManager:
                 oidc_resp = await client.get(self.oidc_config_url)
                 oidc_resp.raise_for_status()
                 oidc_config = oidc_resp.json()
-                self._jwks_uri = oidc_config["jwks_uri"]
+                jwks_uri = oidc_config["jwks_uri"]
+                # Rewrite JWKS URI to use internal base_url when it differs
+                # from the public issuer (e.g. Docker container networking)
+                if self._base_url != self.issuer:
+                    jwks_uri = jwks_uri.replace(self.issuer, self._base_url)
+                self._jwks_uri = jwks_uri
 
             jwks_resp = await client.get(self._jwks_uri)
             jwks_resp.raise_for_status()
@@ -270,9 +276,10 @@ async def get_current_user(
     # fetch them from the userinfo endpoint when missing.
     if not email or not display_name:
         try:
+            userinfo_base = settings.zitadel_base_url or settings.zitadel_issuer
             async with httpx.AsyncClient() as client:
                 userinfo_resp = await client.get(
-                    f"{settings.zitadel_issuer}/oidc/v1/userinfo",
+                    f"{userinfo_base}/oidc/v1/userinfo",
                     headers={"Authorization": f"Bearer {token}"},
                 )
                 if userinfo_resp.status_code == 200:

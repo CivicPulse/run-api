@@ -369,7 +369,7 @@ async def main() -> None:  # noqa: C901, PLR0915
         campaign_id = uuid.uuid4()
         campaign = Campaign(
             id=campaign_id,
-            zitadel_org_id=f"seed-org-{uuid.uuid4().hex[:16]}",
+            zitadel_org_id=os.environ.get("SEED_ZITADEL_ORG_ID", "362268991072305186"),
             name=SEED_CAMPAIGN_NAME,
             type=CampaignType.LOCAL,
             status=CampaignStatus.ACTIVE,

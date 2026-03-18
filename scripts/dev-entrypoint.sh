@@ -24,7 +24,9 @@ except ClientError:
 
 echo "==> Starting uvicorn with hot-reload..."
 SSL_ARGS=""
-if [ -f /home/app/certs/dev.tailb56d83.ts.net.crt ]; then
+if [ "${DISABLE_TLS}" = "true" ]; then
+  echo "    (TLS disabled via DISABLE_TLS env var)"
+elif [ -f /home/app/certs/dev.tailb56d83.ts.net.crt ]; then
   echo "    (TLS enabled via Tailscale certs)"
   SSL_ARGS="--ssl-certfile /home/app/certs/dev.tailb56d83.ts.net.crt --ssl-keyfile /home/app/certs/dev.tailb56d83.ts.net.key"
 fi
