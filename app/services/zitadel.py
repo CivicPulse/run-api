@@ -121,6 +121,9 @@ class ZitadelService:
     async def deactivate_organization(self, org_id: str) -> None:
         """Deactivate a ZITADEL organization (soft-delete).
 
+        The ``x-zitadel-orgid`` header is required so ZITADEL can locate orgs
+        that were not created by the service account's own org context.
+
         Args:
             org_id: The ZITADEL organization ID.
 
@@ -129,10 +132,12 @@ class ZitadelService:
         """
         try:
             token = await self._get_token()
+            headers = self._auth_headers(token)
+            headers["x-zitadel-orgid"] = org_id
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/orgs/{org_id}/_deactivate",
-                    headers=self._auth_headers(token),
+                    headers=headers,
                 )
                 response.raise_for_status()
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
@@ -144,6 +149,9 @@ class ZitadelService:
     async def delete_organization(self, org_id: str) -> None:
         """Delete a ZITADEL organization (compensating transaction only).
 
+        The ``x-zitadel-orgid`` header is required so ZITADEL can locate orgs
+        that were not created by the service account's own org context.
+
         Args:
             org_id: The ZITADEL organization ID.
 
@@ -152,10 +160,12 @@ class ZitadelService:
         """
         try:
             token = await self._get_token()
+            headers = self._auth_headers(token)
+            headers["x-zitadel-orgid"] = org_id
             async with httpx.AsyncClient() as client:
                 response = await client.delete(
                     f"{self.base_url}/management/v1/orgs/{org_id}",
-                    headers=self._auth_headers(token),
+                    headers=headers,
                 )
                 response.raise_for_status()
         except (httpx.ConnectError, httpx.TimeoutException) as exc:

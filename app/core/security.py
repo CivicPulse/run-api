@@ -144,33 +144,75 @@ async def resolve_campaign_role(
     campaign_id: uuid.UUID,
     db: AsyncSession,
     jwt_role: CampaignRole,
+    user_org_id: str | None = None,
 ) -> CampaignRole:
     """Resolve the effective role for a user in a specific campaign.
 
-    Priority: campaign-level DB role > org-level JWT role > VIEWER.
+    Resolution order:
+    1. Explicit per-campaign role stored in ``CampaignMember.role``.
+    2. JWT role, if the campaign's ZITADEL org matches the user's current org.
+    3. VIEWER (deny) for cross-org access with no explicit grant.
 
     Args:
         user_id: The user's ZITADEL ID.
         campaign_id: The campaign UUID.
         db: Async database session.
         jwt_role: The org-level role extracted from JWT.
+        user_org_id: The user's ZITADEL organization ID from the JWT.  When
+            provided it is used to verify that the user belongs to the campaign
+            org before honouring the JWT role.  Old campaigns that have not yet
+            been migrated to the Organization model are matched via the
+            ``Campaign.zitadel_org_id`` column directly.
 
     Returns:
         The resolved CampaignRole.
     """
+    from app.models.campaign import Campaign
     from app.models.campaign_member import CampaignMember
+    from app.models.organization import Organization
 
-    result = await db.scalar(
+    # 1. Check for an explicit per-campaign role override in the DB.
+    member_role = await db.scalar(
         select(CampaignMember.role).where(
             CampaignMember.user_id == user_id,
             CampaignMember.campaign_id == campaign_id,
         )
     )
-    if result:
+    if member_role:
         try:
-            return CampaignRole[result.upper()]
+            return CampaignRole[member_role.upper()]
         except KeyError:
-            pass
+            logger.warning(
+                "Unknown per-campaign role '{}' for user {}", member_role, user_id
+            )
+
+    # 2. If no explicit DB role, verify the JWT role is valid for this campaign.
+    #    The JWT role is only authoritative when the user's current ZITADEL org
+    #    is the same org that owns the campaign.
+    if user_org_id:
+        campaign = await db.scalar(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+        if campaign is not None:
+            # Resolve the campaign's effective ZITADEL org ID.
+            effective_org_id: str | None = None
+            if campaign.organization_id is not None:
+                effective_org_id = await db.scalar(
+                    select(Organization.zitadel_org_id).where(
+                        Organization.id == campaign.organization_id
+                    )
+                )
+            # Fall back to the legacy direct column for campaigns not yet migrated.
+            if not effective_org_id:
+                effective_org_id = campaign.zitadel_org_id
+
+            if effective_org_id and effective_org_id == user_org_id:
+                return jwt_role
+
+        # User is from a different org and has no explicit grant — deny.
+        return CampaignRole.VIEWER
+
+    # user_org_id not provided (legacy callers): preserve old behaviour.
     return jwt_role
 
 
@@ -263,7 +305,11 @@ def require_role(minimum: str):
                 # Get a DB session for the role lookup
                 async for db in get_db():
                     effective_role = await resolve_campaign_role(
-                        current_user.id, campaign_id, db, current_user.role
+                        current_user.id,
+                        campaign_id,
+                        db,
+                        current_user.role,
+                        user_org_id=current_user.org_id,
                     )
                     break
             except (ValueError, TypeError):
