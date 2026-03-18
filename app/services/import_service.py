@@ -590,6 +590,25 @@ class ImportService:
                 if isinstance(raw, str):
                     voter[prop_field] = parse_propensity(raw)
 
+            # Coerce numeric fields from CSV strings
+            for int_field in ("age", "household_size", "cell_phone_confidence"):
+                raw = voter.get(int_field)
+                if isinstance(raw, str):
+                    raw = raw.strip()
+                    try:
+                        voter[int_field] = int(raw) if raw else None
+                    except ValueError:
+                        voter[int_field] = None
+
+            for float_field in ("latitude", "longitude"):
+                raw = voter.get(float_field)
+                if isinstance(raw, str):
+                    raw = raw.strip()
+                    try:
+                        voter[float_field] = float(raw) if raw else None
+                    except ValueError:
+                        voter[float_field] = None
+
             # Parse voting history from original CSV row columns
             voting_history = parse_voting_history(row)
             if voting_history:
