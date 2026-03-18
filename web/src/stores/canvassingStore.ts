@@ -34,7 +34,9 @@ export const useCanvassingStore = create<CanvassingState>()(
         lastActiveAt: Date.now(),
       })),
       revertOutcome: (entryId) => set((state) => {
-        const { [entryId]: _, ...rest } = state.completedEntries
+        const rest = Object.fromEntries(
+          Object.entries(state.completedEntries).filter(([k]) => k !== entryId),
+        ) as typeof state.completedEntries
         return { completedEntries: rest }
       }),
       skipEntry: (entryId) => set((state) => ({

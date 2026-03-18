@@ -91,8 +91,8 @@ function Canvassing() {
   // Door list view state
   const [listViewOpen, setListViewOpen] = useState(false)
 
-  // ARIA announcement state
-  const [ariaAnnouncement, setAriaAnnouncement] = useState("")
+  // ARIA: outcome announcement state (navigation announcement is derived below)
+  const [outcomeAnnouncement, setOutcomeAnnouncement] = useState("")
 
   // Active voter name for ARIA
   const activeVoterName = useMemo(() => {
@@ -124,25 +124,14 @@ function Canvassing() {
     },
   })
 
-  // ARIA: announce door transitions and completion
-  useEffect(() => {
-    if (currentHousehold) {
-      setAriaAnnouncement(
-        `Now at ${currentHousehold.address}, door ${currentAddressIndex + 1} of ${totalAddresses}`,
-      )
-    }
-    if (isComplete) {
-      setAriaAnnouncement(
-        `Walk list complete. ${totalAddresses} doors visited.`,
-      )
-    }
-  }, [
-    currentAddressIndex,
-    currentHousehold,
-    isComplete,
-    totalAddresses,
-    activeVoterName,
-  ])
+  // ARIA: navigation announcement derived from current state
+  const navigationAnnouncement = isComplete
+    ? `Walk list complete. ${totalAddresses} doors visited.`
+    : currentHousehold
+      ? `Now at ${currentHousehold.address}, door ${currentAddressIndex + 1} of ${totalAddresses}`
+      : ""
+
+  const ariaAnnouncement = outcomeAnnouncement || navigationAnnouncement
 
   // Milestone celebration toasts
   useEffect(() => {
@@ -177,7 +166,7 @@ function Canvassing() {
           [voterEntry.voter.first_name, voterEntry.voter.last_name]
             .filter(Boolean)
             .join(" ") || "Unknown Voter"
-        setAriaAnnouncement(
+        setOutcomeAnnouncement(
           `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
         )
       }

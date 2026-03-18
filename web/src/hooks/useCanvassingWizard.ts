@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useRef } from "react"
+import { useMemo, useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import { useCanvassingStore } from "@/stores/canvassingStore"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
@@ -85,7 +85,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
 
   // Ref to track advanceAddress for use in timeouts
   const advanceRef = useRef(advanceAddress)
-  advanceRef.current = advanceAddress
+  useLayoutEffect(() => { advanceRef.current = advanceAddress })
 
   const handleOutcome = useCallback(
     (entryId: string, _voterId: string, result: DoorKnockResultCode): OutcomeResult => {

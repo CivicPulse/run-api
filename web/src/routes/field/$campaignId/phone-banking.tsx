@@ -86,20 +86,18 @@ function PhoneBanking() {
   // Local state
   const [surveyOpen, setSurveyOpen] = useState(false)
   const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
-  const [ariaAnnouncement, setAriaAnnouncement] = useState("")
+  const [outcomeAnnouncement, setOutcomeAnnouncement] = useState("")
   const [endDialogOpen, setEndDialogOpen] = useState(false)
 
   // Display total: prefer assignment total (includes all entries), fallback to loaded entries
   const displayTotal = totalFromAssignment > 0 ? totalFromAssignment : totalEntries
 
-  // ARIA: announce voter transitions
-  useEffect(() => {
-    if (currentEntry) {
-      setAriaAnnouncement(
-        `Now calling ${currentEntry.voter_name || "Unknown Voter"}, call ${completedCount + 1} of ${displayTotal}`,
-      )
-    }
-  }, [currentEntry, completedCount, displayTotal])
+  // ARIA: navigation announcement derived from current state
+  const navigationAnnouncement = currentEntry
+    ? `Now calling ${currentEntry.voter_name || "Unknown Voter"}, call ${completedCount + 1} of ${displayTotal}`
+    : ""
+
+  const ariaAnnouncement = outcomeAnnouncement || navigationAnnouncement
 
   // Milestone celebration toasts
   useEffect(() => {
@@ -116,7 +114,7 @@ function PhoneBanking() {
 
       // ARIA: announce outcome
       const config = CALL_OUTCOME_CONFIGS.find((c) => c.code === code)
-      setAriaAnnouncement(`${config?.label || code} recorded.`)
+      setOutcomeAnnouncement(`${config?.label || code} recorded.`)
 
       // Survey trigger check
       if (result.surveyTrigger && scriptId) {
