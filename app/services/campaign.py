@@ -18,6 +18,7 @@ from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
 from app.schemas.common import PaginationResponse
+from app.utils.slug import generate_unique_slug
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
@@ -122,11 +123,19 @@ class CampaignService:
                 organization_id = org_record.id
 
             # Step 3: Create local campaign record
+            # Fetch all existing slugs to guarantee uniqueness without a retry loop
+            slug_result = await db.execute(
+                select(Campaign.slug).where(Campaign.slug.is_not(None))
+            )
+            existing_slugs: set[str] = set(slug_result.scalars().all())
+            campaign_slug = generate_unique_slug(name, existing_slugs)
+
             campaign = Campaign(
                 id=uuid.uuid4(),
                 zitadel_org_id=org_id,
                 organization_id=organization_id,
                 name=name,
+                slug=campaign_slug,
                 type=campaign_type,
                 jurisdiction_fips=jurisdiction_fips,
                 jurisdiction_name=jurisdiction_name,
