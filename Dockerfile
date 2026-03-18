@@ -1,10 +1,49 @@
 # =============================================================================
 # Multi-stage production Dockerfile for run-api
-# Stages: frontend (node build) -> deps (uv install) -> runtime (python-slim)
+# Stages: deps (uv install) -> dev (backend dev) -> frontend (node build) -> runtime (python-slim)
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: Build frontend (Vite/React)
+# Stage 1: Install Python dependencies with uv
+# ---------------------------------------------------------------------------
+FROM python:3.13-slim AS deps
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+# Output: /build/.venv/
+
+# ---------------------------------------------------------------------------
+# Stage: Development runtime (no frontend build, fast rebuilds)
+# ---------------------------------------------------------------------------
+FROM python:3.13-slim AS dev
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgeos-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash app \
+    && chmod 755 /home/app
+
+WORKDIR /home/app
+
+COPY --chown=app:app --from=deps /build/.venv ./.venv
+
+COPY --chown=app:app app/ ./app/
+COPY --chown=app:app main.py ./
+COPY --chown=app:app alembic/ ./alembic/
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app scripts/ ./scripts/
+
+ENV PATH="/home/app/.venv/bin:$PATH"
+
+USER app
+EXPOSE 8000
+CMD ["bash", "scripts/dev-entrypoint.sh"]
+
+# ---------------------------------------------------------------------------
+# Stage: Build frontend (Vite/React)
 # ---------------------------------------------------------------------------
 FROM node:22-slim AS frontend
 
@@ -16,18 +55,7 @@ RUN npm run build
 # Output: /build/dist/
 
 # ---------------------------------------------------------------------------
-# Stage 2: Install Python dependencies with uv
-# ---------------------------------------------------------------------------
-FROM python:3.13-slim AS deps
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-WORKDIR /build
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
-# Output: /build/.venv/
-
-# ---------------------------------------------------------------------------
-# Stage 3: Production runtime
+# Stage: Production runtime
 # ---------------------------------------------------------------------------
 FROM python:3.13-slim AS runtime
 
