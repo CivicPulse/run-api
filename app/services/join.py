@@ -151,23 +151,15 @@ class JoinService:
         )
         project_grant_id: str | None = org.zitadel_project_grant_id if org else None
 
-        try:
-            await zitadel.assign_project_role(
-                settings.zitadel_project_id,
-                user.id,
-                "volunteer",
-                project_grant_id=project_grant_id,
-                org_id=campaign.zitadel_org_id,
-            )
-        except Exception:
-            logger.warning(
-                "ZITADEL role assignment failed for user {} on campaign '{}'; "
-                "proceeding with local registration only.",
-                user.id,
-                campaign.slug,
-            )
-            # We do NOT raise here — the local DB records are the source of truth.
-            # A background job or retry can reconcile ZITADEL state later.
+        # ZITADEL role assignment happens BEFORE commit for atomicity.
+        # If this fails, the exception propagates and the DB transaction rolls back.
+        await zitadel.assign_project_role(
+            settings.zitadel_project_id,
+            user.id,
+            "volunteer",
+            project_grant_id=project_grant_id,
+            org_id=campaign.zitadel_org_id,
+        )
 
         # Step 6 — commit
         await db.commit()

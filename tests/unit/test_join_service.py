@@ -268,8 +268,12 @@ class TestRegisterVolunteer:
         assert vol.last_name == ""
 
     @pytest.mark.anyio
-    async def test_zitadel_failure_does_not_prevent_commit(self):
-        """ZITADEL role assignment failure is logged but does not abort registration."""
+    async def test_zitadel_failure_aborts_registration(self):
+        """ZITADEL role assignment failure causes registration to fail atomically.
+
+        If ZITADEL fails, the exception propagates and DB transaction rolls back.
+        This ensures atomicity: either both DB and ZITADEL succeed, or both fail.
+        """
         service = JoinService()
         campaign = _make_campaign()
         org = _make_org()
@@ -286,7 +290,9 @@ class TestRegisterVolunteer:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
 
-        # Should NOT raise — ZITADEL errors are best-effort
-        result = await service.register_volunteer("smith-for-senate", user, db, zitadel)
-        assert result["campaign_slug"] == campaign.slug
-        db.commit.assert_awaited_once()
+        # Should raise — ZITADEL failure causes atomic rollback
+        with pytest.raises(RuntimeError, match="ZITADEL down"):
+            await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        # Commit should NOT have been called due to the ZITADEL failure
+        db.commit.assert_not_awaited()
