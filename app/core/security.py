@@ -265,12 +265,35 @@ async def get_current_user(
             detail="Missing organization claim",
         )
 
+    email = claims.get("email")
+    display_name = claims.get("name") or claims.get("preferred_username")
+
+    # ZITADEL access tokens don't carry profile claims (email, name) —
+    # fetch them from the userinfo endpoint when missing.
+    if not email or not display_name:
+        try:
+            async with httpx.AsyncClient() as client:
+                userinfo_resp = await client.get(
+                    f"{settings.zitadel_issuer}/oidc/v1/userinfo",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if userinfo_resp.status_code == 200:
+                    userinfo = userinfo_resp.json()
+                    email = email or userinfo.get("email")
+                    display_name = (
+                        display_name
+                        or userinfo.get("name")
+                        or userinfo.get("preferred_username")
+                    )
+        except Exception:
+            logger.debug("Failed to fetch userinfo, proceeding without profile data")
+
     return AuthenticatedUser(
         id=claims["sub"],
         org_id=org_id,
         role=_extract_role(claims),
-        email=claims.get("email"),
-        display_name=claims.get("name") or claims.get("preferred_username") or claims.get("email"),
+        email=email,
+        display_name=display_name or email,
     )
 
 
