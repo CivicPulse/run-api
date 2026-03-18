@@ -190,7 +190,7 @@ async def get_current_user(
         org_id=org_id,
         role=_extract_role(claims),
         email=claims.get("email"),
-        display_name=claims.get("name"),
+        display_name=claims.get("name") or claims.get("preferred_username") or claims.get("email"),
     )
 
 

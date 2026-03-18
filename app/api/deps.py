@@ -67,7 +67,10 @@ async def ensure_user_synced(
     else:
         # Update display_name and email if changed
         changed = False
-        if user.display_name and local_user.display_name != user.display_name:
+        if user.display_name and (
+            local_user.display_name != user.display_name
+            or not local_user.display_name.strip()
+        ):
             local_user.display_name = user.display_name
             changed = True
         if user.email and local_user.email != user.email:

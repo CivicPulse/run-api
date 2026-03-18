@@ -298,7 +298,22 @@ class PhoneBankService:
             msg = f"Session {session_id} is not active"
             raise ValueError(msg)
 
-        caller = await self._get_caller(session, session_id, user_id)
+        # Get-or-create: auto-add caller if not already assigned
+        result = await session.execute(
+            select(SessionCaller).where(
+                SessionCaller.session_id == session_id,
+                SessionCaller.user_id == user_id,
+            )
+        )
+        caller = result.scalar_one_or_none()
+        if caller is None:
+            caller = SessionCaller(
+                id=uuid.uuid4(),
+                session_id=session_id,
+                user_id=user_id,
+                created_at=utcnow(),
+            )
+            session.add(caller)
         caller.check_in_at = utcnow()
         return caller
 

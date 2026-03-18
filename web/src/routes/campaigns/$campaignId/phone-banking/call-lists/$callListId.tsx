@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useCallList, useCallListEntries, useAppendFromList } from "@/hooks/useCallLists"
+import { useCallList, useCallListEntries, useAppendFromList, useUpdateCallListStatus } from "@/hooks/useCallLists"
 import { formatPhoneDisplay } from "@/types/calling"
 import { useMembers } from "@/hooks/useMembers"
 import { useVoterLists } from "@/hooks/useVoterLists"
@@ -163,6 +163,8 @@ function CallListDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [addTargetsOpen, setAddTargetsOpen] = useState(false)
 
+  const statusMutation = useUpdateCallListStatus(campaignId, callListId)
+
   const { data: callList, isLoading: callListLoading } = useCallList(
     campaignId,
     callListId,
@@ -288,9 +290,44 @@ function CallListDetailPage() {
           <StatusBadge status={callList.status} />
         </div>
         <RequireRole minimum="manager">
-          <Button size="sm" onClick={() => setAddTargetsOpen(true)}>
-            + Add Targets
-          </Button>
+          <div className="flex items-center gap-2">
+            {callList.status === "draft" && (
+              <Button
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await statusMutation.mutateAsync("active")
+                    toast.success("Call list activated")
+                  } catch {
+                    toast.error("Failed to activate call list")
+                  }
+                }}
+                disabled={statusMutation.isPending}
+              >
+                Activate
+              </Button>
+            )}
+            {callList.status === "active" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await statusMutation.mutateAsync("completed")
+                    toast.success("Call list completed")
+                  } catch {
+                    toast.error("Failed to complete call list")
+                  }
+                }}
+                disabled={statusMutation.isPending}
+              >
+                Complete
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setAddTargetsOpen(true)}>
+              + Add Targets
+            </Button>
+          </div>
         </RequireRole>
       </div>
 

@@ -84,7 +84,10 @@ function resolveCallerName(
   userId: string,
 ): string {
   const member = membersById.get(userId)
-  return member ? member.display_name : `${userId.slice(0, 12)}...`
+  if (!member) return `${userId.slice(0, 12)}...`
+  if (member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== "")
+    return member.display_name
+  return member.email || `${userId.slice(0, 12)}...`
 }
 
 function resolveCallerRole(
@@ -171,7 +174,9 @@ function AddCallerDialog({
                   className="w-full justify-between"
                 >
                   {selectedMember
-                    ? selectedMember.display_name
+                    ? (selectedMember.display_name && selectedMember.display_name !== "Unknown" && selectedMember.display_name.trim() !== ""
+                        ? selectedMember.display_name
+                        : selectedMember.email || `${selectedMember.user_id.slice(0, 12)}...`)
                     : "Select a member..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -189,7 +194,7 @@ function AddCallerDialog({
                       {availableMembers.map((member) => (
                         <CommandItem
                           key={member.user_id}
-                          value={`${member.display_name} ${member.email}`}
+                          value={`${member.display_name} ${member.email} ${member.user_id}`}
                           onSelect={() => {
                             setSelectedUserId(member.user_id)
                             setComboboxOpen(false)
@@ -199,7 +204,14 @@ function AddCallerDialog({
                             className={`mr-2 h-4 w-4 ${selectedUserId === member.user_id ? "opacity-100" : "opacity-0"}`}
                           />
                           <div className="flex items-center gap-2">
-                            <span>{member.display_name}</span>
+                            <span>
+                              {member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== ""
+                                ? member.display_name
+                                : member.email || `${member.user_id.slice(0, 12)}...`}
+                            </span>
+                            {member.email && member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== "" && (
+                              <span className="text-xs text-muted-foreground">{member.email}</span>
+                            )}
                             <StatusBadge
                               status={member.role}
                               variant={roleVariant[member.role] ?? "default"}
@@ -313,8 +325,17 @@ function OverviewTab({
       await checkInMutation.mutateAsync()
       setCheckedIn(true)
       toast.success("Checked in successfully")
-    } catch {
-      toast.error("Failed to check in")
+    } catch (err) {
+      let detail: string | null = null
+      if (err instanceof Error && "response" in err) {
+        try {
+          const body = await (err as { response: Response }).response.json()
+          detail = body.detail
+        } catch {
+          // response not JSON
+        }
+      }
+      toast.error(detail || "Failed to check in")
     }
   }
 

@@ -223,3 +223,5 @@ screenshots/
 
 # hatchkit
 .hatchkit/cache/
+web/src/routes/campaigns/$campaignId/phone-banking/sessions/$sessionId/index.tsx
+screenshot-volunteers.png
