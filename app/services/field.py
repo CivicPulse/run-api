@@ -45,9 +45,7 @@ class FieldService:
             Dict matching FieldMeResponse shape.
         """
         # Campaign name
-        campaign = await db.scalar(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        campaign = await db.scalar(select(Campaign).where(Campaign.id == campaign_id))
 
         # Most recent canvassing assignment
         canvassing_result = await db.execute(

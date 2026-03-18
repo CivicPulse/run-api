@@ -207,6 +207,7 @@ class TestAcceptInvite:
         # Verify new member has role from invite
         added_member = mock_db.add.call_args.args[0]
         from app.models.campaign_member import CampaignMember
+
         assert isinstance(added_member, CampaignMember)
         assert added_member.role == invite.role
         mock_zitadel.assign_project_role.assert_awaited_once()

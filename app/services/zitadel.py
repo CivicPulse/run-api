@@ -331,7 +331,5 @@ class ZitadelService:
                     return grant["grantId"]
 
         # If we still can't find it, try creating again and let it raise
-        result = await self.create_project_grant(
-            project_id, granted_org_id, role_keys
-        )
+        result = await self.create_project_grant(project_id, granted_org_id, role_keys)
         return result["grantId"]

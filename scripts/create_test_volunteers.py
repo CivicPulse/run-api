@@ -167,7 +167,9 @@ async def ensure_project_grant(token: str, org_id: str) -> str | None:
             },
         )
         if resp.status_code >= 400:
-            print(f"    Could not search project grants: {resp.status_code} {resp.text}")
+            print(
+                f"    Could not search project grants: {resp.status_code} {resp.text}"
+            )
         else:
             grants = resp.json().get("result", [])
             for g in grants:
@@ -219,7 +221,8 @@ async def assign_volunteer_role(
         if resp.status_code == 409:
             print(f"    Role already assigned for {username}")
         elif resp.status_code >= 400:
-            print(f"    ERROR assigning role to {username}: {resp.status_code} {resp.text}")
+            err = f"{resp.status_code} {resp.text}"
+            print(f"    ERROR assigning role to {username}: {err}")
         else:
             print(f"    Assigned 'volunteer' role to {username}")
 
@@ -236,7 +239,9 @@ async def link_volunteer_record(
         .values(user_id=zitadel_user_id)
     )
     if result.rowcount:
-        print(f"    Linked volunteer record (email={email}) -> user_id={zitadel_user_id}")
+        print(
+            f"    Linked volunteer record (email={email}) -> user_id={zitadel_user_id}"
+        )
     else:
         print(f"    WARNING: No volunteer record found for {email}")
 
@@ -245,8 +250,8 @@ async def create_local_user(
     session: AsyncSession, zitadel_user_id: str, display_name: str, email: str
 ) -> None:
     """Create a local User record so the volunteer appears in the system."""
-    from app.models.user import User
     from app.core.time import utcnow
+    from app.models.user import User
 
     existing = await session.execute(select(User).where(User.id == zitadel_user_id))
     if existing.scalar_one_or_none():
@@ -254,8 +259,15 @@ async def create_local_user(
         return
 
     now = utcnow()
-    session.add(User(id=zitadel_user_id, display_name=display_name, email=email,
-                     created_at=now, updated_at=now))
+    session.add(
+        User(
+            id=zitadel_user_id,
+            display_name=display_name,
+            email=email,
+            created_at=now,
+            updated_at=now,
+        )
+    )
     print(f"    Created local user record for {display_name}")
 
 
@@ -302,13 +314,17 @@ async def main() -> None:
             print(f"Processing {display_name} ({username})...")
 
             # 1. Create ZITADEL user
-            user_id = await create_zitadel_user(token, org_id, username, display_name, email)
+            user_id = await create_zitadel_user(
+                token, org_id, username, display_name, email
+            )
             if not user_id:
                 print(f"  Skipping {username} - no user ID\n")
                 continue
 
             # 2. Assign volunteer role
-            await assign_volunteer_role(token, org_id, user_id, username, project_grant_id)
+            await assign_volunteer_role(
+                token, org_id, user_id, username, project_grant_id
+            )
 
             # 3. Create local user record
             await create_local_user(session, user_id, display_name, email)
@@ -326,7 +342,7 @@ async def main() -> None:
     await engine.dispose()
 
     print("=== Done ===")
-    print(f"\nAll volunteers can log in with:")
+    print("\nAll volunteers can log in with:")
     print(f"  Password: {VOLUNTEER_PASSWORD}")
     print(f"  Usernames: {', '.join(u for _, u, _ in VOLUNTEERS)}")
 

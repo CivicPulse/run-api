@@ -190,9 +190,7 @@ async def resolve_campaign_role(
     #    The JWT role is only authoritative when the user's current ZITADEL org
     #    is the same org that owns the campaign.
     if user_org_id:
-        campaign = await db.scalar(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        campaign = await db.scalar(select(Campaign).where(Campaign.id == campaign_id))
         if campaign is not None:
             # Resolve the campaign's effective ZITADEL org ID.
             effective_org_id: str | None = None
