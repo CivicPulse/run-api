@@ -19,7 +19,6 @@ from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.db.session import get_db
 from app.models.campaign import Campaign, CampaignStatus
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -85,7 +84,9 @@ class TestGetCampaignPublicInfo:
             return_value=campaign,
         ):
             transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as c:
                 resp = await c.get("/join/smith-for-senate")
 
         assert resp.status_code == 200
@@ -109,7 +110,9 @@ class TestGetCampaignPublicInfo:
             side_effect=CampaignNotFoundError(uuid.UUID(int=0)),
         ):
             transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as c:
                 resp = await c.get("/join/nonexistent-slug")
 
         assert resp.status_code == 404
@@ -143,7 +146,9 @@ class TestRegisterVolunteer:
             },
         ):
             transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as c:
                 resp = await c.post(
                     "/join/smith-for-senate/register",
                     headers={"Authorization": "Bearer fake-token"},
@@ -171,7 +176,9 @@ class TestRegisterVolunteer:
             side_effect=CampaignNotFoundError(uuid.UUID(int=0)),
         ):
             transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as c:
                 resp = await c.post(
                     "/join/no-such-slug/register",
                     headers={"Authorization": "Bearer fake-token"},
@@ -197,7 +204,9 @@ class TestRegisterVolunteer:
             side_effect=ValueError(f"already_registered:{campaign_id}"),
         ):
             transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as c:
                 resp = await c.post(
                     "/join/smith-for-senate/register",
                     headers={"Authorization": "Bearer fake-token"},

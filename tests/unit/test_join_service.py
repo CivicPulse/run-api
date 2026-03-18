@@ -6,7 +6,7 @@ Uses AsyncMock / MagicMock throughout — no real database required.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -17,7 +17,6 @@ from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
 from app.models.volunteer import Volunteer
 from app.services.join import JoinService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -185,7 +184,6 @@ class TestRegisterVolunteer:
         db.refresh = AsyncMock()
 
         captured_volunteer: list[Volunteer] = []
-        original_add = db.add
 
         def _capture_add(obj):
             if isinstance(obj, Volunteer):
@@ -279,7 +277,9 @@ class TestRegisterVolunteer:
         org = _make_org()
         user = _make_user()
         zitadel = AsyncMock()
-        zitadel.assign_project_role = AsyncMock(side_effect=RuntimeError("ZITADEL down"))
+        zitadel.assign_project_role = AsyncMock(
+            side_effect=RuntimeError("ZITADEL down")
+        )
 
         db = AsyncMock()
         exec_result_campaign = MagicMock()

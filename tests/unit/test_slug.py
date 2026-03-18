@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.utils.slug import generate_slug, generate_unique_slug
-
 
 # ---------------------------------------------------------------------------
 # generate_slug
@@ -74,16 +71,19 @@ class TestGenerateUniqueSlug:
 
     def test_appends_2_on_first_collision(self):
         existing = {"smith-for-senate"}
-        assert generate_unique_slug("Smith for Senate", existing) == "smith-for-senate-2"
+        result = generate_unique_slug("Smith for Senate", existing)
+        assert result == "smith-for-senate-2"
 
     def test_increments_past_consecutive_collisions(self):
         existing = {"smith-for-senate", "smith-for-senate-2"}
-        assert generate_unique_slug("Smith for Senate", existing) == "smith-for-senate-3"
+        result = generate_unique_slug("Smith for Senate", existing)
+        assert result == "smith-for-senate-3"
 
     def test_finds_gap_in_sequence(self):
         # -2 and -4 exist but -3 is free
         existing = {"smith-for-senate", "smith-for-senate-2", "smith-for-senate-4"}
-        assert generate_unique_slug("Smith for Senate", existing) == "smith-for-senate-3"
+        result = generate_unique_slug("Smith for Senate", existing)
+        assert result == "smith-for-senate-3"
 
     def test_many_collisions(self):
         base = "my-campaign"
