@@ -68,7 +68,6 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
 
     // 2. Resolve effective role: per-campaign API role takes priority
     // when we're in a campaign context
-    console.debug("[usePermissions]", { campaignId, apiRole, jwtRole, projectId })
     if (campaignId && apiRole && apiRole in ROLE_HIERARCHY) {
       // Use the higher of JWT org-level role and per-campaign API role
       const apiRoleLevel = ROLE_HIERARCHY[apiRole as CampaignRole]

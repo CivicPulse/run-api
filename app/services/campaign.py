@@ -347,9 +347,19 @@ class CampaignService:
 
         campaign.status = CampaignStatus.DELETED
         campaign.updated_at = utcnow()
-
-        await zitadel.deactivate_organization(campaign.zitadel_org_id)
         await db.commit()
+
+        # Best-effort ZITADEL org deactivation — the local soft-delete
+        # is the source of truth, so we don't roll back if this fails.
+        try:
+            await zitadel.deactivate_organization(campaign.zitadel_org_id)
+        except Exception:
+            logger.warning(
+                "Failed to deactivate ZITADEL org {} for campaign '{}', "
+                "local soft-delete succeeded",
+                campaign.zitadel_org_id,
+                campaign.name,
+            )
 
 
 def _validate_status_transition(
