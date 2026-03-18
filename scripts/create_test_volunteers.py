@@ -261,8 +261,15 @@ async def create_local_user(
         return
 
     now = utcnow()
-    session.add(User(id=zitadel_user_id, display_name=display_name, email=email,
-                     created_at=now, updated_at=now))
+    session.add(
+        User(
+            id=zitadel_user_id,
+            display_name=display_name,
+            email=email,
+            created_at=now,
+            updated_at=now,
+        )
+    )
     print(f"    Created local user record for {display_name}")
 
 

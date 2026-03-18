@@ -194,6 +194,7 @@ class TestCampaignService:
         # Verify CampaignMember was added with role="owner"
         added_objects = [call.args[0] for call in mock_db.add.call_args_list]
         from app.models.campaign_member import CampaignMember
+
         member_adds = [o for o in added_objects if isinstance(o, CampaignMember)]
         assert len(member_adds) == 1
         assert member_adds[0].role == "owner"

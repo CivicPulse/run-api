@@ -34,9 +34,7 @@ class JoinService:
     commits internally to keep the atomic unit cohesive).
     """
 
-    async def get_campaign_public_info(
-        self, slug: str, db: AsyncSession
-    ) -> Campaign:
+    async def get_campaign_public_info(self, slug: str, db: AsyncSession) -> Campaign:
         """Look up an active campaign by its URL slug.
 
         Args:
@@ -145,9 +143,7 @@ class JoinService:
         #   Resolve the project grant ID from the Organization record so the
         #   role is scoped to the campaign's ZITADEL org.
         org = await db.scalar(
-            select(Organization).where(
-                Organization.id == campaign.organization_id
-            )
+            select(Organization).where(Organization.id == campaign.organization_id)
         )
         project_grant_id: str | None = org.zitadel_project_grant_id if org else None
 

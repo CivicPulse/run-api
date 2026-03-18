@@ -196,7 +196,9 @@ class InviteService:
 
         # Assign ZITADEL project role
         await zitadel.assign_project_role(
-            settings.zitadel_project_id, user.id, invite.role,
+            settings.zitadel_project_id,
+            user.id,
+            invite.role,
             org_id=zitadel_org_id,
         )
 

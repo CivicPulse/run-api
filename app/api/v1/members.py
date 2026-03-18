@@ -136,11 +136,15 @@ async def update_member_role(
 
     # Remove old role and assign new one in ZITADEL
     await zitadel.remove_project_role(
-        settings.zitadel_project_id, member.user_id, member.role or "viewer",
+        settings.zitadel_project_id,
+        member.user_id,
+        member.role or "viewer",
         org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
-        settings.zitadel_project_id, member.user_id, data.role,
+        settings.zitadel_project_id,
+        member.user_id,
+        data.role,
         org_id=zitadel_org_id,
     )
 
@@ -202,7 +206,9 @@ async def remove_member(
 
     zitadel = request.app.state.zitadel_service
     await zitadel.remove_project_role(
-        settings.zitadel_project_id, member_user_id, member.role or "viewer",
+        settings.zitadel_project_id,
+        member_user_id,
+        member.role or "viewer",
         org_id=campaign.zitadel_org_id if campaign else None,
     )
     await db.delete(member)
@@ -254,19 +260,29 @@ async def transfer_ownership(
 
     # Demote current owner to admin in ZITADEL
     await zitadel.remove_project_role(
-        settings.zitadel_project_id, user.id, "owner", org_id=zitadel_org_id,
+        settings.zitadel_project_id,
+        user.id,
+        "owner",
+        org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
-        settings.zitadel_project_id, user.id, "admin", org_id=zitadel_org_id,
+        settings.zitadel_project_id,
+        user.id,
+        "admin",
+        org_id=zitadel_org_id,
     )
 
     # Promote target to owner in ZITADEL
     await zitadel.remove_project_role(
-        settings.zitadel_project_id, data.new_owner_id, target_member.role or "viewer",
+        settings.zitadel_project_id,
+        data.new_owner_id,
+        target_member.role or "viewer",
         org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
-        settings.zitadel_project_id, data.new_owner_id, "owner",
+        settings.zitadel_project_id,
+        data.new_owner_id,
+        "owner",
         org_id=zitadel_org_id,
     )
 

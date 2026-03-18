@@ -429,9 +429,7 @@ class WalkListService:
             .label("last_result")
         )
         last_date_sq = (
-            select(latest_interaction.c.created_at)
-            .scalar_subquery()
-            .label("last_date")
+            select(latest_interaction.c.created_at).scalar_subquery().label("last_date")
         )
 
         query = (
