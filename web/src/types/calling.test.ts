@@ -21,6 +21,10 @@ describe("formatPhoneDisplay", () => {
   it("handles number without + prefix", () => {
     expect(formatPhoneDisplay("15551234567")).toBe("(555) 123-4567")
   })
+
+  it("formats 10-digit US number without country code", () => {
+    expect(formatPhoneDisplay("4789601978")).toBe("(478) 960-1978")
+  })
 })
 
 describe("getPhoneStatus", () => {
