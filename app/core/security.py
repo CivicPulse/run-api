@@ -5,6 +5,7 @@ Uses Authlib for JWT/JWKS validation against ZITADEL OIDC.
 
 from __future__ import annotations
 
+import uuid
 from enum import IntEnum
 
 import httpx
@@ -13,6 +14,8 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 
@@ -136,6 +139,41 @@ def _extract_role(claims: dict, project_id: str | None = None) -> CampaignRole:
     return best_role
 
 
+async def resolve_campaign_role(
+    user_id: str,
+    campaign_id: uuid.UUID,
+    db: AsyncSession,
+    jwt_role: CampaignRole,
+) -> CampaignRole:
+    """Resolve the effective role for a user in a specific campaign.
+
+    Priority: campaign-level DB role > org-level JWT role > VIEWER.
+
+    Args:
+        user_id: The user's ZITADEL ID.
+        campaign_id: The campaign UUID.
+        db: Async database session.
+        jwt_role: The org-level role extracted from JWT.
+
+    Returns:
+        The resolved CampaignRole.
+    """
+    from app.models.campaign_member import CampaignMember
+
+    result = await db.scalar(
+        select(CampaignMember.role).where(
+            CampaignMember.user_id == user_id,
+            CampaignMember.campaign_id == campaign_id,
+        )
+    )
+    if result:
+        try:
+            return CampaignRole[result.upper()]
+        except KeyError:
+            pass
+    return jwt_role
+
+
 bearer_scheme = HTTPBearer()
 
 
@@ -197,6 +235,10 @@ async def get_current_user(
 def require_role(minimum: str):
     """FastAPI dependency factory that enforces minimum role level.
 
+    When the request URL contains a ``campaign_id`` path parameter, the
+    effective role is resolved from the ``CampaignMember.role`` column
+    (per-campaign override) before falling back to the org-level JWT role.
+
     Args:
         minimum: The minimum role name (e.g., "manager", "admin").
 
@@ -206,13 +248,39 @@ def require_role(minimum: str):
     min_level = CampaignRole[minimum.upper()]
 
     async def _check_role(
+        request: Request,
         current_user: AuthenticatedUser = Depends(get_current_user),
     ) -> AuthenticatedUser:
-        if current_user.role < min_level:
+        effective_role = current_user.role
+
+        # Resolve per-campaign role if campaign_id is in the path
+        campaign_id_str = request.path_params.get("campaign_id")
+        if campaign_id_str:
+            try:
+                campaign_id = uuid.UUID(campaign_id_str)
+                from app.db.session import get_db
+
+                # Get a DB session for the role lookup
+                async for db in get_db():
+                    effective_role = await resolve_campaign_role(
+                        current_user.id, campaign_id, db, current_user.role
+                    )
+                    break
+            except (ValueError, TypeError):
+                pass
+            except Exception:
+                # DB unavailable (e.g. in tests or connection failure) —
+                # fall back to the JWT role
+                logger.debug("Per-campaign role resolution failed, using JWT role")
+
+        if effective_role < min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
+
+        # Update user object with resolved role so downstream code sees the right role
+        current_user = current_user.model_copy(update={"role": effective_role})
         return current_user
 
     return _check_role

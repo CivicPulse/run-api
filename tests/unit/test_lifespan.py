@@ -23,6 +23,7 @@ def _mock_settings():
     with patch("app.main.settings") as mock_s:
         mock_s.app_name = "test"
         mock_s.zitadel_issuer = "https://auth.example.com"
+        mock_s.zitadel_base_url = ""
         mock_s.zitadel_service_client_id = "client-id"
         mock_s.zitadel_service_client_secret = "client-secret"
         yield mock_s
@@ -182,7 +183,10 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
             ),  # user lookup
             MagicMock(
                 scalar_one_or_none=MagicMock(return_value=None)
-            ),  # campaign lookup
+            ),  # org lookup (None = no Organization record yet)
+            MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None)
+            ),  # campaign lookup fallback (None)
         ]
     )
 
@@ -203,6 +207,17 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
             "create_organization",
             new_callable=AsyncMock,
             return_value={"id": ORG_ID},
+        ),
+        patch.object(
+            ZitadelService,
+            "ensure_project_grant",
+            new_callable=AsyncMock,
+            return_value="grant-123",
+        ),
+        patch.object(
+            ZitadelService,
+            "assign_project_role",
+            new_callable=AsyncMock,
         ),
     ):
         app = create_app()

@@ -164,46 +164,71 @@ class ZitadelService:
                 "Cannot reach ZITADEL to delete organization"
             ) from exc
 
-    async def assign_project_role(self, org_id: str, user_id: str, role: str) -> None:
+    async def assign_project_role(
+        self,
+        project_id: str,
+        user_id: str,
+        role: str,
+        *,
+        project_grant_id: str | None = None,
+        org_id: str | None = None,
+    ) -> None:
         """Assign a project role to a user within an organization.
 
         Args:
-            org_id: The ZITADEL organization ID.
+            project_id: The ZITADEL project ID.
             user_id: The ZITADEL user ID.
             role: The role key to assign.
+            project_grant_id: Optional project grant ID to scope the role assignment
+                to a specific granted organization.
+            org_id: Optional organization ID. When provided, sets the
+                ``x-zitadel-orgid`` header so the request is scoped to that org.
         """
         token = await self._get_token()
+        headers = self._auth_headers(token)
+        if org_id:
+            headers["x-zitadel-orgid"] = org_id
+        body: dict = {
+            "projectId": project_id,
+            "roleKeys": [role],
+        }
+        if project_grant_id:
+            body["projectGrantId"] = project_grant_id
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/management/v1/users/{user_id}/grants",
-                headers=self._auth_headers(token),
-                json={
-                    "projectId": org_id,
-                    "roleKeys": [role],
-                },
+                headers=headers,
+                json=body,
             )
             response.raise_for_status()
 
     async def remove_project_role(
         self,
-        org_id: str,
+        project_id: str,
         user_id: str,
         role: str,  # noqa: ARG002
+        *,
+        org_id: str | None = None,
     ) -> None:
         """Remove a project role grant from a user.
 
         Args:
-            org_id: The ZITADEL organization ID.
+            project_id: The ZITADEL project ID.
             user_id: The ZITADEL user ID.
             role: The role key to remove (used to find the grant).
+            org_id: Optional organization ID. When provided, sets the
+                ``x-zitadel-orgid`` header so the request is scoped to that org.
         """
         token = await self._get_token()
+        headers = self._auth_headers(token)
+        if org_id:
+            headers["x-zitadel-orgid"] = org_id
         async with httpx.AsyncClient() as client:
             # List grants to find the one to remove
             response = await client.post(
                 f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
-                headers=self._auth_headers(token),
-                json={"queries": [{"projectIdQuery": {"projectId": org_id}}]},
+                headers=headers,
+                json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
             )
             response.raise_for_status()
             grants = response.json().get("result", [])
@@ -213,6 +238,90 @@ class ZitadelService:
                     grant_id = grant["id"]
                     del_resp = await client.delete(
                         f"{self.base_url}/management/v1/users/{user_id}/grants/{grant_id}",
-                        headers=self._auth_headers(token),
+                        headers=headers,
                     )
                     del_resp.raise_for_status()
+
+    async def create_project_grant(
+        self,
+        project_id: str,
+        granted_org_id: str,
+        role_keys: list[str],
+    ) -> dict:
+        """Create a project grant for an organization.
+
+        Args:
+            project_id: The ZITADEL project ID.
+            granted_org_id: The org receiving the grant.
+            role_keys: List of role keys to grant.
+
+        Returns:
+            Dict with grant details including ``grantId``.
+        """
+        token = await self._get_token()
+        headers = self._auth_headers(token)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/management/v1/projects/{project_id}/grants",
+                headers=headers,
+                json={
+                    "grantedOrgId": granted_org_id,
+                    "roleKeys": role_keys,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def ensure_project_grant(
+        self,
+        project_id: str,
+        granted_org_id: str,
+        role_keys: list[str],
+    ) -> str:
+        """Ensure a project grant exists (idempotent).
+
+        Tries to create the grant first. If it already exists (409 Conflict),
+        searches for the existing grant and returns its ID.
+
+        Args:
+            project_id: The ZITADEL project ID.
+            granted_org_id: The org receiving the grant.
+            role_keys: List of role keys to grant.
+
+        Returns:
+            The project grant ID (existing or newly created).
+        """
+        # Try creating first — most calls will be for new orgs
+        try:
+            result = await self.create_project_grant(
+                project_id, granted_org_id, role_keys
+            )
+            return result["grantId"]
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in (409, 400):
+                raise
+            # Grant likely already exists — search for it
+            logger.debug(
+                "Project grant creation returned {}, searching for existing grant",
+                exc.response.status_code,
+            )
+
+        # Fall back to listing all grants and filtering client-side
+        token = await self._get_token()
+        headers = self._auth_headers(token)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/management/v1/projects/{project_id}/grants/_search",
+                headers=headers,
+                json={},
+            )
+            response.raise_for_status()
+            for grant in response.json().get("result", []):
+                if grant.get("grantedOrgId") == granted_org_id:
+                    return grant["grantId"]
+
+        # If we still can't find it, try creating again and let it raise
+        result = await self.create_project_grant(
+            project_id, granted_org_id, role_keys
+        )
+        return result["grantId"]

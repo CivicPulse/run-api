@@ -146,12 +146,18 @@ class TestAcceptInviteEndpoint:
         mock_zitadel.assign_project_role = AsyncMock()
         app.state.zitadel_service = mock_zitadel
 
-        # validate_invite lookup, member lookup
+        # validate_invite lookup, member lookup, campaign lookup
         validate_result = MagicMock()
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(side_effect=[validate_result, member_result])
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[validate_result, member_result, campaign_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

@@ -44,6 +44,7 @@ async def get_my_campaigns(
         select(
             CampaignMember.campaign_id,
             Campaign.name,
+            CampaignMember.role,
         )
         .join(Campaign, CampaignMember.campaign_id == Campaign.id)
         .where(CampaignMember.user_id == user.id)
@@ -54,7 +55,7 @@ async def get_my_campaigns(
         UserCampaignResponse(
             campaign_id=str(row.campaign_id),
             campaign_name=row.name,
-            role=user.role.name.lower(),
+            role=row.role if row.role else user.role.name.lower(),
         )
         for row in rows
     ]

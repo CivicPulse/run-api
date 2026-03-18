@@ -9,12 +9,14 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import CampaignNotFoundError
 from app.core.security import AuthenticatedUser
 from app.core.time import utcnow
 from app.db.rls import set_campaign_context
 from app.db.session import async_session_factory
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
+from app.models.organization import Organization
 from app.models.user import User
 
 
@@ -80,10 +82,25 @@ async def ensure_user_synced(
             await db.commit()
 
     # Belt-and-suspenders: ensure campaign_member exists
-    campaign_result = await db.execute(
-        select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+    # Try Organization path first (new model), fall back to direct Campaign lookup
+    org_result = await db.execute(
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
-    campaign = campaign_result.scalar_one_or_none()
+    org = org_result.scalar_one_or_none()
+
+    if org:
+        # Find campaigns belonging to this organization
+        campaign_result = await db.execute(
+            select(Campaign).where(Campaign.organization_id == org.id).limit(1)
+        )
+        campaign = campaign_result.scalar_one_or_none()
+    else:
+        # Fallback: direct lookup for campaigns not yet migrated
+        campaign_result = await db.execute(
+            select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+        )
+        campaign = campaign_result.scalar_one_or_none()
+
     if campaign:
         member_result = await db.execute(
             select(CampaignMember).where(
@@ -123,11 +140,21 @@ async def get_campaign_from_token(
     Raises:
         CampaignNotFoundError: If no campaign matches the org_id.
     """
-    from app.core.errors import CampaignNotFoundError
-
-    result = await db.execute(
-        select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+    # Try Organization path first, fall back to direct Campaign lookup
+    org_result = await db.execute(
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
+    org = org_result.scalar_one_or_none()
+
+    if org:
+        result = await db.execute(
+            select(Campaign).where(Campaign.organization_id == org.id).limit(1)
+        )
+    else:
+        result = await db.execute(
+            select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+        )
+
     campaign = result.scalar_one_or_none()
     if campaign is None:
         raise CampaignNotFoundError(uuid.UUID("00000000-0000-0000-0000-000000000000"))

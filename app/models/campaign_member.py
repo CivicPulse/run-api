@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint, func
+from sqlalchemy import ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -14,7 +14,9 @@ from app.db.base import Base
 class CampaignMember(Base):
     """Campaign membership join table for RLS filtering.
 
-    No role column -- role comes from JWT claims in ZITADEL.
+    The optional ``role`` column stores a per-campaign override role.
+    When ``None``, the caller should fall back to the org-level ZITADEL role
+    carried in the JWT claims.
     """
 
     __tablename__ = "campaign_members"
@@ -30,3 +32,4 @@ class CampaignMember(Base):
     synced_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
     )
+    role: Mapped[str | None] = mapped_column(String(50), nullable=True)

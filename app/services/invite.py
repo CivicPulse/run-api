@@ -10,9 +10,11 @@ from loguru import logger
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import CampaignRole
 from app.core.time import utcnow
+from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
 
@@ -178,11 +180,25 @@ class InviteService:
             member = CampaignMember(
                 user_id=user.id,
                 campaign_id=invite.campaign_id,
+                role=invite.role,
             )
             db.add(member)
+        else:
+            # Update existing member's role
+            member.role = invite.role
+
+        # Look up campaign for ZITADEL context
+        campaign_result = await db.execute(
+            select(Campaign).where(Campaign.id == invite.campaign_id)
+        )
+        campaign = campaign_result.scalar_one_or_none()
+        zitadel_org_id = campaign.zitadel_org_id if campaign else None
 
         # Assign ZITADEL project role
-        await zitadel.assign_project_role(str(invite.campaign_id), user.id, invite.role)
+        await zitadel.assign_project_role(
+            settings.zitadel_project_id, user.id, invite.role,
+            org_id=zitadel_org_id,
+        )
 
         invite.accepted_at = utcnow()
         await db.commit()
