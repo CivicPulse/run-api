@@ -118,6 +118,7 @@ class CampaignService:
                     created_by=user.id,
                 )
                 db.add(org_record)
+                await db.flush()
                 organization_id = org_record.id
 
             # Step 3: Create local campaign record
