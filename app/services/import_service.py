@@ -342,6 +342,39 @@ for _field, _aliases in CANONICAL_FIELDS.items():
 # Parsing utility functions for L2 voter file import
 # ---------------------------------------------------------------------------
 
+# Map full party names (case-insensitive) to standard abbreviations used by
+# the frontend filter UI and stored in the database.
+_PARTY_ABBREV: dict[str, str] = {
+    "democratic": "DEM",
+    "democrat": "DEM",
+    "dem": "DEM",
+    "republican": "REP",
+    "rep": "REP",
+    "gop": "REP",
+    "non-partisan": "NPA",
+    "nonpartisan": "NPA",
+    "no party affiliation": "NPA",
+    "npa": "NPA",
+    "independent": "IND",
+    "ind": "IND",
+    "libertarian": "LIB",
+    "lib": "LIB",
+    "green": "GRN",
+    "grn": "GRN",
+}
+
+
+def normalize_party(value: str) -> str:
+    """Normalize a party name to its standard abbreviation.
+
+    Returns the abbreviation if recognized, otherwise returns the
+    original value stripped of whitespace.
+    """
+    if not value or not value.strip():
+        return value
+    return _PARTY_ABBREV.get(value.strip().lower(), value.strip())
+
+
 _PROPENSITY_RE = re.compile(r"^(\d+)%?$")
 
 
@@ -608,6 +641,10 @@ class ImportService:
                         voter[float_field] = float(raw) if raw else None
                     except ValueError:
                         voter[float_field] = None
+
+            # Normalize party name to standard abbreviation
+            if voter.get("party") and isinstance(voter["party"], str):
+                voter["party"] = normalize_party(voter["party"])
 
             # Parse voting history from original CSV row columns
             voting_history = parse_voting_history(row)
