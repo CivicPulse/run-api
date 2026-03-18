@@ -22,13 +22,15 @@ import {
 import { useRecordDoorKnock } from "@/hooks/useWalkLists"
 
 const RESULT_CODES = [
+  { value: "supporter", label: "Supporter" },
+  { value: "undecided", label: "Undecided" },
+  { value: "opposed", label: "Opposed" },
   { value: "not_home", label: "Not Home" },
-  { value: "contact", label: "Contact Made" },
+  { value: "come_back_later", label: "Come Back Later" },
   { value: "refused", label: "Refused" },
   { value: "moved", label: "Moved" },
   { value: "deceased", label: "Deceased" },
   { value: "inaccessible", label: "Inaccessible" },
-  { value: "other", label: "Other" },
 ]
 
 const schema = z.object({
@@ -42,6 +44,7 @@ interface DoorKnockDialogProps {
   campaignId: string
   walkListId: string
   entryId: string | null
+  voterId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -50,6 +53,7 @@ export function DoorKnockDialog({
   campaignId,
   walkListId,
   entryId,
+  voterId,
   open,
   onOpenChange,
 }: DoorKnockDialogProps) {
@@ -66,10 +70,11 @@ export function DoorKnockDialog({
   })
 
   const onSubmit = (values: FormValues) => {
-    if (!entryId) return
+    if (!entryId || !voterId) return
     record.mutate(
       {
         walk_list_entry_id: entryId,
+        voter_id: voterId,
         result_code: values.result_code,
         notes: values.notes || undefined,
       },

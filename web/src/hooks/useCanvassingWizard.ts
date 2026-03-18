@@ -91,6 +91,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     (entryId: string, _voterId: string, result: DoorKnockResultCode): OutcomeResult => {
       const payload = {
         walk_list_entry_id: entryId,
+        voter_id: _voterId,
         result_code: result,
       }
       doorKnockMutation.mutate(payload, {
@@ -182,6 +183,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       for (const entry of entries) {
         const payload = {
           walk_list_entry_id: entry.id,
+          voter_id: entry.voter_id,
           result_code: "not_home",
         }
         doorKnockMutation.mutate(payload, {

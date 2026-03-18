@@ -33,7 +33,7 @@ function makeItem(overrides: Partial<QueueItem> = {}): QueueItem {
   return {
     id: "item-1",
     type: "door_knock",
-    payload: { walk_list_entry_id: "entry-A", result_code: "supporter" },
+    payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
     campaignId: "camp-1",
     resourceId: "wl-1",
     createdAt: Date.now(),
@@ -87,7 +87,7 @@ describe("replayMutation", () => {
       type: "door_knock",
       campaignId: "c1",
       resourceId: "wl-1",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
     })
 
     await replayMutation(item)
@@ -144,7 +144,7 @@ describe("drainQueue", () => {
   test("skips if isSyncing is already true (race condition guard)", async () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -162,7 +162,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -192,7 +192,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -221,7 +221,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -238,7 +238,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -255,7 +255,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -281,13 +281,13 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", result_code: "not_home" },
+      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -312,7 +312,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -322,7 +322,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", result_code: "not_home" },
+      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -339,7 +339,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -380,7 +380,7 @@ describe("drainQueue", () => {
     (api.post as Mock).mockReturnValue({ json: mockJson })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -395,13 +395,13 @@ describe("drainQueue", () => {
     (api.post as Mock).mockReturnValue({ json: mockJson })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", result_code: "not_home" },
+      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c2",
       resourceId: "wl-2",
     })
@@ -441,7 +441,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -460,7 +460,7 @@ describe("drainQueue", () => {
     // Push a door_knock for entry-A (this is what WE synced)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "entry-A", result_code: "supporter" },
+      payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -498,7 +498,7 @@ describe("drainQueue", () => {
     // Push a door_knock for entry-B (this is what WE synced)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "entry-B", result_code: "supporter" },
+      payload: { walk_list_entry_id: "entry-B", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })

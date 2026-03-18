@@ -436,7 +436,6 @@ _UPSERT_EXCLUDE = frozenset(
         "source_id",
         "created_at",
         "updated_at",
-        "geom",
     }
 )
 
@@ -645,6 +644,12 @@ class ImportService:
             # Normalize party name to standard abbreviation
             if voter.get("party") and isinstance(voter["party"], str):
                 voter["party"] = normalize_party(voter["party"])
+
+            # Build PostGIS point geometry from lat/lon
+            lat = voter.get("latitude")
+            lon = voter.get("longitude")
+            if lat is not None and lon is not None:
+                voter["geom"] = f"SRID=4326;POINT({lon} {lat})"
 
             # Parse voting history from original CSV row columns
             voting_history = parse_voting_history(row)
