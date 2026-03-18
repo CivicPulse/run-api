@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, vi, type Mock } from "vitest"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import { useCanvassingStore } from "@/stores/canvassingStore"
 import type { QueueItem } from "@/stores/offlineQueueStore"
+import type { QueryClient } from "@tanstack/react-query"
 
 // Mock api
 vi.mock("@/api/client", () => ({
@@ -137,7 +138,7 @@ describe("drainQueue", () => {
   })
 
   test("skips if items.length === 0", async () => {
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
@@ -150,7 +151,7 @@ describe("drainQueue", () => {
     })
     useOfflineQueueStore.getState().setSyncing(true)
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     // Items still there (drain was skipped)
     expect(useOfflineQueueStore.getState().items).toHaveLength(1)
@@ -173,7 +174,7 @@ describe("drainQueue", () => {
       return { json: vi.fn().mockResolvedValue({}) }
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(syncStates[0]).toBe(true)
     expect(useOfflineQueueStore.getState().isSyncing).toBe(false)
@@ -187,8 +188,8 @@ describe("drainQueue", () => {
     })
 
     vi.spyOn(crypto, "randomUUID")
-      .mockReturnValueOnce("id-1" as any)
-      .mockReturnValueOnce("id-2" as any)
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("id-2" as ReturnType<typeof crypto.randomUUID>)
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
@@ -209,7 +210,7 @@ describe("drainQueue", () => {
       resourceId: "sess-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(callOrder[0]).toContain("door-knocks")
     expect(callOrder[1]).toContain("calls")
@@ -226,7 +227,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(useOfflineQueueStore.getState().items).toHaveLength(0)
   })
@@ -243,7 +244,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(useOfflineQueueStore.getState().items).toHaveLength(0)
   })
@@ -260,7 +261,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(useOfflineQueueStore.getState().items[0].retryCount).toBe(1)
   })
@@ -276,8 +277,8 @@ describe("drainQueue", () => {
     })
 
     vi.spyOn(crypto, "randomUUID")
-      .mockReturnValueOnce("id-1" as any)
-      .mockReturnValueOnce("id-2" as any)
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("id-2" as ReturnType<typeof crypto.randomUUID>)
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
@@ -292,7 +293,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     // First item retried, second item untouched
     expect(callCount).toBe(1)
@@ -307,8 +308,8 @@ describe("drainQueue", () => {
     })
 
     vi.spyOn(crypto, "randomUUID")
-      .mockReturnValueOnce("id-1" as any)
-      .mockReturnValueOnce("id-2" as any)
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("id-2" as ReturnType<typeof crypto.randomUUID>)
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
@@ -327,7 +328,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     // First item skipped (retryCount >= 2), second item attempted then breaks on error
     expect(callCount).toBe(2)
@@ -344,7 +345,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["walk-list-entries-enriched", "c1", "wl-1"],
@@ -368,7 +369,7 @@ describe("drainQueue", () => {
       resourceId: "sess-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["campaigns", "c1", "phone-bank-sessions", "sess-1"],
@@ -384,7 +385,7 @@ describe("drainQueue", () => {
       campaignId: "c1",
       resourceId: "wl-1",
     })
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["field-me", "c1"],
     })
@@ -405,7 +406,7 @@ describe("drainQueue", () => {
       campaignId: "c2",
       resourceId: "wl-2",
     })
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["field-me", "c1"],
     })
@@ -429,7 +430,7 @@ describe("drainQueue", () => {
       campaignId: "c1",
       resourceId: "sess-1",
     })
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["field-me", "c1"],
     })
@@ -446,7 +447,7 @@ describe("drainQueue", () => {
       resourceId: "wl-1",
     })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(toast.success).toHaveBeenCalledWith("All caught up!")
   })
@@ -455,7 +456,7 @@ describe("drainQueue", () => {
     const mockJson = vi.fn().mockResolvedValue({});
     (api.post as Mock).mockReturnValue({ json: mockJson })
 
-    vi.spyOn(crypto, "randomUUID").mockReturnValue("item-id" as any)
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("item-id" as ReturnType<typeof crypto.randomUUID>)
 
     // Push a door_knock for entry-A (this is what WE synced)
     useOfflineQueueStore.getState().push({
@@ -483,7 +484,7 @@ describe("drainQueue", () => {
     const advanceSpy = vi.fn()
     useCanvassingStore.setState({ advanceAddress: advanceSpy })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     expect(advanceSpy).toHaveBeenCalled()
     expect(toast).toHaveBeenCalledWith(expect.stringContaining("This door was visited"))
@@ -493,7 +494,7 @@ describe("drainQueue", () => {
     const mockJson = vi.fn().mockResolvedValue({});
     (api.post as Mock).mockReturnValue({ json: mockJson })
 
-    vi.spyOn(crypto, "randomUUID").mockReturnValue("item-id" as any)
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("item-id" as ReturnType<typeof crypto.randomUUID>)
 
     // Push a door_knock for entry-B (this is what WE synced)
     useOfflineQueueStore.getState().push({
@@ -520,7 +521,7 @@ describe("drainQueue", () => {
     const advanceSpy = vi.fn()
     useCanvassingStore.setState({ advanceAddress: advanceSpy })
 
-    await drainQueue(queryClient as any)
+    await drainQueue(queryClient as unknown as QueryClient)
 
     // Should NOT advance because entry-B was synced by us
     expect(advanceSpy).not.toHaveBeenCalled()

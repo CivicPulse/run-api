@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -180,7 +180,7 @@ function VolunteerRegisterPage() {
     }
   })
 
-  const selectedSkills = form.watch("skills")
+  const selectedSkills = useWatch({ control: form.control, name: "skills" })
 
   const toggleSkill = (skill: string) => {
     const current = form.getValues("skills")
