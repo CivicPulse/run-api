@@ -79,7 +79,7 @@ async def list_members(
     response_model=MemberResponse,
 )
 async def update_member_role(
-    campaign_id: uuid.UUID,  # noqa: ARG001
+    campaign_id: uuid.UUID,
     member_user_id: str,
     data: RoleUpdate,
     request: Request,
@@ -115,6 +115,7 @@ async def update_member_role(
         .join(User, CampaignMember.user_id == User.id)
         .where(
             CampaignMember.user_id == member_user_id,
+            CampaignMember.campaign_id == campaign_id,
         )
     )
     row = result.first()
@@ -129,7 +130,7 @@ async def update_member_role(
 
     # Look up campaign for ZITADEL org context
     campaign_result = await db.execute(
-        select(Campaign).where(Campaign.id == member.campaign_id)
+        select(Campaign).where(Campaign.id == campaign_id)
     )
     campaign = campaign_result.scalar_one_or_none()
     zitadel_org_id = campaign.zitadel_org_id if campaign else None

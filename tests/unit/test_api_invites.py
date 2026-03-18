@@ -70,6 +70,19 @@ def _override_app(
     return app
 
 
+def _setup_role_resolution(mock_db, org_id="org-1"):
+    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes."""
+    campaign_mock = MagicMock()
+    campaign_mock.zitadel_org_id = org_id
+    campaign_mock.organization_id = None
+    mock_db.scalar = AsyncMock(
+        side_effect=[
+            None,  # CampaignMember.role → no explicit override
+            campaign_mock,  # Campaign lookup → for org matching
+        ]
+    )
+
+
 @pytest.fixture
 def mock_db():
     db = AsyncMock()
@@ -87,6 +100,7 @@ class TestCreateInviteEndpoint:
         """Viewer cannot create invites -- returns 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -101,6 +115,7 @@ class TestCreateInviteEndpoint:
         """Admin can create invite -- returns 201."""
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         # Mock: no existing invite
         mock_result = MagicMock()
@@ -176,6 +191,7 @@ class TestRevokeInviteEndpoint:
         """Viewer cannot revoke invites -- 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         invite_id = uuid.uuid4()
         transport = ASGITransport(app=app)
@@ -191,6 +207,7 @@ class TestRevokeInviteEndpoint:
         user = _make_user(role=CampaignRole.ADMIN)
         invite = _make_invite()
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = invite

@@ -145,7 +145,7 @@ async def resolve_campaign_role(
     db: AsyncSession,
     jwt_role: CampaignRole,
     user_org_id: str | None = None,
-) -> CampaignRole:
+) -> CampaignRole | None:
     """Resolve the effective role for a user in a specific campaign.
 
     Resolution order:
@@ -208,7 +208,7 @@ async def resolve_campaign_role(
                 return jwt_role
 
         # User is from a different org and has no explicit grant — deny.
-        return CampaignRole.VIEWER
+        return None
 
     # user_org_id not provided (legacy callers): preserve old behaviour.
     return jwt_role
@@ -310,9 +310,12 @@ def require_role(minimum: str):
     """
     min_level = CampaignRole[minimum.upper()]
 
+    from app.db.session import get_db
+
     async def _check_role(
         request: Request,
         current_user: AuthenticatedUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
         effective_role = current_user.role
 
@@ -321,24 +324,30 @@ def require_role(minimum: str):
         if campaign_id_str:
             try:
                 campaign_id = uuid.UUID(campaign_id_str)
-                from app.db.session import get_db
-
-                # Get a DB session for the role lookup
-                async for db in get_db():
-                    effective_role = await resolve_campaign_role(
-                        current_user.id,
-                        campaign_id,
-                        db,
-                        current_user.role,
-                        user_org_id=current_user.org_id,
+                effective_role = await resolve_campaign_role(
+                    current_user.id,
+                    campaign_id,
+                    db,
+                    current_user.role,
+                    user_org_id=current_user.org_id,
+                )
+                if effective_role is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Insufficient permissions",
                     )
-                    break
             except (ValueError, TypeError):
                 pass
+            except HTTPException:
+                raise
             except Exception:
-                # DB unavailable (e.g. in tests or connection failure) —
-                # fall back to the JWT role
-                logger.debug("Per-campaign role resolution failed, using JWT role")
+                # DB unavailable — deny access rather than falling
+                # back to JWT role
+                logger.debug("Per-campaign role resolution failed, denying access")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions",
+                ) from None
 
         if effective_role < min_level:
             raise HTTPException(

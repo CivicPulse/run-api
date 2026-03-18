@@ -248,6 +248,8 @@ class TestCampaignService:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_campaign
         mock_db.execute = AsyncMock(return_value=mock_result)
+        # delete_campaign calls db.scalar() for sibling count check
+        mock_db.scalar = AsyncMock(return_value=0)
 
         await service.delete_campaign(
             db=mock_db,

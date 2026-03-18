@@ -298,23 +298,30 @@ class PhoneBankService:
             msg = f"Session {session_id} is not active"
             raise ValueError(msg)
 
-        # Get-or-create: auto-add caller if not already assigned
-        result = await session.execute(
-            select(SessionCaller).where(
-                SessionCaller.session_id == session_id,
-                SessionCaller.user_id == user_id,
-            )
-        )
-        caller = result.scalar_one_or_none()
-        if caller is None:
-            caller = SessionCaller(
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        now = utcnow()
+        stmt = (
+            pg_insert(SessionCaller)
+            .values(
                 id=uuid.uuid4(),
                 session_id=session_id,
                 user_id=user_id,
-                created_at=utcnow(),
+                created_at=now,
+                check_in_at=now,
+                check_out_at=None,
             )
-            session.add(caller)
-        caller.check_in_at = utcnow()
+            .on_conflict_do_update(
+                index_elements=["session_id", "user_id"],
+                set_={
+                    "check_in_at": now,
+                    "check_out_at": None,
+                },
+            )
+            .returning(SessionCaller)
+        )
+        result = await session.execute(stmt)
+        caller = result.scalar_one()
         return caller
 
     async def check_out(

@@ -95,6 +95,19 @@ def _override_app(
     return app
 
 
+def _setup_role_resolution(mock_db, org_id=ORG_ID):
+    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes."""
+    campaign_mock = MagicMock()
+    campaign_mock.zitadel_org_id = org_id
+    campaign_mock.organization_id = None
+    mock_db.scalar = AsyncMock(
+        side_effect=[
+            None,  # CampaignMember.role → no explicit override
+            campaign_mock,  # Campaign lookup → for org matching
+        ]
+    )
+
+
 @pytest.fixture
 def mock_db():
     db = AsyncMock()
@@ -121,6 +134,7 @@ class TestListMembers:
         """Viewer+ can list members. Members with no role default to 'viewer'."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         member = _make_member()  # role=None defaults to "viewer" in response
         member_user = _make_local_user()
@@ -142,6 +156,7 @@ class TestListMembers:
         """Members with an explicit role return that role."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         member = _make_member(role="admin")
         member_user = _make_local_user()
@@ -166,6 +181,7 @@ class TestUpdateMemberRole:
         """Owner can change roles below owner."""
         user = _make_user(role=CampaignRole.OWNER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         member = _make_member()
         member_user = _make_local_user()
@@ -193,6 +209,7 @@ class TestUpdateMemberRole:
         """Owner cannot grant owner role via update -- must use transfer."""
         user = _make_user(role=CampaignRole.OWNER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -207,6 +224,7 @@ class TestUpdateMemberRole:
         """Admin cannot promote to admin or above."""
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -226,6 +244,7 @@ class TestRemoveMember:
         user = _make_user(role=CampaignRole.ADMIN)
         campaign = _make_campaign(created_by="owner-1")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         # First execute: campaign lookup
         campaign_result = MagicMock()
@@ -246,6 +265,7 @@ class TestRemoveMember:
         campaign = _make_campaign(created_by="owner-1")
         member = _make_member(user_id="regular-member")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         # First call: campaign lookup, second: member lookup
         campaign_result = MagicMock()
@@ -273,6 +293,7 @@ class TestTransferOwnership:
         target_member = _make_member(user_id="new-owner")
         owner_member = _make_member(user_id="owner-1", role="owner")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
@@ -301,6 +322,7 @@ class TestTransferOwnership:
         """Non-owner gets 403."""
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

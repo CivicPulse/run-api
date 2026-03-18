@@ -46,6 +46,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { ChevronsUpDown, Check, MoreHorizontal } from "lucide-react"
+import { HTTPError } from "ky"
 import type { PhoneBankSession, SessionCaller, SessionStatus } from "@/types/phone-bank-session"
 import type { CampaignMember } from "@/types/campaign"
 
@@ -88,6 +89,12 @@ function resolveCallerName(
   if (member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== "")
     return member.display_name
   return member.email || `${userId.slice(0, 12)}...`
+}
+
+function formatMemberLabel(member: CampaignMember): string {
+  if (member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== "")
+    return member.display_name
+  return member.email || `${member.user_id.slice(0, 12)}...`
 }
 
 function resolveCallerRole(
@@ -174,9 +181,7 @@ function AddCallerDialog({
                   className="w-full justify-between"
                 >
                   {selectedMember
-                    ? (selectedMember.display_name && selectedMember.display_name !== "Unknown" && selectedMember.display_name.trim() !== ""
-                        ? selectedMember.display_name
-                        : selectedMember.email || `${selectedMember.user_id.slice(0, 12)}...`)
+                    ? formatMemberLabel(selectedMember)
                     : "Select a member..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -205,9 +210,7 @@ function AddCallerDialog({
                           />
                           <div className="flex items-center gap-2">
                             <span>
-                              {member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== ""
-                                ? member.display_name
-                                : member.email || `${member.user_id.slice(0, 12)}...`}
+                              {formatMemberLabel(member)}
                             </span>
                             {member.email && member.display_name && member.display_name !== "Unknown" && member.display_name.trim() !== "" && (
                               <span className="text-xs text-muted-foreground">{member.email}</span>
@@ -327,9 +330,9 @@ function OverviewTab({
       toast.success("Checked in successfully")
     } catch (err) {
       let detail: string | null = null
-      if (err instanceof Error && "response" in err) {
+      if (err instanceof HTTPError) {
         try {
-          const body = await (err as { response: Response }).response.json()
+          const body = await err.response.json()
           detail = body.detail
         } catch {
           // response not JSON

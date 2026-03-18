@@ -754,6 +754,14 @@ class ImportService:
             update_cols["geom"] = func.coalesce(
                 stmt.excluded.geom, Voter.__table__.c.geom
             )
+            # Keep lat/lon in sync with geom — preserve existing values when
+            # incoming coordinates are incomplete (NULL).
+            update_cols["latitude"] = func.coalesce(
+                stmt.excluded.latitude, Voter.__table__.c.latitude
+            )
+            update_cols["longitude"] = func.coalesce(
+                stmt.excluded.longitude, Voter.__table__.c.longitude
+            )
 
             stmt = stmt.on_conflict_do_update(
                 index_elements=["campaign_id", "source_type", "source_id"],

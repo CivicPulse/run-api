@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -173,6 +173,22 @@ class CampaignService:
                 except Exception:
                     logger.error(
                         "Failed to clean up ZITADEL org {} during compensating tx",
+                        org_id,
+                    )
+            else:
+                # Reusing existing org — remove the owner grant we just assigned
+                try:
+                    await zitadel.remove_project_role(
+                        settings.zitadel_project_id,
+                        user.id,
+                        "owner",
+                        org_id=org_id,
+                    )
+                except Exception:
+                    logger.error(
+                        "Failed to revoke owner grant for user {} in org {} "
+                        "during compensating tx",
+                        user.id,
                         org_id,
                     )
             raise
@@ -351,15 +367,24 @@ class CampaignService:
 
         # Best-effort ZITADEL org deactivation — the local soft-delete
         # is the source of truth, so we don't roll back if this fails.
-        try:
-            await zitadel.deactivate_organization(campaign.zitadel_org_id)
-        except Exception:
-            logger.warning(
-                "Failed to deactivate ZITADEL org {} for campaign '{}', "
-                "local soft-delete succeeded",
-                campaign.zitadel_org_id,
-                campaign.name,
+        # Only deactivate ZITADEL org if no other active campaigns share it.
+        sibling_count = await db.scalar(
+            select(func.count(Campaign.id)).where(
+                Campaign.organization_id == campaign.organization_id,
+                Campaign.id != campaign.id,
+                Campaign.status != CampaignStatus.DELETED,
             )
+        )
+        if sibling_count == 0:
+            try:
+                await zitadel.deactivate_organization(campaign.zitadel_org_id)
+            except Exception:
+                logger.warning(
+                    "Failed to deactivate ZITADEL org {} for campaign '{}', "
+                    "local soft-delete succeeded",
+                    campaign.zitadel_org_id,
+                    campaign.name,
+                )
 
 
 def _validate_status_transition(

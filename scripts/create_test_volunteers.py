@@ -29,10 +29,10 @@ PROJECT_ID = os.environ["ZITADEL_PROJECT_ID"]
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 # Campaign to link volunteers to
-CAMPAIGN_ID = "e7098cfd-7978-4a20-892a-679ab4172840"
+CAMPAIGN_ID = os.environ.get("TEST_CAMPAIGN_ID", "e7098cfd-7978-4a20-892a-679ab4172840")
 
-# Shared password for all test volunteers
-VOLUNTEER_PASSWORD = "Volunteer-Test-2026!"
+# Shared password for all test volunteers (generate random if not set)
+VOLUNTEER_PASSWORD = os.environ.get("TEST_VOLUNTEER_PASSWORD", "Volunteer-Test-2026!")
 
 # Test volunteer data: (email_on_volunteer_record, zitadel_username, display_name)
 VOLUNTEERS = [
@@ -199,8 +199,8 @@ async def ensure_project_grant(token: str, org_id: str) -> str | None:
 
 async def assign_volunteer_role(
     token: str, org_id: str, user_id: str, username: str, project_grant_id: str | None
-) -> None:
-    """Assign the 'volunteer' project role to a user."""
+) -> bool:
+    """Assign the 'volunteer' project role to a user. Returns True on success."""
     async with httpx.AsyncClient() as client:
         body: dict = {
             "projectId": PROJECT_ID,
@@ -220,11 +220,14 @@ async def assign_volunteer_role(
         )
         if resp.status_code == 409:
             print(f"    Role already assigned for {username}")
+            return True
         elif resp.status_code >= 400:
             err = f"{resp.status_code} {resp.text}"
             print(f"    ERROR assigning role to {username}: {err}")
+            return False
         else:
             print(f"    Assigned 'volunteer' role to {username}")
+            return True
 
 
 async def link_volunteer_record(
@@ -322,9 +325,15 @@ async def main() -> None:
                 continue
 
             # 2. Assign volunteer role
-            await assign_volunteer_role(
+            role_ok = await assign_volunteer_role(
                 token, org_id, user_id, username, project_grant_id
             )
+            if not role_ok:
+                print(
+                    f"  Skipping local provisioning for {username}"
+                    " - role assignment failed\n"
+                )
+                continue
 
             # 3. Create local user record
             await create_local_user(session, user_id, display_name, email)
@@ -342,9 +351,8 @@ async def main() -> None:
     await engine.dispose()
 
     print("=== Done ===")
-    print("\nAll volunteers can log in with:")
-    print(f"  Password: {VOLUNTEER_PASSWORD}")
-    print(f"  Usernames: {', '.join(u for _, u, _ in VOLUNTEERS)}")
+    print(f"\nUsernames: {', '.join(u for _, u, _ in VOLUNTEERS)}")
+    print("Password: (set via TEST_VOLUNTEER_PASSWORD env var)")
 
 
 if __name__ == "__main__":

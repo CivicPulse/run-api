@@ -79,7 +79,7 @@ export function useUpdateCallListStatus(campaignId: string, callListId: string) 
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (newStatus: string) =>
-      api.patch(`api/v1/campaigns/${campaignId}/call-lists/${callListId}?new_status=${newStatus}`)
+      api.patch(`api/v1/campaigns/${campaignId}/call-lists/${callListId}?new_status=${encodeURIComponent(newStatus)}`)
         .json<CallListDetail>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: callListKeys.all(campaignId) })
