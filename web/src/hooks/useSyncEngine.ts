@@ -56,6 +56,16 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
   const snapshot = [...items]
 
   for (const item of snapshot) {
+    if (
+      item.type === "door_knock" &&
+      !(item.payload as DoorKnockCreate).voter_id
+    ) {
+      useOfflineQueueStore.getState().remove(item.id)
+      toast.error(
+        "A queued canvassing record was missing required data and could not be synced. It has been removed.",
+      )
+      continue
+    }
     try {
       await replayMutation(item)
       useOfflineQueueStore.getState().remove(item.id)

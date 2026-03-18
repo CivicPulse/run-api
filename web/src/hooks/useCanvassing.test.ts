@@ -55,13 +55,14 @@ describe("useDoorKnockMutation — SYNC-01 behavioral contract", () => {
 
     const onMutate = capturedConfig.value.onMutate as (data: {
       walk_list_entry_id: string
+      voter_id: string
       result_code: string
     }) => void
 
     expect(onMutate).toBeDefined()
 
     // Act: simulate the mutation lifecycle calling onMutate
-    onMutate({ walk_list_entry_id: "entry-A", result_code: "supporter" })
+    onMutate({ walk_list_entry_id: "entry-A", voter_id: "voter-A", result_code: "supporter" })
 
     // Assert: canvassing store reflects the optimistic outcome
     expect(useCanvassingStore.getState().completedEntries["entry-A"]).toBe("supporter")
@@ -88,10 +89,11 @@ describe("useDoorKnockMutation — SYNC-01 behavioral contract", () => {
 
     const onMutate = capturedConfig.value.onMutate as (data: {
       walk_list_entry_id: string
+      voter_id: string
       result_code: string
     }) => void
 
-    onMutate({ walk_list_entry_id: "entry-B", result_code: "not_home" })
+    onMutate({ walk_list_entry_id: "entry-B", voter_id: "voter-B", result_code: "not_home" })
 
     // Verify optimistic outcome is present
     expect(useCanvassingStore.getState().completedEntries["entry-B"]).toBe("not_home")

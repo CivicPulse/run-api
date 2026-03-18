@@ -371,7 +371,7 @@ def normalize_party(value: str) -> str:
     original value stripped of whitespace.
     """
     if not value or not value.strip():
-        return value
+        return value.strip()  # returns "" for whitespace-only input
     return _PARTY_ABBREV.get(value.strip().lower(), value.strip())
 
 
@@ -750,6 +750,10 @@ class ImportService:
                 if col.name not in _UPSERT_EXCLUDE
             }
             update_cols["updated_at"] = func.now()
+            # Preserve existing geometry when incoming value is NULL (partial coords)
+            update_cols["geom"] = func.coalesce(
+                stmt.excluded.geom, Voter.__table__.c.geom
+            )
 
             stmt = stmt.on_conflict_do_update(
                 index_elements=["campaign_id", "source_type", "source_id"],

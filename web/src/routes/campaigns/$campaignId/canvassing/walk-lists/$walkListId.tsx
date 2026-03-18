@@ -125,7 +125,7 @@ function WalkListDetailPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
-                <TableHead>Address</TableHead>
+                <TableHead>Household</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
                 <TableHead className="w-12" />
