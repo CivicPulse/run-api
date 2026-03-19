@@ -161,6 +161,13 @@ class ZitadelService:
             raise ZitadelUnavailableError(
                 "Cannot reach ZITADEL to deactivate organization"
             ) from exc
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code >= 500:
+                raise ZitadelUnavailableError(
+                    f"ZITADEL returned {exc.response.status_code} "
+                    "during deactivate_organization"
+                ) from exc
+            raise
 
     async def delete_organization(self, org_id: str) -> None:
         """Delete a ZITADEL organization (compensating transaction only).
@@ -189,6 +196,13 @@ class ZitadelService:
             raise ZitadelUnavailableError(
                 "Cannot reach ZITADEL to delete organization"
             ) from exc
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code >= 500:
+                raise ZitadelUnavailableError(
+                    f"ZITADEL returned {exc.response.status_code} "
+                    "during delete_organization"
+                ) from exc
+            raise
 
     async def assign_project_role(
         self,
