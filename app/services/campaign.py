@@ -172,9 +172,7 @@ class CampaignService:
         except IntegrityError as ie:
             # Slug collision from concurrent request — rollback and retry
             if "ix_campaigns_slug" in str(ie):
-                logger.info(
-                    "Slug collision for '{}', regenerating", campaign_slug
-                )
+                logger.info("Slug collision for '{}', regenerating", campaign_slug)
                 await db.rollback()
                 # Retry the entire creation (recursive, but bounded by slug uniqueness)
                 return await self.create_campaign(
