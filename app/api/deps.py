@@ -94,6 +94,18 @@ async def ensure_user_synced(
             select(Campaign).where(Campaign.organization_id == org.id).limit(1)
         )
         campaign = campaign_result.scalar_one_or_none()
+        if campaign is None:
+            # Secondary fallback: try legacy zitadel_org_id lookup
+            campaign_result = await db.execute(
+                select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+            )
+            campaign = campaign_result.scalar_one_or_none()
+            if campaign is None:
+                logger.warning(
+                    "Organization {} exists but has no campaigns for user {}",
+                    org.id,
+                    user.id,
+                )
     else:
         # Fallback: direct lookup for campaigns not yet migrated
         campaign_result = await db.execute(

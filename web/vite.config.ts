@@ -39,7 +39,7 @@ export default defineConfig({
           ? "https://localhost:8000"
           : "http://localhost:8000",
         changeOrigin: true,
-        secure: false,
+        secure: false, // Allow self-signed certs in local dev (Tailscale/mkcert)
       },
       "/openapi.json": {
         target: hasTailscaleCerts

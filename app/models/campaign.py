@@ -36,7 +36,7 @@ class Campaign(Base):
     __tablename__ = "campaigns"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    zitadel_org_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    zitadel_org_id: Mapped[str] = mapped_column(String(255), index=True)
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id"), nullable=True
     )

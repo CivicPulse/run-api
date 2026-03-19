@@ -17,6 +17,7 @@ from app.core.time import utcnow
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
+from app.models.organization import Organization
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
@@ -194,11 +195,21 @@ class InviteService:
         campaign = campaign_result.scalar_one_or_none()
         zitadel_org_id = campaign.zitadel_org_id if campaign else None
 
+        project_grant_id = None
+        if campaign and campaign.organization_id:
+            org_result = await db.execute(
+                select(Organization).where(Organization.id == campaign.organization_id)
+            )
+            org = org_result.scalar_one_or_none()
+            if org:
+                project_grant_id = org.zitadel_project_grant_id
+
         # Assign ZITADEL project role
         await zitadel.assign_project_role(
             settings.zitadel_project_id,
             user.id,
             invite.role,
+            project_grant_id=project_grant_id,
             org_id=zitadel_org_id,
         )
 

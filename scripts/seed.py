@@ -26,6 +26,7 @@ from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
 from app.models.dnc import DoNotCallEntry
 from app.models.invite import Invite
+from app.models.organization import Organization
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.shift import Shift, ShiftVolunteer
 from app.models.survey import SurveyQuestion, SurveyResponse, SurveyScript
@@ -364,14 +365,31 @@ async def main() -> None:  # noqa: C901, PLR0915
         ]
 
         # ----------------------------------------------------------
-        # 2. Campaign
+        # 2a. Organization
+        # ----------------------------------------------------------
+        zitadel_org_id = (
+            os.environ.get("SEED_ZITADEL_ORG_ID") or f"seed-{uuid.uuid4().hex[:16]}"
+        )
+        org = Organization(
+            id=uuid.uuid4(),
+            zitadel_org_id=zitadel_org_id,
+            name="Macon-Bibb Demo Organization",
+            created_by=user_owner_id,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        session.add(org)
+        await session.flush()
+        print(f"  Created organization: {org.name}")
+
+        # ----------------------------------------------------------
+        # 2b. Campaign
         # ----------------------------------------------------------
         campaign_id = uuid.uuid4()
         campaign = Campaign(
             id=campaign_id,
-            zitadel_org_id=(
-                os.environ.get("SEED_ZITADEL_ORG_ID") or "362268991072305186"
-            ),
+            zitadel_org_id=zitadel_org_id,
+            organization_id=org.id,
             name=SEED_CAMPAIGN_NAME,
             type=CampaignType.LOCAL,
             status=CampaignStatus.ACTIVE,

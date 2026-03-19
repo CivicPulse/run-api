@@ -133,7 +133,12 @@ async def update_member_role(
         select(Campaign).where(Campaign.id == campaign_id)
     )
     campaign = campaign_result.scalar_one_or_none()
-    zitadel_org_id = campaign.zitadel_org_id if campaign else None
+    if campaign is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+    zitadel_org_id = campaign.zitadel_org_id
 
     # Remove old role and assign new one in ZITADEL
     await zitadel.remove_project_role(
@@ -298,8 +303,12 @@ async def transfer_ownership(
         )
     )
     owner_member = current_owner_member.scalar_one_or_none()
-    if owner_member:
-        owner_member.role = "admin"
+    if not owner_member:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Current owner member record not found",
+        )
+    owner_member.role = "admin"
     target_member.role = "owner"
 
     await db.commit()

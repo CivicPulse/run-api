@@ -194,6 +194,7 @@ class TestAcceptInvite:
         member_result.scalar_one_or_none.return_value = None
         campaign = MagicMock()
         campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         mock_db.execute = AsyncMock(

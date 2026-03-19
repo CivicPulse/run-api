@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+import httpx
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,7 +86,7 @@ class CampaignService:
             )
             org = org_result.scalar_one_or_none()
             if org is None:
-                raise CampaignNotFoundError(organization_id)
+                raise ValueError(f"Organization {organization_id} not found")
             org_id = org.zitadel_org_id
             project_grant_id = (
                 org.zitadel_project_grant_id
@@ -184,6 +185,18 @@ class CampaignService:
                         "owner",
                         org_id=org_id,
                     )
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code == 404:
+                        logger.debug(
+                            "Grant not found (never created), skipping revocation"
+                        )
+                    else:
+                        logger.error(
+                            "Failed to revoke owner grant for user {} in org {} "
+                            "during compensating tx",
+                            user.id,
+                            org_id,
+                        )
                 except Exception:
                     logger.error(
                         "Failed to revoke owner grant for user {} in org {} "
@@ -363,11 +376,8 @@ class CampaignService:
 
         campaign.status = CampaignStatus.DELETED
         campaign.updated_at = utcnow()
-        await db.commit()
 
-        # Best-effort ZITADEL org deactivation — the local soft-delete
-        # is the source of truth, so we don't roll back if this fails.
-        # Only deactivate ZITADEL org if no other active campaigns share it.
+        # Check sibling count before commit to avoid race condition
         sibling_count = await db.scalar(
             select(func.count(Campaign.id)).where(
                 Campaign.organization_id == campaign.organization_id,
@@ -375,6 +385,12 @@ class CampaignService:
                 Campaign.status != CampaignStatus.DELETED,
             )
         )
+
+        await db.commit()
+
+        # Best-effort ZITADEL org deactivation — the local soft-delete
+        # is the source of truth, so we don't roll back if this fails.
+        # Only deactivate ZITADEL org if no other active campaigns share it.
         if sibling_count == 0:
             try:
                 await zitadel.deactivate_organization(campaign.zitadel_org_id)

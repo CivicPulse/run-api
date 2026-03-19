@@ -24,6 +24,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # 1) Deduplicate: keep the most recent row per (session_id, user_id)
+    # When multiple rows share the same (session_id, user_id) and have NULL
+    # check_in_at, the row with the highest id is preserved (arbitrary but
+    # deterministic within a single DB).  The table has no created_at column.
     op.execute("""
     DELETE FROM session_callers sc
     USING (

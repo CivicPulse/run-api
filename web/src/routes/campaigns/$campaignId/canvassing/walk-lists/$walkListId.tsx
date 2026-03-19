@@ -178,14 +178,16 @@ function WalkListDetailPage() {
         onOpenChange={setAssignOpen}
       />
 
-      <DoorKnockDialog
-        campaignId={campaignId}
-        walkListId={walkListId}
-        entryId={doorKnockEntryId}
-        voterId={doorKnockVoterId}
-        open={!!doorKnockEntryId}
-        onOpenChange={(open) => { if (!open) { setDoorKnockEntryId(null); setDoorKnockVoterId(null) } }}
-      />
+      {doorKnockEntryId && doorKnockVoterId && (
+        <DoorKnockDialog
+          campaignId={campaignId}
+          walkListId={walkListId}
+          entryId={doorKnockEntryId}
+          voterId={doorKnockVoterId}
+          open={!!doorKnockEntryId}
+          onOpenChange={(open) => { if (!open) { setDoorKnockEntryId(null); setDoorKnockVoterId(null) } }}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteOpen}

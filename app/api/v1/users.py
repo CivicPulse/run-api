@@ -55,7 +55,9 @@ async def get_my_campaigns(
         UserCampaignResponse(
             campaign_id=str(row.campaign_id),
             campaign_name=row.name,
-            role=row.role if row.role else user.role.name.lower(),
+            role=row.role
+            if row.role
+            else (user.role.name.lower() if user.role else "viewer"),
         )
         for row in rows
     ]

@@ -9,6 +9,7 @@ import uuid
 from enum import IntEnum
 
 import httpx
+import sqlalchemy.exc
 from authlib.jose import JsonWebKey, jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -306,6 +307,7 @@ async def get_current_user(
                 userinfo_resp = await client.get(
                     f"{userinfo_base}/oidc/v1/userinfo",
                     headers=_headers,
+                    timeout=5.0,
                 )
                 if userinfo_resp.status_code == 200:
                     userinfo = userinfo_resp.json()
@@ -315,6 +317,14 @@ async def get_current_user(
                         or userinfo.get("name")
                         or userinfo.get("preferred_username")
                     )
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Userinfo endpoint returned {}: {}",
+                exc.response.status_code,
+                exc.response.text[:200],
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.debug("Userinfo endpoint unreachable: {}", exc)
         except Exception:
             logger.debug("Failed to fetch userinfo, proceeding without profile data")
 
@@ -369,13 +379,15 @@ def require_role(minimum: str):
                         detail="Insufficient permissions",
                     )
             except (ValueError, TypeError):
-                pass
+                logger.debug("Invalid campaign_id format in path: {}", campaign_id_str)
             except HTTPException:
                 raise
-            except Exception:
+            except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.DatabaseError):
                 # DB unavailable — deny access rather than falling
                 # back to JWT role
-                logger.debug("Per-campaign role resolution failed, denying access")
+                logger.warning(
+                    "Per-campaign role resolution failed (DB error), denying access"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Insufficient permissions",

@@ -3,6 +3,10 @@
 Revision ID: 009_organizations
 Revises: 008_campaign_member_role
 Create Date: 2026-03-18
+
+Note: existing campaigns will have ``organization_id = NULL`` after this
+migration.  The companion script ``scripts/migrate_org_structure.py``
+handles backfilling organization records and linking campaigns.
 """
 
 from __future__ import annotations

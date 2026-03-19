@@ -44,7 +44,7 @@ interface DoorKnockDialogProps {
   campaignId: string
   walkListId: string
   entryId: string | null
-  voterId: string | null
+  voterId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -70,7 +70,7 @@ export function DoorKnockDialog({
   })
 
   const onSubmit = (values: FormValues) => {
-    if (!entryId || !voterId) return
+    if (!entryId) return
     record.mutate(
       {
         walk_list_entry_id: entryId,

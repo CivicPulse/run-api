@@ -62,7 +62,7 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
     ) {
       useOfflineQueueStore.getState().remove(item.id)
       toast.error(
-        "A queued canvassing record was missing required data and could not be synced. It has been removed.",
+        "A queued canvassing record was missing voter data and has been removed.",
       )
       continue
     }

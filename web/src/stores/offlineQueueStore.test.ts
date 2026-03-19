@@ -60,6 +60,7 @@ describe("offlineQueueStore", () => {
     expect(item.type).toBe("door_knock")
     expect(item.payload).toEqual({
       walk_list_entry_id: "entry-1",
+      voter_id: "voter-1",
       result_code: "not_home",
       latitude: 40.7128,
       longitude: -74.006,

@@ -202,8 +202,18 @@ class TestUpdateMemberRole:
 
         assert resp.status_code == 200
         assert resp.json()["role"] == "manager"
-        mock_zitadel.assign_project_role.assert_awaited()
-        mock_zitadel.remove_project_role.assert_awaited()
+        mock_zitadel.remove_project_role.assert_awaited_once_with(
+            "",  # settings.zitadel_project_id (default empty in tests)
+            "member-1",
+            "viewer",  # member.role is None → defaults to "viewer"
+            org_id=ORG_ID,
+        )
+        mock_zitadel.assign_project_role.assert_awaited_once_with(
+            "",
+            "member-1",
+            "manager",
+            org_id=ORG_ID,
+        )
 
     async def test_owner_cannot_grant_owner_role(self, mock_db, mock_zitadel):
         """Owner cannot grant owner role via update -- must use transfer."""
@@ -315,8 +325,23 @@ class TestTransferOwnership:
         assert resp.status_code == 200
         data = resp.json()
         assert data["new_owner_id"] == "new-owner"
-        mock_zitadel.assign_project_role.assert_awaited()
-        mock_zitadel.remove_project_role.assert_awaited()
+        # Transfer makes 2 remove + 2 assign calls:
+        # 1. Demote old owner from "owner" → assign "admin"
+        # 2. Remove target's old role → assign "owner"
+        assert mock_zitadel.remove_project_role.await_count == 2
+        mock_zitadel.remove_project_role.assert_any_await(
+            "", "owner-1", "owner", org_id=ORG_ID
+        )
+        mock_zitadel.remove_project_role.assert_any_await(
+            "", "new-owner", "viewer", org_id=ORG_ID
+        )
+        assert mock_zitadel.assign_project_role.await_count == 2
+        mock_zitadel.assign_project_role.assert_any_await(
+            "", "owner-1", "admin", org_id=ORG_ID
+        )
+        mock_zitadel.assign_project_role.assert_any_await(
+            "", "new-owner", "owner", org_id=ORG_ID
+        )
 
     async def test_non_owner_cannot_transfer(self, mock_db, mock_zitadel):
         """Non-owner gets 403."""

@@ -31,12 +31,17 @@ ROLES = ["owner", "admin", "manager", "volunteer", "viewer"]
 _SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
 EXTERNAL_ISSUER = f"{_SCHEME}://{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
 
+# Only skip TLS verification for localhost development
+_VERIFY_TLS = ZITADEL_DOMAIN not in ("localhost", "127.0.0.1")
+
 
 def wait_for_zitadel() -> None:
     """Wait for ZITADEL to be ready by polling the health endpoint."""
     for attempt in range(60):
         try:
-            resp = httpx.get(f"{ZITADEL_URL}/debug/ready", timeout=5, verify=False)
+            resp = httpx.get(
+                f"{ZITADEL_URL}/debug/ready", timeout=5, verify=_VERIFY_TLS
+            )
             if resp.status_code == 200:
                 print(f"  ZITADEL is ready (attempt {attempt + 1})")
                 return
@@ -183,7 +188,10 @@ def create_project(client: httpx.Client, pat: str) -> str:
             "projectRoleCheck": True,
         },
     )
-    project_id = data["id"]
+    project_id = data.get("id")
+    if not project_id:
+        print(f"ERROR: Missing 'id' in API response: {data}", file=sys.stderr)
+        sys.exit(1)
     print(f"  Created project '{PROJECT_NAME}': {project_id}")
     return project_id
 
@@ -374,7 +382,8 @@ VITE_ZITADEL_PROJECT_ID={project_id}
             f.write(content)
         print(f"  Wrote {zitadel_data_path}")
     except OSError as exc:
-        print(f"  Warning: could not write {zitadel_data_path}: {exc}")
+        print(f"ERROR: Could not write {zitadel_data_path}: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 def validate_existing_env() -> bool:
@@ -400,7 +409,7 @@ def validate_existing_env() -> bool:
 
     # Try a token exchange to verify credentials
     try:
-        with httpx.Client(verify=False) as client:
+        with httpx.Client(verify=_VERIFY_TLS) as client:
             resp = client.post(
                 f"{ZITADEL_URL}/oauth/v2/token",
                 headers={"Host": _host_header()},
@@ -442,7 +451,7 @@ def main() -> None:
     pat = read_pat()
 
     print("\nStep 2: Finding machine user...")
-    with httpx.Client(verify=False) as client:
+    with httpx.Client(verify=_VERIFY_TLS) as client:
         user_id = get_machine_user_id(client, pat)
         print(f"  Machine user ID: {user_id}")
 

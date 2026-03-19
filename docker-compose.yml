@@ -81,9 +81,9 @@ services:
     image: postgres:17
     container_name: run-api-zitadel-db
     environment:
-      POSTGRES_DB: zitadel
-      POSTGRES_USER: zitadel
-      POSTGRES_PASSWORD: zitadel
+      POSTGRES_DB: ${ZITADEL_DB_NAME:-zitadel}
+      POSTGRES_USER: ${ZITADEL_DB_USER:-zitadel}
+      POSTGRES_PASSWORD: ${ZITADEL_DB_PASSWORD:-zitadel}
     ports:
       - "5434:5432"
     volumes:
@@ -97,17 +97,17 @@ services:
   zitadel:
     image: ghcr.io/zitadel/zitadel:v2.71.6
     container_name: run-api-zitadel
-    command: start-from-init --masterkey "LocalDevMasterkeyExactly32Chars!" --tlsMode ${ZITADEL_TLS_MODE:-disabled}
+    command: start-from-init --masterkey "${ZITADEL_MASTERKEY:-LocalDevMasterkeyExactly32Chars!}" --tlsMode ${ZITADEL_TLS_MODE:-disabled}
     environment:
       # Database connection
       ZITADEL_DATABASE_POSTGRES_HOST: zitadel-db
       ZITADEL_DATABASE_POSTGRES_PORT: 5432
       ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
-      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
-      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${ZITADEL_DB_USER:-zitadel}
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${ZITADEL_DB_PASSWORD:-zitadel}
       ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
-      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: zitadel
-      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${ZITADEL_DB_USER:-zitadel}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${ZITADEL_DB_PASSWORD:-zitadel}
       ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
       # External URL configuration
       ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNAL_SECURE:-false}
@@ -118,7 +118,7 @@ services:
       ZITADEL_TLS_KEYPATH: /certs/dev.tailb56d83.ts.net.key
       # First instance: admin user
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin@localhost
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "Admin1234!"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "${ZITADEL_ADMIN_PASSWORD:-Admin1234!}"
       # First instance: machine user (service account) with PAT
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: run-api-service
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "Run API Service Account"

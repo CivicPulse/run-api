@@ -168,6 +168,7 @@ class TestAcceptInviteEndpoint:
         member_result.scalar_one_or_none.return_value = None
         campaign = MagicMock()
         campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None  # no org model → skip org lookup
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         mock_db.execute = AsyncMock(
@@ -182,6 +183,13 @@ class TestAcceptInviteEndpoint:
         data = resp.json()
         assert data["message"] == "Invite accepted successfully"
         assert data["role"] == "manager"
+        mock_zitadel.assign_project_role.assert_awaited_once_with(
+            "",  # settings.zitadel_project_id (default empty in tests)
+            "user-1",
+            "manager",
+            project_grant_id=None,
+            org_id="org-1",
+        )
 
 
 class TestRevokeInviteEndpoint:

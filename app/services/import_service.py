@@ -365,14 +365,15 @@ _PARTY_ABBREV: dict[str, str] = {
 }
 
 
-def normalize_party(value: str) -> str:
+def normalize_party(value: str) -> str | None:
     """Normalize a party name to its standard abbreviation.
 
     Returns the abbreviation if recognized, otherwise returns the
-    original value stripped of whitespace.
+    original value stripped of whitespace.  Returns ``None`` for
+    empty or whitespace-only input.
     """
     if not value or not value.strip():
-        return value.strip()  # returns "" for whitespace-only input
+        return None
     return _PARTY_ABBREV.get(value.strip().lower(), value.strip())
 
 
@@ -631,6 +632,11 @@ class ImportService:
                     try:
                         voter[int_field] = int(raw) if raw else None
                     except ValueError:
+                        logger.debug(
+                            "Could not coerce %s=%r to int, setting to NULL",
+                            int_field,
+                            raw,
+                        )
                         voter[int_field] = None
 
             for float_field in ("latitude", "longitude"):
@@ -642,7 +648,12 @@ class ImportService:
                         voter[float_field] = (
                             parsed if parsed is None or math.isfinite(parsed) else None
                         )
-                    except ValueError:
+                    except (ValueError, TypeError):
+                        logger.debug(
+                            "Could not coerce %s=%r to float, setting to NULL",
+                            float_field,
+                            raw,
+                        )
                         voter[float_field] = None
 
             # Normalize party name to standard abbreviation
