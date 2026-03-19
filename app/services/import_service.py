@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import re
 import uuid
 from typing import TYPE_CHECKING
@@ -342,6 +343,40 @@ for _field, _aliases in CANONICAL_FIELDS.items():
 # Parsing utility functions for L2 voter file import
 # ---------------------------------------------------------------------------
 
+# Map full party names (case-insensitive) to standard abbreviations used by
+# the frontend filter UI and stored in the database.
+_PARTY_ABBREV: dict[str, str] = {
+    "democratic": "DEM",
+    "democrat": "DEM",
+    "dem": "DEM",
+    "republican": "REP",
+    "rep": "REP",
+    "gop": "REP",
+    "non-partisan": "NPA",
+    "nonpartisan": "NPA",
+    "no party affiliation": "NPA",
+    "npa": "NPA",
+    "independent": "IND",
+    "ind": "IND",
+    "libertarian": "LIB",
+    "lib": "LIB",
+    "green": "GRN",
+    "grn": "GRN",
+}
+
+
+def normalize_party(value: str) -> str | None:
+    """Normalize a party name to its standard abbreviation.
+
+    Returns the abbreviation if recognized, otherwise returns the
+    original value stripped of whitespace.  Returns ``None`` for
+    empty or whitespace-only input.
+    """
+    if not value or not value.strip():
+        return None
+    return _PARTY_ABBREV.get(value.strip().lower(), value.strip())
+
+
 _PROPENSITY_RE = re.compile(r"^(\d+)%?$")
 
 
@@ -403,7 +438,6 @@ _UPSERT_EXCLUDE = frozenset(
         "source_id",
         "created_at",
         "updated_at",
-        "geom",
     }
 )
 
@@ -590,6 +624,53 @@ class ImportService:
                 if isinstance(raw, str):
                     voter[prop_field] = parse_propensity(raw)
 
+            # Coerce numeric fields from CSV strings
+            for int_field in ("age", "household_size", "cell_phone_confidence"):
+                raw = voter.get(int_field)
+                if isinstance(raw, str):
+                    raw = raw.strip()
+                    try:
+                        voter[int_field] = int(raw) if raw else None
+                    except ValueError:
+                        logger.debug(
+                            "Could not coerce %s=%r to int, setting to NULL",
+                            int_field,
+                            raw,
+                        )
+                        voter[int_field] = None
+
+            for float_field in ("latitude", "longitude"):
+                raw = voter.get(float_field)
+                if isinstance(raw, str):
+                    raw = raw.strip()
+                    try:
+                        parsed = float(raw) if raw else None
+                        voter[float_field] = (
+                            parsed if parsed is None or math.isfinite(parsed) else None
+                        )
+                    except (ValueError, TypeError):
+                        logger.debug(
+                            "Could not coerce %s=%r to float, setting to NULL",
+                            float_field,
+                            raw,
+                        )
+                        voter[float_field] = None
+
+            # Normalize party name to standard abbreviation
+            if voter.get("party") and isinstance(voter["party"], str):
+                voter["party"] = normalize_party(voter["party"])
+
+            # Build PostGIS point geometry from lat/lon
+            lat = voter.get("latitude")
+            lon = voter.get("longitude")
+            if (
+                isinstance(lat, (int, float))
+                and isinstance(lon, (int, float))
+                and -90 <= lat <= 90
+                and -180 <= lon <= 180
+            ):
+                voter["geom"] = f"SRID=4326;POINT({lon} {lat})"
+
             # Parse voting history from original CSV row columns
             voting_history = parse_voting_history(row)
             if voting_history:
@@ -689,6 +770,18 @@ class ImportService:
                 if col.name not in _UPSERT_EXCLUDE
             }
             update_cols["updated_at"] = func.now()
+            # Preserve existing geometry when incoming value is NULL (partial coords)
+            update_cols["geom"] = func.coalesce(
+                stmt.excluded.geom, Voter.__table__.c.geom
+            )
+            # Keep lat/lon in sync with geom — preserve existing values when
+            # incoming coordinates are incomplete (NULL).
+            update_cols["latitude"] = func.coalesce(
+                stmt.excluded.latitude, Voter.__table__.c.latitude
+            )
+            update_cols["longitude"] = func.coalesce(
+                stmt.excluded.longitude, Voter.__table__.c.longitude
+            )
 
             stmt = stmt.on_conflict_do_update(
                 index_elements=["campaign_id", "source_type", "source_id"],

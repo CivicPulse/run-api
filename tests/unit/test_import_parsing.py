@@ -7,6 +7,7 @@ functions from import_service.py.
 from __future__ import annotations
 
 from app.services.import_service import (
+    normalize_party,
     normalize_phone,
     parse_propensity,
     parse_voting_history,
@@ -204,3 +205,27 @@ class TestVotingHistoryParsing:
         """Empty string value is not counted as voted."""
         result = parse_voting_history({"General_2024": ""})
         assert result == []
+
+
+class TestNormalizeParty:
+    """Tests for normalize_party function."""
+
+    def test_normalize_party_democratic(self):
+        """'Democratic' normalizes to 'DEM'."""
+        assert normalize_party("Democratic") == "DEM"
+
+    def test_normalize_party_republican(self):
+        """'Republican' normalizes to 'REP'."""
+        assert normalize_party("Republican") == "REP"
+
+    def test_normalize_party_empty_returns_none(self):
+        """Empty string returns None."""
+        assert normalize_party("") is None
+
+    def test_normalize_party_whitespace_returns_none(self):
+        """Whitespace-only string returns None."""
+        assert normalize_party("   ") is None
+
+    def test_normalize_party_unknown_preserved(self):
+        """Unrecognized party name is returned stripped but unchanged."""
+        assert normalize_party("Constitution") == "Constitution"

@@ -31,6 +31,7 @@ export interface CanvasserAssignment {
 
 export interface DoorKnockCreate {
   walk_list_entry_id: string
+  voter_id: string
   result_code: string
   notes?: string
   latitude?: number

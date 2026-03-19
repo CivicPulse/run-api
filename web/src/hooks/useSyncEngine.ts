@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useLayoutEffect, useRef, useCallback } from "react"
 import { useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { useOfflineQueueStore, type QueueItem } from "@/stores/offlineQueueStore"
 import { useConnectivityStatus } from "@/hooks/useConnectivityStatus"
@@ -56,6 +56,16 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
   const snapshot = [...items]
 
   for (const item of snapshot) {
+    if (
+      item.type === "door_knock" &&
+      !(item.payload as DoorKnockCreate).voter_id
+    ) {
+      useOfflineQueueStore.getState().remove(item.id)
+      toast.error(
+        "A queued canvassing record was missing voter data and has been removed.",
+      )
+      continue
+    }
     try {
       await replayMutation(item)
       useOfflineQueueStore.getState().remove(item.id)
@@ -170,7 +180,7 @@ export function useSyncEngine(): void {
     drainQueue(queryClient)
   }, [queryClient])
 
-  drainRef.current = drain
+  useLayoutEffect(() => { drainRef.current = drain })
 
   // Trigger drain on online transition with 1000ms debounce
   useEffect(() => {

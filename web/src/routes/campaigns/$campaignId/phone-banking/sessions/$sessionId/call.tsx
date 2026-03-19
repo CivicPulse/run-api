@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import { formatPhoneDisplay } from "@/types/calling"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -78,7 +79,7 @@ function VoterInfoPanel({
                 className="justify-start font-mono"
                 onClick={() => onPhoneSelect(phone.value)}
               >
-                {phone.value}
+                {formatPhoneDisplay(phone.value)}
                 <span className="ml-2 text-xs opacity-70 capitalize">{phone.type}</span>
                 {phone.is_primary && (
                   <span className="ml-auto text-xs opacity-70">Primary</span>

@@ -293,9 +293,9 @@ class TestCallerManagement:
         db = _mock_db()
         svc = PhoneBankService()
         session_obj = _make_session_obj(status=SessionStatus.ACTIVE)
-        caller_obj = _make_caller(session_id=session_obj.id)
+        caller_obj = _make_caller(session_id=session_obj.id, check_in_at=utcnow())
 
-        # check_in: need session lookup + caller lookup
+        # check_in: session lookup + pg_insert upsert (returns caller via scalar_one)
         db.execute.side_effect = [
             _mock_scalar_result(session_obj),
             _mock_scalar_result(caller_obj),

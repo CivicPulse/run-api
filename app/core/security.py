@@ -5,14 +5,18 @@ Uses Authlib for JWT/JWKS validation against ZITADEL OIDC.
 
 from __future__ import annotations
 
+import uuid
 from enum import IntEnum
 
 import httpx
+import sqlalchemy.exc
 from authlib.jose import JsonWebKey, jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 
@@ -40,11 +44,25 @@ class AuthenticatedUser(BaseModel):
 class JWKSManager:
     """Manages JWKS fetching with caching and key rotation support."""
 
-    def __init__(self, issuer: str) -> None:
+    def __init__(self, issuer: str, base_url: str = "") -> None:
         self.issuer = issuer
-        self.oidc_config_url = f"{issuer}/.well-known/openid-configuration"
+        self._base_url = base_url.rstrip("/") if base_url else issuer
+        self.oidc_config_url = f"{self._base_url}/.well-known/openid-configuration"
         self._jwks: dict | None = None
         self._jwks_uri: str | None = None
+        # Skip TLS verification for internal URLs where the cert hostname
+        # doesn't match (e.g. Docker service name vs Tailscale FQDN)
+        from urllib.parse import urlparse
+
+        base_host = urlparse(self._base_url).hostname or ""
+        issuer_host = urlparse(self.issuer).hostname or ""
+        issuer_netloc = urlparse(self.issuer).netloc or ""
+        self._verify_tls = base_host == issuer_host
+        # Send Host header matching the issuer (with port)
+        # when using an internal base URL
+        self._extra_headers: dict[str, str] = (
+            {"Host": issuer_netloc} if base_host != issuer_host else {}
+        )
 
     async def get_jwks(self, force_refresh: bool = False) -> dict:
         """Fetch JWKS, using cache unless force_refresh.
@@ -58,12 +76,19 @@ class JWKSManager:
         if self._jwks is not None and not force_refresh:
             return self._jwks
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(
+            verify=self._verify_tls, headers=self._extra_headers
+        ) as client:
             if self._jwks_uri is None or force_refresh:
                 oidc_resp = await client.get(self.oidc_config_url)
                 oidc_resp.raise_for_status()
                 oidc_config = oidc_resp.json()
-                self._jwks_uri = oidc_config["jwks_uri"]
+                jwks_uri = oidc_config["jwks_uri"]
+                # Rewrite JWKS URI to use internal base_url when it differs
+                # from the public issuer (e.g. Docker container networking)
+                if self._base_url != self.issuer:
+                    jwks_uri = jwks_uri.replace(self.issuer, self._base_url)
+                self._jwks_uri = jwks_uri
 
             jwks_resp = await client.get(self._jwks_uri)
             jwks_resp.raise_for_status()
@@ -136,6 +161,81 @@ def _extract_role(claims: dict, project_id: str | None = None) -> CampaignRole:
     return best_role
 
 
+async def resolve_campaign_role(
+    user_id: str,
+    campaign_id: uuid.UUID,
+    db: AsyncSession,
+    jwt_role: CampaignRole,
+    user_org_id: str | None = None,
+) -> CampaignRole | None:
+    """Resolve the effective role for a user in a specific campaign.
+
+    Resolution order:
+    1. Explicit per-campaign role stored in ``CampaignMember.role``.
+    2. JWT role, if the campaign's ZITADEL org matches the user's current org.
+    3. None (deny) for cross-org access with no explicit grant.
+
+    Args:
+        user_id: The user's ZITADEL ID.
+        campaign_id: The campaign UUID.
+        db: Async database session.
+        jwt_role: The org-level role extracted from JWT.
+        user_org_id: The user's ZITADEL organization ID from the JWT.  When
+            provided it is used to verify that the user belongs to the campaign
+            org before honouring the JWT role.  Old campaigns that have not yet
+            been migrated to the Organization model are matched via the
+            ``Campaign.zitadel_org_id`` column directly.
+
+    Returns:
+        The resolved CampaignRole.
+    """
+    from app.models.campaign import Campaign
+    from app.models.campaign_member import CampaignMember
+    from app.models.organization import Organization
+
+    # 1. Check for an explicit per-campaign role override in the DB.
+    member_role = await db.scalar(
+        select(CampaignMember.role).where(
+            CampaignMember.user_id == user_id,
+            CampaignMember.campaign_id == campaign_id,
+        )
+    )
+    if member_role:
+        try:
+            return CampaignRole[member_role.upper()]
+        except KeyError:
+            logger.warning(
+                "Unknown per-campaign role '{}' for user {}", member_role, user_id
+            )
+
+    # 2. If no explicit DB role, verify the JWT role is valid for this campaign.
+    #    The JWT role is only authoritative when the user's current ZITADEL org
+    #    is the same org that owns the campaign.
+    if user_org_id:
+        campaign = await db.scalar(select(Campaign).where(Campaign.id == campaign_id))
+        if campaign is not None:
+            # Resolve the campaign's effective ZITADEL org ID.
+            effective_org_id: str | None = None
+            if campaign.organization_id is not None:
+                effective_org_id = await db.scalar(
+                    select(Organization.zitadel_org_id).where(
+                        Organization.id == campaign.organization_id
+                    )
+                )
+            # Fall back to the legacy direct column for campaigns not yet migrated.
+            if not effective_org_id:
+                effective_org_id = campaign.zitadel_org_id
+
+            if effective_org_id and effective_org_id == user_org_id:
+                return jwt_role
+
+        # User is from a different org and has no explicit grant — deny.
+        return None
+
+    # user_org_id not provided (legacy callers): preserve old behaviour.
+    return jwt_role
+
+
 bearer_scheme = HTTPBearer()
 
 
@@ -185,17 +285,64 @@ async def get_current_user(
             detail="Missing organization claim",
         )
 
+    email = claims.get("email")
+    display_name = claims.get("name") or claims.get("preferred_username")
+
+    # ZITADEL access tokens don't carry profile claims (email, name) —
+    # fetch them from the userinfo endpoint when missing.
+    if not email or not display_name:
+        try:
+            userinfo_base = settings.zitadel_base_url or settings.zitadel_issuer
+            # Send Host header matching the issuer for internal base URLs
+            from urllib.parse import urlparse as _urlparse
+
+            _issuer_host = _urlparse(settings.zitadel_issuer).hostname or ""
+            _issuer_netloc = _urlparse(settings.zitadel_issuer).netloc or ""
+            _base_host = _urlparse(userinfo_base).hostname or ""
+            _headers: dict[str, str] = {"Authorization": f"Bearer {token}"}
+            _verify_tls = _base_host == _issuer_host
+            if _base_host != _issuer_host:
+                _headers["Host"] = _issuer_netloc
+            async with httpx.AsyncClient(verify=_verify_tls) as client:
+                userinfo_resp = await client.get(
+                    f"{userinfo_base}/oidc/v1/userinfo",
+                    headers=_headers,
+                    timeout=5.0,
+                )
+                if userinfo_resp.status_code == 200:
+                    userinfo = userinfo_resp.json()
+                    email = email or userinfo.get("email")
+                    display_name = (
+                        display_name
+                        or userinfo.get("name")
+                        or userinfo.get("preferred_username")
+                    )
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Userinfo endpoint returned {}: {}",
+                exc.response.status_code,
+                exc.response.text[:200],
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.debug("Userinfo endpoint unreachable: {}", exc)
+        except Exception:
+            logger.debug("Failed to fetch userinfo, proceeding without profile data")
+
     return AuthenticatedUser(
         id=claims["sub"],
         org_id=org_id,
         role=_extract_role(claims),
-        email=claims.get("email"),
-        display_name=claims.get("name"),
+        email=email,
+        display_name=display_name or email,
     )
 
 
 def require_role(minimum: str):
     """FastAPI dependency factory that enforces minimum role level.
+
+    When the request URL contains a ``campaign_id`` path parameter, the
+    effective role is resolved from the ``CampaignMember.role`` column
+    (per-campaign override) before falling back to the org-level JWT role.
 
     Args:
         minimum: The minimum role name (e.g., "manager", "admin").
@@ -205,14 +352,55 @@ def require_role(minimum: str):
     """
     min_level = CampaignRole[minimum.upper()]
 
+    from app.db.session import get_db
+
     async def _check_role(
+        request: Request,
         current_user: AuthenticatedUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
-        if current_user.role < min_level:
+        effective_role = current_user.role
+
+        # Resolve per-campaign role if campaign_id is in the path
+        campaign_id_str = request.path_params.get("campaign_id")
+        if campaign_id_str:
+            try:
+                campaign_id = uuid.UUID(campaign_id_str)
+                effective_role = await resolve_campaign_role(
+                    current_user.id,
+                    campaign_id,
+                    db,
+                    current_user.role,
+                    user_org_id=current_user.org_id,
+                )
+                if effective_role is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Insufficient permissions",
+                    )
+            except (ValueError, TypeError):
+                logger.debug("Invalid campaign_id format in path: {}", campaign_id_str)
+            except HTTPException:
+                raise
+            except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.DatabaseError):
+                # DB unavailable — deny access rather than falling
+                # back to JWT role
+                logger.warning(
+                    "Per-campaign role resolution failed (DB error), denying access"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions",
+                ) from None
+
+        if effective_role < min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
+
+        # Update user object with resolved role so downstream code sees the right role
+        current_user = current_user.model_copy(update={"role": effective_role})
         return current_user
 
     return _check_role

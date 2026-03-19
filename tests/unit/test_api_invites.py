@@ -70,6 +70,19 @@ def _override_app(
     return app
 
 
+def _setup_role_resolution(mock_db, org_id="org-1"):
+    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes."""
+    campaign_mock = MagicMock()
+    campaign_mock.zitadel_org_id = org_id
+    campaign_mock.organization_id = None
+    mock_db.scalar = AsyncMock(
+        side_effect=[
+            None,  # CampaignMember.role → no explicit override
+            campaign_mock,  # Campaign lookup → for org matching
+        ]
+    )
+
+
 @pytest.fixture
 def mock_db():
     db = AsyncMock()
@@ -87,6 +100,7 @@ class TestCreateInviteEndpoint:
         """Viewer cannot create invites -- returns 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -101,6 +115,7 @@ class TestCreateInviteEndpoint:
         """Admin can create invite -- returns 201."""
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         # Mock: no existing invite
         mock_result = MagicMock()
@@ -146,12 +161,19 @@ class TestAcceptInviteEndpoint:
         mock_zitadel.assign_project_role = AsyncMock()
         app.state.zitadel_service = mock_zitadel
 
-        # validate_invite lookup, member lookup
+        # validate_invite lookup, member lookup, campaign lookup
         validate_result = MagicMock()
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(side_effect=[validate_result, member_result])
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None  # no org model → skip org lookup
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[validate_result, member_result, campaign_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -161,6 +183,13 @@ class TestAcceptInviteEndpoint:
         data = resp.json()
         assert data["message"] == "Invite accepted successfully"
         assert data["role"] == "manager"
+        mock_zitadel.assign_project_role.assert_awaited_once_with(
+            "",  # settings.zitadel_project_id (default empty in tests)
+            "user-1",
+            "manager",
+            project_grant_id=None,
+            org_id="org-1",
+        )
 
 
 class TestRevokeInviteEndpoint:
@@ -170,6 +199,7 @@ class TestRevokeInviteEndpoint:
         """Viewer cannot revoke invites -- 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         invite_id = uuid.uuid4()
         transport = ASGITransport(app=app)
@@ -185,6 +215,7 @@ class TestRevokeInviteEndpoint:
         user = _make_user(role=CampaignRole.ADMIN)
         invite = _make_invite()
         app = _override_app(user=user, db=mock_db)
+        _setup_role_resolution(mock_db)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = invite

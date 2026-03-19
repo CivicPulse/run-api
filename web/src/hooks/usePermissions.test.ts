@@ -17,6 +17,12 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: vi.fn(() => ({ campaignId: "test-campaign-id" })),
 }))
 
+// Mock config so the hook can resolve the ZITADEL project ID
+vi.mock("@/config", () => ({
+  getConfig: vi.fn(() => ({ zitadel_project_id: "test-project-id" })),
+  loadConfig: vi.fn(),
+}))
+
 import { useAuthStore } from "@/stores/authStore"
 import { useMyCampaignRole } from "./useUsers"
 

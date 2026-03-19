@@ -272,7 +272,41 @@ async def claim_entries(
             type="claim-failed",
         )
     await db.commit()
-    return [CallListEntryResponse.model_validate(e) for e in entries]
+
+    # Resolve voter names (same pattern as list_call_list_entries)
+    from sqlalchemy import select as sa_select
+
+    from app.models.voter import Voter
+
+    voter_ids = [e.voter_id for e in entries]
+    voter_names: dict[uuid.UUID, str] = {}
+    if voter_ids:
+        voters_result = await db.execute(
+            sa_select(Voter.id, Voter.first_name, Voter.last_name).where(
+                Voter.id.in_(voter_ids)
+            )
+        )
+        for row in voters_result.all():
+            voter_names[row.id] = f"{row.first_name} {row.last_name}".strip()
+
+    items = []
+    for entry in entries:
+        entry_dict = {
+            "id": entry.id,
+            "voter_id": entry.voter_id,
+            "voter_name": voter_names.get(entry.voter_id),
+            "priority_score": entry.priority_score,
+            "phone_numbers": entry.phone_numbers,
+            "status": entry.status,
+            "attempt_count": entry.attempt_count,
+            "claimed_by": entry.claimed_by,
+            "claimed_at": entry.claimed_at,
+            "last_attempt_at": entry.last_attempt_at,
+            "phone_attempts": entry.phone_attempts,
+        }
+        items.append(CallListEntryResponse(**entry_dict))
+
+    return items
 
 
 @router.post(

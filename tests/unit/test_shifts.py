@@ -575,17 +575,14 @@ class TestCheckInOut:
             _mock_scalar_result(shift_vol),  # _get_shift_volunteer
             _mock_scalar_result(shift),  # _get_shift_raw
             _mock_scalar_result(volunteer),  # _get_volunteer
+            MagicMock(),  # upsert SessionCaller
         ]
 
         result = await svc.check_in(db, shift.id, volunteer.id)
 
         assert result.status == SignupStatus.CHECKED_IN
-        # SessionCaller should have been added
-        from app.models.phone_bank import SessionCaller
-
-        added_objects = [call.args[0] for call in db.add.call_args_list]
-        caller_added = any(isinstance(obj, SessionCaller) for obj in added_objects)
-        assert caller_added
+        # SessionCaller upsert should have been executed (4th execute call)
+        assert db.execute.call_count == 4
 
     @pytest.mark.asyncio
     async def test_check_out_volunteer(self) -> None:

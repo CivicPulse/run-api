@@ -35,11 +35,13 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
   let role: CampaignRole = "viewer"
 
   if (user) {
+    // 1. Extract org-level role from JWT claims
+    let jwtRole: CampaignRole = "viewer"
     let projectId: string | undefined
     try {
       projectId = getConfig().zitadel_project_id
     } catch {
-      // Config not yet loaded — fall back to API role
+      // Config not yet loaded
     }
 
     if (projectId) {
@@ -52,28 +54,24 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
           (r): r is CampaignRole => r in ROLE_HIERARCHY
         )
         if (foundRoles.length > 0) {
-          // Pick the highest role
-          role = foundRoles.reduce((best, r) =>
+          jwtRole = foundRoles.reduce((best, r) =>
             ROLE_HIERARCHY[r as CampaignRole] > ROLE_HIERARCHY[best]
               ? (r as CampaignRole)
               : best
           , foundRoles[0] as CampaignRole)
-        } else {
-          role = "viewer"
         }
-      } else {
-        // Claim key not present — fall back to API
-        if (!_warnedMissingClaim) {
-          console.warn("Role claim missing from JWT, falling back to API")
-          _warnedMissingClaim = true
-        }
-        if (apiRole && apiRole in ROLE_HIERARCHY) {
-          role = apiRole as CampaignRole
-        }
+      } else if (!_warnedMissingClaim) {
+        console.warn("Role claim missing from JWT, falling back to API")
+        _warnedMissingClaim = true
       }
-    } else if (apiRole && apiRole in ROLE_HIERARCHY) {
-      role = apiRole as CampaignRole
     }
+
+    // 2. Resolve effective role: per-campaign API role takes priority
+    // when we're in a campaign context
+    role =
+      campaignId && apiRole && apiRole in ROLE_HIERARCHY
+        ? (apiRole as CampaignRole)
+        : jwtRole
   }
 
   const hasRole = (minimum: CampaignRole): boolean =>

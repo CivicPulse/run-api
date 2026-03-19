@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react"
 import { useCallingStore } from "@/stores/callingStore"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
@@ -62,7 +62,6 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     entries,
     currentEntryIndex,
     completedCalls,
-    skippedEntries: _skippedEntries,
     callStartedAt,
     phoneNumberUsed,
     startSession,
@@ -79,8 +78,9 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   const initRef = useRef(false)
   const prefetchRef = useRef(false)
   const noEntriesRef = useRef(false)
+  const [noEntries, setNoEntries] = useState(false)
   const advanceRef = useRef(advanceEntry)
-  advanceRef.current = advanceEntry
+  useLayoutEffect(() => { advanceRef.current = advanceEntry })
 
   // Touch every 60 seconds for stale detection
   useEffect(() => {
@@ -110,6 +110,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
           .then((claimed) => {
             if (claimed.length === 0) {
               noEntriesRef.current = true
+              setNoEntries(true)
               startSession(sessionId, callListId, [])
               return
             }
@@ -131,6 +132,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
           .then((claimed) => {
             if (claimed.length === 0) {
               noEntriesRef.current = true
+              setNoEntries(true)
               startSession(sessionId, callListId, [])
               return
             }
@@ -162,7 +164,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   const isComplete = currentEntryIndex >= entries.length && entries.length > 0
 
   const noEntriesAvailable =
-    noEntriesRef.current && entries.length === 0
+    noEntries && entries.length === 0
 
   const sessionStats: SessionStats = useMemo(() => {
     const values = Object.values(completedCalls)
@@ -269,7 +271,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     totalEntries: entries.length,
     isComplete,
     sessionStats,
-    isLoading: sessionQuery.isLoading || (!storeSessionId && !noEntriesRef.current),
+    isLoading: sessionQuery.isLoading || (!storeSessionId && !noEntries),
     isError: sessionQuery.isError,
     error: sessionQuery.error,
     scriptId,

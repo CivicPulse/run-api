@@ -4,7 +4,9 @@ Populates the database with a complete, interconnected demo dataset including
 campaigns, voters, turfs, walk lists, surveys, volunteers, shifts, phone bank
 sessions, voter interactions, tags, DNC entries, invites, and addresses.
 
-Usage: docker compose exec api uv run python scripts/seed.py
+Usage:
+docker compose exec api bash -c \
+    "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
 from app.models.dnc import DoNotCallEntry
 from app.models.invite import Invite
+from app.models.organization import Organization
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.shift import Shift, ShiftVolunteer
 from app.models.survey import SurveyQuestion, SurveyResponse, SurveyScript
@@ -364,12 +367,31 @@ async def main() -> None:  # noqa: C901, PLR0915
         ]
 
         # ----------------------------------------------------------
-        # 2. Campaign
+        # 2a. Organization
+        # ----------------------------------------------------------
+        zitadel_org_id = (
+            os.environ.get("SEED_ZITADEL_ORG_ID") or f"seed-{uuid.uuid4().hex[:16]}"
+        )
+        org = Organization(
+            id=uuid.uuid4(),
+            zitadel_org_id=zitadel_org_id,
+            name="Macon-Bibb Demo Organization",
+            created_by=user_owner_id,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        session.add(org)
+        await session.flush()
+        print(f"  Created organization: {org.name}")
+
+        # ----------------------------------------------------------
+        # 2b. Campaign
         # ----------------------------------------------------------
         campaign_id = uuid.uuid4()
         campaign = Campaign(
             id=campaign_id,
-            zitadel_org_id=f"seed-org-{uuid.uuid4().hex[:16]}",
+            zitadel_org_id=zitadel_org_id,
+            organization_id=org.id,
             name=SEED_CAMPAIGN_NAME,
             type=CampaignType.LOCAL,
             status=CampaignStatus.ACTIVE,
@@ -432,13 +454,15 @@ async def main() -> None:  # noqa: C901, PLR0915
                 first_name=FIRST_NAMES[i],
                 last_name=LAST_NAMES[i],
                 gender=random.choice(["M", "F"]),
-                address_line1=(
+                registration_line1=(
                     f"{random.randint(100, 9999)} {random.choice(STREET_NAMES)}"
                 ),
-                city="Macon",
-                state="GA",
-                zip_code=random.choice(["31201", "31204", "31206", "31210", "31211"]),
-                county="Bibb",
+                registration_city="Macon",
+                registration_state="GA",
+                registration_zip=random.choice(
+                    ["31201", "31204", "31206", "31210", "31211"]
+                ),
+                registration_county="Bibb",
                 party=party,
                 precinct=PRECINCTS[i % len(PRECINCTS)],
                 congressional_district="02",
@@ -1345,9 +1369,10 @@ async def main() -> None:  # noqa: C901, PLR0915
                     voter_id=voter.id,
                     type=InteractionType.DOOR_KNOCK,
                     payload={
+                        "voter_id": str(voter.id),
                         "result_code": result,
                         "walk_list_id": str(wl_id),
-                        "notes": (f"Knocked on door at {voter.address_line1}"),
+                        "notes": (f"Knocked on door at {voter.registration_line1}"),
                     },
                     created_by=canvasser,
                     created_at=NOW
@@ -1808,10 +1833,10 @@ async def main() -> None:  # noqa: C901, PLR0915
                     id=uuid.uuid4(),
                     campaign_id=campaign_id,
                     voter_id=v.id,
-                    address_line1=v.address_line1,
+                    address_line1=v.registration_line1,
                     city="Macon",
                     state="GA",
-                    zip_code=v.zip_code,
+                    zip_code=v.registration_zip,
                     type="home",
                     is_primary=True,
                     source="import",
@@ -1829,7 +1854,7 @@ async def main() -> None:  # noqa: C901, PLR0915
                         address_line1=f"PO Box {random.randint(100, 9999)}",
                         city="Macon",
                         state="GA",
-                        zip_code=v.zip_code,
+                        zip_code=v.registration_zip,
                         type="mailing",
                         is_primary=False,
                         source="manual",

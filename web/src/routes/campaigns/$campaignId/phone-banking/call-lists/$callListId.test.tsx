@@ -19,6 +19,7 @@ vi.mock("@/hooks/useCallLists", () => ({
   useCallList: vi.fn(),
   useCallListEntries: vi.fn(),
   useAppendFromList: vi.fn(),
+  useUpdateCallListStatus: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock("@/hooks/useMembers", () => ({

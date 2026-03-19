@@ -74,10 +74,13 @@ def _mock_result_with(value, method="scalar_one_or_none"):
 def _setup_user_sync_on_db(mock_db, local_user=None, campaign=None):
     """Set up mock_db.execute to handle ensure_user_synced calls.
 
-    ensure_user_synced makes up to 3 execute calls:
+    ensure_user_synced makes up to 4 execute calls (Phase 2):
     1. User lookup (scalar_one_or_none)
-    2. Campaign lookup by org_id (scalar_one_or_none)
-    3. CampaignMember lookup (scalar_one_or_none) -- only if campaign found
+    2. Org lookup by zitadel_org_id (scalar_one_or_none) -- new in Phase 2
+    3. Campaign lookup by org_id (scalar_one_or_none) -- fallback path when org is None
+    4. CampaignMember lookup (scalar_one_or_none) -- only if campaign found
+
+    In tests the org lookup returns None, so the fallback campaign lookup runs.
 
     Returns a list that can be extended with more execute results.
     """
@@ -86,12 +89,36 @@ def _setup_user_sync_on_db(mock_db, local_user=None, campaign=None):
 
     results = [
         _mock_result_with(local_user),  # user lookup
-        _mock_result_with(campaign),  # campaign lookup (None = no campaign)
+        _mock_result_with(None),  # org lookup (None = no Organization record yet)
+        _mock_result_with(campaign),  # campaign lookup fallback (None = no campaign)
     ]
     if campaign is not None:
         results.append(_mock_result_with(MagicMock()))  # member lookup (exists)
 
     return results
+
+
+def _setup_role_resolution(mock_db, campaign=None, extra_scalars=None):
+    """Set up mock_db.scalar for resolve_campaign_role.
+
+    resolve_campaign_role calls db.scalar() up to 3 times:
+    1. CampaignMember.role lookup → None (no explicit override)
+    2. Campaign lookup → campaign object (for org verification)
+    3. Organization.zitadel_org_id (only if campaign.organization_id is set)
+
+    In tests the campaign has no organization_id, so only 2 calls are needed.
+    The campaign's zitadel_org_id is used directly for org matching.
+
+    extra_scalars: additional db.scalar() return values for service-layer calls
+    that also use scalar() (e.g. delete_campaign's sibling count check).
+    """
+    values = [
+        None,  # CampaignMember.role → no explicit override
+        campaign,  # Campaign lookup → for org matching
+    ]
+    if extra_scalars:
+        values.extend(extra_scalars)
+    mock_db.scalar = AsyncMock(side_effect=values)
 
 
 @pytest.fixture
@@ -113,6 +140,7 @@ def mock_zitadel():
     z.deactivate_organization = AsyncMock()
     z.delete_organization = AsyncMock()
     z.assign_project_role = AsyncMock()
+    z.ensure_project_grant = AsyncMock(return_value="grant-123")
     return z
 
 
@@ -179,6 +207,7 @@ class TestCampaignCreate:
         data = resp.json()
         assert data["name"] == "New Campaign"
         assert data["type"] == "federal"
+        mock_zitadel.ensure_project_grant.assert_awaited()
 
     async def test_create_campaign_422_missing_name(self, mock_db, mock_zitadel):
         """Missing name returns 422."""
@@ -233,6 +262,8 @@ class TestCampaignGet:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
+        # resolve_campaign_role uses db.scalar()
+        _setup_role_resolution(mock_db, campaign=campaign)
         # ensure_user_synced (2 calls) + get_campaign (1 call)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
@@ -255,6 +286,8 @@ class TestCampaignUpdate:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
+        # resolve_campaign_role uses db.scalar()
+        _setup_role_resolution(mock_db, campaign=campaign)
         # ensure_user_synced (2 calls) + update_campaign select (1) + refresh
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
@@ -274,7 +307,11 @@ class TestCampaignUpdate:
     async def test_update_campaign_insufficient_role(self, mock_db, mock_zitadel):
         """Viewer cannot update campaign -- returns 403."""
         user = _make_user(role=CampaignRole.VIEWER)
+        campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+
+        # resolve_campaign_role uses db.scalar()
+        _setup_role_resolution(mock_db, campaign=campaign)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -295,6 +332,9 @@ class TestCampaignDelete:
         campaign = _make_campaign(created_by="user-test-1")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
+        # resolve_campaign_role uses db.scalar(); delete_campaign also
+        # calls db.scalar() for sibling count check (returns 0)
+        _setup_role_resolution(mock_db, campaign=campaign, extra_scalars=[0])
         # ensure_user_synced (2 calls) + delete_campaign select (1)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
@@ -309,8 +349,11 @@ class TestCampaignDelete:
     async def test_delete_campaign_non_owner_403(self, mock_db, mock_zitadel):
         """Non-owner gets 403 even with admin role."""
         user = _make_user(user_id="different-user", role=CampaignRole.ADMIN)
+        campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
+        # resolve_campaign_role uses db.scalar()
+        _setup_role_resolution(mock_db, campaign=campaign)
         # role check at route level will reject admin (needs owner)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -338,8 +381,13 @@ class TestErrorFormat:
     async def test_404_problem_details(self, mock_db, mock_zitadel):
         """Not found returns RFC 9457 structure."""
         user = _make_user(role=CampaignRole.VIEWER)
+        # Need a campaign for role resolution to pass (even though
+        # the endpoint will ultimately return 404 for this campaign_id)
+        campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
+        # resolve_campaign_role uses db.scalar()
+        _setup_role_resolution(mock_db, campaign=campaign)
         # ensure_user_synced (2 calls) + get_campaign (1 call returns None)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(None))
@@ -415,10 +463,12 @@ class TestUserSync:
         user = _make_user()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # First execute: user not found (None), second: campaign lookup (None)
+        # First execute: user not found (None), second: org lookup (None),
+        # third: campaign lookup (None)
         results = [
             _mock_result_with(None),  # user not found -> create
-            _mock_result_with(None),  # campaign lookup (None)
+            _mock_result_with(None),  # org lookup (None)
+            _mock_result_with(None),  # campaign lookup fallback (None)
         ]
         mock_db.execute = AsyncMock(side_effect=results)
 

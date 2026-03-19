@@ -6,19 +6,26 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+import httpx
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.errors import CampaignNotFoundError, InsufficientPermissionsError
+from app.core.security import CampaignRole
 from app.core.time import utcnow
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
+from app.models.organization import Organization
 from app.schemas.common import PaginationResponse
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
     from app.services.zitadel import ZitadelService
+
+# All available campaign roles, lowercase, ordered by CampaignRole enum definition.
+ALL_ROLES: list[str] = [r.name.lower() for r in CampaignRole]
 
 
 class CampaignService:
@@ -36,11 +43,13 @@ class CampaignService:
         election_date=None,
         candidate_name: str | None = None,
         party_affiliation: str | None = None,
+        organization_id: uuid.UUID | None = None,
     ) -> Campaign:
         """Create a campaign with ZITADEL org provisioning.
 
-        Implements compensating transaction pattern: if local DB write fails,
-        the ZITADEL org is deleted to maintain consistency.
+        Implements compensating transaction pattern: if local DB write fails
+        and a new ZITADEL org was created, it is deleted to maintain consistency.
+        When reusing an existing organization, the compensating delete is skipped.
 
         Args:
             db: Async database session.
@@ -53,23 +62,71 @@ class CampaignService:
             election_date: Optional election date.
             candidate_name: Optional candidate name.
             party_affiliation: Optional party affiliation.
+            organization_id: Optional existing Organization UUID to associate.
+                When provided, reuses the existing ZITADEL org instead of
+                creating a new one.
 
         Returns:
             The created Campaign object.
 
         Raises:
+            CampaignNotFoundError: If organization_id is provided but not found.
             ZitadelUnavailableError: If ZITADEL is unreachable.
-            Exception: If DB write fails (after ZITADEL org cleanup).
+            Exception: If DB write fails (after ZITADEL org cleanup for new orgs).
         """
-        # Step 1: Create ZITADEL org first (external system)
-        org_data = await zitadel.create_organization(name)
-        org_id = org_data["id"]
+        # Track whether we provisioned a new ZITADEL org so the compensating
+        # transaction only deletes what we created.
+        created_new_org = organization_id is None
+
+        # Step 1: Resolve ZITADEL org — reuse existing or create new
+        if organization_id:
+            # Reuse an existing Organization record
+            org_result = await db.execute(
+                select(Organization).where(Organization.id == organization_id)
+            )
+            org = org_result.scalar_one_or_none()
+            if org is None:
+                raise ValueError(f"Organization {organization_id} not found")
+            org_id = org.zitadel_org_id
+            project_grant_id = (
+                org.zitadel_project_grant_id
+                or await zitadel.ensure_project_grant(
+                    settings.zitadel_project_id, org_id, ALL_ROLES
+                )
+            )
+            # Persist the grant ID if it was missing so future lookups are fast
+            if not org.zitadel_project_grant_id:
+                org.zitadel_project_grant_id = project_grant_id
+        else:
+            # Create a new ZITADEL org for this campaign
+            org_data = await zitadel.create_organization(name)
+            org_id = org_data["id"]
+
+            # Ensure a project grant so the new org's users can receive roles
+            # scoped to the shared project. This call is idempotent.
+            project_grant_id = await zitadel.ensure_project_grant(
+                settings.zitadel_project_id, org_id, ALL_ROLES
+            )
 
         try:
-            # Step 2: Create local campaign record
+            # Step 2: Create the local Organization record when provisioning a new org
+            if not organization_id:
+                org_record = Organization(
+                    id=uuid.uuid4(),
+                    zitadel_org_id=org_id,
+                    zitadel_project_grant_id=project_grant_id,
+                    name=name,
+                    created_by=user.id,
+                )
+                db.add(org_record)
+                await db.flush()
+                organization_id = org_record.id
+
+            # Step 3: Create local campaign record
             campaign = Campaign(
                 id=uuid.uuid4(),
                 zitadel_org_id=org_id,
+                organization_id=organization_id,
                 name=name,
                 type=campaign_type,
                 jurisdiction_fips=jurisdiction_fips,
@@ -82,32 +139,71 @@ class CampaignService:
             )
             db.add(campaign)
 
-            # Step 3: Create campaign_member for the creator
+            # Step 4: Create campaign_member for the creator with owner role
             member = CampaignMember(
                 user_id=user.id,
                 campaign_id=campaign.id,
+                role="owner",
             )
             db.add(member)
+
+            # Step 5: Assign owner role in ZITADEL, scoped to the campaign's org
+            await zitadel.assign_project_role(
+                settings.zitadel_project_id,
+                user.id,
+                "owner",
+                project_grant_id=project_grant_id,
+                org_id=org_id,
+            )
 
             await db.commit()
             await db.refresh(campaign)
             return campaign
 
         except Exception:
-            # Compensating transaction: delete the ZITADEL org
             logger.warning(
-                "Local DB write failed for campaign '{}', cleaning up ZITADEL org {}",
+                "Local DB write failed for campaign '{}', rolling back (org={})",
                 name,
                 org_id,
             )
             await db.rollback()
-            try:
-                await zitadel.delete_organization(org_id)
-            except Exception:
-                logger.error(
-                    "Failed to clean up ZITADEL org {} during compensating transaction",
-                    org_id,
-                )
+            if created_new_org:
+                # Compensating transaction: remove the ZITADEL org we just created
+                try:
+                    await zitadel.delete_organization(org_id)
+                except Exception:
+                    logger.error(
+                        "Failed to clean up ZITADEL org {} during compensating tx",
+                        org_id,
+                    )
+            else:
+                # Reusing existing org — remove the owner grant we just assigned
+                try:
+                    await zitadel.remove_project_role(
+                        settings.zitadel_project_id,
+                        user.id,
+                        "owner",
+                        org_id=org_id,
+                    )
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code == 404:
+                        logger.debug(
+                            "Grant not found (never created), skipping revocation"
+                        )
+                    else:
+                        logger.error(
+                            "Failed to revoke owner grant for user {} in org {} "
+                            "during compensating tx",
+                            user.id,
+                            org_id,
+                        )
+                except Exception:
+                    logger.error(
+                        "Failed to revoke owner grant for user {} in org {} "
+                        "during compensating tx",
+                        user.id,
+                        org_id,
+                    )
             raise
 
     async def get_campaign(self, db: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
@@ -281,8 +377,30 @@ class CampaignService:
         campaign.status = CampaignStatus.DELETED
         campaign.updated_at = utcnow()
 
-        await zitadel.deactivate_organization(campaign.zitadel_org_id)
+        # Check sibling count before commit to avoid race condition
+        sibling_count = await db.scalar(
+            select(func.count(Campaign.id)).where(
+                Campaign.organization_id == campaign.organization_id,
+                Campaign.id != campaign.id,
+                Campaign.status != CampaignStatus.DELETED,
+            )
+        )
+
         await db.commit()
+
+        # Best-effort ZITADEL org deactivation — the local soft-delete
+        # is the source of truth, so we don't roll back if this fails.
+        # Only deactivate ZITADEL org if no other active campaigns share it.
+        if sibling_count == 0:
+            try:
+                await zitadel.deactivate_organization(campaign.zitadel_org_id)
+            except Exception:
+                logger.warning(
+                    "Failed to deactivate ZITADEL org {} for campaign '{}', "
+                    "local soft-delete succeeded",
+                    campaign.zitadel_org_id,
+                    campaign.name,
+                )
 
 
 def _validate_status_transition(

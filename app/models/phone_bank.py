@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, String, func
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -55,7 +55,10 @@ class SessionCaller(Base):
     """A caller assigned to a phone bank session with check-in/out tracking."""
 
     __tablename__ = "session_callers"
-    __table_args__ = (Index("ix_session_callers_session_id", "session_id"),)
+    __table_args__ = (
+        Index("ix_session_callers_session_id", "session_id"),
+        UniqueConstraint("session_id", "user_id", name="uq_session_caller"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(

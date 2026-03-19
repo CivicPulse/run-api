@@ -16,6 +16,7 @@ describe("offlineQueueStore", () => {
       type: "door_knock",
       payload: {
         walk_list_entry_id: "entry-1",
+        voter_id: "voter-1",
         result_code: "supporter",
         notes: "Friendly",
       },
@@ -30,6 +31,7 @@ describe("offlineQueueStore", () => {
       type: "door_knock",
       payload: {
         walk_list_entry_id: "entry-1",
+        voter_id: "voter-1",
         result_code: "supporter",
         notes: "Friendly",
       },
@@ -45,6 +47,7 @@ describe("offlineQueueStore", () => {
       type: "door_knock",
       payload: {
         walk_list_entry_id: "entry-1",
+        voter_id: "voter-1",
         result_code: "not_home",
         latitude: 40.7128,
         longitude: -74.006,
@@ -57,6 +60,7 @@ describe("offlineQueueStore", () => {
     expect(item.type).toBe("door_knock")
     expect(item.payload).toEqual({
       walk_list_entry_id: "entry-1",
+      voter_id: "voter-1",
       result_code: "not_home",
       latitude: 40.7128,
       longitude: -74.006,
@@ -97,13 +101,13 @@ describe("offlineQueueStore", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", result_code: "not_home" },
+      payload: { walk_list_entry_id: "e2", voter_id: "v2", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -119,7 +123,7 @@ describe("offlineQueueStore", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -139,7 +143,7 @@ describe("offlineQueueStore", () => {
   test("clear() empties items array and sets isSyncing false", () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -154,7 +158,7 @@ describe("offlineQueueStore", () => {
   test("store persists items to localStorage under key 'offline-queue'", () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", result_code: "supporter" },
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })

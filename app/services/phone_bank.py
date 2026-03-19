@@ -298,8 +298,30 @@ class PhoneBankService:
             msg = f"Session {session_id} is not active"
             raise ValueError(msg)
 
-        caller = await self._get_caller(session, session_id, user_id)
-        caller.check_in_at = utcnow()
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        now = utcnow()
+        stmt = (
+            pg_insert(SessionCaller)
+            .values(
+                id=uuid.uuid4(),
+                session_id=session_id,
+                user_id=user_id,
+                created_at=now,
+                check_in_at=now,
+                check_out_at=None,
+            )
+            .on_conflict_do_update(
+                index_elements=["session_id", "user_id"],
+                set_={
+                    "check_in_at": now,
+                    "check_out_at": None,
+                },
+            )
+            .returning(SessionCaller)
+        )
+        result = await session.execute(stmt)
+        caller = result.scalar_one()
         return caller
 
     async def check_out(

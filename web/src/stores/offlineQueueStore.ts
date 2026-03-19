@@ -29,7 +29,12 @@ export const useOfflineQueueStore = create<OfflineQueueState>()(
       items: [],
       isSyncing: false,
 
-      push: (item) =>
+      push: (item) => {
+        // Validate required fields before queuing
+        if (item.type === "door_knock" && !(item.payload as { voter_id?: string }).voter_id) {
+          console.error("Cannot queue door_knock without voter_id")
+          return
+        }
         set((state) => ({
           items: [
             ...state.items,
@@ -40,7 +45,8 @@ export const useOfflineQueueStore = create<OfflineQueueState>()(
               retryCount: 0,
             },
           ],
-        })),
+        }))
+      },
 
       remove: (id) =>
         set((state) => ({

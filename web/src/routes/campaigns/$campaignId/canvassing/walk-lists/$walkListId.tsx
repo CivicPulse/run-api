@@ -33,6 +33,7 @@ function WalkListDetailPage() {
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [doorKnockEntryId, setDoorKnockEntryId] = useState<string | null>(null)
+  const [doorKnockVoterId, setDoorKnockVoterId] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [removeUserId, setRemoveUserId] = useState<string | null>(null)
 
@@ -124,7 +125,6 @@ function WalkListDetailPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
-                <TableHead>Voter ID</TableHead>
                 <TableHead>Household</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
@@ -135,7 +135,6 @@ function WalkListDetailPage() {
               {entries.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell>{entry.sequence}</TableCell>
-                  <TableCell className="font-mono text-sm">{entry.voter_id}</TableCell>
                   <TableCell>{entry.household_key ?? "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{entry.status}</Badge>
@@ -157,7 +156,10 @@ function WalkListDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDoorKnockEntryId(entry.id)}
+                      onClick={() => {
+                        setDoorKnockEntryId(entry.id)
+                        setDoorKnockVoterId(entry.voter_id)
+                      }}
                     >
                       Knock
                     </Button>
@@ -176,13 +178,16 @@ function WalkListDetailPage() {
         onOpenChange={setAssignOpen}
       />
 
-      <DoorKnockDialog
-        campaignId={campaignId}
-        walkListId={walkListId}
-        entryId={doorKnockEntryId}
-        open={!!doorKnockEntryId}
-        onOpenChange={(open) => { if (!open) setDoorKnockEntryId(null) }}
-      />
+      {doorKnockEntryId && doorKnockVoterId && (
+        <DoorKnockDialog
+          campaignId={campaignId}
+          walkListId={walkListId}
+          entryId={doorKnockEntryId}
+          voterId={doorKnockVoterId}
+          open={!!doorKnockEntryId}
+          onOpenChange={(open) => { if (!open) { setDoorKnockEntryId(null); setDoorKnockVoterId(null) } }}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteOpen}

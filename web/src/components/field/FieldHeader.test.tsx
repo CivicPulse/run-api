@@ -2,21 +2,26 @@ import { describe, test, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { FieldHeader } from "@/components/field/FieldHeader"
 
-// Mock TanStack Router Link and useNavigate
+// Mock TanStack Router Link and useNavigate with param substitution
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: {
+  Link: ({ to, params, children, ...rest }: {
     to: string
-    children: React.ReactNode
+    params?: Record<string, string>
+    children?: React.ReactNode
     [key: string]: unknown
-  }) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
+  }) => {
+    let href = to as string
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, value as string)
+      }
+    }
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    )
+  },
   useNavigate: vi.fn(() => vi.fn()),
 }))
 

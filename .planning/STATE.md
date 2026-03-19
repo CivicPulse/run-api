@@ -67,9 +67,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 |---|-------------|------|--------|-----------|
 | 260317-whd | Create getting started documentation for system admins, campaign managers, and volunteers | 2026-03-17 | baab93e | [260317-whd-create-getting-started-documentation-for](./quick/260317-whd-create-getting-started-documentation-for/) |
 | 260317-wpb | Fix failing GH Actions build by removing unused Mock type import | 2026-03-17 | d894042 | [260317-wpb-address-the-failing-build-step-in-gh-act](./quick/260317-wpb-address-the-failing-build-step-in-gh-act/) |
+| 260319-241 | Fix misaligned header section between sidebar and top bar | 2026-03-19 | 303070b | [260319-241-fix-the-misaligned-header-section-of-the](./quick/260319-241-fix-the-misaligned-header-section-of-the/) |
 
 ## Session Continuity
 
-Last session: 2026-03-17
-Stopped at: Completed quick task 260317-wpb: Fix failing CI build
+Last session: 2026-03-19
+Stopped at: Completed quick task 260319-241: Fix misaligned header alignment
 Resume file: None

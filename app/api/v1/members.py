@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.config import settings
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import (
     AuthenticatedUser,
@@ -66,7 +67,7 @@ async def list_members(
                 user_id=member.user_id,
                 display_name=display_name if display_name.strip() else "Unknown",
                 email=email if email.strip() else "",
-                role="member",  # Default; real role comes from ZITADEL
+                role=member.role or "viewer",
                 synced_at=member.synced_at,
             )
         )
@@ -78,7 +79,7 @@ async def list_members(
     response_model=MemberResponse,
 )
 async def update_member_role(
-    campaign_id: uuid.UUID,  # noqa: ARG001
+    campaign_id: uuid.UUID,
     member_user_id: str,
     data: RoleUpdate,
     request: Request,
@@ -114,6 +115,7 @@ async def update_member_role(
         .join(User, CampaignMember.user_id == User.id)
         .where(
             CampaignMember.user_id == member_user_id,
+            CampaignMember.campaign_id == campaign_id,
         )
     )
     row = result.first()
@@ -126,11 +128,35 @@ async def update_member_role(
     member, member_user = row
     zitadel = request.app.state.zitadel_service
 
-    # Remove old role and assign new one in ZITADEL
-    await zitadel.remove_project_role(str(member.campaign_id), member.user_id, "member")
-    await zitadel.assign_project_role(
-        str(member.campaign_id), member.user_id, data.role
+    # Look up campaign for ZITADEL org context
+    campaign_result = await db.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
     )
+    campaign = campaign_result.scalar_one_or_none()
+    if campaign is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+    zitadel_org_id = campaign.zitadel_org_id
+
+    # Remove old role and assign new one in ZITADEL
+    await zitadel.remove_project_role(
+        settings.zitadel_project_id,
+        member.user_id,
+        member.role or "viewer",
+        org_id=zitadel_org_id,
+    )
+    await zitadel.assign_project_role(
+        settings.zitadel_project_id,
+        member.user_id,
+        data.role,
+        org_id=zitadel_org_id,
+    )
+
+    # Persist role change in DB
+    member.role = data.role
+    await db.commit()
 
     display_name = member_user.display_name or ""
     email = member_user.email or ""
@@ -185,7 +211,12 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_project_role(str(campaign_id), member_user_id, "member")
+    await zitadel.remove_project_role(
+        settings.zitadel_project_id,
+        member_user_id,
+        member.role or "viewer",
+        org_id=campaign.zitadel_org_id if campaign else None,
+    )
     await db.delete(member)
     await db.commit()
 
@@ -231,17 +262,55 @@ async def transfer_ownership(
         )
 
     zitadel = request.app.state.zitadel_service
+    zitadel_org_id = campaign.zitadel_org_id
 
     # Demote current owner to admin in ZITADEL
-    await zitadel.remove_project_role(str(campaign_id), user.id, "owner")
-    await zitadel.assign_project_role(str(campaign_id), user.id, "admin")
+    await zitadel.remove_project_role(
+        settings.zitadel_project_id,
+        user.id,
+        "owner",
+        org_id=zitadel_org_id,
+    )
+    await zitadel.assign_project_role(
+        settings.zitadel_project_id,
+        user.id,
+        "admin",
+        org_id=zitadel_org_id,
+    )
 
     # Promote target to owner in ZITADEL
-    await zitadel.remove_project_role(str(campaign_id), data.new_owner_id, "admin")
-    await zitadel.assign_project_role(str(campaign_id), data.new_owner_id, "owner")
+    await zitadel.remove_project_role(
+        settings.zitadel_project_id,
+        data.new_owner_id,
+        target_member.role or "viewer",
+        org_id=zitadel_org_id,
+    )
+    await zitadel.assign_project_role(
+        settings.zitadel_project_id,
+        data.new_owner_id,
+        "owner",
+        org_id=zitadel_org_id,
+    )
 
     # Update campaign.created_by
     campaign.created_by = data.new_owner_id
+
+    # Persist role changes in DB
+    current_owner_member = await db.execute(
+        select(CampaignMember).where(
+            CampaignMember.user_id == user.id,
+            CampaignMember.campaign_id == campaign_id,
+        )
+    )
+    owner_member = current_owner_member.scalar_one_or_none()
+    if not owner_member:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Current owner member record not found",
+        )
+    owner_member.role = "admin"
+    target_member.role = "owner"
+
     await db.commit()
 
     return {

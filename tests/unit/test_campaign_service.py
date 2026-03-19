@@ -124,6 +124,7 @@ class TestCampaignService:
         z.deactivate_organization = AsyncMock()
         z.delete_organization = AsyncMock()
         z.assign_project_role = AsyncMock()
+        z.ensure_project_grant = AsyncMock(return_value="grant-123")
         return z
 
     @pytest.fixture
@@ -178,9 +179,19 @@ class TestCampaignService:
         )
 
         mock_zitadel.create_organization.assert_awaited_once_with("New Campaign")
+        mock_zitadel.ensure_project_grant.assert_awaited_once()
+        mock_zitadel.assign_project_role.assert_awaited_once()
         mock_db.add.assert_called()
         mock_db.commit.assert_awaited()
         assert isinstance(result, Campaign)
+
+        # Verify CampaignMember was added with role="owner"
+        added_objects = [call.args[0] for call in mock_db.add.call_args_list]
+        from app.models.campaign_member import CampaignMember
+
+        member_adds = [o for o in added_objects if isinstance(o, CampaignMember)]
+        assert len(member_adds) == 1
+        assert member_adds[0].role == "owner"
 
     async def test_create_campaign_compensating_transaction(
         self, mock_db, mock_zitadel, mock_user
@@ -237,6 +248,8 @@ class TestCampaignService:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_campaign
         mock_db.execute = AsyncMock(return_value=mock_result)
+        # delete_campaign calls db.scalar() for sibling count check
+        mock_db.scalar = AsyncMock(return_value=0)
 
         await service.delete_campaign(
             db=mock_db,

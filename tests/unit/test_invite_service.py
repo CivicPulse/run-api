@@ -187,16 +187,30 @@ class TestAcceptInvite:
 
         # First call: validate_invite lookup
         # Second call: member lookup (None = no existing member)
+        # Third call: campaign lookup for ZITADEL org context
         validate_result = MagicMock()
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(side_effect=[validate_result, member_result])
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[validate_result, member_result, campaign_result]
+        )
 
         result = await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
 
         assert result.accepted_at is not None
         mock_db.add.assert_called_once()  # New CampaignMember
+        # Verify new member has role from invite
+        added_member = mock_db.add.call_args.args[0]
+        from app.models.campaign_member import CampaignMember
+
+        assert isinstance(added_member, CampaignMember)
+        assert added_member.role == invite.role
         mock_zitadel.assign_project_role.assert_awaited_once()
         mock_db.commit.assert_awaited_once()
 

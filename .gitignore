@@ -137,7 +137,9 @@ celerybeat.pid
 
 # Environments
 .env
+.env.zitadel
 .env.run-api.secrets
+.zitadel-data/
 .envrc
 .venv
 env/
@@ -206,6 +208,7 @@ cython_debug/
 # Frontend SPA
 web/node_modules/
 web/dist/
+static/
 
 # Marimo
 marimo/_static/
@@ -219,7 +222,17 @@ certs/
 # Project local data and artifacts
 data/
 screenshots/
-.claude/
+.claude/settings.local.json
+.claude/worktrees
+
 
 # hatchkit
 .hatchkit/cache/
+screenshot-volunteers.png
+verify-01-homepage.png
+screenshot*.png
+verify*.png
+e2e-01-empty-campaigns-mobile.png
+e2e*.png
+.playwright-mcp
+node_modules
