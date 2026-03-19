@@ -271,8 +271,6 @@ async def claim_entries(
             detail=str(exc),
             type="claim-failed",
         )
-    await db.commit()
-
     # Resolve voter names (same pattern as list_call_list_entries)
     from sqlalchemy import select as sa_select
 
@@ -288,6 +286,9 @@ async def claim_entries(
         )
         for row in voters_result.all():
             voter_names[row.id] = f"{row.first_name} {row.last_name}".strip()
+
+    # Commit after enrichment so a failure above rolls back the claims
+    await db.commit()
 
     items = []
     for entry in entries:

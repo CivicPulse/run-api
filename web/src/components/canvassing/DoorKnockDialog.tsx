@@ -70,7 +70,7 @@ export function DoorKnockDialog({
   })
 
   const onSubmit = (values: FormValues) => {
-    if (!entryId) return
+    if (!entryId || !voterId) return
     record.mutate(
       {
         walk_list_entry_id: entryId,

@@ -91,7 +91,10 @@ async def ensure_user_synced(
     if org:
         # Find campaigns belonging to this organization
         campaign_result = await db.execute(
-            select(Campaign).where(Campaign.organization_id == org.id).limit(1)
+            select(Campaign)
+            .where(Campaign.organization_id == org.id)
+            .order_by(Campaign.created_at.desc())
+            .limit(1)
         )
         campaign = campaign_result.scalar_one_or_none()
         if campaign is None:
@@ -160,7 +163,10 @@ async def get_campaign_from_token(
 
     if org:
         result = await db.execute(
-            select(Campaign).where(Campaign.organization_id == org.id).limit(1)
+            select(Campaign)
+            .where(Campaign.organization_id == org.id)
+            .order_by(Campaign.created_at.desc())
+            .limit(1)
         )
     else:
         result = await db.execute(

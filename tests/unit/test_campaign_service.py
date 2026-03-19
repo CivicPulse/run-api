@@ -114,7 +114,12 @@ class TestCampaignService:
         db.commit = AsyncMock()
         db.rollback = AsyncMock()
         db.refresh = AsyncMock()
-        db.execute = AsyncMock()
+        # Default execute return supports scalar_one_or_none().
+        default_result = MagicMock()
+        default_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=default_result)
+        # _generate_unique_slug uses db.scalar() to check for slug existence
+        db.scalar = AsyncMock(return_value=None)
         return db
 
     @pytest.fixture

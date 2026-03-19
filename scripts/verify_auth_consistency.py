@@ -52,7 +52,7 @@ def _get_engine():
             from app.core.config import settings
 
             url = settings.database_url_sync
-        except Exception:
+        except ImportError:
             url = "postgresql+psycopg2://postgres:postgres@localhost:5432/run_api"
     return create_engine(url, future=True)
 
@@ -108,23 +108,29 @@ def verify() -> bool:
         # ------------------------------------------------------------------
         bad_owner_rows = conn.execute(
             text("""
-                SELECT c.id, c.name, c.created_by, cm.role
+                SELECT c.id, c.name, c.created_by, cm.user_id, cm.role
                 FROM campaigns c
-                JOIN campaign_members cm
+                LEFT JOIN campaign_members cm
                      ON cm.campaign_id = c.id
                     AND cm.user_id = c.created_by
                 WHERE c.status != 'deleted'
-                  AND (cm.role IS NULL OR cm.role != 'owner')
+                  AND (cm.user_id IS NULL OR cm.role IS NULL OR cm.role != 'owner')
                 ORDER BY c.name
             """)
         ).fetchall()
 
         for row in bad_owner_rows:
-            campaign_id, campaign_name, creator_id, current_role = row
-            issues.append(
-                f"WARNING: Campaign '{campaign_name}' (id={campaign_id}) creator "
-                f"{creator_id} has role={current_role!r} (expected 'owner')"
-            )
+            campaign_id, campaign_name, creator_id, member_user_id, current_role = row
+            if member_user_id is None:
+                issues.append(
+                    f"WARNING: Campaign '{campaign_name}' (id={campaign_id}) creator "
+                    f"{creator_id} is missing a campaign_members row (expected 'owner')"
+                )
+            else:
+                issues.append(
+                    f"WARNING: Campaign '{campaign_name}' (id={campaign_id}) creator "
+                    f"{creator_id} has role={current_role!r} (expected 'owner')"
+                )
 
         # ------------------------------------------------------------------
         # Check 4: CampaignMembers with NULL role (informational)

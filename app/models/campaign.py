@@ -51,6 +51,9 @@ class Campaign(Base):
         Enum(CampaignStatus, name="campaign_status", native_enum=False),
         default=CampaignStatus.ACTIVE,
     )
+    slug: Mapped[str | None] = mapped_column(
+        String(255), unique=True, index=True, nullable=True
+    )
     candidate_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     party_affiliation: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)

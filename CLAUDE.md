@@ -33,7 +33,7 @@ Script: `scripts/seed.py`
 ### TLS Configuration
 
 For local dev, `.env` should have:
-```
+```bash
 ZITADEL_TLS_MODE=disabled
 ZITADEL_EXTERNAL_SECURE=false
 ZITADEL_DOMAIN=localhost
@@ -41,7 +41,7 @@ DISABLE_TLS=true
 ```
 
 For Tailscale access, switch to:
-```
+```bash
 ZITADEL_TLS_MODE=enabled
 ZITADEL_EXTERNAL_SECURE=true
 ZITADEL_DOMAIN=dev.tailb56d83.ts.net

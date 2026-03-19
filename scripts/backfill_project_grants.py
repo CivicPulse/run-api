@@ -45,8 +45,12 @@ def _get_sync_engine():
             from app.core.config import settings
 
             url = settings.database_url_sync
-        except Exception:
-            url = "postgresql+psycopg2://postgres:postgres@localhost:5432/run_api"
+        except ImportError:
+            pass
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL_SYNC is not configured and app settings could not be loaded"
+        )
     return create_engine(url, future=True)
 
 

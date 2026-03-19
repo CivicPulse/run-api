@@ -82,7 +82,9 @@ async def create_zitadel_user(
     email: str,
 ) -> str | None:
     """Create a human user in ZITADEL and return their user ID."""
-    first_name, last_name = display_name.split(" ", 1)
+    parts = display_name.split(" ", 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else parts[0]
 
     async with httpx.AsyncClient() as client:
         # Use v2 user API

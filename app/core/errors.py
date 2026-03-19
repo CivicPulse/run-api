@@ -48,6 +48,22 @@ class VoterTagNotFoundError(Exception):
         super().__init__(f"Voter tag {tag_id} not found")
 
 
+class OrganizationNotFoundError(Exception):
+    """Raised when an organization cannot be found."""
+
+    def __init__(self, organization_id: uuid.UUID) -> None:
+        self.organization_id = organization_id
+        super().__init__(f"Organization {organization_id} not found")
+
+
+class AlreadyRegisteredError(Exception):
+    """Raised when a user is already registered for a campaign."""
+
+    def __init__(self, campaign_id: uuid.UUID) -> None:
+        self.campaign_id = campaign_id
+        super().__init__(f"Already registered for campaign {campaign_id}")
+
+
 class ZitadelUnavailableError(Exception):
     """Raised when ZITADEL is unreachable (503)."""
 
@@ -103,6 +119,25 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Voter Tag Not Found",
             detail=str(exc),
             type="voter-tag-not-found",
+        )
+
+    @app.exception_handler(OrganizationNotFoundError)
+    async def organization_not_found_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Organization Not Found",
+            detail=str(exc),
+            type="organization-not-found",
+        )
+
+    @app.exception_handler(AlreadyRegisteredError)
+    async def already_registered_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_409_CONFLICT,
+            title="Already Registered",
+            detail=str(exc),
+            type="volunteer-already-registered",
+            campaign_id=str(exc.campaign_id),
         )
 
     @app.exception_handler(ZitadelUnavailableError)

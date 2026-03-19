@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,8 +23,6 @@ from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
 from app.schemas.member import MemberResponse, OwnershipTransfer, RoleUpdate
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -140,11 +138,12 @@ async def update_member_role(
         )
     zitadel_org_id = campaign.zitadel_org_id
 
-    # Remove old role and assign new one in ZITADEL
-    await zitadel.remove_project_role(
+    # Remove all existing roles then assign the new one in ZITADEL
+    # Using remove_all ensures we clean up even if DB role diverged
+    old_role = member.role or "viewer"
+    await zitadel.remove_all_project_roles(
         settings.zitadel_project_id,
         member.user_id,
-        member.role or "viewer",
         org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
@@ -154,9 +153,40 @@ async def update_member_role(
         org_id=zitadel_org_id,
     )
 
-    # Persist role change in DB
+    # Persist role change in DB (with compensating rollback on failure)
     member.role = data.role
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as commit_exc:
+        logger.error(
+            "DB commit failed during role update for user {} in campaign {}: {}",
+            member.user_id,
+            campaign_id,
+            commit_exc,
+        )
+        await db.rollback()
+        # Revert ZITADEL to the old role
+        try:
+            await zitadel.remove_all_project_roles(
+                settings.zitadel_project_id,
+                member.user_id,
+                org_id=zitadel_org_id,
+            )
+            await zitadel.assign_project_role(
+                settings.zitadel_project_id,
+                member.user_id,
+                old_role,
+                org_id=zitadel_org_id,
+            )
+        except Exception as cleanup_exc:
+            logger.error(
+                "Failed to revert ZITADEL role for user {} in campaign {} "
+                "after DB commit failure: {}",
+                member.user_id,
+                campaign_id,
+                cleanup_exc,
+            )
+        raise
 
     display_name = member_user.display_name or ""
     email = member_user.email or ""
@@ -211,10 +241,9 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_project_role(
+    await zitadel.remove_all_project_roles(
         settings.zitadel_project_id,
         member_user_id,
-        member.role or "viewer",
         org_id=campaign.zitadel_org_id if campaign else None,
     )
     await db.delete(member)
@@ -263,6 +292,7 @@ async def transfer_ownership(
 
     zitadel = request.app.state.zitadel_service
     zitadel_org_id = campaign.zitadel_org_id
+    target_old_role = target_member.role or "viewer"
 
     # Demote current owner to admin in ZITADEL
     await zitadel.remove_project_role(
@@ -282,7 +312,7 @@ async def transfer_ownership(
     await zitadel.remove_project_role(
         settings.zitadel_project_id,
         data.new_owner_id,
-        target_member.role or "viewer",
+        target_old_role,
         org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
@@ -311,7 +341,51 @@ async def transfer_ownership(
     owner_member.role = "admin"
     target_member.role = "owner"
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as commit_exc:
+        logger.error(
+            "DB commit failed during ownership transfer for campaign {}: {}",
+            campaign.id,
+            commit_exc,
+        )
+        await db.rollback()
+        # Reverse ZITADEL changes to restore original state
+        try:
+            # Undo step 1: remove admin from old owner, restore owner role
+            await zitadel.remove_project_role(
+                settings.zitadel_project_id,
+                user.id,
+                "admin",
+                org_id=zitadel_org_id,
+            )
+            await zitadel.assign_project_role(
+                settings.zitadel_project_id,
+                user.id,
+                "owner",
+                org_id=zitadel_org_id,
+            )
+            # Undo step 2: remove owner from target, restore target's old role
+            await zitadel.remove_project_role(
+                settings.zitadel_project_id,
+                data.new_owner_id,
+                "owner",
+                org_id=zitadel_org_id,
+            )
+            await zitadel.assign_project_role(
+                settings.zitadel_project_id,
+                data.new_owner_id,
+                target_old_role,
+                org_id=zitadel_org_id,
+            )
+        except Exception as cleanup_exc:
+            logger.error(
+                "Failed to roll back ZITADEL roles after ownership transfer "
+                "commit failure for campaign {}: {}",
+                campaign.id,
+                cleanup_exc,
+            )
+        raise
 
     return {
         "message": "Ownership transferred successfully",

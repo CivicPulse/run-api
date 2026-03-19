@@ -124,6 +124,7 @@ def mock_zitadel():
     z = AsyncMock()
     z.assign_project_role = AsyncMock()
     z.remove_project_role = AsyncMock()
+    z.remove_all_project_roles = AsyncMock()
     return z
 
 
@@ -202,10 +203,9 @@ class TestUpdateMemberRole:
 
         assert resp.status_code == 200
         assert resp.json()["role"] == "manager"
-        mock_zitadel.remove_project_role.assert_awaited_once_with(
+        mock_zitadel.remove_all_project_roles.assert_awaited_once_with(
             "",  # settings.zitadel_project_id (default empty in tests)
             "member-1",
-            "viewer",  # member.role is None → defaults to "viewer"
             org_id=ORG_ID,
         )
         mock_zitadel.assign_project_role.assert_awaited_once_with(
@@ -357,3 +357,62 @@ class TestTransferOwnership:
             )
 
         assert resp.status_code == 403
+
+    async def test_commit_failure_triggers_zitadel_rollback(
+        self, mock_db, mock_zitadel
+    ):
+        """DB commit failure should trigger compensating ZITADEL role reversal."""
+        user = _make_user(user_id="owner-1", role=CampaignRole.OWNER)
+        campaign = _make_campaign(created_by="owner-1")
+        target_member = _make_member(user_id="new-owner", role="manager")
+        owner_member = _make_member(user_id="owner-1", role="owner")
+        app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db)
+
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        target_result = MagicMock()
+        target_result.scalar_one_or_none.return_value = target_member
+        owner_member_result = MagicMock()
+        owner_member_result.scalar_one_or_none.return_value = owner_member
+        mock_db.execute = AsyncMock(
+            side_effect=[campaign_result, target_result, owner_member_result]
+        )
+
+        # Make db.commit() raise to simulate a DB failure
+        mock_db.commit = AsyncMock(side_effect=Exception("DB write failed"))
+        mock_db.rollback = AsyncMock()
+
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/transfer-ownership",
+                json={"new_owner_id": "new-owner"},
+            )
+
+        # The endpoint should return 500 due to the unhandled re-raise
+        assert resp.status_code == 500
+
+        # DB rollback should have been called
+        mock_db.rollback.assert_awaited_once()
+
+        # Compensating ZITADEL calls: 2 original + 2 rollback removes,
+        # 2 original + 2 rollback assigns = 4 each total
+        assert mock_zitadel.remove_project_role.await_count == 4
+        assert mock_zitadel.assign_project_role.await_count == 4
+
+        # Verify rollback calls restore original state:
+        # Undo step 1: remove admin from old owner, restore owner
+        mock_zitadel.remove_project_role.assert_any_await(
+            "", "owner-1", "admin", org_id=ORG_ID
+        )
+        mock_zitadel.assign_project_role.assert_any_await(
+            "", "owner-1", "owner", org_id=ORG_ID
+        )
+        # Undo step 2: remove owner from target, restore target's old role
+        mock_zitadel.remove_project_role.assert_any_await(
+            "", "new-owner", "owner", org_id=ORG_ID
+        )
+        mock_zitadel.assign_project_role.assert_any_await(
+            "", "new-owner", "manager", org_id=ORG_ID
+        )

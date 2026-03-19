@@ -177,6 +177,7 @@ class InviteService:
             )
         )
         member = member_result.scalar_one_or_none()
+        old_role: str | None = None
         if member is None:
             member = CampaignMember(
                 user_id=user.id,
@@ -185,24 +186,36 @@ class InviteService:
             )
             db.add(member)
         else:
-            # Update existing member's role
+            old_role = member.role
             member.role = invite.role
 
-        # Look up campaign for ZITADEL context
+        # Look up campaign for ZITADEL context — fail fast if missing
         campaign_result = await db.execute(
             select(Campaign).where(Campaign.id == invite.campaign_id)
         )
         campaign = campaign_result.scalar_one_or_none()
-        zitadel_org_id = campaign.zitadel_org_id if campaign else None
+        if campaign is None:
+            msg = f"Campaign {invite.campaign_id} not found"
+            raise ValueError(msg)
+        zitadel_org_id = campaign.zitadel_org_id
 
         project_grant_id = None
-        if campaign and campaign.organization_id:
+        if campaign.organization_id:
             org_result = await db.execute(
                 select(Organization).where(Organization.id == campaign.organization_id)
             )
             org = org_result.scalar_one_or_none()
             if org:
                 project_grant_id = org.zitadel_project_grant_id
+
+        # Remove prior ZITADEL role if member already existed with a different role
+        if old_role and old_role != invite.role:
+            await zitadel.remove_project_role(
+                settings.zitadel_project_id,
+                user.id,
+                old_role,
+                org_id=zitadel_org_id,
+            )
 
         # Assign ZITADEL project role
         await zitadel.assign_project_role(

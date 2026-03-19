@@ -189,6 +189,8 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
             ),  # campaign lookup fallback (None)
         ]
     )
+    # _generate_unique_slug uses db.scalar() to check for slug existence
+    mock_db.scalar = AsyncMock(return_value=None)
 
     async def fake_refresh(obj):
         if isinstance(obj, Campaign):
