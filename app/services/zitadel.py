@@ -78,6 +78,15 @@ class ZitadelService:
             raise ZitadelUnavailableError(
                 "Cannot reach ZITADEL for token exchange"
             ) from exc
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                "ZITADEL token request returned {}: {}",
+                exc.response.status_code,
+                exc.response.text[:200],
+            )
+            raise ZitadelUnavailableError(
+                f"ZITADEL token exchange failed with status {exc.response.status_code}"
+            ) from exc
 
         self._token = data["access_token"]
         self._token_expires_at = now + data.get("expires_in", 3600) - 60
@@ -241,6 +250,7 @@ class ZitadelService:
         role: str,
         *,
         org_id: str | None = None,
+        project_grant_id: str | None = None,
     ) -> None:
         """Remove a project role grant from a user.
 
@@ -250,6 +260,8 @@ class ZitadelService:
             role: The role key to remove (used to find the grant).
             org_id: Optional organization ID. When provided, sets the
                 ``x-zitadel-orgid`` header so the request is scoped to that org.
+            project_grant_id: Optional project grant ID. When provided, only
+                grants matching this ID are considered for removal.
 
         Raises:
             ZitadelUnavailableError: On connection error or 5xx.
@@ -269,14 +281,35 @@ class ZitadelService:
                 response.raise_for_status()
                 grants = response.json().get("result", [])
 
+                # Scope to a specific project grant when provided
+                if project_grant_id:
+                    grants = [
+                        g
+                        for g in grants
+                        if g.get("grantId") == project_grant_id
+                        or g.get("id") == project_grant_id
+                    ]
+
+                matched = False
                 for grant in grants:
                     if role in grant.get("roleKeys", []):
+                        matched = True
                         grant_id = grant["id"]
                         del_resp = await client.delete(
                             f"{self.base_url}/management/v1/users/{user_id}/grants/{grant_id}",
                             headers=headers,
                         )
                         del_resp.raise_for_status()
+
+                if not matched:
+                    logger.warning(
+                        "No grant with role '{}' found for user {} in project {} "
+                        "(found {} grants, none matched)",
+                        role,
+                        user_id,
+                        project_id,
+                        len(grants),
+                    )
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
             logger.error("ZITADEL remove_project_role failed: {}", exc)
             raise ZitadelUnavailableError(

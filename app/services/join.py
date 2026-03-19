@@ -202,6 +202,7 @@ class JoinService:
                     user.id,
                     "volunteer",
                     org_id=campaign.zitadel_org_id,
+                    project_grant_id=project_grant_id,
                 )
             except Exception as cleanup_exc:
                 logger.error(

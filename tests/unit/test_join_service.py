@@ -355,6 +355,35 @@ class TestRegisterVolunteer:
         zitadel.remove_project_role.assert_awaited_once()
 
     @pytest.mark.anyio
+    async def test_rollback_passes_project_grant_id(self):
+        """Compensating rollback must scope remove_project_role to the specific grant."""
+        service = JoinService()
+        campaign = _make_campaign()
+        org = _make_org()  # has zitadel_project_grant_id = "grant-abc"
+        user = _make_user()
+        zitadel = AsyncMock()
+        zitadel.assign_project_role = AsyncMock()
+        zitadel.remove_project_role = AsyncMock()
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        db.scalar = AsyncMock(side_effect=[None, org])
+        db.add = MagicMock()
+        db.commit = AsyncMock(side_effect=RuntimeError("DB commit failed"))
+        db.refresh = AsyncMock()
+
+        with pytest.raises(RuntimeError, match="DB commit failed"):
+            await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        # Compensating rollback should pass project_grant_id
+        zitadel.remove_project_role.assert_awaited_once()
+        call_kwargs = zitadel.remove_project_role.call_args.kwargs
+        assert call_kwargs.get("project_grant_id") is not None
+        assert call_kwargs["project_grant_id"] == "grant-abc"
+
+    @pytest.mark.anyio
     async def test_integrity_error_on_flush_raises_already_registered(self):
         """Concurrent registration race: IntegrityError on flush triggers
         rollback and raises ValueError with already_registered prefix."""
