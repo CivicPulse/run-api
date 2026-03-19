@@ -87,7 +87,7 @@ class CampaignService:
             )
             org = org_result.scalar_one_or_none()
             if org is None:
-                raise ValueError(f"Organization {organization_id} not found")
+                raise CampaignNotFoundError(f"Organization {organization_id} not found")
             org_id = org.zitadel_org_id
             project_grant_id = (
                 org.zitadel_project_grant_id

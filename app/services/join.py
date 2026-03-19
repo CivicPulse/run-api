@@ -142,10 +142,26 @@ class JoinService:
         # Step 5 — assign ZITADEL project role
         #   Resolve the project grant ID from the Organization record so the
         #   role is scoped to the campaign's ZITADEL org.
-        org = await db.scalar(
-            select(Organization).where(Organization.id == campaign.organization_id)
-        )
-        project_grant_id: str | None = org.zitadel_project_grant_id if org else None
+        project_grant_id: str | None = None
+        if campaign.organization_id:
+            org = await db.scalar(
+                select(Organization).where(Organization.id == campaign.organization_id)
+            )
+            if org:
+                project_grant_id = org.zitadel_project_grant_id
+
+        if not project_grant_id and campaign.zitadel_org_id:
+            # Organization row missing or not yet backfilled — try to resolve
+            # the grant ID on the fly so the role is properly scoped.
+            project_grant_id = await zitadel.ensure_project_grant(
+                settings.zitadel_project_id,
+                campaign.zitadel_org_id,
+                ["volunteer", "manager", "admin", "owner"],
+            )
+            logger.warning(
+                "project_grant_id resolved via ensure_project_grant for campaign {}",
+                campaign.id,
+            )
 
         # ZITADEL role assignment happens BEFORE commit for atomicity.
         # If this fails, the exception propagates and the DB transaction rolls back.

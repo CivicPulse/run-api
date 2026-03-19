@@ -124,6 +124,7 @@ def mock_zitadel():
     z = AsyncMock()
     z.assign_project_role = AsyncMock()
     z.remove_project_role = AsyncMock()
+    z.remove_all_project_roles = AsyncMock()
     return z
 
 
@@ -202,10 +203,9 @@ class TestUpdateMemberRole:
 
         assert resp.status_code == 200
         assert resp.json()["role"] == "manager"
-        mock_zitadel.remove_project_role.assert_awaited_once_with(
+        mock_zitadel.remove_all_project_roles.assert_awaited_once_with(
             "",  # settings.zitadel_project_id (default empty in tests)
             "member-1",
-            "viewer",  # member.role is None → defaults to "viewer"
             org_id=ORG_ID,
         )
         mock_zitadel.assign_project_role.assert_awaited_once_with(

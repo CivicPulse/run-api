@@ -92,7 +92,7 @@ Fix any failures introduced by the changes. If available, use the SonarQube MCP 
 
 Commit with a summary-style message grouped by theme, not per-thread:
 
-```
+```text
 fix(test): address PR review feedback
 
 - batch user deletes in E2E cleanup for performance

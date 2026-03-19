@@ -140,11 +140,11 @@ async def update_member_role(
         )
     zitadel_org_id = campaign.zitadel_org_id
 
-    # Remove old role and assign new one in ZITADEL
-    await zitadel.remove_project_role(
+    # Remove all existing roles then assign the new one in ZITADEL
+    # Using remove_all ensures we clean up even if DB role diverged
+    await zitadel.remove_all_project_roles(
         settings.zitadel_project_id,
         member.user_id,
-        member.role or "viewer",
         org_id=zitadel_org_id,
     )
     await zitadel.assign_project_role(
@@ -211,10 +211,9 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_project_role(
+    await zitadel.remove_all_project_roles(
         settings.zitadel_project_id,
         member_user_id,
-        member.role or "viewer",
         org_id=campaign.zitadel_org_id if campaign else None,
     )
     await db.delete(member)

@@ -34,9 +34,9 @@ class TestGenerateSlug:
     def test_strips_both_edges(self):
         assert generate_slug("  --Hello World--  ") == "hello-world"
 
-    def test_all_non_alphanum_returns_empty(self):
-        assert generate_slug("---") == ""
-        assert generate_slug("!!!") == ""
+    def test_all_non_alphanum_returns_fallback(self):
+        assert generate_slug("---") == "campaign"
+        assert generate_slug("!!!") == "campaign"
 
     def test_preserves_digits(self):
         assert generate_slug("District 5 Campaign") == "district-5-campaign"
@@ -50,12 +50,13 @@ class TestGenerateSlug:
     def test_mixed_case(self):
         assert generate_slug("CamelCaseSlug") == "camelcaseslug"
 
-    def test_unicode_non_ascii_treated_as_separator(self):
-        # Non-ASCII chars are not alphanumeric in [a-z0-9], so they become hyphens.
-        assert generate_slug("café au lait") == "caf-au-lait"
+    def test_unicode_transliterated_to_ascii(self):
+        # Accented chars are transliterated to ASCII base letters.
+        assert generate_slug("café au lait") == "cafe-au-lait"
+        assert generate_slug("José García") == "jose-garcia"
 
     def test_empty_string(self):
-        assert generate_slug("") == ""
+        assert generate_slug("") == "campaign"
 
 
 # ---------------------------------------------------------------------------
@@ -92,15 +93,15 @@ class TestGenerateUniqueSlug:
         assert result == "my-campaign-101"
         assert result not in existing
 
-    def test_empty_name_with_empty_existing(self):
-        # Empty base slug — we get empty string, which is technically unique
+    def test_non_alphanum_name_uses_fallback(self):
+        # Non-alphanumeric names fall back to "campaign"
         result = generate_unique_slug("---", set())
-        assert result == ""
+        assert result == "campaign"
 
-    def test_empty_name_with_collision_on_empty_string(self):
-        # The empty slug itself is in existing_slugs
-        result = generate_unique_slug("---", {""})
-        assert result == "-2"
+    def test_non_alphanum_name_with_collision(self):
+        # "campaign" fallback collides — gets suffixed
+        result = generate_unique_slug("---", {"campaign"})
+        assert result == "campaign-2"
 
     def test_does_not_mutate_existing_slugs(self):
         existing = {"campaign"}

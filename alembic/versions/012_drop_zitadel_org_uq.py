@@ -24,23 +24,29 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Check if the constraint exists before attempting to drop it.
-    # On fresh databases the constraint may have a different auto-generated name
-    # or may not exist if the column was previously altered.
+    # Find unique constraints on campaigns whose column set is exactly
+    # {zitadel_org_id}.  Using an exact column-set match is more
+    # deterministic than a LIKE on the constraint name.
     conn = op.get_bind()
-    result = conn.execute(
-        text(
-            "SELECT conname FROM pg_constraint "
-            "WHERE conrelid = 'campaigns'::regclass "
-            "AND contype = 'u' "
-            "AND conname LIKE '%zitadel_org_id%'"
-        )
-    ).fetchone()
-    if result:
-        op.drop_constraint(result[0], "campaigns", type_="unique")
-    else:
-        # Constraint doesn't exist — nothing to drop
-        pass
+    rows = conn.execute(
+        text("""
+            SELECT c.conname
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            JOIN unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord) ON TRUE
+            JOIN pg_attribute a
+              ON a.attrelid = t.oid
+             AND a.attnum = k.attnum
+            WHERE n.nspname = current_schema()
+              AND t.relname = 'campaigns'
+              AND c.contype = 'u'
+            GROUP BY c.conname
+            HAVING array_agg(a.attname ORDER BY k.ord) = ARRAY['zitadel_org_id']
+        """)
+    ).fetchall()
+    for (conname,) in rows:
+        op.drop_constraint(conname, "campaigns", type_="unique")
 
 
 def downgrade() -> None:
