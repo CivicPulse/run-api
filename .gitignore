@@ -234,3 +234,4 @@ screenshot*.png
 verify*.png
 e2e-01-empty-campaigns-mobile.png
 e2e*.png
+.playwright-mcp
