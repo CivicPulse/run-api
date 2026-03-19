@@ -57,7 +57,8 @@ class JWKSManager:
         issuer_host = urlparse(self.issuer).hostname or ""
         issuer_netloc = urlparse(self.issuer).netloc or ""
         self._verify_tls = base_host == issuer_host
-        # Send Host header matching the issuer (with port) when using an internal base URL
+        # Send Host header matching the issuer (with port)
+        # when using an internal base URL
         self._extra_headers: dict[str, str] = (
             {"Host": issuer_netloc} if base_host != issuer_host else {}
         )

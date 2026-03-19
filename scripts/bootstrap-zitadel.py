@@ -15,7 +15,9 @@ import httpx
 
 ZITADEL_DOMAIN = os.environ.get("ZITADEL_DOMAIN", "localhost")
 ZITADEL_EXTERNAL_PORT = os.environ.get("ZITADEL_EXTERNAL_PORT", "8080")
-ZITADEL_EXTERNAL_SECURE = os.environ.get("ZITADEL_EXTERNAL_SECURE", "false").lower() == "true"
+ZITADEL_EXTERNAL_SECURE = (
+    os.environ.get("ZITADEL_EXTERNAL_SECURE", "false").lower() == "true"
+)
 # Internal URL for container-to-container calls; scheme follows TLS mode
 _INTERNAL_SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
 ZITADEL_URL = os.environ.get("ZITADEL_URL", f"{_INTERNAL_SCHEME}://zitadel:8080")
@@ -97,7 +99,10 @@ def api_call(
         print(f"  {path} -> already exists (409), skipping")
         return None
     if resp.status_code >= 400:
-        print(f"ERROR: {method} {path} -> {resp.status_code}: {resp.text}", file=sys.stderr)
+        print(
+            f"ERROR: {method} {path} -> {resp.status_code}: {resp.text}",
+            file=sys.stderr,
+        )
         resp.raise_for_status()
     return resp.json() if resp.content else {}
 
@@ -192,10 +197,7 @@ def add_project_roles(client: httpx.Client, pat: str, project_id: str) -> None:
         f"/management/v1/projects/{project_id}/roles/_bulk",
         pat,
         json={
-            "roles": [
-                {"key": role, "displayName": role.capitalize()}
-                for role in ROLES
-            ]
+            "roles": [{"key": role, "displayName": role.capitalize()} for role in ROLES]
         },
         allow_conflict=True,
     )
@@ -236,16 +238,20 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
         "http://localhost:8000",
     ]
     if ZITADEL_DOMAIN != "localhost":
-        redirect_uris.extend([
-            f"http://{ZITADEL_DOMAIN}:5173/callback",
-            f"https://{ZITADEL_DOMAIN}:5173/callback",
-            f"http://{ZITADEL_DOMAIN}:8000/callback",
-            f"https://{ZITADEL_DOMAIN}:8000/callback",
-        ])
-        post_logout_uris.extend([
-            f"http://{ZITADEL_DOMAIN}:5173",
-            f"https://{ZITADEL_DOMAIN}:5173",
-        ])
+        redirect_uris.extend(
+            [
+                f"http://{ZITADEL_DOMAIN}:5173/callback",
+                f"https://{ZITADEL_DOMAIN}:5173/callback",
+                f"http://{ZITADEL_DOMAIN}:8000/callback",
+                f"https://{ZITADEL_DOMAIN}:8000/callback",
+            ]
+        )
+        post_logout_uris.extend(
+            [
+                f"http://{ZITADEL_DOMAIN}:5173",
+                f"https://{ZITADEL_DOMAIN}:5173",
+            ]
+        )
 
     data = api_call(
         client,
@@ -453,9 +459,7 @@ def main() -> None:
         spa_client_id = create_spa_app(client, pat, project_id)
 
         print("\nStep 7: Generating service account secret...")
-        api_client_id, api_client_secret = generate_machine_secret(
-            client, pat, user_id
-        )
+        api_client_id, api_client_secret = generate_machine_secret(client, pat, user_id)
 
         print("\nStep 8: Granting admin user role on project...")
         admin_id = get_admin_user_id(client, pat)
@@ -467,7 +471,7 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("Bootstrap complete!")
     print(f"  ZITADEL Console: {EXTERNAL_ISSUER}")
-    print(f"  Admin login: admin@localhost / Admin1234!")
+    print("  Admin login: admin@localhost / Admin1234!")
     print("=" * 60)
 
 

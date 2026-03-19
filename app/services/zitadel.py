@@ -31,7 +31,8 @@ class ZitadelService:
         self.client_secret = client_secret
         self._token: str | None = None
         self._token_expires_at: float = 0
-        # Send Host header matching the issuer (with port) when using an internal base URL
+        # Send Host header matching the issuer (with port)
+        # when using an internal base URL
         issuer_host = urlparse(self.issuer).hostname or ""
         issuer_netloc = urlparse(self.issuer).netloc or ""
         base_host = urlparse(self.base_url).hostname or ""

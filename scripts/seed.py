@@ -437,7 +437,9 @@ async def main() -> None:  # noqa: C901, PLR0915
                 ),
                 registration_city="Macon",
                 registration_state="GA",
-                registration_zip=random.choice(["31201", "31204", "31206", "31210", "31211"]),
+                registration_zip=random.choice(
+                    ["31201", "31204", "31206", "31210", "31211"]
+                ),
                 registration_county="Bibb",
                 party=party,
                 precinct=PRECINCTS[i % len(PRECINCTS)],
