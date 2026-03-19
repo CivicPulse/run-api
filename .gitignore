@@ -139,6 +139,7 @@ celerybeat.pid
 .env
 .env.zitadel
 .env.run-api.secrets
+.zitadel-data/
 .envrc
 .venv
 env/
@@ -220,7 +221,9 @@ certs/
 # Project local data and artifacts
 data/
 screenshots/
-.claude/
+.claude/settings.local.json
+.claude/worktrees
+
 
 # hatchkit
 .hatchkit/cache/
