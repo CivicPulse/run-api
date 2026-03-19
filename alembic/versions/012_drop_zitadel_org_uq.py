@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from alembic import op
 

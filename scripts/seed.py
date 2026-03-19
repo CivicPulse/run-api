@@ -4,7 +4,9 @@ Populates the database with a complete, interconnected demo dataset including
 campaigns, voters, turfs, walk lists, surveys, volunteers, shifts, phone bank
 sessions, voter interactions, tags, DNC entries, invites, and addresses.
 
-Usage: docker compose exec api bash -c "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
+Usage:
+docker compose exec api bash -c \
+    "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
 """
 
 from __future__ import annotations
