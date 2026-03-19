@@ -356,7 +356,8 @@ class TestRegisterVolunteer:
 
     @pytest.mark.anyio
     async def test_rollback_passes_project_grant_id(self):
-        """Compensating rollback must scope remove_project_role to the specific grant."""
+        """Compensating rollback must scope remove_project_role
+        to the specific grant."""
         service = JoinService()
         campaign = _make_campaign()
         org = _make_org()  # has zitadel_project_grant_id = "grant-abc"
@@ -382,6 +383,65 @@ class TestRegisterVolunteer:
         call_kwargs = zitadel.remove_project_role.call_args.kwargs
         assert call_kwargs.get("project_grant_id") is not None
         assert call_kwargs["project_grant_id"] == "grant-abc"
+
+    @pytest.mark.anyio
+    async def test_uses_ensure_project_grant_when_org_missing_grant_id(self):
+        """When Organization.zitadel_project_grant_id is None,
+        falls back to ensure_project_grant."""
+        service = JoinService()
+        campaign = _make_campaign()
+        org = _make_org(zitadel_project_grant_id=None)
+        user = _make_user()
+        zitadel = AsyncMock()
+        zitadel.assign_project_role = AsyncMock()
+        zitadel.ensure_project_grant = AsyncMock(return_value="fallback-grant-id")
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        # 1. duplicate check → None, 2. org lookup → org (with grant_id=None)
+        db.scalar = AsyncMock(side_effect=[None, org])
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        zitadel.ensure_project_grant.assert_awaited_once()
+        # The fallback grant ID should be forwarded to assign_project_role
+        call_kwargs = zitadel.assign_project_role.call_args.kwargs
+        assert call_kwargs["project_grant_id"] == "fallback-grant-id"
+
+    @pytest.mark.anyio
+    async def test_uses_ensure_project_grant_when_no_organization(self):
+        """When campaign has no organization_id, uses zitadel_org_id fallback."""
+        service = JoinService()
+        campaign = _make_campaign(organization_id=None, zitadel_org_id="org-123")
+        user = _make_user()
+        zitadel = AsyncMock()
+        zitadel.assign_project_role = AsyncMock()
+        zitadel.ensure_project_grant = AsyncMock(return_value="dynamic-grant-id")
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        # Only duplicate check → None (no org lookup since organization_id is None)
+        db.scalar = AsyncMock(side_effect=[None])
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        # ensure_project_grant should be called with the campaign's zitadel_org_id
+        zitadel.ensure_project_grant.assert_awaited_once()
+        call_args = zitadel.ensure_project_grant.call_args
+        assert call_args[0][1] == "org-123"  # second positional arg is org_id
+        # The dynamic grant ID should be forwarded to assign_project_role
+        assign_kwargs = zitadel.assign_project_role.call_args.kwargs
+        assert assign_kwargs["project_grant_id"] == "dynamic-grant-id"
 
     @pytest.mark.anyio
     async def test_integrity_error_on_flush_raises_already_registered(self):

@@ -215,3 +215,19 @@ class TestRegisterVolunteer:
         assert resp.status_code == 409
         body = resp.json()
         assert body["campaign_id"] == campaign_id
+
+
+# ---------------------------------------------------------------------------
+# Unauthenticated access
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_register_unauthenticated_returns_401():
+    """POST /join/{slug}/register without auth should return 401."""
+    app = _make_test_app()
+    # Do NOT override get_current_user — leave real auth in place
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.post("/join/test-slug/register")
+    assert resp.status_code == 401
