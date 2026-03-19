@@ -49,6 +49,18 @@ class JWKSManager:
         self.oidc_config_url = f"{self._base_url}/.well-known/openid-configuration"
         self._jwks: dict | None = None
         self._jwks_uri: str | None = None
+        # Skip TLS verification for internal URLs where the cert hostname
+        # doesn't match (e.g. Docker service name vs Tailscale FQDN)
+        from urllib.parse import urlparse
+
+        base_host = urlparse(self._base_url).hostname or ""
+        issuer_host = urlparse(self.issuer).hostname or ""
+        issuer_netloc = urlparse(self.issuer).netloc or ""
+        self._verify_tls = base_host == issuer_host
+        # Send Host header matching the issuer (with port) when using an internal base URL
+        self._extra_headers: dict[str, str] = (
+            {"Host": issuer_netloc} if base_host != issuer_host else {}
+        )
 
     async def get_jwks(self, force_refresh: bool = False) -> dict:
         """Fetch JWKS, using cache unless force_refresh.
@@ -62,7 +74,9 @@ class JWKSManager:
         if self._jwks is not None and not force_refresh:
             return self._jwks
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(
+            verify=self._verify_tls, headers=self._extra_headers
+        ) as client:
             if self._jwks_uri is None or force_refresh:
                 oidc_resp = await client.get(self.oidc_config_url)
                 oidc_resp.raise_for_status()
@@ -277,10 +291,19 @@ async def get_current_user(
     if not email or not display_name:
         try:
             userinfo_base = settings.zitadel_base_url or settings.zitadel_issuer
-            async with httpx.AsyncClient() as client:
+            # Send Host header matching the issuer for internal base URLs
+            from urllib.parse import urlparse as _urlparse
+
+            _issuer_host = _urlparse(settings.zitadel_issuer).hostname or ""
+            _issuer_netloc = _urlparse(settings.zitadel_issuer).netloc or ""
+            _base_host = _urlparse(userinfo_base).hostname or ""
+            _headers: dict[str, str] = {"Authorization": f"Bearer {token}"}
+            if _base_host != _issuer_host:
+                _headers["Host"] = _issuer_netloc
+            async with httpx.AsyncClient(verify=False) as client:
                 userinfo_resp = await client.get(
                     f"{userinfo_base}/oidc/v1/userinfo",
-                    headers={"Authorization": f"Bearer {token}"},
+                    headers=_headers,
                 )
                 if userinfo_resp.status_code == 200:
                     userinfo = userinfo_resp.json()

@@ -21,7 +21,6 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
       S3_ENDPOINT_URL: http://minio:9000
       S3_PRESIGN_ENDPOINT_URL: http://localhost:9000
-      ZITADEL_BASE_URL: http://zitadel:8080
       DISABLE_TLS: ${DISABLE_TLS:-false}
     volumes:
       - ./app:/home/app/app
@@ -30,6 +29,7 @@ services:
       - ./alembic.ini:/home/app/alembic.ini
       - ./scripts:/home/app/scripts
       - ./certs:/home/app/certs:ro
+      - ./.zitadel-data:/home/app/zitadel-data:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,9 +95,9 @@ services:
       retries: 5
 
   zitadel:
-    image: ghcr.io/zitadel/zitadel:latest
+    image: ghcr.io/zitadel/zitadel:v2.71.6
     container_name: run-api-zitadel
-    command: start-from-init --masterkey "LocalDevMasterkeyExactly32Chars!" --tlsMode disabled
+    command: start-from-init --masterkey "LocalDevMasterkeyExactly32Chars!" --tlsMode ${ZITADEL_TLS_MODE:-disabled}
     environment:
       # Database connection
       ZITADEL_DATABASE_POSTGRES_HOST: zitadel-db
@@ -110,9 +110,12 @@ services:
       ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: zitadel
       ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
       # External URL configuration
-      ZITADEL_EXTERNALSECURE: "false"
-      ZITADEL_EXTERNALPORT: 8080
+      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNAL_SECURE:-false}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-localhost}
+      # TLS (only used when ZITADEL_TLS_MODE=enabled)
+      ZITADEL_TLS_CERTPATH: /certs/dev.tailb56d83.ts.net.crt
+      ZITADEL_TLS_KEYPATH: /certs/dev.tailb56d83.ts.net.key
       # First instance: admin user
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin@localhost
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "Admin1234!"
@@ -120,20 +123,18 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: run-api-service
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "Run API Service Account"
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
-      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel-pat/
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel-data/pat.txt
     ports:
       - "8080:8080"
     volumes:
-      - zitadel_pat:/zitadel-pat
+      - ./.zitadel-data:/zitadel-data
+      - ./certs:/certs:ro
     depends_on:
       zitadel-db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/app/zitadel", "ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 30s
+    # Note: no healthcheck — ZITADEL's distroless image lacks curl/wget
+    # and `zitadel ready` CLI requires DB config. The bootstrap script
+    # polls the HTTP health endpoint instead.
 
   zitadel-bootstrap:
     build:
@@ -143,18 +144,17 @@ services:
     command: ["python", "/home/app/scripts/bootstrap-zitadel.py"]
     volumes:
       - ./scripts:/home/app/scripts
-      - zitadel_pat:/zitadel-pat:ro
+      - ./.zitadel-data:/zitadel-data
       - .:/home/app/output
     environment:
-      ZITADEL_URL: http://zitadel:8080
       ZITADEL_DOMAIN: ${ZITADEL_DOMAIN:-localhost}
       ZITADEL_EXTERNAL_PORT: ${ZITADEL_EXTERNAL_PORT:-8080}
+      ZITADEL_EXTERNAL_SECURE: ${ZITADEL_EXTERNAL_SECURE:-false}
     depends_on:
       zitadel:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   pgdata:
   minio_data:
   zitadel_pgdata:
-  zitadel_pat:

@@ -13,41 +13,60 @@ import time
 
 import httpx
 
-ZITADEL_URL = os.environ.get("ZITADEL_URL", "http://zitadel:8080")
 ZITADEL_DOMAIN = os.environ.get("ZITADEL_DOMAIN", "localhost")
 ZITADEL_EXTERNAL_PORT = os.environ.get("ZITADEL_EXTERNAL_PORT", "8080")
-PAT_PATH = "/zitadel-pat/pat.txt"
+ZITADEL_EXTERNAL_SECURE = os.environ.get("ZITADEL_EXTERNAL_SECURE", "false").lower() == "true"
+# Internal URL for container-to-container calls; scheme follows TLS mode
+_INTERNAL_SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
+ZITADEL_URL = os.environ.get("ZITADEL_URL", f"{_INTERNAL_SCHEME}://zitadel:8080")
+PAT_PATH = "/zitadel-data/pat.txt"
 OUTPUT_PATH = "/home/app/output/.env.zitadel"
 
 PROJECT_NAME = "CivicPulse"
 ROLES = ["owner", "admin", "manager", "volunteer", "viewer"]
 
 # Build the external issuer URL (what appears in JWTs and what browsers use)
-EXTERNAL_ISSUER = f"http://{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
+_SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
+EXTERNAL_ISSUER = f"{_SCHEME}://{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
+
+
+def wait_for_zitadel() -> None:
+    """Wait for ZITADEL to be ready by polling the health endpoint."""
+    for attempt in range(60):
+        try:
+            resp = httpx.get(f"{ZITADEL_URL}/debug/ready", timeout=5, verify=False)
+            if resp.status_code == 200:
+                print(f"  ZITADEL is ready (attempt {attempt + 1})")
+                return
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+        if attempt < 59:
+            time.sleep(3)
+    print("ERROR: ZITADEL did not become ready after 3 minutes", file=sys.stderr)
+    sys.exit(1)
 
 
 def read_pat() -> str:
     """Read the PAT written by ZITADEL's first-instance setup."""
-    # ZITADEL writes the PAT file asynchronously — retry a few times
+    # ZITADEL writes the PAT file at PATPATH — retry until it appears
     for attempt in range(30):
         try:
-            # ZITADEL writes PAT files as <username>_pat.txt in the PATPATH dir
-            pat_dir = "/zitadel-pat"
-            for fname in os.listdir(pat_dir):
-                if fname.endswith("_pat.txt") or fname == "pat.txt":
-                    path = os.path.join(pat_dir, fname)
-                    with open(path) as f:
-                        token = f.read().strip()
-                    if token:
-                        print(f"  Read PAT from {path}")
-                        return token
-            raise FileNotFoundError("No PAT file found yet")
+            with open(PAT_PATH) as f:
+                token = f.read().strip()
+            if token:
+                print(f"  Read PAT from {PAT_PATH}")
+                return token
         except (FileNotFoundError, OSError):
-            if attempt < 29:
-                time.sleep(2)
-            continue
+            pass
+        if attempt < 29:
+            time.sleep(2)
     print("ERROR: Could not read PAT after 60 seconds", file=sys.stderr)
     sys.exit(1)
+
+
+def _host_header() -> str:
+    """Build the Host header ZITADEL expects (matching ExternalDomain)."""
+    return f"{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
 
 
 def api_call(
@@ -59,11 +78,18 @@ def api_call(
     *,
     allow_conflict: bool = False,
 ) -> dict | None:
-    """Make an authenticated call to the ZITADEL API."""
+    """Make an authenticated call to the ZITADEL API.
+
+    Uses verify=False because internal Docker networking uses the hostname
+    'zitadel' but the TLS cert is for 'dev.tailb56d83.ts.net'.
+    """
     resp = client.request(
         method,
         f"{ZITADEL_URL}{path}",
-        headers={"Authorization": f"Bearer {pat}"},
+        headers={
+            "Authorization": f"Bearer {pat}",
+            "Host": _host_header(),
+        },
         json=json,
         timeout=30,
     )
@@ -234,6 +260,7 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
             "grantTypes": ["OIDC_GRANT_TYPE_AUTHORIZATION_CODE"],
             "appType": "OIDC_APP_TYPE_USER_AGENT",
             "authMethodType": "OIDC_AUTH_METHOD_TYPE_NONE",
+            "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
             "devMode": True,
         },
     )
@@ -242,50 +269,69 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
     return client_id
 
 
-def create_api_app(
-    client: httpx.Client, pat: str, project_id: str
+def generate_machine_secret(
+    client: httpx.Client, pat: str, user_id: str
 ) -> tuple[str, str]:
-    """Create an API application for the service account (client_credentials)."""
-    # Check for existing app
-    search = api_call(
+    """Generate a client secret for the machine user (for client_credentials).
+
+    ZITADEL returns the machine user's username as the OAuth2 client_id
+    (not the numeric user ID).
+    """
+    data = api_call(
+        client,
+        "PUT",
+        f"/management/v1/users/{user_id}/secret",
+        pat,
+    )
+    client_id = data.get("clientId", "")
+    client_secret = data.get("clientSecret", "")
+    print(f"  Generated secret: clientId={client_id}")
+    return client_id, client_secret
+
+
+def get_admin_user_id(client: httpx.Client, pat: str) -> str:
+    """Find the admin human user ID."""
+    data = api_call(
         client,
         "POST",
-        f"/management/v1/projects/{project_id}/apps/_search",
+        "/management/v1/users/_search",
         pat,
         json={
             "queries": [
                 {
-                    "nameQuery": {
-                        "name": "CivicPulse API",
+                    "userNameQuery": {
+                        "userName": "admin@localhost",
                         "method": "TEXT_QUERY_METHOD_EQUALS",
                     }
                 }
             ]
         },
     )
-    existing = search.get("result", [])
-    if existing:
-        api_config = existing[0].get("apiConfig", {})
-        client_id = api_config.get("clientId", "")
-        print(f"  API app already exists, clientId: {client_id}")
-        # Can't retrieve the secret for an existing app — return empty
-        # The .env.zitadel file should still have it from initial creation
-        return client_id, ""
+    users = data.get("result", [])
+    if not users:
+        print("  Warning: admin user not found, skipping grant")
+        return ""
+    return users[0]["id"]
 
-    data = api_call(
+
+def grant_user_role(
+    client: httpx.Client, pat: str, project_id: str, user_id: str, role: str
+) -> None:
+    """Grant a project role to a user."""
+    if not user_id:
+        return
+    api_call(
         client,
         "POST",
-        f"/management/v1/projects/{project_id}/apps/api",
+        f"/management/v1/users/{user_id}/grants",
         pat,
         json={
-            "name": "CivicPulse API",
-            "authMethodType": "API_AUTH_METHOD_TYPE_BASIC",
+            "projectId": project_id,
+            "roleKeys": [role],
         },
+        allow_conflict=True,
     )
-    client_id = data.get("clientId", "")
-    client_secret = data.get("clientSecret", "")
-    print(f"  Created API app, clientId: {client_id}")
-    return client_id, client_secret
+    print(f"  Granted role '{role}' to user {user_id}")
 
 
 def write_env_file(
@@ -295,10 +341,13 @@ def write_env_file(
     api_client_secret: str,
 ) -> None:
     """Write .env.zitadel with the generated credentials."""
+    # ZITADEL_BASE_URL is the internal Docker URL for container-to-container calls
+    base_url = f"{_INTERNAL_SCHEME}://zitadel:8080"
     content = f"""\
 # Auto-generated by bootstrap-zitadel.py — do not edit manually
 # Regenerate by removing this file and running: docker compose up zitadel-bootstrap
 ZITADEL_ISSUER={EXTERNAL_ISSUER}
+ZITADEL_BASE_URL={base_url}
 ZITADEL_PROJECT_ID={project_id}
 ZITADEL_SERVICE_CLIENT_ID={api_client_id}
 ZITADEL_SERVICE_CLIENT_SECRET={api_client_secret}
@@ -310,6 +359,16 @@ VITE_ZITADEL_PROJECT_ID={project_id}
     with open(OUTPUT_PATH, "w") as f:
         f.write(content)
     print(f"  Wrote {OUTPUT_PATH}")
+
+    # Also write to the shared zitadel-data volume so the API container
+    # can source it at runtime on first boot (before env_file is resolved).
+    zitadel_data_path = "/zitadel-data/env.zitadel"
+    try:
+        with open(zitadel_data_path, "w") as f:
+            f.write(content)
+        print(f"  Wrote {zitadel_data_path}")
+    except OSError as exc:
+        print(f"  Warning: could not write {zitadel_data_path}: {exc}")
 
 
 def validate_existing_env() -> bool:
@@ -335,9 +394,10 @@ def validate_existing_env() -> bool:
 
     # Try a token exchange to verify credentials
     try:
-        with httpx.Client() as client:
+        with httpx.Client(verify=False) as client:
             resp = client.post(
                 f"{ZITADEL_URL}/oauth/v2/token",
+                headers={"Host": _host_header()},
                 data={
                     "grant_type": "client_credentials",
                     "client_id": client_id,
@@ -364,6 +424,9 @@ def main() -> None:
     print(f"  External issuer: {EXTERNAL_ISSUER}")
     print(f"  Domain: {ZITADEL_DOMAIN}")
 
+    print("\nStep 0: Waiting for ZITADEL to be ready...")
+    wait_for_zitadel()
+
     # Check if already bootstrapped
     if validate_existing_env():
         print("Bootstrap already complete, skipping.")
@@ -373,7 +436,7 @@ def main() -> None:
     pat = read_pat()
 
     print("\nStep 2: Finding machine user...")
-    with httpx.Client() as client:
+    with httpx.Client(verify=False) as client:
         user_id = get_machine_user_id(client, pat)
         print(f"  Machine user ID: {user_id}")
 
@@ -389,10 +452,16 @@ def main() -> None:
         print("\nStep 6: Creating SPA application...")
         spa_client_id = create_spa_app(client, pat, project_id)
 
-        print("\nStep 7: Creating API application...")
-        api_client_id, api_client_secret = create_api_app(client, pat, project_id)
+        print("\nStep 7: Generating service account secret...")
+        api_client_id, api_client_secret = generate_machine_secret(
+            client, pat, user_id
+        )
 
-    print("\nStep 8: Writing .env.zitadel...")
+        print("\nStep 8: Granting admin user role on project...")
+        admin_id = get_admin_user_id(client, pat)
+        grant_user_role(client, pat, project_id, admin_id, "owner")
+
+    print("\nStep 9: Writing .env.zitadel...")
     write_env_file(project_id, spa_client_id, api_client_id, api_client_secret)
 
     print("\n" + "=" * 60)

@@ -35,16 +35,25 @@ export default defineConfig({
         },
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: hasTailscaleCerts
+          ? "https://localhost:8000"
+          : "http://localhost:8000",
         changeOrigin: true,
+        secure: false,
       },
       "/openapi.json": {
-        target: "http://localhost:8000",
+        target: hasTailscaleCerts
+          ? "https://localhost:8000"
+          : "http://localhost:8000",
         changeOrigin: true,
+        secure: false,
       },
       "/health": {
-        target: "http://localhost:8000",
+        target: hasTailscaleCerts
+          ? "https://localhost:8000"
+          : "http://localhost:8000",
         changeOrigin: true,
+        secure: false,
       },
       "/voter-imports": {
         target: "http://localhost:9000",
