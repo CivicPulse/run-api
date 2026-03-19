@@ -181,8 +181,12 @@ class TestCampaignCreate:
         user = _make_user(role=CampaignRole.VIEWER)  # Even viewer can create
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # ensure_user_synced calls (user lookup, campaign lookup)
+        # ensure_user_synced calls (user lookup, org lookup, campaign fallback)
+        # plus one extra execute for the slug deduplication query in create_campaign.
         sync_results = _setup_user_sync_on_db(mock_db)
+        slug_query_result = MagicMock()
+        slug_query_result.scalars.return_value.all.return_value = []
+        sync_results.append(slug_query_result)
         mock_db.execute = AsyncMock(side_effect=sync_results)
 
         async def fake_refresh(obj):

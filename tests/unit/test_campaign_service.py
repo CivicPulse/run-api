@@ -114,7 +114,13 @@ class TestCampaignService:
         db.commit = AsyncMock()
         db.rollback = AsyncMock()
         db.refresh = AsyncMock()
-        db.execute = AsyncMock()
+        # Default execute return supports both scalar_one_or_none() and
+        # scalars().all() (the latter is used by the slug deduplication query
+        # added to create_campaign).
+        default_result = MagicMock()
+        default_result.scalar_one_or_none.return_value = None
+        default_result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(return_value=default_result)
         return db
 
     @pytest.fixture
