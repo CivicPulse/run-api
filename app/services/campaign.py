@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import httpx
 from loguru import logger
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -23,7 +24,7 @@ from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
 from app.schemas.common import PaginationResponse
-from app.utils.slug import generate_unique_slug
+from app.utils.slug import generate_slug
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
@@ -128,12 +129,7 @@ class CampaignService:
                 organization_id = org_record.id
 
             # Step 3: Create local campaign record
-            # Fetch all existing slugs to guarantee uniqueness without a retry loop
-            slug_result = await db.execute(
-                select(Campaign.slug).where(Campaign.slug.is_not(None))
-            )
-            existing_slugs: set[str] = set(slug_result.scalars().all())
-            campaign_slug = generate_unique_slug(name, existing_slugs)
+            campaign_slug = await self._generate_unique_slug(db, name)
 
             campaign = Campaign(
                 id=uuid.uuid4(),
@@ -173,6 +169,27 @@ class CampaignService:
             await db.refresh(campaign)
             return campaign
 
+        except IntegrityError as ie:
+            # Slug collision from concurrent request — rollback and retry
+            if "ix_campaigns_slug" in str(ie):
+                logger.info(
+                    "Slug collision for '{}', regenerating", campaign_slug
+                )
+                await db.rollback()
+                # Retry the entire creation (recursive, but bounded by slug uniqueness)
+                return await self.create_campaign(
+                    db=db,
+                    name=name,
+                    campaign_type=campaign_type,
+                    user=user,
+                    zitadel=zitadel,
+                    jurisdiction_fips=jurisdiction_fips,
+                    jurisdiction_name=jurisdiction_name,
+                    election_date=election_date,
+                    candidate_name=candidate_name,
+                    party_affiliation=party_affiliation,
+                    organization_id=organization_id,
+                )
         except Exception:
             logger.warning(
                 "Local DB write failed for campaign '{}', rolling back (org={})",
@@ -218,6 +235,27 @@ class CampaignService:
                         org_id,
                     )
             raise
+
+    @staticmethod
+    async def _generate_unique_slug(db: AsyncSession, name: str) -> str:
+        """Generate a unique slug, retrying with numeric suffixes on collision.
+
+        Uses targeted EXISTS queries instead of loading all slugs into memory.
+        """
+        base = generate_slug(name)
+        candidate = base
+        counter = 2
+        max_attempts = 100
+        for _ in range(max_attempts):
+            exists = await db.scalar(
+                select(Campaign.id).where(Campaign.slug == candidate).limit(1)
+            )
+            if exists is None:
+                return candidate
+            candidate = f"{base}-{counter}"
+            counter += 1
+        msg = f"Could not generate unique slug for '{name}'"
+        raise ValueError(msg)
 
     async def get_campaign(self, db: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
         """Get a campaign by ID.

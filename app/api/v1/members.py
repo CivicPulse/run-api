@@ -140,6 +140,7 @@ async def update_member_role(
 
     # Remove all existing roles then assign the new one in ZITADEL
     # Using remove_all ensures we clean up even if DB role diverged
+    old_role = member.role or "viewer"
     await zitadel.remove_all_project_roles(
         settings.zitadel_project_id,
         member.user_id,
@@ -152,9 +153,40 @@ async def update_member_role(
         org_id=zitadel_org_id,
     )
 
-    # Persist role change in DB
+    # Persist role change in DB (with compensating rollback on failure)
     member.role = data.role
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as commit_exc:
+        logger.error(
+            "DB commit failed during role update for user {} in campaign {}: {}",
+            member.user_id,
+            campaign_id,
+            commit_exc,
+        )
+        await db.rollback()
+        # Revert ZITADEL to the old role
+        try:
+            await zitadel.remove_all_project_roles(
+                settings.zitadel_project_id,
+                member.user_id,
+                org_id=zitadel_org_id,
+            )
+            await zitadel.assign_project_role(
+                settings.zitadel_project_id,
+                member.user_id,
+                old_role,
+                org_id=zitadel_org_id,
+            )
+        except Exception as cleanup_exc:
+            logger.error(
+                "Failed to revert ZITADEL role for user {} in campaign {} "
+                "after DB commit failure: {}",
+                member.user_id,
+                campaign_id,
+                cleanup_exc,
+            )
+        raise
 
     display_name = member_user.display_name or ""
     email = member_user.email or ""

@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.core.errors import CampaignNotFoundError
+from app.core.errors import AlreadyRegisteredError, CampaignNotFoundError
 from app.core.security import AuthenticatedUser, CampaignRole
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_member import CampaignMember
@@ -160,8 +160,9 @@ class TestRegisterVolunteer:
         # Duplicate check returns an existing member
         db.scalar = AsyncMock(return_value=existing_member)
 
-        with pytest.raises(ValueError, match=f"already_registered:{campaign.id}"):
+        with pytest.raises(AlreadyRegisteredError) as exc_info:
             await service.register_volunteer("smith-for-senate", user, db, zitadel)
+        assert exc_info.value.campaign_id == campaign.id
 
         db.commit.assert_not_awaited()
 
@@ -464,8 +465,9 @@ class TestRegisterVolunteer:
         )
         db.rollback = AsyncMock()
 
-        with pytest.raises(ValueError, match=f"already_registered:{campaign.id}"):
+        with pytest.raises(AlreadyRegisteredError) as exc_info:
             await service.register_volunteer("smith-for-senate", user, db, zitadel)
+        assert exc_info.value.campaign_id == campaign.id
 
         db.rollback.assert_awaited_once()
         # ZITADEL should NOT have been called since flush failed before step 5

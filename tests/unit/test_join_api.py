@@ -14,7 +14,11 @@ import pytest
 from fastapi import FastAPI
 
 from app.api.v1.join import router
-from app.core.errors import CampaignNotFoundError, init_error_handlers
+from app.core.errors import (
+    AlreadyRegisteredError,
+    CampaignNotFoundError,
+    init_error_handlers,
+)
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.db.session import get_db
 from app.models.campaign import Campaign, CampaignStatus
@@ -201,7 +205,7 @@ class TestRegisterVolunteer:
         with patch(
             "app.api.v1.join.join_service.register_volunteer",
             new_callable=AsyncMock,
-            side_effect=ValueError(f"already_registered:{campaign_id}"),
+            side_effect=AlreadyRegisteredError(uuid.UUID(campaign_id)),
         ):
             transport = httpx.ASGITransport(app=app)
             async with httpx.AsyncClient(

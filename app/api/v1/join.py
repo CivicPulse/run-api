@@ -15,11 +15,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Path, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import CampaignNotFoundError
 from app.core.rate_limit import limiter
 from app.core.security import AuthenticatedUser, get_current_user
 from app.db.session import get_db
@@ -97,22 +95,7 @@ async def register_volunteer(
         409: If the user is already registered for this campaign.
     """
     zitadel = request.app.state.zitadel_service
-    try:
-        result = await join_service.register_volunteer(slug, user, db, zitadel)
-    except CampaignNotFoundError:
-        raise
-    except ValueError as exc:
-        message = str(exc)
-        if message.startswith("already_registered:"):
-            campaign_id = message.split(":", 1)[1]
-            return problem.ProblemResponse(
-                status=status.HTTP_409_CONFLICT,
-                title="Already Registered",
-                detail="Already registered",
-                type="volunteer-already-registered",
-                campaign_id=campaign_id,
-            )
-        raise
+    result = await join_service.register_volunteer(slug, user, db, zitadel)
 
     return JoinResponse(
         campaign_id=result["campaign_id"],

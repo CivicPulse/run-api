@@ -176,8 +176,6 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     mock_db.flush = AsyncMock()
     mock_db.commit = AsyncMock()
     mock_db.rollback = AsyncMock()
-    slug_query_result = MagicMock()
-    slug_query_result.scalars.return_value.all.return_value = []
     mock_db.execute = AsyncMock(
         side_effect=[
             MagicMock(
@@ -189,9 +187,10 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
             MagicMock(
                 scalar_one_or_none=MagicMock(return_value=None)
             ),  # campaign lookup fallback (None)
-            slug_query_result,  # slug deduplication query in create_campaign
         ]
     )
+    # _generate_unique_slug uses db.scalar() to check for slug existence
+    mock_db.scalar = AsyncMock(return_value=None)
 
     async def fake_refresh(obj):
         if isinstance(obj, Campaign):

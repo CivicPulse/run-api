@@ -182,12 +182,10 @@ class TestCampaignCreate:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         # ensure_user_synced calls (user lookup, org lookup, campaign fallback)
-        # plus one extra execute for the slug deduplication query in create_campaign.
         sync_results = _setup_user_sync_on_db(mock_db)
-        slug_query_result = MagicMock()
-        slug_query_result.scalars.return_value.all.return_value = []
-        sync_results.append(slug_query_result)
         mock_db.execute = AsyncMock(side_effect=sync_results)
+        # _generate_unique_slug uses db.scalar() to check for slug existence
+        mock_db.scalar = AsyncMock(return_value=None)
 
         async def fake_refresh(obj):
             if isinstance(obj, Campaign):

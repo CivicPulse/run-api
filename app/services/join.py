@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import CampaignNotFoundError
+from app.core.errors import AlreadyRegisteredError, CampaignNotFoundError
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
@@ -113,7 +113,7 @@ class JoinService:
             logger.info(
                 "User {} already registered for campaign {}", user.id, campaign.id
             )
-            raise ValueError(f"already_registered:{campaign.id}")
+            raise AlreadyRegisteredError(campaign.id)
 
         # Step 3 — create campaign membership
         member = CampaignMember(
@@ -130,7 +130,7 @@ class JoinService:
             await db.flush()
         except IntegrityError:
             await db.rollback()
-            raise ValueError(f"already_registered:{campaign.id}") from None
+            raise AlreadyRegisteredError(campaign.id) from None
 
         # Step 4 — create volunteer profile from JWT claims
         name_parts = (user.display_name or "").split(" ", 1)
@@ -174,6 +174,16 @@ class JoinService:
                 campaign.id,
             )
 
+        if not project_grant_id and not campaign.zitadel_org_id:
+            logger.error(
+                "Campaign {} has no organization_id or zitadel_org_id — "
+                "cannot assign org-scoped role",
+                campaign.id,
+            )
+            raise ValueError(
+                "Campaign is not properly configured for volunteer registration"
+            )
+
         # ZITADEL role assignment happens BEFORE commit.
         # If ZITADEL fails, the exception propagates and the DB transaction
         # rolls back.  If the DB commit fails after ZITADEL succeeds, we
@@ -196,6 +206,7 @@ class JoinService:
                 campaign.id,
                 commit_exc,
             )
+            await db.rollback()
             try:
                 await zitadel.remove_project_role(
                     settings.zitadel_project_id,
