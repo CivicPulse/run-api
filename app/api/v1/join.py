@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import CampaignNotFoundError
+from app.core.rate_limit import limiter
 from app.core.security import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.schemas.join import CampaignPublicInfo, JoinResponse
@@ -36,7 +37,9 @@ join_service = JoinService()
         "Returns campaign details suitable for the volunteer join landing page."
     ),
 )
+@limiter.limit("20/minute")
 async def get_campaign_public_info(
+    request: Request,
     slug: str,
     db: AsyncSession = Depends(get_db),
 ) -> CampaignPublicInfo:
@@ -67,6 +70,7 @@ async def get_campaign_public_info(
         "campaign role — works for brand-new users."
     ),
 )
+@limiter.limit("5/minute")
 async def register_volunteer(
     slug: str,
     request: Request,

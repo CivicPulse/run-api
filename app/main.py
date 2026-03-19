@@ -12,11 +12,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import init_error_handlers
+from app.core.rate_limit import limiter
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -97,6 +100,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     init_error_handlers(app)
     app.include_router(health_router)
