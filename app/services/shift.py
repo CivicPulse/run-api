@@ -611,16 +611,27 @@ class ShiftService:
         # Side effect: phone banking shift -> SessionCaller
         if shift.type == ShiftType.PHONE_BANKING and shift.phone_bank_session_id:
             if volunteer.user_id:
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+
                 from app.models.phone_bank import SessionCaller
 
-                caller = SessionCaller(
-                    id=uuid.uuid4(),
-                    session_id=shift.phone_bank_session_id,
-                    user_id=volunteer.user_id,
-                    check_in_at=utcnow(),
-                    created_at=utcnow(),
+                now = utcnow()
+                stmt = (
+                    pg_insert(SessionCaller)
+                    .values(
+                        id=uuid.uuid4(),
+                        session_id=shift.phone_bank_session_id,
+                        user_id=volunteer.user_id,
+                        check_in_at=now,
+                        check_out_at=None,
+                        created_at=now,
+                    )
+                    .on_conflict_do_update(
+                        index_elements=["session_id", "user_id"],
+                        set_={"check_in_at": now, "check_out_at": None},
+                    )
                 )
-                session.add(caller)
+                await session.execute(stmt)
             else:
                 logger.warning(
                     "Walk-in volunteer %s has no user_id; skipping SessionCaller",

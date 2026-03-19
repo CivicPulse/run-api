@@ -91,8 +91,12 @@ function Canvassing() {
   // Door list view state
   const [listViewOpen, setListViewOpen] = useState(false)
 
-  // ARIA: outcome announcement state (navigation announcement is derived below)
-  const [outcomeAnnouncement, setOutcomeAnnouncement] = useState("")
+  const navigationKey = `${currentAddressIndex}:${activeEntryId ?? ""}:${isComplete ? 1 : 0}`
+  // ARIA: one-shot outcome announcement scoped to a navigation context
+  const [outcomeAnnouncement, setOutcomeAnnouncement] = useState<{
+    key: string
+    message: string
+  } | null>(null)
 
   // Active voter name for ARIA
   const activeVoterName = useMemo(() => {
@@ -131,12 +135,10 @@ function Canvassing() {
       ? `Now at ${currentHousehold.address}, door ${currentAddressIndex + 1} of ${totalAddresses}`
       : ""
 
-  const ariaAnnouncement = outcomeAnnouncement || navigationAnnouncement
-
-  // Clear one-shot outcome announcements when navigation context changes
-  useEffect(() => {
-    setOutcomeAnnouncement("")
-  }, [currentAddressIndex, activeEntryId, isComplete])
+  const ariaAnnouncement =
+    outcomeAnnouncement?.key === navigationKey
+      ? outcomeAnnouncement.message
+      : navigationAnnouncement
 
   // Milestone celebration toasts
   useEffect(() => {
@@ -171,9 +173,10 @@ function Canvassing() {
           [voterEntry.voter.first_name, voterEntry.voter.last_name]
             .filter(Boolean)
             .join(" ") || "Unknown Voter"
-        setOutcomeAnnouncement(
-          `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
-        )
+        setOutcomeAnnouncement({
+          key: navigationKey,
+          message: `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
+        })
       }
 
       // Check for bulk Not Home prompt at multi-voter address
@@ -224,6 +227,7 @@ function Canvassing() {
       skippedEntries,
       handleBulkNotHome,
       scriptId,
+      navigationKey,
     ],
   )
 
