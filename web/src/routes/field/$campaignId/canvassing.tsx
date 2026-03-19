@@ -133,6 +133,11 @@ function Canvassing() {
 
   const ariaAnnouncement = outcomeAnnouncement || navigationAnnouncement
 
+  // Clear one-shot outcome announcements when navigation context changes
+  useEffect(() => {
+    setOutcomeAnnouncement("")
+  }, [currentAddressIndex, activeEntryId, isComplete])
+
   // Milestone celebration toasts
   useEffect(() => {
     if (totalAddresses === 0 || !walkListId) return

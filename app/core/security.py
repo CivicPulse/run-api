@@ -172,7 +172,7 @@ async def resolve_campaign_role(
     Resolution order:
     1. Explicit per-campaign role stored in ``CampaignMember.role``.
     2. JWT role, if the campaign's ZITADEL org matches the user's current org.
-    3. VIEWER (deny) for cross-org access with no explicit grant.
+    3. None (deny) for cross-org access with no explicit grant.
 
     Args:
         user_id: The user's ZITADEL ID.
@@ -299,9 +299,10 @@ async def get_current_user(
             _issuer_netloc = _urlparse(settings.zitadel_issuer).netloc or ""
             _base_host = _urlparse(userinfo_base).hostname or ""
             _headers: dict[str, str] = {"Authorization": f"Bearer {token}"}
+            _verify_tls = _base_host == _issuer_host
             if _base_host != _issuer_host:
                 _headers["Host"] = _issuer_netloc
-            async with httpx.AsyncClient(verify=False) as client:
+            async with httpx.AsyncClient(verify=_verify_tls) as client:
                 userinfo_resp = await client.get(
                     f"{userinfo_base}/oidc/v1/userinfo",
                     headers=_headers,

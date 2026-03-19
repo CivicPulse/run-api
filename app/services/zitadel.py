@@ -200,24 +200,39 @@ class ZitadelService:
                 to a specific granted organization.
             org_id: Optional organization ID. When provided, sets the
                 ``x-zitadel-orgid`` header so the request is scoped to that org.
+
+        Raises:
+            ZitadelUnavailableError: On connection error or 5xx.
         """
-        token = await self._get_token()
-        headers = self._auth_headers(token)
-        if org_id:
-            headers["x-zitadel-orgid"] = org_id
-        body: dict = {
-            "projectId": project_id,
-            "roleKeys": [role],
-        }
-        if project_grant_id:
-            body["projectGrantId"] = project_grant_id
-        async with httpx.AsyncClient(verify=self._verify_tls) as client:
-            response = await client.post(
-                f"{self.base_url}/management/v1/users/{user_id}/grants",
-                headers=headers,
-                json=body,
-            )
-            response.raise_for_status()
+        try:
+            token = await self._get_token()
+            headers = self._auth_headers(token)
+            if org_id:
+                headers["x-zitadel-orgid"] = org_id
+            body: dict = {
+                "projectId": project_id,
+                "roleKeys": [role],
+            }
+            if project_grant_id:
+                body["projectGrantId"] = project_grant_id
+            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+                response = await client.post(
+                    f"{self.base_url}/management/v1/users/{user_id}/grants",
+                    headers=headers,
+                    json=body,
+                )
+                response.raise_for_status()
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.error("ZITADEL assign_project_role failed: {}", exc)
+            raise ZitadelUnavailableError(
+                "Cannot reach ZITADEL to assign project role"
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code >= 500:
+                raise ZitadelUnavailableError(
+                    f"ZITADEL returned {exc.response.status_code}"
+                ) from exc
+            raise
 
     async def remove_project_role(
         self,
@@ -235,29 +250,44 @@ class ZitadelService:
             role: The role key to remove (used to find the grant).
             org_id: Optional organization ID. When provided, sets the
                 ``x-zitadel-orgid`` header so the request is scoped to that org.
-        """
-        token = await self._get_token()
-        headers = self._auth_headers(token)
-        if org_id:
-            headers["x-zitadel-orgid"] = org_id
-        async with httpx.AsyncClient(verify=self._verify_tls) as client:
-            # List grants to find the one to remove
-            response = await client.post(
-                f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
-                headers=headers,
-                json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
-            )
-            response.raise_for_status()
-            grants = response.json().get("result", [])
 
-            for grant in grants:
-                if role in grant.get("roleKeys", []):
-                    grant_id = grant["id"]
-                    del_resp = await client.delete(
-                        f"{self.base_url}/management/v1/users/{user_id}/grants/{grant_id}",
-                        headers=headers,
-                    )
-                    del_resp.raise_for_status()
+        Raises:
+            ZitadelUnavailableError: On connection error or 5xx.
+        """
+        try:
+            token = await self._get_token()
+            headers = self._auth_headers(token)
+            if org_id:
+                headers["x-zitadel-orgid"] = org_id
+            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+                # List grants to find the one to remove
+                response = await client.post(
+                    f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
+                    headers=headers,
+                    json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
+                )
+                response.raise_for_status()
+                grants = response.json().get("result", [])
+
+                for grant in grants:
+                    if role in grant.get("roleKeys", []):
+                        grant_id = grant["id"]
+                        del_resp = await client.delete(
+                            f"{self.base_url}/management/v1/users/{user_id}/grants/{grant_id}",
+                            headers=headers,
+                        )
+                        del_resp.raise_for_status()
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.error("ZITADEL remove_project_role failed: {}", exc)
+            raise ZitadelUnavailableError(
+                "Cannot reach ZITADEL to remove project role"
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code >= 500:
+                raise ZitadelUnavailableError(
+                    f"ZITADEL returned {exc.response.status_code}"
+                ) from exc
+            raise
 
     async def create_project_grant(
         self,
@@ -274,20 +304,35 @@ class ZitadelService:
 
         Returns:
             Dict with grant details including ``grantId``.
+
+        Raises:
+            ZitadelUnavailableError: On connection error or 5xx.
         """
-        token = await self._get_token()
-        headers = self._auth_headers(token)
-        async with httpx.AsyncClient(verify=self._verify_tls) as client:
-            response = await client.post(
-                f"{self.base_url}/management/v1/projects/{project_id}/grants",
-                headers=headers,
-                json={
-                    "grantedOrgId": granted_org_id,
-                    "roleKeys": role_keys,
-                },
-            )
-            response.raise_for_status()
-            return response.json()
+        try:
+            token = await self._get_token()
+            headers = self._auth_headers(token)
+            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+                response = await client.post(
+                    f"{self.base_url}/management/v1/projects/{project_id}/grants",
+                    headers=headers,
+                    json={
+                        "grantedOrgId": granted_org_id,
+                        "roleKeys": role_keys,
+                    },
+                )
+                response.raise_for_status()
+                return response.json()
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.error("ZITADEL create_project_grant failed: {}", exc)
+            raise ZitadelUnavailableError(
+                "Cannot reach ZITADEL to create project grant"
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code >= 500:
+                raise ZitadelUnavailableError(
+                    f"ZITADEL returned {exc.response.status_code}"
+                ) from exc
+            raise
 
     async def ensure_project_grant(
         self,
@@ -315,9 +360,9 @@ class ZitadelService:
             )
             return result["grantId"]
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in (409, 400):
+            if exc.response.status_code != 409:
                 raise
-            # Grant likely already exists — search for it
+            # Grant already exists — search for it
             logger.debug(
                 "Project grant creation returned {}, searching for existing grant",
                 exc.response.status_code,

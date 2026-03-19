@@ -369,7 +369,9 @@ async def main() -> None:  # noqa: C901, PLR0915
         campaign_id = uuid.uuid4()
         campaign = Campaign(
             id=campaign_id,
-            zitadel_org_id=os.environ.get("SEED_ZITADEL_ORG_ID", "362268991072305186"),
+            zitadel_org_id=(
+                os.environ.get("SEED_ZITADEL_ORG_ID") or "362268991072305186"
+            ),
             name=SEED_CAMPAIGN_NAME,
             type=CampaignType.LOCAL,
             status=CampaignStatus.ACTIVE,
@@ -1347,6 +1349,7 @@ async def main() -> None:  # noqa: C901, PLR0915
                     voter_id=voter.id,
                     type=InteractionType.DOOR_KNOCK,
                     payload={
+                        "voter_id": str(voter.id),
                         "result_code": result,
                         "walk_list_id": str(wl_id),
                         "notes": (f"Knocked on door at {voter.registration_line1}"),

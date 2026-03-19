@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import re
 import uuid
 from typing import TYPE_CHECKING
@@ -637,7 +638,10 @@ class ImportService:
                 if isinstance(raw, str):
                     raw = raw.strip()
                     try:
-                        voter[float_field] = float(raw) if raw else None
+                        parsed = float(raw) if raw else None
+                        voter[float_field] = (
+                            parsed if parsed is None or math.isfinite(parsed) else None
+                        )
                     except ValueError:
                         voter[float_field] = None
 
@@ -648,7 +652,12 @@ class ImportService:
             # Build PostGIS point geometry from lat/lon
             lat = voter.get("latitude")
             lon = voter.get("longitude")
-            if lat is not None and lon is not None:
+            if (
+                isinstance(lat, (int, float))
+                and isinstance(lon, (int, float))
+                and -90 <= lat <= 90
+                and -180 <= lon <= 180
+            ):
                 voter["geom"] = f"SRID=4326;POINT({lon} {lat})"
 
             # Parse voting history from original CSV row columns

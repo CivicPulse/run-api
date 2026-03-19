@@ -238,7 +238,11 @@ async def link_volunteer_record(
 
     result = await session.execute(
         update(Volunteer)
-        .where(Volunteer.email == email, Volunteer.campaign_id == CAMPAIGN_ID)
+        .where(
+            Volunteer.email == email,
+            Volunteer.campaign_id == CAMPAIGN_ID,
+            Volunteer.user_id.is_(None),
+        )
         .values(user_id=zitadel_user_id)
     )
     if result.rowcount:
@@ -246,7 +250,22 @@ async def link_volunteer_record(
             f"    Linked volunteer record (email={email}) -> user_id={zitadel_user_id}"
         )
     else:
-        print(f"    WARNING: No volunteer record found for {email}")
+        # Check if already linked to a different user
+        existing = await session.execute(
+            select(Volunteer.user_id).where(
+                Volunteer.email == email,
+                Volunteer.campaign_id == CAMPAIGN_ID,
+            )
+        )
+        row = existing.scalar_one_or_none()
+        if row and row != zitadel_user_id:
+            print(
+                f"    WARNING: Volunteer {email} already linked to user {row}, skipping"
+            )
+        elif row == zitadel_user_id:
+            print(f"    Volunteer {email} already linked to {zitadel_user_id}")
+        else:
+            print(f"    WARNING: No volunteer record found for {email}")
 
 
 async def create_local_user(
@@ -312,6 +331,11 @@ async def main() -> None:
 
         # Ensure project grant exists for this org
         project_grant_id = await ensure_project_grant(token, org_id)
+        if not project_grant_id:
+            raise RuntimeError(
+                "Failed to create or find project grant for org "
+                f"{org_id} — cannot proceed without a grant"
+            )
 
         for email, username, display_name in VOLUNTEERS:
             print(f"Processing {display_name} ({username})...")

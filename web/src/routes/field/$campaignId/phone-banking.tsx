@@ -99,6 +99,11 @@ function PhoneBanking() {
 
   const ariaAnnouncement = outcomeAnnouncement || navigationAnnouncement
 
+  // Clear outcome announcement when moving to next voter
+  useEffect(() => {
+    setOutcomeAnnouncement("")
+  }, [currentEntry?.id])
+
   // Milestone celebration toasts
   useEffect(() => {
     if (displayTotal === 0 || !sessionId) return
@@ -114,7 +119,9 @@ function PhoneBanking() {
 
       // ARIA: announce outcome
       const config = CALL_OUTCOME_CONFIGS.find((c) => c.code === code)
-      setOutcomeAnnouncement(`${config?.label || code} recorded.`)
+      setOutcomeAnnouncement(
+        `${config?.label || code} recorded for ${currentEntry.voter_name || "Unknown Voter"}.`,
+      )
 
       // Survey trigger check
       if (result.surveyTrigger && scriptId) {
