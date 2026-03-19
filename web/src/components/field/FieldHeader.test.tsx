@@ -4,7 +4,12 @@ import { FieldHeader } from "@/components/field/FieldHeader"
 
 // Mock TanStack Router Link and useNavigate with param substitution
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, children, ...rest }: any) => {
+  Link: ({ to, params, children, ...rest }: {
+    to: string
+    params?: Record<string, string>
+    children?: React.ReactNode
+    [key: string]: unknown
+  }) => {
     let href = to as string
     if (params) {
       for (const [key, value] of Object.entries(params)) {

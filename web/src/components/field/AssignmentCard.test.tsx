@@ -4,7 +4,13 @@ import { AssignmentCard } from "@/components/field/AssignmentCard"
 
 // Mock TanStack Router Link to render a plain anchor tag with param substitution
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, children, className, ...rest }: any) => {
+  Link: ({ to, params, children, className, ...rest }: {
+    to: string
+    params?: Record<string, string>
+    children?: React.ReactNode
+    className?: string
+    [key: string]: unknown
+  }) => {
     let href = to as string
     if (params) {
       for (const [key, value] of Object.entries(params)) {
