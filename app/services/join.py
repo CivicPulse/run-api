@@ -164,8 +164,10 @@ class JoinService:
                 campaign.id,
             )
 
-        # ZITADEL role assignment happens BEFORE commit for atomicity.
-        # If this fails, the exception propagates and the DB transaction rolls back.
+        # ZITADEL role assignment happens BEFORE commit.
+        # If ZITADEL fails, the exception propagates and the DB transaction
+        # rolls back.  If the DB commit fails after ZITADEL succeeds, we
+        # attempt to remove the orphaned role (compensating transaction).
         await zitadel.assign_project_role(
             settings.zitadel_project_id,
             user.id,
@@ -174,8 +176,25 @@ class JoinService:
             org_id=campaign.zitadel_org_id,
         )
 
-        # Step 6 — commit
-        await db.commit()
+        # Step 6 — commit (with compensating rollback on failure)
+        try:
+            await db.commit()
+        except Exception:
+            try:
+                await zitadel.remove_project_role(
+                    settings.zitadel_project_id,
+                    user.id,
+                    "volunteer",
+                    org_id=campaign.zitadel_org_id,
+                )
+            except Exception as cleanup_exc:
+                logger.error(
+                    "Failed to remove orphaned ZITADEL role for user {} "
+                    "after DB commit failure: {}",
+                    user.id,
+                    cleanup_exc,
+                )
+            raise
         await db.refresh(volunteer)
 
         logger.info(
