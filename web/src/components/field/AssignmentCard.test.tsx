@@ -2,23 +2,21 @@ import { describe, test, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { AssignmentCard } from "@/components/field/AssignmentCard"
 
-// Mock TanStack Router Link to render a plain anchor tag
+// Mock TanStack Router Link to render a plain anchor tag with param substitution
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    children,
-    className,
-    ...rest
-  }: {
-    to: string
-    children: React.ReactNode
-    className?: string
-    [key: string]: unknown
-  }) => (
-    <a href={to} className={className} {...rest}>
-      {children}
-    </a>
-  ),
+  Link: ({ to, params, children, className, ...rest }: any) => {
+    let href = to as string
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, value as string)
+      }
+    }
+    return (
+      <a href={href} className={className} {...rest}>
+        {children}
+      </a>
+    )
+  },
 }))
 
 const CAMPAIGN_ID = "campaign-123"
