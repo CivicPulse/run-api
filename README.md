@@ -46,6 +46,16 @@ docker compose up
 - MinIO Console: http://localhost:9001
 - API Docs: http://localhost:8000/docs
 
+### Seed Data
+
+Load the Macon-Bibb County GA demo dataset (idempotent — safe to run multiple times):
+
+```bash
+docker compose exec api bash -c "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
+```
+
+This creates a complete interconnected dataset: 8 users, 1 organization, 1 campaign, 50 voters with geographic coordinates, 5 turfs, walk lists, call lists, phone bank sessions, volunteers, shifts, survey responses, voter interactions, tags, DNC entries, and invites.
+
 ## Documentation
 
 - [System Admin Guide](docs/getting-started-admin.md) -- Deployment, configuration, infrastructure
