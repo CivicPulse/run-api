@@ -13,8 +13,10 @@ role assigned in ZITADEL.
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import CampaignNotFoundError
@@ -23,6 +25,8 @@ from app.core.security import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.schemas.join import CampaignPublicInfo, JoinResponse
 from app.services.join import JoinService
+
+SlugParam = Annotated[str, Path(max_length=255, pattern=r"^[a-z0-9\-]+$")]
 
 router = APIRouter()
 join_service = JoinService()
@@ -40,7 +44,7 @@ join_service = JoinService()
 @limiter.limit("20/minute")
 async def get_campaign_public_info(
     request: Request,
-    slug: str,
+    slug: SlugParam,
     db: AsyncSession = Depends(get_db),
 ) -> CampaignPublicInfo:
     """Return public campaign information for the given slug.
@@ -72,7 +76,7 @@ async def get_campaign_public_info(
 )
 @limiter.limit("5/minute")
 async def register_volunteer(
-    slug: str,
+    slug: SlugParam,
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
