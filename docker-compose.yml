@@ -28,6 +28,7 @@ services:
       - ./alembic:/home/app/alembic
       - ./alembic.ini:/home/app/alembic.ini
       - ./scripts:/home/app/scripts
+      - ./static:/home/app/static:ro
       - ./certs:/home/app/certs:ro
       - ./.zitadel-data:/home/app/zitadel-data:ro
     depends_on:
