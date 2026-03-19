@@ -208,6 +208,7 @@ cython_debug/
 # Frontend SPA
 web/node_modules/
 web/dist/
+static/
 
 # Marimo
 marimo/_static/

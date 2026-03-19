@@ -31,8 +31,10 @@ ROLES = ["owner", "admin", "manager", "volunteer", "viewer"]
 _SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
 EXTERNAL_ISSUER = f"{_SCHEME}://{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
 
-# Only skip TLS verification for localhost development
-_VERIFY_TLS = ZITADEL_DOMAIN not in ("localhost", "127.0.0.1")
+# Always skip TLS verification for internal container-to-container calls.
+# The TLS cert is issued for the external domain (e.g. dev.tailb56d83.ts.net)
+# but internal calls connect to Docker hostname "zitadel", which won't match.
+_VERIFY_TLS = False
 
 
 def wait_for_zitadel() -> None:
