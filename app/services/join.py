@@ -20,6 +20,7 @@ from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
 from app.models.volunteer import Volunteer
+from app.services.campaign import ALL_ROLES
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
@@ -156,7 +157,7 @@ class JoinService:
             project_grant_id = await zitadel.ensure_project_grant(
                 settings.zitadel_project_id,
                 campaign.zitadel_org_id,
-                ["volunteer", "manager", "admin", "owner"],
+                ALL_ROLES,
             )
             logger.warning(
                 "project_grant_id resolved via ensure_project_grant for campaign {}",
