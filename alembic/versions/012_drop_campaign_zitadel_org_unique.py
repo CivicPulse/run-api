@@ -22,9 +22,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "campaigns_zitadel_org_id_key", "campaigns", type_="unique"
-    )
+    op.drop_constraint("campaigns_zitadel_org_id_key", "campaigns", type_="unique")
 
 
 def downgrade() -> None:
