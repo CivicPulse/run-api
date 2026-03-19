@@ -9,6 +9,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.core.errors import CampaignNotFoundError
 from app.core.security import AuthenticatedUser, CampaignRole
@@ -296,3 +297,87 @@ class TestRegisterVolunteer:
 
         # Commit should NOT have been called due to the ZITADEL failure
         db.commit.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_db_commit_failure_triggers_compensating_rollback(self):
+        """When DB commit fails after ZITADEL role assignment, the orphaned
+        ZITADEL role is removed via compensating transaction."""
+        service = JoinService()
+        campaign = _make_campaign()
+        org = _make_org()
+        user = _make_user()
+        zitadel = AsyncMock()
+        zitadel.assign_project_role = AsyncMock()
+        zitadel.remove_project_role = AsyncMock()
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        db.scalar = AsyncMock(side_effect=[None, org])
+        db.add = MagicMock()
+        db.commit = AsyncMock(side_effect=RuntimeError("DB commit failed"))
+        db.refresh = AsyncMock()
+
+        with pytest.raises(RuntimeError, match="DB commit failed"):
+            await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        # Compensating rollback should have removed the ZITADEL role
+        zitadel.remove_project_role.assert_awaited_once()
+
+    @pytest.mark.anyio
+    async def test_db_commit_failure_with_cleanup_failure_propagates_original(self):
+        """When both DB commit and ZITADEL cleanup fail, the original commit
+        exception propagates (not the cleanup exception)."""
+        service = JoinService()
+        campaign = _make_campaign()
+        org = _make_org()
+        user = _make_user()
+        zitadel = AsyncMock()
+        zitadel.assign_project_role = AsyncMock()
+        zitadel.remove_project_role = AsyncMock(
+            side_effect=RuntimeError("ZITADEL cleanup failed")
+        )
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        db.scalar = AsyncMock(side_effect=[None, org])
+        db.add = MagicMock()
+        db.commit = AsyncMock(side_effect=RuntimeError("DB commit failed"))
+        db.refresh = AsyncMock()
+
+        # The ORIGINAL commit exception should propagate, not the cleanup one
+        with pytest.raises(RuntimeError, match="DB commit failed"):
+            await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        zitadel.remove_project_role.assert_awaited_once()
+
+    @pytest.mark.anyio
+    async def test_integrity_error_on_flush_raises_already_registered(self):
+        """Concurrent registration race: IntegrityError on flush triggers
+        rollback and raises ValueError with already_registered prefix."""
+        service = JoinService()
+        campaign = _make_campaign()
+        user = _make_user()
+        zitadel = AsyncMock()
+
+        db = AsyncMock()
+        exec_result_campaign = MagicMock()
+        exec_result_campaign.scalar_one_or_none.return_value = campaign
+        db.execute = AsyncMock(return_value=exec_result_campaign)
+        # Duplicate check returns None (no existing member at app level)
+        db.scalar = AsyncMock(return_value=None)
+        db.add = MagicMock()
+        db.flush = AsyncMock(
+            side_effect=IntegrityError("", {}, Exception("unique violation"))
+        )
+        db.rollback = AsyncMock()
+
+        with pytest.raises(ValueError, match=f"already_registered:{campaign.id}"):
+            await service.register_volunteer("smith-for-senate", user, db, zitadel)
+
+        db.rollback.assert_awaited_once()
+        # ZITADEL should NOT have been called since flush failed before step 5
+        zitadel.assign_project_role.assert_not_awaited()

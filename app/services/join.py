@@ -189,7 +189,13 @@ class JoinService:
         # Step 6 — commit (with compensating rollback on failure)
         try:
             await db.commit()
-        except Exception:
+        except Exception as commit_exc:
+            logger.error(
+                "DB commit failed for user {} registering to campaign {}: {}",
+                user.id,
+                campaign.id,
+                commit_exc,
+            )
             try:
                 await zitadel.remove_project_role(
                     settings.zitadel_project_id,

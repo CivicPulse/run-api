@@ -12,7 +12,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import CampaignNotFoundError, InsufficientPermissionsError
+from app.core.errors import (
+    CampaignNotFoundError,
+    InsufficientPermissionsError,
+    OrganizationNotFoundError,
+)
 from app.core.security import CampaignRole
 from app.core.time import utcnow
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
@@ -71,7 +75,7 @@ class CampaignService:
             The created Campaign object.
 
         Raises:
-            CampaignNotFoundError: If organization_id is provided but not found.
+            OrganizationNotFoundError: If organization_id is provided but not found.
             ZitadelUnavailableError: If ZITADEL is unreachable.
             Exception: If DB write fails (after ZITADEL org cleanup for new orgs).
         """
@@ -87,7 +91,7 @@ class CampaignService:
             )
             org = org_result.scalar_one_or_none()
             if org is None:
-                raise CampaignNotFoundError(f"Organization {organization_id} not found")
+                raise OrganizationNotFoundError(organization_id)
             org_id = org.zitadel_org_id
             project_grant_id = (
                 org.zitadel_project_grant_id

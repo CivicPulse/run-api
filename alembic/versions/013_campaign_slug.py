@@ -1,14 +1,17 @@
 """Add slug column to campaigns table with backfill.
 
-Revision ID: 010_campaign_slug
-Revises: 009_organizations
+Revision ID: 013_campaign_slug
+Revises: 012_drop_zitadel_org_uq
 Create Date: 2026-03-18
 
-Backfills ``slug`` from the campaign ``name`` using the same transformation
-applied by ``app.utils.slug.generate_slug``:
+Backfills ``slug`` from the campaign ``name`` using a simplified SQL
+approximation of ``app.utils.slug.generate_slug`` (note: the SQL version
+does not perform Unicode-to-ASCII transliteration, so accented characters
+are stripped rather than transliterated):
 1. Lowercase.
 2. Replace non-alphanumeric runs with a single hyphen.
 3. Strip leading/trailing hyphens.
+4. Fall back to ``'campaign'`` for NULL or empty results.
 
 Duplicate slugs after backfill are disambiguated with numeric suffixes
 via a PostgreSQL CTE that assigns ``ROW_NUMBER()`` per base-slug partition
@@ -23,8 +26,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "010_campaign_slug"
-down_revision: str = "009_organizations"
+revision: str = "013_campaign_slug"
+down_revision: str = "012_drop_zitadel_org_uq"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -42,7 +45,7 @@ def upgrade() -> None:
     #    Row 1 keeps the plain base slug; rows 2+ get "-<rank>" appended.
     op.execute(
         """
-        WITH base AS (
+        WITH raw AS (
             SELECT
                 id,
                 LOWER(
@@ -52,8 +55,17 @@ def upgrade() -> None:
                         '',
                         'g'
                     )
-                ) AS base_slug
+                ) AS raw_slug
             FROM campaigns
+        ),
+        base AS (
+            SELECT
+                id,
+                CASE
+                    WHEN raw_slug IS NULL OR raw_slug = '' THEN 'campaign'
+                    ELSE raw_slug
+                END AS base_slug
+            FROM raw
         ),
         ranked AS (
             SELECT

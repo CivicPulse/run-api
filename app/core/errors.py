@@ -48,6 +48,14 @@ class VoterTagNotFoundError(Exception):
         super().__init__(f"Voter tag {tag_id} not found")
 
 
+class OrganizationNotFoundError(Exception):
+    """Raised when an organization cannot be found."""
+
+    def __init__(self, organization_id: uuid.UUID) -> None:
+        self.organization_id = organization_id
+        super().__init__(f"Organization {organization_id} not found")
+
+
 class ZitadelUnavailableError(Exception):
     """Raised when ZITADEL is unreachable (503)."""
 
@@ -103,6 +111,15 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Voter Tag Not Found",
             detail=str(exc),
             type="voter-tag-not-found",
+        )
+
+    @app.exception_handler(OrganizationNotFoundError)
+    async def organization_not_found_handler(request, exc):  # noqa: ARG001
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Organization Not Found",
+            detail=str(exc),
+            type="organization-not-found",
         )
 
     @app.exception_handler(ZitadelUnavailableError)
