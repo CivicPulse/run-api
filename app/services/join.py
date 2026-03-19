@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -121,6 +122,15 @@ class JoinService:
             role="volunteer",
         )
         db.add(member)
+
+        # Step 3b — flush to surface uniqueness constraint before ZITADEL calls.
+        # Prevents concurrent registrations from both passing the app-level
+        # check above and then racing through external role assignment.
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise ValueError(f"already_registered:{campaign.id}") from None
 
         # Step 4 — create volunteer profile from JWT claims
         name_parts = (user.display_name or "").split(" ", 1)
