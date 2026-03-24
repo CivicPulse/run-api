@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { createFileRoute, useParams, Link } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { MoreHorizontal, List } from "lucide-react"
+import { MoreHorizontal, ClipboardList } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -401,9 +401,9 @@ function VoterListsPage() {
         columns={columns}
         data={lists}
         isLoading={isLoading}
-        emptyIcon={List}
-        emptyTitle="No voter lists"
-        emptyDescription="Create a list to organize voters for canvassing and phone banking."
+        emptyIcon={ClipboardList}
+        emptyTitle="No voter lists yet"
+        emptyDescription="Create a voter list to organize voters for outreach."
       />
 
       {/* Create List Dialog */}

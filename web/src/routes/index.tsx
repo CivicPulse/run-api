@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { Vote, Plus } from "lucide-react"
+import { BarChart3, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -48,9 +48,9 @@ function CampaignList() {
       {campaigns.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Vote className="h-12 w-12 text-muted-foreground" />
+            <BarChart3 className="h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-lg font-medium">No campaigns yet</p>
-            <p className="text-sm text-muted-foreground">Create your first campaign to get started</p>
+            <p className="text-sm text-muted-foreground">Create your first campaign to get started.</p>
           </CardContent>
         </Card>
       ) : (

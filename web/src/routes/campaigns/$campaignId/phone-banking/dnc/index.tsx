@@ -1,7 +1,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { Ban } from "lucide-react"
+import { PhoneOff } from "lucide-react"
 import { toast } from "sonner"
 import { useDNCEntries, useAddDNCEntry, useDeleteDNCEntry, useImportDNC } from "@/hooks/useDNC"
 import { useFormGuard } from "@/hooks/useFormGuard"
@@ -164,7 +164,7 @@ function DNCListPage() {
   const emptyTitle = search ? "No numbers match your search" : "No DNC entries"
   const emptyDescription = search
     ? "Try a different search term."
-    : "Add phone numbers to prevent them from being called."
+    : "Voters added to the Do Not Call list will appear here."
 
   return (
     <div className="p-6 space-y-4">
@@ -195,7 +195,7 @@ function DNCListPage() {
       <DataTable
         columns={columns}
         data={filteredEntries}
-        emptyIcon={Ban}
+        emptyIcon={PhoneOff}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
       />

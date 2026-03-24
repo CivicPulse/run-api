@@ -156,7 +156,7 @@ function ImportsHistoryPage() {
           <EmptyState
             icon={Upload}
             title="No imports yet"
-            description="Upload a CSV file to import voter data into your campaign"
+            description="Import a CSV file to add voters to your campaign."
             action={
               <Button
                 onClick={() =>

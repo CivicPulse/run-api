@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ClipboardList, Plus, Trash2 } from "lucide-react"
+import { FileText, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import type { ScriptStatus } from "@/types/survey"
 
@@ -82,9 +82,9 @@ function SurveysIndex() {
         </div>
       ) : scripts.length === 0 ? (
         <EmptyState
-          icon={ClipboardList}
+          icon={FileText}
           title="No survey scripts yet"
-          description="Create a survey script to start building questionnaires for your volunteers."
+          description="Create a survey script with questions for canvassers and callers."
           action={
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-1 h-4 w-4" /> Create Script

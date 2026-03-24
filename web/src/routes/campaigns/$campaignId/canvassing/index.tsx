@@ -72,7 +72,7 @@ function CanvassingIndex() {
           <EmptyState
             icon={Map}
             title="No turfs yet"
-            description="Create a turf to define canvassing areas."
+            description="Create a turf to define canvassing areas on the map."
             action={
               <Button size="sm" asChild>
                 <Link to={`/campaigns/${campaignId}/canvassing/turfs/new` as string}>
@@ -137,7 +137,7 @@ function CanvassingIndex() {
           <EmptyState
             icon={List}
             title="No walk lists yet"
-            description="Generate a walk list from a turf."
+            description="Create a walk list from a turf to assign to canvassers."
             action={
               <Button size="sm" onClick={() => setGenerateOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" /> Generate Walk List

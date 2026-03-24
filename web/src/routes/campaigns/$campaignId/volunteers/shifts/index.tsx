@@ -174,8 +174,8 @@ function ShiftListPage() {
       ) : shifts.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="No shifts yet"
-          description="Create your first shift to start scheduling volunteers"
+          title="No shifts scheduled"
+          description="Create a shift to schedule volunteer activities."
           action={
             <RequireRole minimum="manager">
               <Button size="sm" onClick={handleOpenCreate}>
