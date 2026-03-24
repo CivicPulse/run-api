@@ -107,6 +107,11 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Seed migration promoting org created_by users to org_owner (ORG-02) — v1.5
 - ✓ Additive org role resolution: max(campaign role, org role equivalent) in resolve_campaign_role() (ORG-03) — v1.5
 - ✓ require_org_role() auth dependency gating org-level endpoints with 3 read-only org APIs (ORG-04) — v1.5
+- ✓ Org dashboard with campaign card grid, stats bar, archive flow, and org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13) — v1.5
+- ✓ Org member directory with per-campaign role matrix and add-to-campaign dialog (ORG-06, ORG-10) — v1.5
+- ✓ Multi-step campaign creation wizard with team invite step (ORG-08) — v1.5
+- ✓ Org settings page with name edit (owner-only) and ZITADEL org ID display (ORG-09) — v1.5
+- ✓ Sidebar nav renders Organization group on all authenticated routes, Campaign group conditional (ORG-05) — v1.5
 
 ### Out of Scope
 
@@ -127,7 +132,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 42 complete — shipped map-based turf editor with Leaflet/Geoman polygon draw/edit replacing raw GeoJSON textarea, overview map with color-coded turfs and clustered voter markers, GeoJSON import/export, Nominatim address geocoding, overlap visual highlighting, and satellite tile toggle (MAP-01 through MAP-11). 42 phases, 127 plans shipped. Organization UI is the next major feature. WCAG + UX audit and E2E test coverage complete the milestone.
+Phase 43 complete — shipped organization UI with org dashboard (campaign card grid, stats bar, archive flow), org switcher for multi-org users, 3-step campaign creation wizard with team invite, member directory with per-campaign role matrix, org settings page with owner-gated name edit, and sidebar nav fix ensuring Organization nav group renders on all authenticated routes (ORG-05 through ORG-13). 43 phases, 132 plans shipped. UI/UX polish & frontend hardening is next, then WCAG + UX audit and E2E test coverage complete the milestone.
 
 ## Context
 
