@@ -1,4 +1,5 @@
 import { createFileRoute, useRouterState } from "@tanstack/react-router"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import { ModuleLayout } from "@/components/shared/ModuleLayout"
 
 function SettingsLayout() {
@@ -16,4 +17,5 @@ function SettingsLayout() {
 
 export const Route = createFileRoute("/campaigns/$campaignId/settings")({
   component: SettingsLayout,
+  errorComponent: RouteErrorBoundary,
 })

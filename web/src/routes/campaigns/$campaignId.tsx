@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, Link, useParams } from "@tanstack/react-router"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import { useQuery } from "@tanstack/react-query"
 import {
   LayoutDashboard,
@@ -77,4 +78,5 @@ function CampaignLayout() {
 
 export const Route = createFileRoute("/campaigns/$campaignId")({
   component: CampaignLayout,
+  errorComponent: RouteErrorBoundary,
 })
