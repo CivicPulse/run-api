@@ -98,6 +98,11 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Multi-campaign membership fix (ensure_user_synced creates records for all org campaigns) — v1.5
 - ✓ Alembic data migration backfilling missing CampaignMember records — v1.5
 - ✓ Settings button defensive guard when campaignId unavailable — v1.5
+- ✓ Sentry error tracking with PII scrubbing (before_send strips phone/email) and performance traces — v1.5
+- ✓ Structlog ASGI request middleware with structured JSON logs (request_id, user_id, campaign_id, duration) — v1.5
+- ✓ ContextVar-based request context sharing across Sentry, error responses, and logs — v1.5
+- ✓ Trusted-proxy-aware rate limiting using CF-Connecting-IP with Cloudflare CIDR validation — v1.5
+- ✓ Per-user rate limiting infrastructure for authenticated endpoints via JWT sub extraction — v1.5
 
 ### Out of Scope
 
@@ -118,7 +123,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 39 complete — fixed critical multi-tenancy data leak (transaction-scoped RLS, pool checkout reset, centralized dependency). Multi-campaign membership working. 39 phases, 118 plans shipped. Organization-level UI and map-based turf editor are the next major features. WCAG + UX audit, observability, and E2E test coverage complete the milestone.
+Phase 40 complete — added production observability (Sentry error tracking with PII scrubbing, structlog request middleware, ContextVar-based request tracing) and fixed rate limiting (trusted-proxy IP extraction, per-user rate limit infrastructure). 40 phases, 120 plans shipped. Organization-level UI and map-based turf editor are the next major features. WCAG + UX audit and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -184,4 +189,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-24 — Phase 39 complete, v1.5 in progress*
+*Last updated: 2026-03-24 — Phase 40 complete, v1.5 in progress*
