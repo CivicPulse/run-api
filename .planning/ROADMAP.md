@@ -157,7 +157,12 @@ Plans:
   3. Overview map displays all campaign turfs color-coded by status with voter count badges
   4. User can import a .geojson file, preview the boundary on the map, and save it as a turf
   5. Power users can toggle to an "Advanced" raw JSON textarea and edit the GeoJSON directly
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
+- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
 
 ### Phase 43: Organization UI
@@ -170,7 +175,12 @@ Plans:
   3. Only org_admin+ users see the "New Campaign" button, and the creation wizard walks through name/type/jurisdiction steps
   4. Org owner can edit org name and view the ZITADEL org ID on the settings page
   5. User with multiple org memberships can switch between orgs via a header switcher, and all routes/queries scope to the selected org
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
+- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
 
 ### Phase 44: UI/UX Polish & Frontend Hardening
@@ -183,7 +193,12 @@ Plans:
   3. Every list page shows a meaningful empty state message when no data exists (not a blank table)
   4. Every data-loading page shows a loading skeleton or spinner during fetch (no layout shift)
   5. Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping)
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
+- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
 
 ### Phase 45: WCAG Compliance Audit
@@ -195,7 +210,12 @@ Plans:
   2. Screen reader (NVDA or VoiceOver) can complete 5 critical flows: voter search, voter import, walk list creation, phone bank session, campaign settings
   3. Every interactive component is reachable and operable via keyboard alone, with visible focus indicators and no focus traps
   4. Map component has a skip-nav link and all turf CRUD operations work without the map via the JSON fallback
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
+- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
 
 ### Phase 46: E2E Testing & Integration
@@ -256,7 +276,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
-| 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
+| 42. Map-Based Turf Editor | v1.5 | 0/4 | In progress | - |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
