@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { MoreHorizontal, UserPlus, Users } from "lucide-react"
+import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -380,7 +381,10 @@ function MembersSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="invite-role">Role</Label>
+              <div className="flex items-center">
+                <Label htmlFor="invite-role">Role</Label>
+                <TooltipIcon content="Viewer: read-only access. Volunteer: can log voter interactions. Manager: can create lists and assign turfs. Admin: full campaign management. Owner: can transfer or delete the campaign." />
+              </div>
               <Select
                 value={inviteForm.watch("role")}
                 onValueChange={(value) =>

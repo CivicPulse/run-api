@@ -196,7 +196,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [ ] 44-01-PLAN.md — Error boundaries + sidebar offcanvas (OBS-05, UX-01)
-- [ ] 44-02-PLAN.md — Volunteer invite toggle + contextual tooltips (UX-02, UX-03, UX-04)
+- [x] 44-02-PLAN.md — Volunteer invite toggle + contextual tooltips (UX-02, UX-03, UX-04)
 - [ ] 44-03-PLAN.md — Empty state audit + loading skeleton replacement (OBS-06, OBS-07)
 - [ ] 44-04-PLAN.md — Human verification of all UI/UX changes
 **UI hint**: yes
@@ -278,6 +278,6 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
-| 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/4 | In progress | - |
+| 44. UI/UX Polish & Frontend Hardening | v1.5 | 1/4 | In Progress|  |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |

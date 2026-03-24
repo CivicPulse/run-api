@@ -19,9 +19,9 @@
 - [x] **OBS-02**: Structlog request middleware emits structured JSON logs with `request_id`, `user_id`, `campaign_id`, and duration per request
 - [x] **OBS-03**: Rate limiting uses real client IP (`CF-Connecting-IP`) with proxy header guard, not `request.client.host`
 - [x] **OBS-04**: Authenticated endpoints have user-ID-based rate limiting in addition to IP-based
-- [ ] **OBS-05**: All pages have error boundaries with user-friendly error messages
-- [ ] **OBS-06**: All list pages show meaningful empty state messages when no data exists
-- [ ] **OBS-07**: All data-loading pages show loading skeletons or spinners during fetch
+- [x] **OBS-05**: All pages have error boundaries with user-friendly error messages
+- [x] **OBS-06**: All list pages show meaningful empty state messages when no data exists
+- [x] **OBS-07**: All data-loading pages show loading skeletons or spinners during fetch
 
 ## Organization Management (ORG)
 
@@ -55,10 +55,10 @@
 
 ## UI/UX Polish (UX)
 
-- [ ] **UX-01**: Sidebar slides over content (not push) and consolidates navigation into single side menu
-- [ ] **UX-02**: Volunteer invite flow clearly distinguishes tracked-only volunteers from ZITADEL-invited users
-- [ ] **UX-03**: Contextual tooltips and help text guide new users through key features throughout the app
-- [ ] **UX-04**: Inline hints and documentation surface at decision points (e.g., turf sizing, role assignment)
+- [x] **UX-01**: Sidebar slides over content (not push) and consolidates navigation into single side menu
+- [x] **UX-02**: Volunteer invite flow clearly distinguishes tracked-only volunteers from ZITADEL-invited users
+- [x] **UX-03**: Contextual tooltips and help text guide new users through key features throughout the app
+- [x] **UX-04**: Inline hints and documentation surface at decision points (e.g., turf sizing, role assignment)
 
 ## WCAG Compliance (A11Y)
 
