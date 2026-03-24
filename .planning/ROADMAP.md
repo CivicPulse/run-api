@@ -96,7 +96,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs (completed 2026-03-24)
 - [x] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting (completed 2026-03-24)
 - [x] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints (completed 2026-03-24)
-- [ ] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea
+- [x] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea (completed 2026-03-24)
 - [ ] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings
 - [ ] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states
 - [ ] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages
@@ -159,8 +159,8 @@ Plans:
   5. Power users can toggle to an "Advanced" raw JSON textarea and edit the GeoJSON directly
 **Plans**: 4 plans
 Plans:
-- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
-- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [x] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [x] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
 - [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
 - [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
@@ -177,8 +177,8 @@ Plans:
   5. User with multiple org memberships can switch between orgs via a header switcher, and all routes/queries scope to the selected org
 **Plans**: 4 plans
 Plans:
-- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
-- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
+- [x] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
+- [x] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
 - [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
 - [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
 **UI hint**: yes
@@ -276,7 +276,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
-| 42. Map-Based Turf Editor | v1.5 | 0/4 | Planned    |  |
+| 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
