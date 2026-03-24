@@ -103,6 +103,10 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ ContextVar-based request context sharing across Sentry, error responses, and logs — v1.5
 - ✓ Trusted-proxy-aware rate limiting using CF-Connecting-IP with Cloudflare CIDR validation — v1.5
 - ✓ Per-user rate limiting infrastructure for authenticated endpoints via JWT sub extraction — v1.5
+- ✓ Organization members table with org_owner/org_admin roles per user per org (ORG-01) — v1.5
+- ✓ Seed migration promoting org created_by users to org_owner (ORG-02) — v1.5
+- ✓ Additive org role resolution: max(campaign role, org role equivalent) in resolve_campaign_role() (ORG-03) — v1.5
+- ✓ require_org_role() auth dependency gating org-level endpoints with 3 read-only org APIs (ORG-04) — v1.5
 
 ### Out of Scope
 
@@ -123,7 +127,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 40 complete — added production observability (Sentry error tracking with PII scrubbing, structlog request middleware, ContextVar-based request tracing) and fixed rate limiting (trusted-proxy IP extraction, per-user rate limit infrastructure). 40 phases, 120 plans shipped. Organization-level UI and map-based turf editor are the next major features. WCAG + UX audit and E2E test coverage complete the milestone.
+Phase 41 complete — added organization data model and auth (OrganizationMember table with org_owner/org_admin roles, additive org role resolution in resolve_campaign_role(), require_org_role() auth dependency, 3 read-only org API endpoints, seed migration for org_owner). 41 phases, 123 plans shipped. Map-based turf editor and organization UI are the next major features. WCAG + UX audit and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -189,4 +193,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-24 — Phase 40 complete, v1.5 in progress*
+*Last updated: 2026-03-24 — Phase 41 complete, v1.5 in progress*
