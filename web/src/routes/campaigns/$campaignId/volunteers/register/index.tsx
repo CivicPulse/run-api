@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { HTTPError } from "ky"
+import { Info } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { useFormGuard } from "@/hooks/useFormGuard"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -65,6 +68,7 @@ function VolunteerRegisterPage() {
   const selfRegister = useSelfRegister(campaignId)
 
   const [preFilled, setPreFilled] = useState(false)
+  const [mode, setMode] = useState<"record" | "invite">("record")
 
   const form = useForm<VolunteerRegisterFormValues>({
     resolver: zodResolver(volunteerRegisterSchema),
@@ -123,16 +127,34 @@ function VolunteerRegisterPage() {
 
     try {
       if (isManager) {
-        const result = await createVolunteer.mutateAsync(
-          payload as unknown as Parameters<typeof createVolunteer.mutateAsync>[0],
-        )
-        form.reset()
-        setPreFilled(false)
-        toast.success("Volunteer created")
-        navigate({
-          to: "/campaigns/$campaignId/volunteers/$volunteerId",
-          params: { campaignId, volunteerId: result.id },
-        })
+        if (mode === "invite") {
+          // Invite mode: create volunteer record and notify about invite
+          const result = await createVolunteer.mutateAsync({
+            ...payload,
+            send_invite: true,
+          } as unknown as Parameters<typeof createVolunteer.mutateAsync>[0])
+          form.reset()
+          setPreFilled(false)
+          setMode("record")
+          toast.info(
+            "Volunteer created. Email invite feature is coming soon.",
+          )
+          navigate({
+            to: "/campaigns/$campaignId/volunteers/$volunteerId",
+            params: { campaignId, volunteerId: result.id },
+          })
+        } else {
+          const result = await createVolunteer.mutateAsync(
+            payload as unknown as Parameters<typeof createVolunteer.mutateAsync>[0],
+          )
+          form.reset()
+          setPreFilled(false)
+          toast.success("Volunteer created")
+          navigate({
+            to: "/campaigns/$campaignId/volunteers/$volunteerId",
+            params: { campaignId, volunteerId: result.id },
+          })
+        }
       } else {
         const result = await selfRegister.mutateAsync(
           payload as unknown as Parameters<typeof selfRegister.mutateAsync>[0],
@@ -202,6 +224,47 @@ function VolunteerRegisterPage() {
       </h2>
 
       <form onSubmit={onSubmit} className="space-y-6">
+        {/* Volunteer type toggle (managers only) */}
+        <RequireRole minimum="manager">
+          <div className="space-y-3 pb-4 border-b">
+            <Label className="text-xs font-medium">Volunteer Type</Label>
+            <RadioGroup
+              value={mode}
+              onValueChange={(v) => setMode(v as "record" | "invite")}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="record" id="mode-record" />
+                <Label
+                  htmlFor="mode-record"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Add volunteer record
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="invite" id="mode-invite" />
+                <Label
+                  htmlFor="mode-invite"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Invite to app
+                </Label>
+              </div>
+            </RadioGroup>
+            {mode === "invite" && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  This volunteer will receive an email invitation to access the
+                  app. They will be able to log in and use field mode for
+                  canvassing and phone banking.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </RequireRole>
+
         {/* Section 1: Essential fields (all users) */}
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
