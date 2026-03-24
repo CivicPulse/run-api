@@ -124,34 +124,33 @@ async def ensure_user_synced(
     org = org_result.scalar_one_or_none()
 
     if org:
-        # Find campaigns belonging to this organization
+        # Find ALL campaigns belonging to this organization
         campaign_result = await db.execute(
-            select(Campaign)
-            .where(Campaign.organization_id == org.id)
-            .order_by(Campaign.created_at.desc())
-            .limit(1)
+            select(Campaign).where(Campaign.organization_id == org.id)
         )
-        campaign = campaign_result.scalar_one_or_none()
-        if campaign is None:
+        campaigns = campaign_result.scalars().all()
+
+        if not campaigns:
             # Secondary fallback: try legacy zitadel_org_id lookup
             campaign_result = await db.execute(
                 select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
             )
-            campaign = campaign_result.scalar_one_or_none()
-            if campaign is None:
-                logger.warning(
-                    "Organization {} exists but has no campaigns for user {}",
-                    org.id,
-                    user.id,
-                )
+            campaigns = campaign_result.scalars().all()
+
+        if not campaigns:
+            logger.warning(
+                "Organization {} has no campaigns for user {}",
+                org.id,
+                user.id,
+            )
     else:
         # Fallback: direct lookup for campaigns not yet migrated
         campaign_result = await db.execute(
             select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
         )
-        campaign = campaign_result.scalar_one_or_none()
+        campaigns = campaign_result.scalars().all()
 
-    if campaign:
+    for campaign in campaigns:
         member_result = await db.execute(
             select(CampaignMember).where(
                 CampaignMember.user_id == user.id,
@@ -164,12 +163,14 @@ async def ensure_user_synced(
                 campaign_id=campaign.id,
             )
             db.add(member)
-            await db.commit()
             logger.info(
                 "Created campaign_member for user {} in campaign {}",
                 user.id,
                 campaign.id,
             )
+
+    if campaigns:
+        await db.commit()
 
     return local_user
 
