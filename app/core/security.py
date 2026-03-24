@@ -448,3 +448,72 @@ def require_role(minimum: str):
         return current_user
 
     return _check_role
+
+
+def require_org_role(minimum: str):
+    """FastAPI dependency factory that enforces minimum org-level role.
+
+    Validates the user's JWT org_id against a DB Organization record,
+    then checks OrganizationMember for the required role level.
+    Org endpoints use get_db() (no campaign RLS) per D-13.
+
+    Args:
+        minimum: The minimum org role name ("org_admin" or "org_owner").
+
+    Returns:
+        A FastAPI dependency function.
+    """
+    min_org_role = OrgRole(minimum)
+
+    from app.db.session import get_db  # noqa: F811
+
+    async def _check_org_role(
+        current_user: AuthenticatedUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> AuthenticatedUser:
+        from app.models.organization import Organization
+        from app.models.organization_member import OrganizationMember
+
+        # Find org by JWT org_id (D-11: JWT org_id is authoritative)
+        org = await db.scalar(
+            select(Organization).where(
+                Organization.zitadel_org_id == current_user.org_id
+            )
+        )
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Organization not found",
+            )
+
+        # Check OrganizationMember (D-12)
+        org_member_role = await db.scalar(
+            select(OrganizationMember.role).where(
+                OrganizationMember.user_id == current_user.id,
+                OrganizationMember.organization_id == org.id,
+            )
+        )
+        if not org_member_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        # Validate role level using ORG_ROLE_LEVELS dict
+        try:
+            user_org_role = OrgRole(org_member_role)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            ) from None
+
+        if ORG_ROLE_LEVELS[user_org_role] < ORG_ROLE_LEVELS[min_org_role]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        return current_user
+
+    return _check_org_role

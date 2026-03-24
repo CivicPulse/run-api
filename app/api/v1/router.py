@@ -15,6 +15,7 @@ from app.api.v1 import (
     invites,
     join,
     members,
+    org,
     phone_banks,
     shifts,
     surveys,
@@ -36,6 +37,7 @@ router.include_router(join.router, tags=["join"])
 router.include_router(users.router, prefix="/me", tags=["users"])
 router.include_router(invites.router, tags=["invites"])
 router.include_router(members.router, tags=["members"])
+router.include_router(org.router, prefix="/org", tags=["org"])
 router.include_router(imports.router, tags=["imports"])
 router.include_router(voter_interactions.router, tags=["voter-interactions"])
 router.include_router(voter_contacts.router, tags=["voter-contacts"])
