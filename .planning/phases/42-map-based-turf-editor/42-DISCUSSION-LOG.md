@@ -5,7 +5,7 @@
 
 **Date:** 2026-03-24
 **Phase:** 42-map-based-turf-editor
-**Areas discussed:** Map interaction UX, Overview map display, GeoJSON import/export, Overlap & geocoding
+**Areas discussed:** Map interaction UX, Overview map display, GeoJSON import/export, Overlap & geocoding, Map component architecture, Backend voter_count integration, Error handling & edge cases, Mobile/responsive behavior
 
 ---
 
@@ -89,11 +89,11 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Upload → preview → save | File picker on new turf page. Preview on map. Confirm name/description then save. | ✓ |
+| Upload -> preview -> save | File picker on new turf page. Preview on map. Confirm name/description then save. | ✓ |
 | Drag-and-drop onto map | Drag .geojson directly onto map canvas. More fluid, needs custom drop zone. | |
 | Bulk import page | Separate page for multiple .geojson files with batch creation. | |
 
-**User's choice:** Upload → preview → save
+**User's choice:** Upload -> preview -> save
 **Notes:** None
 
 ### Export scope
@@ -146,15 +146,69 @@
 
 ---
 
+## Map Component Architecture (auto-selected update)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Single TurfMapEditor with subcomponents | One editor wrapping MapContainer with conditional Geoman, separate TurfOverviewMap for index page, shared MapProvider | auto ✓ |
+| Monolithic map component | Single component handling both edit and overview modes via props | |
+| Headless map hooks | Custom hooks abstracting map logic, thin render components | |
+
+**User's choice:** [auto] Single TurfMapEditor with subcomponents (recommended default)
+**Notes:** Matches existing component organization pattern. Separate overview vs editor prevents mode-switching complexity. Components grouped under `web/src/components/canvassing/map/`.
+
+---
+
+## Backend voter_count Integration (auto-selected update)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Correlated subquery in list endpoint | Batch-optimized COUNT via correlated subquery, avoids N+1 | auto ✓ |
+| Separate endpoint call per turf | Client calls get_voter_count for each turf card | |
+| Precomputed materialized view | Database-level caching of voter counts per turf | |
+
+**User's choice:** [auto] Correlated subquery in list endpoint (recommended default)
+**Notes:** Avoids N+1 queries. Existing `get_voter_count()` handles single-turf case; list endpoint needs batch version.
+
+---
+
+## Error Handling & Edge Cases (auto-selected update)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Client-side validation + zod refinement | Geoman validates polygon shape, zod validates GeoJSON structure, inline errors below map | auto ✓ |
+| Server-side only validation | Let backend `_validate_polygon()` be sole validator, show API error | |
+| Real-time validation overlay | Validate on every vertex change with live error overlay on map | |
+
+**User's choice:** [auto] Client-side validation + zod refinement (recommended default)
+**Notes:** Consistent with existing react-hook-form error pattern. Backend `_validate_polygon()` remains the final guard.
+
+---
+
+## Mobile/Responsive Behavior (auto-selected update)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Full-width with reduced height, collapsible overview | h-64 mobile / h-96 desktop, overview map collapsible on index page | auto ✓ |
+| Fixed map size all breakpoints | Same dimensions regardless of screen size | |
+| Map in bottom sheet on mobile | Slide-up panel for map on small screens | |
+
+**User's choice:** [auto] Full-width with reduced height, collapsible overview (recommended default)
+**Notes:** Geoman's default touch targets already meet 44px minimum. Collapsible overview on mobile preserves scroll space for turf card grid.
+
+---
+
 ## Claude's Discretion
 
 - Geoman toolbar configuration and placement
-- Marker clustering library choice
+- Marker clustering library choice (react-leaflet-cluster or alternatives)
 - Exact status color scheme for turf polygons
 - Nominatim debounce/rate limiting
 - Overlap detection implementation (PostGIS vs client-side)
 - Map default zoom and bounds padding
 - Loading states for voter markers and voter count
+- MapProvider implementation details (context vs props)
+- Batch voter_count subquery optimization approach
 
 ## Deferred Ideas
 
