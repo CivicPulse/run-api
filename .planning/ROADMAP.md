@@ -193,12 +193,13 @@ Plans:
   3. Every list page shows a meaningful empty state message when no data exists (not a blank table)
   4. Every data-loading page shows a loading skeleton or spinner during fetch (no layout shift)
   5. Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping)
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
 - [ ] 44-01-PLAN.md — Error boundaries + sidebar offcanvas (OBS-05, UX-01)
 - [x] 44-02-PLAN.md — Volunteer invite toggle + contextual tooltips (UX-02, UX-03, UX-04)
 - [ ] 44-03-PLAN.md — Empty state audit + loading skeleton replacement (OBS-06, OBS-07)
 - [ ] 44-04-PLAN.md — Human verification of all UI/UX changes
+- [ ] 44-05-PLAN.md — Gap closure: org tooltip, empty state wording, error boundaries (UX-03, UX-04, OBS-05, OBS-06)
 **UI hint**: yes
 
 ### Phase 45: WCAG Compliance Audit
