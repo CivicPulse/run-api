@@ -4,6 +4,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.dnc import DoNotCallEntry
 from app.models.import_job import FieldMappingTemplate, ImportJob
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.shift import Shift, ShiftVolunteer
 from app.models.user import User
@@ -27,6 +28,7 @@ __all__ = [
     "FieldMappingTemplate",
     "ImportJob",
     "Organization",
+    "OrganizationMember",
     "PhoneBankSession",
     "SessionCaller",
     "Shift",

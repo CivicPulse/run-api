@@ -6,7 +6,7 @@ Uses Authlib for JWT/JWKS validation against ZITADEL OIDC.
 from __future__ import annotations
 
 import uuid
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 import httpx
 import sqlalchemy.exc
@@ -29,6 +29,24 @@ class CampaignRole(IntEnum):
     MANAGER = 2
     ADMIN = 3
     OWNER = 4
+
+
+class OrgRole(StrEnum):
+    """Organization-level roles (not campaign-specific)."""
+
+    ORG_OWNER = "org_owner"
+    ORG_ADMIN = "org_admin"
+
+
+ORG_ROLE_CAMPAIGN_EQUIVALENT: dict[OrgRole, CampaignRole] = {
+    OrgRole.ORG_ADMIN: CampaignRole.ADMIN,
+    OrgRole.ORG_OWNER: CampaignRole.OWNER,
+}
+
+ORG_ROLE_LEVELS: dict[OrgRole, int] = {
+    OrgRole.ORG_ADMIN: 0,
+    OrgRole.ORG_OWNER: 1,
+}
 
 
 class AuthenticatedUser(BaseModel):
