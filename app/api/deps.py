@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 
+from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,10 +21,44 @@ from app.models.organization import Organization
 from app.models.user import User
 
 
+async def get_campaign_db(
+    campaign_id: uuid.UUID,
+) -> AsyncGenerator[AsyncSession]:
+    """DB session with RLS context auto-set from URL path parameter.
+
+    All campaign-scoped routes MUST use this instead of get_db().
+    campaign_id is extracted automatically by FastAPI from the URL path.
+    Per D-04: centralizes RLS so no endpoint can skip it.
+    Per D-05: only routes with campaign_id in path get RLS context.
+
+    Args:
+        campaign_id: The campaign UUID from the URL path parameter.
+
+    Yields:
+        AsyncSession with campaign context configured.
+
+    Raises:
+        HTTPException: 403 if campaign_id is invalid/empty.
+    """
+    async with async_session_factory() as session:
+        try:
+            await set_campaign_context(session, str(campaign_id))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=403,
+                detail="Campaign context required",
+            ) from exc
+        yield session
+
+
+# DEPRECATED: use get_campaign_db instead. Remove after Phase 39 migration complete.
 async def get_db_with_rls(
     campaign_id: str,
 ) -> AsyncGenerator[AsyncSession]:
     """Get a DB session with RLS campaign context set.
+
+    .. deprecated::
+        Use :func:`get_campaign_db` instead.
 
     Args:
         campaign_id: The campaign UUID to scope RLS queries.
