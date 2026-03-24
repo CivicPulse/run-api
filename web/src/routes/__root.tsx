@@ -120,23 +120,25 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <RequireRole minimum="admin">
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={location.pathname.includes("/settings")}
-              >
-                <Link to={`/campaigns/${campaignId}/settings` as string}>
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </RequireRole>
+      {campaignId && campaignId !== "new" && (
+        <RequireRole minimum="admin">
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.includes("/settings")}
+                >
+                  <Link to={`/campaigns/${campaignId}/settings`}>
+                    <Settings />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </RequireRole>
+      )}
       <SidebarRail />
     </Sidebar>
   )
