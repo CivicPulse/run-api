@@ -276,7 +276,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
-| 42. Map-Based Turf Editor | v1.5 | 0/4 | In progress | - |
+| 42. Map-Based Turf Editor | v1.5 | 0/4 | Planned    |  |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |

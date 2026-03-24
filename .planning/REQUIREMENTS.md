@@ -41,16 +41,16 @@
 
 ## Map-Based Turf Editor (MAP)
 
-- [ ] **MAP-01**: User can draw polygon boundaries on an interactive map using Geoman controls
-- [ ] **MAP-02**: User can edit existing turf boundaries by dragging vertices on the map
+- [x] **MAP-01**: User can draw polygon boundaries on an interactive map using Geoman controls
+- [x] **MAP-02**: User can edit existing turf boundaries by dragging vertices on the map
 - [ ] **MAP-03**: Overview map renders all campaign turfs color-coded by status (draft/active/completed)
-- [ ] **MAP-04**: Selected turf shows voter locations as clustered markers on the map
-- [ ] **MAP-05**: Voter count badge displays on turf list and map popup (wired from existing `get_voter_count`)
+- [x] **MAP-04**: Selected turf shows voter locations as clustered markers on the map
+- [x] **MAP-05**: Voter count badge displays on turf list and map popup (wired from existing `get_voter_count`)
 - [ ] **MAP-06**: User can import a `.geojson` file to create a turf boundary with map preview before save
 - [ ] **MAP-07**: User can export a turf boundary as a `.geojson` file (client-side download)
-- [ ] **MAP-08**: Raw JSON textarea preserved as "Advanced" toggle for power users
+- [x] **MAP-08**: Raw JSON textarea preserved as "Advanced" toggle for power users
 - [ ] **MAP-09**: Address geocoding search centers/zooms the map via Nominatim
-- [ ] **MAP-10**: Overlap detection warns when a new turf intersects existing active turfs
+- [x] **MAP-10**: Overlap detection warns when a new turf intersects existing active turfs
 - [ ] **MAP-11**: Satellite/aerial imagery toggle available as alternative to street map tiles
 
 ## UI/UX Polish (UX)
