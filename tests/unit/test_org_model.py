@@ -5,9 +5,9 @@ from __future__ import annotations
 from enum import StrEnum
 
 from app.core.security import (
-    CampaignRole,
     ORG_ROLE_CAMPAIGN_EQUIVALENT,
     ORG_ROLE_LEVELS,
+    CampaignRole,
     OrgRole,
 )
 from app.models.organization_member import OrganizationMember
@@ -22,14 +22,18 @@ class TestOrganizationMemberModel:
     def test_unique_constraint_user_organization(self):
         constraints = OrganizationMember.__table_args__
         unique_names = [
-            c.name for c in constraints if hasattr(c, "name") and "uq_" in (c.name or "")
+            c.name
+            for c in constraints
+            if hasattr(c, "name") and "uq_" in (c.name or "")
         ]
         assert "uq_user_organization" in unique_names
 
     def test_check_constraint_role_valid(self):
         constraints = OrganizationMember.__table_args__
         check_names = [
-            c.name for c in constraints if hasattr(c, "name") and "ck_" in (c.name or "")
+            c.name
+            for c in constraints
+            if hasattr(c, "name") and "ck_" in (c.name or "")
         ]
         assert "ck_organization_members_role_valid" in check_names
 
