@@ -6,9 +6,8 @@ Verifies that the pool checkout event correctly resets RLS context
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from sqlalchemy import event
 
 from app.db.session import engine, reset_rls_context
@@ -20,9 +19,9 @@ class TestPoolCheckoutEvent:
     def test_checkout_event_registered(self):
         """The reset_rls_context handler is registered on
         engine.sync_engine for the 'checkout' event."""
-        assert event.contains(
-            engine.sync_engine, "checkout", reset_rls_context
-        ), "reset_rls_context not registered on engine.sync_engine checkout"
+        assert event.contains(engine.sync_engine, "checkout", reset_rls_context), (
+            "reset_rls_context not registered on engine.sync_engine checkout"
+        )
 
     def test_checkout_handler_resets_context(self):
         """The checkout handler executes set_config with null UUID

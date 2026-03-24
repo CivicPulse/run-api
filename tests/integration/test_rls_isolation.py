@@ -43,12 +43,8 @@ class TestRLSPoolIsolation:
         try:
             # Session A: set context using app function and query
             async with factory() as session_a:
-                await set_campaign_context(
-                    session_a, str(data["campaign_a_id"])
-                )
-                result_a = await session_a.execute(
-                    text("SELECT id FROM campaigns")
-                )
+                await set_campaign_context(session_a, str(data["campaign_a_id"]))
+                result_a = await session_a.execute(text("SELECT id FROM campaigns"))
                 rows_a = result_a.all()
                 assert len(rows_a) >= 1, "Session A should see campaign A"
                 assert data["campaign_a_id"] in [r[0] for r in rows_a]
@@ -56,9 +52,7 @@ class TestRLSPoolIsolation:
 
             # Session B: acquire from same pool WITHOUT setting context
             async with factory() as session_b:
-                result_b = await session_b.execute(
-                    text("SELECT id FROM campaigns")
-                )
+                result_b = await session_b.execute(text("SELECT id FROM campaigns"))
                 rows_b = result_b.all()
                 # With transaction-scoped config (true), the context should
                 # have been reset after session A's commit. Session B should
@@ -83,16 +77,11 @@ class TestRLSPoolIsolation:
         try:
             async with factory() as session:
                 # Set context using app function
-                await set_campaign_context(
-                    session, str(data["campaign_a_id"])
-                )
+                await set_campaign_context(session, str(data["campaign_a_id"]))
 
                 # Verify context is set
                 result = await session.execute(
-                    text(
-                        "SELECT current_setting("
-                        "'app.current_campaign_id', true)"
-                    )
+                    text("SELECT current_setting('app.current_campaign_id', true)")
                 )
                 val = result.scalar()
                 assert val == str(data["campaign_a_id"])
@@ -102,10 +91,7 @@ class TestRLSPoolIsolation:
 
                 # New transaction: context should be empty/default
                 result2 = await session.execute(
-                    text(
-                        "SELECT current_setting("
-                        "'app.current_campaign_id', true)"
-                    )
+                    text("SELECT current_setting('app.current_campaign_id', true)")
                 )
                 val2 = result2.scalar()
                 assert val2 != str(data["campaign_a_id"]), (
@@ -127,24 +113,16 @@ class TestRLSPoolIsolation:
         try:
             async with factory() as session_a, factory() as session_b:
                 # Set different contexts using app function
-                await set_campaign_context(
-                    session_a, str(data["campaign_a_id"])
-                )
-                await set_campaign_context(
-                    session_b, str(data["campaign_b_id"])
-                )
+                await set_campaign_context(session_a, str(data["campaign_a_id"]))
+                await set_campaign_context(session_b, str(data["campaign_b_id"]))
 
                 # Each session sees only its own campaign
-                result_a = await session_a.execute(
-                    text("SELECT name FROM campaigns")
-                )
+                result_a = await session_a.execute(text("SELECT name FROM campaigns"))
                 names_a = [r[0] for r in result_a.all()]
                 assert "Campaign A" in names_a
                 assert "Campaign B" not in names_a
 
-                result_b = await session_b.execute(
-                    text("SELECT name FROM campaigns")
-                )
+                result_b = await session_b.execute(text("SELECT name FROM campaigns"))
                 names_b = [r[0] for r in result_b.all()]
                 assert "Campaign B" in names_b
                 assert "Campaign A" not in names_b
@@ -160,14 +138,10 @@ class TestRLSPoolIsolation:
 
         try:
             async with factory() as session:
-                with pytest.raises(
-                    ValueError, match="campaign_id is required"
-                ):
+                with pytest.raises(ValueError, match="campaign_id is required"):
                     await set_campaign_context(session, "")
 
-                with pytest.raises(
-                    ValueError, match="campaign_id is required"
-                ):
+                with pytest.raises(ValueError, match="campaign_id is required"):
                     await set_campaign_context(session, None)
         finally:
             await engine.dispose()
