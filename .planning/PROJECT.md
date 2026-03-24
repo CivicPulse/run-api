@@ -92,6 +92,13 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
+- ✓ Transaction-scoped RLS context (set_config true) preventing cross-campaign data leaks via pool reuse — v1.5
+- ✓ Defense-in-depth pool checkout event resetting campaign context on every connection acquisition — v1.5
+- ✓ Centralized get_campaign_db dependency replacing 244 inline set_campaign_context calls — v1.5
+- ✓ Multi-campaign membership fix (ensure_user_synced creates records for all org campaigns) — v1.5
+- ✓ Alembic data migration backfilling missing CampaignMember records — v1.5
+- ✓ Settings button defensive guard when campaignId unavailable — v1.5
+
 ### Out of Scope
 
 - Donation management / Stripe integration — FEC compliance extremely complex, defer
@@ -111,7 +118,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Starting v1.5 Go Live — Production Readiness on 2026-03-24. Shipped v1.0–v1.4 (38 phases, 114 plans) over 10 days. Critical multi-tenancy data leak bugs identified in prod. Organization-level UI and map-based turf editor are the major new features. WCAG + UX audit, observability, and E2E test coverage complete the milestone.
+Phase 39 complete — fixed critical multi-tenancy data leak (transaction-scoped RLS, pool checkout reset, centralized dependency). Multi-campaign membership working. 39 phases, 118 plans shipped. Organization-level UI and map-based turf editor are the next major features. WCAG + UX audit, observability, and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -177,4 +184,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-24 — milestone v1.5 started*
+*Last updated: 2026-03-24 — Phase 39 complete, v1.5 in progress*
