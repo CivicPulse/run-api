@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
-import type { TurfResponse, TurfCreate, TurfUpdate } from "@/types/turf"
+import type { TurfResponse, TurfCreate, TurfUpdate, VoterLocation, OverlappingTurf } from "@/types/turf"
 import type { PaginatedResponse } from "@/types/common"
 import { toast } from "sonner"
 
@@ -58,5 +58,34 @@ export function useDeleteTurf(campaignId: string) {
       toast.success("Turf deleted")
     },
     onError: () => toast.error("Failed to delete turf"),
+  })
+}
+
+export function useTurfVoters(campaignId: string, turfId: string | null) {
+  return useQuery({
+    queryKey: ["turfs", campaignId, turfId, "voters"],
+    queryFn: () =>
+      api
+        .get(`api/v1/campaigns/${campaignId}/turfs/${turfId}/voters`)
+        .json<VoterLocation[]>(),
+    enabled: !!campaignId && !!turfId,
+  })
+}
+
+export function useTurfOverlaps(
+  campaignId: string,
+  boundary: string | null,
+  excludeTurfId?: string,
+) {
+  return useQuery({
+    queryKey: ["turfs", campaignId, "overlaps", boundary, excludeTurfId],
+    queryFn: () => {
+      const params = new URLSearchParams({ boundary: boundary! })
+      if (excludeTurfId) params.set("exclude_turf_id", excludeTurfId)
+      return api
+        .get(`api/v1/campaigns/${campaignId}/turfs/overlaps?${params}`)
+        .json<OverlappingTurf[]>()
+    },
+    enabled: !!campaignId && !!boundary,
   })
 }
