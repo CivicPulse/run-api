@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowLeft, Loader2 } from "lucide-react"
+import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -107,7 +108,10 @@ function NewCampaignPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="type">Campaign Type *</Label>
+              <div className="flex items-center">
+                <Label htmlFor="type">Campaign Type *</Label>
+                <TooltipIcon content="Primary: initial party election to select candidates. General: the main election between party nominees. Special: elections held outside the regular cycle. Local: city, county, or municipal elections." />
+              </div>
               <Controller
                 name="type"
                 control={control}

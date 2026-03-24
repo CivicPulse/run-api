@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { createFileRoute, useParams } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { RequireRole } from "@/components/shared/RequireRole"
+import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import { DropZone } from "@/components/voters/DropZone"
 import { ColumnMappingTable } from "@/components/voters/ColumnMappingTable"
 import { MappingPreview } from "@/components/voters/MappingPreview"
@@ -234,9 +235,12 @@ export function ImportWizardPage() {
           {/* Step 2: Column Mapping */}
           {currentStep === 2 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">
-                Step 2 of 4: Column Mapping
-              </h2>
+              <div className="flex items-center">
+                <h2 className="text-lg font-semibold">
+                  Step 2 of 4: Column Mapping
+                </h2>
+                <TooltipIcon content="Map each column from your CSV to a voter field. Required: at least first_name and last_name. Optional fields like address, phone, and email improve voter matching." />
+              </div>
               <ColumnMappingTable
                 columns={detectedColumns}
                 suggestedMapping={suggestedMapping}
