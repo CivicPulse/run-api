@@ -1,28 +1,57 @@
+import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
-import { Vote, Plus } from "lucide-react"
+import { ChevronDown, Plus, Vote } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { api } from "@/api/client"
 import { useAuthStore } from "@/stores/authStore"
-import type { Campaign } from "@/types/campaign"
-import type { PaginatedResponse } from "@/types/common"
+import { useOrgCampaigns, useArchiveCampaign } from "@/hooks/useOrg"
+import { useOrgPermissions } from "@/hooks/useOrgPermissions"
+import { RequireOrgRole } from "@/components/shared/RequireOrgRole"
+import { CampaignCard } from "@/components/org/CampaignCard"
+import { StatsBar } from "@/components/org/StatsBar"
+import type { OrgCampaign } from "@/types/org"
 
-function CampaignList() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["campaigns"],
-    queryFn: () => api.get("api/v1/campaigns").json<PaginatedResponse<Campaign>>(),
-  })
+function OrgDashboard() {
+  const { data: campaigns, isLoading } = useOrgCampaigns()
+  const { currentOrg } = useOrgPermissions()
+
+  // Separate active and archived
+  const activeCampaigns = campaigns?.filter((c) => c.status !== "archived") ?? []
+  const archivedCampaigns = campaigns?.filter((c) => c.status === "archived") ?? []
+
+  // Archive state
+  const [archiveTarget, setArchiveTarget] = useState<OrgCampaign | null>(null)
+  const archiveMutation = useArchiveCampaign()
+  const [archivedOpen, setArchivedOpen] = useState(false)
+
+  // Calculate total member count from campaign data
+  const totalMembers = campaigns?.reduce((sum, c) => sum + c.member_count, 0) ?? 0
+
+  const handleArchiveConfirm = () => {
+    if (!archiveTarget) return
+    archiveMutation.mutate(archiveTarget.id, {
+      onSuccess: () => {
+        toast(`${archiveTarget.name} archived.`)
+        setArchiveTarget(null)
+      },
+    })
+  }
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-48" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-40" />
@@ -32,61 +61,116 @@ function CampaignList() {
     )
   }
 
-  const campaigns = data?.items ?? []
+  const hasCampaigns = activeCampaigns.length > 0 || archivedCampaigns.length > 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Campaigns</h1>
-        <Button asChild>
-          <Link to="/campaigns/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Campaign
-          </Link>
-        </Button>
+        <h1 className="text-3xl font-bold">{currentOrg?.name ?? "Organization"}</h1>
+        <RequireOrgRole minimum="org_admin">
+          <Button asChild>
+            <Link to="/campaigns/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Campaign
+            </Link>
+          </Button>
+        </RequireOrgRole>
       </div>
-      {campaigns.length === 0 ? (
+
+      {hasCampaigns ? (
+        <>
+          <StatsBar
+            activeCampaignCount={activeCampaigns.length}
+            memberCount={totalMembers}
+          />
+
+          {activeCampaigns.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {activeCampaigns.map((campaign) => (
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  onArchive={setArchiveTarget}
+                />
+              ))}
+            </div>
+          )}
+
+          {archivedCampaigns.length > 0 && (
+            <div>
+              <Button
+                variant="ghost"
+                onClick={() => setArchivedOpen(!archivedOpen)}
+                className="gap-1"
+              >
+                Archived ({archivedCampaigns.length})
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${archivedOpen ? "rotate-180" : ""}`}
+                />
+              </Button>
+              {archivedOpen && (
+                <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {archivedCampaigns.map((campaign) => (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onArchive={setArchiveTarget}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Vote className="h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-lg font-medium">No campaigns yet</p>
-            <p className="text-sm text-muted-foreground">Create your first campaign to get started</p>
+            <p className="text-sm text-muted-foreground">
+              Create your first campaign to start running field operations.
+            </p>
+            <RequireOrgRole minimum="org_admin">
+              <Button className="mt-4" asChild>
+                <Link to="/campaigns/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Campaign
+                </Link>
+              </Button>
+            </RequireOrgRole>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map((campaign) => (
-            <Link
-              key={campaign.id}
-              to="/campaigns/$campaignId/dashboard"
-              params={{ campaignId: campaign.id }}
-              className="block"
-            >
-              <Card className="transition-colors hover:border-primary/50">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                    <Badge variant={campaign.status === "active" ? "default" : "secondary"}>
-                      {campaign.status}
-                    </Badge>
-                  </div>
-                  <CardDescription>{campaign.type}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {campaign.candidate_name && (
-                    <p className="text-sm text-muted-foreground">{campaign.candidate_name}{campaign.party_affiliation ? ` (${campaign.party_affiliation})` : ""}</p>
-                  )}
-                  {campaign.election_date && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Election: {new Date(campaign.election_date).toLocaleDateString()}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
       )}
+
+      {/* Archive confirmation dialog */}
+      <Dialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive {archiveTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              Archived campaigns become read-only. Team members will still be able to
+              view data but cannot make changes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveTarget(null)}>
+              Keep Campaign
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleArchiveConfirm}
+              disabled={archiveMutation.isPending}
+            >
+              {archiveMutation.isPending ? "Archiving..." : "Archive Campaign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -112,7 +196,7 @@ function HomePage() {
     return <LandingPage />
   }
 
-  return <CampaignList />
+  return <OrgDashboard />
 }
 
 export const Route = createFileRoute("/")({ component: HomePage })
