@@ -98,23 +98,28 @@ def _setup_user_sync_on_db(mock_db, local_user=None, campaign=None):
     return results
 
 
-def _setup_role_resolution(mock_db, campaign=None, extra_scalars=None):
+def _setup_role_resolution(
+    mock_db, campaign=None, extra_scalars=None, role="viewer"
+):
     """Set up mock_db.scalar for resolve_campaign_role.
 
-    resolve_campaign_role calls db.scalar() up to 3 times:
-    1. CampaignMember.role lookup → None (no explicit override)
-    2. Campaign lookup → campaign object (for org verification)
-    3. Organization.zitadel_org_id (only if campaign.organization_id is set)
+    resolve_campaign_role calls db.scalar() for:
+    1. CampaignMember lookup → mock member with explicit role
+    2. Campaign lookup → campaign object (for org role check)
+       - If campaign.organization_id is None, org check is skipped
 
-    In tests the campaign has no organization_id, so only 2 calls are needed.
-    The campaign's zitadel_org_id is used directly for org matching.
+    With JWT fallback removed (D-07), a CampaignMember record must exist
+    for the user to have access.  The ``role`` parameter controls the
+    resolved campaign role.
 
-    extra_scalars: additional db.scalar() return values for service-layer calls
-    that also use scalar() (e.g. delete_campaign's sibling count check).
+    extra_scalars: additional db.scalar() return values for service-layer
+    calls that also use scalar() (e.g. delete_campaign's sibling count).
     """
+    member = MagicMock()
+    member.role = role
     values = [
-        None,  # CampaignMember.role → no explicit override
-        campaign,  # Campaign lookup → for org matching
+        member,  # CampaignMember lookup → explicit member with role
+        campaign,  # Campaign lookup → for org role check
     ]
     if extra_scalars:
         values.extend(extra_scalars)
@@ -289,7 +294,7 @@ class TestCampaignUpdate:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         # resolve_campaign_role uses db.scalar()
-        _setup_role_resolution(mock_db, campaign=campaign)
+        _setup_role_resolution(mock_db, campaign=campaign, role="admin")
         # ensure_user_synced (2 calls) + update_campaign select (1) + refresh
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
@@ -336,7 +341,9 @@ class TestCampaignDelete:
 
         # resolve_campaign_role uses db.scalar(); delete_campaign also
         # calls db.scalar() for sibling count check (returns 0)
-        _setup_role_resolution(mock_db, campaign=campaign, extra_scalars=[0])
+        _setup_role_resolution(
+            mock_db, campaign=campaign, extra_scalars=[0], role="owner"
+        )
         # ensure_user_synced (2 calls) + delete_campaign select (1)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
@@ -355,7 +362,7 @@ class TestCampaignDelete:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
         # resolve_campaign_role uses db.scalar()
-        _setup_role_resolution(mock_db, campaign=campaign)
+        _setup_role_resolution(mock_db, campaign=campaign, role="admin")
         # role check at route level will reject admin (needs owner)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

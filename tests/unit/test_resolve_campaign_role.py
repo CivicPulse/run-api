@@ -155,11 +155,15 @@ class TestResolveCampaignRole:
     async def test_invalid_db_role_treated_as_viewer(self):
         """Member has role 'bogus' in DB -- treated as VIEWER (not fall through)."""
         member = _make_member("bogus")
+        campaign = _make_campaign(organization_id=ORG_UUID)
 
         db = AsyncMock()
         db.scalar = AsyncMock(
             side_effect=[
                 member,  # CampaignMember with invalid role
+                campaign,  # Campaign lookup
+                USER_ORG_ID,  # Organization.zitadel_org_id
+                None,  # OrganizationMember.role (none)
             ]
         )
 

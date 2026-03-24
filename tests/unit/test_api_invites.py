@@ -70,15 +70,24 @@ def _override_app(
     return app
 
 
-def _setup_role_resolution(mock_db, org_id="org-1"):
-    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes."""
+def _setup_role_resolution(mock_db, org_id="org-1", role="admin"):
+    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes.
+
+    With JWT fallback removed (D-07), a CampaignMember record must exist.
+    The ``role`` parameter controls the resolved campaign role.
+    The function also does an org lookup (Campaign + Organization) when
+    user_org_id is set, so we provide a campaign with no organization_id
+    to skip the OrganizationMember path.
+    """
+    member_mock = MagicMock()
+    member_mock.role = role
     campaign_mock = MagicMock()
-    campaign_mock.zitadel_org_id = org_id
     campaign_mock.organization_id = None
+    campaign_mock.zitadel_org_id = org_id
     mock_db.scalar = AsyncMock(
         side_effect=[
-            None,  # CampaignMember.role → no explicit override
-            campaign_mock,  # Campaign lookup → for org matching
+            member_mock,  # CampaignMember lookup → explicit member with role
+            campaign_mock,  # Campaign lookup → for org role check
         ]
     )
 
@@ -100,7 +109,7 @@ class TestCreateInviteEndpoint:
         """Viewer cannot create invites -- returns 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="viewer")
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -199,7 +208,7 @@ class TestRevokeInviteEndpoint:
         """Viewer cannot revoke invites -- 403."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="viewer")
 
         invite_id = uuid.uuid4()
         transport = ASGITransport(app=app)

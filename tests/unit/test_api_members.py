@@ -97,15 +97,22 @@ def _override_app(
     return app
 
 
-def _setup_role_resolution(mock_db, org_id=ORG_ID):
-    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes."""
+def _setup_role_resolution(mock_db, org_id=ORG_ID, role="admin"):
+    """Set up mock_db.scalar for resolve_campaign_role in campaign-scoped routes.
+
+    With JWT fallback removed (D-07), a CampaignMember record must exist.
+    The function also does an org lookup when user_org_id is set, so we
+    provide a campaign with no organization_id to skip OrganizationMember.
+    """
+    member_mock = MagicMock()
+    member_mock.role = role
     campaign_mock = MagicMock()
-    campaign_mock.zitadel_org_id = org_id
     campaign_mock.organization_id = None
+    campaign_mock.zitadel_org_id = org_id
     mock_db.scalar = AsyncMock(
         side_effect=[
-            None,  # CampaignMember.role → no explicit override
-            campaign_mock,  # Campaign lookup → for org matching
+            member_mock,  # CampaignMember lookup → explicit member with role
+            campaign_mock,  # Campaign lookup → for org role check
         ]
     )
 
@@ -137,7 +144,7 @@ class TestListMembers:
         """Viewer+ can list members. Members with no role default to 'viewer'."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="viewer")
 
         member = _make_member()  # role=None defaults to "viewer" in response
         member_user = _make_local_user()
@@ -159,7 +166,7 @@ class TestListMembers:
         """Members with an explicit role return that role."""
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="viewer")
 
         member = _make_member(role="admin")
         member_user = _make_local_user()
@@ -184,7 +191,7 @@ class TestUpdateMemberRole:
         """Owner can change roles below owner."""
         user = _make_user(role=CampaignRole.OWNER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="owner")
 
         member = _make_member()
         member_user = _make_local_user()
@@ -221,7 +228,7 @@ class TestUpdateMemberRole:
         """Owner cannot grant owner role via update -- must use transfer."""
         user = _make_user(role=CampaignRole.OWNER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="owner")
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -305,7 +312,7 @@ class TestTransferOwnership:
         target_member = _make_member(user_id="new-owner")
         owner_member = _make_member(user_id="owner-1", role="owner")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="owner")
 
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
@@ -369,7 +376,7 @@ class TestTransferOwnership:
         target_member = _make_member(user_id="new-owner", role="manager")
         owner_member = _make_member(user_id="owner-1", role="owner")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
-        _setup_role_resolution(mock_db)
+        _setup_role_resolution(mock_db, role="owner")
 
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
