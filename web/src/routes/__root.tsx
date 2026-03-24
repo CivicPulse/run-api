@@ -45,6 +45,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { RequireRole } from "@/components/shared/RequireRole"
+import { SkipNav } from "@/components/shared/SkipNav"
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuthStore } from "@/stores/authStore"
@@ -67,7 +68,7 @@ function AppSidebar() {
   ]
 
   return (
-    <Sidebar>
+    <Sidebar aria-label="Main navigation">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -165,7 +166,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="User menu">
           <Avatar className="h-8 w-8">
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
@@ -231,6 +232,7 @@ function RootLayout() {
   if (isFieldRoute) {
     return (
       <div className="min-h-svh bg-background text-foreground">
+        <SkipNav />
         <Outlet />
         <Toaster />
       </div>
@@ -239,15 +241,16 @@ function RootLayout() {
 
   return (
     <SidebarProvider>
+      <SkipNav />
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
+        <header role="banner" aria-label="Top navigation bar" className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" aria-label="Open sidebar" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex-1" />
           <UserMenu />
         </header>
-        <main className="flex-1 overflow-x-hidden p-4">
+        <main id="main-content" className="flex-1 overflow-x-hidden p-4">
           <Outlet />
         </main>
       </SidebarInset>
