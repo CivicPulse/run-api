@@ -7,6 +7,8 @@ import uuid
 import fastapi_problem_details as problem
 from fastapi import FastAPI, status
 
+from app.core.observability import request_id_var
+
 
 class CampaignNotFoundError(Exception):
     """Raised when a campaign cannot be found."""
@@ -83,6 +85,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Campaign Not Found",
             detail=str(exc),
             type="campaign-not-found",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(InsufficientPermissionsError)
@@ -92,6 +95,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Insufficient Permissions",
             detail=exc.detail,
             type="insufficient-permissions",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(VoterNotFoundError)
@@ -101,6 +105,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Voter Not Found",
             detail=str(exc),
             type="voter-not-found",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(VoterListNotFoundError)
@@ -110,6 +115,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Voter List Not Found",
             detail=str(exc),
             type="voter-list-not-found",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(VoterTagNotFoundError)
@@ -119,6 +125,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Voter Tag Not Found",
             detail=str(exc),
             type="voter-tag-not-found",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(OrganizationNotFoundError)
@@ -128,6 +135,7 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Organization Not Found",
             detail=str(exc),
             type="organization-not-found",
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(AlreadyRegisteredError)
@@ -138,6 +146,7 @@ def init_error_handlers(app: FastAPI) -> None:
             detail=str(exc),
             type="volunteer-already-registered",
             campaign_id=str(exc.campaign_id),
+            request_id=request_id_var.get(""),
         )
 
     @app.exception_handler(ZitadelUnavailableError)
@@ -147,4 +156,5 @@ def init_error_handlers(app: FastAPI) -> None:
             title="Authentication Service Unavailable",
             detail=exc.detail,
             type="zitadel-unavailable",
+            request_id=request_id_var.get(""),
         )
