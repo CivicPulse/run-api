@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
+import { Users } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import {
   Table,
   TableBody,
@@ -70,9 +72,10 @@ function MembersPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Members</h1>
         <div className="flex flex-col items-center justify-center py-12">
-          <h2 className="text-lg font-semibold">No members</h2>
+          <Users className="h-10 w-10 text-muted-foreground/60 mb-3" />
+          <h2 className="text-lg font-semibold">No members yet</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Organization members will appear here as they join.
+            Add members to your organization.
           </p>
         </div>
       </div>
@@ -99,4 +102,5 @@ function MembersPage() {
 
 export const Route = createFileRoute("/org/members")({
   component: MembersPage,
+  errorComponent: RouteErrorBoundary,
 })
