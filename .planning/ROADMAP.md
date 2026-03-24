@@ -174,12 +174,13 @@ Plans:
   2. Org member directory shows every user across all campaigns with a per-campaign role matrix
   3. Only org_admin+ users see the "New Campaign" button, and the creation wizard walks through name/type/jurisdiction steps
   4. Org owner can edit org name and view the ZITADEL org ID on the settings page
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 43-01-PLAN.md — Backend endpoints + frontend types, hooks, RequireOrgRole, authStore switchOrg (ORG-05, ORG-09, ORG-10, ORG-12, ORG-13)
+- [x] 43-01-PLAN.md — Backend endpoints + frontend types, hooks, RequireOrgRole, authStore switchOrg (ORG-05, ORG-09, ORG-10, ORG-12, ORG-13)
 - [ ] 43-02-PLAN.md — Org dashboard, campaign cards, archive flow, org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13)
 - [ ] 43-03-PLAN.md — Campaign creation wizard with team invite (ORG-08, ORG-10)
 - [ ] 43-04-PLAN.md — Member directory with role matrix, org settings page (ORG-06, ORG-09, ORG-10)
+- [ ] 43-05-PLAN.md — Gap closure: fix sidebar nav absent on org-level pages (ORG-05, ORG-06, ORG-09)
 **UI hint**: yes
 
 ### Phase 44: UI/UX Polish & Frontend Hardening
@@ -276,7 +277,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
-| 43. Organization UI | v1.5 | 0/4 | Planned | - |
+| 43. Organization UI | v1.5 | 1/4 | In Progress|  |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |
