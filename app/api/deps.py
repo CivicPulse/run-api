@@ -175,11 +175,20 @@ async def ensure_user_synced(
     return local_user
 
 
+# DEPRECATED: Use get_campaign_db for campaign-scoped endpoints.
+# Retained for campaign list page only (D-08).
 async def get_campaign_from_token(
     user: AuthenticatedUser,
     db: AsyncSession,
 ) -> Campaign:
-    """Look up campaign by user's ZITADEL org_id.
+    """Look up a default campaign for the user's org.
+
+    DEPRECATED for campaign-scoped endpoints -- use get_campaign_db instead.
+    This function is retained ONLY as a fallback for the campaign list page
+    where no campaign_id is in the URL path. Per D-08.
+
+    Campaign-scoped endpoints MUST use get_campaign_db (Plan 02)
+    which extracts campaign_id from the URL path parameter.
 
     Args:
         user: The authenticated user.
@@ -202,14 +211,13 @@ async def get_campaign_from_token(
             select(Campaign)
             .where(Campaign.organization_id == org.id)
             .order_by(Campaign.created_at.desc())
-            .limit(1)
         )
     else:
         result = await db.execute(
             select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
         )
 
-    campaign = result.scalar_one_or_none()
+    campaign = result.scalars().first()
     if campaign is None:
         raise CampaignNotFoundError(uuid.UUID("00000000-0000-0000-0000-000000000000"))
     return campaign
