@@ -8,9 +8,8 @@ import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.models.turf import TurfStatus
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.turf import TurfCreate, TurfResponse, TurfUpdate
@@ -44,16 +43,13 @@ async def create_turf(
     campaign_id: uuid.UUID,
     body: TurfCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a new turf with GeoJSON polygon boundary.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         turf = await _service.create_turf(db, campaign_id, body, user.id)
     except ValueError as exc:
@@ -77,16 +73,13 @@ async def list_turfs(
     cursor: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List turfs for a campaign with optional status filter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     items, next_cursor, has_more = await _service.list_turfs(
         db, campaign_id, status_filter=status_filter, cursor=cursor, limit=limit
     )
@@ -104,16 +97,13 @@ async def get_turf(
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get turf detail with voter count.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     turf = await _service.get_turf(db, turf_id)
     if turf is None:
         return problem.ProblemResponse(
@@ -134,16 +124,13 @@ async def update_turf(
     turf_id: uuid.UUID,
     body: TurfUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update turf fields. Status transitions enforced.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         turf = await _service.update_turf(db, turf_id, body)
     except ValueError as exc:
@@ -173,16 +160,13 @@ async def delete_turf(
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a turf (cascades to walk lists).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _service.delete_turf(db, turf_id)
     except ValueError:

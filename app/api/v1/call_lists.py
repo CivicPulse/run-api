@@ -8,9 +8,8 @@ import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.schemas.call_list import (
     AppendFromListRequest,
     AppendFromListResponse,
@@ -38,16 +37,13 @@ async def generate_call_list(
     campaign_id: uuid.UUID,
     body: CallListCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Generate a call list from a voter universe.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         call_list = await _call_list_service.generate_call_list(
             db, campaign_id, body, user.id
@@ -70,16 +66,13 @@ async def generate_call_list(
 async def list_call_lists(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List call lists for a campaign.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     items = await _call_list_service.list_call_lists(db, campaign_id)
     return PaginatedResponse[CallListSummaryResponse](
         items=[CallListSummaryResponse.model_validate(cl) for cl in items],
@@ -95,16 +88,13 @@ async def get_call_list(
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get call list detail.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     call_list = await _call_list_service.get_call_list(db, call_list_id)
     if call_list is None:
         return problem.ProblemResponse(
@@ -126,16 +116,13 @@ async def update_call_list_status(
     new_status: str | None = None,
     body: CallListUpdate | None = None,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update call list status and/or name/voter_list_id.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         call_list = await _call_list_service.update_call_list(
             db, call_list_id, body or CallListUpdate(), new_status
@@ -160,7 +147,7 @@ async def list_call_list_entries(
     call_list_id: uuid.UUID,
     entry_status: str | None = None,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List entries for a call list with optional status filter.
 
@@ -169,10 +156,8 @@ async def list_call_list_entries(
     await ensure_user_synced(user, db)
     from sqlalchemy import select as sa_select
 
-    from app.db.rls import set_campaign_context
     from app.models.voter import Voter
 
-    await set_campaign_context(db, str(campaign_id))
     entries = await _call_list_service.list_entries(db, call_list_id, entry_status)
 
     # Resolve voter names
@@ -218,16 +203,13 @@ async def delete_call_list(
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a call list and its entries.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _call_list_service.delete_call_list(db, call_list_id)
     except ValueError:
@@ -250,16 +232,13 @@ async def claim_entries(
     call_list_id: uuid.UUID,
     body: ClaimEntriesRequest,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Claim a batch of entries for calling.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         entries = await _call_list_service.claim_entries(
             db, call_list_id, user.id, body.batch_size
@@ -320,7 +299,7 @@ async def append_from_list(
     call_list_id: uuid.UUID,
     body: AppendFromListRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Append voters from a voter list into an existing call list.
 
@@ -330,9 +309,6 @@ async def append_from_list(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         added, skipped = await _call_list_service.append_from_list(
             db, campaign_id, call_list_id, body.voter_list_id

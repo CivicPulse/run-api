@@ -9,9 +9,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.models.call_list import CallList
 from app.models.phone_bank import SessionCaller
 from app.schemas.call_list import CallListEntryResponse
@@ -48,16 +47,13 @@ async def create_session(
     campaign_id: uuid.UUID,
     body: PhoneBankSessionCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a phone bank session.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     pb_session = await _phone_bank_service.create_session(
         db, campaign_id, body, user.id
     )
@@ -73,7 +69,7 @@ async def list_sessions(
     campaign_id: uuid.UUID,
     assigned_to_me: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List phone bank sessions for a campaign.
 
@@ -81,9 +77,6 @@ async def list_sessions(
     sessions where the current user is an assigned caller.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
 
     assigned_to_me_user_id = user.id if assigned_to_me else None
     sessions = await _phone_bank_service.list_sessions(
@@ -138,16 +131,13 @@ async def get_session(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get phone bank session detail.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     pb_session = await _phone_bank_service.get_session(db, session_id)
     if pb_session is None:
         return problem.ProblemResponse(
@@ -175,16 +165,13 @@ async def update_session(
     session_id: uuid.UUID,
     body: PhoneBankSessionUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update a phone bank session (status transitions, name, schedule).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         pb_session = await _phone_bank_service.update_session(db, session_id, body)
     except ValueError as exc:
@@ -213,16 +200,13 @@ async def assign_caller(
     session_id: uuid.UUID,
     body: AssignCallerRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Assign a caller to a phone bank session.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         caller = await _phone_bank_service.assign_caller(db, session_id, body.user_id)
     except ValueError as exc:
@@ -245,16 +229,13 @@ async def remove_caller(
     session_id: uuid.UUID,
     user_id: str,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove a caller from a phone bank session.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _phone_bank_service.remove_caller(db, session_id, user_id)
     except ValueError as exc:
@@ -276,16 +257,13 @@ async def list_callers(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List callers assigned to a phone bank session.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     callers = await _phone_bank_service.list_callers(db, session_id)
     return [SessionCallerResponse.model_validate(c) for c in callers]
 
@@ -298,16 +276,13 @@ async def check_in(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Check in to a phone bank session.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         caller = await _phone_bank_service.check_in(db, session_id, user.id)
     except ValueError as exc:
@@ -329,16 +304,13 @@ async def check_out(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Check out of a phone bank session.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         caller = await _phone_bank_service.check_out(db, session_id, user.id)
     except ValueError as exc:
@@ -367,16 +339,13 @@ async def record_call(
     session_id: uuid.UUID,
     body: CallRecordCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Record a call outcome with optional survey responses.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         result = await _phone_bank_service.record_call(
             db, campaign_id, session_id, body, user.id
@@ -405,16 +374,13 @@ async def get_progress(
     campaign_id: uuid.UUID,
     session_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get session progress with per-caller stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         result = await _phone_bank_service.get_progress(db, session_id)
     except ValueError as exc:
@@ -437,16 +403,13 @@ async def reassign_entry(
     entry_id: uuid.UUID,
     body: ReassignRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Reassign an entry to a different caller.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         entry = await _phone_bank_service.reassign_entry(
             db, entry_id, body.new_caller_id
@@ -471,16 +434,13 @@ async def force_release_entry(
     session_id: uuid.UUID,
     entry_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Force-release an entry back to AVAILABLE.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         entry = await _phone_bank_service.force_release_entry(db, entry_id)
     except ValueError as exc:
@@ -503,7 +463,7 @@ async def self_release_entry(
     session_id: uuid.UUID,
     entry_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Release a claimed entry back to AVAILABLE (caller self-service).
 
@@ -511,9 +471,6 @@ async def self_release_entry(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         entry = await _phone_bank_service.self_release_entry(db, entry_id, user.id)
     except ValueError as exc:

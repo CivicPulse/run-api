@@ -7,10 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, get_current_user
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.schemas.field import FieldMeResponse
 from app.services.field import FieldService
 
@@ -26,7 +24,7 @@ _field_service = FieldService()
 async def get_field_me(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ) -> FieldMeResponse:
     """Return volunteer's active assignments for the field landing page.
 
@@ -34,7 +32,6 @@ async def get_field_me(
     assignment and one phone banking assignment (most recent active).
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     result = await _field_service.get_field_me(
         db=db,

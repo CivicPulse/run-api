@@ -9,9 +9,8 @@ import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.models.walk_list import WalkListEntryStatus
 from app.schemas.canvass import (
     DoorKnockCreate,
@@ -43,16 +42,13 @@ async def generate_walk_list(
     campaign_id: uuid.UUID,
     body: WalkListCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Generate a walk list from a turf with household clustering.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         walk_list = await _walk_list_service.generate_walk_list(
             db, campaign_id, body, user.id
@@ -78,16 +74,13 @@ async def list_walk_lists(
     cursor: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List walk lists with optional turf filter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     items, next_cursor, has_more = await _walk_list_service.list_walk_lists(
         db, campaign_id, turf_id=turf_id, cursor=cursor, limit=limit
     )
@@ -105,16 +98,13 @@ async def get_walk_list(
     campaign_id: uuid.UUID,
     walk_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get walk list detail.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     walk_list = await _walk_list_service.get_walk_list(db, walk_list_id)
     if walk_list is None:
         return problem.ProblemResponse(
@@ -137,16 +127,13 @@ async def list_entries(
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List walk list entries with pagination and optional status filter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     items, next_cursor, has_more = await _walk_list_service.get_entries(
         db, walk_list_id, status_filter=status_filter, cursor=cursor, limit=limit
     )
@@ -164,7 +151,7 @@ async def list_enriched_entries(
     campaign_id: uuid.UUID,
     walk_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List walk list entries enriched with voter details and interaction history.
 
@@ -174,9 +161,6 @@ async def list_enriched_entries(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     enriched = await _walk_list_service.get_enriched_entries(db, walk_list_id)
     return [EnrichedEntryResponse(**entry) for entry in enriched]
 
@@ -190,16 +174,13 @@ async def update_entry_status(
     walk_list_id: uuid.UUID,
     entry_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update entry status to skipped.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         entry = await _walk_list_service.update_entry_status(
             db, entry_id, WalkListEntryStatus.SKIPPED
@@ -224,16 +205,13 @@ async def assign_canvasser(
     walk_list_id: uuid.UUID,
     body: CanvasserAssignment,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Assign a canvasser to a walk list.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     canvasser = await _walk_list_service.assign_canvasser(
         db, walk_list_id, body.user_id
     )
@@ -254,16 +232,13 @@ async def remove_canvasser(
     walk_list_id: uuid.UUID,
     user_id: str,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove a canvasser from a walk list.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     await _walk_list_service.remove_canvasser(db, walk_list_id, user_id)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -276,16 +251,13 @@ async def list_canvassers(
     campaign_id: uuid.UUID,
     walk_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List canvassers assigned to a walk list.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     canvassers = await _walk_list_service.list_canvassers(db, walk_list_id)
     return [
         {
@@ -307,16 +279,13 @@ async def record_door_knock(
     walk_list_id: uuid.UUID,
     body: DoorKnockCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Record a door knock attempt.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         result = await _canvass_service.record_door_knock(
             db, campaign_id, walk_list_id, body, user.id
@@ -340,16 +309,13 @@ async def delete_walk_list(
     campaign_id: uuid.UUID,
     walk_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a walk list (cascades to entries and canvassers).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _walk_list_service.delete_walk_list(db, walk_list_id)
     except ValueError:

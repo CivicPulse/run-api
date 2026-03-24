@@ -7,9 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.schemas.voter_tag import VoterTagAssign, VoterTagCreate, VoterTagResponse
 from app.services.voter import VoterService
 
@@ -27,16 +26,13 @@ async def create_tag(
     campaign_id: uuid.UUID,
     body: VoterTagCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a campaign-scoped voter tag.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     tag = await _service.create_tag(db, campaign_id, body.name)
     return VoterTagResponse.model_validate(tag)
 
@@ -48,16 +44,13 @@ async def create_tag(
 async def list_tags(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List all tags for a campaign.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     tags = await _service.list_tags(db, campaign_id)
     return [VoterTagResponse.model_validate(t) for t in tags]
 
@@ -71,16 +64,13 @@ async def add_tag_to_voter(
     voter_id: uuid.UUID,
     body: VoterTagAssign,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add a tag to a voter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     await _service.add_tag_to_voter(db, voter_id, body.tag_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -94,16 +84,13 @@ async def remove_tag_from_voter(
     voter_id: uuid.UUID,
     tag_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove a tag from a voter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     await _service.remove_tag_from_voter(db, voter_id, tag_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -116,15 +103,12 @@ async def get_voter_tags(
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get all tags for a specific voter.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     tags = await _service.get_voter_tags(db, voter_id)
     return [VoterTagResponse.model_validate(t) for t in tags]
