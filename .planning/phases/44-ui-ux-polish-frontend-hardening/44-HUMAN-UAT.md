@@ -8,7 +8,9 @@ updated: 2026-03-24T23:00:00Z
 
 ## Current Test
 
-[awaiting human testing]
+[awaiting automated browser testing via Playwright/Chrome DevTools MCP]
+
+**NOTE:** All items below should be validated using Playwright MCP or Chrome DevTools MCP — not manual browser testing.
 
 ## Tests
 
