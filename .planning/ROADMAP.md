@@ -141,7 +141,11 @@ This won't work, using python instead
   2. A user with org_admin role and no explicit campaign role can access any campaign in the org with admin-equivalent permissions
   3. Org role is additive — a user with campaign-level "viewer" and org-level "admin" resolves to admin, never viewer
   4. Non-org-admin users receive 403 on org-level endpoints
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 41-01-PLAN.md — OrganizationMember model, OrgRole enum, Alembic migration (ORG-01, ORG-02)
+- [ ] 41-02-PLAN.md — Modify resolve_campaign_role() with additive org role resolution (ORG-03)
+- [ ] 41-03-PLAN.md — require_org_role() dependency, org service, org API endpoints (ORG-04)
 
 ### Phase 42: Map-Based Turf Editor
 **Goal**: Campaign managers can draw, edit, and manage turf boundaries visually on an interactive map instead of pasting raw GeoJSON
