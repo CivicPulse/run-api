@@ -3,14 +3,24 @@ import { useMap } from "react-leaflet"
 import * as L from "leaflet"
 import { MapProvider } from "./MapProvider"
 import { GeomanControl } from "./GeomanControl"
+import { OverlapHighlight } from "./OverlapHighlight"
+import type { OverlappingTurf } from "@/types/turf"
 
 interface TurfMapEditorProps {
   value: string // GeoJSON string from form field
   onChange: (value: string) => void // Update form field
   defaultBoundary?: Record<string, unknown> // Existing boundary for edit mode
+  searchCenter?: { lat: number; lng: number } | null // from AddressSearch
+  overlaps?: OverlappingTurf[] // from useTurfOverlaps
 }
 
-function MapEditor({ value, onChange, defaultBoundary }: TurfMapEditorProps) {
+function MapEditor({
+  value,
+  onChange,
+  defaultBoundary,
+  searchCenter,
+  overlaps,
+}: TurfMapEditorProps) {
   const map = useMap()
   const editLayerRef = useRef<L.FeatureGroup>(new L.FeatureGroup())
   const syncFromMapRef = useRef(false)
@@ -51,6 +61,12 @@ function MapEditor({ value, onChange, defaultBoundary }: TurfMapEditorProps) {
       // Invalid GeoJSON in defaultBoundary, ignore
     }
   }, [map, defaultBoundary])
+
+  // Pan/zoom map when address search result arrives
+  useEffect(() => {
+    if (!searchCenter) return
+    map.setView([searchCenter.lat, searchCenter.lng], 16)
+  }, [map, searchCenter])
 
   // Extract geometry from a layer and call onChange
   const updateFromLayer = useCallback(
@@ -138,13 +154,16 @@ function MapEditor({ value, onChange, defaultBoundary }: TurfMapEditorProps) {
   }, [value, map])
 
   return (
-    <GeomanControl
-      position="topleft"
-      drawPolygon
-      editMode
-      dragMode
-      removalMode
-    />
+    <>
+      <GeomanControl
+        position="topleft"
+        drawPolygon
+        editMode
+        dragMode
+        removalMode
+      />
+      <OverlapHighlight overlaps={overlaps ?? []} />
+    </>
   )
 }
 
