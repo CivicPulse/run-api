@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { WalkListGenerateDialog } from "@/components/canvassing/WalkListGenerateDialog"
+import { TurfOverviewMap } from "@/components/canvassing/map/TurfOverviewMap"
 import { Map, Plus, Trash2, List } from "lucide-react"
 import { useState } from "react"
 
@@ -43,6 +44,11 @@ function CanvassingIndex() {
           Manage door-to-door canvassing operations
         </p>
       </div>
+
+      {/* Overview Map -- per D-04 */}
+      {!turfsLoading && turfs.length > 0 && (
+        <TurfOverviewMap turfs={turfs} campaignId={campaignId} />
+      )}
 
       {/* Turfs Section */}
       <section className="space-y-4">
@@ -99,17 +105,22 @@ function CanvassingIndex() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative z-20"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setDeleteTurfId(turf.id)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {turf.voter_count} voter{turf.voter_count !== 1 ? "s" : ""}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative z-20"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setDeleteTurfId(turf.id)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
