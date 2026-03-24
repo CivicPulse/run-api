@@ -98,7 +98,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints (completed 2026-03-24)
 - [x] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea (completed 2026-03-24)
 - [x] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings (completed 2026-03-24)
-- [ ] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states
+- [x] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states (completed 2026-03-24)
 - [ ] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages
 - [ ] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite
 
@@ -195,11 +195,11 @@ Plans:
   5. Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping)
 **Plans**: 5 plans
 Plans:
-- [ ] 44-01-PLAN.md — Error boundaries + sidebar offcanvas (OBS-05, UX-01)
+- [x] 44-01-PLAN.md — Error boundaries + sidebar offcanvas (OBS-05, UX-01)
 - [x] 44-02-PLAN.md — Volunteer invite toggle + contextual tooltips (UX-02, UX-03, UX-04)
-- [ ] 44-03-PLAN.md — Empty state audit + loading skeleton replacement (OBS-06, OBS-07)
-- [ ] 44-04-PLAN.md — Human verification of all UI/UX changes
-- [ ] 44-05-PLAN.md — Gap closure: org tooltip, empty state wording, error boundaries (UX-03, UX-04, OBS-05, OBS-06)
+- [x] 44-03-PLAN.md — Empty state audit + loading skeleton replacement (OBS-06, OBS-07)
+- [x] 44-04-PLAN.md — Human verification of all UI/UX changes
+- [x] 44-05-PLAN.md — Gap closure: org tooltip, empty state wording, error boundaries (UX-03, UX-04, OBS-05, OBS-06)
 **UI hint**: yes
 
 ### Phase 45: WCAG Compliance Audit
@@ -279,6 +279,6 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
-| 44. UI/UX Polish & Frontend Hardening | v1.5 | 1/4 | In Progress|  |
+| 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete   | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |
