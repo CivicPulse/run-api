@@ -113,7 +113,12 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
   2. A user with membership in multiple campaigns sees only the active campaign's data on every page
   3. Campaign list page displays all campaigns the authenticated user has membership in (not just the most recent)
   4. Settings button on the campaign page navigates correctly to campaign settings
-**Plans**: TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 39-01-PLAN.md — Fix RLS set_config transaction scoping & pool checkout event (DATA-01, DATA-02)
+- [ ] 39-02-PLAN.md — Centralize RLS context into get_campaign_db dependency (DATA-03)
+- [ ] 39-03-PLAN.md — Fix multi-campaign membership & data migration (DATA-04, DATA-05)
+- [ ] 39-04-PLAN.md — Settings button guard & human verification (DATA-06)
 
 ### Phase 40: Production Hardening & Observability
 **Goal**: Production errors are captured with full context, requests are traced end-to-end, and rate limiting uses real client IPs
