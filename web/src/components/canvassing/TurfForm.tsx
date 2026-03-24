@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { TurfMapEditor } from "@/components/canvassing/map/TurfMapEditor"
 import type { TurfResponse } from "@/types/turf"
 
 const turfSchema = z.object({
@@ -23,9 +25,13 @@ interface TurfFormProps {
 }
 
 export function TurfForm({ defaultValues, onSubmit, isPending, submitLabel }: TurfFormProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<TurfFormValues>({
     resolver: zodResolver(turfSchema),
@@ -62,9 +68,23 @@ export function TurfForm({ defaultValues, onSubmit, isPending, submitLabel }: Tu
         <Input id="description" {...register("description")} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="boundary">Boundary (GeoJSON)</Label>
-        <Textarea id="boundary" rows={6} {...register("boundary")} />
+        <Label>Boundary</Label>
+        <TurfMapEditor
+          value={watch("boundary")}
+          onChange={(val) => setValue("boundary", val, { shouldValidate: true })}
+          defaultBoundary={defaultValues?.boundary}
+        />
         {errors.boundary && <p className="text-sm text-destructive">{errors.boundary.message}</p>}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-sm text-muted-foreground underline"
+        >
+          {showAdvanced ? "Hide" : "Show"} Advanced JSON
+        </button>
+        {showAdvanced && (
+          <Textarea id="boundary" rows={6} {...register("boundary")} />
+        )}
       </div>
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving..." : submitLabel}
