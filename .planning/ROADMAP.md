@@ -7,6 +7,7 @@
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
 - ✅ **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (shipped 2026-03-15)
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
+- 🚧 **v1.5 Go Live — Production Readiness** — Phases 39-46 (in progress)
 
 ## Phases
 
@@ -88,7 +89,119 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v1.5 Go Live — Production Readiness (In Progress)
+
+**Milestone Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, audit full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
+
+- [ ] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs
+- [ ] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting
+- [ ] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints
+- [ ] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea
+- [ ] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings
+- [ ] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states
+- [ ] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages
+- [ ] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite
+
+## Phase Details
+
+### Phase 39: RLS Fix & Multi-Campaign Foundation
+**Goal**: All campaign data is correctly isolated — no voter, voter list, or campaign data leaks across campaign boundaries via connection pool reuse or auth bugs
+**Depends on**: Phase 38 (v1.4 complete)
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04, DATA-05, DATA-06
+**Success Criteria** (what must be TRUE):
+  1. Two users in different campaigns on the same org cannot see each other's voters, even under concurrent connection pool reuse
+  2. A user with membership in multiple campaigns sees only the active campaign's data on every page
+  3. Campaign list page displays all campaigns the authenticated user has membership in (not just the most recent)
+  4. Settings button on the campaign page navigates correctly to campaign settings
+**Plans**: TBD
+
+### Phase 40: Production Hardening & Observability
+**Goal**: Production errors are captured with full context, requests are traced end-to-end, and rate limiting uses real client IPs
+**Depends on**: Phase 39
+**Requirements**: OBS-01, OBS-02, OBS-03, OBS-04
+**Success Criteria** (what must be TRUE):
+  1. Unhandled API exceptions appear in Sentry within 30 seconds, with request_id and user_id but without voter PII in the error payload
+  2. Every API request emits a structured JSON log line containing request_id, user_id, campaign_id, HTTP method/path, and duration
+  3. Rate limiting correctly identifies distinct users behind a shared NAT/proxy (using CF-Connecting-IP, not request.client.host)
+  4. Authenticated endpoints enforce per-user rate limits that cannot be bypassed by rotating IP addresses
+**Plans**: TBD
+
+### Phase 41: Organization Data Model & Auth
+**Goal**: The backend supports org-level roles and multi-campaign membership with correct permission resolution
+**Depends on**: Phase 39
+**Requirements**: ORG-01, ORG-02, ORG-03, ORG-04
+**Success Criteria** (what must be TRUE):
+  1. An org_owner can call org-level API endpoints and receives data spanning all campaigns in the org
+  2. A user with org_admin role and no explicit campaign role can access any campaign in the org with admin-equivalent permissions
+  3. Org role is additive — a user with campaign-level "viewer" and org-level "admin" resolves to admin, never viewer
+  4. Non-org-admin users receive 403 on org-level endpoints
+**Plans**: TBD
+
+### Phase 42: Map-Based Turf Editor
+**Goal**: Campaign managers can draw, edit, and manage turf boundaries visually on an interactive map instead of pasting raw GeoJSON
+**Depends on**: Phase 39
+**Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05, MAP-06, MAP-07, MAP-08, MAP-09, MAP-10, MAP-11
+**Success Criteria** (what must be TRUE):
+  1. User can draw a polygon on the map and save it as a new turf — the boundary round-trips correctly through the backend and renders on reload
+  2. User can edit an existing turf by dragging vertices, and the updated boundary persists
+  3. Overview map displays all campaign turfs color-coded by status with voter count badges
+  4. User can import a .geojson file, preview the boundary on the map, and save it as a turf
+  5. Power users can toggle to an "Advanced" raw JSON textarea and edit the GeoJSON directly
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 43: Organization UI
+**Goal**: Org admins can manage campaigns, members, and settings from an organization-level dashboard
+**Depends on**: Phase 41
+**Requirements**: ORG-05, ORG-06, ORG-07, ORG-08, ORG-09, ORG-10, ORG-11, ORG-12, ORG-13
+**Success Criteria** (what must be TRUE):
+  1. Org dashboard at /org displays a card grid of all campaigns with status, election date, and member counts
+  2. Org member directory shows every user across all campaigns with a per-campaign role matrix
+  3. Only org_admin+ users see the "New Campaign" button, and the creation wizard walks through name/type/jurisdiction steps
+  4. Org owner can edit org name and view the ZITADEL org ID on the settings page
+  5. User with multiple org memberships can switch between orgs via a header switcher, and all routes/queries scope to the selected org
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 44: UI/UX Polish & Frontend Hardening
+**Goal**: The application handles all edge states gracefully and provides contextual guidance for new users
+**Depends on**: Phase 42, Phase 43
+**Requirements**: UX-01, UX-02, UX-03, UX-04, OBS-05, OBS-06, OBS-07
+**Success Criteria** (what must be TRUE):
+  1. Sidebar slides over content (not pushes) with a consolidated single-level navigation menu
+  2. Volunteer creation page clearly distinguishes between adding a tracked-only volunteer record and sending a ZITADEL invite for app access
+  3. Every list page shows a meaningful empty state message when no data exists (not a blank table)
+  4. Every data-loading page shows a loading skeleton or spinner during fetch (no layout shift)
+  5. Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 45: WCAG Compliance Audit
+**Goal**: All admin pages meet WCAG AA accessibility standards, verified by automated scanning and manual screen reader testing
+**Depends on**: Phase 44
+**Requirements**: A11Y-01, A11Y-02, A11Y-03, A11Y-04
+**Success Criteria** (what must be TRUE):
+  1. axe-core automated scan passes on every admin route with zero critical or serious violations
+  2. Screen reader (NVDA or VoiceOver) can complete 5 critical flows: voter search, voter import, walk list creation, phone bank session, campaign settings
+  3. Every interactive component is reachable and operable via keyboard alone, with visible focus indicators and no focus traps
+  4. Map component has a skip-nav link and all turf CRUD operations work without the map via the JSON fallback
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 46: E2E Testing & Integration
+**Goal**: Critical user flows are covered by automated Playwright tests and all pending integration tests pass against live infrastructure
+**Depends on**: Phase 45
+**Requirements**: TEST-01, TEST-02, TEST-03
+**Success Criteria** (what must be TRUE):
+  1. Playwright E2E tests pass for login, voter search, voter import, turf creation, phone bank session, and volunteer signup flows
+  2. All 18 pending integration tests from v1.0 pass against live PostgreSQL, PostGIS, MinIO, and ZITADEL
+  3. Cross-campaign RLS isolation test suite verifies zero data leaks across 6 isolation dimensions (voters, voter lists, turfs, walk lists, call lists, phone bank sessions)
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -130,3 +243,11 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 | 36. Google Maps Navigation Link | v1.4 | 2/2 | Complete | 2026-03-16 |
 | 37. Offline Sync Integration Fixes | v1.4 | 1/1 | Complete | 2026-03-16 |
 | 38. Tech Debt Cleanup | v1.4 | 2/2 | Complete | 2026-03-17 |
+| 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 0/0 | Not started | - |
+| 40. Production Hardening & Observability | v1.5 | 0/0 | Not started | - |
+| 41. Organization Data Model & Auth | v1.5 | 0/0 | Not started | - |
+| 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
+| 43. Organization UI | v1.5 | 0/0 | Not started | - |
+| 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
+| 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
+| 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |

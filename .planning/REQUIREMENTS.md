@@ -2,7 +2,7 @@
 
 **Milestone:** v1.5
 **Created:** 2026-03-24
-**Total:** 38 requirements across 7 categories
+**Total:** 48 requirements across 7 categories
 
 ## Data Isolation & Auth (DATA)
 
@@ -77,7 +77,54 @@
 
 | REQ-ID | Phase | Plan | Status |
 |--------|-------|------|--------|
-| — | — | — | Pending roadmap |
+| DATA-01 | Phase 39 | TBD | Pending |
+| DATA-02 | Phase 39 | TBD | Pending |
+| DATA-03 | Phase 39 | TBD | Pending |
+| DATA-04 | Phase 39 | TBD | Pending |
+| DATA-05 | Phase 39 | TBD | Pending |
+| DATA-06 | Phase 39 | TBD | Pending |
+| OBS-01 | Phase 40 | TBD | Pending |
+| OBS-02 | Phase 40 | TBD | Pending |
+| OBS-03 | Phase 40 | TBD | Pending |
+| OBS-04 | Phase 40 | TBD | Pending |
+| OBS-05 | Phase 44 | TBD | Pending |
+| OBS-06 | Phase 44 | TBD | Pending |
+| OBS-07 | Phase 44 | TBD | Pending |
+| ORG-01 | Phase 41 | TBD | Pending |
+| ORG-02 | Phase 41 | TBD | Pending |
+| ORG-03 | Phase 41 | TBD | Pending |
+| ORG-04 | Phase 41 | TBD | Pending |
+| ORG-05 | Phase 43 | TBD | Pending |
+| ORG-06 | Phase 43 | TBD | Pending |
+| ORG-07 | Phase 43 | TBD | Pending |
+| ORG-08 | Phase 43 | TBD | Pending |
+| ORG-09 | Phase 43 | TBD | Pending |
+| ORG-10 | Phase 43 | TBD | Pending |
+| ORG-11 | Phase 43 | TBD | Pending |
+| ORG-12 | Phase 43 | TBD | Pending |
+| ORG-13 | Phase 43 | TBD | Pending |
+| MAP-01 | Phase 42 | TBD | Pending |
+| MAP-02 | Phase 42 | TBD | Pending |
+| MAP-03 | Phase 42 | TBD | Pending |
+| MAP-04 | Phase 42 | TBD | Pending |
+| MAP-05 | Phase 42 | TBD | Pending |
+| MAP-06 | Phase 42 | TBD | Pending |
+| MAP-07 | Phase 42 | TBD | Pending |
+| MAP-08 | Phase 42 | TBD | Pending |
+| MAP-09 | Phase 42 | TBD | Pending |
+| MAP-10 | Phase 42 | TBD | Pending |
+| MAP-11 | Phase 42 | TBD | Pending |
+| UX-01 | Phase 44 | TBD | Pending |
+| UX-02 | Phase 44 | TBD | Pending |
+| UX-03 | Phase 44 | TBD | Pending |
+| UX-04 | Phase 44 | TBD | Pending |
+| A11Y-01 | Phase 45 | TBD | Pending |
+| A11Y-02 | Phase 45 | TBD | Pending |
+| A11Y-03 | Phase 45 | TBD | Pending |
+| A11Y-04 | Phase 45 | TBD | Pending |
+| TEST-01 | Phase 46 | TBD | Pending |
+| TEST-02 | Phase 46 | TBD | Pending |
+| TEST-03 | Phase 46 | TBD | Pending |
 
 ## Future Requirements (deferred from v1.5)
 
