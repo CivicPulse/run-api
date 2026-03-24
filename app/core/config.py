@@ -48,5 +48,10 @@ class Settings(BaseSettings):
     s3_bucket: str = "voter-imports"
     s3_region: str = "us-east-1"
 
+    # Observability
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.1
+    environment: str = "development"
+
 
 settings = Settings()

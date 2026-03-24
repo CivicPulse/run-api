@@ -26,6 +26,8 @@ dependencies = [
     "taskiq-fastapi>=0.4.0",
     "typer>=0.24.1",
     "uvicorn[standard]>=0.41.0",
+    "sentry-sdk[fastapi]>=2.19.0",
+    "structlog>=24.4.0",
 ]
 
 [dependency-groups]
