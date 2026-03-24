@@ -75,9 +75,22 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Milestone celebration toasts and voter context cards in canvassing and phone banking — v1.4
 - ✓ Google Maps navigation links (walking directions) in field mode and admin pages — v1.4
 
-### Active
+## Current Milestone: v1.5 Go Live — Production Readiness
 
-(No active milestone — run `/gsd:new-milestone` to start v1.5)
+**Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, systematically audit the full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
+
+**Target features:**
+- Fix multi-tenancy data leaks (voters + voter lists crossing campaign boundaries)
+- Fix campaign visibility in prod (auth/data migration issue) and broken settings button
+- Organization-level UI: org admin dashboard, multi-org membership, campaign creation gating
+- Map-based turf editor: Leaflet draw/render for GeoJSON boundaries
+- Full WCAG compliance audit + UX simplicity review + built-in documentation (tooltips, hints)
+- Volunteer create vs invite UX clarity; sidebar slide-over; menu consolidation
+- Production hardening: error/empty/loading states, rate limiting, input validation
+- Observability: structlog structured logging, Sentry error tracking, request tracing
+- Testing: Playwright E2E critical flows + 18 pending integration tests
+
+### Active
 
 ### Out of Scope
 
@@ -98,7 +111,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Shipped v1.4 Volunteer Field Mode on 2026-03-17. All 5 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model, v1.4 Field Mode). 38 phases, 114 plans shipped across 10 days.
+Starting v1.5 Go Live — Production Readiness on 2026-03-24. Shipped v1.0–v1.4 (38 phases, 114 plans) over 10 days. Critical multi-tenancy data leak bugs identified in prod. Organization-level UI and map-based turf editor are the major new features. WCAG + UX audit, observability, and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -164,4 +177,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-17 after v1.4 milestone completion*
+*Last updated: 2026-03-24 — milestone v1.5 started*

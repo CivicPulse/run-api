@@ -1,52 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Volunteer Field Mode
-status: archived
-stopped_at: Milestone v1.4 archived
-last_updated: "2026-03-17T23:16:18.640Z"
-last_activity: "2026-03-17 — Milestone v1.4 archived"
+milestone: v1.5
+milestone_name: Go Live — Production Readiness
+status: planning
+stopped_at: ~
+last_updated: "2026-03-24T00:00:00.000Z"
+last_activity: "2026-03-24 — Milestone v1.5 started"
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_phases: ~
+  completed_phases: 0
+  total_plans: ~
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-17)
+See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.5 Go Live
 
 ## Current Position
 
-Phase: All v1.4 phases complete (30-38)
-Status: Milestone Archived
-Last activity: 2026-03-17 - Completed quick task 260317-whd: Create getting started documentation for system admins, campaign managers, and volunteers
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-24 — Milestone v1.5 started
 
-Progress: [██████████] 100% (26/26 v1.4 plans)
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 114 (across v1.0-v1.4)
-- Average duration: ~15 min
-- Total execution time: ~20 hours
-
-**By Milestone:**
-
-| Milestone | Phases | Plans | Timeline |
-|-----------|--------|-------|----------|
-| v1.0 MVP | 7 | 20 | 2 days |
-| v1.1 Dev/Deploy | 4 | 7 | 2 days |
-| v1.2 Full UI | 11 | 43 | 4 days |
-| v1.3 Voter Model | 7 | 18 | 3 days |
-| v1.4 Field Mode | 9 | 26 | 3 days |
+Progress: [░░░░░░░░░░] 0% (defining requirements)
 
 ## Accumulated Context
 
@@ -56,9 +40,12 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
+- [Critical bug]: Multi-tenancy data leak — voters from one campaign visible in another (prod, possible RLS gap)
+- [Critical bug]: Campaign visibility issue in prod — can't view test campaigns (auth/data migration)
+- [Critical bug]: Settings button click handler broken in prod
 - [Research flag]: Verify `useWalkListEntries` performance for 500+ entry walk lists on 3G
 - [Research flag]: Verify driver.js CSS override specificity with Tailwind v4
-- [Tech debt]: 3 human verification items from v1.3 still pending
+- [Tech debt]: 3 human verification items from v1.3 still pending (live L2 import, propensity badge colors, chip category colors)
 - [Tech debt]: 18 integration test items from v1.0 still pending (need live infrastructure)
 
 ### Quick Tasks Completed
@@ -71,6 +58,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-19
-Stopped at: Completed quick task 260319-241: Fix misaligned header alignment
+Last session: 2026-03-24
+Stopped at: Starting milestone v1.5 — defining requirements
 Resume file: None
