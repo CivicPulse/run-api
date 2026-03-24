@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
-import { MoreHorizontal, List, ChevronDown, ChevronRight } from "lucide-react"
+import { MoreHorizontal, Phone, ChevronDown, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { useCallLists, useCreateCallList, useUpdateCallList, useDeleteCallList } from "@/hooks/useCallLists"
 import { useVoterLists } from "@/hooks/useVoterLists"
@@ -415,9 +415,9 @@ function CallListsPage() {
         columns={columns}
         data={callLists}
         isLoading={isLoading}
-        emptyIcon={List}
+        emptyIcon={Phone}
         emptyTitle="No call lists yet"
-        emptyDescription="Create your first call list to start phone banking"
+        emptyDescription="Create a call list to organize voters for phone banking."
       />
 
       {/* Create / Edit Dialog */}

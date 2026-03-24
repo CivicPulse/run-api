@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { createFileRoute, useParams } from "@tanstack/react-router"
-import { Calendar, Loader2 } from "lucide-react"
+import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select"
 import { RequireRole } from "@/components/shared/RequireRole"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useShiftList } from "@/hooks/useShifts"
 import { ShiftDialog } from "@/components/shifts/ShiftDialog"
 import { ShiftCard } from "@/components/shifts/ShiftCard"
@@ -162,14 +163,19 @@ function ShiftListPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-lg" />
+            ))}
+          </div>
         </div>
       ) : shifts.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="No shifts yet"
-          description="Create your first shift to start scheduling volunteers"
+          title="No shifts scheduled"
+          description="Create a shift to schedule volunteer activities."
           action={
             <RequireRole minimum="manager">
               <Button size="sm" onClick={handleOpenCreate}>

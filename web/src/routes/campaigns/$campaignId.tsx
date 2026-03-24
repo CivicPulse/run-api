@@ -8,9 +8,9 @@ import {
   Phone,
   ClipboardList,
   FileText,
-  Loader2,
 } from "lucide-react"
 import { api } from "@/api/client"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { Campaign } from "@/types/campaign"
 
 function CampaignLayout() {
@@ -23,8 +23,13 @@ function CampaignLayout() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-32 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
       </div>
     )
   }

@@ -317,8 +317,8 @@ function MembersSettings() {
           data={members}
           isLoading={membersLoading}
           emptyIcon={Users}
-          emptyTitle="No members"
-          emptyDescription="This campaign has no members yet."
+          emptyTitle="No team members"
+          emptyDescription="Invite team members to collaborate on this campaign."
         />
       </div>
 

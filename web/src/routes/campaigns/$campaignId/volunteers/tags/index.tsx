@@ -166,8 +166,8 @@ function VolunteerTagsPage() {
         data={tags}
         isLoading={isLoading}
         emptyIcon={Tag}
-        emptyTitle="No volunteer tags"
-        emptyDescription="Create tags to organize your volunteers"
+        emptyTitle="No volunteer tags yet"
+        emptyDescription="Create tags to organize and categorize volunteers."
         emptyAction={
           <RequireRole minimum="manager">
             <Button size="sm" onClick={() => setCreateOpen(true)}>
