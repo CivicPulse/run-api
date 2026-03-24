@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { TooltipIcon } from "@/components/shared/TooltipIcon"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import {
   Card,
   CardContent,
@@ -95,7 +97,10 @@ function OrgSettingsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="org-id">Organization ID</Label>
+            <div className="flex items-center gap-1">
+              <Label htmlFor="org-id">Organization ID</Label>
+              <TooltipIcon content="This is your organization's unique identifier in the authentication system. Share it with support if you need assistance with account or access issues." />
+            </div>
             <Input
               id="org-id"
               readOnly
@@ -129,4 +134,5 @@ function OrgSettingsPage() {
 
 export const Route = createFileRoute("/org/settings")({
   component: OrgSettingsPage,
+  errorComponent: RouteErrorBoundary,
 })
