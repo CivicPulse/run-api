@@ -5,7 +5,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -21,15 +27,23 @@ class OrganizationMember(Base):
 
     __tablename__ = "organization_members"
     __table_args__ = (
-        UniqueConstraint("user_id", "organization_id", name="uq_user_organization"),
+        UniqueConstraint(
+            "user_id",
+            "organization_id",
+            name="uq_user_organization",
+        ),
         CheckConstraint(
             "role IN ('org_owner', 'org_admin')",
             name="ck_organization_members_role_valid",
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id"), nullable=False
+    )
     organization_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organizations.id"), nullable=False
     )
@@ -38,7 +52,9 @@ class OrganizationMember(Base):
         ForeignKey("users.id"), nullable=True
     )
     joined_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.now()
+    )
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
     )

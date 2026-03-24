@@ -11,6 +11,9 @@ from app.core.security import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
+from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
+from app.schemas.org import UserOrgResponse
 from app.schemas.user import UserCampaignResponse, UserResponse
 
 router = APIRouter()
@@ -60,4 +63,32 @@ async def get_my_campaigns(
             else (user.role.name.lower() if user.role else "viewer"),
         )
         for row in rows
+    ]
+
+
+@router.get("/orgs", response_model=list[UserOrgResponse])
+async def list_my_orgs(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all organizations the current user belongs to."""
+    stmt = (
+        select(Organization, OrganizationMember.role)
+        .join(
+            OrganizationMember,
+            Organization.id
+            == OrganizationMember.organization_id,
+        )
+        .where(OrganizationMember.user_id == user.id)
+        .order_by(Organization.name)
+    )
+    results = await db.execute(stmt)
+    return [
+        UserOrgResponse(
+            id=org.id,
+            name=org.name,
+            zitadel_org_id=org.zitadel_org_id,
+            role=role,
+        )
+        for org, role in results.all()
     ]

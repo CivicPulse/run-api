@@ -499,7 +499,7 @@ def require_org_role(minimum: str):
                 detail="Insufficient permissions",
             )
 
-        # Validate role level using ORG_ROLE_LEVELS dict
+        # Validate role level
         try:
             user_org_role = OrgRole(org_member_role)
         except ValueError:
