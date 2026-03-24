@@ -213,10 +213,10 @@ Plans:
   4. Map component has a skip-nav link and all turf CRUD operations work without the map via the JSON fallback
 **Plans**: 4 plans
 Plans:
-- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
-- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
-- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
-- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
+- [ ] 45-01-PLAN.md — Shared a11y components, root layout landmarks, theme contrast, axe fixture (A11Y-03)
+- [ ] 45-02-PLAN.md — Map skip-nav link, GeoJSON panel ARIA attributes, turf page headings (A11Y-04)
+- [ ] 45-03-PLAN.md — Parameterized axe-core route scan + violation remediation (A11Y-01)
+- [ ] 45-04-PLAN.md — Screen reader flow tests for 5 critical flows (A11Y-02, A11Y-03)
 **UI hint**: yes
 
 ### Phase 46: E2E Testing & Integration
@@ -280,5 +280,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
-| 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
+| 45. WCAG Compliance Audit | v1.5 | 0/4 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |
