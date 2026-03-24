@@ -94,7 +94,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 **Milestone Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, audit full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
 
 - [x] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs (completed 2026-03-24)
-- [ ] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting
+- [x] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting (completed 2026-03-24)
 - [ ] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints
 - [ ] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea
 - [ ] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings
@@ -250,7 +250,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 37. Offline Sync Integration Fixes | v1.4 | 1/1 | Complete | 2026-03-16 |
 | 38. Tech Debt Cleanup | v1.4 | 2/2 | Complete | 2026-03-17 |
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
-| 40. Production Hardening & Observability | v1.5 | 0/2 | In progress | - |
+| 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 0/0 | Not started | - |
 | 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Go Live — Production Readiness
 status: Ready to plan
-stopped_at: Phase 40 context gathered
-last_updated: "2026-03-24T08:25:02.471Z"
+stopped_at: Completed 40-02-PLAN.md
+last_updated: "2026-03-24T10:47:20.552Z"
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 39 — rls-fix-multi-campaign-foundation
+**Current focus:** Phase 40 — production-hardening-observability
 
 ## Current Position
 
-Phase: 40
+Phase: 41
 Plan: Not started
 
 ## Performance Metrics
@@ -47,6 +47,8 @@ Plan: Not started
 | Phase 39 P02 | 4min | 2 tasks | 19 files |
 | Phase 39 P03 | 6min | 4 tasks | 4 files |
 | Phase 39 P04 | 1min | 2 tasks | 1 files |
+| Phase 40 P01 | 4min | 3 tasks | 9 files |
+| Phase 40 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -66,6 +68,10 @@ Recent decisions affecting current work:
 - [Phase 39]: ensure_user_synced loops over all org campaigns with per-campaign member check
 - [Phase 39]: get_campaign_from_token deprecated per D-08, retained only for campaign list page
 - [Phase 39]: Defense-in-depth UI guard on settings button: explicit campaignId check wrapping SidebarFooter even though parent early-return handles null case
+- [Phase 40]: Pure ASGI middleware for structlog (not BaseHTTPMiddleware) to avoid streaming issues
+- [Phase 40]: ContextVars shared across middleware, error handlers, and Sentry before_send for request context
+- [Phase 40]: CF-Connecting-IP only trusted when request.client.host is in Cloudflare CIDR list
+- [Phase 40]: JWT decode without JWKS verification for rate limit keying (auth middleware handles full validation)
 
 ### Blockers/Concerns
 
@@ -85,6 +91,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-24T08:25:02.469Z
-Stopped at: Phase 40 context gathered
-Resume file: .planning/phases/40-production-hardening-observability/40-CONTEXT.md
+Last session: 2026-03-24T10:44:15.621Z
+Stopped at: Completed 40-02-PLAN.md
+Resume file: None
