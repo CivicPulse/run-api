@@ -283,6 +283,37 @@ class TurfService:
         await session.delete(turf)
         await session.flush()
 
+    async def get_voter_counts_batch(
+        self,
+        session: AsyncSession,
+        turf_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, int]:
+        """Get voter counts for multiple turfs in a single query.
+
+        Args:
+            session: Async database session.
+            turf_ids: List of turf UUIDs.
+
+        Returns:
+            Dict mapping turf ID to voter count.
+        """
+        if not turf_ids:
+            return {}
+        query = (
+            select(
+                Turf.id,
+                func.count(Voter.id).label("voter_count"),
+            )
+            .outerjoin(
+                Voter,
+                (Voter.geom.is_not(None)) & func.ST_Contains(Turf.boundary, Voter.geom),
+            )
+            .where(Turf.id.in_(turf_ids))
+            .group_by(Turf.id)
+        )
+        result = await session.execute(query)
+        return {row.id: row.voter_count for row in result.all()}
+
     async def get_voter_count(
         self,
         session: AsyncSession,

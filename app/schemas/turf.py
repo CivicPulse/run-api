@@ -36,9 +36,27 @@ class TurfResponse(BaseSchema):
     description: str | None = None
     status: TurfStatus
     boundary: dict[str, Any]
+    voter_count: int = 0
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+
+class VoterLocationResponse(BaseSchema):
+    """Lightweight voter location for map markers."""
+
+    id: uuid.UUID
+    latitude: float | None
+    longitude: float | None
+    name: str
+
+
+class OverlappingTurfResponse(BaseSchema):
+    """Turf that overlaps a given boundary."""
+
+    id: uuid.UUID
+    name: str
+    boundary: dict[str, Any]
 
 
 class TurfListResponse(PaginatedResponse[TurfResponse]):
