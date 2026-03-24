@@ -4,8 +4,28 @@ import { TurfForm } from "@/components/canvassing/TurfForm"
 import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft, Trash2, Download } from "lucide-react"
 import { useState } from "react"
+
+function exportGeoJson(
+  boundary: Record<string, unknown>,
+  turfName: string,
+) {
+  const feature = {
+    type: "Feature",
+    properties: { name: turfName },
+    geometry: boundary,
+  }
+  const blob = new Blob([JSON.stringify(feature, null, 2)], {
+    type: "application/geo+json",
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${turfName.replace(/\s+/g, "-").toLowerCase()}.geojson`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 function TurfDetailPage() {
   const { campaignId, turfId } = useParams({
@@ -39,15 +59,30 @@ function TurfDetailPage() {
           </Button>
           <h2 className="text-lg font-semibold">{turf.name}</h2>
         </div>
-        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-          <Trash2 className="mr-1 h-4 w-4" /> Delete
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportGeoJson(turf.boundary, turf.name)}
+          >
+            <Download className="mr-1 h-4 w-4" /> Export GeoJSON
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="mr-1 h-4 w-4" /> Delete
+          </Button>
+        </div>
       </div>
 
       <TurfForm
         defaultValues={turf}
         isPending={updateTurf.isPending}
         submitLabel="Save Changes"
+        campaignId={campaignId}
+        turfId={turfId}
         onSubmit={(data) =>
           updateTurf.mutate({
             name: data.name,

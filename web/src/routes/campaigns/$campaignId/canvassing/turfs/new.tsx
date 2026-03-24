@@ -23,9 +23,11 @@ function NewTurfPage() {
       <TurfForm
         isPending={createTurf.isPending}
         submitLabel="Create Turf"
+        campaignId={campaignId}
         onSubmit={(data) =>
           createTurf.mutate(data, {
-            onSuccess: () => navigate({ to: `/campaigns/${campaignId}/canvassing` }),
+            onSuccess: () =>
+              navigate({ to: `/campaigns/${campaignId}/canvassing` }),
           })
         }
       />
