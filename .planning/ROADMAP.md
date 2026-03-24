@@ -130,6 +130,7 @@ Plans:
   3. Rate limiting correctly identifies distinct users behind a shared NAT/proxy (using CF-Connecting-IP, not request.client.host)
   4. Authenticated endpoints enforce per-user rate limits that cannot be bypassed by rotating IP addresses
 **Plans**: TBD
+This won't work, using python instead
 
 ### Phase 41: Organization Data Model & Auth
 **Goal**: The backend supports org-level roles and multi-campaign membership with correct permission resolution
@@ -249,7 +250,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 37. Offline Sync Integration Fixes | v1.4 | 1/1 | Complete | 2026-03-16 |
 | 38. Tech Debt Cleanup | v1.4 | 2/2 | Complete | 2026-03-17 |
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
-| 40. Production Hardening & Observability | v1.5 | 0/0 | Not started | - |
+| 40. Production Hardening & Observability | v1.5 | 0/2 | In progress | - |
 | 41. Organization Data Model & Auth | v1.5 | 0/0 | Not started | - |
 | 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |
