@@ -1,167 +1,317 @@
-# Feature Landscape: Volunteer Field Mode
+# Features Research: v1.5 — Map-Based Turf Editor & Organization-Level UI
 
-**Domain:** Campaign field operations -- mobile-first volunteer experience for canvassing and phone banking
-**Researched:** 2026-03-15
-**Overall confidence:** HIGH (established domain with mature competitors like MiniVAN, Ecanvasser, Qomon; existing backend APIs cover 90%+ of needed functionality)
+**Domain:** Political field operations platform
+**Researched:** 2026-03-24
+**Overall confidence:** MEDIUM-HIGH (based on domain expertise with VAN/VoteBuilder, EveryAction, PDI, Organizer, Reach patterns; web search unavailable to verify latest 2026 competitor changes)
 
-## Table Stakes
+---
 
-Features volunteers expect from any modern field app. Missing = volunteers confused, slower, or abandon the app.
+## Map-Based Turf Editor
 
-| Feature | Why Expected | Complexity | Depends On | Notes |
-|---------|--------------|------------|------------|-------|
-| **Volunteer landing/hub page** | Volunteers need a single entry point that shows their active assignment and routes them to canvassing or phone banking. Every competitor (MiniVAN, Ecanvasser, Qomon) starts with a "my assignments" view | Low | Existing shift/volunteer APIs, walk list canvasser assignments, session caller assignments | Query shifts where user is signed up + active, then route based on shift type (canvassing vs phone banking) |
-| **Linear canvassing wizard** | MiniVAN, Ecanvasser, and every competitor uses a step-by-step flow: see address -> knock -> record outcome -> next. Volunteers should never choose what to do next | Med | Existing walk list entries (sequenced), door-knock recording API, survey engine | State machine: `loading -> at_door -> recording -> surveying -> next`. Reuse existing `WalkListEntry` sequence ordering |
-| **Door-knock outcome buttons** | Large, tappable outcome buttons (Not Home, Contact, Refused, etc.) replace the current dropdown Select. Field conditions demand one-tap recording | Low | Existing `DoorKnockCreate` schema, `CanvassService.record_door_knock()` | Current DoorKnockDialog uses a Select dropdown -- field mode needs big tap-friendly buttons instead |
-| **Phone banking tap-to-call** | `tel:` links that invoke the native dialer. Every phone banking app does this. Volunteers should not copy-paste numbers | Low | Existing call list entries with `phone_numbers` array | Simple `<a href="tel:+1XXXXXXXXXX">` link. Phone OS shows confirmation before dialing. Already have phone data in ClaimEntry response |
-| **Phone banking call flow** | Claim entry -> see voter info -> tap to call -> record outcome -> inline survey -> next voter. Must mirror existing ActiveCallingPage but mobile-optimized | Med | Existing `PhoneBankService.claim_entries_for_session()`, `record_call()`, survey question API | Current call.tsx already has the state machine (idle/claiming/claimed/recording/recorded/complete). Refactor to mobile-stacked layout |
-| **Inline survey after contact** | Survey questions appear inline after "Contact Made" or "Answered" outcomes, not in a separate screen. Matches MiniVAN and all competitors | Low | Existing `SurveyPanel` component, `/surveys/{id}/questions` API | Already built in call.tsx's SurveyPanel. Reuse with mobile-responsive layout. Walk list needs `script_id` wired through |
-| **Progress indicator** | "You've completed 12 of 45 doors" or "15 calls made". Volunteers need to see progress. MiniVAN shows milestone prompts at 25%, 50%, 75%, 100% | Low | Existing `walk_list.visited_entries/total_entries`, `SessionProgressResponse` | Simple fraction/percentage bar. Data already available from existing APIs |
-| **Mobile-optimized touch targets** | Minimum 44x44px (WCAG 2.1 AAA) / 48x48dp (Material Design) tap targets. Field use = gloves, sunlight, walking. Research shows targets smaller than 44px have 3x higher error rates | Low | None (CSS/layout concern) | Apple recommends 44pt, Google recommends 48dp. Current admin UI uses standard shadcn sizes which are too small for field use |
-| **Session start/stop controls** | Volunteers need clear "Start Canvassing" / "I'm Done" buttons. Phone banking needs "Start Calling" / "End Session" | Low | Existing session lifecycle APIs (check-in/check-out for phone banking) | Phone banking has check_in/check_out. Canvassing walk list has no session concept -- volunteer just works through entries |
-| **Back-to-hub navigation** | Clear way to return to the volunteer hub from any point in the flow. Prevents volunteers feeling trapped in a wizard | Low | None (routing concern) | Persistent header with back arrow or "Exit" button |
+### Existing Foundation
 
-## Differentiators
+The codebase already has:
+- `Turf` model with PostGIS `POLYGON` boundary (SRID 4326, spatial index)
+- `TurfService` with full CRUD, GeoJSON validation via Shapely, `ST_Contains` voter queries
+- `TurfStatus` enum: DRAFT -> ACTIVE -> COMPLETED with enforced transitions
+- `_validate_polygon()` using Shapely for geometry validation (type check, validity check, zero-area check)
+- `get_voter_count()` using `ST_Contains` subquery against `Voter.geom`
+- `household_key()` and `parse_address_sort_key()` for walk list ordering
+- Voter model with `geom` point column (lat/lng already geocoded during import)
+- Walk list generation with household clustering and street-name sorting
+- `leaflet` ^1.9.4 and `react-leaflet` ^5.0.0 in package.json (installed, not yet used in any component)
+- Current UI: raw JSON textarea for GeoJSON input (`TurfForm.tsx` -- `<Textarea id="boundary" rows={6}>`)
 
-Features that set the product apart. Not expected by volunteers, but valued by campaign managers and improve field effectiveness.
+### Table Stakes (must have for go-live)
 
-| Feature | Value Proposition | Complexity | Depends On | Notes |
-|---------|-------------------|------------|------------|-------|
-| **Guided onboarding tour** | First-time volunteers get a step-by-step overlay tour explaining each screen. Eliminates training sessions -- "zero-training UX" is a stated project goal. MiniVAN requires in-person training; this replaces that entirely | Med | Canvassing wizard and/or phone banking mode must exist first (screens to tour) | Use react-joyride (5.1k GitHub stars, mature) or @reactour/tour (2.8k stars, newer API). Store tour completion in localStorage per user. "Revisit tour" option accessible from help button |
-| **Contextual tooltips / help** | Persistent `?` icons or info badges that explain what each button does. Goes beyond onboarding tour for ongoing reference | Low | None (frontend-only) | shadcn Tooltip component already available. Add help text to outcome buttons, progress indicators, nav elements |
-| **Progressive disclosure** | Show only what's needed at each step. Hide survey until outcome recorded. Hide "next" until current door complete. Reduces cognitive load for untrained volunteers | Low | None (UX pattern) | Already partially implemented in phone banking state machine. Canvassing wizard needs the same pattern |
-| **Household grouping in canvass flow** | When multiple voters share an address, present them together: "3 voters at 123 Main St" with individual outcome recording per voter. MiniVAN does this | Med | Existing `household_key` on `WalkListEntry`, entries already sorted by street address | Group consecutive entries with same `household_key`. Show household card with individual voter sub-cards. Existing data supports this fully |
-| **Voter context card** | Show voter name, party, age, voting history, propensity scores before the door knock. Helps volunteers have informed conversations | Low | Existing voter model with 22+ columns, voter detail API | Compact mobile card component. Data already exists -- needs lightweight fetch by voter_id from walk list entry |
-| **Milestone celebrations** | Toast/modal when volunteer hits 25%, 50%, 75%, 100% completion. MiniVAN does this at checkpoints. Gamification increases volunteer retention | Low | Existing progress data from walk list stats and session progress | Simple percentage check after each recorded outcome. Show celebratory toast |
-| **Auto-advance timer** | After recording an outcome, auto-advance to next door/voter after 2-3 seconds with cancel option. Reduces taps per voter | Low | None (frontend timer) | Show countdown with "Go Now" and "Wait" buttons after outcome recording |
-| **Address link to native maps** | Each door/address in the canvassing wizard includes a link that opens Google Maps / Apple Maps for walking directions | Low | Existing voter address data (registration_line1, city, state, zip) | `https://maps.google.com/?q=ADDRESS` or `https://maps.apple.com/?q=ADDRESS` -- deep links to native maps apps |
+These are features every turf management tool in the political space provides. Without them, the product is unusable compared to VAN's turf cutter.
 
-## Anti-Features
+| Feature | Why Expected | Complexity | Dependencies |
+|---------|-------------|------------|--------------|
+| **Interactive polygon draw** | Core purpose of replacing raw JSON textarea. User clicks points on map to draw a polygon boundary. VAN, PDI, Organizer all provide map-based drawing. No campaign manager will paste raw GeoJSON. | Medium | Install `@geoman-io/leaflet-geoman-free` (MIT). Create `useGeoman` hook wrapping `useMap()`. leaflet-draw is effectively abandoned since 2020; Geoman is actively maintained with better touch support. |
+| **Vertex editing** | After drawing, user must drag vertices to adjust the boundary. Standard in every GIS editor. VAN allows this; it is the primary turf refinement workflow. | Low | Comes free with Geoman's edit mode (`pm:enableEdit()`). No backend changes -- existing `TurfUpdate` schema accepts new boundary dict. |
+| **Map tile base layer** | Display a street-level map as context for drawing. Without it, users draw blind polygons over a white void. | Low | react-leaflet `TileLayer` with OpenStreetMap tiles (free, no API key needed). Default zoom to campaign jurisdiction coordinates. |
+| **Render saved turfs on map** | Campaign's existing turfs displayed as colored polygons on an overview map. This is how VAN/EveryAction present turf inventory -- color-coded by status. Without it, users have no spatial context for where their turfs are. | Medium | New `TurfMap` component rendering `GeoJSON` layers per turf. Backend already returns boundary as GeoJSON dict in `TurfResponse`. Need a batch endpoint (`GET /turfs/geojson` returning FeatureCollection) to avoid N+1 requests. |
+| **Turf overview map page** | A dedicated page showing all turfs for the campaign on one map, color-coded by status (DRAFT=gray, ACTIVE=blue, COMPLETED=green). Replaces the current table-only turf list as the primary view. | Medium | New route component at `/campaigns/{id}/canvassing/map`. Combine turf list data with `TurfMap` rendering. Turf list table should still exist alongside for users who prefer list view. |
+| **Voter dots within selected turf** | When viewing/editing a single turf, show voter locations as point markers on the map. Critical for verifying turf coverage and density. VAN shows voter pins inside turf boundaries. | Medium | New backend endpoint: `GET /turfs/{id}/voters/points` returning simplified `[{lat, lng, name}]` array (not full voter objects). Frontend: use `react-leaflet-cluster` (or `leaflet.markercluster`) for performance -- turfs can have 500-2000 voters. Only load voter points when a single turf is selected. |
+| **Voter count badge** | Display voter count for each turf on the map popup and in the list view. Backend `get_voter_count()` already exists. This is the primary feedback mechanism for turf sizing -- campaign managers aim for 50-150 doors per turf. | Low | Wire existing `TurfService.get_voter_count()` into `TurfResponse` (add `voter_count` field). Compute during list queries via lateral join or batch subquery. Display in turf popup tooltip and list table column. |
+| **GeoJSON file import** | Upload a .geojson file to create a turf boundary. Campaigns commonly receive precinct/district shapes from county GIS offices as GeoJSON. VAN and PDI both support boundary file import. | Medium | Client-side: file upload component, parse JSON, validate geometry type, preview on map before submit. Must handle `FeatureCollection` (extract first Polygon feature) and `Feature` (unwrap to Geometry). Server-side: existing `TurfCreate` endpoint handles the validated GeoJSON -- no backend changes. |
+| **GeoJSON export** | Download a turf boundary as a .geojson file. Needed for sharing with GIS tools, other platforms, or county officials. | Low | Pure client-side: `JSON.stringify(boundary)` -> Blob -> download link. Wrap in proper Feature with properties (turf name, status). Zero backend work. |
+| **Turf name/status labels on map** | Popup or tooltip showing turf name, status, voter count, and assignee when clicking/hovering a polygon on the overview map. | Low | Leaflet popup/tooltip bound to each GeoJSON feature layer via `onEachFeature` callback. |
+| **Tablet-responsive map** | Map must work on tablets (iPad) -- campaign managers commonly do turf work on tablets during planning meetings. Not phone-sized; this is an admin function, not field volunteer. | Low | Leaflet is responsive by default. Ensure touch-drag and pinch-zoom work. Test Geoman draw interaction on touch -- Geoman has explicit touch support. |
+| **Preserve JSON editor as fallback** | Keep the existing raw GeoJSON textarea as an "Advanced" toggle on the turf editor. Power users and developers paste GeoJSON from external tools. | Low | Existing `TurfForm.tsx` stays. Add a toggle: "Draw on Map" (default) vs "Paste GeoJSON" (advanced). Both produce the same `boundary` dict for submission. |
 
-Features to explicitly NOT build for v1.4. Either out of scope, premature, or harmful.
+### Differentiators (nice to have, defer if time-constrained)
+
+These separate professional tools from basic ones. VAN has most of these; smaller tools like Reach do not.
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Turf splitting** | Draw a line across an existing turf to split it into two child turfs. VAN supports this for precinct subdivision when a turf is too large. | High | Backend: Shapely `split()` with `LineString` geometry, transaction creating 2 new turfs and soft-deleting original. Frontend: Geoman line-draw mode. Edge cases: line must fully bisect polygon, handle resulting MultiPolygon from imprecise cuts, reassign walk lists. |
+| **Overlap detection/warning** | Warn when a new turf overlaps an existing active turf (double-canvassing risk). | Medium | Backend: `ST_Intersects` query against existing active turfs during create/update. Return warning (not block) since some overlap is intentional at turf edges. Frontend: highlight overlapping area in red. |
+| **Address geocoding search** | Type an address to center/zoom the map. Campaign managers think in addresses ("Center on City Hall"), not lat/lng. | Low-Medium | Nominatim (free OSM geocoder, no API key) or Mapbox Geocoding API. Search box above map. Low complexity but introduces external API dependency. |
+| **Turf assignment to canvasser** | Assign a canvasser/volunteer directly from the turf map popup, with a member picker. VAN shows assigned canvasser on the turf. | Medium | Currently assignment happens through walk list generation (turf -> walk list -> assign canvasser). Direct turf assignment could add `assigned_to` FK on Turf model or a `TurfAssignment` junction table. Walk list generation is the functional equivalent for launch. |
+| **Census/precinct boundary overlay** | Display census tract, voting precinct, or county boundaries as semi-transparent reference layers that users can snap turfs to. | High | Requires sourcing TIGER/Line shapefiles or state precinct boundary data, storing as reference layers, rendering as additional GeoJSON layers. Major data pipeline. Defer to post-launch. |
+| **Multi-polygon support** | Turf boundaries with holes (excluding a park) or multiple disjoint pieces (both sides of a highway). | Medium | Backend `_validate_polygon()` currently rejects non-Polygon types. Would need to accept `MultiPolygon`. Geoman supports polygon hole cutting natively. |
+| **Satellite/aerial imagery toggle** | Switch between street map and satellite view. Useful for identifying physical barriers (rivers, highways, railroad tracks) that affect canvassing routes. | Low | Add ESRI World Imagery tile layer as secondary option. No API key needed for ESRI tiles. Or Mapbox Satellite (requires key). |
+| **Turf print/PDF export** | Print a turf map with boundary, voter dots, and address list for canvassers who want paper backup. | Medium | html2canvas or Leaflet print plugin. Niche but some campaigns still use paper as fallback. |
+| **Undo/redo during draw** | Undo last vertex while drawing a polygon. | Low | Geoman supports this natively via Ctrl+Z keyboard shortcut and programmatic API. Just needs documentation/tooltip. |
+| **Turf merge** | Combine two adjacent turfs into one. Inverse of splitting. | High | Backend: Shapely `unary_union()`. Must handle non-adjacent turfs (reject), walk list reassignment. |
+
+### Anti-Features (don't build)
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| **Offline mode / service worker** | Requires IndexedDB queue, conflict resolution, sync engine. Massive complexity for a web app. MiniVAN requires manual sync; campaign areas typically have cellular coverage | Note in docs that cellular data is required. The app works as a standard web app. Revisit only if real-world usage shows connectivity gaps |
-| **Native mobile app** | Explicitly out of scope per PROJECT.md. PWA/responsive web is sufficient for field use | Responsive web with proper viewport, touch targets, and mobile-first CSS. Add `manifest.json` for "Add to Home Screen" capability |
-| **Predictive dialer / auto-dial** | Requires Twilio/TCPA/FCC compliance, telephony infrastructure. Explicitly out of scope | `tel:` links that invoke the native phone dialer. Volunteer manually taps to call. Simple, legal, no infrastructure |
-| **GPS turn-by-turn navigation** | Requires mapping SDK license, complex routing algorithms, real-time position tracking | Link to Google Maps/Apple Maps with the next address as destination. Let the native maps app handle navigation |
-| **Interactive map view** | Requires map library (Mapbox GL JS or Leaflet), GPS integration, pin rendering, performance optimization for hundreds of pins. High complexity for v1.4 | Defer to v1.5. Address links to native maps provide navigation. The linear wizard sequence is the primary navigation paradigm |
-| **Real-time supervisor dashboard** | WebSocket infrastructure explicitly out of scope. SSE could work but adds backend complexity | Existing polling-based dashboard APIs are sufficient. Supervisor refreshes to see updates |
-| **Chat/messaging between volunteers** | Scope creep. Not a field operations tool feature | Campaign can use Signal, Slack, or text messages for coordination |
-| **Photo/document capture** | Camera integration, image storage, moderation pipeline. Different product category | Notes field is sufficient for recording qualitative observations |
-| **Voice recording of conversations** | Legal minefield (two-party consent states), storage costs, privacy concerns | Survey responses and notes capture the structured data campaigns need |
-| **Gamification leaderboards** | Competitive metrics can create perverse incentives (rushing through doors, fabricating contacts) | Individual progress only. "You've completed 30 of 45" without comparing to other volunteers |
-| **Complex volunteer self-assignment** | Letting volunteers pick their own walk lists or phone bank sessions creates coordination problems -- two volunteers could pick the same turf | Managers assign volunteers to shifts; shifts link to turfs/sessions. The hub page shows what the volunteer is already assigned to |
+| **Real-time collaborative editing** | CRDT/OT for geometry editing is extremely complex. Near-zero demand -- turf cutting is a planning activity done by 1-2 people, not collaborative like a Google Doc. VAN does not have this. | Optimistic locking via `updated_at` timestamp. Show "This turf was modified by someone else" warning on save conflict. |
+| **Custom map style builder** | Campaign branding on map tiles serves no operational purpose. Design time for zero value. | Ship with OSM default tiles. Satellite toggle at most. |
+| **Street-level routing within turf** | Walking route optimization (Traveling Salesman Problem) is a separate, hard problem. MiniVAN delegates to Google Maps. CivicPulse already has Google Maps walking direction links in v1.4. | Continue using Google Maps navigation links from field mode. Walk list ordering by street name + house number is the sequencing mechanism. |
+| **3D terrain/building rendering** | No campaign operational use case. WebGL complexity for zero value. | Flat 2D map is correct for turf management. |
+| **Freehand polygon drawing** | Produces messy, self-intersecting polygons with hundreds of excess vertices. Every professional GIS tool uses click-to-place for a reason. Shapely will reject most freehand polygons as invalid. | Use Geoman's standard polygon draw (click vertices, double-click to close). Provides clean, valid polygons. |
+| **Auto-turf generation** | Automatically dividing a campaign district into equal-sized turfs (by voter count or area). Sounds useful but produces terrible results without human judgment about natural boundaries (streets, rivers, neighborhoods, safety concerns). VAN does not auto-generate turfs. | Let users draw manually. Provide voter count feedback in real-time so they can balance by hand. Suggest in docs: "Aim for 50-150 doors per turf." |
+| **Shapefile (.shp) import** | Shapefiles are a multi-file format (.shp + .shx + .dbf + .prj minimum) requiring complex server-side parsing with GDAL/OGR. GeoJSON is the modern standard and every GIS tool can export to it. | Support GeoJSON import only. Document the conversion: "Use mapshaper.org or QGIS to convert .shp to .geojson before uploading." |
+| **KML/KMZ import** | Google Earth format. Less common than GeoJSON in political data, adds parsing complexity. | GeoJSON only. Users can convert KML to GeoJSON with free tools. |
+
+### Notes on Complexity
+
+**Drawing library choice:** Use `@geoman-io/leaflet-geoman-free` (MIT license) over `leaflet-draw`.
+- leaflet-draw: last meaningful release ~2020, open issues with Leaflet 1.9+, no active maintainer
+- Geoman Free: actively maintained (releases in 2025), better touch/mobile support, built-in vertex editing/snapping/polygon cutting, MIT license
+- No official `react-leaflet-geoman` wrapper exists -- create a `useGeoman` hook that:
+  1. Gets map instance via react-leaflet's `useMap()`
+  2. Calls `map.pm.addControls()` to add draw toolbar
+  3. Listens for `pm:create`, `pm:edit`, `pm:remove` events
+  4. Converts drawn layer to GeoJSON via `layer.toGeoJSON()`
+  5. Passes GeoJSON to form state
+
+**Performance considerations:**
+- Rendering 50+ turf polygons: no issue for Leaflet (handles thousands of features)
+- Voter point markers at 500-2000 per turf: MUST use marker clustering (`leaflet.markercluster`). Without clustering, 1000+ DOM elements causes jank on mid-range devices.
+- Lazy-load voter points only when viewing a single turf, never on overview map
+- For overview map with 100+ turfs, consider `ST_Simplify(boundary, tolerance)` server-side to reduce coordinate count at zoom levels where full precision is not needed
+
+**Backend additions needed:**
+1. `GET /campaigns/{id}/turfs/geojson` -- returns GeoJSON FeatureCollection of all turfs with properties (id, name, status, voter_count). Single request replaces N turf fetches for map rendering.
+2. `GET /campaigns/{id}/turfs/{id}/voters/points` -- returns `[{lat, lng, voter_id, name}]` array. Lightweight projection -- not full voter objects. Filter to voters where `geom IS NOT NULL`.
+3. Add `voter_count` to `TurfResponse` schema -- compute during list queries via subquery `SELECT COUNT(*) FROM voters WHERE ST_Contains(turf.boundary, voter.geom)` as a lateral join.
+
+**Frontend additions needed:**
+1. `TurfMap` component -- renders all turfs on Leaflet map with color-coded polygons
+2. `TurfDrawer` component -- Geoman-powered polygon draw/edit with `useGeoman` hook
+3. `TurfEditor` page -- map-based create/edit replacing TurfForm as default, with "Advanced" JSON toggle
+4. `GeoJSONImport` dialog -- file upload, parse, validate, preview polygon on map before submit
+5. `VoterMarkers` component -- clustered voter point markers within selected turf
+6. `TurfOverviewPage` -- new route at `/campaigns/{id}/canvassing/map`
+
+**Leaflet CSS requirement:** Leaflet requires its CSS file imported globally (`leaflet/dist/leaflet.css`). Add to `index.html` or app root. Missing CSS causes invisible tiles -- a common gotcha.
+
+---
+
+## Organization-Level UI
+
+### Existing Foundation
+
+The codebase already has:
+- `Organization` model: `id`, `zitadel_org_id`, `zitadel_project_grant_id`, `name`, `created_by`
+- `Campaign.organization_id` FK (nullable) linking campaigns to orgs
+- `Campaign.zitadel_org_id` on every campaign
+- `CampaignService.create_campaign()` supports `organization_id` param to reuse existing org
+- Compensating transaction pattern: new org creation rolls back on DB failure; existing org reuse revokes grant on failure
+- `ZitadelService` with: `create_organization()`, `deactivate_organization()`, `delete_organization()`, `assign_project_role()`, `remove_project_role()`, `remove_all_project_roles()`, `create_project_grant()`, `ensure_project_grant()`
+- `CampaignRole` enum: VIEWER(0), VOLUNTEER(1), MANAGER(2), ADMIN(3), OWNER(4)
+- `CampaignMember` table: `(user_id, campaign_id, role)`
+- Role resolution in `resolve_campaign_role()` via campaign_member lookup
+- `RequireRole` component and `usePermissions` hook for frontend gating
+- Campaign list page shows all campaigns user can see (no org grouping)
+- Campaign settings page with edit/delete/ownership-transfer
+
+### Table Stakes (must have for go-live)
+
+What every multi-campaign political platform provides at the organization level. Without these, orgs running multiple campaigns (party committees, PACs, consulting firms, multi-race candidates) cannot manage their operations.
+
+| Feature | Why Expected | Complexity | Dependencies |
+|---------|-------------|------------|--------------|
+| **Organization dashboard** | Org admins need a single page showing all campaigns in their org with status, election date, and member counts. Currently campaigns are a flat list with no org context. VAN's "Committee Admin" view provides exactly this. | Medium | New route: `/org` (or `/organizations/{id}` if multi-org). Backend: `GET /organizations/{id}/campaigns` (filter existing `list_campaigns` by `organization_id`). Frontend: card grid grouped by status (active/suspended/archived). |
+| **Campaign creation gated to org admin** | Currently any authenticated user can create a campaign. For orgs managing multiple races, only org admins should create campaigns. Prevents unauthorized campaign creation. This is standard in VAN (only committee admins create committees). | Medium | Requires org-level roles (see below). Backend: check org-level role in `create_campaign` endpoint. Frontend: conditionally show "New Campaign" button based on org role. |
+| **Org member directory** | List all users who have access to any campaign in the org, with their roles per campaign. Org admin needs a single view of "who has access to what." VAN's committee admin view shows this. | Medium | New endpoint: `GET /organizations/{id}/members` -- aggregate `CampaignMember` records grouped by `user_id` across all campaigns with `organization_id = X`. Returns `[{user_id, display_name, email, campaigns: [{campaign_name, role}]}]`. Join through `campaigns.organization_id -> campaign_members`. |
+| **Org-level role model** | Two org-level roles: `org_owner` (full control, can delete org) and `org_admin` (manage campaigns and members, cannot delete org). Distinct from per-campaign roles. Required for campaign creation gating and org member management. | High | New `OrganizationMember` model/table: `(user_id, organization_id, role)`. Migration to create table and seed org_owner for existing org creators. Auth middleware update: effective_role = max(org_role_equivalent, campaign_role). `org_owner` maps to OWNER in all campaigns; `org_admin` maps to ADMIN in all campaigns. |
+| **Org-level role resolution in auth** | Auth middleware must check both `CampaignMember.role` AND `OrganizationMember.role`, taking the higher privilege. An org_admin should automatically have ADMIN access in every campaign under their org without explicit per-campaign membership. | High | Modify `resolve_campaign_role()`: (1) check campaign_members for explicit role, (2) if not found or lower, check organization_members for the campaign's org, (3) return max. Must not break existing campaign-level role checks. |
+| **Cross-campaign member visibility** | Org admin can see which campaigns each person belongs to and their role in each. Table view: rows = members, columns = campaigns. Essential for orgs running 5+ races. | Medium | Builds directly on org member directory endpoint. Frontend: matrix/table view. Low additional complexity once directory endpoint exists. |
+| **Add existing member to campaign** | Org admin can assign an org member to a new campaign with a specific role directly, without sending a new invite email. The person is already in the ZITADEL org. | Medium | Extend member management: if user already exists in the org (check `OrganizationMember` or any `CampaignMember` in the org), create `CampaignMember` directly + assign ZITADEL role. Skip invite email flow. |
+| **Org settings page** | View/edit org name. Read-only display of ZITADEL org ID. Placeholder sections for future features. | Low | Simple form page. New `PATCH /organizations/{id}` endpoint (update name). Only org_owner can edit. |
+| **Campaign creation wizard** | Multi-step form for creating a campaign within the org. Step 1: name, type, jurisdiction, election date, candidate. Step 2: confirm org association. Step 3: invite initial team (optional, can skip). Better than current single-page form. | Medium | Multi-step form using shadcn components or custom stepper. Calls existing `create_campaign` with `organization_id`. Step 3 reuses existing invite flow. |
+
+### Differentiators (nice to have)
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Multi-org membership** | A user belongs to multiple orgs (consultant managing campaigns for different clients). Org switcher in UI header. | Medium | ZITADEL already supports multi-org via project grants per org. Frontend: org selector dropdown in sidebar/header. Backend: scope all queries by selected org. Cookie or URL param for active org. |
+| **Org-level dashboards** | Aggregate canvassing/phone banking/volunteer metrics across all campaigns. "How is the party committee doing overall?" | Medium | Roll up existing per-campaign dashboard queries with org-level grouping. Sum doors knocked, calls made, volunteers active across campaigns. |
+| **Campaign archival workflow** | Org admin archives completed campaigns post-election. Archived campaigns become read-only but data is preserved for reporting. | Low | Campaign model already has `ARCHIVED` status with valid transition from ACTIVE. Just need a UI button on the org dashboard campaign card and enforce read-only in API middleware for archived campaigns. |
+| **Org invite link** | Shareable URL that adds a user to the org (not a specific campaign). User joins org, then org admin assigns to campaigns. | Low-Medium | Similar to existing campaign invite flow but creates `OrganizationMember` instead of `CampaignMember`. |
+| **Billing/subscription placeholder** | Org-level page showing plan tier, usage (campaigns, voters imported, members). "Contact us to upgrade" button. | Low | Static page with calculated usage metrics. No actual billing integration -- FEC compliance for campaign payments is extremely complex (explicitly out of scope in PROJECT.md). |
+| **Org activity feed** | Timeline of recent actions across all campaigns: members joined, turfs created, imports completed. | Medium | Requires audit log infrastructure (event table or structured log query). Useful for oversight but not critical for launch. |
+| **Remove member from all campaigns** | One-click to remove a person from every campaign in the org. For when staff leaves. | Low-Medium | Backend: query all `CampaignMember` records for user in org's campaigns, delete all, revoke all ZITADEL grants. Existing `remove_all_project_roles()` handles ZITADEL side. |
+| **Transfer campaign between orgs** | Move a campaign from one org to another. Rare but needed when consulting firms hand off to candidate's own org. | High | Complex: change `organization_id`, `zitadel_org_id`, migrate all ZITADEL grants. Many edge cases. Defer. |
+
+### Anti-Features (don't build)
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| **Org-level voter database** | Sharing voter data across campaigns within an org is a legal and compliance minefield. Different campaigns have different data vendor agreements (L2, TargetSmart, etc.) with restrictions on data sharing. VAN strictly isolates voter files per committee. | Keep voter data campaign-scoped with RLS. If an org wants the same voters in multiple campaigns, they import the same vendor file into each. Clean separation is a feature, not a bug. |
+| **Hierarchical org structure** | Nested orgs (national -> state -> county -> local). Only national party committees need this, and they use VAN. Massive complexity (tree queries, permission inheritance, UI for nested navigation). | Flat org model. One level: org -> campaigns. Sufficient for 99% of users. |
+| **Custom permission builder** | Drag-and-drop RBAC with fine-grained feature flags per role. Enterprise bloat that campaigns do not need. | Fixed role hierarchy: 5 campaign roles + 2 org roles = 7 total. Simple, predictable, documented. |
+| **SSO/SAML configuration per org** | Per-org identity provider setup. Only large enterprises need this. | ZITADEL handles SSO at the instance level. Organizations inherit the instance's IDP configuration. Do not expose IDP config in the app UI. |
+| **Audit log viewer UI** | Full searchable audit trail of every action. Compliance requirement for enterprises, not political campaigns. | Log actions server-side via structlog (already planned for v1.5 observability). Build UI only if users specifically request it. |
+| **Org-level data export** | Export all org data as a single archive. Data portability concern. | Per-campaign CSV exports are sufficient. GeoJSON export for turfs. No need for a "download everything" feature. |
+| **Real-time notifications/inbox** | In-app notification system for org events (member joined, campaign created). | Not needed for launch. Campaign communication happens via external tools (Signal, Slack, email). If needed later, SSE (already in architecture constraints) would suffice. |
+| **White-label / custom branding per org** | Custom logos, colors, domain names per org. Consulting firms want this for client-facing deployments. | Single brand. If white-label demand emerges, it is a separate product initiative, not a v1.5 feature. |
+
+### Notes on Complexity
+
+**Org-level role model design -- the critical path:**
+
+This is the highest-complexity, highest-risk item in v1.5. The current system has roles only at the campaign level (`CampaignMember.role`). Adding org-level roles requires careful design to avoid breaking existing authorization.
+
+1. **New `OrganizationMember` table:**
+   ```sql
+   CREATE TABLE organization_members (
+     user_id TEXT REFERENCES users(id),
+     organization_id UUID REFERENCES organizations(id),
+     role VARCHAR(50) NOT NULL,  -- 'org_owner' or 'org_admin'
+     created_at TIMESTAMPTZ DEFAULT now(),
+     PRIMARY KEY (user_id, organization_id)
+   );
+   ```
+
+2. **Migration to seed existing data:** For each `Organization`, the `created_by` user becomes `org_owner`.
+
+3. **Auth middleware update (`resolve_campaign_role`):**
+   ```python
+   # Current: only checks campaign_members
+   # New: check campaign_members THEN check organization_members
+   # Return max(campaign_role, org_role_equivalent)
+
+   ORG_ROLE_MAPPING = {
+       "org_owner": CampaignRole.OWNER,
+       "org_admin": CampaignRole.ADMIN,
+   }
+   ```
+
+   The org role check requires joining through `campaigns.organization_id` to find the org, then checking `organization_members` for the user + org combo. This adds one additional DB query to every authenticated request for users without a direct `CampaignMember` record. Optimize with a single query joining both tables.
+
+4. **ZITADEL role mapping:** Use distinct role keys: `org_owner`, `org_admin` for org-level. Existing `owner`, `admin`, `manager`, `volunteer`, `viewer` remain for campaign-level. The `assign_project_role` method already supports arbitrary role keys.
+
+5. **Backward compatibility:** Users with existing `CampaignMember` records continue to work unchanged. Org-level roles are additive -- they only elevate, never restrict. A user with `volunteer` campaign role and `org_admin` org role gets effective `ADMIN` for that campaign.
+
+**ZITADEL integration notes:**
+- Listing org members: Use local DB (`OrganizationMember` + `CampaignMember` aggregate) rather than ZITADEL API. Faster, no external dependency for read operations.
+- ZITADEL's `x-zitadel-orgid` header scoping is already used in existing service methods. Org member operations will follow the same pattern.
+- When adding a user to the org, create both `OrganizationMember` record AND assign ZITADEL project role (matching compensating transaction pattern from campaign creation).
+
+**Recommended frontend routing (v1.5 -- single-org, no org switcher):**
+```
+/org                        -- org dashboard: campaign card grid
+/org/members                -- member directory: users x campaigns matrix
+/org/settings               -- org name, ZITADEL org ID (read-only)
+/org/campaigns/new          -- campaign creation wizard
+/campaigns/{campaignId}/... -- existing campaign routes (unchanged)
+```
+
+This avoids multi-org URL complexity while establishing the pattern. If multi-org is added later, these become `/organizations/{orgId}/...` with an org switcher.
+
+---
 
 ## Feature Dependencies
 
 ```
-Volunteer Hub Page
-  -> requires: existing volunteer/shift APIs (already built)
-  -> requires: "my active assignments" query (new lightweight API endpoint)
-  -> enables: Canvassing Wizard, Phone Banking Mode
+Map-Based Turf Editor (independent of Org UI -- can build in parallel):
+  @geoman-io/leaflet-geoman-free  -->  install npm package
+  Leaflet CSS import               -->  add to index.html (REQUIRED, common gotcha)
+  TurfMap component                -->  renders GeoJSON layers
+  useGeoman hook                   -->  wraps map.pm for draw/edit
+  TurfDrawer component             -->  useGeoman + form state integration
+  TurfEditor page                  -->  replaces TurfForm as default
+  GET /turfs/geojson endpoint      -->  batch turf loading for overview map
+  TurfOverviewPage                 -->  new route for map view
+  GET /turfs/{id}/voters/points    -->  voter dots on single-turf view
+  VoterMarkers (clustered)         -->  requires leaflet.markercluster
+  GeoJSONImport dialog             -->  client-side parse + preview
+  voter_count in TurfResponse      -->  lateral join in list query
 
-Canvassing Wizard
-  -> requires: Volunteer Hub Page (entry point)
-  -> requires: walk list entries API with sequence ordering (already built)
-  -> requires: door-knock recording API (already built)
-  -> requires: survey questions API (already built)
-  -> uses: household_key grouping (data already exists)
-  -> uses: voter detail data (API already exists)
+Organization-Level UI:
+  OrganizationMember table + migration  -->  FOUNDATION (do first)
+  Seed migration (created_by -> org_owner)  -->  depends on table creation
+  Auth middleware update (resolve_campaign_role)  -->  depends on OrganizationMember table
+  GET /organizations/{id} endpoint  -->  simple, low risk
+  GET /organizations/{id}/campaigns  -->  filter existing list_campaigns
+  GET /organizations/{id}/members  -->  aggregate CampaignMember across org
+  PATCH /organizations/{id}  -->  update org name
+  Org dashboard page (/org)  -->  depends on campaigns + members endpoints
+  Org member directory (/org/members)  -->  depends on members endpoint
+  Org settings page (/org/settings)  -->  depends on GET/PATCH org endpoints
+  Campaign creation gating  -->  depends on auth middleware update
+  Campaign creation wizard  -->  depends on creation gating + existing create_campaign
+  Add member to campaign from org  -->  depends on member directory
 
-Phone Banking Mode (Mobile)
-  -> requires: Volunteer Hub Page (entry point)
-  -> requires: claim entry API with SKIP LOCKED (already built)
-  -> requires: record call API (already built)
-  -> requires: tel: link support (browser-native, zero implementation)
-  -> uses: survey questions API (already built)
-
-Guided Onboarding Tour
-  -> requires: Canvassing Wizard and/or Phone Banking Mode (screens to tour)
-  -> independent of backend: localStorage-based, no API changes
-
-Contextual Tooltips
-  -> independent: can be added to any screen at any time
-  -> pairs with: Onboarding Tour (tour points to same elements tooltips explain)
-
-Progress Indicators
-  -> requires: existing walk list stats / session progress APIs (already built)
-  -> enables: Milestone Celebrations
-
-Milestone Celebrations
-  -> requires: Progress Indicators (percentage tracking)
+Cross-Feature:
+  Auth middleware changes affect ALL existing features (org roles cascade)
+  Turf editor is fully independent -- safe to build in parallel
 ```
 
 ## MVP Recommendation
 
-### Must Build (v1.4 core)
+### Phase 1: Map-Based Turf Editor (self-contained, high visibility, no auth risk)
 
-1. **Volunteer Hub Page** -- Entry point that detects active assignment and routes volunteer. Without this, volunteers cannot find their way to the field experience. New lightweight API endpoint: `GET /campaigns/{id}/my-assignments` returns active shift + linked walk list or phone bank session. Low complexity.
+Build first. Independent of org changes. Immediately visible improvement over JSON textarea.
 
-2. **Canvassing Wizard** -- Linear step-by-step flow replacing the admin walk list detail table for volunteers. State machine: `loading -> at_door -> knocking -> surveying -> advancing -> at_door`. Reuses 100% of existing backend APIs (`WalkListService.get_entries`, `CanvassService.record_door_knock`, survey questions endpoint). No new backend work beyond the hub endpoint. Medium complexity.
+1. Interactive polygon draw + vertex editing (Geoman)
+2. Render saved turfs on overview map (color-coded by status)
+3. Voter dots within selected turf (clustered markers)
+4. GeoJSON file import with preview
+5. GeoJSON export (client-side)
+6. Voter count badge (wire existing backend method)
+7. Preserve JSON editor as "Advanced" mode toggle
 
-3. **Phone Banking Mobile Mode** -- Mobile-responsive version of existing ActiveCallingPage. Add `tel:` link for tap-to-call. Reuse existing state machine and all backend APIs (`claim_entries_for_session`, `record_call`). Layout changes only -- stack panels vertically instead of side-by-side. Medium complexity.
+### Phase 2: Organization Data Model (careful, affects auth)
 
-4. **Mobile-first layout and touch targets** -- 48px minimum touch targets, stacked vertical layout, large outcome buttons, high-contrast text. Applies across all field mode screens. Low complexity (CSS/layout).
+Build second. Foundation for all org UI features. Must not break existing flows.
 
-5. **Progress indicator** -- Simple bar/fraction on each screen header. Data already available from existing APIs. Low complexity.
+1. `OrganizationMember` table + seed migration
+2. Org-level role resolution in auth middleware (with thorough testing)
+3. Backend endpoints: `GET/PATCH /organizations/{id}`, `GET /organizations/{id}/members`, `GET /organizations/{id}/campaigns`
 
-### Should Build (v1.4 polish)
+### Phase 3: Organization UI (depends on Phase 2)
 
-6. **Guided onboarding tour** -- react-joyride overlay. Runs once on first visit, skippable, re-triggerable from help button. Frontend-only, no backend changes. Medium complexity.
+4. Org dashboard with campaign card grid
+5. Campaign creation gating (org_admin+ only)
+6. Campaign creation wizard (multi-step)
+7. Org member directory with cross-campaign role matrix
+8. Org settings page
+9. Add member to campaign from org level
 
-7. **Contextual tooltips** -- `?` icons with explanations on outcome buttons, progress bar, navigation. Pairs naturally with the tour. Low complexity.
+### Defer to Post-v1.5
 
-8. **Household grouping in canvass wizard** -- Group entries by `household_key`, show "3 voters at this address" card. Data already exists and is already sorted by street. Medium complexity.
-
-9. **Voter context card** -- Compact card showing name, party, age, propensity before the knock. Needs voter data joined to walk list entries (existing voter detail API or enriched entry response). Low complexity.
-
-### Defer (v1.5+)
-
-- **Interactive map view** -- High complexity (map SDK, GPS, pin rendering). Valuable but not required for functional field mode. Address links to Google Maps serve as workaround.
-- **Offline mode** -- Massive infrastructure investment (service worker, IndexedDB, sync). Not justified until real-world usage data shows connectivity issues.
-- **Auto-advance timer** -- Nice polish but low priority. Can be added later without architectural changes.
-- **Milestone celebrations** -- Fun but not essential. Can layer on after core wizard flow is stable.
-
-## Existing API Surface (No Backend Changes Needed)
-
-The following existing endpoints fully support the volunteer field mode frontend:
-
-| API | Used By | Status |
-|-----|---------|--------|
-| `GET /campaigns/{id}/walk-lists/{id}` | Canvassing wizard -- walk list metadata + progress stats | Already built |
-| `GET /campaigns/{id}/walk-lists/{id}/entries` | Canvassing wizard -- sequenced entries with household_key, voter_id, status | Already built |
-| `POST /campaigns/{id}/walk-lists/{id}/door-knocks` | Canvassing wizard -- record knock outcome, updates entry status + walk list stats | Already built |
-| `GET /campaigns/{id}/surveys/{id}/questions` | Both modes -- survey questions for inline survey after contact | Already built |
-| `POST /campaigns/{id}/phone-banks/{id}/claim` | Phone banking -- claim next voter with SKIP LOCKED | Already built |
-| `POST /campaigns/{id}/phone-banks/{id}/calls` | Phone banking -- record call outcome with survey responses | Already built |
-| `POST /campaigns/{id}/phone-banks/{id}/release/{entry_id}` | Phone banking -- skip/release entry | Already built |
-| `GET /campaigns/{id}/phone-banks/{id}/progress` | Phone banking -- session progress stats | Already built |
-| `GET /campaigns/{id}/shifts` | Volunteer hub -- list shifts (filterable) | Already built |
-| `GET /campaigns/{id}/volunteers` | Volunteer hub -- volunteer record lookup | Already built |
-
-### New Backend Work Required
-
-| Endpoint | Purpose | Complexity |
-|----------|---------|------------|
-| `GET /campaigns/{id}/my-assignments` | Return current user's active assignment: active shift + linked walk list (canvassing) or phone bank session (phone banking). Joins `shift_volunteers` -> `shifts` -> resource IDs, filters by user_id and active status | Low |
-| Enrich walk list entries with voter name/address | Canvassing wizard needs to display "John Smith, 123 Main St" without a separate voter fetch per entry. Join `Voter` table in `get_entries` query, add `voter_name` and `voter_address` fields to `WalkListEntryResponse` schema | Low |
+- Turf splitting (High complexity, niche use case)
+- Multi-org membership / org switcher
+- Overlap detection
+- Census/precinct boundary overlay
+- Org-level dashboards
+- Billing placeholder
+- Org activity feed
+- Address geocoding search
 
 ## Sources
 
-- [MiniVAN Canvassing Guide (NGP VAN)](https://www.ngpvan.com/blog/canvassing-with-minivan/) -- industry standard workflow reference
-- [MiniVAN Mobile Canvassing Guide (Indivisible)](https://indivisible.org/resource/minivan/) -- volunteer-facing UX patterns
-- [MiniVAN Canvassing (Progress Wiki)](https://wiki.staclabs.io/en/VAN/mini-van-canvassing) -- detailed canvassing workflow
-- [Understanding Canvassing Apps (Qomon)](https://qomon.com/blog/understanding-canvassing-apps) -- feature landscape overview
-- [Ecanvasser Platform](https://www.ecanvasser.com/) -- competitor feature set, offline mode
-- [Phone Banking Setup (Ecanvasser)](https://www.ecanvasser.com/blog/phonebanking) -- phone banking UX patterns
-- [Phone Banking Guide (Solidarity Tech)](https://www.solidarity.tech/how-to-run-a-phonebank) -- volunteer UX best practices
-- [Phone Banking Volunteer Guide (The Commons)](https://commonslibrary.org/tips-for-phonebanking-or-calling-volunteers/) -- phone banking volunteer tips
-- [WCAG 2.5.5 Target Size](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) -- 44x44px minimum touch targets
-- [Accessible Tap Target Sizes (Smashing Magazine)](https://www.smashingmagazine.com/2023/04/accessible-tap-target-sizes-rage-taps-clicks/) -- mobile accessibility guide with research data
-- [React Joyride (GitHub)](https://github.com/gilbarbara/react-joyride) -- 5.1k stars, recommended tour library
-- [Reactour (docs)](https://docs.react.tours/) -- alternative tour library, 2.8k stars
-- [5 Best React Onboarding Libraries 2026 (OnboardJS)](https://onboardjs.com/blog/5-best-react-onboarding-libraries-in-2025-compared) -- library comparison
-- [Click-to-Call Implementation (firt.dev)](https://firt.dev/click-to-call) -- tel: link best practices
-- [Best Canvassing Apps for GOTV (Reach)](https://reach.vote/best-canvassing-apps-for-gotv/) -- competitor comparison
+- Direct codebase analysis: `app/models/turf.py`, `app/services/turf.py`, `app/models/organization.py`, `app/models/campaign.py`, `app/services/campaign.py`, `app/services/zitadel.py`, `app/core/security.py`, `web/src/components/canvassing/TurfForm.tsx`, `web/package.json`
+- Domain knowledge: VAN/VoteBuilder turf cutter, EveryAction committee admin, PDI canvassing, Organizer field tools, MiniVAN mobile app
+- Leaflet ecosystem: Geoman vs leaflet-draw maintenance status and feature comparison
+- ZITADEL organization model: project grants, org-scoped role assignment, `x-zitadel-orgid` header scoping
+
+**Confidence assessment:**
+| Area | Level | Reason |
+|------|-------|--------|
+| Turf editor table stakes | HIGH | Well-understood domain, clear codebase gaps, standard GIS patterns |
+| Geoman library choice | MEDIUM-HIGH | Based on GitHub activity and known leaflet-draw abandonment; no live docs verification |
+| Org UI table stakes | MEDIUM-HIGH | Standard multi-campaign platform patterns; ZITADEL integration validated by existing code |
+| Org role cascading design | MEDIUM | Correct pattern but needs careful implementation/testing; edge cases in auth middleware |
+| Competitor feature parity | LOW | No web search available; claims based on training data, may not reflect 2026 product changes |

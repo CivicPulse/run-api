@@ -1,390 +1,569 @@
-# Architecture Patterns: v1.4 Volunteer Field Mode
+# Architecture Research: v1.5
 
-**Domain:** Mobile-first volunteer experience for canvassing and phone banking
-**Researched:** 2026-03-15
-**Confidence:** HIGH (based on thorough codebase analysis of existing routes, hooks, layouts, and backend APIs)
+**Domain:** Map-based turf editor + Organization-level UI integration
+**Researched:** 2026-03-24
+**Overall confidence:** HIGH (based on thorough codebase analysis)
 
-## Recommended Architecture
+## Map-Based Turf Editor
 
-### Strategy: New Route Subtree with Shared Layout Bypass
+### Data Flow (draw -> GeoJSON -> API -> PostGIS -> render)
 
-Field mode is a **parallel route subtree** (`/campaigns/$campaignId/field/...`) that bypasses the existing sidebar-heavy admin layout. It does NOT wrap existing routes, and it does NOT modify existing admin pages.
+The complete data flow for the map-based turf editor:
 
-**Why a new subtree, not wrappers on existing routes:**
+```
+User draws polygon on Leaflet map
+  |
+  v
+Leaflet.Draw fires `draw:created` event with L.Layer
+  |
+  v
+layer.toGeoJSON() -> GeoJSON Feature with geometry
+  |
+  v
+Extract geometry object: { type: "Polygon", coordinates: [...] }
+  |
+  v
+TanStack Query mutation (useCreateTurf / useUpdateTurf)
+  sends POST/PATCH with { name, boundary: geojsonGeometry }
+  |
+  v
+FastAPI endpoint receives TurfCreate/TurfUpdate schema
+  boundary field: dict[str, Any] (already correct)
+  |
+  v
+TurfService._validate_polygon(geojson)
+  shapely.geometry.shape(geojson) -> Shapely Polygon
+  validates: is Polygon, is_valid, area > 0
+  geoalchemy2.shape.from_shape(geom, srid=4326) -> WKBElement
+  |
+  v
+SQLAlchemy stores WKBElement in PostGIS Geometry(POLYGON, 4326) column
+  |
+  v
+On read: _wkb_to_geojson(turf.boundary)
+  geoalchemy2.shape.to_shape(wkb) -> Shapely geometry
+  shapely.geometry.mapping(geom) -> GeoJSON dict
+  |
+  v
+TurfResponse.boundary = geojson dict
+  |
+  v
+Frontend receives GeoJSON, renders on Leaflet via L.geoJSON(boundary)
+```
 
-1. The existing admin pages (`canvassing/`, `phone-banking/`, `volunteers/`) have layout files that render side navigation, breadcrumbs, and data tables designed for managers at desktops. The `phone-banking.tsx` layout renders a 4-tab side nav (Sessions, Call Lists, DNC, My Sessions) that is irrelevant for a volunteer in the field. The `volunteers.tsx` layout has a 4-item side nav (Roster, Tags, Register, Shifts). Wrapping these with mobile-responsive logic would mean conditionally hiding most of each page.
+### Backend Changes Needed
 
-2. TanStack Router's file-based routing makes layout inheritance automatic. A new `field.tsx` layout file creates clean separation -- the field layout renders a mobile-optimized shell while the admin layouts remain untouched.
+**The serialization layer already works correctly.** This is the key finding: the existing TurfService already handles the full GeoJSON-to-PostGIS round trip.
 
-3. The existing hooks (`useWalkLists`, `useWalkListEntries`, `useClaimEntry`, `useRecordCall`, `useRecordDoorKnock`, `useSurveyScript`) and all 20+ API endpoints require zero changes. Field mode routes import the same hooks with different UI.
+**What exists and requires NO changes:**
 
-### Route Structure
+| Component | File | Status |
+|-----------|------|--------|
+| Turf model with PostGIS Geometry column | `app/models/turf.py` | Complete |
+| GeoJSON -> WKBElement validation | `app/services/turf.py:_validate_polygon()` | Complete |
+| WKBElement -> GeoJSON serialization | `app/services/turf.py:_wkb_to_geojson()` | Complete |
+| Pydantic schemas (boundary: dict[str,Any]) | `app/schemas/turf.py` | Complete |
+| CRUD endpoints with proper RLS | `app/api/v1/turfs.py` | Complete |
+| `_turf_to_response()` converter | `app/api/v1/turfs.py` | Complete |
+| ST_Contains spatial voter queries | `app/services/turf.py:get_voter_count()` | Complete |
+
+**Potential backend enhancement (NEW, not required for MVP):**
+
+1. **Voter count on turf list response** -- `get_voter_count()` exists but is not called in the list or detail endpoints. Add `voter_count` to `TurfResponse` for map UI display:
+   - Add `voter_count: int | None = None` to `TurfResponse` schema
+   - Call `_service.get_voter_count()` in `get_turf()` endpoint
+   - Optional: batch voter counts for list endpoint (N+1 query risk if done naively)
+
+2. **MultiPolygon support** -- Current validation only accepts `Polygon`. For complex districts, consider also accepting `MultiPolygon`. This requires changing `_validate_polygon()` to allow both types and updating the PostGIS column type from `POLYGON` to `GEOMETRY` or `MULTIPOLYGON`. **Defer this** unless user feedback demands it.
+
+3. **GeoJSON Feature vs Geometry** -- Leaflet.Draw's `toGeoJSON()` returns a GeoJSON Feature (with `type: "Feature"`, `geometry: {...}`, `properties: {...}`), not a bare geometry. The frontend must extract `.geometry` before sending to the API. The current schema expects a geometry dict, not a Feature.
+
+### Frontend Component Structure
+
+**Existing components that need MODIFICATION:**
+
+| Component | File | Change |
+|-----------|------|--------|
+| `TurfForm` | `web/src/components/canvassing/TurfForm.tsx` | Replace raw JSON textarea with Leaflet map + draw controls |
+| `NewTurfPage` | `web/src/routes/.../turfs/new.tsx` | Minor: may need layout adjustment for map height |
+| `TurfDetailPage` | `web/src/routes/.../turfs/$turfId.tsx` | Add map rendering of existing boundary + edit mode |
+| `CanvassingIndex` | `web/src/routes/.../canvassing/index.tsx` | Add overview map showing all turfs as rendered polygons |
+
+**New components to BUILD:**
+
+| Component | Purpose |
+|-----------|---------|
+| `TurfMap.tsx` | Wrapper around react-leaflet MapContainer with tile layer, configurable center/zoom |
+| `TurfDrawControl.tsx` | Leaflet.Draw integration: polygon draw tool, edit tool, delete tool |
+| `TurfPolygonLayer.tsx` | Renders a single turf boundary as a GeoJSON layer with click handler |
+| `TurfOverviewMap.tsx` | Renders all campaign turfs on a single map, used in canvassing index |
+
+**Dependencies already installed:**
+
+| Package | Version | Status |
+|---------|---------|--------|
+| `leaflet` | ^1.9.4 | In package.json |
+| `react-leaflet` | ^5.0.0 | In package.json |
+| `@types/leaflet` | ^1.9.21 | In devDependencies |
+
+**New dependency needed:**
+
+| Package | Purpose | Confidence |
+|---------|---------|------------|
+| `leaflet-draw` | Draw/edit polygon controls | HIGH |
+
+Note: `leaflet-draw` is the standard Leaflet draw plugin. While `leaflet-geoman` is a newer alternative, `leaflet-draw` is simpler for polygon-only use and has wider community support. Use it directly via react-leaflet's `useMap()` hook rather than through a React wrapper (avoids stale wrapper dependencies with react-leaflet v5).
+
+**Recommended approach: Use leaflet-draw directly via useMap() hook.**
+
+```typescript
+// TurfDrawControl.tsx (conceptual)
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet-draw';
+import { useEffect } from 'react';
+
+function TurfDrawControl({ onCreated, onEdited }: Props) {
+  const map = useMap();
+
+  useEffect(() => {
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polygon: { allowIntersections: false, showArea: true },
+        polyline: false, rectangle: false, circle: false,
+        marker: false, circlemarker: false,
+      },
+      edit: { featureGroup: drawnItems },
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, (e) => {
+      const layer = e.layer;
+      drawnItems.addLayer(layer);
+      const geojson = layer.toGeoJSON();
+      onCreated(geojson.geometry); // Extract geometry, not Feature
+    });
+
+    return () => { map.removeControl(drawControl); };
+  }, [map, onCreated, onEdited]);
+
+  return null;
+}
+```
+
+### Integration with Existing TanStack Query Patterns
+
+The existing `useTurfs.ts` hooks are already well-structured. Integration points:
+
+**No changes needed to existing hooks.** The mutation functions already accept `TurfCreate` and `TurfUpdate` types with `boundary: Record<string, unknown>` which accepts GeoJSON geometry objects.
+
+**Data flow through existing hooks:**
+
+```
+TurfDrawControl fires onCreated(geometry)
+  |
+  v
+TurfForm (modified) stores geometry in form state
+  |
+  v
+onSubmit({ name, description, boundary: geometry })
+  |
+  v
+useCreateTurf.mutate(data) -- existing hook, no changes
+  |
+  v
+api.post('api/v1/campaigns/{id}/turfs', { json: data })
+  |
+  v
+Invalidates ["turfs", campaignId] query key -- existing pattern
+  |
+  v
+useTurfs refetches list, TurfOverviewMap re-renders with new polygon
+```
+
+**For the edit flow:**
+
+```
+TurfDetailPage loads turf via useTurf(campaignId, turfId)
+  |
+  v
+turf.boundary (GeoJSON dict) -> passed to TurfMap as initial polygon
+  |
+  v
+L.geoJSON(turf.boundary).addTo(drawnItems) on mount
+  |
+  v
+User edits polygon via draw:edited event
+  |
+  v
+useUpdateTurf.mutate({ boundary: editedGeometry })
+```
+
+**Leaflet CSS import** -- Must be added to the app entry point or the map component:
+```typescript
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
+```
+
+**Leaflet marker icon workaround** -- Leaflet's default marker icons break with bundlers (Vite). This is a well-known issue. For polygon-only usage, markers are not needed, but if used:
+```typescript
+import L from 'leaflet';
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+});
+```
+
+---
+
+## Organization-Level UI
+
+### Auth Flow (Org Admin vs Campaign-Level RLS)
+
+The current auth architecture has a clear separation:
+
+**Current model:**
+```
+ZITADEL JWT carries:
+  - sub: user ID
+  - urn:zitadel:iam:user:resourceowner:id: ZITADEL org ID
+  - urn:zitadel:iam:org:project:{pid}:roles: { "admin": { "org-id": "domain" } }
+
+Backend resolves:
+  1. get_current_user() extracts org_id and role from JWT
+  2. require_role() checks campaign_id in path -> resolve_campaign_role()
+  3. resolve_campaign_role() checks CampaignMember.role first, falls back to JWT role
+  4. set_campaign_context() sets RLS session variable for DB queries
+```
+
+**The gap for org-level UI:** The existing `require_role()` dependency resolves roles per-campaign. Org-level endpoints need a different authorization path:
+
+**Org admin must:**
+1. See all campaigns belonging to their organization (bypass per-campaign RLS)
+2. Manage org members via ZITADEL Management API
+3. Create new campaigns under their org
+4. NOT bypass RLS when operating within a specific campaign
+
+**Proposed auth extension:**
+
+```python
+# New dependency: require_org_role()
+# Unlike require_role() which resolves per-campaign,
+# this checks org-level authorization.
+
+def require_org_role(minimum: str):
+    """Enforce minimum org-level role (from JWT, not per-campaign)."""
+    min_level = CampaignRole[minimum.upper()]
+
+    async def _check_org_role(
+        request: Request,
+        current_user: AuthenticatedUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> AuthenticatedUser:
+        # JWT role IS the org-level role (ZITADEL project roles are org-scoped)
+        if current_user.role < min_level:
+            raise HTTPException(403, "Insufficient permissions")
+        return current_user
+
+    return _check_org_role
+```
+
+**Key insight:** The JWT role claim IS already the org-level role. ZITADEL project roles are assigned per-org (via project grants). The `resolve_campaign_role()` function resolves a potentially different per-campaign role from `CampaignMember.role`. For org-level endpoints, the JWT role is authoritative -- no additional resolution needed.
+
+**RLS bypass for org admin listing campaigns:**
+
+The org admin needs to list all campaigns for their org. Current RLS is `campaign_id`-scoped, which does not apply to the campaigns table itself (campaigns are not filtered by `app.current_campaign_id` -- they are looked up by Organization or zitadel_org_id). Looking at `list_campaigns()` in `CampaignService`, it already queries campaigns WITHOUT RLS context. So **no RLS bypass is needed** for listing campaigns.
+
+However, the current `list_campaigns()` returns ALL non-deleted campaigns, not filtered by org. This needs filtering:
+
+```python
+# New method: list_org_campaigns()
+async def list_org_campaigns(
+    self,
+    db: AsyncSession,
+    org_id: str,  # ZITADEL org_id from JWT
+    limit: int = 20,
+    cursor: str | None = None,
+) -> tuple[list[Campaign], PaginationResponse]:
+    """List campaigns belonging to the user's organization."""
+    org = await db.scalar(
+        select(Organization).where(Organization.zitadel_org_id == org_id)
+    )
+    query = (
+        select(Campaign)
+        .where(
+            Campaign.status != CampaignStatus.DELETED,
+            Campaign.organization_id == org.id if org else Campaign.zitadel_org_id == org_id,
+        )
+        .order_by(Campaign.created_at.desc(), Campaign.id.desc())
+    )
+    # ... pagination as before
+```
+
+### New Backend Routes
+
+**New API module: `app/api/v1/organizations.py`**
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/api/v1/org` | `require_org_role("admin")` | Get current user's organization details |
+| GET | `/api/v1/org/campaigns` | `require_org_role("admin")` | List all campaigns in org |
+| POST | `/api/v1/org/campaigns` | `require_org_role("admin")` | Create campaign under current org |
+| GET | `/api/v1/org/members` | `require_org_role("admin")` | List org members (proxies to ZITADEL) |
+| POST | `/api/v1/org/members/{user_id}/role` | `require_org_role("admin")` | Change member's org role via ZITADEL |
+| DELETE | `/api/v1/org/members/{user_id}` | `require_org_role("owner")` | Remove member from org via ZITADEL |
+
+**Route design rationale:** Use `/api/v1/org` (singular, no ID) because the org is determined from the JWT's `org_id` claim. The user's current org context is implicit, matching ZITADEL's model where the JWT carries the active org. This avoids exposing org UUIDs in URLs and prevents cross-org access attempts.
+
+**New service: `app/services/organization.py`**
+
+| Method | Purpose |
+|--------|---------|
+| `get_org_for_user(db, org_id)` | Resolve Organization from zitadel_org_id |
+| `list_org_campaigns(db, org_id, ...)` | Campaigns filtered by org |
+| `list_org_members(zitadel, org_id)` | Proxy to ZITADEL Management API |
+| `change_member_role(zitadel, org_id, user_id, role)` | Update role via ZITADEL |
+| `remove_member(zitadel, org_id, user_id)` | Remove from org via ZITADEL |
+
+**ZitadelService additions needed:**
+
+| Method | ZITADEL API | Purpose |
+|--------|-------------|---------|
+| `list_org_users(org_id)` | `POST /v2/users` with x-zitadel-orgid header | List users belonging to org |
+| `list_user_grants(org_id, project_id)` | `POST /management/v1/users/grants/_search` | Get role assignments for org members |
+
+### Frontend Route Structure
+
+**New route tree for org-level pages:**
 
 ```
 web/src/routes/
-  __root.tsx                    # MODIFY: add field mode bypass (3 lines)
-  campaigns/$campaignId/
-    field.tsx                   # NEW: field mode layout (no sidebar, mobile shell)
-    field/
-      index.tsx                 # NEW: volunteer landing (routes to active assignment)
-      canvassing/
-        $walkListId.tsx         # NEW: linear canvassing wizard
-      phone-banking/
-        $sessionId.tsx          # NEW: tap-to-call phone banking mode
-    canvassing.tsx              # UNCHANGED
-    canvassing/...              # UNCHANGED
-    phone-banking.tsx           # UNCHANGED
-    phone-banking/...           # UNCHANGED
-    volunteers.tsx              # UNCHANGED
-    volunteers/...              # UNCHANGED
+  org/
+    index.tsx              -- Org dashboard: summary stats, campaign list
+    campaigns.tsx          -- Full campaign list for org (admin view)
+    members.tsx            -- Org member management
+    settings.tsx           -- Org settings (name, etc.)
 ```
 
-### Component Boundaries
+**TanStack Router file-based routing means:**
 
-| Component | Responsibility | New/Existing | Communicates With |
-|-----------|---------------|--------------|-------------------|
-| `field.tsx` (layout) | Mobile shell: no sidebar, sticky top bar, back nav, progress | **NEW** | `__root.tsx` (inherits auth), Outlet |
-| `field/index.tsx` | Volunteer landing: shows active assignment, routes to canvassing or calling | **NEW** | `useShifts`, `useWalkLists`, `usePhoneBankSessions` |
-| `field/canvassing/$walkListId.tsx` | Linear wizard: next address, knock, outcome, survey, next | **NEW** | `useWalkListEntries`, `useRecordDoorKnock`, `useSurveyScript` |
-| `field/phone-banking/$sessionId.tsx` | Phone mode: claim, tap-to-call, outcome, survey, next | **NEW** | `useClaimEntry`, `useRecordCall`, `useSurveyScript` |
-| `components/field/FieldShell.tsx` | Shared chrome: top bar, back button, campaign name, progress | **NEW** | Used by field.tsx layout |
-| `components/field/WizardStepper.tsx` | Step indicator for canvassing flow | **NEW** | Receives step/total props |
-| `components/field/OutcomeGrid.tsx` | Large touch-target outcome buttons | **NEW** | Imports `OUTCOME_GROUPS` and `RESULT_CODES` constants |
-| `components/field/InlineSurvey.tsx` | Survey questions inline (not Card-wrapped) | **NEW** | `useSurveyScript`, `useRecordResponses` |
-| `components/field/VoterCard.tsx` | Compact voter info for mobile | **NEW** | Receives voter data props |
-| `components/field/AddressCard.tsx` | Address display with external maps link | **NEW** | Receives address props |
-| `components/field/TourOverlay.tsx` | Step-by-step onboarding overlay | **NEW** | localStorage for completion state |
-| `components/field/FieldProgress.tsx` | Walk list / call list progress indicator | **NEW** | Receives progress counts |
-| All hooks in `web/src/hooks/` | Data fetching and mutations | **EXISTING** (zero changes) | API client via ky |
-| All backend services | Business logic | **EXISTING** (zero changes) | PostgreSQL |
-| All API endpoints | REST endpoints | **EXISTING** (zero changes) | Services |
+| File | URL | Purpose |
+|------|-----|---------|
+| `routes/org/index.tsx` | `/org` | Org dashboard |
+| `routes/org/campaigns.tsx` | `/org/campaigns` | Campaign list for org |
+| `routes/org/members.tsx` | `/org/members` | Member management |
+| `routes/org/settings.tsx` | `/org/settings` | Org settings |
 
-### Integration with `__root.tsx` Layout
+**Sidebar integration:** Add "Organization" group to `__root.tsx` AppSidebar, visible only when user has admin+ role:
 
-The root layout (lines 193-248) has conditional rendering:
-
-```typescript
-// Current logic:
-const isPublicRoute = PUBLIC_ROUTES.some((r) => location.pathname.startsWith(r))
-if (!isAuthenticated || isPublicRoute) {
-  // Renders bare shell (no sidebar)
-}
-// Otherwise: SidebarProvider > AppSidebar > SidebarInset > header > main > Outlet
+```tsx
+// In AppSidebar, add new group above the existing "Overview" group:
+<RequireRole minimum="admin">
+  <SidebarGroup>
+    <SidebarGroupLabel>Organization</SidebarGroupLabel>
+    <SidebarGroupContent>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={location.pathname.startsWith("/org")}>
+            <Link to="/org"><Building2 /><span>Organization</span></Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroupContent>
+  </SidebarGroup>
+</RequireRole>
 ```
 
-**Recommended change -- add field mode to the bypass condition:**
+**New hooks needed:**
 
-```typescript
-const isPublicRoute = PUBLIC_ROUTES.some((r) => location.pathname.startsWith(r))
-const isFieldMode = location.pathname.includes("/field")
+| Hook | File | Purpose |
+|------|------|---------|
+| `useOrg()` | `hooks/useOrg.ts` | Fetch org details for current user |
+| `useOrgCampaigns()` | `hooks/useOrgCampaigns.ts` | List campaigns in org |
+| `useOrgMembers()` | `hooks/useOrgMembers.ts` | List/manage org members |
 
-if (!isAuthenticated || isPublicRoute) {
-  return <div className="min-h-svh bg-background text-foreground"><Outlet /><Toaster /></div>
-}
-if (isFieldMode) {
-  return <div className="min-h-svh bg-background text-foreground"><Outlet /><Toaster /></div>
-}
-// ... existing sidebar layout unchanged
+### Integration Points with Existing ZITADEL Auth Middleware
+
+**What already works:**
+
+1. **JWT extraction** -- `get_current_user()` already extracts `org_id` from the JWT (`urn:zitadel:iam:user:resourceowner:id`)
+2. **Role extraction** -- `_extract_role()` already reads org-level role from JWT claims
+3. **ZitadelService** -- Already has `create_organization()`, `assign_project_role()`, `remove_project_role()`, `create_project_grant()`, `ensure_project_grant()`
+4. **Organization model** -- Already exists with `zitadel_org_id` mapping
+5. **Campaign.organization_id** -- Already links campaigns to organizations
+6. **ensure_user_synced()** -- Already handles the Organization -> Campaign lookup path
+7. **CampaignService.create_campaign()** -- Already accepts `organization_id` param to reuse existing org
+
+**What needs to be ADDED to ZitadelService:**
+
+```python
+async def list_org_users(self, org_id: str) -> list[dict]:
+    """List users belonging to an organization.
+
+    Uses ZITADEL's user search with org context header.
+    """
+    token = await self._get_token()
+    headers = self._auth_headers(token)
+    headers["x-zitadel-orgid"] = org_id
+    async with httpx.AsyncClient(verify=self._verify_tls) as client:
+        response = await client.post(
+            f"{self.base_url}/v2/users",
+            headers=headers,
+            json={"queries": []},  # All users in org context
+        )
+        response.raise_for_status()
+        return response.json().get("result", [])
+
+async def list_user_grants(self, org_id: str, project_id: str) -> list[dict]:
+    """List all user grants for a project within an org.
+
+    This tells us which users have which roles.
+    """
+    token = await self._get_token()
+    headers = self._auth_headers(token)
+    headers["x-zitadel-orgid"] = org_id
+    async with httpx.AsyncClient(verify=self._verify_tls) as client:
+        response = await client.post(
+            f"{self.base_url}/management/v1/users/grants/_search",
+            headers=headers,
+            json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
+        )
+        response.raise_for_status()
+        return response.json().get("result", [])
 ```
 
-This is 3 lines added. The field.tsx layout then renders its own mobile-optimized shell inside this bare wrapper. No sidebar DOM is rendered for field routes.
+---
 
-**Also add to AppSidebar:** A "Field Mode" link in the sidebar nav so admin users can access it:
+## Summary of New vs Modified Components
 
-```typescript
-const navItems = [
-  // ... existing items ...
-  { to: `/campaigns/${campaignId}/field`, label: "Field Mode", icon: Smartphone },
-]
-```
+### Backend -- Modified
 
-### Data Flow
+| File | Change |
+|------|--------|
+| `app/api/v1/router.py` | Add `organizations` router include |
+| `app/services/zitadel.py` | Add `list_org_users()`, `list_user_grants()` |
+| `app/core/security.py` | Add `require_org_role()` dependency factory |
+| `app/schemas/turf.py` | Optionally add `voter_count` field |
+| `app/api/v1/turfs.py` | Optionally include voter count in detail response |
 
-**No new backend APIs needed.** Every field mode screen reuses existing endpoints:
+### Backend -- New
 
-```
-Volunteer Landing Page:
-  GET /shifts                         -> useShifts (existing)
-  GET /walk-lists                     -> useWalkLists (existing)
-  GET /phone-bank-sessions            -> usePhoneBankSessions (existing)
-  GET /walk-lists/{id}/canvassers     -> useListCanvassers (existing, filter for current user)
+| File | Purpose |
+|------|---------|
+| `app/api/v1/organizations.py` | Org-level API endpoints |
+| `app/services/organization.py` | Org business logic |
+| `app/schemas/organization.py` | Org request/response schemas |
 
-Canvassing Wizard:
-  GET /walk-lists/{id}                -> useWalkList (existing)
-  GET /walk-lists/{id}/entries        -> useWalkListEntries (existing)
-  POST /walk-lists/{id}/door-knocks   -> useRecordDoorKnock (existing)
-  PATCH /walk-lists/{id}/entries/{eid} -> useUpdateEntryStatus (existing)
-  GET /surveys/{id}/questions         -> useSurveyScript (existing)
-  POST /surveys/{id}/responses        -> useRecordResponses (existing)
+### Frontend -- Modified
 
-Phone Banking Mode:
-  GET /phone-bank-sessions/{id}       -> usePhoneBankSession (existing)
-  GET /call-lists/{id}                -> useCallList (existing)
-  POST /call-lists/{id}/claim         -> useClaimEntry (existing)
-  POST /phone-bank-sessions/{id}/calls -> useRecordCall (existing)
-  POST /phone-bank-sessions/{id}/release -> useSelfReleaseEntry (existing)
-  GET /surveys/{id}/questions         -> useSurveyScript (existing)
-```
+| File | Change |
+|------|--------|
+| `web/src/components/canvassing/TurfForm.tsx` | Replace textarea with Leaflet map + draw controls |
+| `web/src/routes/.../canvassing/index.tsx` | Add overview map rendering all turfs |
+| `web/src/routes/.../turfs/new.tsx` | Layout adjustments for map component |
+| `web/src/routes/.../turfs/$turfId.tsx` | Map rendering of existing boundary + edit controls |
+| `web/src/routes/__root.tsx` | Add "Organization" sidebar group |
 
-**One potential new convenience API** (optional, nice-to-have):
+### Frontend -- New
 
-```
-GET /campaigns/{id}/my-assignments
-  Returns: { walk_lists: [...], phone_bank_sessions: [...] }
-```
+| File | Purpose |
+|------|---------|
+| `web/src/components/map/TurfMap.tsx` | Base map component with react-leaflet |
+| `web/src/components/map/TurfDrawControl.tsx` | Leaflet.Draw polygon tool integration |
+| `web/src/components/map/TurfPolygonLayer.tsx` | Single turf GeoJSON rendering |
+| `web/src/components/map/TurfOverviewMap.tsx` | All-turfs overview map |
+| `web/src/routes/org/index.tsx` | Org dashboard page |
+| `web/src/routes/org/campaigns.tsx` | Org campaign list page |
+| `web/src/routes/org/members.tsx` | Org member management page |
+| `web/src/routes/org/settings.tsx` | Org settings page |
+| `web/src/hooks/useOrg.ts` | Org data hooks |
+| `web/src/hooks/useOrgCampaigns.ts` | Org campaign hooks |
+| `web/src/hooks/useOrgMembers.ts` | Org member hooks |
+| `web/src/types/organization.ts` | Org TypeScript types |
 
-This aggregates walk lists where the current user is an assigned canvasser (`WalkListCanvasser.user_id`) and sessions where the current user is an assigned caller (`SessionCaller.user_id`). The backend models already have these `user_id` columns. Without this, the landing page fetches all walk lists + all sessions and filters client-side, which works for small campaigns but is wasteful for large ones.
+---
 
-## Patterns to Follow
+## Build Order Recommendation
 
-### Pattern 1: State Machine for Wizard Flow
+### Phase 1: Map-Based Turf Editor (build FIRST)
 
-**What:** Use a discriminated union type for wizard state, matching the proven pattern in `call.tsx` (lines 26-33).
+**Why first:**
+1. The backend serialization layer is already complete -- zero backend changes needed for basic map editor
+2. This is purely a frontend feature: replace TurfForm textarea with a Leaflet map
+3. No new API routes, no auth changes, no migrations
+4. Immediately testable with existing turf data
+5. Lower integration risk -- stays within the existing campaign-scoped route tree
 
-**When:** Canvassing wizard and phone banking field mode.
+**Build sequence within this phase:**
+1. Install `leaflet-draw` package (and `@types/leaflet-draw` if available)
+2. Create `TurfMap.tsx` base component (MapContainer + TileLayer)
+3. Create `TurfDrawControl.tsx` (draw polygon tool)
+4. Modify `TurfForm.tsx` to use map instead of textarea
+5. Verify create flow works end-to-end (draw -> API -> re-render)
+6. Add `TurfPolygonLayer.tsx` for edit page (render existing boundary)
+7. Modify `TurfDetailPage` to show boundary on map with edit capability
+8. Create `TurfOverviewMap.tsx` for canvassing index page
+9. Add Leaflet CSS imports and fix any bundler issues (marker icons)
 
-**Why:** The existing `ActiveCallingPage` already proves this works. States: idle -> claiming -> claimed -> recording -> recorded -> next.
+### Phase 2: Organization-Level UI (build SECOND)
 
-```typescript
-// Canvassing wizard state machine
-type CanvassingState =
-  | { step: "navigating"; entry: WalkListEntry; entryIndex: number }
-  | { step: "at-door"; entry: WalkListEntry; entryIndex: number }
-  | { step: "recording"; entry: WalkListEntry; entryIndex: number }
-  | { step: "surveying"; entry: WalkListEntry; entryIndex: number; resultCode: string }
-  | { step: "complete" }
-```
+**Why second:**
+1. Requires new backend routes, new service layer, and ZitadelService additions
+2. Touches the auth middleware (new `require_org_role` dependency)
+3. Requires new frontend route tree (`/org/*`)
+4. More integration points = more risk of regressions
+5. Depends on understanding how ZITADEL Management API responds in production (live testing needed)
 
-### Pattern 2: Hook Reuse Without Modification
+**Build sequence within this phase:**
+1. Add `require_org_role()` to security module
+2. Add `list_org_users()` and `list_user_grants()` to ZitadelService
+3. Create `OrganizationService` with `get_org_for_user()`, `list_org_campaigns()`
+4. Create org API endpoints (start with GET `/org` and GET `/org/campaigns`)
+5. Create frontend types and hooks (`useOrg`, `useOrgCampaigns`)
+6. Create `/org` route pages (dashboard first, then campaigns list)
+7. Add sidebar "Organization" nav item with RequireRole gate
+8. Add member management (GET/POST/DELETE `/org/members/*`)
+9. Create member management UI
 
-**What:** Import existing hooks directly into field mode routes. Do not create wrapper hooks.
-
-**When:** Every field mode page.
-
-```typescript
-// field/canvassing/$walkListId.tsx
-import { useWalkList, useWalkListEntries, useRecordDoorKnock } from "@/hooks/useWalkLists"
-import { useSurveyScript, useRecordResponses } from "@/hooks/useSurveys"
-// Same hooks, different UI
-```
-
-### Pattern 3: New Components, Shared Constants
-
-**What:** Create new UI components in `components/field/` that import shared constants from existing code.
-
-**Why:** The existing `OutcomePanel` in `call.tsx` renders small desktop buttons. Field mode needs large `min-h-12` touch targets. The existing `DoorKnockDialog` uses a Select dropdown and a Dialog wrapper. Field mode needs inline full-screen outcome buttons. Adding `isMobile` props to these components would create dual-responsibility components.
-
-```typescript
-// components/field/OutcomeGrid.tsx -- NEW component
-import { OUTCOME_GROUPS } from "@/types/phone-bank-session"
-// Renders same data with large touch targets, no dialog wrapper
-
-// components/field/InlineSurvey.tsx -- NEW component
-import { useSurveyScript, useRecordResponses } from "@/hooks/useSurveys"
-// Same hook, inline rendering instead of Card wrapper
-```
-
-**Constants shared between admin and field mode:**
-- `OUTCOME_GROUPS` from `@/types/phone-bank-session` (used by `OutcomePanel` and new `OutcomeGrid`)
-- `RESULT_CODES` from `DoorKnockDialog` (extract to `@/types/canvassing` or `@/constants/outcomes`)
-- All TypeScript types (`WalkListEntry`, `CallListEntry`, `SurveyQuestion`, etc.)
-
-### Pattern 4: localStorage for Tour State
-
-**What:** Store onboarding tour completion in localStorage, keyed by campaign + user.
-
-**When:** Tour/onboarding feature.
-
-```typescript
-const TOUR_KEY = `field-tour-${campaignId}-${userId}`
-const [tourComplete, setTourComplete] = useState(
-  () => localStorage.getItem(TOUR_KEY) === "done"
-)
-```
-
-No backend storage needed. Tour state is per-device. Re-showing the tour on a new device is acceptable.
-
-### Pattern 5: tel: Links for Tap-to-Call
-
-**What:** Use `<a href="tel:+1XXXXXXXXXX">` for phone banking instead of building telephony.
-
-**When:** Phone banking field mode.
-
-**Why:** The existing `ActiveCallingPage` displays phone numbers as buttons for selection. Field mode converts these to actual `tel:` links that open the native dialer on mobile.
-
-```typescript
-<a
-  href={`tel:${selectedPhone}`}
-  className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground min-h-14 px-6 text-lg font-mono"
->
-  Call {selectedPhone}
-</a>
-```
-
-### Pattern 6: Progressive Disclosure via Existing Primitives
-
-**What:** Use existing shadcn `Accordion` (already in codebase at `components/ui/accordion.tsx`) for collapsible wizard steps.
-
-**When:** Canvassing wizard showing completed vs. current step.
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Adding `isMobile` Props to Existing Components
-
-**What:** Modifying `DoorKnockDialog`, `SurveyWidget`, `OutcomePanel` to accept field mode variants.
-
-**Why bad:** Creates dual-responsibility components. Testing surface doubles. Every future change must consider two rendering modes. The existing admin pages are stable and complete -- v1.2 shipped 11 phases of UI.
-
-**Instead:** Create new components in `components/field/` that compose the same hooks and types.
-
-### Anti-Pattern 2: Rewriting Existing Routes for Both Modes
-
-**What:** Making `/campaigns/$campaignId/canvassing/walk-lists/$walkListId` render differently based on `?mode=field` or `useIsMobile()`.
-
-**Why bad:** The existing walk list detail page has a full entries table, canvasser management section, delete button, and back navigation to the canvassing index. The field mode has a single-entry wizard with large buttons. These are fundamentally different UIs that share a data source, not variants of the same UI.
-
-**Instead:** Separate route subtrees with separate layouts.
-
-### Anti-Pattern 3: Building a Custom Tour Library
-
-**What:** Implementing step-by-step tour from scratch with portal management, scroll positioning, backdrop overlay.
-
-**Why bad:** Tour libraries handle z-index stacking, scroll-into-view, resize, and keyboard nav. Field mode screens are simple enough that a minimal approach works: a full-screen overlay with static step content, no element highlighting needed.
-
-**Instead:** Build a simple step-through overlay (not element-anchored). The field mode screens are linear and the volunteer sees them one at a time. A "Welcome to Field Mode" tour with 3-4 screens showing what each button does is sufficient. No need for element-anchored highlighting.
-
-### Anti-Pattern 4: Creating Backend "Field Mode" Endpoints
-
-**What:** Building `/api/v1/campaigns/{id}/field/canvass` or similar.
-
-**Why bad:** The backend already has all needed endpoints. Field mode is purely a frontend UX concern.
-
-**Instead:** Reuse all existing endpoints. The only potential new endpoint is `GET /my-assignments` (convenience aggregation).
-
-## New Component Directory Structure
+### Dependency Chain
 
 ```
-web/src/
-  components/
-    field/                          # NEW directory
-      FieldShell.tsx                # Top bar, back nav, campaign name
-      WizardStepper.tsx             # Step indicator (1/4, 2/4, etc.)
-      OutcomeGrid.tsx               # Large touch-target outcome buttons
-      InlineSurvey.tsx              # Survey questions inline (not Card-wrapped)
-      VoterCard.tsx                 # Compact voter info for mobile
-      AddressCard.tsx               # Address with maps link
-      TourOverlay.tsx               # Step-through onboarding overlay
-      FieldProgress.tsx             # Walk list / call list progress bar
-  routes/
-    campaigns/$campaignId/
-      field.tsx                     # Layout: FieldShell + Outlet
-      field/
-        index.tsx                   # Landing page
-        canvassing/$walkListId.tsx  # Canvassing wizard
-        phone-banking/$sessionId.tsx # Phone banking mode
+Phase 1 (Map Editor):
+  leaflet-draw install
+    -> TurfMap component
+      -> TurfDrawControl component
+        -> TurfForm modification
+          -> TurfPolygonLayer component
+            -> TurfDetailPage modification
+              -> TurfOverviewMap
+                -> CanvassingIndex modification
+
+Phase 2 (Org UI):
+  require_org_role() security dependency
+    -> ZitadelService additions
+      -> OrganizationService
+        -> Org API endpoints
+          -> Frontend hooks
+            -> Route pages
+              -> Sidebar integration
+                -> Member management
 ```
 
-## Integration Points Summary
-
-| Existing Entity | Field Mode Touches | Change |
-|-----------------|-------------------|--------|
-| `__root.tsx` | Add field mode bypass | 3-line condition to skip sidebar for `/field` routes |
-| `AppSidebar` in `__root.tsx` | Add "Field Mode" nav link | 1 new nav item |
-| `useWalkLists` hook | Import as-is | Zero changes |
-| `useWalkListEntries` hook | Import as-is | Zero changes |
-| `useRecordDoorKnock` hook | Import as-is | Zero changes |
-| `usePhoneBankSessions` hook | Import as-is | Zero changes |
-| `useClaimEntry` hook | Import as-is | Zero changes |
-| `useRecordCall` hook | Import as-is | Zero changes |
-| `useSelfReleaseEntry` hook | Import as-is | Zero changes |
-| `useSurveyScript` hook | Import as-is | Zero changes |
-| `useRecordResponses` hook | Import as-is | Zero changes |
-| `useShifts` hook | Import as-is | Zero changes |
-| `usePermissions` hook | Import as-is | Gate field mode to volunteer+ role |
-| `useIsMobile` hook | Import as-is | Optional: auto-suggest field mode on mobile |
-| `OUTCOME_GROUPS` constant | Import as-is | Shared with new OutcomeGrid |
-| `RESULT_CODES` constant | Extract from DoorKnockDialog | Move to shared location for reuse |
-| All types in `types/` | Import as-is | `WalkListEntry`, `CallListEntry`, `SurveyQuestion` |
-| Backend API (20+ endpoints) | Zero changes | All operations use existing endpoints |
-| Backend services | Zero changes | Business logic unchanged |
-
-## Suggested Build Order
-
-Based on dependency analysis:
-
-### Phase 1: Field Layout Shell + Root Bypass
-- `field.tsx` layout with FieldShell component
-- `__root.tsx` modification (3-line field mode bypass)
-- Add "Field Mode" link to AppSidebar
-- **Depends on:** Nothing. Foundation for all field mode routes.
-
-### Phase 2: Volunteer Landing Page
-- `field/index.tsx` that detects active shift/assignment
-- Uses `useShifts`, `useWalkLists`, `usePhoneBankSessions` to find what the volunteer should be doing
-- Routes to canvassing or phone banking based on assignment
-- **Depends on:** Phase 1 (field layout).
-
-### Phase 3: Canvassing Wizard
-- `field/canvassing/$walkListId.tsx` with state machine
-- Extract `RESULT_CODES` to shared constants
-- New components: OutcomeGrid, VoterCard, AddressCard, WizardStepper, FieldProgress
-- Reuses `useWalkListEntries`, `useRecordDoorKnock`, `useUpdateEntryStatus`
-- **Depends on:** Phase 1 (layout). Most complex new route.
-
-### Phase 4: Inline Survey Integration
-- InlineSurvey component integrated into canvassing wizard
-- Reuses `useSurveyScript`, `useRecordResponses`
-- Must work for both canvassing (Phase 3) and phone banking (Phase 5)
-- **Depends on:** Phase 3 (canvassing wizard provides the integration point).
-
-### Phase 5: Phone Banking Field Mode
-- `field/phone-banking/$sessionId.tsx` with state machine
-- Adds `tel:` links for tap-to-call
-- Reuses OutcomeGrid, InlineSurvey (already built in Phases 3-4)
-- Closely mirrors existing `call.tsx` but with mobile layout
-- **Depends on:** Phases 1, 3, 4 (layout + shared field components).
-
-### Phase 6: Onboarding Tour
-- TourOverlay component with localStorage state
-- Step-through overlay (not element-anchored) showing field mode basics
-- Auto-shows on first visit, option to revisit via settings
-- **Depends on:** All field mode routes complete (tour describes them).
-
-### Phase 7: Contextual Help + Polish
-- Tooltips on field mode buttons using existing `tooltip.tsx` primitive
-- Mobile touch target validation (min 44px)
-- Progressive disclosure refinements
-- **Depends on:** All field mode routes complete.
-
-## Scalability Considerations
-
-| Concern | Current (v1.4) | Future |
-|---------|----------------|--------|
-| Walk list size | Client-side list from `useWalkListEntries` (works for <500 entries) | Paginate entries; server-side "next unvisited" endpoint |
-| Offline support | Cellular connectivity assumed | Service worker + IndexedDB for offline door knocks |
-| Real-time sync | Not needed (single volunteer per walk list section) | SSE for multi-volunteer walk list coordination |
-| Map integration | AddressCard with Google Maps `geo:` link | Embedded map with route optimization |
-| GPS tracking | Not needed | Geolocation API for auto-detecting "at door" state |
-| My-assignments API | Client-side filter of all walk lists/sessions | Dedicated endpoint if campaigns exceed 50 walk lists |
+**No cross-dependencies between phases** -- they can be built independently and in parallel if desired. However, building the map editor first is lower risk and provides immediate user value with minimal code changes.
 
 ## Sources
 
-- Direct codebase analysis:
-  - `__root.tsx` (layout hierarchy, sidebar conditional rendering)
-  - `call.tsx` (state machine pattern, VoterInfoPanel, SurveyPanel, OutcomePanel)
-  - `DoorKnockDialog.tsx` (door knock recording flow, RESULT_CODES)
-  - `SurveyWidget.tsx` (survey rendering pattern)
-  - `field-ops.ts` / `useFieldOps.ts` (existing hooks)
-  - `useWalkLists.ts` (all walk list hooks)
-  - `usePhoneBankSessions.ts` (claim/record/release hooks)
-  - `useSurveys.ts` (survey script and response hooks)
-  - `usePermissions.ts` (role gating)
-  - `use-mobile.ts` (mobile detection)
-  - `volunteers.tsx`, `phone-banking.tsx`, `canvassing.tsx` (existing layout files)
-  - All backend API files in `app/api/v1/` (confirmed all needed endpoints exist)
-  - `app/services/shift.py` (check-in creates canvasser/caller records automatically)
-- All recommendations based on direct codebase analysis; no external library dependencies introduced
-
----
-*Architecture research for: v1.4 Volunteer Field Mode*
-*Researched: 2026-03-15*
+- Codebase analysis: `app/services/turf.py`, `app/api/v1/turfs.py`, `app/schemas/turf.py` (serialization layer)
+- Codebase analysis: `app/core/security.py` (auth/role resolution)
+- Codebase analysis: `app/api/deps.py` (RLS setup, user sync)
+- Codebase analysis: `app/services/zitadel.py` (existing ZITADEL Management API methods)
+- Codebase analysis: `app/models/organization.py`, `app/models/campaign.py` (data model)
+- Codebase analysis: `web/package.json` (leaflet, react-leaflet already installed)
+- Codebase analysis: `web/src/hooks/useTurfs.ts` (existing mutation patterns)
+- Training data: Leaflet.Draw API, react-leaflet v5 patterns (MEDIUM confidence -- verify against current docs)
+- Training data: ZITADEL Management API v1 endpoints (MEDIUM confidence -- verify against ZITADEL docs)
