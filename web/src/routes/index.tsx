@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ChevronDown, Plus, Vote } from "lucide-react"
+import { BarChart3, ChevronDown, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"

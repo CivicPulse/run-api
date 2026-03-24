@@ -42,7 +42,7 @@ def upgrade() -> None:
               AND t.relname = 'campaigns'
               AND c.contype = 'u'
             GROUP BY c.conname
-            HAVING array_agg(a.attname ORDER BY k.ord) = ARRAY['zitadel_org_id']
+            HAVING array_agg(a.attname::text ORDER BY k.ord) = ARRAY['zitadel_org_id']
         """)
     ).fetchall()
     for (conname,) in rows:
