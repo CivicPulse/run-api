@@ -29,29 +29,29 @@
 - [x] **ORG-02**: Seed migration promotes existing org `created_by` users to `org_owner`
 - [x] **ORG-03**: `resolve_campaign_role()` returns max(campaign role, org role equivalent) — org roles are additive, never restrictive
 - [x] **ORG-04**: `require_org_role()` auth dependency gates org-level endpoints
-- [ ] **ORG-05**: Org dashboard at `/org` shows campaign card grid with status, election date, and member counts
-- [ ] **ORG-06**: Org member directory shows all users across all campaigns with per-campaign role matrix
-- [ ] **ORG-07**: Only `org_admin`+ can create campaigns within an org
-- [ ] **ORG-08**: Campaign creation wizard is multi-step (name/type/jurisdiction, org confirm, optional team invite)
-- [ ] **ORG-09**: Org settings page allows name edit (org_owner only) and displays read-only ZITADEL org ID
-- [ ] **ORG-10**: Org admin can add existing org member to a campaign directly without sending invite email
-- [ ] **ORG-11**: Campaign archival UI button transitions active campaigns to archived (read-only) status
-- [ ] **ORG-12**: User can belong to multiple orgs with an org switcher in the UI header
-- [ ] **ORG-13**: All queries/routes scope correctly to the selected org context
+- [x] **ORG-05**: Org dashboard at `/org` shows campaign card grid with status, election date, and member counts
+- [x] **ORG-06**: Org member directory shows all users across all campaigns with per-campaign role matrix
+- [x] **ORG-07**: Only `org_admin`+ can create campaigns within an org
+- [x] **ORG-08**: Campaign creation wizard is multi-step (name/type/jurisdiction, org confirm, optional team invite)
+- [x] **ORG-09**: Org settings page allows name edit (org_owner only) and displays read-only ZITADEL org ID
+- [x] **ORG-10**: Org admin can add existing org member to a campaign directly without sending invite email
+- [x] **ORG-11**: Campaign archival UI button transitions active campaigns to archived (read-only) status
+- [x] **ORG-12**: User can belong to multiple orgs with an org switcher in the UI header
+- [x] **ORG-13**: All queries/routes scope correctly to the selected org context
 
 ## Map-Based Turf Editor (MAP)
 
 - [x] **MAP-01**: User can draw polygon boundaries on an interactive map using Geoman controls
 - [x] **MAP-02**: User can edit existing turf boundaries by dragging vertices on the map
-- [ ] **MAP-03**: Overview map renders all campaign turfs color-coded by status (draft/active/completed)
+- [x] **MAP-03**: Overview map renders all campaign turfs color-coded by status (draft/active/completed)
 - [x] **MAP-04**: Selected turf shows voter locations as clustered markers on the map
 - [x] **MAP-05**: Voter count badge displays on turf list and map popup (wired from existing `get_voter_count`)
-- [ ] **MAP-06**: User can import a `.geojson` file to create a turf boundary with map preview before save
-- [ ] **MAP-07**: User can export a turf boundary as a `.geojson` file (client-side download)
+- [x] **MAP-06**: User can import a `.geojson` file to create a turf boundary with map preview before save
+- [x] **MAP-07**: User can export a turf boundary as a `.geojson` file (client-side download)
 - [x] **MAP-08**: Raw JSON textarea preserved as "Advanced" toggle for power users
-- [ ] **MAP-09**: Address geocoding search centers/zooms the map via Nominatim
+- [x] **MAP-09**: Address geocoding search centers/zooms the map via Nominatim
 - [x] **MAP-10**: Overlap detection warns when a new turf intersects existing active turfs
-- [ ] **MAP-11**: Satellite/aerial imagery toggle available as alternative to street map tiles
+- [x] **MAP-11**: Satellite/aerial imagery toggle available as alternative to street map tiles
 
 ## UI/UX Polish (UX)
 

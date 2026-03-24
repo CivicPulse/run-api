@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Go Live — Production Readiness
-status: Ready to plan
-stopped_at: Phase 43 context gathered
-last_updated: "2026-03-24T18:05:42.659Z"
+status: Ready to execute
+stopped_at: Completed 43-05-PLAN.md
+last_updated: "2026-03-24T19:55:28.830Z"
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 42 — map-based-turf-editor
+**Current focus:** Phase 43 — organization-ui
 
 ## Current Position
 
-Phase: 43
-Plan: Not started
+Phase: 43 (organization-ui) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -56,6 +56,11 @@ Plan: Not started
 | Phase 42 P01 | 7m | 3 tasks | 13 files |
 | Phase 42 P03 | 6min | 2 tasks | 5 files |
 | Phase 42 P04 | 7min | 2 tasks | 7 files |
+| Phase 43 P01 | 4min | 2 tasks | 12 files |
+| Phase 43 P03 | 2min | 1 tasks | 1 files |
+| Phase 43 P04 | 2m 27s | 2 tasks | 5 files |
+| Phase 43 P02 | 12min | 2 tasks | 5 files |
+| Phase 43 P05 | 1min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -90,6 +95,12 @@ Recent decisions affecting current work:
 - [Phase 42]: Overlaps endpoint registered before {turf_id} to avoid path conflict
 - [Phase 42]: Inner component pattern for useMap() inside MapProvider; Popup at GeoJSON bounds center
 - [Phase 42]: Nominatim search-on-submit per usage policy; client-side blob export; overlap visual highlight only
+- [Phase 43]: Brought in Phase 41 prerequisite code (OrgRole, require_org_role, OrganizationMember) directly since parallel branch not yet merged
+- [Phase 43]: switchOrg uses zitadel_org_id string in ZITADEL scope, GET /me/orgs open to any auth user
+- [Phase 43]: Campaign wizard uses single useForm with useState step counter and per-step trigger validation
+- [Phase 43]: Role matrix uses dynamic campaign columns from useOrgCampaigns for horizontal scalability
+- [Phase 43]: Org dashboard replaces campaign list at / with card grid, stats bar, archived section, and archive flow
+- [Phase 43]: Removed early return null in AppSidebar in favor of conditional JSX rendering for Campaign group
 
 ### Blockers/Concerns
 
@@ -109,6 +120,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-24T18:05:42.655Z
-Stopped at: Phase 43 context gathered
-Resume file: .planning/phases/43-organization-ui/43-CONTEXT.md
+Last session: 2026-03-24T19:55:28.826Z
+Stopped at: Completed 43-05-PLAN.md
+Resume file: None

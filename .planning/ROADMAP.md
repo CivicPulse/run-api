@@ -97,7 +97,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting (completed 2026-03-24)
 - [x] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints (completed 2026-03-24)
 - [x] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea (completed 2026-03-24)
-- [ ] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings
+- [x] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings (completed 2026-03-24)
 - [ ] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states
 - [ ] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages
 - [ ] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite
@@ -177,10 +177,10 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] 43-01-PLAN.md — Backend endpoints + frontend types, hooks, RequireOrgRole, authStore switchOrg (ORG-05, ORG-09, ORG-10, ORG-12, ORG-13)
-- [ ] 43-02-PLAN.md — Org dashboard, campaign cards, archive flow, org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13)
-- [ ] 43-03-PLAN.md — Campaign creation wizard with team invite (ORG-08, ORG-10)
-- [ ] 43-04-PLAN.md — Member directory with role matrix, org settings page (ORG-06, ORG-09, ORG-10)
-- [ ] 43-05-PLAN.md — Gap closure: fix sidebar nav absent on org-level pages (ORG-05, ORG-06, ORG-09)
+- [x] 43-02-PLAN.md — Org dashboard, campaign cards, archive flow, org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13)
+- [x] 43-03-PLAN.md — Campaign creation wizard with team invite (ORG-08, ORG-10)
+- [x] 43-04-PLAN.md — Member directory with role matrix, org settings page (ORG-06, ORG-09, ORG-10)
+- [x] 43-05-PLAN.md — Gap closure: fix sidebar nav absent on org-level pages (ORG-05, ORG-06, ORG-09)
 **UI hint**: yes
 
 ### Phase 44: UI/UX Polish & Frontend Hardening
@@ -277,7 +277,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
-| 43. Organization UI | v1.5 | 1/4 | In Progress|  |
+| 43. Organization UI | v1.5 | 5/5 | Complete   | 2026-03-24 |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |
