@@ -13,6 +13,7 @@ interface AuthState {
   handleCallback: (url?: string) => Promise<void>
   logout: () => Promise<void>
   getAccessToken: () => string | null
+  switchOrg: (zitadelOrgId: string) => Promise<void>
 }
 
 // UserManager created lazily in initialize() after fetching runtime config
@@ -96,5 +97,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   getAccessToken: () => {
     const user = get().user
     return user?.access_token ?? null
+  },
+
+  switchOrg: async (zitadelOrgId: string) => {
+    const mgr = await ensureUserManager()
+    const config = await loadConfig()
+    await mgr.signinRedirect({
+      scope: [
+        "openid",
+        "profile",
+        "email",
+        `urn:zitadel:iam:org:id:${zitadelOrgId}`,
+        "urn:zitadel:iam:user:resourceowner",
+        `urn:zitadel:iam:org:project:id:${config.zitadel_project_id}:aud`,
+        `urn:zitadel:iam:org:project:id:${config.zitadel_project_id}:roles`,
+        "urn:zitadel:iam:org:projects:roles",
+      ].join(" "),
+    })
   },
 }))
