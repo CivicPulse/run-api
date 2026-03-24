@@ -2,19 +2,28 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
-from app.models.turf import TurfStatus
+from app.models.turf import Turf, TurfStatus
+from app.models.voter import Voter
 from app.schemas.common import PaginatedResponse, PaginationResponse
-from app.schemas.turf import TurfCreate, TurfResponse, TurfUpdate
-from app.services.turf import TurfService, _wkb_to_geojson
+from app.schemas.turf import (
+    OverlappingTurfResponse,
+    TurfCreate,
+    TurfResponse,
+    TurfUpdate,
+    VoterLocationResponse,
+)
+from app.services.turf import TurfService, _validate_polygon, _wkb_to_geojson
 
 router = APIRouter()
 
@@ -29,6 +38,7 @@ def _turf_to_response(turf, voter_count: int | None = None) -> TurfResponse:
         description=turf.description,
         status=TurfStatus(turf.status),
         boundary=_wkb_to_geojson(turf.boundary),
+        voter_count=voter_count or 0,
         created_by=turf.created_by,
         created_at=turf.created_at,
         updated_at=turf.updated_at,
@@ -90,10 +100,114 @@ async def list_turfs(
     items, next_cursor, has_more = await _service.list_turfs(
         db, campaign_id, status_filter=status_filter, cursor=cursor, limit=limit
     )
+    # Batch-fetch voter counts for all turfs in one query
+    turf_ids = [t.id for t in items]
+    voter_counts = await _service.get_voter_counts_batch(db, turf_ids)
     return PaginatedResponse[TurfResponse](
-        items=[_turf_to_response(t) for t in items],
+        items=[
+            _turf_to_response(t, voter_count=voter_counts.get(t.id, 0)) for t in items
+        ],
         pagination=PaginationResponse(next_cursor=next_cursor, has_more=has_more),
     )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/turfs/overlaps",
+    response_model=list[OverlappingTurfResponse],
+)
+async def get_turf_overlaps(
+    campaign_id: uuid.UUID,
+    boundary: str = Query(..., description="GeoJSON geometry JSON string"),
+    exclude_turf_id: uuid.UUID | None = Query(None),
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Detect active turfs that overlap a given boundary.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    try:
+        geojson = json.loads(boundary)
+        wkb_boundary = _validate_polygon(geojson)
+    except (json.JSONDecodeError, ValueError) as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            title="Invalid Boundary",
+            detail=str(exc),
+            type="invalid-boundary",
+        )
+
+    query = select(Turf).where(
+        Turf.campaign_id == campaign_id,
+        Turf.status == TurfStatus.ACTIVE,
+        func.ST_Intersects(Turf.boundary, wkb_boundary),
+    )
+    if exclude_turf_id:
+        query = query.where(Turf.id != exclude_turf_id)
+
+    result = await db.execute(query)
+    overlaps = result.scalars().all()
+    return [
+        OverlappingTurfResponse(
+            id=t.id,
+            name=t.name,
+            boundary=_wkb_to_geojson(t.boundary),
+        )
+        for t in overlaps
+    ]
+
+
+@router.get(
+    "/campaigns/{campaign_id}/turfs/{turf_id}/voters",
+    response_model=list[VoterLocationResponse],
+)
+async def get_turf_voters(
+    campaign_id: uuid.UUID,
+    turf_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get voters within a turf boundary for map markers.
+
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    from app.db.rls import set_campaign_context
+
+    await set_campaign_context(db, str(campaign_id))
+    turf = await _service.get_turf(db, turf_id)
+    if turf is None:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Turf Not Found",
+            detail=f"Turf {turf_id} not found",
+            type="turf-not-found",
+        )
+
+    query = select(
+        Voter.id,
+        Voter.latitude,
+        Voter.longitude,
+        Voter.first_name,
+        Voter.last_name,
+    ).where(
+        Voter.geom.is_not(None),
+        func.ST_Contains(turf.boundary, Voter.geom),
+    )
+    result = await db.execute(query)
+    return [
+        VoterLocationResponse(
+            id=row.id,
+            latitude=row.latitude,
+            longitude=row.longitude,
+            name=f"{row.first_name or ''} {row.last_name or ''}".strip(),
+        )
+        for row in result.all()
+    ]
 
 
 @router.get(
