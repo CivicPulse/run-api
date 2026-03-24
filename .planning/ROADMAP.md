@@ -95,7 +95,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 
 - [x] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs (completed 2026-03-24)
 - [x] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting (completed 2026-03-24)
-- [ ] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints
+- [x] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints (completed 2026-03-24)
 - [ ] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea
 - [ ] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings
 - [ ] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states
@@ -143,7 +143,7 @@ This won't work, using python instead
   4. Non-org-admin users receive 403 on org-level endpoints
 **Plans**: 3 plans
 Plans:
-- [ ] 41-01-PLAN.md — OrganizationMember model, OrgRole enum, Alembic migration (ORG-01, ORG-02)
+- [x] 41-01-PLAN.md — OrganizationMember model, OrgRole enum, Alembic migration (ORG-01, ORG-02)
 - [ ] 41-02-PLAN.md — Modify resolve_campaign_role() with additive org role resolution (ORG-03)
 - [ ] 41-03-PLAN.md — require_org_role() dependency, org service, org API endpoints (ORG-04)
 
@@ -255,7 +255,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 38. Tech Debt Cleanup | v1.4 | 2/2 | Complete | 2026-03-17 |
 | 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
 | 40. Production Hardening & Observability | v1.5 | 1/2 | Complete    | 2026-03-24 |
-| 41. Organization Data Model & Auth | v1.5 | 0/0 | Not started | - |
+| 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
 | 43. Organization UI | v1.5 | 0/0 | Not started | - |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |

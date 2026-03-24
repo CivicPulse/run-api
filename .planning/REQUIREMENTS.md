@@ -15,20 +15,20 @@
 
 ## Observability & Hardening (OBS)
 
-- [ ] **OBS-01**: Sentry SDK captures unhandled exceptions with PII scrubbing (`send_default_pii=false`, `before_send` strips request bodies and SQL error data)
-- [ ] **OBS-02**: Structlog request middleware emits structured JSON logs with `request_id`, `user_id`, `campaign_id`, and duration per request
-- [ ] **OBS-03**: Rate limiting uses real client IP (`CF-Connecting-IP`) with proxy header guard, not `request.client.host`
-- [ ] **OBS-04**: Authenticated endpoints have user-ID-based rate limiting in addition to IP-based
+- [x] **OBS-01**: Sentry SDK captures unhandled exceptions with PII scrubbing (`send_default_pii=false`, `before_send` strips request bodies and SQL error data)
+- [x] **OBS-02**: Structlog request middleware emits structured JSON logs with `request_id`, `user_id`, `campaign_id`, and duration per request
+- [x] **OBS-03**: Rate limiting uses real client IP (`CF-Connecting-IP`) with proxy header guard, not `request.client.host`
+- [x] **OBS-04**: Authenticated endpoints have user-ID-based rate limiting in addition to IP-based
 - [ ] **OBS-05**: All pages have error boundaries with user-friendly error messages
 - [ ] **OBS-06**: All list pages show meaningful empty state messages when no data exists
 - [ ] **OBS-07**: All data-loading pages show loading skeletons or spinners during fetch
 
 ## Organization Management (ORG)
 
-- [ ] **ORG-01**: `organization_members` table stores org-level roles (`org_owner`, `org_admin`) per user per org
-- [ ] **ORG-02**: Seed migration promotes existing org `created_by` users to `org_owner`
-- [ ] **ORG-03**: `resolve_campaign_role()` returns max(campaign role, org role equivalent) — org roles are additive, never restrictive
-- [ ] **ORG-04**: `require_org_role()` auth dependency gates org-level endpoints
+- [x] **ORG-01**: `organization_members` table stores org-level roles (`org_owner`, `org_admin`) per user per org
+- [x] **ORG-02**: Seed migration promotes existing org `created_by` users to `org_owner`
+- [x] **ORG-03**: `resolve_campaign_role()` returns max(campaign role, org role equivalent) — org roles are additive, never restrictive
+- [x] **ORG-04**: `require_org_role()` auth dependency gates org-level endpoints
 - [ ] **ORG-05**: Org dashboard at `/org` shows campaign card grid with status, election date, and member counts
 - [ ] **ORG-06**: Org member directory shows all users across all campaigns with per-campaign role matrix
 - [ ] **ORG-07**: Only `org_admin`+ can create campaigns within an org

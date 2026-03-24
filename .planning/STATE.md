@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Go Live — Production Readiness
 status: Ready to plan
-stopped_at: Phase 41 context gathered
-last_updated: "2026-03-24T13:18:29.908Z"
+stopped_at: Completed 41-02-PLAN.md
+last_updated: "2026-03-24T14:08:22.667Z"
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 40 — production-hardening-observability
+**Current focus:** Phase 41 — organization-data-model-auth
 
 ## Current Position
 
-Phase: 41
+Phase: 42
 Plan: Not started
 
 ## Performance Metrics
@@ -49,6 +49,9 @@ Plan: Not started
 | Phase 39 P04 | 1min | 2 tasks | 1 files |
 | Phase 40 P01 | 4min | 3 tasks | 9 files |
 | Phase 40 P02 | 2min | 2 tasks | 3 files |
+| Phase 41 P01 | 3min | 2 tasks | 6 files |
+| Phase 41 P03 | 5m 35s | 2 tasks | 7 files |
+| Phase 41 P02 | 7min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -72,6 +75,11 @@ Recent decisions affecting current work:
 - [Phase 40]: ContextVars shared across middleware, error handlers, and Sentry before_send for request context
 - [Phase 40]: CF-Connecting-IP only trusted when request.client.host is in Cloudflare CIDR list
 - [Phase 40]: JWT decode without JWKS verification for rate limit keying (auth middleware handles full validation)
+- [Phase 41]: Used StrEnum for OrgRole with ORG_ROLE_LEVELS dict for hierarchy ordering
+- [Phase 41]: Adjusted migration 015 down_revision to 013_campaign_slug (014 does not exist)
+- [Phase 41]: require_org_role() uses ORG_ROLE_LEVELS dict for level comparison, org endpoints use get_db() (no RLS) per D-13
+- [Phase 41]: Full CampaignMember row selected (not just role column) to distinguish NULL role from no record
+- [Phase 41]: Org lookup runs unconditionally when user_org_id set for additive max() resolution
 
 ### Blockers/Concerns
 
@@ -91,6 +99,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-24T13:18:29.901Z
-Stopped at: Phase 41 context gathered
-Resume file: .planning/phases/41-organization-data-model-auth/41-CONTEXT.md
+Last session: 2026-03-24T14:02:37.022Z
+Stopped at: Completed 41-02-PLAN.md
+Resume file: None
