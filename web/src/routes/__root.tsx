@@ -45,6 +45,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { RequireRole } from "@/components/shared/RequireRole"
+import { RequireOrgRole } from "@/components/shared/RequireOrgRole"
+import { OrgSwitcher } from "@/components/org/OrgSwitcher"
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuthStore } from "@/stores/authStore"
@@ -105,7 +107,7 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Overview</SidebarGroupLabel>
+          <SidebarGroupLabel>Organization</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -116,6 +118,24 @@ function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <RequireOrgRole minimum="org_admin">
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/org/members"}>
+                    <Link to="/org/members">
+                      <Users />
+                      <span>Members</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/org/settings"}>
+                    <Link to="/org/settings">
+                      <Settings />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </RequireOrgRole>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -246,6 +266,7 @@ function RootLayout() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
+          <OrgSwitcher />
           <div className="flex-1" />
           <UserMenu />
         </header>
