@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, call
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from app.api.deps import ensure_user_synced
 from app.core.security import AuthenticatedUser, CampaignRole
