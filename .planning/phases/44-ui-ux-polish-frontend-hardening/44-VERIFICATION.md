@@ -1,71 +1,47 @@
 ---
 phase: 44-ui-ux-polish-frontend-hardening
-verified: 2026-03-24T22:30:00Z
-status: gaps_found
-score: 10/13 must-haves verified
-gaps:
-  - truth: "Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping, campaign type, org settings ZITADEL ID)"
-    status: partial
-    reason: "4 of 5 tooltip placements completed. org/settings.tsx exists in the codebase but has no TooltipIcon on the ZITADEL Org ID label. The file was created in Phase 43 (now merged to main) but the Phase 44 tooltip work was done in a worktree that predated the merge."
-    artifacts:
-      - path: "web/src/routes/org/settings.tsx"
-        issue: "Missing TooltipIcon on ZITADEL Org ID label. The label 'Organization ID' and input exist but no TooltipIcon with authentication system hint text."
-    missing:
-      - "Add `import { TooltipIcon } from '@/components/shared/TooltipIcon'` to org/settings.tsx"
-      - "Add `<TooltipIcon content=\"This is your organization's unique identifier in the authentication system. Share it with support if you need assistance with account or access issues.\" />` next to the Organization ID label"
-  - truth: "Every list page shows a contextual empty state message when no data exists (not a blank table)"
-    status: partial
-    reason: "org/members.tsx empty state reads 'No members' not 'No members yet' (missing 'yet') and the description is generic ('Organization members will appear here as they join.') rather than action-oriented ('Add members to your organization.'). This page was created in Phase 43 and was not updated in Phase 44."
-    artifacts:
-      - path: "web/src/routes/org/members.tsx"
-        issue: "Empty state title is 'No members' (missing 'yet') and description is passive rather than action-oriented. Plan spec required 'No members yet' with 'Add members to your organization.'"
-    missing:
-      - "Update empty state title from 'No members' to 'No members yet'"
-      - "Update empty state description to 'Add members to your organization.'"
-      - "Add a Users icon to match the empty state spec"
-  - truth: "Unhandled errors in any route section are caught by the nearest error boundary"
-    status: partial
-    reason: "org/members.tsx and org/settings.tsx do not have per-route errorComponent set. Both files now exist in the codebase but were not updated during Phase 44 due to branch divergence. The router-level defaultErrorComponent provides fallback coverage for these routes."
-    artifacts:
-      - path: "web/src/routes/org/members.tsx"
-        issue: "No errorComponent: RouteErrorBoundary in route definition. Uses router-level defaultErrorComponent fallback only."
-      - path: "web/src/routes/org/settings.tsx"
-        issue: "No errorComponent: RouteErrorBoundary in route definition. Uses router-level defaultErrorComponent fallback only."
-    missing:
-      - "Add `import { RouteErrorBoundary } from '@/components/shared/RouteErrorBoundary'` to org/members.tsx"
-      - "Add `errorComponent: RouteErrorBoundary` to Route definition in org/members.tsx"
-      - "Add `import { RouteErrorBoundary } from '@/components/shared/RouteErrorBoundary'` to org/settings.tsx"
-      - "Add `errorComponent: RouteErrorBoundary` to Route definition in org/settings.tsx"
+verified: 2026-03-24T23:00:00Z
+status: human_needed
+score: 13/13 must-haves verified
+re_verification:
+  previous_status: gaps_found
+  previous_score: 10/13
+  gaps_closed:
+    - "org/settings.tsx now has TooltipIcon on ZITADEL Org ID label with authentication system explanation"
+    - "org/members.tsx empty state now reads 'No members yet' with Users icon and action-oriented description"
+    - "Both org/members.tsx and org/settings.tsx now have errorComponent: RouteErrorBoundary"
+  gaps_remaining: []
+  regressions: []
 human_verification:
   - test: "Sidebar slide-over behavior"
-    expected: "Sidebar overlays content (does not push) when toggled. Content uses full viewport width when sidebar is hidden. New users see sidebar hidden by default."
-    why_human: "CSS behavior (overlay vs push) and animation quality require visual inspection in the browser."
+    expected: "Sidebar is hidden by default for new users (defaultOpen=false). When opened, sidebar slides over content as an overlay — content does not shift or compress. Content uses full viewport width when sidebar is hidden."
+    why_human: "CSS overlay vs push behavior and animation quality cannot be verified by static code analysis."
   - test: "Error boundary Card fallback"
-    expected: "Throwing an error in any campaign or org route renders the Card-based fallback with AlertTriangle icon, 'Something went wrong' title, 'Try Again' button, and 'Go to Dashboard' link."
-    why_human: "Requires triggering a runtime error in a route component to verify fallback renders correctly."
-  - test: "Volunteer radio toggle - manager view"
-    expected: "As a user with manager role, the volunteer registration form shows a 'Volunteer Type' radio group with 'Add volunteer record' and 'Invite to app' options. Selecting 'Invite to app' shows the Alert info banner about email invitation."
-    why_human: "Role-based rendering requires an authenticated session with manager role to verify the conditional RequireRole wrapper."
-  - test: "Volunteer radio toggle - self-registration view"
-    expected: "As a user with volunteer role (self-registration), the radio toggle is NOT visible. Form shows only the basic fields."
+    expected: "Throwing a runtime error in any campaign or org route renders the Card fallback with AlertTriangle icon, 'Something went wrong' title, 'Try Again' button, and 'Go to Dashboard' link. Dev mode shows the error message. Clicking 'Try Again' re-renders; 'Go to Dashboard' navigates to '/'."
+    why_human: "Requires runtime error injection in a live browser session."
+  - test: "Volunteer radio toggle — manager view"
+    expected: "As a user with campaign manager role, the volunteer registration form shows a 'Volunteer Type' radio group with 'Add volunteer record' and 'Invite to app' options. Selecting 'Invite to app' shows the Alert info banner about email invitation."
+    why_human: "Role-based rendering requires an authenticated session with manager role to verify the RequireRole wrapper at runtime."
+  - test: "Volunteer radio toggle — non-manager view"
+    expected: "As a user with volunteer role (non-manager), the radio toggle is NOT visible. Form shows only basic fields."
     why_human: "Requires an authenticated session with volunteer (non-manager) role."
   - test: "Tooltip popover interaction"
-    expected: "Clicking the HelpCircle icon next to turf name, role selector, import mapping, campaign type, and org settings opens a popover with contextual hint text."
+    expected: "Clicking the HelpCircle icon next to turf name, role selector, import mapping, campaign type, and Organization ID in org settings opens a popover with contextual hint text. Popover closes on click-outside."
     why_human: "Popover open/close behavior and text content require browser interaction to verify."
   - test: "Skeleton loading visual quality"
-    expected: "Campaign dashboard, shift list, and settings general pages show layout-matching skeletons (not a spinner) during initial data fetch. Skeletons match the shape of the content that will appear."
-    why_human: "Loading state timing and skeleton visual fidelity require browser testing with network throttling."
+    expected: "Campaign dashboard, shift list, and settings general pages show layout-matching skeletons during initial data fetch. Auth init spinner in __root.tsx is preserved and distinct from data-loading states."
+    why_human: "Skeleton layout fidelity requires visual comparison against actual content with network throttling."
   - test: "Empty state appearance on all list pages"
-    expected: "Navigating to any list page on an empty campaign shows a meaningful empty state with an icon, title, and description. No blank tables or generic 'No data' text appears."
-    why_human: "Requires an empty campaign and browser navigation across all list pages."
+    expected: "Navigating to any list page on an empty campaign shows a meaningful empty state with an icon, title, and action-oriented description. No blank tables or generic 'No data' text appears. org/members shows Users icon, 'No members yet', and 'Add members to your organization.'"
+    why_human: "Requires an empty campaign and browser navigation across all 15 list pages."
 ---
 
 # Phase 44: UI/UX Polish and Frontend Hardening Verification Report
 
 **Phase Goal:** The application handles all edge states gracefully and provides contextual guidance for new users
-**Verified:** 2026-03-24T22:30:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-24T23:00:00Z
+**Status:** human_needed — all automated checks pass; 7 items require browser testing
+**Re-verification:** Yes — after gap closure plan 44-05
 
 ## Goal Achievement
 
@@ -73,13 +49,13 @@ human_verification:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Sidebar slides over content (not pushes) with consolidated single-level navigation | VERIFIED (code) / ? HUMAN | `__root.tsx:263` has `<SidebarProvider defaultOpen={false}>`. Visual overlay behavior needs human confirmation. |
-| 2 | Volunteer creation clearly distinguishes tracked-only from ZITADEL invite | VERIFIED | `volunteers/register/index.tsx` has RadioGroup with "Add volunteer record" / "Invite to app", wrapped in `<RequireRole minimum="manager">`, with Alert banner when invite mode is selected. |
-| 3 | Every list page shows meaningful empty state when no data | PARTIAL | 14 of 15 required pages have contextual empty states. `org/members.tsx` shows "No members" (not "No members yet") with a passive description — minor wording gap vs plan spec. |
-| 4 | Every data-loading page shows loading skeleton or spinner during fetch | VERIFIED | 3 identified page-level Loader2 spinners replaced with Skeleton components. Auth init spinner in `__root.tsx` intentionally preserved (not a data-loading state). `org/settings.tsx` uses Skeleton (from Phase 43). |
-| 5 | Contextual tooltips appear at key decision points | PARTIAL | 4 of 5 tooltip placements completed. org/settings.tsx ZITADEL Org ID tooltip is missing — file now exists but tooltip was not applied due to branch divergence. |
+| 1 | Sidebar slides over content (not pushes) with consolidated single-level navigation | VERIFIED (code) / ? HUMAN | `__root.tsx:263` has `<SidebarProvider defaultOpen={false}>`. Visual overlay behavior needs browser confirmation. |
+| 2 | Volunteer creation clearly distinguishes tracked-only from ZITADEL invite | VERIFIED | `volunteers/register/index.tsx` has RadioGroup with "Add volunteer record"/"Invite to app", wrapped in `<RequireRole minimum="manager">`, with Alert banner when invite mode is selected. |
+| 3 | Every list page shows meaningful empty state when no data | VERIFIED | All 15 pages pass. `org/members.tsx` now shows Users icon, "No members yet", and "Add members to your organization." (gap closed by plan 44-05, commit a3d28ed). |
+| 4 | Every data-loading page shows loading skeleton or spinner during fetch | VERIFIED | 3 page-level Loader2 spinners replaced with Skeleton. Auth init spinner in `__root.tsx` intentionally preserved. |
+| 5 | Contextual tooltips appear at key decision points | VERIFIED | All 5 tooltip placements confirmed: turfs/new.tsx, settings/members.tsx, voters/imports/new.tsx, campaigns/new.tsx, org/settings.tsx (gap closed by plan 44-05, commit 0376c12). |
 
-**Score:** 10/13 must-haves verified (3 partial gaps found)
+**Score:** 13/13 must-haves verified
 
 ### Required Artifacts
 
@@ -89,12 +65,12 @@ human_verification:
 | `web/src/main.tsx` | Global defaultErrorComponent | VERIFIED | `createRouter({ routeTree, defaultErrorComponent: RouteErrorBoundary })` at line 15. |
 | `web/src/components/shared/TooltipIcon.tsx` | Promoted TooltipIcon for app-wide use | VERIFIED | 33 lines, uses Popover (not Tooltip) for mobile tap support, exports `TooltipIcon`. |
 | `web/src/components/field/TooltipIcon.tsx` | Backward-compatible re-export | VERIFIED | Single line: `export { TooltipIcon } from "@/components/shared/TooltipIcon"`. |
-| `web/src/routes/campaigns/$campaignId.tsx` | Skeleton loading state | VERIFIED | Imports Skeleton, renders 3-column grid skeleton when isLoading, `errorComponent: RouteErrorBoundary` present. |
+| `web/src/routes/campaigns/$campaignId.tsx` | Skeleton loading state + errorComponent | VERIFIED | Imports Skeleton, renders 3-column grid skeleton when isLoading, `errorComponent: RouteErrorBoundary` present. |
 | `web/src/routes/campaigns/$campaignId/volunteers/shifts/index.tsx` | Skeleton loading state | VERIFIED | Imports Skeleton, renders stacked card skeletons when isLoading. |
 | `web/src/routes/campaigns/$campaignId/settings/general.tsx` | Skeleton loading state | VERIFIED | Imports Skeleton, renders form-shaped skeletons when isLoading. Loader2 preserved for button-level submit. |
 | `web/src/routes/campaigns/$campaignId/volunteers/register/index.tsx` | Radio toggle for volunteer mode | VERIFIED | RadioGroup with "record"/"invite" modes, wrapped in `RequireRole minimum="manager"`, Alert banner on invite mode. |
-| `web/src/routes/org/settings.tsx` | TooltipIcon on ZITADEL Org ID | STUB | File exists (from Phase 43) but no TooltipIcon import or placement. |
-| `web/src/routes/org/members.tsx` | Contextual empty state | PARTIAL | Empty state exists but title is "No members" (not "No members yet") and description is passive. |
+| `web/src/routes/org/settings.tsx` | TooltipIcon on ZITADEL Org ID + errorComponent | VERIFIED | Lines 7-8: imports for TooltipIcon and RouteErrorBoundary. Lines 100-103: `<div className="flex items-center gap-1"><Label htmlFor="org-id">Organization ID</Label><TooltipIcon content="This is your organization's unique identifier in the authentication system..."/>`. Line 137: `errorComponent: RouteErrorBoundary`. |
+| `web/src/routes/org/members.tsx` | Contextual empty state + errorComponent | VERIFIED | Lines 3,5: Users and RouteErrorBoundary imports. Lines 75-79: Users icon, "No members yet", "Add members to your organization." Line 105: `errorComponent: RouteErrorBoundary`. |
 
 ### Key Link Verification
 
@@ -102,19 +78,19 @@ human_verification:
 |------|-----|-----|--------|---------|
 | `web/src/main.tsx` | `RouteErrorBoundary.tsx` | `defaultErrorComponent` import | WIRED | Line 6: import, line 15: `defaultErrorComponent: RouteErrorBoundary` |
 | `campaigns/$campaignId.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Line 2: import, route definition has `errorComponent` |
-| `campaigns/$campaignId/voters.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `campaigns/$campaignId/canvassing.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `campaigns/$campaignId/phone-banking.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `campaigns/$campaignId/volunteers.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `campaigns/$campaignId/settings.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `campaigns/$campaignId/surveys.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep |
-| `org/members.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | NOT_WIRED | File exists but no errorComponent. Router-level fallback only. |
-| `org/settings.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | NOT_WIRED | File exists but no errorComponent. Router-level fallback only. |
+| `campaigns/$campaignId/voters.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `campaigns/$campaignId/canvassing.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `campaigns/$campaignId/phone-banking.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `campaigns/$campaignId/volunteers.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `campaigns/$campaignId/settings.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `campaigns/$campaignId/surveys.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Confirmed by grep (initial verification) |
+| `org/members.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Line 5: import, line 105: `errorComponent: RouteErrorBoundary`. Gap closed by commit a3d28ed. |
+| `org/settings.tsx` | `RouteErrorBoundary.tsx` | `errorComponent` option | WIRED | Line 8: import, line 137: `errorComponent: RouteErrorBoundary`. Gap closed by commit 0376c12. |
 | `canvassing/turfs/new.tsx` | `shared/TooltipIcon.tsx` | import | WIRED | Line 5: import, line 22: `<TooltipIcon content="A good turf size is 50-200 households..."/>` |
 | `settings/members.tsx` | `shared/TooltipIcon.tsx` | import | WIRED | Line 8: import, line 386: `<TooltipIcon content="Viewer: read-only access..."/>` |
 | `voters/imports/new.tsx` | `shared/TooltipIcon.tsx` | import | WIRED | Line 5: import, line 242: `<TooltipIcon content="Map each column..."/>` |
 | `campaigns/new.tsx` | `shared/TooltipIcon.tsx` | import | WIRED | Line 8: import, line 290: `<TooltipIcon content="Primary: initial party..."/>` |
-| `org/settings.tsx` | `shared/TooltipIcon.tsx` | import | NOT_WIRED | No import, no placement |
+| `org/settings.tsx` | `shared/TooltipIcon.tsx` | import | WIRED | Line 7: `import { TooltipIcon } from "@/components/shared/TooltipIcon"`, line 102: placement confirmed. Gap closed by commit 0376c12. |
 
 ### Data-Flow Trace (Level 4)
 
@@ -128,28 +104,32 @@ Data-flow trace is not applicable to this phase. All artifacts are presentationa
 | RouteErrorBoundary exports function | `grep "export function RouteErrorBoundary" web/src/components/shared/RouteErrorBoundary.tsx` | Match found | PASS |
 | `main.tsx` has `defaultErrorComponent` | `grep "defaultErrorComponent" web/src/main.tsx` | Match at line 15 | PASS |
 | Sidebar defaultOpen=false | `grep "SidebarProvider defaultOpen" web/src/routes/__root.tsx` | Match at line 263 | PASS |
-| Volunteer form has RadioGroup | `grep "RadioGroup" web/src/routes/campaigns/$campaignId/volunteers/register/index.tsx` | Match (multiple) | PASS |
-| 4 tooltip placements | grep on all 4 files | All 4 match | PASS |
-| org/settings.tsx tooltip | grep on org/settings.tsx | No match | FAIL |
-| org/members.tsx empty state text | `grep "No members yet" web/src/routes/org/members.tsx` | No match (shows "No members" without "yet") | FAIL |
+| Volunteer form has RadioGroup | `grep "RadioGroup" volunteers/register/index.tsx` | Match (multiple) | PASS |
+| org/settings.tsx has TooltipIcon | `grep "TooltipIcon" web/src/routes/org/settings.tsx` | Match at lines 7 and 102 | PASS |
+| org/settings.tsx has errorComponent | `grep "errorComponent: RouteErrorBoundary" web/src/routes/org/settings.tsx` | Match at line 137 | PASS |
+| org/settings.tsx tooltip text | `grep "unique identifier in the authentication system" web/src/routes/org/settings.tsx` | Match at line 102 | PASS |
+| org/members.tsx has "No members yet" | `grep "No members yet" web/src/routes/org/members.tsx` | Match at line 76 | PASS |
+| org/members.tsx has Users icon | `grep "Users" web/src/routes/org/members.tsx` | Match at lines 3 and 75 | PASS |
+| org/members.tsx has errorComponent | `grep "errorComponent: RouteErrorBoundary" web/src/routes/org/members.tsx` | Match at line 105 | PASS |
+| Gap closure commits exist | `git log --oneline \| grep "0376c12\|a3d28ed"` | Both commits confirmed in git log | PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| OBS-05 | 44-01 | All pages have error boundaries with user-friendly error messages | SATISFIED | RouteErrorBoundary created and wired as defaultErrorComponent + 7 campaign section routes. org/members and org/settings use router fallback only. |
-| OBS-06 | 44-03 | All list pages show meaningful empty state messages when no data exists | PARTIAL | 14 of 15 list pages pass. org/members.tsx has a minor wording gap vs spec. |
-| OBS-07 | 44-03 | All data-loading pages show loading skeletons or spinners during fetch | SATISFIED | All 3 identified page-level Loader2 spinners replaced with Skeleton components. Auth init spinner intentionally preserved. |
-| UX-01 | 44-01 | Sidebar slides over content (not push) | SATISFIED (code) | `SidebarProvider defaultOpen={false}` set. Collapsible="offcanvas" behavior inherited from shadcn. Visual confirmation is human-only. |
-| UX-02 | 44-02 | Volunteer invite flow clearly distinguishes tracked-only from ZITADEL-invited users | SATISFIED | RadioGroup with RequireRole(manager), invite mode shows Alert banner. Known stub: backend invite endpoint returns toast.info "coming soon". |
-| UX-03 | 44-02 | Contextual tooltips and help text guide new users | PARTIAL | 4 of 5 tooltip placements exist. org/settings ZITADEL ID tooltip not added. |
-| UX-04 | 44-02 | Inline hints at decision points (turf sizing, role assignment) | PARTIAL | Turf sizing and role assignment tooltips are present. org/settings ZITADEL ID tooltip missing. |
+| OBS-05 | 44-01, 44-05 | All pages have error boundaries with user-friendly error messages | SATISFIED | RouteErrorBoundary wired as defaultErrorComponent in main.tsx plus per-route errorComponent on all 9 named routes including org/members and org/settings (gaps closed by 44-05). |
+| OBS-06 | 44-03, 44-05 | All list pages show meaningful empty state messages when no data exists | SATISFIED | All 15 list pages verified. org/members.tsx corrected by 44-05 to show Users icon, "No members yet", action-oriented description. |
+| OBS-07 | 44-03 | All data-loading pages show loading skeletons or spinners during fetch | SATISFIED | All 3 identified page-level Loader2 spinners replaced with Skeleton. Auth init spinner intentionally preserved. |
+| UX-01 | 44-01 | Sidebar slides over content (not push) and consolidates navigation | SATISFIED (code) | `SidebarProvider defaultOpen={false}` set. collapsible="offcanvas" inherited from shadcn. Visual confirmation is human-only. |
+| UX-02 | 44-02 | Volunteer invite flow clearly distinguishes tracked-only from ZITADEL-invited users | SATISFIED | RadioGroup with RequireRole(manager), invite mode shows Alert banner. Backend invite stub intentionally deferred (D-05). |
+| UX-03 | 44-02, 44-05 | Contextual tooltips and help text guide new users | SATISFIED | All 5 tooltip placements exist including org/settings.tsx ZITADEL Org ID (gap closed by 44-05). |
+| UX-04 | 44-02, 44-05 | Inline hints at decision points (turf sizing, role assignment, org settings) | SATISFIED | Turf sizing, role assignment, import mapping, campaign type, and ZITADEL Org ID tooltips all present. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `volunteers/register/index.tsx` | 130-145 | `send_invite: true` flag with `toast.info("Email invite feature is coming soon.")` | Info | Intentional stub per plan spec (D-05). Backend invite endpoint does not exist yet. The UX clearly communicates to the manager that the invite will not send. |
+| `volunteers/register/index.tsx` | 130-145 | `send_invite: true` flag with `toast.info("Email invite feature is coming soon.")` | Info | Intentional stub per plan spec (D-05). Backend invite endpoint does not exist yet. The UX clearly communicates this to the manager. |
 
 ### Human Verification Required
 
@@ -167,9 +147,9 @@ Data-flow trace is not applicable to this phase. All artifacts are presentationa
 
 **3. Volunteer Toggle — Manager View (UX-02)**
 
-**Test:** Log in as a user with campaign manager role. Navigate to campaign > Volunteers > Register (or /campaigns/{id}/volunteers/register).
+**Test:** Log in as a user with campaign manager role. Navigate to campaign > Volunteers > Register.
 **Expected:** "Volunteer Type" label and radio group visible with "Add volunteer record" (selected by default) and "Invite to app" options. Selecting "Invite to app" shows the Alert info banner about email invitation.
-**Why human:** Requires authenticated session with manager role; RequireRole is runtime role-check.
+**Why human:** Requires authenticated session with manager role; RequireRole is a runtime role-check.
 
 **4. Volunteer Toggle — Non-Manager View (UX-02)**
 
@@ -179,7 +159,7 @@ Data-flow trace is not applicable to this phase. All artifacts are presentationa
 
 **5. Tooltip Popover Interaction (UX-03, UX-04)**
 
-**Test:** Navigate to (a) New Turf creation, (b) Campaign Members settings, (c) Voter Import mapping step, (d) New Campaign creation wizard, and click the HelpCircle icon near each labeled decision point.
+**Test:** Navigate to (a) New Turf creation, (b) Campaign Members settings, (c) Voter Import mapping step, (d) New Campaign creation wizard, (e) Org Settings — click the HelpCircle icon near each labeled decision point.
 **Expected:** Clicking the icon opens a popover with contextual hint text. The popover closes on click-outside.
 **Why human:** Popover interaction and content readability require browser testing.
 
@@ -189,31 +169,26 @@ Data-flow trace is not applicable to this phase. All artifacts are presentationa
 **Expected:** Skeleton components render that match the shape of the content — 3-column grid for campaign dashboard, stacked card shapes for shifts, form field shapes for settings.
 **Why human:** Skeleton layout fidelity requires visual comparison against actual content.
 
-**7. Empty State Appearance (OBS-06)**
+**7. Empty State Appearance on All List Pages (OBS-06)**
 
-**Test:** Navigate to all list pages on an empty campaign (one with no data).
-**Expected:** Each page shows an icon, title, and action-oriented description rather than a blank table or generic "No data".
+**Test:** Navigate to all list pages on an empty campaign (one with no data). Include org/members with an empty org.
+**Expected:** Each page shows an icon, title, and action-oriented description rather than a blank table or generic "No data". org/members specifically should show the Users icon, "No members yet", and "Add members to your organization."
 **Why human:** Requires an empty campaign and systematic navigation across all 15 list pages.
 
 ### Gaps Summary
 
-Three gaps block full goal achievement:
+No gaps remain. All three previously identified gaps are confirmed closed:
 
-**Gap 1: org/settings.tsx ZITADEL Org ID tooltip missing (UX-03, UX-04)**
+**Gap 1 closed (commit 0376c12):** `org/settings.tsx` now imports `TooltipIcon` (line 7) and renders it next to the Organization ID label (line 102) with the exact authentication system explanation text specified in the plan. `errorComponent: RouteErrorBoundary` added at line 137.
 
-The `org/settings.tsx` file now exists in the codebase (created in Phase 43, now merged) but the Phase 44 tooltip work was executed in a worktree that predated this merge. The tooltip content is specified in the plan: "This is your organization's unique identifier in the authentication system. Share it with support if you need assistance with account or access issues." Two lines need to be added to `org/settings.tsx`.
+**Gap 2 closed (commit a3d28ed):** `org/members.tsx` now imports `Users` from lucide-react (line 3) and renders it in the empty state (line 75). Empty state title is "No members yet" (line 76) with description "Add members to your organization." (line 78). `errorComponent: RouteErrorBoundary` added at line 105.
 
-**Gap 2: org/members.tsx empty state wording gap (OBS-06)**
+**Gap 3 closed (commits 0376c12, a3d28ed):** Both `org/settings.tsx` and `org/members.tsx` now have `errorComponent: RouteErrorBoundary` in their route definitions, matching the pattern established by the 7 campaign section routes. Per-route error isolation is now complete across all named routes.
 
-The `org/members.tsx` empty state says "No members" rather than "No members yet" and uses a passive description. This is the same branch-divergence issue — the file was created in Phase 43 and skipped in Phase 44 plan 03. The empty state component also does not use the `EmptyState` shared component or an icon. Minor fix.
-
-**Gap 3: org/members.tsx and org/settings.tsx missing per-route errorComponent (OBS-05)**
-
-Both org routes lack `errorComponent: RouteErrorBoundary` in their route definitions. The router-level `defaultErrorComponent` provides fallback coverage, so errors will not go unhandled, but the granular per-section error isolation specified in the plan is incomplete. Adding `errorComponent` to both route definitions brings them in line with the 7 campaign routes.
-
-All three gaps have the same root cause: two org route files were created on the main branch after Phase 44 worktrees were checked out, creating a branch divergence. The fixes are minor additions to two files.
+TypeScript compiled clean (`npx tsc --noEmit`, exit 0) after both changes. No regressions detected.
 
 ---
 
-_Verified: 2026-03-24T22:30:00Z_
+_Verified: 2026-03-24T23:00:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification: after gap closure plan 44-05_
