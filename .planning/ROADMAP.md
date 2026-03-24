@@ -195,10 +195,10 @@ Plans:
   5. Contextual tooltips and inline hints appear at key decision points (turf sizing, role assignment, import column mapping)
 **Plans**: 4 plans
 Plans:
-- [ ] 42-01-PLAN.md — Backend voter_count, voters-by-turf, overlap detection endpoints (MAP-05, MAP-04, MAP-10)
-- [ ] 42-02-PLAN.md — Map foundation: MapProvider, GeomanControl, TurfMapEditor (MAP-01, MAP-02, MAP-08)
-- [ ] 42-03-PLAN.md — Overview map with color-coded turfs and voter markers (MAP-03, MAP-04, MAP-05, MAP-11)
-- [ ] 42-04-PLAN.md — GeoJSON import/export, address search, overlap highlight (MAP-06, MAP-07, MAP-09)
+- [ ] 44-01-PLAN.md — Error boundaries + sidebar offcanvas (OBS-05, UX-01)
+- [ ] 44-02-PLAN.md — Volunteer invite toggle + contextual tooltips (UX-02, UX-03, UX-04)
+- [ ] 44-03-PLAN.md — Empty state audit + loading skeleton replacement (OBS-06, OBS-07)
+- [ ] 44-04-PLAN.md — Human verification of all UI/UX changes
 **UI hint**: yes
 
 ### Phase 45: WCAG Compliance Audit
@@ -278,6 +278,6 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 41. Organization Data Model & Auth | v1.5 | 1/3 | Complete    | 2026-03-24 |
 | 42. Map-Based Turf Editor | v1.5 | 2/4 | Complete    | 2026-03-24 |
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
-| 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/0 | Not started | - |
+| 44. UI/UX Polish & Frontend Hardening | v1.5 | 0/4 | In progress | - |
 | 45. WCAG Compliance Audit | v1.5 | 0/0 | Not started | - |
 | 46. E2E Testing & Integration | v1.5 | 0/0 | Not started | - |
