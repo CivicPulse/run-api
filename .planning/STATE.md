@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Go Live — Production Readiness
-status: planning
-stopped_at: Phase 39 context gathered
-last_updated: "2026-03-24T06:23:50.383Z"
-last_activity: 2026-03-24 — Roadmap created for v1.5 Go Live milestone
+status: Ready to plan
+stopped_at: Completed 39-04-PLAN.md
+last_updated: "2026-03-24T07:36:18.332Z"
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -21,16 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 39 — RLS Fix & Multi-Campaign Foundation
+**Current focus:** Phase 39 — rls-fix-multi-campaign-foundation
 
 ## Current Position
 
-Phase: 39 of 46 (RLS Fix & Multi-Campaign Foundation)
-Plan: 0 of 0 in current phase (plans TBD)
-Status: Ready to plan
-Last activity: 2026-03-24 — Roadmap created for v1.5 Go Live milestone
-
-Progress: [░░░░░░░░░░] 0% (0/8 v1.5 phases)
+Phase: 40
+Plan: Not started
 
 ## Performance Metrics
 
@@ -49,6 +43,10 @@ Progress: [░░░░░░░░░░] 0% (0/8 v1.5 phases)
 | v1.2 | 11 | 43 | 4 days |
 | v1.3 | 7 | 18 | 3 days |
 | v1.4 | 9 | 26 | 3 days |
+| Phase 39 P01 | 10min | 3 tasks | 5 files |
+| Phase 39 P02 | 4min | 2 tasks | 19 files |
+| Phase 39 P03 | 6min | 4 tasks | 4 files |
+| Phase 39 P04 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -61,6 +59,13 @@ Recent decisions affecting current work:
 - [v1.5 Research]: Keep loguru for app logging; add structlog only as request middleware
 - [v1.5 Research]: Use `@geoman-io/leaflet-geoman-free` for map editor (not abandoned `leaflet-draw`)
 - [v1.5 Research]: Org endpoints use `/api/v1/org` (implicit org from JWT)
+- [Phase 39]: set_config third param changed to true (transaction-scoped) for RLS context isolation
+- [Phase 39]: Pool checkout event uses false (session-scoped) for defensive null UUID reset
+- [Phase 39]: Actual RLS policy count is 33 (not 51 as estimated) — all verified correct
+- [Phase 39]: get_campaign_db takes uuid.UUID for type safety; ValueError converts to 403 per D-03
+- [Phase 39]: ensure_user_synced loops over all org campaigns with per-campaign member check
+- [Phase 39]: get_campaign_from_token deprecated per D-08, retained only for campaign list page
+- [Phase 39]: Defense-in-depth UI guard on settings button: explicit campaignId check wrapping SidebarFooter even though parent early-return handles null case
 
 ### Blockers/Concerns
 
@@ -80,6 +85,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-24T06:23:50.381Z
-Stopped at: Phase 39 context gathered
-Resume file: .planning/phases/39-rls-fix-multi-campaign-foundation/39-CONTEXT.md
+Last session: 2026-03-24T07:30:57.978Z
+Stopped at: Completed 39-04-PLAN.md
+Resume file: None

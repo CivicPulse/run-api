@@ -6,12 +6,12 @@
 
 ## Data Isolation & Auth (DATA)
 
-- [ ] **DATA-01**: RLS context is transaction-scoped (`set_config` `true`), not session-scoped, preventing cross-campaign data leaks via connection pool reuse
-- [ ] **DATA-02**: Pool checkout event resets campaign context to null UUID on every connection acquisition
-- [ ] **DATA-03**: Campaign context setting is centralized (middleware or `get_db_with_rls()` replacement) so no endpoint can skip it
-- [ ] **DATA-04**: `ensure_user_synced()` creates membership for all campaigns in the user's org, not just the most recent (`.limit(1)` bug)
-- [ ] **DATA-05**: Campaign list is visible in prod for all authenticated users with valid campaign membership
-- [ ] **DATA-06**: Settings button navigates correctly to campaign settings page
+- [x] **DATA-01**: RLS context is transaction-scoped (`set_config` `true`), not session-scoped, preventing cross-campaign data leaks via connection pool reuse
+- [x] **DATA-02**: Pool checkout event resets campaign context to null UUID on every connection acquisition
+- [x] **DATA-03**: Campaign context setting is centralized (middleware or `get_db_with_rls()` replacement) so no endpoint can skip it
+- [x] **DATA-04**: `ensure_user_synced()` creates membership for all campaigns in the user's org, not just the most recent (`.limit(1)` bug)
+- [x] **DATA-05**: Campaign list is visible in prod for all authenticated users with valid campaign membership
+- [x] **DATA-06**: Settings button navigates correctly to campaign settings page
 
 ## Observability & Hardening (OBS)
 

@@ -93,7 +93,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, audit full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
 
-- [ ] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs
+- [x] **Phase 39: RLS Fix & Multi-Campaign Foundation** - Fix active multi-tenant data leak and campaign visibility bugs (completed 2026-03-24)
 - [ ] **Phase 40: Production Hardening & Observability** - Sentry error tracking, structured logging, correct rate limiting
 - [ ] **Phase 41: Organization Data Model & Auth** - Backend org membership table, role resolution, and API endpoints
 - [ ] **Phase 42: Map-Based Turf Editor** - Interactive Leaflet/Geoman polygon draw/edit replacing raw JSON textarea
@@ -113,11 +113,11 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
   2. A user with membership in multiple campaigns sees only the active campaign's data on every page
   3. Campaign list page displays all campaigns the authenticated user has membership in (not just the most recent)
   4. Settings button on the campaign page navigates correctly to campaign settings
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 Plans:
-- [ ] 39-01-PLAN.md — Fix RLS set_config transaction scoping & pool checkout event (DATA-01, DATA-02)
-- [ ] 39-02-PLAN.md — Centralize RLS context into get_campaign_db dependency (DATA-03)
-- [ ] 39-03-PLAN.md — Fix multi-campaign membership & data migration (DATA-04, DATA-05)
+- [x] 39-01-PLAN.md — Fix RLS set_config transaction scoping & pool checkout event (DATA-01, DATA-02)
+- [x] 39-02-PLAN.md — Centralize RLS context into get_campaign_db dependency (DATA-03)
+- [x] 39-03-PLAN.md — Fix multi-campaign membership & data migration (DATA-04, DATA-05)
 - [ ] 39-04-PLAN.md — Settings button guard & human verification (DATA-06)
 
 ### Phase 40: Production Hardening & Observability
@@ -248,7 +248,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 36. Google Maps Navigation Link | v1.4 | 2/2 | Complete | 2026-03-16 |
 | 37. Offline Sync Integration Fixes | v1.4 | 1/1 | Complete | 2026-03-16 |
 | 38. Tech Debt Cleanup | v1.4 | 2/2 | Complete | 2026-03-17 |
-| 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 0/0 | Not started | - |
+| 39. RLS Fix & Multi-Campaign Foundation | v1.5 | 3/4 | Complete    | 2026-03-24 |
 | 40. Production Hardening & Observability | v1.5 | 0/0 | Not started | - |
 | 41. Organization Data Model & Auth | v1.5 | 0/0 | Not started | - |
 | 42. Map-Based Turf Editor | v1.5 | 0/0 | Not started | - |
