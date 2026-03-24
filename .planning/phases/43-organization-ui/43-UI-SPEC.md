@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: new-york
 created: 2026-03-24
+revised: 2026-03-24
 ---
 
 # Phase 43 — UI Design Contract
@@ -39,24 +40,31 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Stats bar to card grid gap |
 | 3xl | 64px | Page-level top/bottom margins (not used in this phase) |
 
-Exceptions: 44px minimum touch target on org switcher dropdown trigger and mobile campaign card actions (three-dot menu).
+### Touch Targets
+
+| Element | Minimum Size | Notes |
+|---------|-------------|-------|
+| Org switcher dropdown trigger | 44px height | Ensure full trigger area is tappable |
+| Campaign card three-dot menu | 44x44px | Icon button with padding to meet target |
+| Wizard step dots | 44x44px | Tap area around each dot, even if visual dot is smaller |
 
 ---
 
 ## Typography
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px (text-sm) | 400 (normal) | 1.5 (20px) |
-| Label | 14px (text-sm) | 500 (medium) | 1.4 (20px) |
-| Heading | 24px (text-2xl) | 700 (bold) | 1.2 (29px) |
-| Display | 30px (text-3xl) | 700 (bold) | 1.2 (36px) |
+This phase uses exactly 4 font sizes and 2 font weights.
 
-Additional sizes used in this phase:
-- Stats bar numbers: 20px (text-xl) weight 600 (semibold), line-height 1.3
-- Card metadata (election date, member count): 12px (text-xs) weight 400, line-height 1.5
-- Wizard step labels: 14px (text-sm) weight 500 (medium), line-height 1.4
-- Role matrix cell text: 12px (text-xs) weight 400, line-height 1.5
+| Role | Size | Weight | Line Height | Usage |
+|------|------|--------|-------------|-------|
+| Body / Metadata | 14px (`text-sm`) | 400 (normal) | 1.5 (21px) | Body text, labels, wizard step labels, card metadata (election date, member count), role matrix cell text |
+| Heading / Stats | 24px (`text-2xl`) | 700 (bold) | 1.2 (29px) | Page headings, stats bar numbers |
+| Display | 30px (`text-3xl`) | 700 (bold) | 1.2 (36px) | Org name display on dashboard |
+| Small | 12px (`text-xs`) | 400 (normal) | 1.5 (18px) | Badge text, help text, timestamps |
+
+De-emphasis strategy: Card metadata (election date, member count) and role matrix cells use 14px at weight 400 with `text-muted-foreground` color to visually de-emphasize without introducing a separate size. Labels and wizard step labels also use 14px weight 400 with default foreground.
+
+**Sizes declared:** 12px, 14px, 24px, 30px (4 sizes)
+**Weights declared:** 400, 700 (2 weights)
 
 ---
 
@@ -71,14 +79,25 @@ Additional sizes used in this phase:
 
 Accent reserved for:
 - "Create Campaign" button on org dashboard
-- Wizard "Next" / "Create" step buttons
+- Wizard "Continue to Review" / "Continue to Invite" / "Create Campaign" step buttons
 - Active step dot in wizard progress indicator
 - Org switcher currently-selected org highlight
-- "Save" button on org settings page
+- "Save Changes" button on org settings page
 
 Status badge colors:
 - Active campaign: `variant="default"` (primary background) -- matches existing pattern
 - Archived campaign: `variant="secondary"` (muted background) -- matches existing pattern
+
+---
+
+## Focal Points
+
+| Screen | Primary Focal Point | Secondary Focal Point |
+|--------|--------------------|-----------------------|
+| Org dashboard (`/`) | "Create Campaign" button (accent, top-right of campaign grid area) | Stats bar (campaign count + member count) |
+| Campaign wizard (`/campaigns/new`) | Active wizard step content area | Step indicator dots |
+| Member directory (`/org/members`) | Member table (first visible rows) | "Add to Campaign" row actions |
+| Org settings (`/org/settings`) | Org name input field | Danger zone section (visual weight from destructive border) |
 
 ---
 
@@ -112,6 +131,7 @@ Status badge colors:
 | Status badge (archived) | `Archived` |
 | Election date | `Election: {formatted date}` |
 | Member count | `{N} members` |
+| Three-dot menu trigger | Icon-only `MoreHorizontal`, `aria-label="Campaign actions"` |
 | Three-dot menu: archive | `Archive Campaign` |
 | Three-dot menu: open | `Open Campaign` |
 
@@ -121,7 +141,7 @@ Status badge colors:
 |---------|------|
 | Title | `Archive {Campaign Name}?` |
 | Body | `Archived campaigns become read-only. Team members will still be able to view data but cannot make changes.` |
-| Cancel button | `Cancel` |
+| Dismiss button | `Keep Campaign` |
 | Confirm button | `Archive Campaign` (destructive variant) |
 
 ### Campaign Creation Wizard (/campaigns/new)
@@ -139,8 +159,8 @@ Status badge colors:
 | Step 3 body | `Select existing org members to add to this campaign. You can always add more later.` |
 | Step 3 empty | `No other members in your organization yet.` |
 | Back button | `Back` |
-| Next button (step 1) | `Continue` |
-| Next button (step 2) | `Continue` |
+| Next button (step 1) | `Continue to Review` |
+| Next button (step 2) | `Continue to Invite` |
 | Submit button (step 3) | `Create Campaign` |
 | Skip link (step 3) | `Skip — create without inviting` |
 | Error: creation failed | `Failed to create campaign. Check your connection and try again.` |
@@ -215,7 +235,7 @@ Components needed for this phase, mapped to existing shadcn components or new cu
 | `CampaignWizard` | 3-step wizard container. Manages step state, validation per step, and form data across steps. Uses react-hook-form with zod. |
 | `WizardStepIndicator` | Numbered dot progress indicator (1 · 2 · 3). Active step: primary fill. Completed: primary fill + check. Upcoming: muted border only. |
 | `StatsBar` | Horizontal bar above campaign grid. Shows campaign count + member count. Muted background, rounded corners. |
-| `CampaignCard` | Enhanced version of existing campaign card. Adds member count, election date, three-dot menu with archive action. |
+| `CampaignCard` | Enhanced version of existing campaign card. Adds member count, election date, three-dot menu with archive action. Three-dot trigger uses `aria-label="Campaign actions"`. |
 | `RoleMatrixTable` | Table component for member directory. Dynamic columns based on campaign count. Horizontal scroll on overflow. |
 | `AddToCampaignDialog` | Dialog with campaign checkbox list + role select per campaign. Confirm adds member to selected campaigns. |
 | `DangerZone` | Red-bordered section with disabled destructive actions. Follows campaign settings danger zone pattern. |
@@ -233,12 +253,12 @@ Components needed for this phase, mapped to existing shadcn components or new cu
 ### Campaign Card Grid
 - Layout: CSS grid `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` with `gap-4` (16px)
 - Card click: Navigate to `/campaigns/{id}/dashboard`
-- Three-dot menu: Click to open dropdown (stopPropagation to avoid card navigation)
+- Three-dot menu: Click to open dropdown (stopPropagation to avoid card navigation). Trigger uses `aria-label="Campaign actions"` for screen readers.
 - Archive action: Opens confirmation dialog
 - Hover: `hover:border-primary/50` transition (matches existing pattern)
 
 ### Campaign Creation Wizard
-- Step navigation: "Continue" advances, "Back" retreats, browser back goes to previous step
+- Step navigation: "Continue to Review" advances from step 1, "Continue to Invite" advances from step 2, "Back" retreats, browser back goes to previous step
 - Validation: Per-step validation on "Continue" click. Step 1 requires name + type. Step 2 is review only. Step 3 is optional.
 - Skip: Step 3 "Skip" link submits without team invites
 - Form guard: `useFormGuard` prevents accidental navigation away from partially filled wizard
@@ -257,7 +277,7 @@ Components needed for this phase, mapped to existing shadcn components or new cu
 
 ### Archive Campaign
 - Trigger: Three-dot menu -> "Archive Campaign"
-- Confirmation: Dialog with campaign name in title. Destructive-variant confirm button.
+- Confirmation: Dialog with campaign name in title. Destructive-variant confirm button. Dismiss button reads "Keep Campaign".
 - Result: Campaign moves to archived section. Toast: `{Campaign Name} archived.`
 - Undo: Not supported in this phase (archived section has no "unarchive" action yet)
 
