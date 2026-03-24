@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 
 function SurveysLayout() {
   return <Outlet />
@@ -6,4 +7,5 @@ function SurveysLayout() {
 
 export const Route = createFileRoute("/campaigns/$campaignId/surveys")({
   component: SurveysLayout,
+  errorComponent: RouteErrorBoundary,
 })
