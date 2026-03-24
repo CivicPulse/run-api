@@ -127,7 +127,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 41 complete — added organization data model and auth (OrganizationMember table with org_owner/org_admin roles, additive org role resolution in resolve_campaign_role(), require_org_role() auth dependency, 3 read-only org API endpoints, seed migration for org_owner). 41 phases, 123 plans shipped. Map-based turf editor and organization UI are the next major features. WCAG + UX audit and E2E test coverage complete the milestone.
+Phase 42 complete — shipped map-based turf editor with Leaflet/Geoman polygon draw/edit replacing raw GeoJSON textarea, overview map with color-coded turfs and clustered voter markers, GeoJSON import/export, Nominatim address geocoding, overlap visual highlighting, and satellite tile toggle (MAP-01 through MAP-11). 42 phases, 127 plans shipped. Organization UI is the next major feature. WCAG + UX audit and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -193,4 +193,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-24 — Phase 41 complete, v1.5 in progress*
+*Last updated: 2026-03-24 — Phase 42 complete, v1.5 in progress*
