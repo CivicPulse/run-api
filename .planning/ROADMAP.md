@@ -262,7 +262,9 @@ Plans:
   1. Single Playwright spec completes: org dashboard → campaign creation → turf creation → voter search → phone bank session
   2. Campaign creation form submission (POST to `/api/v1/campaigns`) and redirect to new campaign dashboard is verified
   3. Spec runs in CI alongside existing E2E suite
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 48-01-PLAN.md — Connected E2E journey spec: org dashboard through phone bank (TEST-01)
 
 ## Progress
 
@@ -318,4 +320,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
 | 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
 | 47. Integration Consistency & Documentation Cleanup | v1.5 | 4/4 | Complete    | 2026-03-25 |
-| 48. Connected E2E Journey Spec | v1.5 | 0/0 | Pending | — |
+| 48. Connected E2E Journey Spec | v1.5 | 0/1 | Pending | — |
