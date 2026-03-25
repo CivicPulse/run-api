@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.models.survey import ScriptStatus
 from app.schemas.common import PaginationResponse
@@ -40,7 +41,9 @@ _service = SurveyService()
     response_model=ScriptResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_script(
+    request: Request,
     campaign_id: uuid.UUID,
     body: ScriptCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -64,7 +67,9 @@ async def create_script(
     "/campaigns/{campaign_id}/surveys",
     response_model=ScriptListResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_scripts(
+    request: Request,
     campaign_id: uuid.UUID,
     status_filter: str | None = None,
     cursor: str | None = None,
@@ -106,7 +111,9 @@ async def list_scripts(
     "/campaigns/{campaign_id}/surveys/{script_id}",
     response_model=ScriptDetailResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_script(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -134,7 +141,9 @@ async def get_script(
     "/campaigns/{campaign_id}/surveys/{script_id}",
     response_model=ScriptResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_script(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     body: ScriptUpdate,
@@ -162,7 +171,9 @@ async def update_script(
     "/campaigns/{campaign_id}/surveys/{script_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_script(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -193,7 +204,9 @@ async def delete_script(
     response_model=QuestionResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_question(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     body: QuestionCreate,
@@ -221,7 +234,9 @@ async def add_question(
     "/campaigns/{campaign_id}/surveys/{script_id}/questions/{question_id}",
     response_model=QuestionResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_question(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     question_id: uuid.UUID,
@@ -250,7 +265,9 @@ async def update_question(
     "/campaigns/{campaign_id}/surveys/{script_id}/questions/{question_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_question(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     question_id: uuid.UUID,
@@ -276,7 +293,9 @@ async def delete_question(
     "/campaigns/{campaign_id}/surveys/{script_id}/questions/order",
     response_model=list[QuestionResponse],
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def reorder_questions(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     question_ids: list[uuid.UUID],
@@ -310,7 +329,9 @@ async def reorder_questions(
     response_model=list[SurveyResponseOut],
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def record_batch_responses(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     body: BatchResponseCreate,
@@ -343,7 +364,9 @@ async def record_batch_responses(
     "/campaigns/{campaign_id}/surveys/{script_id}/voters/{voter_id}/responses",
     response_model=list[SurveyResponseOut],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_voter_responses(
+    request: Request,
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     voter_id: uuid.UUID,

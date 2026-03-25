@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.shift import (
@@ -69,7 +70,9 @@ def _shift_to_response(shift_data: dict) -> ShiftResponse:
     response_model=ShiftResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_shift(
+    request: Request,
     campaign_id: uuid.UUID,
     body: ShiftCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -91,7 +94,9 @@ async def create_shift(
     "/campaigns/{campaign_id}/shifts",
     response_model=PaginatedResponse[ShiftResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_shifts(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_status: str | None = Query(None, alias="status"),
     shift_type: str | None = Query(None, alias="type"),
@@ -127,7 +132,9 @@ async def list_shifts(
     "/campaigns/{campaign_id}/shifts/{shift_id}",
     response_model=ShiftResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_shift(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -153,7 +160,9 @@ async def get_shift(
     "/campaigns/{campaign_id}/shifts/{shift_id}",
     response_model=ShiftResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_shift(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     body: ShiftUpdate,
@@ -183,7 +192,9 @@ async def update_shift(
     "/campaigns/{campaign_id}/shifts/{shift_id}/status",
     response_model=ShiftResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_shift_status(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     body: ShiftStatusUpdate,
@@ -213,7 +224,9 @@ async def update_shift_status(
     "/campaigns/{campaign_id}/shifts/{shift_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_shift(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -247,7 +260,9 @@ async def delete_shift(
     response_model=ShiftSignupResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def signup_for_shift(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -296,7 +311,9 @@ async def signup_for_shift(
     response_model=ShiftSignupResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def assign_volunteer(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
@@ -325,7 +342,9 @@ async def assign_volunteer(
     "/campaigns/{campaign_id}/shifts/{shift_id}/signup",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def cancel_self_signup(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -376,7 +395,9 @@ async def cancel_self_signup(
     "/campaigns/{campaign_id}/shifts/{shift_id}/volunteers/{volunteer_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def manager_remove_volunteer(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
@@ -412,7 +433,9 @@ async def manager_remove_volunteer(
     "/campaigns/{campaign_id}/shifts/{shift_id}/check-in/{volunteer_id}",
     response_model=CheckInResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def check_in(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
@@ -441,7 +464,9 @@ async def check_in(
     "/campaigns/{campaign_id}/shifts/{shift_id}/check-out/{volunteer_id}",
     response_model=CheckInResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def check_out(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
@@ -475,7 +500,9 @@ async def check_out(
     "/campaigns/{campaign_id}/shifts/{shift_id}/volunteers/{volunteer_id}/hours",
     response_model=CheckInResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def adjust_hours(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
@@ -512,7 +539,9 @@ async def adjust_hours(
     "/campaigns/{campaign_id}/shifts/{shift_id}/volunteers",
     response_model=list[ShiftSignupResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_shift_volunteers(
+    request: Request,
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
