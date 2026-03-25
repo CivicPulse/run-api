@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.models.turf import Turf, TurfStatus
 from app.models.voter import Voter
 from app.schemas.common import PaginatedResponse, PaginationResponse
@@ -114,16 +113,13 @@ async def get_turf_overlaps(
     boundary: str = Query(..., description="GeoJSON geometry JSON string"),
     exclude_turf_id: uuid.UUID | None = Query(None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Detect active turfs that overlap a given boundary.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         geojson = json.loads(boundary)
         wkb_boundary = _validate_polygon(geojson)
@@ -163,16 +159,13 @@ async def get_turf_voters(
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get voters within a turf boundary for map markers.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     turf = await _service.get_turf(db, turf_id)
     if turf is None:
         return problem.ProblemResponse(
