@@ -137,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 45 complete — WCAG compliance audit shipped with 4 shared a11y components (SkipNav, VisuallyHidden, LiveRegion, FocusScope), ARIA landmarks on root layout, muted-foreground contrast fix, map accessibility (skip-nav + GeoJSON panel), 38-route parameterized axe-core scan, D-10 focus management, and 5 screen reader flow tests (A11Y-01 through A11Y-04). 45 phases, 140 plans shipped. E2E testing & integration is next to complete the milestone.
+Phase 46 complete — v1.5 milestone shipped. E2E testing & integration delivered 9 Playwright critical flow specs (login, voter search, voter import, turf creation, phone bank, volunteer signup + auth setup), API-level RLS smoke tests with real DB, 15 converted integration tests (canvassing + phone banking polish), and a GitHub Actions CI job running the full E2E + integration suite against Docker Compose. 46 phases, 144 plans shipped across 6 milestones.
 
 ## Context
 
@@ -203,4 +203,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-24 — Phase 42 complete, v1.5 in progress*
+*Last updated: 2026-03-25 — Phase 46 complete, v1.5 milestone shipped*
