@@ -62,10 +62,10 @@
 
 ## WCAG Compliance (A11Y)
 
-- [ ] **A11Y-01**: axe-core automated scan passes on all admin routes with zero critical/serious violations
-- [ ] **A11Y-02**: Screen reader testing passes on 5 critical flows (voter search, import, walk list create, phone bank, campaign settings)
-- [ ] **A11Y-03**: Keyboard navigation works for all interactive components (no focus traps, visible focus indicators)
-- [ ] **A11Y-04**: Map component has skip-nav link and all CRUD operations work without the map (JSON fallback)
+- [x] **A11Y-01**: axe-core automated scan passes on all admin routes with zero critical/serious violations
+- [x] **A11Y-02**: Screen reader testing passes on 5 critical flows (voter search, import, walk list create, phone bank, campaign settings)
+- [x] **A11Y-03**: Keyboard navigation works for all interactive components (no focus traps, visible focus indicators)
+- [x] **A11Y-04**: Map component has skip-nav link and all CRUD operations work without the map (JSON fallback)
 
 ## Testing (TEST)
 
