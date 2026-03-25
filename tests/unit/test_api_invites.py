@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import settings
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.core.time import utcnow
 from app.db.session import get_db
@@ -16,6 +17,13 @@ from app.main import create_app
 from app.models.invite import Invite
 
 CAMPAIGN_ID = uuid.uuid4()
+TEST_PROJECT_ID = "test-project-id"
+
+
+@pytest.fixture(autouse=True)
+def _patch_project_id(monkeypatch):
+    """Pin zitadel_project_id so tests are environment-independent."""
+    monkeypatch.setattr(settings, "zitadel_project_id", TEST_PROJECT_ID)
 
 
 def _make_user(
@@ -193,7 +201,7 @@ class TestAcceptInviteEndpoint:
         assert data["message"] == "Invite accepted successfully"
         assert data["role"] == "manager"
         mock_zitadel.assign_project_role.assert_awaited_once_with(
-            "",  # settings.zitadel_project_id (default empty in tests)
+            TEST_PROJECT_ID,
             "user-1",
             "manager",
             project_grant_id=None,

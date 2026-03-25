@@ -9,6 +9,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import get_campaign_db
+from app.core.config import settings
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.core.time import utcnow
 from app.db.session import get_db
@@ -19,6 +20,13 @@ from app.models.user import User
 
 CAMPAIGN_ID = uuid.uuid4()
 ORG_ID = "org-test-123"
+TEST_PROJECT_ID = "test-project-id"
+
+
+@pytest.fixture(autouse=True)
+def _patch_project_id(monkeypatch):
+    """Pin zitadel_project_id so tests are environment-independent."""
+    monkeypatch.setattr(settings, "zitadel_project_id", TEST_PROJECT_ID)
 
 
 def _make_user(
@@ -213,12 +221,12 @@ class TestUpdateMemberRole:
         assert resp.status_code == 200
         assert resp.json()["role"] == "manager"
         mock_zitadel.remove_all_project_roles.assert_awaited_once_with(
-            "",  # settings.zitadel_project_id (default empty in tests)
+            TEST_PROJECT_ID,
             "member-1",
             org_id=ORG_ID,
         )
         mock_zitadel.assign_project_role.assert_awaited_once_with(
-            "",
+            TEST_PROJECT_ID,
             "member-1",
             "manager",
             org_id=ORG_ID,
@@ -339,17 +347,17 @@ class TestTransferOwnership:
         # 2. Remove target's old role → assign "owner"
         assert mock_zitadel.remove_project_role.await_count == 2
         mock_zitadel.remove_project_role.assert_any_await(
-            "", "owner-1", "owner", org_id=ORG_ID
+            TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
         )
         mock_zitadel.remove_project_role.assert_any_await(
-            "", "new-owner", "viewer", org_id=ORG_ID
+            TEST_PROJECT_ID, "new-owner", "viewer", org_id=ORG_ID
         )
         assert mock_zitadel.assign_project_role.await_count == 2
         mock_zitadel.assign_project_role.assert_any_await(
-            "", "owner-1", "admin", org_id=ORG_ID
+            TEST_PROJECT_ID, "owner-1", "admin", org_id=ORG_ID
         )
         mock_zitadel.assign_project_role.assert_any_await(
-            "", "new-owner", "owner", org_id=ORG_ID
+            TEST_PROJECT_ID, "new-owner", "owner", org_id=ORG_ID
         )
 
     async def test_non_owner_cannot_transfer(self, mock_db, mock_zitadel):
@@ -413,15 +421,15 @@ class TestTransferOwnership:
         # Verify rollback calls restore original state:
         # Undo step 1: remove admin from old owner, restore owner
         mock_zitadel.remove_project_role.assert_any_await(
-            "", "owner-1", "admin", org_id=ORG_ID
+            TEST_PROJECT_ID, "owner-1", "admin", org_id=ORG_ID
         )
         mock_zitadel.assign_project_role.assert_any_await(
-            "", "owner-1", "owner", org_id=ORG_ID
+            TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
         )
         # Undo step 2: remove owner from target, restore target's old role
         mock_zitadel.remove_project_role.assert_any_await(
-            "", "new-owner", "owner", org_id=ORG_ID
+            TEST_PROJECT_ID, "new-owner", "owner", org_id=ORG_ID
         )
         mock_zitadel.assign_project_role.assert_any_await(
-            "", "new-owner", "manager", org_id=ORG_ID
+            TEST_PROJECT_ID, "new-owner", "manager", org_id=ORG_ID
         )
