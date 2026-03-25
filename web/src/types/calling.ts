@@ -11,14 +11,14 @@ export type CallResultCode =
   | "wrong_number" | "refused" | "deceased" | "disconnected"
 
 export const CALL_OUTCOME_CONFIGS: OutcomeConfig[] = [
-  { code: "answered",     label: "Answered",     color: { bg: "bg-green-100", text: "text-green-800", border: "border-green-300" } },
-  { code: "no_answer",    label: "No Answer",    color: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" } },
-  { code: "busy",         label: "Busy",         color: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" } },
-  { code: "voicemail",    label: "Voicemail",    color: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" } },
-  { code: "wrong_number", label: "Wrong #",      color: { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" } },
-  { code: "refused",      label: "Refused",      color: { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" } },
-  { code: "deceased",     label: "Deceased",     color: { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" } },
-  { code: "disconnected", label: "Disconnected", color: { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" } },
+  { code: "answered",     label: "Answered",     color: { bg: "bg-status-success", text: "text-status-success-foreground", border: "border-status-success-foreground/30" } },
+  { code: "no_answer",    label: "No Answer",    color: { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" } },
+  { code: "busy",         label: "Busy",         color: { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" } },
+  { code: "voicemail",    label: "Voicemail",    color: { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" } },
+  { code: "wrong_number", label: "Wrong #",      color: { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" } },
+  { code: "refused",      label: "Refused",      color: { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" } },
+  { code: "deceased",     label: "Deceased",     color: { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" } },
+  { code: "disconnected", label: "Disconnected", color: { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" } },
 ]
 
 // Survey triggers on ANSWERED only

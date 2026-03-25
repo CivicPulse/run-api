@@ -174,7 +174,7 @@ function RowActions({
       <RequireRole minimum="manager">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" className="h-8 w-8 min-h-11 min-w-11 p-0">
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>

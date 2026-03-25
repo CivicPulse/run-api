@@ -22,7 +22,7 @@ const CONTENT: Record<QuickStartCardProps["type"], string[]> = {
 
 export function QuickStartCard({ type, onDismiss }: QuickStartCardProps) {
   return (
-    <Card className="relative mb-4 border-blue-200 bg-blue-50 p-3">
+    <Card className="relative mb-4 border-status-info-foreground/30 bg-status-info p-3">
       <Button
         variant="ghost"
         size="icon"
@@ -32,7 +32,7 @@ export function QuickStartCard({ type, onDismiss }: QuickStartCardProps) {
       >
         <X className="h-4 w-4" />
       </Button>
-      <ul className="space-y-1 pr-8 text-sm text-blue-900">
+      <ul className="space-y-1 pr-8 text-sm text-status-info-foreground">
         {CONTENT[type].map((tip) => (
           <li key={tip}>&#8226; {tip}</li>
         ))}

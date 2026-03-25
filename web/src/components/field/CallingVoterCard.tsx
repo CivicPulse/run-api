@@ -103,10 +103,10 @@ export function CallingVoterCard({
       <div className="flex items-center gap-2 mt-1">
         {voterLoading ? (
           <>
-            <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-400">
+            <Badge className="text-xs px-2 py-0.5 bg-status-neutral text-status-neutral-foreground">
               ...
             </Badge>
-            <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-400">
+            <Badge className="text-xs px-2 py-0.5 bg-status-neutral text-status-neutral-foreground">
               ...
             </Badge>
           </>

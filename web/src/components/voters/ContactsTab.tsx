@@ -97,9 +97,9 @@ function PhoneForm({ defaultValues, onSave, onCancel, isPending }: PhoneFormProp
           {errors.value && <p className="text-xs text-destructive">{errors.value.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Type</Label>
+          <Label htmlFor="phone-type" className="text-xs">Type</Label>
           <Select value={typeValue} onValueChange={(v) => setValue("type", v)} disabled={isPending}>
-            <SelectTrigger>
+            <SelectTrigger id="phone-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -143,9 +143,9 @@ function EmailForm({ defaultValues, onSave, onCancel, isPending }: EmailFormProp
           {errors.value && <p className="text-xs text-destructive">{errors.value.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Type</Label>
+          <Label htmlFor="email-type" className="text-xs">Type</Label>
           <Select value={typeValue} onValueChange={(v) => setValue("type", v)} disabled={isPending}>
-            <SelectTrigger>
+            <SelectTrigger id="email-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -210,9 +210,9 @@ function AddressForm({ defaultValues, onSave, onCancel, isPending }: AddressForm
           </div>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Type</Label>
+          <Label htmlFor="address-type" className="text-xs">Type</Label>
           <Select value={typeValue} onValueChange={(v) => setValue("type", v)} disabled={isPending}>
-            <SelectTrigger>
+            <SelectTrigger id="address-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -314,7 +314,7 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
                 <button
                   onClick={() => setPrimary.mutate({ contactType: "phones", contactId: phone.id })}
                   disabled={setPrimary.isPending}
-                  className="shrink-0 text-muted-foreground hover:text-amber-500 disabled:opacity-50"
+                  className="shrink-0 text-muted-foreground hover:text-status-warning-foreground disabled:opacity-50"
                   aria-label={phone.is_primary ? "Primary phone" : "Set as primary"}
                 >
                   <Star
@@ -459,7 +459,7 @@ function EmailSection({ campaignId, voterId, emails, setPrimary }: EmailSectionP
                 <button
                   onClick={() => setPrimary.mutate({ contactType: "emails", contactId: email.id })}
                   disabled={setPrimary.isPending}
-                  className="shrink-0 text-muted-foreground hover:text-amber-500 disabled:opacity-50"
+                  className="shrink-0 text-muted-foreground hover:text-status-warning-foreground disabled:opacity-50"
                   aria-label={email.is_primary ? "Primary email" : "Set as primary"}
                 >
                   <Star
@@ -631,7 +631,7 @@ function AddressSection({ campaignId, voterId, addresses, setPrimary }: AddressS
                 <button
                   onClick={() => setPrimary.mutate({ contactType: "addresses", contactId: address.id })}
                   disabled={setPrimary.isPending}
-                  className="shrink-0 text-muted-foreground hover:text-amber-500 disabled:opacity-50"
+                  className="shrink-0 text-muted-foreground hover:text-status-warning-foreground disabled:opacity-50"
                   aria-label={address.is_primary ? "Primary address" : "Set as primary"}
                 >
                   <Star

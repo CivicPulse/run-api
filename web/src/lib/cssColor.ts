@@ -1,7 +1,7 @@
 /**
  * Resolve a CSS custom property to a hex color string usable by non-CSS
  * consumers (Leaflet, canvas, etc.).  Results are cached per variable name
- * and invalidated when the theme class changes (light ↔ dark).
+ * and invalidated when the theme class changes (light / dark).
  */
 
 let lastTheme: string | null = null
@@ -11,11 +11,21 @@ function currentTheme(): string {
   return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
 
-/** Convert any CSS color value to #rrggbb using an offscreen canvas. */
+/**
+ * Convert any CSS color value (including oklch) to #rrggbb by rasterising
+ * a single pixel on an offscreen canvas and reading back the RGB values.
+ * Modern Chrome preserves oklch in fillStyle / getComputedStyle, so we
+ * cannot rely on the older fillStyle-normalisation trick.
+ */
 function toHex(cssColor: string): string {
-  const ctx = document.createElement("canvas").getContext("2d")!
+  const canvas = document.createElement("canvas")
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext("2d")!
   ctx.fillStyle = cssColor
-  return ctx.fillStyle // browsers normalise to #rrggbb
+  ctx.fillRect(0, 0, 1, 1)
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+  return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")
 }
 
 /**

@@ -72,6 +72,6 @@ describe("CALL_OUTCOME_CONFIGS", () => {
 
   it("answered has green color", () => {
     const answered = CALL_OUTCOME_CONFIGS.find((c) => c.code === "answered")
-    expect(answered?.color.bg).toBe("bg-green-100")
+    expect(answered?.color.bg).toBe("bg-status-success")
   })
 })

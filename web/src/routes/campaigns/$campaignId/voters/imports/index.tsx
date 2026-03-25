@@ -83,7 +83,7 @@ function ImportsHistoryPage() {
         const count = row.original.phones_created
         if (count === null) return <span className="text-muted-foreground">{"\u2014"}</span>
         if (count === 0) return null
-        return <span className="font-medium text-blue-600">{count.toLocaleString()}</span>
+        return <span className="font-medium text-status-info-foreground">{count.toLocaleString()}</span>
       },
     },
     {
@@ -100,7 +100,7 @@ function ImportsHistoryPage() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" className="h-8 w-8 min-h-11 min-w-11 p-0">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="size-4" />
               </Button>

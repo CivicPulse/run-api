@@ -28,14 +28,14 @@ function getHouseholdStatus(
     (e) => completedEntries[e.id] !== undefined,
   )
   if (allVisited) {
-    return { label: "Visited", className: "bg-green-100 text-green-800 border-transparent" }
+    return { label: "Visited", className: "bg-status-success text-status-success-foreground border-transparent" }
   }
 
   const allSkipped = household.entries.every((e) =>
     skippedEntries.includes(e.id),
   )
   if (allSkipped) {
-    return { label: "Skipped", className: "bg-gray-100 text-gray-700 border-transparent" }
+    return { label: "Skipped", className: "bg-status-neutral text-status-neutral-foreground border-transparent" }
   }
 
   return { label: "Pending", className: "" }

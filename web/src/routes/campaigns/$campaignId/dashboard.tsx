@@ -106,33 +106,46 @@ function CanvassingTab({ campaignId }: { campaignId: string }) {
               No canvassing data yet
             </p>
           ) : (
-            <div role="img" aria-label="Bar chart showing top canvassers by doors knocked and contacts made">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="doors_knocked"
-                    name="Doors Knocked"
-                    fill="var(--chart-1)"
-                  />
-                  <Bar
-                    dataKey="contacts_made"
-                    name="Contacts Made"
-                    fill="var(--chart-2)"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            <div>
+              <div aria-hidden="true">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-30}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="doors_knocked"
+                      name="Doors Knocked"
+                      fill="var(--chart-1)"
+                    />
+                    <Bar
+                      dataKey="contacts_made"
+                      name="Contacts Made"
+                      fill="var(--chart-2)"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <table className="sr-only">
+                <caption>Top canvassers by doors knocked and contacts made</caption>
+                <thead>
+                  <tr><th>Canvasser</th><th>Doors Knocked</th><th>Contacts Made</th></tr>
+                </thead>
+                <tbody>
+                  {chartData.map((row) => (
+                    <tr key={row.name}><td>{row.name}</td><td>{row.doors_knocked}</td><td>{row.contacts_made}</td></tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
@@ -231,33 +244,46 @@ function PhoneBankingTab({ campaignId }: { campaignId: string }) {
               No phone banking data yet
             </p>
           ) : (
-            <div role="img" aria-label="Bar chart showing calls made and contacts reached by session">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={sessionChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="calls_made"
-                    name="Calls Made"
-                    fill="var(--chart-1)"
-                  />
-                  <Bar
-                    dataKey="contacts_reached"
-                    name="Contacts Reached"
-                    fill="var(--chart-3)"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            <div>
+              <div aria-hidden="true">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={sessionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-30}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="calls_made"
+                      name="Calls Made"
+                      fill="var(--chart-1)"
+                    />
+                    <Bar
+                      dataKey="contacts_reached"
+                      name="Contacts Reached"
+                      fill="var(--chart-3)"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <table className="sr-only">
+                <caption>Calls made and contacts reached by session</caption>
+                <thead>
+                  <tr><th>Session</th><th>Calls Made</th><th>Contacts Reached</th></tr>
+                </thead>
+                <tbody>
+                  {sessionChartData.map((row) => (
+                    <tr key={row.name}><td>{row.name}</td><td>{row.calls_made}</td><td>{row.contacts_reached}</td></tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

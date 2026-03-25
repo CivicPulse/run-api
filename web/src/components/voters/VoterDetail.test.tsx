@@ -129,17 +129,17 @@ function PropensityBadge({
 }) {
   if (score === null || score === undefined) {
     return (
-      <Badge variant="secondary" className="bg-gray-100 text-gray-500">
+      <Badge variant="secondary" className="bg-status-neutral text-status-neutral-foreground">
         {label}: N/A
       </Badge>
     )
   }
   const color =
     score >= 67
-      ? "bg-green-100 text-green-800"
+      ? "bg-status-success text-status-success-foreground"
       : score >= 34
-        ? "bg-yellow-100 text-yellow-800"
-        : "bg-red-100 text-red-800"
+        ? "bg-status-warning text-status-warning-foreground"
+        : "bg-status-error text-status-error-foreground"
   return <Badge className={color}>{label}: {score}</Badge>
 }
 
@@ -172,49 +172,49 @@ function hasAnyValue(...values: unknown[]): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("FRNT-01: PropensityBadge — color-coded score thresholds", () => {
-  it("shows green styling for score >= 67", () => {
+  it("shows success styling for score >= 67", () => {
     const { container } = render(<PropensityBadge score={80} label="General" />)
-    const badge = container.querySelector("[class*='green']")
+    const badge = container.querySelector("[class*='status-success']")
     expect(badge).toBeTruthy()
     expect(badge!.textContent).toContain("80")
   })
 
-  it("shows yellow styling for score 34-66", () => {
+  it("shows warning styling for score 34-66", () => {
     const { container } = render(<PropensityBadge score={50} label="Primary" />)
-    const badge = container.querySelector("[class*='yellow']")
+    const badge = container.querySelector("[class*='status-warning']")
     expect(badge).toBeTruthy()
     expect(badge!.textContent).toContain("50")
   })
 
-  it("shows red styling for score below 34", () => {
+  it("shows error styling for score below 34", () => {
     const { container } = render(<PropensityBadge score={20} label="Combined" />)
-    const badge = container.querySelector("[class*='red']")
+    const badge = container.querySelector("[class*='status-error']")
     expect(badge).toBeTruthy()
     expect(badge!.textContent).toContain("20")
   })
 
-  it("shows N/A with grey styling for null score", () => {
+  it("shows N/A with neutral styling for null score", () => {
     const { container } = render(<PropensityBadge score={null} label="General" />)
-    const badge = container.querySelector("[class*='gray']")
+    const badge = container.querySelector("[class*='status-neutral']")
     expect(badge).toBeTruthy()
     expect(badge!.textContent).toContain("N/A")
   })
 
-  it("uses green at exactly 67 (lower boundary)", () => {
+  it("uses success at exactly 67 (lower boundary)", () => {
     const { container } = render(<PropensityBadge score={67} label="General" />)
-    const badge = container.querySelector("[class*='green']")
+    const badge = container.querySelector("[class*='status-success']")
     expect(badge).toBeTruthy()
   })
 
-  it("uses yellow at exactly 34 (lower boundary)", () => {
+  it("uses warning at exactly 34 (lower boundary)", () => {
     const { container } = render(<PropensityBadge score={34} label="General" />)
-    const badge = container.querySelector("[class*='yellow']")
+    const badge = container.querySelector("[class*='status-warning']")
     expect(badge).toBeTruthy()
   })
 
-  it("uses red at exactly 33 (just below yellow threshold)", () => {
+  it("uses error at exactly 33 (just below warning threshold)", () => {
     const { container } = render(<PropensityBadge score={33} label="General" />)
-    const badge = container.querySelector("[class*='red']")
+    const badge = container.querySelector("[class*='status-error']")
     expect(badge).toBeTruthy()
   })
 })

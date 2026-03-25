@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { GeoJSON } from "react-leaflet"
 import { resolveCssColor } from "@/lib/cssColor"
 import type { OverlappingTurf } from "@/types/turf"
@@ -6,20 +7,19 @@ interface OverlapHighlightProps {
   overlaps: OverlappingTurf[]
 }
 
-function getOverlapStyle() {
-  return {
-    fillColor: resolveCssColor("--overlap-fill"),
-    color: resolveCssColor("--overlap-stroke"),
-    weight: 2,
-    fillOpacity: 0.3,
-    dashArray: "5 5",
-  }
-}
-
 export function OverlapHighlight({ overlaps }: OverlapHighlightProps) {
-  if (overlaps.length === 0) return null
+  const overlapStyle = useMemo(
+    () => ({
+      fillColor: resolveCssColor("--overlap-fill"),
+      color: resolveCssColor("--overlap-stroke"),
+      weight: 2,
+      fillOpacity: 0.3,
+      dashArray: "5 5",
+    }),
+    [],
+  )
 
-  const overlapStyle = getOverlapStyle()
+  if (overlaps.length === 0) return null
 
   return (
     <>

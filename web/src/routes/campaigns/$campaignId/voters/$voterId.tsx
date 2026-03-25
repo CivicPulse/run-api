@@ -49,17 +49,17 @@ function PropensityBadge({
 }) {
   if (score === null || score === undefined) {
     return (
-      <Badge variant="secondary" className="bg-gray-100 text-gray-500">
+      <Badge variant="secondary" className="bg-status-neutral text-status-neutral-foreground">
         {label}: N/A
       </Badge>
     )
   }
   const color =
     score >= 67
-      ? "bg-green-100 text-green-800"
+      ? "bg-status-success text-status-success-foreground"
       : score >= 34
-        ? "bg-yellow-100 text-yellow-800"
-        : "bg-red-100 text-red-800"
+        ? "bg-status-warning text-status-warning-foreground"
+        : "bg-status-error text-status-error-foreground"
   return <Badge className={color}>{label}: {score}</Badge>
 }
 

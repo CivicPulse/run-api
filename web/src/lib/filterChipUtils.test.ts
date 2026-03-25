@@ -67,24 +67,24 @@ describe("formatMultiSelectChip", () => {
 // ─── CATEGORY_CLASSES ────────────────────────────────────────────────────────
 
 describe("CATEGORY_CLASSES", () => {
-  it("maps demographics to blue classes", () => {
-    expect(CATEGORY_CLASSES.demographics).toContain("bg-blue-100")
-    expect(CATEGORY_CLASSES.demographics).toContain("text-blue-800")
+  it("maps demographics to info status tokens", () => {
+    expect(CATEGORY_CLASSES.demographics).toContain("bg-status-info")
+    expect(CATEGORY_CLASSES.demographics).toContain("text-status-info-foreground")
   })
 
-  it("maps location to green classes", () => {
-    expect(CATEGORY_CLASSES.location).toContain("bg-green-100")
-    expect(CATEGORY_CLASSES.location).toContain("text-green-800")
+  it("maps location to success status tokens", () => {
+    expect(CATEGORY_CLASSES.location).toContain("bg-status-success")
+    expect(CATEGORY_CLASSES.location).toContain("text-status-success-foreground")
   })
 
-  it("maps scoring to amber classes", () => {
-    expect(CATEGORY_CLASSES.scoring).toContain("bg-amber-100")
-    expect(CATEGORY_CLASSES.scoring).toContain("text-amber-800")
+  it("maps scoring to warning status tokens", () => {
+    expect(CATEGORY_CLASSES.scoring).toContain("bg-status-warning")
+    expect(CATEGORY_CLASSES.scoring).toContain("text-status-warning-foreground")
   })
 
-  it("maps voting to purple classes", () => {
-    expect(CATEGORY_CLASSES.voting).toContain("bg-purple-100")
-    expect(CATEGORY_CLASSES.voting).toContain("text-purple-800")
+  it("maps voting to error status tokens", () => {
+    expect(CATEGORY_CLASSES.voting).toContain("bg-status-error")
+    expect(CATEGORY_CLASSES.voting).toContain("text-status-error-foreground")
   })
 
   it("maps other to empty string", () => {

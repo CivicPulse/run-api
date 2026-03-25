@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { GeoJSON, Popup, useMap } from "react-leaflet"
 import { Link } from "@tanstack/react-router"
 import L from "leaflet"
@@ -60,30 +60,33 @@ function OverviewMapContent({
     }
   }, [turfs, map])
 
+  // Memoize style map so GeoJSON layers don't get new objects each render
+  const turfStyles = useMemo(
+    () =>
+      Object.fromEntries(
+        turfs.map((turf) => {
+          const colors = getTurfColors(turf.status)
+          return [
+            turf.id,
+            { fillColor: colors.fill, color: colors.stroke, weight: 2, fillOpacity: 0.3 },
+          ]
+        }),
+      ),
+    [turfs],
+  )
+
   return (
     <>
-      {turfs.map((turf) => {
-        const colors = getTurfColors(turf.status)
-
-        // Wrap bare geometry in a Feature if needed
-        const geoData = turf.boundary as GeoJSON.GeoJsonObject
-
-        return (
-          <GeoJSON
-            key={turf.id}
-            data={geoData}
-            style={{
-              fillColor: colors.fill,
-              color: colors.stroke,
-              weight: 2,
-              fillOpacity: 0.3,
-            }}
-            eventHandlers={{
-              click: () => setSelectedTurfId(turf.id),
-            }}
-          />
-        )
-      })}
+      {turfs.map((turf) => (
+        <GeoJSON
+          key={turf.id}
+          data={turf.boundary as GeoJSON.GeoJsonObject}
+          style={turfStyles[turf.id]}
+          eventHandlers={{
+            click: () => setSelectedTurfId(turf.id),
+          }}
+        />
+      ))}
 
       {selectedTurf && (
         <Popup
@@ -140,6 +143,7 @@ export function TurfOverviewMap({ turfs, campaignId }: TurfOverviewMapProps) {
           size="sm"
           onClick={() => setCollapsed((c) => !c)}
           className="md:hidden"
+          aria-label={collapsed ? "Expand map" : "Collapse map"}
         >
           {collapsed ? (
             <ChevronDown className="h-4 w-4" />

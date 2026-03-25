@@ -109,7 +109,7 @@ export function VoterCard({
       {/* Completed state: show checkmark + outcome */}
       {isCompleted && !isSkipped && (
         <div className="flex items-center gap-2 mt-2">
-          <Check className="h-4 w-4 text-green-600" />
+          <Check className="h-4 w-4 text-status-success-foreground" />
           <Badge variant="secondary" className="text-xs">
             {OUTCOME_LABELS[recordedOutcome as DoorKnockResultCode] || recordedOutcome}
           </Badge>

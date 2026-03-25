@@ -45,7 +45,7 @@ export function CampaignCard({ campaign, onArchive }: CampaignCardProps) {
                       variant="ghost"
                       size="icon"
                       aria-label="Campaign actions"
-                      className="h-8 w-8"
+                      className="h-8 w-8 min-h-11 min-w-11"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>

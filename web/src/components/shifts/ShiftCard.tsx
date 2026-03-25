@@ -144,7 +144,7 @@ export function ShiftCard({ shift, campaignId, onEdit }: ShiftCardProps) {
             <RequireRole minimum="manager">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 min-h-11 min-w-11">
                     <MoreHorizontal className="h-4 w-4" />
                     <span className="sr-only">Actions</span>
                   </Button>

@@ -19,8 +19,8 @@ export function AssignmentCard({
   campaignId,
 }: AssignmentCardProps) {
   const Icon = type === "canvassing" ? Map : Phone
-  const iconBg = type === "canvassing" ? "bg-blue-50" : "bg-green-50"
-  const iconColor = type === "canvassing" ? "text-blue-600" : "text-green-600"
+  const iconBg = type === "canvassing" ? "bg-status-info" : "bg-status-success"
+  const iconColor = type === "canvassing" ? "text-status-info-foreground" : "text-status-success-foreground"
   const unit = type === "canvassing" ? "doors" : "calls"
   const progressValue = total > 0 ? (completed / total) * 100 : 0
 

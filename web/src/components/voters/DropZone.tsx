@@ -44,7 +44,7 @@ export function DropZone({ onFileSelect, uploading, progress, error }: DropZoneP
   if (progress === 100 && !uploading && !error) {
     return (
       <div className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
-        <CheckCircle2 className="h-12 w-12 text-green-500" />
+        <CheckCircle2 className="h-12 w-12 text-status-success-foreground" />
         <p className="mt-2 text-sm text-muted-foreground">Upload complete</p>
       </div>
     )
@@ -58,7 +58,13 @@ export function DropZone({ onFileSelect, uploading, progress, error }: DropZoneP
       onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && handleClick()}
+      aria-label="Upload CSV file — drag and drop or click to browse"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
     >
       <input
         ref={inputRef}
@@ -81,6 +87,7 @@ export function DropZone({ onFileSelect, uploading, progress, error }: DropZoneP
           <button
             type="button"
             className="mt-2 text-sm text-primary underline"
+            aria-label="Try uploading again"
             onClick={(e) => {
               e.stopPropagation()
               inputRef.current?.click()

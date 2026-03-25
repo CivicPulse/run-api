@@ -56,17 +56,17 @@ export const AUTO_ADVANCE_OUTCOMES = new Set<DoorKnockResultCode>([
   "not_home", "come_back_later", "moved", "deceased", "inaccessible",
 ])
 
-/** Color map for outcome buttons per UI-SPEC */
+/** Color map for outcome buttons — uses semantic design tokens for theme awareness */
 export const OUTCOME_COLORS: Record<DoorKnockResultCode, { bg: string; text: string; border: string }> = {
-  supporter:       { bg: "bg-green-100", text: "text-green-800", border: "border-green-300" },
-  undecided:       { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
-  come_back_later: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
-  refused:         { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
-  opposed:         { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
-  not_home:        { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
-  moved:           { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
-  deceased:        { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
-  inaccessible:    { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" },
+  supporter:       { bg: "bg-status-success", text: "text-status-success-foreground", border: "border-status-success-foreground/30" },
+  undecided:       { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" },
+  come_back_later: { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" },
+  refused:         { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" },
+  opposed:         { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" },
+  not_home:        { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
+  moved:           { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
+  deceased:        { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
+  inaccessible:    { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
 }
 
 /** Human-readable labels for outcome codes */
@@ -144,17 +144,17 @@ export function getGoogleMapsUrl(voter: HasRegistrationAddress): string {
 
 /** Propensity score display with color badge */
 export function getPropensityDisplay(score: number | null): { label: string; color: string } {
-  if (score == null) return { label: "N/A", color: "bg-gray-100 text-gray-700" }
-  if (score >= 70) return { label: `${score}%`, color: "bg-green-100 text-green-800" }
-  if (score >= 40) return { label: `${score}%`, color: "bg-yellow-100 text-yellow-800" }
-  return { label: `${score}%`, color: "bg-red-100 text-red-800" }
+  if (score == null) return { label: "N/A", color: "bg-status-neutral text-status-neutral-foreground" }
+  if (score >= 70) return { label: `${score}%`, color: "bg-status-success text-status-success-foreground" }
+  if (score >= 40) return { label: `${score}%`, color: "bg-status-warning text-status-warning-foreground" }
+  return { label: `${score}%`, color: "bg-status-error text-status-error-foreground" }
 }
 
-/** Party badge color */
+/** Party badge color — nonpartisan semantic tokens, not political red/blue */
 export function getPartyColor(party: string | null): { bg: string; text: string } {
-  if (!party) return { bg: "bg-gray-50", text: "text-gray-500" }
+  if (!party) return { bg: "bg-status-neutral", text: "text-status-neutral-foreground" }
   const lower = party.toLowerCase()
-  if (lower.includes("democrat")) return { bg: "bg-blue-100", text: "text-blue-800" }
-  if (lower.includes("republican")) return { bg: "bg-red-100", text: "text-red-800" }
-  return { bg: "bg-gray-100", text: "text-gray-700" }
+  if (lower.includes("democrat")) return { bg: "bg-status-info", text: "text-status-info-foreground" }
+  if (lower.includes("republican")) return { bg: "bg-status-error", text: "text-status-error-foreground" }
+  return { bg: "bg-status-neutral", text: "text-status-neutral-foreground" }
 }
