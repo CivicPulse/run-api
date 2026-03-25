@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.db.rls import set_campaign_context
 from app.db.session import get_db
@@ -34,7 +35,9 @@ _service = VoterContactService()
 @router.get(
     "/campaigns/{campaign_id}/voters/{voter_id}/contacts",
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_voter_contacts(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -70,7 +73,9 @@ async def get_voter_contacts(
     response_model=PhoneResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_phone(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: PhoneCreateRequest,
@@ -100,7 +105,9 @@ async def add_phone(
     "/campaigns/{campaign_id}/voters/{voter_id}/phones/{phone_id}",
     response_model=PhoneResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_phone(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     phone_id: uuid.UUID,
@@ -130,7 +137,9 @@ async def update_phone(
     "/campaigns/{campaign_id}/voters/{voter_id}/phones/{phone_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_phone(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     phone_id: uuid.UUID,
@@ -163,7 +172,9 @@ async def delete_phone(
     response_model=EmailResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_email(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: EmailCreateRequest,
@@ -193,7 +204,9 @@ async def add_email(
     "/campaigns/{campaign_id}/voters/{voter_id}/emails/{email_id}",
     response_model=EmailResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_email(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     email_id: uuid.UUID,
@@ -223,7 +236,9 @@ async def update_email(
     "/campaigns/{campaign_id}/voters/{voter_id}/emails/{email_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_email(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     email_id: uuid.UUID,
@@ -256,7 +271,9 @@ async def delete_email(
     response_model=AddressResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_address(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: AddressCreateRequest,
@@ -290,7 +307,9 @@ async def add_address(
     "/campaigns/{campaign_id}/voters/{voter_id}/addresses/{address_id}",
     response_model=AddressResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_address(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     address_id: uuid.UUID,
@@ -320,7 +339,9 @@ async def update_address(
     "/campaigns/{campaign_id}/voters/{voter_id}/addresses/{address_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_address(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     address_id: uuid.UUID,
@@ -352,7 +373,9 @@ async def delete_address(
     "/campaigns/{campaign_id}/voters/{voter_id}/contacts/{contact_type}/{contact_id}/set-primary",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def set_primary(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     contact_type: str,

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.voter_tag import VoterTagAssign, VoterTagCreate, VoterTagResponse
@@ -23,7 +24,9 @@ _service = VoterService()
     response_model=VoterTagResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_tag(
+    request: Request,
     campaign_id: uuid.UUID,
     body: VoterTagCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -45,7 +48,9 @@ async def create_tag(
     "/campaigns/{campaign_id}/tags",
     response_model=list[VoterTagResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_tags(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_db),
@@ -66,7 +71,9 @@ async def list_tags(
     "/campaigns/{campaign_id}/voters/{voter_id}/tags",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_tag_to_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: VoterTagAssign,
@@ -89,7 +96,9 @@ async def add_tag_to_voter(
     "/campaigns/{campaign_id}/voters/{voter_id}/tags/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def remove_tag_from_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     tag_id: uuid.UUID,
@@ -112,7 +121,9 @@ async def remove_tag_from_voter(
     "/campaigns/{campaign_id}/voters/{voter_id}/tags",
     response_model=list[VoterTagResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_voter_tags(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),

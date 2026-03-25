@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.errors import VoterNotFoundError
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.common import PaginatedResponse
@@ -26,7 +27,9 @@ _service = VoterService()
     "/campaigns/{campaign_id}/voters",
     response_model=PaginatedResponse[VoterResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_voters(
+    request: Request,
     campaign_id: uuid.UUID,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -66,7 +69,9 @@ async def list_voters(
     "/campaigns/{campaign_id}/voters/search",
     response_model=PaginatedResponse[VoterResponse],
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def search_voters(
+    request: Request,
     campaign_id: uuid.UUID,
     body: VoterSearchBody,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -96,7 +101,9 @@ ALLOWED_DISTINCT_FIELDS = {"ethnicity", "spoken_language", "military_status"}
 
 
 @router.get("/campaigns/{campaign_id}/voters/distinct-values")
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def distinct_values(
+    request: Request,
     campaign_id: uuid.UUID,
     fields: str = Query(..., description="Comma-separated field names"),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -130,7 +137,9 @@ async def distinct_values(
     "/campaigns/{campaign_id}/voters/{voter_id}",
     response_model=VoterResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -156,7 +165,9 @@ async def get_voter(
     response_model=VoterResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     body: VoterCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -178,7 +189,9 @@ async def create_voter(
     "/campaigns/{campaign_id}/voters/{voter_id}",
     response_model=VoterResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: VoterUpdateRequest,
@@ -204,7 +217,9 @@ async def update_voter(
     "/campaigns/{campaign_id}/voters/{voter_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_voter(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),

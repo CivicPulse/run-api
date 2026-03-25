@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.models.turf import TurfStatus
@@ -40,7 +41,9 @@ def _turf_to_response(turf, voter_count: int | None = None) -> TurfResponse:
     response_model=TurfResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_turf(
+    request: Request,
     campaign_id: uuid.UUID,
     body: TurfCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -71,7 +74,9 @@ async def create_turf(
     "/campaigns/{campaign_id}/turfs",
     response_model=PaginatedResponse[TurfResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_turfs(
+    request: Request,
     campaign_id: uuid.UUID,
     status_filter: TurfStatus | None = Query(None, alias="status"),
     cursor: str | None = Query(None),
@@ -100,7 +105,9 @@ async def list_turfs(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     response_model=TurfResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_turf(
+    request: Request,
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -129,7 +136,9 @@ async def get_turf(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     response_model=TurfResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_turf(
+    request: Request,
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     body: TurfUpdate,
@@ -169,7 +178,9 @@ async def update_turf(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_turf(
+    request: Request,
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
