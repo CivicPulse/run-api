@@ -206,11 +206,24 @@ class TestListOrgMembers:
             side_effect=[org, "org_admin", org]
         )
 
-        mock_result = MagicMock()
-        mock_result.all.return_value = [
+        # list_members_with_campaign_roles calls execute 3 times:
+        # 1. list_members() — returns [(member, user)]
+        members_result = MagicMock()
+        members_result.all.return_value = [
             (mock_member, mock_user_record)
         ]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        # 2. Campaign list — returns Row-like objects with .id and .name
+        mock_campaign = MagicMock()
+        mock_campaign.id = uuid.uuid4()
+        mock_campaign.name = "Test Campaign"
+        campaigns_result = MagicMock()
+        campaigns_result.all.return_value = [mock_campaign]
+        # 3. Per-member CampaignMember lookup — returns empty (no roles)
+        cm_result = MagicMock()
+        cm_result.all.return_value = []
+        mock_db.execute = AsyncMock(
+            side_effect=[members_result, campaigns_result, cm_result]
+        )
 
         app.dependency_overrides[get_current_user] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
