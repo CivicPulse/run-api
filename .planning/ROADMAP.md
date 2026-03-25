@@ -101,7 +101,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states (completed 2026-03-24)
 - [x] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages (completed 2026-03-25)
 - [x] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite (completed 2026-03-25)
-- [ ] **Phase 47: Integration Consistency & Documentation Cleanup** - Fix RLS centralization bypass in turf endpoints, apply rate limiting to all endpoints, update REQUIREMENTS.md traceability
+- [x] **Phase 47: Integration Consistency & Documentation Cleanup** - Fix RLS centralization bypass in turf endpoints, apply rate limiting to all endpoints, update REQUIREMENTS.md traceability (completed 2026-03-25)
 - [ ] **Phase 48: Connected E2E Journey Spec** - Single Playwright spec covering full org→campaign→turf→voter→phone bank journey
 
 ## Phase Details
@@ -248,10 +248,10 @@ Plans:
   4. TEST-01, TEST-02, TEST-03 checkboxes are checked
 **Plans**: 4 plans
 Plans:
-- [ ] 47-01-PLAN.md — RLS centralization fix + traceability verification (DATA-03)
+- [x] 47-01-PLAN.md — RLS centralization fix + traceability verification (DATA-03)
 - [x] 47-02-PLAN.md — Rate limiting batch 1: dashboard, volunteers, phone banks, shifts, surveys (OBS-03, OBS-04)
-- [ ] 47-03-PLAN.md — Rate limiting batch 2: remaining 17 route files (OBS-03, OBS-04)
-- [ ] 47-04-PLAN.md — Rate limit coverage verification test (OBS-03, OBS-04)
+- [x] 47-03-PLAN.md — Rate limiting batch 2: remaining 17 route files (OBS-03, OBS-04)
+- [x] 47-04-PLAN.md — Rate limit coverage verification test (OBS-03, OBS-04)
 
 ### Phase 48: Connected E2E Journey Spec
 **Goal**: Create a single connected Playwright E2E spec that verifies the full user journey across phase boundaries
@@ -317,5 +317,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
 | 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
-| 47. Integration Consistency & Documentation Cleanup | v1.5 | 1/4 | In Progress|  |
+| 47. Integration Consistency & Documentation Cleanup | v1.5 | 4/4 | Complete   | 2026-03-25 |
 | 48. Connected E2E Journey Spec | v1.5 | 0/0 | Pending | — |
