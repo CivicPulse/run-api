@@ -246,7 +246,12 @@ Plans:
   2. All org, turf, and voter API endpoints have `@limiter.limit` rate limiting decorators
   3. REQUIREMENTS.md traceability table shows correct plan references and "Satisfied" status for all 48 requirements
   4. TEST-01, TEST-02, TEST-03 checkboxes are checked
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 47-01-PLAN.md — RLS centralization fix + traceability verification (DATA-03)
+- [ ] 47-02-PLAN.md — Rate limiting batch 1: dashboard, volunteers, phone banks, shifts, surveys (OBS-03, OBS-04)
+- [ ] 47-03-PLAN.md — Rate limiting batch 2: remaining 17 route files (OBS-03, OBS-04)
+- [ ] 47-04-PLAN.md — Rate limit coverage verification test (OBS-03, OBS-04)
 
 ### Phase 48: Connected E2E Journey Spec
 **Goal**: Create a single connected Playwright E2E spec that verifies the full user journey across phase boundaries
@@ -312,5 +317,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
 | 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
-| 47. Integration Consistency & Documentation Cleanup | v1.5 | 0/0 | Pending | — |
+| 47. Integration Consistency & Documentation Cleanup | v1.5 | 0/4 | In Progress | — |
 | 48. Connected E2E Journey Spec | v1.5 | 0/0 | Pending | — |
