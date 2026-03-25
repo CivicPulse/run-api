@@ -90,6 +90,27 @@ export function DataTable<TData>({
                   <TableHead
                     key={header.id}
                     onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                    onKeyDown={
+                      canSort
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault()
+                              header.column.getToggleSortingHandler()?.(e)
+                            }
+                          }
+                        : undefined
+                    }
+                    tabIndex={canSort ? 0 : undefined}
+                    role={canSort ? "columnheader" : undefined}
+                    aria-sort={
+                      canSort
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : sortDir === "desc"
+                            ? "descending"
+                            : "none"
+                        : undefined
+                    }
                     className={cn(
                       canSort && "cursor-pointer select-none",
                       header.column.columnDef.meta?.className,
@@ -100,7 +121,7 @@ export function DataTable<TData>({
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && (
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground" aria-hidden="true">
                           {sortDir === "asc" ? (
                             <ArrowUp className="size-4" />
                           ) : sortDir === "desc" ? (

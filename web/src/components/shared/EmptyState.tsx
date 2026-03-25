@@ -25,6 +25,8 @@ export function EmptyState({
 
   return (
     <div
+      role="status"
+      aria-label={title}
       className={cn(
         "flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center",
         className
