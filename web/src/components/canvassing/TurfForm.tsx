@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -23,6 +24,8 @@ interface TurfFormProps {
 }
 
 export function TurfForm({ defaultValues, onSubmit, isPending, submitLabel }: TurfFormProps) {
+  const [showGeoJson, setShowGeoJson] = useState(!!defaultValues?.boundary)
+
   const {
     register,
     handleSubmit,
@@ -52,23 +55,69 @@ export function TurfForm({ defaultValues, onSubmit, isPending, submitLabel }: Tu
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" {...register("name")} />
-        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+      {/* Skip link for keyboard users to bypass map area */}
+      <a
+        href="#turf-form-fields"
+        className="sr-only focus:not-sr-only focus:relative focus:block focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg focus:ring-2 focus:ring-ring focus:mb-2"
+      >
+        Skip map, edit turf details
+      </a>
+
+      <div id="turf-form-fields" className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Name</Label>
+          <Input id="name" {...register("name")} />
+          {errors.name && (
+            <p className="text-sm text-destructive" role="alert">
+              {errors.name.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Input id="description" {...register("description")} />
+        </div>
+
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={showGeoJson}
+            aria-controls="geojson-panel"
+            onClick={() => setShowGeoJson((prev) => !prev)}
+          >
+            {showGeoJson ? "Hide GeoJSON editor" : "Edit as GeoJSON"}
+          </Button>
+
+          {showGeoJson && (
+            <div id="geojson-panel" role="region" aria-label="GeoJSON editor">
+              <Label htmlFor="boundary">GeoJSON Polygon</Label>
+              <Textarea
+                id="boundary"
+                rows={6}
+                aria-invalid={!!errors.boundary}
+                aria-describedby={errors.boundary ? "boundary-error" : undefined}
+                {...register("boundary")}
+              />
+            </div>
+          )}
+
+          {errors.boundary && (
+            <p
+              id="boundary-error"
+              className="text-sm text-destructive"
+              role="alert"
+            >
+              {errors.boundary.message}
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving..." : submitLabel}
+        </Button>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input id="description" {...register("description")} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="boundary">Boundary (GeoJSON)</Label>
-        <Textarea id="boundary" rows={6} {...register("boundary")} />
-        {errors.boundary && <p className="text-sm text-destructive">{errors.boundary.message}</p>}
-      </div>
-      <Button type="submit" disabled={isPending}>
-        {isPending ? "Saving..." : submitLabel}
-      </Button>
     </form>
   )
 }
