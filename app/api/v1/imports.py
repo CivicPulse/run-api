@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.models.import_job import (
     FieldMappingTemplate,
@@ -43,6 +44,7 @@ _service = ImportService()
     response_model=ImportUploadResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("5/minute", key_func=get_user_or_ip_key)
 async def initiate_import(
     campaign_id: uuid.UUID,
     request: Request,
@@ -101,6 +103,7 @@ async def initiate_import(
     "/campaigns/{campaign_id}/imports/{import_id}/detect",
     response_model=ImportJobResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def detect_columns(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -183,7 +186,9 @@ async def detect_columns(
     "/campaigns/{campaign_id}/imports/{import_id}/confirm",
     response_model=ImportJobResponse,
 )
+@limiter.limit("5/minute", key_func=get_user_or_ip_key)
 async def confirm_mapping(
+    request: Request,
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
     body: ConfirmMappingRequest,
@@ -249,6 +254,7 @@ async def confirm_mapping(
     "/campaigns/{campaign_id}/imports/{import_id}",
     response_model=ImportJobResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_import_status(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -296,6 +302,7 @@ async def get_import_status(
     "/campaigns/{campaign_id}/imports/{import_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_import(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -360,7 +367,9 @@ async def delete_import(
     "/campaigns/{campaign_id}/imports",
     response_model=PaginatedResponse[ImportJobResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_imports(
+    request: Request,
     campaign_id: uuid.UUID,
     limit: int = Query(20, ge=1, le=100),
     cursor: str | None = Query(None),
@@ -418,7 +427,9 @@ async def list_imports(
     "/campaigns/{campaign_id}/imports/templates",
     response_model=list[FieldMappingTemplateResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_mapping_templates(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_campaign_db),

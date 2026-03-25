@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.models.user import User
 from app.models.voter_interaction import InteractionType
@@ -28,7 +29,9 @@ _service = VoterInteractionService()
     "/campaigns/{campaign_id}/voters/{voter_id}/interactions",
     response_model=PaginatedResponse[InteractionResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_voter_interactions(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     interaction_type: str | None = Query(None, alias="type"),
@@ -102,7 +105,9 @@ async def get_voter_interactions(
     response_model=InteractionResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_voter_interaction(
+    request: Request,
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     body: InteractionCreateRequest,

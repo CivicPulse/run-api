@@ -22,11 +22,11 @@ result: pass — Error boundary triggered naturally by BarChart3 reference error
 
 ### 3. Volunteer toggle — manager view (UX-02)
 expected: As a user with manager role, the volunteer registration form shows a "Volunteer Type" radio group with "Add volunteer record" and "Invite to app" options. Selecting "Invite to app" shows the Alert info banner about email invitation.
-result: skipped — Requires navigating to volunteer registration with an authenticated manager session. Code-level verification confirms RadioGroup with RequireRole wrapper exists in register/index.tsx.
+result: automated — `web/e2e/uat-volunteer-manager.spec.ts` uses default admin auth (manager+), verifies RadioGroup, both options, default selection, and Alert banner on invite click. (Audit: 2026-03-24)
 
 ### 4. Volunteer toggle — non-manager view (UX-02)
 expected: As a user with volunteer role (non-manager), the radio toggle is NOT visible. Form shows only essential fields.
-result: skipped — Requires a separate ZITADEL user with volunteer-only role. Code-level verification confirms RequireRole minimum="manager" wraps the toggle.
+result: automated — `web/e2e/role-gated.volunteer.spec.ts` test 1 uses volunteer auth and asserts toggle not visible. (Audit: 2026-03-24)
 
 ### 5. Tooltip popover interaction (UX-03, UX-04)
 expected: Clicking the HelpCircle icon next to turf name, role selector, import mapping, campaign type, and org settings opens a popover with contextual hint text. Popover closes on click-outside.
@@ -48,6 +48,10 @@ issues: 1
 pending: 0
 skipped: 2
 blocked: 0
+
+## Audit Resolution (2026-03-24)
+
+Items #2 (Error boundary) and #6 (Skeleton loading) confirmed RESOLVED via Playwright MCP automation with screenshot evidence. Items #3 and #4 (Volunteer toggle) remain SKIPPED — require role-specific OIDC sessions. Item #1 (Sidebar) partial-pass is acceptable (desktop push is shadcn default behavior).
 
 ## Gaps
 

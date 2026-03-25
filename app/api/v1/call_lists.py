@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.schemas.call_list import (
     AppendFromListRequest,
@@ -33,7 +34,9 @@ _call_list_service = CallListService()
     response_model=CallListResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def generate_call_list(
+    request: Request,
     campaign_id: uuid.UUID,
     body: CallListCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -63,7 +66,9 @@ async def generate_call_list(
     "/campaigns/{campaign_id}/call-lists",
     response_model=PaginatedResponse[CallListSummaryResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_call_lists(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
     db: AsyncSession = Depends(get_campaign_db),
@@ -84,7 +89,9 @@ async def list_call_lists(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     response_model=CallListResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_call_list(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -110,7 +117,9 @@ async def get_call_list(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     response_model=CallListResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_call_list_status(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     new_status: str | None = None,
@@ -142,7 +151,9 @@ async def update_call_list_status(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}/entries",
     response_model=PaginatedResponse[CallListEntryResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_call_list_entries(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     entry_status: str | None = None,
@@ -199,7 +210,9 @@ async def list_call_list_entries(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_call_list(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -227,7 +240,9 @@ async def delete_call_list(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}/claim",
     response_model=list[CallListEntryResponse],
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def claim_entries(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     body: ClaimEntriesRequest,
@@ -294,7 +309,9 @@ async def claim_entries(
     response_model=AppendFromListResponse,
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def append_from_list(
+    request: Request,
     campaign_id: uuid.UUID,
     call_list_id: uuid.UUID,
     body: AppendFromListRequest,

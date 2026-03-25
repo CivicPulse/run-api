@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.config import settings
 from app.core.errors import InsufficientPermissionsError
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import (
     AuthenticatedUser,
     CampaignRole,
@@ -29,7 +30,9 @@ router = APIRouter()
     "/campaigns/{campaign_id}/members",
     response_model=list[MemberResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_members(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("viewer")),
     db: AsyncSession = Depends(get_campaign_db),
@@ -73,6 +76,7 @@ async def list_members(
     "/campaigns/{campaign_id}/members/{member_user_id}/role",
     response_model=MemberResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_member_role(
     campaign_id: uuid.UUID,
     member_user_id: str,
@@ -205,6 +209,7 @@ async def update_member_role(
     "/campaigns/{campaign_id}/members/{member_user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def remove_member(
     campaign_id: uuid.UUID,
     member_user_id: str,
@@ -251,6 +256,7 @@ async def remove_member(
     "/campaigns/{campaign_id}/transfer-ownership",
     response_model=dict,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def transfer_ownership(
     campaign_id: uuid.UUID,
     data: OwnershipTransfer,

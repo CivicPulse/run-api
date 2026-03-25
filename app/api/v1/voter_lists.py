@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.errors import VoterListNotFoundError
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.schemas.common import PaginatedResponse
 from app.schemas.voter import VoterResponse
@@ -26,7 +27,9 @@ _service = VoterListService()
     response_model=VoterListResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def create_list(
+    request: Request,
     campaign_id: uuid.UUID,
     body: VoterListCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -45,7 +48,9 @@ async def create_list(
     "/campaigns/{campaign_id}/lists",
     response_model=PaginatedResponse[VoterListResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_lists(
+    request: Request,
     campaign_id: uuid.UUID,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -68,7 +73,9 @@ async def list_lists(
     "/campaigns/{campaign_id}/lists/{list_id}",
     response_model=VoterListResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_list(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
@@ -90,7 +97,9 @@ async def get_list(
     "/campaigns/{campaign_id}/lists/{list_id}",
     response_model=VoterListResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_list(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     body: VoterListUpdate,
@@ -113,7 +122,9 @@ async def update_list(
     "/campaigns/{campaign_id}/lists/{list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_list(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -135,7 +146,9 @@ async def delete_list(
     "/campaigns/{campaign_id}/lists/{list_id}/voters",
     response_model=PaginatedResponse[VoterResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_list_voters(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     cursor: str | None = Query(None),
@@ -160,7 +173,9 @@ async def get_list_voters(
     "/campaigns/{campaign_id}/lists/{list_id}/members",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_members(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     body: VoterListMemberUpdate,
@@ -183,7 +198,9 @@ async def add_members(
     "/campaigns/{campaign_id}/lists/{list_id}/members",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def remove_members(
+    request: Request,
     campaign_id: uuid.UUID,
     list_id: uuid.UUID,
     body: VoterListMemberUpdate,

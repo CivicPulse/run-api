@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.models.campaign import Campaign
@@ -23,7 +24,9 @@ router = APIRouter()
     "",
     response_model=UserResponse,
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_me(
+    request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -36,7 +39,9 @@ async def get_me(
     "/campaigns",
     response_model=list[UserCampaignResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_my_campaigns(
+    request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

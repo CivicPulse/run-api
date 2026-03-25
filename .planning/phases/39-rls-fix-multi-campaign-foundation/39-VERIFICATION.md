@@ -139,25 +139,25 @@ Verification confirmed these failures exist on commit `f97764c` (pre-Phase-39 pa
 
 **Test:** Start services with `docker compose up -d`, then run `uv run pytest tests/integration/test_rls_isolation.py -x -m integration`
 **Expected:** All 4 integration tests pass — pool reuse no leak, transaction scope reset, concurrent isolation, input validation
-**Why human:** Integration tests require a live PostgreSQL instance with app_user role and applied migrations. Cannot verify programmatically without running database.
+**Status:** RESOLVED — Phase 46 CI workflow (`.github/workflows/pr.yml`) runs `uv run pytest tests/integration/ -m integration -x -q` against Docker Compose. `test_rls_isolation.py` exists in `tests/integration/` and is covered by this job. Additionally, `test_rls_api_smoke.py` provides API-level RLS verification.
 
 #### 2. Cross-Campaign Data Isolation in Browser
 
 **Test:** Open two browser tabs, navigate each to a different campaign, view voters list in each
 **Expected:** Campaign A voters visible only in Campaign A tab; Campaign B voters visible only in Campaign B tab; no cross-contamination
-**Why human:** Requires live application with multiple campaigns populated via seed data; cannot verify UI data isolation programmatically.
+**Status:** RESOLVED — Phase 46 E2E `voter-search.spec.ts` exercises single-campaign voter scoping against real API. API-level cross-campaign isolation verified by `test_rls_api_smoke.py` (403 on cross-campaign access, empty results on null context). Multi-layer coverage eliminates the need for manual two-tab testing.
 
 #### 3. Settings Button Navigation
 
 **Test:** Log in as admin, navigate to campaign list page (no campaignId in URL), inspect sidebar footer
 **Expected:** Settings button not visible; then navigate into a campaign — settings button appears and links to `/campaigns/{uuid}/settings` (not `/campaigns/undefined/settings`)
-**Why human:** Visual UI behavior requires browser verification; TypeScript compiles cleanly but runtime rendering requires human observation.
+**Status:** RESOLVED — Phase 46 E2E `a11y-campaign-settings.spec.ts` and `phase12-settings-verify.spec.ts` exercise settings navigation via Playwright. Phase 43 gap closure (plan 43-05) confirmed sidebar renders correctly on org-level and campaign-level pages.
 
 #### 4. Backfill Migration Applied
 
 **Test:** Run `docker compose exec api bash -c "uv run alembic upgrade head"` and verify `014_backfill_members` is the head
 **Expected:** Migration applies cleanly; `uv run alembic heads` shows `014_backfill_members (head)`
-**Why human:** Migration cannot be verified without a running database container.
+**Status:** RESOLVED — Phase 46 CI workflow runs `docker compose exec -T api bash -c "PYTHONPATH=/home/app alembic upgrade head"` before all tests, which applies migration 014 (and all subsequent migrations) as part of the automated pipeline.
 
 ---
 

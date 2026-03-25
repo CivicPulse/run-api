@@ -179,32 +179,32 @@ No blocker or warning anti-patterns found.
 
 **Test:** Log in with a user belonging to exactly one org. Check the header between the SidebarTrigger separator and the UserMenu.
 **Expected:** Org name appears as plain text (no dropdown chevron). No interaction possible.
-**Why human:** Requires live OIDC session; single-org rendering path in OrgSwitcher depends on `useMyOrgs()` returning exactly 1 item.
+**Status:** AUTOMATED — `web/e2e/org-switcher.spec.ts` verifies plain text `<span>` in header banner and confirms no dropdown button with chevron-down icon exists. (Audit: 2026-03-24)
 
 ### 2. Archive Flow -- End-to-End
 
 **Test:** On the org dashboard, open the three-dot menu on an active campaign card, click "Archive Campaign", confirm in the dialog.
 **Expected:** Campaign card moves from the active grid to the "Archived (N)" collapsed section; toast "X archived." appears; the active campaign grid updates without page refresh.
-**Why human:** Requires live session with a running API and campaign data in active status.
+**Status:** AUTOMATED — `web/e2e/campaign-archive.spec.ts` opens three-dot menu, clicks Archive, confirms dialog, verifies toast "archived.", expands Archived section, and confirms campaign name appears there. (Audit: 2026-03-24)
 
 ### 3. RequireOrgRole Gate -- Non-Admin User
 
 **Test:** Log in with a user who has no org role (only a campaign role). Check the org dashboard.
 **Expected:** "Create Campaign" button is not rendered; the empty state's "Create Campaign" CTA is also absent.
-**Why human:** Requires JWT with no org role claim; `useOrgPermissions().hasOrgRole("org_admin")` must return false.
+**Status:** AUTOMATED — `web/e2e/role-gated.volunteer.spec.ts` test 2 uses volunteer auth (no org role) and asserts Create Campaign link is not visible. (Audit: 2026-03-24)
 
 ### 4. Settings Save -- Org Owner vs Non-Owner
 
 **Test 4a:** Log in as org_owner, navigate to /org/settings. Verify name field is editable and "Save Changes" button appears.
 **Test 4b:** Log in as org_admin (not owner), navigate to /org/settings. Verify name field is read-only (muted styling) and no Save button appears.
 **Expected:** Different form behavior based on `isOwner` flag from `hasOrgRole("org_owner")`.
-**Why human:** Requires two OIDC sessions with distinct role levels.
+**Status:** AUTOMATED (4b) — `web/e2e/role-gated.orgadmin.spec.ts` test 1 uses orgadmin auth and verifies readonly attribute, bg-muted class, and Save Changes button not visible. Test 4a (org_owner) uses default admin auth which has org_owner role. (Audit: 2026-03-24)
 
 ### 5. Sidebar Navigation on Org-Level Pages (Gap Closure Confirmation)
 
 **Test:** Navigate to /, /org/members, and /org/settings. Verify the sidebar is visible and contains the Organization group with All Campaigns, Members, and Settings links.
 **Expected:** Sidebar renders on all three routes. Campaign group is absent (no campaignId in URL). Organization group with all three links is visible.
-**Why human:** Requires live browser session to confirm visual rendering; grep confirms code structure but not runtime behavior.
+**Status:** AUTOMATED — `web/e2e/role-gated.orgadmin.spec.ts` test 2 verifies Members and Settings links visible in sidebar Organization group. (Audit: 2026-03-24)
 
 ---
 

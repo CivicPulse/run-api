@@ -20,7 +20,7 @@ export default defineConfig({
   },
 
   projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
     {
       name: "chromium",
       use: {
@@ -29,6 +29,27 @@ export default defineConfig({
       },
       dependencies: ["setup"],
       testIgnore: /.*\.setup\.ts/,
+      testMatch: /^(?!.*\.(orgadmin|volunteer)\.spec\.ts).*\.spec\.ts$/,
+    },
+    { name: "setup-orgadmin", testMatch: /auth-orgadmin\.setup\.ts/ },
+    {
+      name: "orgadmin",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/orgadmin.json",
+      },
+      dependencies: ["setup-orgadmin"],
+      testMatch: /.*\.orgadmin\.spec\.ts/,
+    },
+    { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
+    {
+      name: "volunteer",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/volunteer.json",
+      },
+      dependencies: ["setup-volunteer"],
+      testMatch: /.*\.volunteer\.spec\.ts/,
     },
   ],
 

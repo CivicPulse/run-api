@@ -108,6 +108,10 @@ jobs:
           docker compose exec -T api bash -c "PYTHONPATH=/home/app alembic upgrade head"
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
+      - name: Create E2E test users
+        run: |
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"
+
       - name: Install Python test dependencies
         run: uv sync --frozen --dev
 
@@ -128,6 +132,10 @@ jobs:
         env:
           E2E_USERNAME: admin@localhost
           E2E_PASSWORD: "Admin1234!"
+          E2E_ORGADMIN_USERNAME: e2e-orgadmin@localhost
+          E2E_ORGADMIN_PASSWORD: "E2eOrgAdmin1!"
+          E2E_VOLUNTEER_USERNAME: e2e-volunteer@localhost
+          E2E_VOLUNTEER_PASSWORD: "E2eVolunteer1!"
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

@@ -107,7 +107,7 @@ No stubs, placeholder returns, TODO/FIXME comments, or empty implementations fou
 
 **Test:** Make an HTTP request to any non-health endpoint. Inspect response headers.
 **Expected:** Response includes `X-Request-ID` header. If request included `X-Request-ID`, the same value is echoed back. If not, a new UUID hex is returned.
-**Why human:** Requires running server; cannot verify response headers via static analysis.
+**Status:** AUTOMATED — `tests/integration/test_request_id.py` verifies header presence, UUID format, and client echo-back via ASGI transport. Run with `uv run pytest tests/integration/test_request_id.py -m integration`. (Audit: 2026-03-24)
 
 #### 3. structlog JSON Output Format
 
@@ -119,7 +119,7 @@ No stubs, placeholder returns, TODO/FIXME comments, or empty implementations fou
 
 **Test:** Apply `@limiter.limit("120/minute", key_func=get_user_or_ip_key)` to an authenticated endpoint and send 121 requests with the same JWT.
 **Expected:** 121st request returns HTTP 429. Requests from a different user are not affected.
-**Why human:** `get_user_or_ip_key` is provided as a key function but no authenticated endpoint in the codebase currently uses it (only `app/api/v1/join.py` uses `@limiter.limit` with the default IP key). The per-user tier is infrastructure-ready but not yet wired to any endpoint.
+**Status:** DEFERRED TO BACKLOG — `get_user_or_ip_key` exists and is tested, but no endpoint currently uses it. This is a deployment/wiring gap, not a UAT-testable item. Moved to backlog as a future task to wire per-user rate limiting to authenticated endpoints. (Audit: 2026-03-24)
 
 ### Gaps Summary
 
