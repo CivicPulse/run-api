@@ -102,7 +102,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages (completed 2026-03-25)
 - [x] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite (completed 2026-03-25)
 - [x] **Phase 47: Integration Consistency & Documentation Cleanup** - Fix RLS centralization bypass in turf endpoints, apply rate limiting to all endpoints, update REQUIREMENTS.md traceability (completed 2026-03-25)
-- [ ] **Phase 48: Connected E2E Journey Spec** - Single Playwright spec covering full org→campaign→turf→voter→phone bank journey
+- [x] **Phase 48: Connected E2E Journey Spec** - Single Playwright spec covering full org→campaign→turf→voter→phone bank journey (completed 2026-03-25)
 
 ## Phase Details
 
@@ -320,4 +320,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
 | 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
 | 47. Integration Consistency & Documentation Cleanup | v1.5 | 4/4 | Complete    | 2026-03-25 |
-| 48. Connected E2E Journey Spec | v1.5 | 0/1 | Pending | — |
+| 48. Connected E2E Journey Spec | v1.5 | 0/1 | Complete    | 2026-03-25 |
