@@ -40,6 +40,10 @@ class Settings(BaseSettings):
         "https://dev.tailb56d83.ts.net:8000",
     ]
 
+    # Rate limiting
+    trusted_proxy_cidrs: list[str] = []
+    rate_limit_unauthenticated: str = "30/minute"
+
     # S3-compatible object storage (MinIO local, Cloudflare R2 production)
     s3_endpoint_url: str = "http://localhost:9000"
     s3_presign_endpoint_url: str | None = None

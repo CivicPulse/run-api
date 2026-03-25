@@ -7,6 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, get_current_user, require_role
 from app.db.session import get_db
 from app.schemas.invite import InviteAcceptResponse, InviteCreate, InviteResponse
@@ -21,7 +22,9 @@ invite_service = InviteService()
     response_model=InviteResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute", key_func=get_user_or_ip_key)
 async def create_invite(
+    request: Request,
     campaign_id: uuid.UUID,
     data: InviteCreate,
     user: AuthenticatedUser = Depends(require_role("admin")),
@@ -62,7 +65,9 @@ async def create_invite(
     "/campaigns/{campaign_id}/invites",
     response_model=list[InviteResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_invites(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("admin")),  # noqa: ARG001
     db: AsyncSession = Depends(get_db),
@@ -89,7 +94,9 @@ async def list_invites(
     "/campaigns/{campaign_id}/invites/{invite_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def revoke_invite(
+    request: Request,
     campaign_id: uuid.UUID,  # noqa: ARG001
     invite_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("admin")),  # noqa: ARG001
@@ -109,6 +116,7 @@ async def revoke_invite(
     "/invites/{token}/accept",
     response_model=InviteAcceptResponse,
 )
+@limiter.limit("10/minute", key_func=get_user_or_ip_key)
 async def accept_invite(
     token: uuid.UUID,
     request: Request,

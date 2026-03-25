@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 
 import fastapi_problem_details as problem
-from fastapi import APIRouter, Depends, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.dnc import (
@@ -29,7 +30,9 @@ _dnc_service = DNCService()
     "/campaigns/{campaign_id}/dnc",
     response_model=list[DNCEntryResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_dnc_entries(
+    request: Request,
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
@@ -51,7 +54,9 @@ async def list_dnc_entries(
     response_model=DNCEntryResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_dnc_entry(
+    request: Request,
     campaign_id: uuid.UUID,
     body: DNCEntryCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -76,7 +81,9 @@ async def add_dnc_entry(
     "/campaigns/{campaign_id}/dnc/import",
     response_model=DNCImportResponse,
 )
+@limiter.limit("5/minute", key_func=get_user_or_ip_key)
 async def bulk_import_dnc(
+    request: Request,
     campaign_id: uuid.UUID,
     file: UploadFile,
     reason: str = Query(default="manual"),
@@ -104,7 +111,9 @@ async def bulk_import_dnc(
     "/campaigns/{campaign_id}/dnc/{dnc_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def delete_dnc_entry(
+    request: Request,
     campaign_id: uuid.UUID,
     dnc_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
@@ -135,7 +144,9 @@ async def delete_dnc_entry(
     "/campaigns/{campaign_id}/dnc/check",
     response_model=DNCCheckResponse,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def check_dnc(
+    request: Request,
     campaign_id: uuid.UUID,
     body: DNCCheckRequest,
     user: AuthenticatedUser = Depends(require_role("volunteer")),

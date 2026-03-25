@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.core.config import settings
+from app.core.rate_limit import get_user_or_ip_key, limiter
 
 router = APIRouter(prefix="/config", tags=["config"])
 
 
 @router.get("/public")
-async def get_public_config():
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+async def get_public_config(request: Request):
     """Non-sensitive frontend configuration (no auth required)."""
     return {
         "zitadel_issuer": settings.zitadel_issuer,
