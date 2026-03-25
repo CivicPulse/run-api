@@ -79,14 +79,14 @@
 |--------|-------|------|--------|
 | DATA-01 | Phase 39 | 39-01 | Satisfied |
 | DATA-02 | Phase 39 | 39-01 | Satisfied |
-| DATA-03 | Phase 39 | 39-02 | Satisfied |
+| DATA-03 | Phase 39 | 39-02, 47-01 | Satisfied |
 | DATA-04 | Phase 39 | 39-03 | Satisfied |
 | DATA-05 | Phase 39 | 39-03 | Satisfied |
 | DATA-06 | Phase 39 | 39-04 | Satisfied |
 | OBS-01 | Phase 40 | 40-01 | Satisfied |
 | OBS-02 | Phase 40 | 40-01 | Satisfied |
-| OBS-03 | Phase 40 | 40-02 | Satisfied |
-| OBS-04 | Phase 40 | 40-02 | Satisfied |
+| OBS-03 | Phase 40 | 40-02, 47-02, 47-03 | Satisfied |
+| OBS-04 | Phase 40 | 40-02, 47-02, 47-03 | Satisfied |
 | OBS-05 | Phase 44 | 44-01, 44-05 | Satisfied |
 | OBS-06 | Phase 44 | 44-03, 44-05 | Satisfied |
 | OBS-07 | Phase 44 | 44-03 | Satisfied |
@@ -150,3 +150,5 @@
 - Audit log viewer UI — log server-side via structlog; build UI only if requested
 - White-label / custom branding per org
 - Cloudflare Pages frontend split — keep embedded in FastAPI for v1.5
+
+<!-- Traceability verified 2026-03-25: 48/48 requirements checked, 48/48 Satisfied, 48/48 plan references present -->
