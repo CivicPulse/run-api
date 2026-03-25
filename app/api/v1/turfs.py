@@ -113,7 +113,9 @@ async def list_turfs(
     "/campaigns/{campaign_id}/turfs/overlaps",
     response_model=list[OverlappingTurfResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_turf_overlaps(
+    request: Request,
     campaign_id: uuid.UUID,
     boundary: str = Query(..., description="GeoJSON geometry JSON string"),
     exclude_turf_id: uuid.UUID | None = Query(None),
@@ -160,7 +162,9 @@ async def get_turf_overlaps(
     "/campaigns/{campaign_id}/turfs/{turf_id}/voters",
     response_model=list[VoterLocationResponse],
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_turf_voters(
+    request: Request,
     campaign_id: uuid.UUID,
     turf_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),

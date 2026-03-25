@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import (
     AuthenticatedUser,
     require_org_role,
@@ -34,7 +35,9 @@ _service = OrgService()
 
 
 @router.get("", response_model=OrgResponse)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def get_org(
+    request: Request,
     user: AuthenticatedUser = Depends(
         require_org_role("org_admin")
     ),
@@ -50,7 +53,9 @@ async def get_org(
 
 
 @router.patch("", response_model=OrgResponse)
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def update_org(
+    request: Request,
     body: OrgUpdate,
     user: AuthenticatedUser = Depends(
         require_org_role("org_owner")
@@ -78,7 +83,9 @@ async def update_org(
 @router.get(
     "/campaigns", response_model=list[OrgCampaignResponse]
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_org_campaigns(
+    request: Request,
     user: AuthenticatedUser = Depends(
         require_org_role("org_admin")
     ),
@@ -113,7 +120,9 @@ async def list_org_campaigns(
 @router.get(
     "/members", response_model=list[OrgMemberResponse]
 )
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def list_org_members(
+    request: Request,
     user: AuthenticatedUser = Depends(
         require_org_role("org_admin")
     ),
@@ -153,7 +162,9 @@ async def list_org_members(
     "/campaigns/{campaign_id}/members",
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
 async def add_member_to_campaign(
+    request: Request,
     campaign_id: uuid.UUID,
     body: AddMemberToCampaignRequest,
     user: AuthenticatedUser = Depends(
