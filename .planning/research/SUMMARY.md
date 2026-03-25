@@ -1,225 +1,293 @@
 # Project Research Summary
 
-**Project:** CivicPulse Run API — v1.4 Volunteer Field Mode
-**Domain:** Mobile-first volunteer field operations (canvassing + phone banking)
-**Researched:** 2026-03-15
-**Confidence:** HIGH
+**Project:** CivicPulse Run API — v1.5 Go Live milestone
+**Domain:** Multi-tenant political field operations platform
+**Researched:** 2026-03-24
+**Confidence:** HIGH (codebase analysis dominant; no live web search; competitor claims from training data)
 
 ## Executive Summary
 
-v1.4 is a frontend-only milestone that adds a purpose-built mobile experience for campaign field volunteers. The product pattern is well-established: industry incumbents (MiniVAN, Ecanvasser, Qomon) all follow a linear wizard model — see assignment, work through it step by step, record outcomes. The core insight from research is that the existing backend is already complete. All required endpoints exist across v1.0–v1.3. The entire milestone is new frontend routes, new mobile-optimized components, and one new npm package (driver.js for guided tours). No new database migrations, no new API endpoints except one optional convenience aggregation (`GET /my-assignments`).
+v1.5 has two user-facing feature tracks — a map-based turf editor and an organization-level admin UI — plus two production-readiness tracks: an active RLS data-leak bug and a WCAG audit of unaudited admin pages. The map editor track is self-contained and low risk: Leaflet and react-leaflet are already installed but unused, the backend already handles the full GeoJSON-to-PostGIS round trip, and the only new dependency is `@geoman-io/leaflet-geoman-free` (npm-verified, actively maintained as of February 2026, chosen over the abandoned `leaflet-draw`). The org UI track touches auth middleware and requires a new `organization_members` table, making it higher risk and the correct second feature priority.
 
-The recommended approach is a parallel route subtree (`/campaigns/$campaignId/field/...`) that bypasses the existing sidebar-heavy admin layout entirely. This is the single most important architectural decision: field mode must have its own layout shell with no admin navigation, no data tables, and no desktop chrome. All existing React Query hooks (`useWalkListEntries`, `useClaimEntry`, `useRecordDoorKnock`, etc.) are reused without modification — only the UI layer changes. One new package is required: driver.js (~5kB gzipped) replaces the commonly-suggested react-joyride, which is confirmed broken on React 19 due to deprecated APIs.
+The single highest-urgency item is an active RLS data-isolation bug. All 21 endpoint files use `get_db()` and call `set_campaign_context()` manually, but the context is set with `set_config(..., false)` — session-scoped, not transaction-scoped. SQLAlchemy's connection pool means the prior request's `campaign_id` persists on pooled connections, and any endpoint that draws one without calling `set_campaign_context()` first — including all four invite endpoints — queries against the wrong campaign's data. Additionally, `get_db_with_rls()` exists in `deps.py` but is used by zero of the 21 endpoint files. This is a live multi-tenant data-isolation failure that must be fixed before any new feature work ships to production.
 
-The primary risk is treating field mode as a "responsive version" of the existing admin UI. Research and competitor analysis make clear that a compressed admin interface is fundamentally unusable in field conditions (one-handed, gloves, sunlight, walking). The second risk is state loss: unlike office-based admin users, field volunteers experience constant interruptions (phone calls, physical movement, OS memory pressure) that destroy in-memory React state. Wizard state must be persisted to sessionStorage via Zustand persist middleware from day one — not retrofitted later (estimated 2–3 day retrofit cost if skipped).
+The recommended build order is: RLS fix → production hardening (Sentry, structlog, rate-limiting IP fix) → org data model → map-based turf editor → org UI → WCAG audit. The RLS fix and production hardening are gating concerns for production launch. The two feature tracks are independent of each other and can be developed in parallel against a local environment, but neither should be deployed before the RLS fix is verified in production.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack (React 19, TanStack Router, TanStack Query, shadcn/ui, Zustand, Tailwind v4, vaul, sonner) covers everything needed. One new runtime dependency is required and one shadcn component needs to be generated.
+Stack additions for v1.5 are minimal by design. Only one new npm package is required: `@geoman-io/leaflet-geoman-free` v2.19.2 — the actively maintained successor to the abandoned `leaflet-draw` (last npm publish: June 2022). The backend adds zero new Python packages. The ZITADEL JavaScript SDK (`@zitadel/client`) must not be added; all ZITADEL management is backend-only via the existing Python `ZitadelService`.
 
 **Core technologies:**
-- **driver.js ^1.4.0**: Guided onboarding tour — framework-agnostic, ~5kB gzipped, React 19 compatible. react-joyride is eliminated: uses deprecated `unmountComponentAtNode` removed in React 19, unmaintained 9+ months.
-- **zustand/middleware (persist)** (already installed): Tour completion + wizard state persistence — zero new dependencies. Use `sessionStorage` for wizard state (tab-scoped, clears on close); `localStorage` only for tour completion flags and preferences.
-- **vaul via shadcn Drawer** (vaul already installed): Mobile bottom sheet for wizard containers — run `npx shadcn@latest add drawer` to generate the component wrapper. Snap points at `["355px", 1]` for half/full screen.
-- **Native `tel:` URI**: Tap-to-call — web standard, zero dependencies. Numbers must be stripped to E.164 format; always provide a "Copy Number" fallback for desktop/WebView contexts.
-- **All existing hooks**: `useWalkListEntries`, `useRecordDoorKnock`, `useClaimEntry`, `useRecordCall`, `useSurveyScript`, `useRecordResponses`, `useShifts`, `usePermissions` — zero changes required.
+- `@geoman-io/leaflet-geoman-free` v2.19.2: polygon draw/edit controls — npm-verified, MIT license, last published February 2026; replaces abandoned `leaflet-draw`; attaches to the Leaflet map instance via `map.pm.addControls()` inside a `useMap()` hook, requiring no React wrapper
+- `leaflet` 1.9.4 + `react-leaflet` 5.0.0: already installed in `web/package.json`, not yet used in any component — zero installation cost for the map editor feature track
+- `geoalchemy2` + `shapely`: already installed; backend turf serialization layer is complete and requires no changes for the map editor
+- OpenStreetMap tiles via `TileLayer`: free, no API key, sufficient for v1.5; recommend exposing `VITE_MAP_TILE_URL` env var for future swap to Mapbox or Stadia
+- Existing `ZitadelService` (Python + httpx): covers all org CRUD; two new methods needed — `list_org_users(org_id)` and `list_user_grants(org_id, project_id)`
 
-**Installation summary:** `npm install driver.js` and `npx shadcn@latest add drawer`. Total new runtime dependencies: 1.
-
-See `.planning/research/STACK.md` for full rationale and alternatives considered.
+See `.planning/research/STACK.md` for the full draw-library comparison table and Geoman integration pattern.
 
 ### Expected Features
 
-Research against MiniVAN, Ecanvasser, and Qomon produced a clear feature hierarchy. The backend supports 90%+ of needed functionality already.
+**Map editor — must have (table stakes):**
+- Interactive polygon draw with vertex editing — replaces the raw JSON `<Textarea>` in `TurfForm.tsx`; no campaign manager will paste raw GeoJSON
+- Map tile base layer — required for spatial context; users cannot draw meaningful boundaries over a blank canvas
+- Render saved turfs color-coded by status on an overview map — primary spatial management view; equivalent to VAN's turf inventory
+- Voter dots within a selected turf with clustered markers — required for verifying coverage density before activating (turfs have 500–2000 voters; unclustered markers cause jank on mid-range devices)
+- Voter count badge — wire existing `TurfService.get_voter_count()` into `TurfResponse`; the primary feedback mechanism for turf sizing (target: 50–150 doors)
+- GeoJSON file import with map preview — campaigns regularly receive precinct shapes from county GIS offices
+- GeoJSON export (client-side, zero backend work)
+- Preserve raw JSON textarea as "Advanced" toggle — required escape hatch for developers and power users
 
-**Must have (table stakes):**
-- Volunteer hub/landing page — entry point showing active assignment, routing to canvassing or phone banking
-- Linear canvassing wizard — step-by-step: address card → knock → outcome buttons → inline survey → next
-- Door-knock outcome buttons — large touch-target buttons (not dropdowns) for Not Home / Contact / Refused / etc.
-- Phone banking tap-to-call — `tel:` links invoking native dialer; mobile-stacked layout
-- Phone banking call flow — claim → voter info → tap-to-call → outcome → inline survey → next
-- Inline survey after contact — reuse existing `SurveyPanel` logic in mobile-optimized layout
-- Progress indicator — persistent "12 of 47 doors" bar in field header
-- 44px minimum touch targets — across all interactive elements in field mode
-- Session start/stop controls — clear entry and exit from each mode
+**Map editor — should have (differentiators, defer if time-constrained):**
+- Address geocoding search via Nominatim (free, no API key) — campaign managers think in addresses, not coordinates
+- Overlap detection warning via `ST_Intersects` — prevents double-canvassing at turf boundaries
+- Satellite/aerial imagery toggle (ESRI World Imagery, no API key) — identifies physical canvassing barriers
 
-**Should have (differentiators):**
-- Guided onboarding tour (driver.js) — zero-training UX; runs once per user per campaign
-- Contextual tooltips (`?` icons using existing Radix Tooltip) — ongoing reference beyond the tour
-- Household grouping in canvassing — group entries by `household_key` (data already exists)
-- Voter context card — name, party, age, propensity before the knock
-- Milestone celebrations — toast at 25%/50%/75%/100% completion
+**Map editor — defer to post-v1.5:**
+- Turf splitting (high complexity: Shapely `split()`, walk list reassignment, MultiPolygon edge cases)
+- Turf merge, multi-polygon support, census/precinct overlays, freehand draw, auto-turf generation
 
-**Defer (v1.5+):**
-- Interactive map view — requires map SDK, GPS, pin rendering; address links to Google/Apple Maps serve as workaround for v1.4
-- Offline mode / service worker — IndexedDB queue, conflict resolution, sync engine; not justified until real-world connectivity data exists
-- Auto-advance timer — no architectural dependency; can layer on after core flow is stable
-- Native mobile app / PWA wrapper — out of scope per PROJECT.md
+**Org UI — must have (table stakes):**
+- Organization dashboard at `/org` — campaign card grid with status, election date, member count
+- Org member directory — aggregate view of all users across all campaigns with per-campaign roles
+- Org-level role model — new `organization_members` table with `org_owner` and `org_admin` roles; seed migration promotes existing `created_by` users to `org_owner`
+- Org-level role resolution in auth middleware — `resolve_campaign_role()` returns max(campaign role, org role equivalent); additive, never restrictive
+- Campaign creation gating — only `org_admin`+ can create campaigns within an org
+- Campaign creation wizard — multi-step form replacing the current single-page form
+- Org settings page — view/edit org name; read-only ZITADEL org ID display
 
-See `.planning/research/FEATURES.md` for full feature dependency graph and existing API surface mapping.
+**Org UI — should have (defer if time-constrained):**
+- Add existing org member to a campaign directly (skip invite email for known members)
+- Campaign archival workflow — UI button for existing `ARCHIVED` status transition
+- Multi-org membership and org switcher (ship v1.5 with single-org assumption, add later)
+
+**Anti-features confirmed (do not build):**
+- Shared org-level voter database — legal/vendor compliance risk; voter data stays campaign-scoped with RLS
+- Real-time collaborative turf editing — CRDT/OT for geometry is extreme complexity; use optimistic locking
+- Shapefile or KML import — multi-file format requires GDAL/OGR; GeoJSON only, with conversion docs
+- Freehand polygon drawing — produces self-intersecting polygons that Shapely rejects
+
+See `.planning/research/FEATURES.md` for the full feature dependency graph and MVP recommendation.
 
 ### Architecture Approach
 
-The field mode lives in a new parallel route subtree (`/campaigns/$campaignId/field/`) with its own layout file (`field.tsx`) rendering a mobile shell: sticky top bar, back navigation, progress indicator — no sidebar, no admin nav. A 3-line addition to `__root.tsx` bypasses the existing sidebar layout for all `/field` routes. All existing hooks are imported without modification into new field routes; only the UI layer is new. New components live in `web/src/components/field/`.
+The map editor is a pure frontend replacement: `TurfForm.tsx` loses its `<Textarea>` and gains a `MapContainer` with Geoman controls. The backend serialization layer (GeoJSON → Shapely → WKBElement → PostGIS and reverse) is complete and requires zero changes for the core map editor. Two new backend endpoints are needed for the map UI: `GET /campaigns/{id}/turfs/geojson` (FeatureCollection for overview map) and `GET /campaigns/{id}/turfs/{id}/voters/points` (lightweight `[{lat, lng, voter_id, name}]` array for voter dots). The org UI requires a new backend service (`OrganizationService`), a new router (`app/api/v1/organizations.py`), two new ZitadelService methods, and a new auth dependency (`require_org_role()`). The org router uses `/api/v1/org` with no ID in the path because the user's org context is implicit in the JWT `urn:zitadel:iam:user:resourceowner:id` claim — this prevents cross-org access attempts via URL manipulation.
 
-**Major components:**
-1. `field.tsx` (layout route) — Mobile shell with FieldShell; bypasses admin sidebar via `__root.tsx` `isFieldMode` condition
-2. `field/index.tsx` — Volunteer landing; queries active assignments and routes to canvassing or calling
-3. `field/canvassing/$walkListId.tsx` — Linear canvassing wizard; discriminated union state machine (`navigating → at-door → recording → surveying → complete`)
-4. `field/phone-banking/$sessionId.tsx` — Phone banking field mode; mirrors existing `call.tsx` state machine with mobile layout and `tel:` links
-5. `components/field/OutcomeGrid.tsx` — Large touch-target outcome buttons (imports existing `OUTCOME_GROUPS` constant; extract `RESULT_CODES` from `DoorKnockDialog` to shared location)
-6. `components/field/InlineSurvey.tsx` — Survey questions inline (imports existing `useSurveyScript`, `useRecordResponses`)
-7. `components/field/TourOverlay.tsx` — driver.js onboarding wrapper with per-segment localStorage state via `onboardingStore`
-8. `components/field/FieldProgress.tsx` — Progress bar using existing walk list stats and session progress APIs
+**Major backend components to create:**
+1. `app/api/v1/organizations.py` — endpoints: `GET/PATCH /org`, `GET /org/campaigns`, `GET/POST/DELETE /org/members/*`; auth via new `require_org_role()` dependency
+2. `app/services/organization.py` — business logic: resolve org from JWT org ID, list campaigns filtered by org, aggregate member directory from local DB (not ZITADEL for reads — avoids latency and downtime risk)
+3. `app/schemas/organization.py` — Pydantic request/response schemas for org endpoints
+4. Two additions to `app/services/zitadel.py`: `list_org_users(org_id)` and `list_user_grants(org_id, project_id)` — called only for mutations, not reads
 
-**Patterns to follow:**
-- State machine: discriminated union type (matches proven pattern in `call.tsx` lines 26-33)
-- Hook reuse without modification: import existing hooks directly, no wrapper hooks
-- New components, shared constants: `components/field/` uses same hooks + type constants as admin; no `isMobile` props on existing components
-- `data-tour` attributes on all field elements from Phases 1–3 (enables tour in Phase 6 without retroactive annotation)
+**Major frontend components to create (map editor):**
+1. `TurfMap.tsx` — base `MapContainer` + `TileLayer` wrapper
+2. `TurfDrawControl.tsx` — Geoman `map.pm.addControls()` hook using `useMap()`; fires `pm:create` / `pm:edit` events; returns null (renders nothing itself)
+3. `TurfPolygonLayer.tsx` — read-only GeoJSON layer for a single saved turf boundary
+4. `TurfOverviewMap.tsx` — all-turfs overview, color-coded by status, popup on click
 
-See `.planning/research/ARCHITECTURE.md` for full route structure, component boundaries, data flow maps, and 7-phase build order.
+**Major frontend components to create (org UI):**
+1. `web/src/routes/org/index.tsx` — org dashboard campaign grid
+2. `web/src/routes/org/members.tsx` — member directory with user × campaign role matrix
+3. `web/src/routes/org/settings.tsx` — org name edit, ZITADEL ID display
+4. `useOrg` / `useOrgCampaigns` / `useOrgMembers` hooks — TanStack Query wrappers for org endpoints
+5. "Organization" sidebar group in `__root.tsx` gated behind `<RequireRole minimum="admin">`
+
+See `.planning/research/ARCHITECTURE.md` for full data-flow diagrams, component change tables, and dependency chains.
 
 ### Critical Pitfalls
 
-1. **Admin layout leaking into field mode** — Field routes must have their own layout route (`field.tsx`) with no sidebar. Adding `/field` routes under the existing campaign layout inherits full admin nav; volunteers click into voter search and get lost or accidentally modify data. Recovery cost: LOW if caught early (1–2 days), but sets a bad precedent. Fix from Phase 1: `isFieldMode` bypass in `__root.tsx`.
+1. **`set_config('app.current_campaign_id', ..., false)` leaks campaign context across requests via the connection pool — active data-isolation bug (CRITICAL).** The `false` parameter makes the setting connection-scoped. SQLAlchemy's pool (`pool_pre_ping=True`) returns connections between requests without resetting this variable. The next request drawing that connection inherits the prior request's `campaign_id`. Fix: change `false` → `true` in `app/db/rls.py:21` (transaction-scoped; auto-cleared on commit/rollback). Belt-and-suspenders: add a SQLAlchemy pool `checkout` event that resets the variable to the null UUID `00000000-0000-0000-0000-000000000000` — a valid UUID format that matches no real campaign. Do not use an empty string; PostgreSQL's `::uuid` cast throws on it. Then choose one centralization approach: FastAPI middleware extracting `campaign_id` from the URL path (cleaner), or replacing all 21 `get_db()` calls with `get_db_with_rls()` (more mechanical).
 
-2. **Wizard state loss on interruption** — React `useState` is destroyed by incoming phone calls, app switching, and OS memory pressure. Volunteers constantly lose in-progress door knock data. Fix from Phase 2: Zustand persist with `sessionStorage`; resume prompt on re-entry; save after each step transition, not only on final submit. Recovery cost if skipped: 2–3 days.
+2. **`get_campaign_from_token()` and `ensure_user_synced()` both use `.limit(1)`, returning only the most recently created campaign per org.** With multi-campaign orgs (the target state for v1.5), users silently lack membership in all but their newest campaign. `ensure_user_synced()` in `deps.py:92-98` creates `CampaignMember` records only for the most recent campaign. This must be resolved before the org UI ships, or org admins will have invisible campaigns.
 
-3. **"Responsive" admin UI shipped as field mode** — Wrapping existing admin components with `flex-col` on mobile produces an unusable shrunk-down admin interface. The two-panel desktop `call.tsx` layout and five-column walk list table are fundamentally incompatible with one-handed field use. Fix: share hooks only, never page-level components; new `components/field/` from the start. Recovery cost if skipped: 5+ day rewrite.
+3. **Coordinate order: always extract `.geometry` from `layer.toGeoJSON()`, never construct GeoJSON manually from `getLatLngs()`.** Leaflet's `LatLng` objects expose `.lat` and `.lng`; manual serialization reverses GeoJSON's required `[longitude, latitude]` order. Swapped coordinates place turfs in the ocean off West Africa. The existing `_validate_polygon()` in `turf.py` does not detect this — add a US-bounds check (longitude: −180 to −60, latitude: 24 to 72) and add `shapely.geometry.polygon.orient(geom)` after `shape()` to normalize RFC 7946 counterclockwise winding order (the current code does not do this).
 
-4. **`tel:` links silently failing** — Formatted phone numbers (`(555) 123-4567`) passed to `href="tel:"` behave inconsistently; Android WebViews silently swallow `tel:` links; desktop shows nothing or opens random app. Fix: `formatForDial()` utility stripping to E.164; "Copy Number" fallback button on all tap-to-call elements; desktop detection showing copyable text.
+4. **Loguru (13 files) and stdlib logging (4 files) are mixed — a full structlog migration is a 17-file refactor with incompatible call signatures.** Loguru uses positional formatting (`logger.info("msg {}", var)`); structlog uses keyword binding (`logger.info("msg", key=var)`). Do not attempt a full migration in v1.5. Recommended: keep loguru for application logging; add structlog only as a request-level middleware capturing `request_id`, `user_id`, `campaign_id`, and duration as structured JSON. Standardize all new code on one library going forward.
 
-5. **react-joyride broken on React 19** — The most popular React tour library uses `unmountComponentAtNode` and `unstable_renderSubtreeIntoContainer` (both removed in React 19). It has been unmaintained 9+ months. Fix: use driver.js (framework-agnostic, ~5kB, confirmed React 19 compatible). If driver.js is reconsidered, react-shepherd also has a known React 19 wrapper incompatibility.
+5. **Org-level cross-campaign DB queries will silently return empty results if campaign RLS context is active.** All existing RLS policies filter by `campaign_id = current_setting('app.current_campaign_id')::uuid`. Org admin pages aggregate data across campaigns. Org-level endpoints must intentionally not set campaign context. Use explicit `WHERE organization_id = :org_id` clauses. Do not use a different DB role/connection just for org queries; just omit `set_campaign_context()` in the org endpoint handlers.
+
+See `.planning/research/PITFALLS.md` for the full phase-by-phase pitfall table, RLS test strategy, and Sentry PII scrubbing configuration.
+
+---
 
 ## Implications for Roadmap
 
-The architecture's dependency analysis maps directly to a 7-phase delivery. Phase ordering is driven by: layout infrastructure before content, canvassing before phone banking (produces shared components), tour after all screens exist, polish always last.
+Research points to six distinct phases in strict dependency order. The RLS fix and production hardening are blocking concerns for production deployment. The two feature tracks are independent of each other — a second engineer can develop the map editor in parallel with the org data model work — but neither should be deployed to production before the RLS fix is verified.
 
-### Phase 1: Field Layout Shell + Root Bypass
+### Phase 1: RLS Fix and Multi-Campaign Foundation
 
-**Rationale:** All field routes depend on this layout infrastructure. Establishing `/field/` as a no-sidebar zone from day one prevents the highest-cost pitfall (admin layout leaking) and sets the pattern that field mode shares hooks but not UI components.
-**Delivers:** `field.tsx` layout with FieldShell component; `__root.tsx` `isFieldMode` bypass (3 lines); "Field Mode" nav link in AppSidebar; bare route tree accessible to test.
-**Addresses:** Table stakes — back-to-hub navigation, session controls shell.
-**Avoids:** Pitfall 1 (admin nav in field mode), Pitfall 3 (shared admin layout). Recovery cost if skipped: LOW now, but every subsequent phase builds on this foundation.
+**Rationale:** Active multi-tenant data-isolation failure in production. All voter and voter-list data is potentially exposed across campaign boundaries due to session-scoped `set_config`. This is a go-live blocker. Also fixes the `.limit(1)` bug in `get_campaign_from_token()` and `ensure_user_synced()` that would silently break the org UI.
 
-### Phase 2: Volunteer Landing Page
+**Delivers:** Transaction-scoped RLS context (`false` → `true` in `rls.py:21`); pool checkout event resetting context to null UUID; centralized context-setting (middleware or `get_db_with_rls()` replacement); explicit `WHERE` clauses in `ensure_user_synced()` verified to not rely on RLS; cross-campaign isolation test suite written before any code changes.
 
-**Rationale:** The hub is the single entry point for all field features. Contains the only non-trivial new backend work: either `GET /my-assignments` endpoint (Low complexity) or client-side filter of existing `useShifts` + `useWalkLists` queries. Must exist before canvassing or phone banking can be reached naturally.
-**Delivers:** Volunteer landing page showing active assignment type (canvassing vs. phone banking) and routing to appropriate wizard; optional `GET /campaigns/{id}/my-assignments` endpoint.
-**Addresses:** Table stakes — volunteer hub page, session start controls.
-**Uses:** `useShifts`, `useWalkLists`, `usePhoneBankSessions` (all existing hooks, zero changes).
+**Must avoid:**
+- Empty string in UUID cast on pool checkout reset — use `00000000-0000-0000-0000-000000000000`
+- Breaking `ensure_user_synced()` — verify it uses explicit `WHERE user_id = :id AND campaign_id = :cid`, not RLS, before applying the pool reset
+- Testing with a superuser connection — must use a restricted `app_user` role to exercise RLS policies
 
-### Phase 3: Canvassing Wizard + Shared Field Components
+**Research flag:** Standard patterns; root cause confirmed by codebase analysis. No additional phase research needed.
 
-**Rationale:** Canvassing is more complex and produces all shared `components/field/` components (OutcomeGrid, VoterCard, AddressCard, WizardStepper, FieldProgress). Building it first means phone banking reuses finished components. Wizard state persistence with Zustand must be designed in here — retrofitting later is a 2–3 day cost. All `data-tour` attributes added to elements as they are built (required by Phase 6).
-**Delivers:** `field/canvassing/$walkListId.tsx` with discriminated union state machine; `onboardingStore` (Zustand persist); Zustand persist wizard state in sessionStorage; resume-on-reentry prompt; `RESULT_CODES` extracted to shared constants; OutcomeGrid, VoterCard, AddressCard, WizardStepper, FieldProgress components; `data-tour` attributes on all elements.
-**Addresses:** Table stakes — linear canvassing wizard, door-knock outcome buttons, mobile touch targets (44px minimum), progress indicator.
-**Avoids:** Pitfall 2 (wizard state loss), Pitfall 3 (shared admin UI components).
-**Uses:** `useWalkListEntries`, `useRecordDoorKnock`, `useUpdateEntryStatus` (existing).
+---
 
-### Phase 4: Inline Survey Integration
+### Phase 2: Production Hardening (Sentry, Observability, Rate Limiting)
 
-**Rationale:** Survey is used by both canvassing (after "Contact Made") and phone banking (after "Answered"). Building `InlineSurvey.tsx` as a standalone component here avoids duplication when phone banking is built next. Also adds `data-tour` attributes to survey elements before the tour phase.
-**Delivers:** `InlineSurvey.tsx` component integrated into canvassing wizard; `data-tour` attributes on survey elements.
-**Addresses:** Table stakes — inline survey after contact.
-**Uses:** `useSurveyScript`, `useRecordResponses` (existing, zero changes).
+**Rationale:** Get observability in place before building new features so that bugs in the map editor and org UI surface immediately when deployed. The rate-limiting IP fix is a correctness issue (all users behind a shared NAT currently share one counter). Sentry PII scrubbing is a compliance requirement given voter data.
 
-### Phase 5: Phone Banking Field Mode
+**Delivers:** Correct IP-based rate limiting using `CF-Connecting-IP` with a `ProxyHeadersMiddleware` guard against forged headers; user-ID-based rate limiting for authenticated endpoints; Sentry SDK >=2.0 with `FastApiIntegration()` and `AsyncioIntegration()`; `send_default_pii=False`; `before_send` hook stripping request bodies and SQL error data; `LoggingIntegration(event_level=None)` to eliminate double error reporting; structlog request middleware for structured JSON logs; explicit `sentry_sdk.capture_exception()` in TaskIQ task wrapper.
 
-**Rationale:** Reuses OutcomeGrid, InlineSurvey, FieldProgress, and FieldShell already built in Phases 3–4. Closely mirrors existing `call.tsx` state machine but with mobile layout and `tel:` links. Shorter phase because shared components are already available.
-**Delivers:** `field/phone-banking/$sessionId.tsx`; `formatForDial()` utility; `TapToCall` component with "Copy Number" desktop fallback; stacked vertical mobile layout.
-**Addresses:** Table stakes — phone banking tap-to-call, phone banking call flow.
-**Avoids:** Pitfall 4 (`tel:` formatting and WebView fallback handling).
-**Implements:** Existing `useClaimEntry`, `useRecordCall`, `useSelfReleaseEntry` hooks in mobile layout.
+**Must avoid:**
+- Full loguru-to-structlog migration — add structlog as middleware layer only; keep loguru for application code
+- Voter PII reaching Sentry via SQL constraint violation messages — the `before_send` hook must strip exception SQL data, not just request body
 
-### Phase 6: Guided Onboarding Tour
+**Research flag:** Standard FastAPI + Sentry + structlog patterns — no additional research needed.
 
-**Rationale:** Tour must come after all field routes are complete — tour steps describe screens that must exist. driver.js requires `data-tour` attributes set in Phases 1–5. Split into per-phase segment tours (welcome, canvassing basics, phone banking basics) to avoid the monolithic tour pitfall (breaks when any single step target is missing from DOM).
-**Delivers:** `npm install driver.js`; `useTour` hook; `TourOverlay` component; per-segment completion flags in `onboardingStore`; "Replay Tour" button in field header; CSS overrides for `.driver-popover` matching shadcn/ui design tokens (~30 lines).
-**Addresses:** Differentiator — guided onboarding tour (zero-training UX).
-**Avoids:** Pitfall 5 (react-joyride React 19 breakage); monolithic tour breaking on dynamic/async content (split segments, controlled `stepIndex`).
+---
 
-### Phase 7: Contextual Help + Polish
+### Phase 3: Organization Data Model and Auth Extension
 
-**Rationale:** Final layer that can be applied to all field mode screens without architectural changes. Household grouping and voter context cards use data that already exists. Milestone celebrations require only the progress tracking built in Phase 3.
-**Delivers:** `HelpTip` component (existing Radix Tooltip + `HelpCircle` icon); household grouping in canvassing wizard (group by `household_key`); voter context card; milestone celebration toasts; full touch target audit (min 44px verified on all elements including secondary actions: Skip, Back, Notes).
-**Addresses:** Differentiators — contextual tooltips, household grouping, voter context card, milestone celebrations.
-**Avoids:** UX pitfall — secondary action buttons not meeting 44px minimum (commonly missed in initial build).
+**Rationale:** The `OrganizationMember` table and updated `resolve_campaign_role()` are the foundation for every org UI feature. Auth middleware changes affect all existing routes — isolating them in a dedicated phase with a minimal surface area and thorough testing before the UI is layered on top reduces regression risk.
+
+**Delivers:** `organization_members` table migration (`user_id`, `organization_id`, `role`); seed migration promoting `created_by` users to `org_owner`; `resolve_campaign_role()` returning max(campaign role, org role equivalent); new `require_org_role()` security dependency; `OrganizationService` (`get_org_for_user`, `list_org_campaigns`, `list_org_members`); org API endpoints (`GET/PATCH /api/v1/org`, `GET /api/v1/org/campaigns`, `GET /api/v1/org/members`); `list_org_users` and `list_user_grants` added to `ZitadelService`.
+
+**Must avoid:**
+- Overloading ZITADEL project roles for org permissions — create a separate local `organization_members` table; do not conflate org roles with campaign roles in JWT claims
+- Breaking existing `CampaignMember` role resolution — org roles are additive (elevate, never restrict)
+- ZITADEL API calls for read operations — use local DB for member listing; only call ZITADEL for mutations
+
+**Research flag:** ZITADEL Management API endpoint shapes for `list_org_users` (`POST /v2/users` with `x-zitadel-orgid`) and `list_user_grants` (`POST /management/v1/users/grants/_search`) need live verification against the running ZITADEL instance before implementation. Training-data confidence is MEDIUM.
+
+---
+
+### Phase 4: Map-Based Turf Editor
+
+**Rationale:** Fully independent of the org changes — can be developed in parallel with Phase 3 by a separate engineer. Building after the RLS fix ensures turf data is correctly isolated. The backend requires zero changes for the core draw/edit flow; this is the safest large feature to build.
+
+**Delivers:** Interactive polygon draw/edit via Geoman (`map.pm.addControls()` in `useMap()` hook); turf overview map with status colors; voter dots within a selected turf (clustered markers); voter count badge via `TurfService.get_voter_count()` wired into `TurfResponse`; GeoJSON file import with map preview; GeoJSON export (client-side); raw JSON textarea preserved as "Advanced" toggle; Leaflet CSS and Geoman CSS imported in app entry point. Two new backend endpoints: `GET /campaigns/{id}/turfs/geojson` and `GET /campaigns/{id}/turfs/{id}/voters/points`.
+
+**Uses:**
+- `@geoman-io/leaflet-geoman-free` — the only new npm package in v1.5
+- `useMap()` from react-leaflet — imperative Geoman attachment; no React wrapper library needed
+- Existing `useTurfs.ts` mutations — payload shape unchanged (`{ name, description, boundary: GeoJSON geometry }`); only input method changes
+
+**Must avoid:**
+- Manually constructing GeoJSON from `getLatLngs()` — always use `layer.toGeoJSON().geometry` from Geoman events
+- Missing Leaflet CSS and Geoman CSS imports — causes invisible map tiles (common gotcha)
+- Leaflet map keyboard trap — set `keyboard: false` on map container; add skip-nav link before the map; all CRUD operations must be possible without the map (the existing API supports GeoJSON text input)
+- Map component as a child of a form component that re-renders on input changes — drawn polygons are lost on re-render; map must be a stable sibling of the form
+- Mixing existing turf polygons and the draw layer in the same `FeatureGroup` — draw tool attempts to edit existing turfs; use separate layers
+
+**Research flag:** The marker clustering library for voter dots (`react-leaflet-cluster` wrapping `leaflet.markercluster`) needs npm verification for react-leaflet 5 compatibility — not confirmed in this research round. `ST_Simplify` tolerance value for the turf overview map at low zoom needs empirical calibration against real turf data.
+
+---
+
+### Phase 5: Organization UI
+
+**Rationale:** Depends entirely on Phase 3 (org data model and auth). Frontend-only once the backend is in place. Lower risk than Phase 3 but more surface area — new route pages, hooks, and sidebar navigation.
+
+**Delivers:** Org dashboard at `/org` with campaign card grid; org member directory at `/org/members` with user × campaign role matrix; org settings page at `/org/settings`; campaign creation wizard (multi-step); "Organization" sidebar group gated behind `<RequireRole minimum="admin">`; `useOrg`, `useOrgCampaigns`, `useOrgMembers` TanStack Query hooks.
+
+**Must avoid:**
+- Cross-campaign DB queries with campaign RLS context active — org endpoint handlers must not call `set_campaign_context()`; use explicit `WHERE organization_id = :id` clauses
+- Campaign creation accessible to non-org-admin users — gate the "New Campaign" button and the creation endpoint on `require_org_role("admin")`
+- Multi-org URL complexity in v1.5 — ship with `/org` (implicit org from JWT); move to `/organizations/{id}` only if multi-org membership is added in a later milestone
+
+**Research flag:** Standard shadcn/ui component patterns — no additional research needed. ZITADEL API calls are validated in Phase 3.
+
+---
+
+### Phase 6: WCAG Audit (Admin Pages)
+
+**Rationale:** Must run after all new v1.5 UI (map editor, org dashboard) is complete so those components are in scope. v1.4 audited only `/field/` routes; the admin pages (~58K LOC) are completely unaudited. Run axe-core as a spot check during earlier phases, but the formal audit is last.
+
+**Delivers:** axe-core automated scan on every admin route; manual screen reader testing on five critical flows (voter search, voter import, create walk list, phone bank session, campaign settings); `aria-live` regions on all dynamic content; keyboard navigation verified across all interactive components; focus management hook for TanStack Router route changes.
+
+**Known high-risk components:** DataTable (`aria-sort` on sortable columns), Popover+Command comboboxes (`role="combobox"`, `aria-expanded`, `aria-activedescendant`), dual-handle sliders in the 23-dimension voter filter, Sheet/Dialog focus trapping, import wizard step announcements, propensity score and turf status badges (color-only information).
+
+**Must avoid:**
+- Leaflet map keyboard trap — must be addressed during Phase 4 build with `keyboard: false` and a skip-nav link; cannot be left to discovery here
+- Building new components in Phases 3–5 without accessibility from day one using patterns established in v1.4 field mode
+
+**Research flag:** Specific axe-core violations will drive the remediation work. Scope and effort cannot be estimated until the automated scan runs. Budget for at least one sprint after initial scan results.
+
+---
 
 ### Phase Ordering Rationale
 
-- Phase 1 is infrastructure-only: zero user-facing value but every other phase inherits its layout and route tree.
-- Phases 3–4 are coupled as "canvassing core" because `InlineSurvey.tsx` is tightly coupled to the canvassing wizard's outcome recording completion event, and building them together produces clean shared components for Phase 5.
-- Phase 5 (phone banking) comes after canvassing because it reuses all shared `components/field/` components already built; reversing the order would require duplicating components.
-- Phase 6 (tour) requires all screens to exist; placing it earlier produces a tour for incomplete or missing screens.
-- Phase 7 (polish) has no hard dependencies — it can be shrunk or expanded based on milestone timeline without blocking earlier phases.
+- RLS fix must be first — active production data-isolation failure; all other work is blocked from a deployment perspective
+- Production hardening before feature work gives observability coverage for finding bugs in Phases 3–5 as they land in production
+- Org data model before org UI — auth changes have a wide blast radius and need isolated testing before UI is layered on
+- Map editor is independent and can be developed in parallel with Phase 3 by a separate engineer; merge after Phase 3 lands to avoid auth middleware conflicts in CI
+- WCAG audit last — must cover all new UI; early spot checks with axe-core during development minimize the remediation backlog
+
+---
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-
-- **Phase 3 (Canvassing Wizard):** Confirm that `useWalkListEntries` performance is acceptable for walk lists up to ~500 entries on a 3G connection before committing to the client-side-only approach. Verify Zustand persist + sessionStorage behavior across TanStack Router route transitions — confirm state survives navigation within the field subtree but not cross-campaign navigation.
-- **Phase 6 (Guided Tour):** Verify driver.js CSS override specificity with Tailwind v4's CSS-first config (no `tailwind.config.js`). Confirm no z-index conflicts between `.driver-overlay` and vaul Drawer's overlay. These are likely resolved quickly but worth 30 minutes of integration testing before committing to the implementation approach.
+Phases needing deeper research during planning:
+- **Phase 3:** ZITADEL Management API response shapes for `POST /v2/users` and `POST /management/v1/users/grants/_search` — verify against the live ZITADEL instance before implementing; training-data confidence is MEDIUM
+- **Phase 4:** Confirm react-leaflet 5 compatibility of the marker clustering library (likely `react-leaflet-cluster`) — not npm-verified in this research round; needed for voter dots at 500–2000 markers per turf
+- **Phase 6:** Run axe-core automated scan before estimating remediation scope — known high-risk components identified but violation count and severity are unknown
 
 Phases with standard patterns (skip research-phase):
+- **Phase 1:** RLS fix mechanics are well-documented in PostgreSQL docs; root cause confirmed by direct codebase analysis
+- **Phase 2:** Sentry + structlog + slowapi patterns are established for FastAPI; specific configuration confirmed from codebase
+- **Phase 5:** Org UI builds on patterns established in Phase 3; no novel integrations
 
-- **Phase 1 (Field Layout Shell):** TanStack Router nested layouts are well-documented; the `__root.tsx` modification has direct precedent in the existing public route bypass logic (same 3-line pattern).
-- **Phase 2 (Volunteer Landing):** Standard TanStack Query data fetching with existing hooks; client-side filter is trivial if the `GET /my-assignments` endpoint is deferred.
-- **Phase 5 (Phone Banking):** Closely mirrors existing `call.tsx`; `tel:` URI is a web standard with a known implementation pattern documented in research.
-- **Phase 7 (Polish):** Existing shadcn Tooltip component; `household_key` data structure already on `WalkListEntry`.
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | react-joyride React 19 breakage confirmed via GitHub issues + multiple independent sources. All other stack decisions use already-installed packages with verified compatibility. |
-| Features | HIGH | Cross-referenced against MiniVAN, Ecanvasser, Qomon; backend API coverage confirmed by direct codebase analysis of all v1.0–v1.3 endpoints. 90%+ of required backend already exists. |
-| Architecture | HIGH | Based on direct codebase analysis of `__root.tsx`, `call.tsx`, `DoorKnockDialog.tsx`, all hooks in `web/src/hooks/`, and existing layout files. Not inferred from documentation. |
-| Pitfalls | HIGH | Pitfalls sourced from react-joyride GitHub issues (specific issue numbers cited), WCAG specifications, TanStack Query offline discussion, and direct analysis of existing `useState`-based state management patterns in `call.tsx`. Recovery costs documented. |
+| Stack | HIGH | npm registry verified (`@geoman-io/leaflet-geoman-free` v2.19.2, February 2026 publish); full codebase review confirms zero new backend packages needed; `leaflet-draw` abandonment confirmed (last publish June 2022) |
+| Features | MEDIUM-HIGH | Table stakes derived from direct codebase gap analysis and domain knowledge of VAN/PDI/EveryAction; competitor claims based on training data, not live 2026 observation |
+| Architecture | HIGH | RLS root cause confirmed from codebase line references (`rls.py:21`, `deps.py:23-179`, `session.py:18`); serialization layer completeness verified; component boundaries derived from existing code structure |
+| Pitfalls | HIGH for RLS and map editor; MEDIUM for ZITADEL org API | RLS and coordinate pitfalls confirmed directly from source code; ZITADEL live API behavior needs verification |
 
-**Overall confidence:** HIGH
+**Overall confidence:** HIGH for the RLS fix and map editor; MEDIUM for ZITADEL org management API behavior in production.
 
 ### Gaps to Address
 
-- **`GET /my-assignments` vs. client-side filter:** Decision deferred to Phase 2 planning. If campaign walk list count is low (< 20 per campaign), client-side filter of `useWalkLists` is acceptable for v1.4. If Phase 2 performance testing shows slow landing page on large campaigns, add the backend endpoint (Low complexity, ~1 day backend work).
+- **ZITADEL Management API live behavior:** `list_org_users` and `list_user_grants` endpoint shapes need verification against the running ZITADEL instance before Phase 3 implementation. Do not assume training-data response shapes are correct.
+- **Marker clustering library for voter dots:** `react-leaflet-cluster` (wrapping `leaflet.markercluster`) is the most likely candidate but was not npm-verified in this research round. Confirm version and react-leaflet 5 compatibility before Phase 4 implementation begins.
+- **`ensure_user_synced()` RLS dependency:** PITFALLS.md flags this function as a candidate for relying on RLS for `CampaignMember` lookup (`deps.py:84-137`). A targeted code audit must confirm whether explicit `WHERE` clauses are used before the pool checkout reset is applied. If RLS is relied upon, refactor before deploying Phase 1.
+- **`ST_Simplify` tolerance calibration:** The tolerance value for turf polygon simplification at overview map zoom levels requires empirical testing against real turf data. No single value fits all campaign geographies.
+- **Multi-org assumption for v1.5:** Research recommends shipping `/org` with a single-org assumption derived from the JWT. If the product decision is made to support multi-org membership at launch, Phase 5 URL design and the org switcher component scope must expand.
+- **Voter count N+1 query:** Adding `voter_count` to the turf list response requires a lateral join or a batch subquery. Naive implementation calls `get_voter_count()` per turf in a loop. This must be addressed in the Phase 4 schema change — confirm the batch query approach before implementation.
 
-- **Walk list entry pagination:** `useWalkListEntries` fetches the full list. Research flags this as acceptable up to ~500 entries. Walk lists larger than this need a server-side "next unvisited entry" endpoint (not researched). Flag for Phase 3 implementation review — if pilot campaign walk lists exceed 200 entries, test on a throttled connection before committing to the full-list approach.
-
-- **driver.js CSS override with Tailwind v4:** Tailwind v4 uses a CSS-first config. driver.js styling relies on `.driver-popover` CSS class overrides. Verify specificity works in practice during Phase 6; fallback is CSS custom properties which driver.js also supports natively.
-
-- **Offline outbox pattern deferred:** PITFALLS.md flags poor connectivity as a critical pitfall with HIGH recovery cost if addressed late. v1.4 does not include a full offline outbox. Partial mitigations for v1.4: TanStack Query `networkMode: 'offlineFirst'`, persistent offline banner, optimistic UI. These are not a full solution. The gap is explicitly deferred to v1.5, but the architecture decision (Zustand persist for state, sessionStorage scoping) does not preclude retrofitting an outbox later.
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-- Direct codebase analysis — `web/src/routes/.../call.tsx`, `__root.tsx`, `DoorKnockDialog.tsx`, `SurveyWidget.tsx`, all hooks in `web/src/hooks/`, all backend API files in `app/api/v1/`
-- [driver.js official documentation](https://driverjs.com) — React 19 integration, CSS theming, controlled mode
-- [driver.js GitHub (25K+ stars, 436K+ weekly downloads)](https://github.com/kamranahmedse/driver.js)
-- [Zustand persist middleware official docs](https://zustand.docs.pmnd.rs/reference/middlewares/persist)
-- [shadcn/ui Drawer component (vaul)](https://ui.shadcn.com/docs/components/radix/drawer)
-- [W3C WCAG 2.5.5: Target Size guidelines (44x44px minimum)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html)
-- [MiniVAN Canvassing Guide (NGP VAN)](https://www.ngpvan.com/blog/canvassing-with-minivan/)
-- [web.dev — Click to Call best practices](https://web.dev/articles/click-to-call)
+- Direct codebase analysis: `app/db/rls.py` line 21 — `set_config` `false` parameter
+- Direct codebase analysis: `app/api/deps.py` lines 23–179 — `get_db_with_rls()` exists but unused; `ensure_user_synced()` queries before context is set; `.limit(1)` multi-campaign bug
+- Direct codebase analysis: `app/db/session.py` line 18 — `pool_pre_ping=True` confirms pool reuse
+- Direct codebase analysis: all 21 files in `app/api/v1/` — confirmed all use `get_db()` + manual context; `get_db_with_rls()` called by zero endpoints
+- Direct codebase analysis: `app/services/turf.py`, `app/schemas/turf.py`, `app/api/v1/turfs.py` — serialization layer confirmed complete
+- Direct codebase analysis: `app/models/organization.py`, `app/models/campaign.py`, `app/services/zitadel.py` — org model and ZITADEL service methods confirmed
+- Direct codebase analysis: `web/package.json` — `leaflet` 1.9.4, `react-leaflet` 5.0.0 confirmed installed; no map components in `web/src/`
+- Direct codebase analysis: `app/core/rate_limit.py` line 8 — `get_remote_address` confirmed reading `request.client.host` (proxy-blind)
+- Direct codebase analysis: 13 files confirmed using `from loguru import logger`, 4 using `import logging`
+- npm registry: `@geoman-io/leaflet-geoman-free` v2.19.2 — February 2026 publish date, MIT license, peer dep `leaflet ^1.2.0` verified
+- npm registry: `leaflet-draw` — last publish June 2022 confirmed (abandoned)
+- PostgreSQL documentation: `set_config()` third parameter — `true` = transaction-local, `false` = session-local (persists until connection close)
+- RFC 7946: GeoJSON coordinate order `[longitude, latitude]`
 
 ### Secondary (MEDIUM confidence)
+- Training data: ZITADEL Management API v1 — `POST /v2/users` with `x-zitadel-orgid` header, `POST /management/v1/users/grants/_search` response shape
+- Training data: VAN/VoteBuilder turf cutter, EveryAction committee admin, PDI canvassing — feature parity benchmarks for political field operations
+- Training data: Sentry SDK 2.0+ async contextvars behavior in FastAPI async handlers
+- Training data: loguru + structlog integration patterns for FastAPI request middleware
 
-- [OnboardJS — 5 Best React Onboarding Libraries (2026)](https://onboardjs.com/blog/5-best-react-onboarding-libraries-in-2025-compared) — confirms react-joyride React 19 incompatibility
-- [Sandro Roth — Evaluating tour libraries for React](https://sandroroth.com/blog/evaluating-tour-libraries/)
-- [Ecanvasser Platform](https://www.ecanvasser.com/) — competitor feature set
-- [Qomon — Understanding Canvassing Apps](https://qomon.com/blog/understanding-canvassing-apps)
-- [TanStack Query: Offline discussion (#4296)](https://github.com/TanStack/query/discussions/4296)
-- [Smashing Magazine: Accessible Tap Target Sizes](https://www.smashingmagazine.com/2023/04/accessible-tap-target-sizes-rage-taps-clicks/)
-- [Phone Banking Guide (Solidarity Tech)](https://www.solidarity.tech/how-to-run-a-phonebank)
-
-### Tertiary (LOW confidence — verify in implementation)
-
-- [react-joyride GitHub issues #585, #519, #109](https://github.com/gilbarbara/react-joyride/issues) — tour element targeting failures on async content (informs driver.js segmented tour approach)
-- [CSS-Tricks: Current State of Telephone Links](https://css-tricks.com/the-current-state-of-telephone-links/) — `tel:` link edge cases on WebView (may have changed since publication; test on real devices)
+### Tertiary (LOW confidence)
+- Training data: 2026 competitor product state — VAN, EveryAction, Reach feature sets may have changed since training cutoff; treat as directional, not authoritative
 
 ---
-*Research completed: 2026-03-15*
+
+*Research completed: 2026-03-24*
 *Ready for roadmap: yes*

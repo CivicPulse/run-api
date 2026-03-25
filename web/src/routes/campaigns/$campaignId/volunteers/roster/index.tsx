@@ -319,7 +319,7 @@ function RosterPage() {
         isLoading={isLoading}
         emptyIcon={Users}
         emptyTitle="No volunteers yet"
-        emptyDescription="Add volunteers to your campaign to get started"
+        emptyDescription="Register volunteers or invite them to join the campaign."
         emptyAction={
           <RequireRole minimum="manager">
             <Button

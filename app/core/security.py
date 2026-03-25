@@ -6,7 +6,7 @@ Uses Authlib for JWT/JWKS validation against ZITADEL OIDC.
 from __future__ import annotations
 
 import uuid
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 import httpx
 import sqlalchemy.exc
@@ -29,6 +29,24 @@ class CampaignRole(IntEnum):
     MANAGER = 2
     ADMIN = 3
     OWNER = 4
+
+
+class OrgRole(StrEnum):
+    """Organization-level roles (not campaign-specific)."""
+
+    ORG_OWNER = "org_owner"
+    ORG_ADMIN = "org_admin"
+
+
+ORG_ROLE_CAMPAIGN_EQUIVALENT: dict[OrgRole, CampaignRole] = {
+    OrgRole.ORG_ADMIN: CampaignRole.ADMIN,
+    OrgRole.ORG_OWNER: CampaignRole.OWNER,
+}
+
+ORG_ROLE_LEVELS: dict[OrgRole, int] = {
+    OrgRole.ORG_ADMIN: 0,
+    OrgRole.ORG_OWNER: 1,
+}
 
 
 class AuthenticatedUser(BaseModel):
@@ -171,69 +189,95 @@ async def resolve_campaign_role(
     """Resolve the effective role for a user in a specific campaign.
 
     Resolution order:
-    1. Explicit per-campaign role stored in ``CampaignMember.role``.
-    2. JWT role, if the campaign's ZITADEL org matches the user's current org.
-    3. None (deny) for cross-org access with no explicit grant.
+    1. Explicit per-campaign ``CampaignMember.role`` (NULL treated as VIEWER).
+    2. ``OrganizationMember``-derived campaign-equivalent role.
+    3. Additive ``max()`` of both (D-08).
+    4. ``None`` (deny) when neither source grants access (D-07: JWT
+       fallback removed).
 
     Args:
         user_id: The user's ZITADEL ID.
         campaign_id: The campaign UUID.
         db: Async database session.
-        jwt_role: The org-level role extracted from JWT.
-        user_org_id: The user's ZITADEL organization ID from the JWT.  When
-            provided it is used to verify that the user belongs to the campaign
-            org before honouring the JWT role.  Old campaigns that have not yet
-            been migrated to the Organization model are matched via the
-            ``Campaign.zitadel_org_id`` column directly.
+        jwt_role: The org-level role extracted from JWT (kept for signature
+            compatibility but no longer used as a fallback).
+        user_org_id: The user's ZITADEL organization ID from the JWT.
 
     Returns:
-        The resolved CampaignRole.
+        The resolved ``CampaignRole``, or ``None`` to deny access.
     """
     from app.models.campaign import Campaign
     from app.models.campaign_member import CampaignMember
     from app.models.organization import Organization
+    from app.models.organization_member import OrganizationMember
 
-    # 1. Check for an explicit per-campaign role override in the DB.
-    member_role = await db.scalar(
-        select(CampaignMember.role).where(
+    # 1. Explicit CampaignMember role (NULL role = VIEWER for backward compat)
+    explicit_campaign_role: CampaignRole | None = None
+    member = await db.scalar(
+        select(CampaignMember).where(
             CampaignMember.user_id == user_id,
             CampaignMember.campaign_id == campaign_id,
         )
     )
-    if member_role:
-        try:
-            return CampaignRole[member_role.upper()]
-        except KeyError:
-            logger.warning(
-                "Unknown per-campaign role '{}' for user {}", member_role, user_id
-            )
-
-    # 2. If no explicit DB role, verify the JWT role is valid for this campaign.
-    #    The JWT role is only authoritative when the user's current ZITADEL org
-    #    is the same org that owns the campaign.
-    if user_org_id:
-        campaign = await db.scalar(select(Campaign).where(Campaign.id == campaign_id))
-        if campaign is not None:
-            # Resolve the campaign's effective ZITADEL org ID.
-            effective_org_id: str | None = None
-            if campaign.organization_id is not None:
-                effective_org_id = await db.scalar(
-                    select(Organization.zitadel_org_id).where(
-                        Organization.id == campaign.organization_id
-                    )
+    if member is not None:
+        if member.role:
+            try:
+                explicit_campaign_role = CampaignRole[member.role.upper()]
+            except KeyError:
+                logger.warning(
+                    "Unknown per-campaign role '{}' for user {}",
+                    member.role,
+                    user_id,
                 )
-            # Fall back to the legacy direct column for campaigns not yet migrated.
+                explicit_campaign_role = CampaignRole.VIEWER
+        else:
+            # NULL role treated as VIEWER for backward compatibility
+            explicit_campaign_role = CampaignRole.VIEWER
+
+    # 2. Org role lookup -- find campaign's org, check OrganizationMember
+    org_derived_role: CampaignRole | None = None
+    if user_org_id:
+        campaign = await db.scalar(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+        if campaign is not None and campaign.organization_id is not None:
+            # Resolve effective org ID via Organization FK
+            effective_org_id: str | None = await db.scalar(
+                select(Organization.zitadel_org_id).where(
+                    Organization.id == campaign.organization_id
+                )
+            )
             if not effective_org_id:
                 effective_org_id = campaign.zitadel_org_id
 
             if effective_org_id and effective_org_id == user_org_id:
-                return jwt_role
+                # User's org matches campaign's org -- check org membership
+                org_member_role = await db.scalar(
+                    select(OrganizationMember.role).where(
+                        OrganizationMember.user_id == user_id,
+                        OrganizationMember.organization_id
+                        == campaign.organization_id,
+                    )
+                )
+                if org_member_role:
+                    try:
+                        org_role = OrgRole(org_member_role)
+                        org_derived_role = ORG_ROLE_CAMPAIGN_EQUIVALENT[
+                            org_role
+                        ]
+                    except (ValueError, KeyError):
+                        pass
 
-        # User is from a different org and has no explicit grant — deny.
-        return None
+    # 3. Additive resolution: max of explicit campaign + org-derived (D-08)
+    roles = [
+        r for r in [explicit_campaign_role, org_derived_role] if r is not None
+    ]
+    if roles:
+        return max(roles)
 
-    # user_org_id not provided (legacy callers): preserve old behaviour.
-    return jwt_role
+    # 4. Deny -- no CampaignMember AND no OrganizationMember
+    #    (D-07: JWT fallback dropped)
+    return None
 
 
 bearer_scheme = HTTPBearer()
@@ -404,3 +448,72 @@ def require_role(minimum: str):
         return current_user
 
     return _check_role
+
+
+def require_org_role(minimum: str):
+    """FastAPI dependency factory that enforces minimum org-level role.
+
+    Validates the user's JWT org_id against a DB Organization record,
+    then checks OrganizationMember for the required role level.
+    Org endpoints use get_db() (no campaign RLS) per D-13.
+
+    Args:
+        minimum: The minimum org role name ("org_admin" or "org_owner").
+
+    Returns:
+        A FastAPI dependency function.
+    """
+    min_org_role = OrgRole(minimum)
+
+    from app.db.session import get_db  # noqa: F811
+
+    async def _check_org_role(
+        current_user: AuthenticatedUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> AuthenticatedUser:
+        from app.models.organization import Organization
+        from app.models.organization_member import OrganizationMember
+
+        # Find org by JWT org_id (D-11: JWT org_id is authoritative)
+        org = await db.scalar(
+            select(Organization).where(
+                Organization.zitadel_org_id == current_user.org_id
+            )
+        )
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Organization not found",
+            )
+
+        # Check OrganizationMember (D-12)
+        org_member_role = await db.scalar(
+            select(OrganizationMember.role).where(
+                OrganizationMember.user_id == current_user.id,
+                OrganizationMember.organization_id == org.id,
+            )
+        )
+        if not org_member_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        # Validate role level
+        try:
+            user_org_role = OrgRole(org_member_role)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            ) from None
+
+        if ORG_ROLE_LEVELS[user_org_role] < ORG_ROLE_LEVELS[min_org_role]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        return current_user
+
+    return _check_org_role

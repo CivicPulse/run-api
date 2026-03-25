@@ -20,6 +20,7 @@ import app.models.dnc  # noqa: E402, F401
 import app.models.import_job  # noqa: E402, F401
 import app.models.invite  # noqa: E402, F401
 import app.models.organization  # noqa: E402, F401
+import app.models.organization_member  # noqa: E402, F401
 import app.models.phone_bank  # noqa: E402, F401
 import app.models.shift  # noqa: E402, F401
 import app.models.survey  # noqa: E402, F401

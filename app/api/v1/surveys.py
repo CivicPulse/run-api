@@ -7,10 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.models.survey import ScriptStatus
 from app.schemas.common import PaginationResponse
 from app.schemas.survey import (
@@ -46,11 +44,10 @@ async def create_script(
     campaign_id: uuid.UUID,
     body: ScriptCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a new survey script in draft status. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     script = await _service.create_script(
         session=db,
@@ -73,11 +70,10 @@ async def list_scripts(
     cursor: str | None = None,
     limit: int = 20,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List survey scripts with optional status filter. Requires volunteer+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     parsed_status = None
     if status_filter is not None:
@@ -114,11 +110,10 @@ async def get_script(
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get a script with its questions. Requires volunteer+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     script = await _service.get_script(session=db, script_id=script_id)
     if script is None:
@@ -144,11 +139,10 @@ async def update_script(
     script_id: uuid.UUID,
     body: ScriptUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update a script (status transitions and metadata). Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         script = await _service.update_script(
@@ -172,11 +166,10 @@ async def delete_script(
     campaign_id: uuid.UUID,
     script_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a draft script. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         await _service.delete_script(session=db, script_id=script_id)
@@ -205,11 +198,10 @@ async def add_question(
     script_id: uuid.UUID,
     body: QuestionCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add a question to a draft script. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         question = await _service.add_question(
@@ -235,11 +227,10 @@ async def update_question(
     question_id: uuid.UUID,
     body: QuestionUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update a question on a draft script. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         question = await _service.update_question(
@@ -264,11 +255,10 @@ async def delete_question(
     script_id: uuid.UUID,
     question_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a question from a draft script. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         await _service.delete_question(session=db, question_id=question_id)
@@ -291,11 +281,10 @@ async def reorder_questions(
     script_id: uuid.UUID,
     question_ids: list[uuid.UUID],
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Reorder questions on a draft script. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         questions = await _service.reorder_questions(
@@ -326,11 +315,10 @@ async def record_batch_responses(
     script_id: uuid.UUID,
     body: BatchResponseCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Record batch survey responses for a voter. Requires volunteer+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     try:
         results = await _service.record_responses_batch(
@@ -360,11 +348,10 @@ async def get_voter_responses(
     script_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get a voter's responses for a script. Requires volunteer+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     results = await _service.get_voter_responses(
         session=db,

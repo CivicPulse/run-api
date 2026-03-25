@@ -75,9 +75,43 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Milestone celebration toasts and voter context cards in canvassing and phone banking — v1.4
 - ✓ Google Maps navigation links (walking directions) in field mode and admin pages — v1.4
 
+## Current Milestone: v1.5 Go Live — Production Readiness
+
+**Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, systematically audit the full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
+
+**Target features:**
+- Fix multi-tenancy data leaks (voters + voter lists crossing campaign boundaries)
+- Fix campaign visibility in prod (auth/data migration issue) and broken settings button
+- Organization-level UI: org admin dashboard, multi-org membership, campaign creation gating
+- Map-based turf editor: Leaflet draw/render for GeoJSON boundaries
+- Full WCAG compliance audit + UX simplicity review + built-in documentation (tooltips, hints)
+- Volunteer create vs invite UX clarity; sidebar slide-over; menu consolidation
+- Production hardening: error/empty/loading states, rate limiting, input validation
+- Observability: structlog structured logging, Sentry error tracking, request tracing
+- Testing: Playwright E2E critical flows + 18 pending integration tests
+
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start v1.5)
+- ✓ Transaction-scoped RLS context (set_config true) preventing cross-campaign data leaks via pool reuse — v1.5
+- ✓ Defense-in-depth pool checkout event resetting campaign context on every connection acquisition — v1.5
+- ✓ Centralized get_campaign_db dependency replacing 244 inline set_campaign_context calls — v1.5
+- ✓ Multi-campaign membership fix (ensure_user_synced creates records for all org campaigns) — v1.5
+- ✓ Alembic data migration backfilling missing CampaignMember records — v1.5
+- ✓ Settings button defensive guard when campaignId unavailable — v1.5
+- ✓ Sentry error tracking with PII scrubbing (before_send strips phone/email) and performance traces — v1.5
+- ✓ Structlog ASGI request middleware with structured JSON logs (request_id, user_id, campaign_id, duration) — v1.5
+- ✓ ContextVar-based request context sharing across Sentry, error responses, and logs — v1.5
+- ✓ Trusted-proxy-aware rate limiting using CF-Connecting-IP with Cloudflare CIDR validation — v1.5
+- ✓ Per-user rate limiting infrastructure for authenticated endpoints via JWT sub extraction — v1.5
+- ✓ Organization members table with org_owner/org_admin roles per user per org (ORG-01) — v1.5
+- ✓ Seed migration promoting org created_by users to org_owner (ORG-02) — v1.5
+- ✓ Additive org role resolution: max(campaign role, org role equivalent) in resolve_campaign_role() (ORG-03) — v1.5
+- ✓ require_org_role() auth dependency gating org-level endpoints with 3 read-only org APIs (ORG-04) — v1.5
+- ✓ Org dashboard with campaign card grid, stats bar, archive flow, and org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13) — v1.5
+- ✓ Org member directory with per-campaign role matrix and add-to-campaign dialog (ORG-06, ORG-10) — v1.5
+- ✓ Multi-step campaign creation wizard with team invite step (ORG-08) — v1.5
+- ✓ Org settings page with name edit (owner-only) and ZITADEL org ID display (ORG-09) — v1.5
+- ✓ Sidebar nav renders Organization group on all authenticated routes, Campaign group conditional (ORG-05) — v1.5
 
 ### Out of Scope
 
@@ -98,7 +132,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Shipped v1.4 Volunteer Field Mode on 2026-03-17. All 5 milestones complete (v1.0 MVP, v1.1 Dev/Deploy, v1.2 Full UI, v1.3 Voter Model, v1.4 Field Mode). 38 phases, 114 plans shipped across 10 days.
+Phase 43 complete — shipped organization UI with org dashboard (campaign card grid, stats bar, archive flow), org switcher for multi-org users, 3-step campaign creation wizard with team invite, member directory with per-campaign role matrix, org settings page with owner-gated name edit, and sidebar nav fix ensuring Organization nav group renders on all authenticated routes (ORG-05 through ORG-13). 43 phases, 132 plans shipped. UI/UX polish & frontend hardening is next, then WCAG + UX audit and E2E test coverage complete the milestone.
 
 ## Context
 
@@ -164,4 +198,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-17 after v1.4 milestone completion*
+*Last updated: 2026-03-24 — Phase 42 complete, v1.5 in progress*

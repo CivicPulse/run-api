@@ -9,10 +9,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.dashboard import (
     CallerBreakdown,
@@ -71,14 +69,13 @@ async def get_overview(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Combined dashboard overview across all domains.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     canvassing = await _canvassing.get_summary(db, campaign_id, start_date, end_date)
     phone_banking = await _phone_banking.get_summary(
@@ -110,14 +107,13 @@ async def get_my_stats(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Personal activity stats for the authenticated user.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     from app.models.shift import Shift, ShiftVolunteer, SignupStatus
     from app.models.volunteer import Volunteer
@@ -191,14 +187,13 @@ async def get_canvassing_summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Campaign-wide canvassing totals with outcome breakdown.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _canvassing.get_summary(db, campaign_id, start_date, end_date)
 
 
@@ -211,14 +206,13 @@ async def get_canvassing_canvassers(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All canvasser stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _canvassing.get_by_canvasser(
         db,
         campaign_id,
@@ -238,14 +232,13 @@ async def get_canvassing_turfs(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All turf stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _canvassing.get_by_turf(
         db,
         campaign_id,
@@ -269,14 +262,13 @@ async def get_canvassing_by_turf(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-turf canvassing stats with cursor pagination.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _canvassing.get_by_turf(
         db,
         campaign_id,
@@ -300,14 +292,13 @@ async def get_canvassing_by_canvasser(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-canvasser canvassing stats with cursor pagination.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _canvassing.get_by_canvasser(
         db,
         campaign_id,
@@ -333,14 +324,13 @@ async def get_phone_banking_summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Campaign-wide phone banking totals.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _phone_banking.get_summary(db, campaign_id, start_date, end_date)
 
 
@@ -353,14 +343,13 @@ async def get_phone_banking_sessions(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All session stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _phone_banking.get_by_session(
         db,
         campaign_id,
@@ -381,14 +370,13 @@ async def get_phone_banking_callers(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All caller stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _phone_banking.get_by_caller(
         db,
         campaign_id,
@@ -411,14 +399,13 @@ async def get_phone_banking_by_session(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-session phone banking stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_session(
         db,
         campaign_id,
@@ -442,14 +429,13 @@ async def get_phone_banking_by_caller(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-caller phone banking stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_caller(
         db,
         campaign_id,
@@ -472,14 +458,13 @@ async def get_phone_banking_by_call_list(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-call-list completion stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _phone_banking.get_by_call_list(
         db,
         campaign_id,
@@ -505,14 +490,13 @@ async def get_volunteer_summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Campaign-wide volunteer totals.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _volunteer.get_summary(db, campaign_id, start_date, end_date)
 
 
@@ -525,14 +509,13 @@ async def get_volunteers_list(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All volunteer stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _volunteer.get_by_volunteer(
         db,
         campaign_id,
@@ -552,14 +535,13 @@ async def get_volunteers_shifts(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """All shift stats as a flat list (no pagination).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     return await _volunteer.get_by_shift(
         db,
         campaign_id,
@@ -582,14 +564,13 @@ async def get_volunteers_by_volunteer(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-volunteer shift and hours stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _volunteer.get_by_volunteer(
         db,
         campaign_id,
@@ -613,14 +594,13 @@ async def get_volunteers_by_shift(
     cursor: str | None = None,
     limit: int = Query(default=20, le=100),
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Per-shift fill and completion stats.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     items = await _volunteer.get_by_shift(
         db,
         campaign_id,

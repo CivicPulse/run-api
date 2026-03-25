@@ -15,10 +15,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.models.import_job import (
     FieldMappingTemplate,
     ImportJob,
@@ -51,7 +49,7 @@ async def initiate_import(
     original_filename: str = Query(..., description="Name of the file being uploaded"),
     source_type: str = Query("csv", description="Source type (csv, l2, etc.)"),
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Initiate a voter file import by generating a pre-signed upload URL.
 
@@ -70,7 +68,6 @@ async def initiate_import(
         ImportUploadResponse with job_id, upload_url, and file_key.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     storage = request.app.state.storage_service
 
@@ -112,7 +109,7 @@ async def detect_columns(
         None, description="Optional template ID to load instead of auto-suggest"
     ),
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Detect CSV columns and suggest field mappings after file upload.
 
@@ -132,7 +129,6 @@ async def detect_columns(
         ImportJobResponse with detected_columns and suggested_mapping.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     job = await db.get(ImportJob, import_id)
     if job is None:
@@ -192,7 +188,7 @@ async def confirm_mapping(
     import_id: uuid.UUID,
     body: ConfirmMappingRequest,
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Confirm field mapping and start background import processing.
 
@@ -210,7 +206,6 @@ async def confirm_mapping(
         ImportJobResponse with status=QUEUED.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     job = await db.get(ImportJob, import_id)
     if job is None:
@@ -259,7 +254,7 @@ async def get_import_status(
     import_id: uuid.UUID,
     request: Request,
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Poll the status of an import job.
 
@@ -277,7 +272,6 @@ async def get_import_status(
         ImportJobResponse with current status and counts.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     job = await db.get(ImportJob, import_id)
     if job is None:
@@ -307,7 +301,7 @@ async def delete_import(
     import_id: uuid.UUID,
     request: Request,
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete an import job record.
 
@@ -324,7 +318,6 @@ async def delete_import(
         204 No Content on success.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     job = await db.get(ImportJob, import_id)
     if job is None or job.campaign_id != campaign_id:
@@ -372,7 +365,7 @@ async def list_imports(
     limit: int = Query(20, ge=1, le=100),
     cursor: str | None = Query(None),
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List import jobs for a campaign with cursor-based pagination.
 
@@ -387,7 +380,6 @@ async def list_imports(
         Paginated list of ImportJobResponse.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     from app.schemas.common import PaginationResponse
 
@@ -429,7 +421,7 @@ async def list_imports(
 async def list_mapping_templates(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List available field mapping templates.
 
@@ -445,7 +437,6 @@ async def list_mapping_templates(
         List of FieldMappingTemplateResponse.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     query = (
         select(FieldMappingTemplate)

@@ -266,8 +266,8 @@ function VoterTagsPage() {
         data={tags}
         isLoading={isLoading}
         emptyIcon={Tag}
-        emptyTitle="No tags yet"
-        emptyDescription="Create tags to organize your voters"
+        emptyTitle="No voter tags yet"
+        emptyDescription="Create tags to categorize and filter voters."
         emptyAction={
           <RequireRole minimum="manager">
             <Button size="sm" onClick={() => setCreateOpen(true)}>

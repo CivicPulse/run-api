@@ -419,7 +419,7 @@ function SessionsPage() {
         isLoading={isLoading}
         emptyIcon={Phone}
         emptyTitle="No sessions yet"
-        emptyDescription="Create your first session to get started."
+        emptyDescription="Create a phone bank session to get started."
       />
 
       {/* Create / Edit Dialog */}

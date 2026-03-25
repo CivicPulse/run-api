@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 
+from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,10 +21,44 @@ from app.models.organization import Organization
 from app.models.user import User
 
 
+async def get_campaign_db(
+    campaign_id: uuid.UUID,
+) -> AsyncGenerator[AsyncSession]:
+    """DB session with RLS context auto-set from URL path parameter.
+
+    All campaign-scoped routes MUST use this instead of get_db().
+    campaign_id is extracted automatically by FastAPI from the URL path.
+    Per D-04: centralizes RLS so no endpoint can skip it.
+    Per D-05: only routes with campaign_id in path get RLS context.
+
+    Args:
+        campaign_id: The campaign UUID from the URL path parameter.
+
+    Yields:
+        AsyncSession with campaign context configured.
+
+    Raises:
+        HTTPException: 403 if campaign_id is invalid/empty.
+    """
+    async with async_session_factory() as session:
+        try:
+            await set_campaign_context(session, str(campaign_id))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=403,
+                detail="Campaign context required",
+            ) from exc
+        yield session
+
+
+# DEPRECATED: use get_campaign_db instead. Remove after Phase 39 migration complete.
 async def get_db_with_rls(
     campaign_id: str,
 ) -> AsyncGenerator[AsyncSession]:
     """Get a DB session with RLS campaign context set.
+
+    .. deprecated::
+        Use :func:`get_campaign_db` instead.
 
     Args:
         campaign_id: The campaign UUID to scope RLS queries.
@@ -89,34 +124,33 @@ async def ensure_user_synced(
     org = org_result.scalar_one_or_none()
 
     if org:
-        # Find campaigns belonging to this organization
+        # Find ALL campaigns belonging to this organization
         campaign_result = await db.execute(
-            select(Campaign)
-            .where(Campaign.organization_id == org.id)
-            .order_by(Campaign.created_at.desc())
-            .limit(1)
+            select(Campaign).where(Campaign.organization_id == org.id)
         )
-        campaign = campaign_result.scalar_one_or_none()
-        if campaign is None:
+        campaigns = campaign_result.scalars().all()
+
+        if not campaigns:
             # Secondary fallback: try legacy zitadel_org_id lookup
             campaign_result = await db.execute(
                 select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
             )
-            campaign = campaign_result.scalar_one_or_none()
-            if campaign is None:
-                logger.warning(
-                    "Organization {} exists but has no campaigns for user {}",
-                    org.id,
-                    user.id,
-                )
+            campaigns = campaign_result.scalars().all()
+
+        if not campaigns:
+            logger.warning(
+                "Organization {} has no campaigns for user {}",
+                org.id,
+                user.id,
+            )
     else:
         # Fallback: direct lookup for campaigns not yet migrated
         campaign_result = await db.execute(
             select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
         )
-        campaign = campaign_result.scalar_one_or_none()
+        campaigns = campaign_result.scalars().all()
 
-    if campaign:
+    for campaign in campaigns:
         member_result = await db.execute(
             select(CampaignMember).where(
                 CampaignMember.user_id == user.id,
@@ -129,21 +163,32 @@ async def ensure_user_synced(
                 campaign_id=campaign.id,
             )
             db.add(member)
-            await db.commit()
             logger.info(
                 "Created campaign_member for user {} in campaign {}",
                 user.id,
                 campaign.id,
             )
 
+    if campaigns:
+        await db.commit()
+
     return local_user
 
 
+# DEPRECATED: Use get_campaign_db for campaign-scoped endpoints.
+# Retained for campaign list page only (D-08).
 async def get_campaign_from_token(
     user: AuthenticatedUser,
     db: AsyncSession,
 ) -> Campaign:
-    """Look up campaign by user's ZITADEL org_id.
+    """Look up a default campaign for the user's org.
+
+    DEPRECATED for campaign-scoped endpoints -- use get_campaign_db instead.
+    This function is retained ONLY as a fallback for the campaign list page
+    where no campaign_id is in the URL path. Per D-08.
+
+    Campaign-scoped endpoints MUST use get_campaign_db (Plan 02)
+    which extracts campaign_id from the URL path parameter.
 
     Args:
         user: The authenticated user.
@@ -166,14 +211,13 @@ async def get_campaign_from_token(
             select(Campaign)
             .where(Campaign.organization_id == org.id)
             .order_by(Campaign.created_at.desc())
-            .limit(1)
         )
     else:
         result = await db.execute(
             select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
         )
 
-    campaign = result.scalar_one_or_none()
+    campaign = result.scalars().first()
     if campaign is None:
         raise CampaignNotFoundError(uuid.UUID("00000000-0000-0000-0000-000000000000"))
     return campaign

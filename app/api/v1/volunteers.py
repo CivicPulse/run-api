@@ -9,9 +9,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.models.volunteer import Volunteer
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.volunteer import (
@@ -47,16 +46,13 @@ async def create_volunteer(
     campaign_id: uuid.UUID,
     body: VolunteerCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Manager creates a volunteer profile.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     volunteer = await _volunteer_service.create_volunteer(
         db, campaign_id, body, user.id
     )
@@ -73,16 +69,13 @@ async def self_register(
     campaign_id: uuid.UUID,
     body: VolunteerCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Logged-in user self-registers as a volunteer.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         volunteer = await _volunteer_service.self_register(
             db, campaign_id, user.id, body
@@ -116,16 +109,13 @@ async def list_volunteers(
     skills: str | None = Query(None),
     name: str | None = Query(None),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List volunteers with optional filters.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     skills_list = skills.split(",") if skills else None
     volunteers = await _volunteer_service.list_volunteers(
         db,
@@ -148,16 +138,13 @@ async def get_volunteer_detail(
     campaign_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get volunteer detail including tags and availability.
 
     Requires volunteer+ role (manager+ or self).
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     detail = await _volunteer_service.get_volunteer_detail(db, volunteer_id)
     if detail is None:
         return problem.ProblemResponse(
@@ -204,16 +191,13 @@ async def update_volunteer(
     volunteer_id: uuid.UUID,
     body: VolunteerUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update volunteer profile.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         volunteer = await _volunteer_service.update_volunteer(db, volunteer_id, body)
     except ValueError as exc:
@@ -236,16 +220,13 @@ async def update_volunteer_status(
     volunteer_id: uuid.UUID,
     body: VolunteerStatusUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update volunteer status.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         volunteer = await _volunteer_service.update_status(
             db, volunteer_id, body.status
@@ -276,16 +257,13 @@ async def add_availability(
     volunteer_id: uuid.UUID,
     body: AvailabilityCreate,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add an availability time slot.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         availability = await _volunteer_service.add_availability(db, volunteer_id, body)
     except ValueError as exc:
@@ -308,16 +286,13 @@ async def delete_availability(
     volunteer_id: uuid.UUID,
     availability_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove an availability slot.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _volunteer_service.delete_availability(db, availability_id)
     except ValueError as exc:
@@ -339,16 +314,13 @@ async def list_availability(
     campaign_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List availability slots for a volunteer.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     slots = await _volunteer_service.list_availability(db, volunteer_id)
     return [AvailabilityResponse.model_validate(s) for s in slots]
 
@@ -367,16 +339,13 @@ async def create_tag(
     campaign_id: uuid.UUID,
     body: VolunteerTagCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a campaign-scoped volunteer tag.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     tag = await _volunteer_service.create_tag(db, campaign_id, body.name)
     await db.commit()
     return VolunteerTagResponse.model_validate(tag)
@@ -389,16 +358,13 @@ async def create_tag(
 async def list_tags(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List all volunteer tags for a campaign.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     tags = await _volunteer_service.list_tags(db, campaign_id)
     return [VolunteerTagResponse.model_validate(t) for t in tags]
 
@@ -412,16 +378,13 @@ async def update_tag(
     tag_id: uuid.UUID,
     body: VolunteerTagUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Rename a campaign-scoped volunteer tag.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         tag = await _volunteer_service.update_tag(db, tag_id, body.name)
     except ValueError as exc:
@@ -443,16 +406,13 @@ async def delete_tag(
     campaign_id: uuid.UUID,
     tag_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a campaign-scoped volunteer tag (cascades to member associations).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _volunteer_service.delete_tag(db, tag_id)
     except ValueError as exc:
@@ -475,16 +435,13 @@ async def add_tag_to_volunteer(
     volunteer_id: uuid.UUID,
     tag_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add a tag to a volunteer.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     await _volunteer_service.add_tag(db, volunteer_id, tag_id)
     await db.commit()
     return {"status": "ok"}
@@ -499,16 +456,13 @@ async def remove_tag_from_volunteer(
     volunteer_id: uuid.UUID,
     tag_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove a tag from a volunteer.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _volunteer_service.remove_tag(db, volunteer_id, tag_id)
     except ValueError as exc:
@@ -534,16 +488,13 @@ async def get_volunteer_hours(
     campaign_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get volunteer hours summary.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
 
     from app.services.shift import ShiftService
 

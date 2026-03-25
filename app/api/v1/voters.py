@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.errors import VoterNotFoundError
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.schemas.common import PaginatedResponse
 from app.schemas.voter import VoterCreateRequest, VoterResponse, VoterUpdateRequest
 from app.schemas.voter_filter import VoterFilter, VoterSearchBody
@@ -38,7 +37,7 @@ async def list_voters(
     county: str | None = Query(None),
     has_phone: bool | None = Query(None),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List and filter voters via query parameters.
 
@@ -47,9 +46,6 @@ async def list_voters(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     filters = VoterFilter(
         search=search,
         party=party,
@@ -70,7 +66,7 @@ async def search_voters(
     campaign_id: uuid.UUID,
     body: VoterSearchBody,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Search and filter voters with composable query builder.
 
@@ -79,9 +75,6 @@ async def search_voters(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     return await _service.search_voters(
         db,
         body.filters,
@@ -100,7 +93,7 @@ async def distinct_values(
     campaign_id: uuid.UUID,
     fields: str = Query(..., description="Comma-separated field names"),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Return distinct values with counts for whitelisted voter fields.
 
@@ -111,9 +104,6 @@ async def distinct_values(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
 
     requested = {f.strip() for f in fields.split(",")}
     invalid = requested - ALLOWED_DISTINCT_FIELDS
@@ -134,16 +124,13 @@ async def get_voter(
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get a single voter by ID.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         voter = await _service.get_voter(db, voter_id)
     except ValueError as exc:
@@ -160,16 +147,13 @@ async def create_voter(
     campaign_id: uuid.UUID,
     body: VoterCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a voter record manually.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     voter = await _service.create_voter(db, campaign_id, body)
     return VoterResponse.model_validate(voter)
 
@@ -183,16 +167,13 @@ async def update_voter(
     voter_id: uuid.UUID,
     body: VoterUpdateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update voter fields (partial update).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         voter = await _service.update_voter(db, voter_id, body)
     except ValueError as exc:
@@ -208,16 +189,13 @@ async def delete_voter(
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a voter record.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _service.delete_voter(db, voter_id)
     except ValueError as exc:

@@ -4,6 +4,10 @@ Revision ID: 001
 Revises:
 Create Date: 2026-03-09
 
+# RLS AUDIT (Phase 39, D-11): All 33 policies across 6 migrations verified
+# to use current_setting('app.current_campaign_id', true)::uuid correctly.
+# Policy count: 001=3, 002a=1, 002b=11, 003=7, 004=5, 005=6 = 33 total.
+# Audit date: 2026-03-24
 """
 
 from __future__ import annotations

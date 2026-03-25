@@ -3,13 +3,17 @@ import { createRoot } from "react-dom/client"
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import "./index.css"
 
 import { routeTree } from "./routeTree.gen"
 
 const queryClient = new QueryClient()
 
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteErrorBoundary,
+})
 
 declare module "@tanstack/react-router" {
   interface Register {

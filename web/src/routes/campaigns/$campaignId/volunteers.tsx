@@ -1,4 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/react-router"
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary"
 import { ModuleLayout } from "@/components/shared/ModuleLayout"
 
 function VolunteerLayout() {
@@ -16,4 +17,5 @@ function VolunteerLayout() {
 
 export const Route = createFileRoute("/campaigns/$campaignId/volunteers")({
   component: VolunteerLayout,
+  errorComponent: RouteErrorBoundary,
 })

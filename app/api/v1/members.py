@@ -9,7 +9,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.config import settings
 from app.core.errors import InsufficientPermissionsError
 from app.core.security import (
@@ -17,8 +17,6 @@ from app.core.security import (
     CampaignRole,
     require_role,
 )
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
@@ -34,7 +32,7 @@ router = APIRouter()
 async def list_members(
     campaign_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("viewer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List campaign members with their roles. Requires viewer+ role.
 
@@ -43,7 +41,6 @@ async def list_members(
     the join context. This is simplified -- production would call ZITADEL API.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
     result = await db.execute(
         select(CampaignMember, User)
         .join(User, CampaignMember.user_id == User.id)
@@ -82,7 +79,7 @@ async def update_member_role(
     data: RoleUpdate,
     request: Request,
     user: AuthenticatedUser = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update a member's role. Requires admin+ role.
 
@@ -213,7 +210,7 @@ async def remove_member(
     member_user_id: str,
     request: Request,
     user: AuthenticatedUser = Depends(require_role("admin")),  # noqa: ARG001
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Remove a campaign member. Requires admin+ role. Cannot remove owner."""
     # Check the campaign to verify ownership
@@ -259,7 +256,7 @@ async def transfer_ownership(
     data: OwnershipTransfer,
     request: Request,
     user: AuthenticatedUser = Depends(require_role("owner")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Transfer campaign ownership. Requires owner role.
 

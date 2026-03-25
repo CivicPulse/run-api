@@ -7,10 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.schemas.voter_contact import (
     AddressCreateRequest,
     AddressResponse,
@@ -38,14 +36,13 @@ async def get_voter_contacts(
     campaign_id: uuid.UUID,
     voter_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get all contacts for a voter grouped by type.
 
     Returns phones, emails, and addresses. Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     contacts = await _service.get_voter_contacts(
         session=db,
@@ -75,11 +72,10 @@ async def add_phone(
     voter_id: uuid.UUID,
     body: PhoneCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add a phone contact for a voter. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     phone = await _service.add_phone(
         session=db,
@@ -106,11 +102,10 @@ async def update_phone(
     phone_id: uuid.UUID,
     body: PhoneCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update a phone contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     update_data = body.model_dump(exclude_unset=True)
     phone = await _service.update_phone(
@@ -135,11 +130,10 @@ async def delete_phone(
     voter_id: uuid.UUID,
     phone_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a phone contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     await _service.delete_phone(
         session=db,
@@ -168,11 +162,10 @@ async def add_email(
     voter_id: uuid.UUID,
     body: EmailCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add an email contact for a voter. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     email = await _service.add_email(
         session=db,
@@ -199,11 +192,10 @@ async def update_email(
     email_id: uuid.UUID,
     body: EmailCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update an email contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     update_data = body.model_dump(exclude_unset=True)
     email = await _service.update_email(
@@ -228,11 +220,10 @@ async def delete_email(
     voter_id: uuid.UUID,
     email_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete an email contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     await _service.delete_email(
         session=db,
@@ -261,11 +252,10 @@ async def add_address(
     voter_id: uuid.UUID,
     body: AddressCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add an address contact for a voter. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     address = await _service.add_address(
         session=db,
@@ -296,11 +286,10 @@ async def update_address(
     address_id: uuid.UUID,
     body: AddressCreateRequest,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update an address contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     update_data = body.model_dump(exclude_unset=True)
     address = await _service.update_address(
@@ -325,11 +314,10 @@ async def delete_address(
     voter_id: uuid.UUID,
     address_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete an address contact. Requires manager+ role."""
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     await _service.delete_address(
         session=db,
@@ -358,7 +346,7 @@ async def set_primary(
     contact_type: str,
     contact_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Set a contact as primary, unsetting others of the same type.
 
@@ -366,7 +354,6 @@ async def set_primary(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     if contact_type not in ("phones", "emails", "addresses"):
         raise HTTPException(

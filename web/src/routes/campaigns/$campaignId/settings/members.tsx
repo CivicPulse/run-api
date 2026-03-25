@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { MoreHorizontal, UserPlus, Users } from "lucide-react"
+import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -316,8 +317,8 @@ function MembersSettings() {
           data={members}
           isLoading={membersLoading}
           emptyIcon={Users}
-          emptyTitle="No members"
-          emptyDescription="This campaign has no members yet."
+          emptyTitle="No team members"
+          emptyDescription="Invite team members to collaborate on this campaign."
         />
       </div>
 
@@ -380,7 +381,10 @@ function MembersSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="invite-role">Role</Label>
+              <div className="flex items-center">
+                <Label htmlFor="invite-role">Role</Label>
+                <TooltipIcon content="Viewer: read-only access. Volunteer: can log voter interactions. Manager: can create lists and assign turfs. Admin: full campaign management. Owner: can transfer or delete the campaign." />
+              </div>
               <Select
                 value={inviteForm.watch("role")}
                 onValueChange={(value) =>

@@ -1,326 +1,256 @@
-# Technology Stack: v1.4 Volunteer Field Mode
+# Stack Research: v1.5 — Map-Based Turf Editor + Organization-Level UI
 
-**Project:** CivicPulse Run API
-**Researched:** 2026-03-15
-**Confidence:** HIGH
+**Researched:** 2026-03-24
+**Overall confidence:** MEDIUM-HIGH (npm registry verified, codebase analysis complete, WebSearch unavailable)
 
-## Context
+---
 
-This research covers ONLY the frontend additions needed for v1.4 Volunteer Field Mode. The existing validated stack is not re-evaluated. This milestone is 100% frontend work -- no new backend endpoints, models, or migrations are needed.
+## Map-Based Turf Editor
 
-**Already installed and validated (DO NOT re-research):**
-- React ^19.2.0, React DOM ^19.2.0
-- TanStack Router ^1.159.5, TanStack Query ^5.90.21, TanStack Table ^8.21.3
-- shadcn/ui (via radix-ui ^1.4.3) with 27 components already generated
-- Zustand ^5.0.11 (state management)
-- Tailwind CSS ^4.1.18 (styling)
-- vaul ^1.1.2 (drawer/bottom sheet -- installed but unused)
-- lucide-react ^0.563.0 (icons)
-- sonner ^2.0.7 (toast notifications)
-- Vite ^7.3.1, TypeScript ~5.9.3
+### Current State
 
-## Recommended Stack Additions
+The frontend already has `leaflet` 1.9.4 and `react-leaflet` 5.0.0 installed (package.json lines 29-37), with `@types/leaflet` 1.9.21 for TypeScript support. However, **no react-leaflet components exist anywhere in `web/src/`** — MapContainer, TileLayer, etc. are not used yet. The current `TurfForm.tsx` uses a raw `<Textarea>` for GeoJSON input (users paste JSON manually).
 
-### ONE New Package: driver.js (Guided Tour)
+The backend is fully ready: `app/services/turf.py` validates GeoJSON with Shapely, converts to/from WKBElement via geoalchemy2, and the API accepts/returns `dict[str, Any]` boundary objects (GeoJSON Polygon format).
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| driver.js | ^1.4.0 | One-time guided onboarding tour, element highlighting | Lightweight (~5kB gzipped), zero dependencies, framework-agnostic, 25K+ GitHub stars, 436K+ weekly npm downloads. Works cleanly with React 19 via useEffect -- no React-specific bindings means no deprecated API risk. |
+### Recommended Library: `@geoman-io/leaflet-geoman-free` v2.19.2
 
-**Critical finding: react-joyride is BROKEN on React 19.** It uses deprecated `unmountComponentAtNode` and `unstable_renderSubtreeIntoContainer` APIs. The library has been unmaintained for 9+ months. A `next` branch exists but is unreliable. This eliminates the most popular React tour library from consideration.
+**Install:** `npm install @geoman-io/leaflet-geoman-free`
 
-**Why driver.js over alternatives:**
+| Criterion | leaflet-draw 1.0.4 | react-leaflet-draw 0.21.0 | @geoman-io/leaflet-geoman-free 2.19.2 |
+|-----------|--------------------|--------------------------|-----------------------------------------|
+| Last updated | 2022-06-19 (abandoned) | 2025-09-15 | 2026-02-02 (active) |
+| Leaflet 1.9 support | Partial (no updates) | Yes (wraps leaflet-draw) | Yes (peer dep: leaflet ^1.2.0) |
+| React 19 / react-leaflet 5 | N/A (vanilla only) | Yes (peer dep matches) | N/A (vanilla, needs wrapper) |
+| Polygon editing | Basic draw + edit | Basic (wraps leaflet-draw) | Draw, edit, drag, cut, rotate, snap |
+| GeoJSON export | Manual layer conversion | Via leaflet-draw events | Built-in `.toGeoJSON()` on layers |
+| Vertex editing UX | Dated controls | Dated (inherits from leaflet-draw) | Modern drag handles, midpoint insertion |
+| TypeScript types | @types/leaflet-draw (stale) | Bundled | Bundled |
+| Maintenance | Abandoned since 2022 | Thin wrapper over abandoned lib | Active development, regular releases |
+| Bundle size | ~50KB | ~55KB (includes leaflet-draw) | ~120KB |
 
-| Library | Weekly Downloads | React 19 | Bundle | Verdict |
-|---------|-----------------|----------|--------|---------|
-| react-joyride | ~340K | BROKEN | ~45kB | Eliminated -- deprecated React APIs |
-| driver.js | ~436K | Works (framework-agnostic) | ~5kB | Recommended |
-| Shepherd.js (React wrapper) | ~30K | Untested | ~25kB | Too heavy, small React community |
-| @reactour/tour | ~40K | Unverified | ~15kB | React 19 compat not confirmed in docs |
+### Why Geoman Over Alternatives
 
-**Integration pattern:**
+1. **leaflet-draw is abandoned.** Last npm publish was June 2022. Known bugs with Leaflet 1.9 go unfixed. Building on abandoned infrastructure creates tech debt immediately.
+
+2. **react-leaflet-draw is a thin wrapper over leaflet-draw.** It inherits all of leaflet-draw's bugs and limitations. The wrapper adds React-friendly props but does not fix underlying issues.
+
+3. **Geoman is actively maintained** with a release as recent as February 2026. It supports snap-to-vertex (critical for adjacent turf boundaries that share edges), vertex editing with midpoint insertion, and produces clean GeoJSON output.
+
+4. **The "free" version covers all turf editor needs.** Drawing polygons, editing vertices, deleting shapes — all in the free tier. Pro features (split, scale, measurement) are not needed for v1.5.
+
+5. **No react-leaflet wrapper needed.** Geoman attaches to the Leaflet map instance via `map.pm.addControls()`. With react-leaflet v5, access the map instance via `useMap()` hook inside a `MapContainer`, then call Geoman's imperative API in a `useEffect`. This is actually cleaner than the react-leaflet-draw approach because it avoids wrapper abstraction leaks.
+
+### Integration Pattern with react-leaflet + TanStack Query
 
 ```typescript
-// hooks/useTour.ts -- thin React wrapper around driver.js
-import { useEffect } from "react";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
-import { useOnboardingStore } from "@/stores/onboardingStore";
+// TurfMapEditor.tsx — component pattern
+import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet"
+import "@geoman-io/leaflet-geoman-free"
+import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
 
-export function useTour(tourId: string, steps: StepConfig[]) {
-  const { hasCompleted, markComplete } = useOnboardingStore();
+function GeomanControls({ onBoundaryChange }: { onBoundaryChange: (geojson: GeoJSON) => void }) {
+  const map = useMap()
 
   useEffect(() => {
-    if (hasCompleted(tourId)) return;
+    map.pm.addControls({
+      position: "topleft",
+      drawMarker: false,
+      drawCircle: false,
+      drawCircleMarker: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawText: false,
+      // Only polygon drawing + editing
+      drawPolygon: true,
+      editMode: true,
+      dragMode: true,
+      removalMode: true,
+    })
 
-    const driverObj = driver({
-      showProgress: true,
-      steps,
-      onDestroyStarted: () => {
-        markComplete(tourId);
-        driverObj.destroy();
-      },
-    });
+    map.on("pm:create", (e) => {
+      const geojson = e.layer.toGeoJSON()
+      onBoundaryChange(geojson.geometry)
+    })
 
-    // Delay to ensure DOM elements are rendered after route transitions
-    const timer = setTimeout(() => driverObj.drive(), 500);
-    return () => clearTimeout(timer);
-  }, [tourId]);
+    map.on("pm:edit", (e) => {
+      const geojson = e.layer.toGeoJSON()
+      onBoundaryChange(geojson.geometry)
+    })
+
+    return () => {
+      map.pm.removeControls()
+      map.off("pm:create")
+      map.off("pm:edit")
+    }
+  }, [map, onBoundaryChange])
+
+  return null
 }
 ```
 
-**Styling:** driver.js supports CSS class overrides via `popoverClass` (global or per-step). Override `.driver-popover` with Tailwind utility values matching shadcn/ui design tokens (border-radius, colors, font, shadows). Approximately 30 lines of CSS. The driver.js theming system also supports CSS custom properties for quick color swaps.
+**TanStack Query integration:** The existing `useTurfs.ts` hook already handles turf CRUD via TanStack Query. The map editor component produces a GeoJSON object, which replaces the current `<Textarea>` value in `TurfForm.tsx`. The mutation payload shape (`{ name, description, boundary }`) stays identical — only the input method changes from paste-JSON to draw-on-map.
 
-### Tour State Persistence: Zustand Persist Middleware (No New Package)
+**Rendering existing turfs:** Use react-leaflet's built-in `<GeoJSON>` component to render turf boundaries returned by the list/detail endpoints. The API already returns `boundary` as a GeoJSON dict. No conversion needed.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| zustand/middleware (persist) | Already installed (zustand ^5.0.11) | Persist tour completion state and field mode preferences to localStorage | Zero new dependencies. Built-in middleware, supports `partialize` for selective persistence. Project already uses zustand for auth state. |
+### Backend Changes Needed: NONE
 
-**Why NOT a custom localStorage hook:** The project already uses zustand. Adding a separate `usePersistedState` pattern creates two state management approaches. zustand persist keeps everything in one pattern.
+The backend is fully ready:
+- `app/services/turf.py` already validates GeoJSON polygons with Shapely
+- `app/schemas/turf.py` accepts `boundary: dict[str, Any]` (GeoJSON)
+- `app/api/v1/turfs.py` converts WKB to GeoJSON for responses
+- PostGIS stores boundaries as `Geometry(POLYGON, 4326)` with spatial index
+- `geoalchemy2` and `shapely` are already installed
 
-**Store design:**
+No new Python packages, no schema changes, no migration needed.
 
-```typescript
-// stores/onboardingStore.ts
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+### Tile Provider
 
-interface OnboardingState {
-  completedTours: Record<string, boolean>;
-  hasCompleted: (tourId: string) => boolean;
-  markComplete: (tourId: string) => void;
-  resetTour: (tourId: string) => void;  // "revisit tour" requirement
-  resetAll: () => void;
-}
+Use OpenStreetMap tiles (free, no API key): `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
 
-export const useOnboardingStore = create<OnboardingState>()(
-  persist(
-    (set, get) => ({
-      completedTours: {},
-      hasCompleted: (id) => !!get().completedTours[id],
-      markComplete: (id) =>
-        set((s) => ({
-          completedTours: { ...s.completedTours, [id]: true },
-        })),
-      resetTour: (id) =>
-        set((s) => {
-          const { [id]: _, ...rest } = s.completedTours;
-          return { completedTours: rest };
-        }),
-      resetAll: () => set({ completedTours: {} }),
-    }),
-    { name: "civicpulse-onboarding" }
-  )
-);
-```
+For a more polished look, consider adding `VITE_MAP_TILE_URL` to config for swappable tile providers (Mapbox, Stadia, etc.) later. Not needed for v1.5.
 
-### Mobile Drawer / Bottom Sheet: vaul via shadcn/ui Drawer (No New Package)
+---
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| vaul (via shadcn/ui Drawer) | Already installed (^1.1.2) | Mobile-optimized bottom sheet for canvassing wizard, outcome recording, survey display | Already in package.json but not yet used. shadcn/ui Drawer wraps vaul with project-consistent styling. Snap points provide natural mobile UX (half-screen preview, full expand). Touch-friendly drag-to-dismiss. |
+## Organization-Level UI
 
-**Action needed:** Generate the shadcn/ui Drawer component (vaul is installed as a dependency, but the component wrapper has not been generated yet):
+### Current State
 
-```bash
-npx shadcn@latest add drawer
-```
+**Backend:** Organization model exists (`app/models/organization.py`) with `zitadel_org_id` and `zitadel_project_grant_id`. `ZitadelService` (`app/services/zitadel.py`) already handles:
+- `create_organization()` / `delete_organization()` / `deactivate_organization()`
+- `assign_project_role()` / `remove_project_role()` / `remove_all_project_roles()`
+- `create_project_grant()` / `ensure_project_grant()`
 
-This creates `web/src/components/ui/drawer.tsx` providing `Drawer`, `DrawerContent`, `DrawerHeader`, `DrawerFooter`, `DrawerTitle`, `DrawerDescription` -- all built on vaul with shadcn/ui styling.
+Campaign creation already supports `organization_id` parameter to reuse an existing org.
 
-**Use for:** Canvassing wizard step containers on mobile (snap points at `["355px", 1]` for half/full screen), outcome recording panels, inline survey display. On desktop viewports, fall back to Dialog or inline content -- the Drawer is specifically for the mobile touch UX.
+**Frontend:** Auth uses `oidc-client-ts` 3.1.0 with ZITADEL. The OIDC scope already requests `urn:zitadel:iam:user:resourceowner` (returns user's org ID) and `urn:zitadel:iam:org:projects:roles` (returns roles across all orgs). JWT claims already contain org context.
 
-### Tap-to-Call: Native tel: URI (No Package Needed)
+### ZITADEL SDK Recommendation: DO NOT ADD ONE
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| HTML `tel:` URI scheme | Web standard | Phone banking tap-to-call on mobile | Zero dependencies. `<a href="tel:+14045551234">` is universally supported on mobile browsers. Phone's native dialer handles the call. International format required (+country code). |
+**Do not install `@zitadel/client` or `@zitadel/node`.** Here is why:
 
-**No library needed.** Implementation is a small React component:
+1. **All ZITADEL org management is server-side.** The existing `ZitadelService` Python class handles org CRUD via ZITADEL's REST Management API using `httpx` with a service account (client_credentials grant). This is the correct pattern — org management requires elevated privileges that must not be exposed to the browser.
 
-```typescript
-function TapToCall({ phone, children }: { phone: string; children: React.ReactNode }) {
-  const formatted = formatE164(phone); // strip non-digits, prepend +1 for US
-  return (
-    <a
-      href={`tel:${formatted}`}
-      className="inline-flex items-center gap-2 rounded-md bg-primary
-                 px-4 py-3 text-primary-foreground min-h-[44px] min-w-[44px]"
-    >
-      {children}
-    </a>
-  );
-}
-```
+2. **The frontend already has org context via JWT claims.** The OIDC token includes `urn:zitadel:iam:user:resourceowner` (the user's org ID) and project role claims scoped by org. No additional SDK is needed to read this data.
 
-**Desktop handling:** On desktop, `tel:` links may open a VoIP app or do nothing. Detect touch device via `window.matchMedia("(pointer: coarse)")` and show the number as copyable text on desktop. The existing phone banking UI already displays phone numbers -- this adds a clickable wrapper for mobile only.
+3. **`@zitadel/client` is designed for server-side Node.js.** It uses `createServerTransport` with service account tokens. Adding it to a React SPA would expose service credentials.
 
-### Contextual Help / Tooltips: Existing Radix Tooltip (No New Package)
+4. **The frontend needs API endpoints, not an SDK.** The org admin dashboard will call your own FastAPI endpoints (e.g., `GET /api/v1/organizations`, `GET /api/v1/organizations/{id}/campaigns`), which internally call `ZitadelService` methods. This maintains the existing architecture pattern.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Radix UI Tooltip (shadcn/ui) | Already installed (radix-ui ^1.4.3) | Contextual help icons, inline hints throughout field mode | Already exists at `web/src/components/ui/tooltip.tsx`. Accessible, keyboard-navigable, auto-positioned. |
+### What the Backend Needs
 
-**Pattern:** Create a reusable `HelpTip` component composing existing Tooltip + lucide-react `HelpCircle` icon:
+New API endpoints to expose organization data (the model and ZITADEL integration exist, but no org-specific REST routes):
 
-```typescript
-function HelpTip({ content }: { content: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button className="inline-flex items-center justify-center size-5
-                           rounded-full text-muted-foreground hover:text-foreground">
-          <HelpCircle className="size-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">{content}</TooltipContent>
-    </Tooltip>
-  );
-}
-```
+| Endpoint | Purpose | Exists? |
+|----------|---------|---------|
+| `GET /api/v1/organizations` | List user's organizations | NO — needs new route |
+| `GET /api/v1/organizations/{id}` | Org detail with campaigns | NO — needs new route |
+| `GET /api/v1/organizations/{id}/members` | Org member list | NO — needs new route |
+| `POST /api/v1/organizations/{id}/campaigns` | Create campaign under org | PARTIAL — campaign create exists but org association is a parameter, not a route |
+| `GET /api/v1/me/organizations` | Current user's org memberships | NO — needs new route |
 
-For mobile (no hover): Radix Tooltip responds to tap/focus events. For longer help text, use the existing Popover component (`web/src/components/ui/popover.tsx`) instead of Tooltip.
+These endpoints will call existing `ZitadelService` methods and query the `organizations` table. No new Python packages needed.
 
-### Wizard / Stepper Progress: Custom Component (No Library)
+**New backend service needed:** `OrganizationService` to handle:
+- Listing orgs where user has membership (query ZITADEL grants or local `campaign_members` table grouped by `organization_id`)
+- Org admin role checking (extend existing role hierarchy)
+- Org-scoped campaign listing
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Custom component (~30 lines) | N/A | Linear canvassing wizard progress indicator | shadcn/ui has no official stepper. The canvassing flow is strictly linear (address -> knock -> outcome -> survey -> next) -- no branching, no skip-ahead, no form validation between steps. A stepper library would be over-engineered. |
+### Frontend Additions Needed
 
-**Why NOT a stepper library (stepperize, etc.):** Linear flows need `currentStep: number` in component state, not a state machine. The entire stepper UI is a flex row of colored dots:
+| Addition | Purpose | Complexity |
+|----------|---------|------------|
+| Org dashboard page (`/organizations/{orgId}`) | Campaigns list, member management | Medium |
+| Org switcher component | Multi-org membership navigation | Low |
+| `useOrganizations` hook | TanStack Query for org endpoints | Low |
+| Org admin gate | Extend `usePermissions` / `RequireRole` for org-level roles | Low |
+| Campaign creation update | Org selector when user has multiple orgs | Low |
 
-```typescript
-function WizardProgress({ current, total }: { current: number; total: number }) {
-  return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: total }, (_, i) => (
-        <div
-          key={i}
-          className={cn(
-            "h-1.5 flex-1 rounded-full transition-colors",
-            i < current ? "bg-primary" : i === current ? "bg-primary/60" : "bg-muted"
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-```
+**No new frontend packages needed.** All UI can be built with existing shadcn/ui components (DataTable, Card, Dialog, Command for org switcher).
 
-### Progressive Disclosure: Existing Components (No New Packages)
+### Extending Existing ZITADEL Patterns
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Radix Accordion (shadcn/ui) | Already installed | Collapsible sections for advanced options | Already at `web/src/components/ui/accordion.tsx`, used in v1.3 filter builder |
-| Radix Collapsible (shadcn/ui) | Already installed | Show more/less toggles | Already at `web/src/components/ui/collapsible.tsx` |
+The `urn:zitadel:iam:user:resourceowner` claim in the JWT provides the user's primary org. For multi-org support:
 
-Progressive disclosure is a UX pattern, not a library concern. Use Accordion for grouped options, Collapsible for individual expand/collapse, and conditional rendering for role-based content (RequireRole already exists).
+1. **JWT already includes `urn:zitadel:iam:org:projects:roles`** — this returns roles across ALL projects/orgs the user has grants for. Parse this in `usePermissions` to determine org-level admin status.
 
-### Mobile Touch Optimization: Tailwind CSS (No New Packages)
+2. **Backend role resolution** (`app/core/security.py` + `app/api/deps.py`) already extracts `sub` and role claims. Extend to also extract the `urn:zitadel:iam:user:resourceowner` claim for org context.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Tailwind CSS | Already installed (^4.1.18) | 44px minimum touch targets, mobile-first responsive layout | Pure CSS. `min-h-[44px] min-w-[44px]` on interactive elements. `@media (pointer: coarse)` for touch-specific styles. |
+3. **`x-zitadel-orgid` header pattern** is already used in `ZitadelService` for org-scoped API calls. The org UI endpoints will follow this same pattern.
 
-**Key CSS patterns to establish as utility classes or component variants:**
-
-```css
-/* Touch-friendly interactive elements (44px minimum per WCAG) */
-.touch-target {
-  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
-}
-
-/* Larger action buttons for field mode */
-@media (pointer: coarse) {
-  .field-action-btn {
-    @apply text-lg py-4 px-6;
-  }
-}
-```
-
-**Viewport meta tag** should already include `width=device-width, initial-scale=1.0`. Verify it does NOT include `maximum-scale=1` or `user-scalable=no` (accessibility violation -- users must be able to zoom).
-
-## Installation Summary
-
-```bash
-# ONE new package
-npm install driver.js
-
-# ONE shadcn component to generate (vaul already installed as dependency)
-npx shadcn@latest add drawer
-```
-
-**Total new runtime dependencies: 1 (driver.js, ~5kB gzipped)**
-
-Everything else uses existing installed packages.
-
-## Alternatives Considered
-
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Guided tour | driver.js | react-joyride | Broken on React 19, uses deprecated APIs, unmaintained 9+ months |
-| Guided tour | driver.js | Shepherd.js | Heavier bundle, 10x smaller React community than driver.js |
-| Guided tour | driver.js | @reactour/tour | React 19 compatibility unverified in official documentation |
-| Tour state | zustand persist | Custom localStorage hook | Project already uses zustand; avoid splitting state patterns |
-| Wizard container | vaul Drawer | Dialog/Sheet | Drawer has mobile-native drag/snap UX that Dialog lacks |
-| Stepper | Custom 30-line component | stepperize / third-party | Over-engineered for linear, non-branching flow |
-| Tap-to-call | Native tel: URI | Twilio SDK | Telephony integration is explicitly out of scope |
-| Tooltips | Existing Radix Tooltip | Tippy.js / Floating UI | Already installed and used, accessible, works |
-| Progressive disclosure | Existing Accordion/Collapsible | Custom show/hide | Already installed, animated, accessible |
+---
 
 ## What NOT to Add
 
-| Library | Why People Suggest It | Why Skip It |
-|---------|----------------------|-------------|
-| Framer Motion / Motion | Animations for wizard transitions | Tailwind CSS `animate-*` and `transition-*` classes handle slide/fade. Adding ~30kB animation library for 3 transitions is unjustified. vaul already uses its own animation internally. |
-| react-swipeable | Swipe gestures for wizard step navigation | vaul handles swipe on drawers. For step navigation, prev/next buttons with 44px touch targets are more reliable than swipe (prevents accidental triggers). |
-| @capacitor/core or PWA toolkit | "Feel native" on mobile | Out of scope per PROJECT.md. This is a mobile-optimized web app, not a native wrapper. Viewport meta + touch targets + Drawer is sufficient. |
-| react-spring | Physics-based animations | Same rationale as Framer Motion -- overkill for this use case. |
-| Any additional toast library | Field status messages | sonner (^2.0.7) is already installed and used throughout the app. |
-| cmdk (additional use) | Command palette for field mode | Already installed for member/caller pickers. Field mode should be linear and guided, not command-palette driven. Volunteers should not need to search for actions. |
+| Library | Why Not |
+|---------|---------|
+| `@zitadel/client` / `@zitadel/node` | All ZITADEL management is server-side via existing Python `ZitadelService` + httpx |
+| `leaflet-draw` | Abandoned since 2022, known bugs with Leaflet 1.9 |
+| `react-leaflet-draw` | Thin wrapper over abandoned leaflet-draw |
+| `mapbox-gl` / `react-map-gl` | Requires Mapbox API key, overkill for polygon editing; Leaflet already installed |
+| `@turf/turf` (Turf.js) | Server-side PostGIS handles all spatial queries; no client-side geo computation needed |
+| `geojson` npm package | TypeScript GeoJSON types available from `@types/geojson`; no runtime lib needed |
+| Any new Python geo packages | `geoalchemy2` + `shapely` already handle all GeoJSON/PostGIS operations |
+| Any new auth packages | `oidc-client-ts` (frontend) + `authlib` + `httpx` (backend) cover everything |
 
-## Backend: No Changes Required
+---
 
-The v1.4 features are entirely frontend. Existing APIs already support:
+## Summary of Changes
 
-| Capability Needed | Existing Endpoint | Status |
-|---|---|---|
-| Volunteer active assignment lookup | GET /volunteers, GET /shifts | Built in v1.0 Phase 5 |
-| Walk list entries with addresses | GET /turfs/{id}/walk-list | Built in v1.0 Phase 3 |
-| Door-knock outcome recording | POST /canvassing/door-knocks | Built in v1.0 Phase 3 |
-| Survey questions + response recording | GET /surveys/{id}, POST /survey-responses | Built in v1.0 Phase 3 |
-| Call list entry claiming | POST /call-lists/{id}/claim | Built in v1.0 Phase 4 (SKIP LOCKED) |
-| Call result recording | POST /call-lists/{id}/entries/{id}/result | Built in v1.0 Phase 4 |
-| Volunteer shift check-in/out | POST /shifts/{id}/check-in, POST /shifts/{id}/check-out | Built in v1.0 Phase 5 |
+### New Frontend Dependencies (1 package)
 
-No new backend endpoints, models, or migrations needed.
+```bash
+cd web && npm install @geoman-io/leaflet-geoman-free
+```
+
+Optionally for stricter GeoJSON typing:
+```bash
+cd web && npm install -D @types/geojson
+```
+
+### New Backend Dependencies: NONE
+
+### New Backend Code Needed
+
+1. **`app/api/v1/organizations.py`** — New router with org list/detail/member endpoints
+2. **`app/services/organization.py`** — New service for org queries (model already exists)
+3. **`app/schemas/organization.py`** — New Pydantic schemas for org responses
+
+### Frontend Components to Build
+
+1. **`TurfMapEditor.tsx`** — MapContainer + Geoman controls + GeoJSON render
+2. **`TurfMapView.tsx`** — Read-only map with turf boundary overlay (for detail/list views)
+3. Update **`TurfForm.tsx`** — Replace `<Textarea>` with `<TurfMapEditor>`
+4. **Org dashboard page** — `/organizations/{orgId}` route
+5. **Org switcher** — Component in sidebar/header for multi-org navigation
+6. **`useOrganizations.ts`** — TanStack Query hooks for org endpoints
+
+### Versions Summary
+
+| Package | Version | Status | Confidence |
+|---------|---------|--------|------------|
+| `@geoman-io/leaflet-geoman-free` | 2.19.2 | Add new | HIGH (npm verified, Feb 2026 release) |
+| `leaflet` | 1.9.4 | Already installed | HIGH |
+| `react-leaflet` | 5.0.0 | Already installed | HIGH |
+| `@types/leaflet` | 1.9.21 | Already installed | HIGH |
+| `@types/geojson` | latest | Optional dev dep for stricter types | MEDIUM |
+| `geoalchemy2` | 0.18.4+ | Already installed | HIGH |
+| `shapely` | 2.1.2+ | Already installed | HIGH |
+| `oidc-client-ts` | 3.1.0 | Already installed, sufficient for org claims | HIGH |
+
+---
 
 ## Confidence Assessment
 
-| Decision | Confidence | Basis |
-|----------|------------|-------|
-| driver.js for tours | HIGH | Multiple sources confirm react-joyride React 19 breakage; driver.js is framework-agnostic, actively maintained, highest weekly downloads |
-| zustand persist for state | HIGH | Official zustand documentation, middleware is built-in, project already uses zustand |
-| vaul/Drawer for wizard | HIGH | Already installed as dependency, shadcn/ui official integration |
-| tel: for tap-to-call | HIGH | Web standard, web.dev documentation, universal mobile support |
-| No stepper library | HIGH | Linear non-branching flow does not justify library overhead |
-| No animation library | MEDIUM | Could reconsider if CSS-only transitions feel insufficient, but Tailwind animate utilities are well-proven |
-| No backend changes | HIGH | Reviewed all v1.0-v1.3 API surface; all required endpoints exist |
-
-## Sources
-
-- [driver.js official documentation](https://driverjs.com)
-- [driver.js GitHub (25K+ stars, 436K+ weekly downloads)](https://github.com/kamranahmedse/driver.js)
-- [OnboardJS -- 5 Best React Onboarding Libraries (2026)](https://onboardjs.com/blog/5-best-react-onboarding-libraries-in-2025-compared)
-- [Sandro Roth -- Evaluating tour libraries for React](https://sandroroth.com/blog/evaluating-tour-libraries/)
-- [npm trends -- driver.js vs react-joyride vs shepherd](https://npmtrends.com/driver.js-vs-hopscotch-vs-intro.js-vs-shepherd)
-- [shadcn/ui Drawer component (vaul)](https://ui.shadcn.com/docs/components/radix/drawer)
-- [web.dev -- Click to Call best practices](https://web.dev/articles/click-to-call)
-- [Zustand persist middleware official docs](https://zustand.docs.pmnd.rs/reference/middlewares/persist)
-- [MDN -- Viewport meta tag](https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag)
-- [Touch target optimization (44px minimum)](https://www.seo-day.de/wiki/technisches-seo/mobile-technical/touch.php?lang=en)
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Geoman recommendation | HIGH | npm registry verified (version, dates, peer deps), well-known library, active maintenance |
+| leaflet-draw rejection | HIGH | npm confirmed last publish June 2022, 4+ years without updates |
+| No ZITADEL JS SDK needed | HIGH | Codebase analysis confirms all ZITADEL calls are backend-side with service account |
+| No backend package additions | HIGH | Full codebase review of turf service + ZITADEL service confirms existing deps cover all needs |
+| Org API endpoint design | MEDIUM | Endpoint list is based on feature requirements; may need iteration during implementation |
+| JWT org claim parsing | MEDIUM | OIDC scopes already request org claims, but multi-org grant structure may need testing against live ZITADEL |
 
 ---
-*Stack research for: CivicPulse Run v1.4 Volunteer Field Mode -- frontend additions only*
-*Researched: 2026-03-15*
+
+*Stack research: 2026-03-24*

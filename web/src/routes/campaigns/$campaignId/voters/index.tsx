@@ -695,8 +695,8 @@ function VotersPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         emptyIcon={Users}
-        emptyTitle="No voters found"
-        emptyDescription="Add your first voter or adjust your filters."
+        emptyTitle="No voters yet"
+        emptyDescription="Import a voter file or add voters manually to get started."
         onRowClick={(voter) =>
           navigate({
             to: "/campaigns/$campaignId/voters/$voterId",

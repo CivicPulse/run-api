@@ -8,9 +8,8 @@ import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.session import get_db
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.shift import (
     CheckInResponse,
@@ -74,16 +73,13 @@ async def create_shift(
     campaign_id: uuid.UUID,
     body: ShiftCreate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Create a shift.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     shift = await _shift_service.create_shift(db, campaign_id, body, user.id)
     await db.commit()
     # Re-fetch to get counts
@@ -100,16 +96,13 @@ async def list_shifts(
     shift_status: str | None = Query(None, alias="status"),
     shift_type: str | None = Query(None, alias="type"),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List shifts with optional filters.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     shifts = await _shift_service.list_shifts(
         db, campaign_id, status=shift_status, shift_type=shift_type
     )
@@ -138,16 +131,13 @@ async def get_shift(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get shift detail with signup counts.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     shift_data = await _shift_service.get_shift(db, shift_id)
     if shift_data is None:
         return problem.ProblemResponse(
@@ -168,16 +158,13 @@ async def update_shift(
     shift_id: uuid.UUID,
     body: ShiftUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update shift fields (only when SCHEDULED).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _shift_service.update_shift(db, shift_id, body)
     except ValueError as exc:
@@ -201,16 +188,13 @@ async def update_shift_status(
     shift_id: uuid.UUID,
     body: ShiftStatusUpdate,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Update shift status.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _shift_service.update_status(db, shift_id, body.status)
     except ValueError as exc:
@@ -233,16 +217,13 @@ async def delete_shift(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Delete a shift (scheduled only, no checked-in volunteers).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _shift_service.delete_shift(db, shift_id)
     except ValueError as exc:
@@ -270,7 +251,7 @@ async def signup_for_shift(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Volunteer self-signup for a shift.
 
@@ -279,10 +260,7 @@ async def signup_for_shift(
     await ensure_user_synced(user, db)
     from sqlalchemy import select as sa_select
 
-    from app.db.rls import set_campaign_context
     from app.models.volunteer import Volunteer
-
-    await set_campaign_context(db, str(campaign_id))
 
     # Resolve volunteer from user_id
     vol_result = await db.execute(
@@ -323,16 +301,13 @@ async def assign_volunteer(
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Manager assigns volunteer to shift (bypasses capacity).
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         shift_vol = await _shift_service.manager_assign(db, shift_id, volunteer_id)
     except ValueError as exc:
@@ -354,7 +329,7 @@ async def cancel_self_signup(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Volunteer self-cancels their shift signup.
 
@@ -364,10 +339,7 @@ async def cancel_self_signup(
     await ensure_user_synced(user, db)
     from sqlalchemy import select as sa_select
 
-    from app.db.rls import set_campaign_context
     from app.models.volunteer import Volunteer
-
-    await set_campaign_context(db, str(campaign_id))
 
     # Resolve volunteer from user_id
     vol_result = await db.execute(
@@ -409,16 +381,13 @@ async def manager_remove_volunteer(
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Manager removes a volunteer from a shift.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         await _shift_service.cancel_signup(
             db, shift_id, volunteer_id, user.id, user.role
@@ -448,16 +417,13 @@ async def check_in(
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Check in a volunteer to a shift.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         shift_vol = await _shift_service.check_in(db, shift_id, volunteer_id)
     except ValueError as exc:
@@ -480,16 +446,13 @@ async def check_out(
     shift_id: uuid.UUID,
     volunteer_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Check out a volunteer from a shift.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         shift_vol = await _shift_service.check_out(db, shift_id, volunteer_id)
     except ValueError as exc:
@@ -518,16 +481,13 @@ async def adjust_hours(
     volunteer_id: uuid.UUID,
     body: HoursAdjustment,
     user: AuthenticatedUser = Depends(require_role("manager")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Adjust volunteer hours for a shift with audit trail.
 
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     try:
         shift_vol = await _shift_service.adjust_hours(
             db,
@@ -556,15 +516,12 @@ async def list_shift_volunteers(
     campaign_id: uuid.UUID,
     shift_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """List volunteers signed up for a shift.
 
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    from app.db.rls import set_campaign_context
-
-    await set_campaign_context(db, str(campaign_id))
     volunteers = await _shift_service.list_shift_volunteers(db, shift_id)
     return [ShiftSignupResponse.model_validate(v) for v in volunteers]

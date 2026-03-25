@@ -9,10 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ensure_user_synced
+from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.security import AuthenticatedUser, require_role
-from app.db.rls import set_campaign_context
-from app.db.session import get_db
 from app.models.user import User
 from app.models.voter_interaction import InteractionType
 from app.schemas.common import PaginatedResponse, PaginationResponse
@@ -37,7 +35,7 @@ async def get_voter_interactions(
     cursor: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Get voter interaction history ordered by created_at DESC.
 
@@ -46,7 +44,6 @@ async def get_voter_interactions(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     type_filter = None
     if interaction_type is not None:
@@ -110,7 +107,7 @@ async def create_voter_interaction(
     voter_id: uuid.UUID,
     body: InteractionCreateRequest,
     user: AuthenticatedUser = Depends(require_role("volunteer")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_campaign_db),
 ):
     """Add a manual interaction event (note only via API).
 
@@ -119,7 +116,6 @@ async def create_voter_interaction(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await set_campaign_context(db, str(campaign_id))
 
     if body.type != "note":
         raise HTTPException(
