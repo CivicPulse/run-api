@@ -247,6 +247,59 @@
 
 ---
 
+## Milestone: v1.5 — Go Live — Production Readiness
+
+**Shipped:** 2026-03-25
+**Phases:** 10 | **Plans:** 36
+
+### What Was Built
+- Fixed critical multi-tenancy data isolation: transaction-scoped RLS set_config, centralized get_campaign_db dependency replacing 244 inline calls, pool checkout reset, verified all 33 RLS policies
+- Multi-campaign membership fix with idempotent backfill migration, deprecated get_campaign_from_token
+- Production observability: Sentry error tracking with PII scrubbing, structlog ASGI request middleware with ContextVars, structured JSON telemetry
+- Trusted-proxy-aware rate limiting on all 73 endpoints with CF-Connecting-IP CIDR validation and per-user JWT-based keys
+- Organization management: org_owner/org_admin roles, additive role resolution, org dashboard with campaign cards, member directory with role matrix, campaign creation wizard, org switcher
+- Interactive map-based turf editor: Leaflet/Geoman polygon draw/edit, GeoJSON import/export, Nominatim address search, overlap detection, satellite toggle
+- UI/UX polish: sidebar slide-over, error boundaries on all routes, contextual tooltips at 4 decision points, loading skeletons, meaningful empty states across 14 list pages
+- WCAG AA compliance: 4 shared a11y components, 38-route parameterized axe-core scan, 5 screen reader flow tests, keyboard navigation, skip-nav links, focus management
+- Playwright E2E tests: auth setup, voter/turf/phone bank/volunteer specs, RLS isolation tests, connected journey spec, CI Docker Compose integration
+- Integration consistency: RLS centralization in turf endpoints, rate limit coverage across all 22 route files with AST-based guard test
+
+### What Worked
+- Parallel phase execution (39-43 had minimal dependencies) enabled fast delivery — 10 phases in 2 days
+- Milestone audit before gap closure phases identified 3 concrete issues (INT-01, INT-02, FLOW-01) that Phases 47-48 addressed precisely
+- AST-based guard test for rate limit coverage ensures future endpoints can't skip rate limiting — catches issues at CI time
+- Centralized get_campaign_db pattern proved its worth when audit found 2 turf endpoints still using inline set_campaign_context
+- Connected E2E journey spec (Phase 48) adapted to actual UI rather than planned wizard — pragmatic testing over specification compliance
+
+### What Was Inefficient
+- Some plan checkboxes in ROADMAP.md still show `[ ]` after execution — 6th consecutive milestone with this issue
+- Phase 40 plans count shows 1/2 in progress table but phase marked complete — bookkeeping inconsistency
+- Phase 41 plans count shows 1/3 but all 3 plans have SUMMARY.md files — plan tracking gap
+- Rate limiting Phase 47-03 took 16 minutes due to touching 18 route files — could have been parallelized with subagents
+- Milestone audit remained in `tech_debt` status after gap closure — no re-audit workflow step
+
+### Patterns Established
+- Transaction-scoped RLS context via set_config(true) as mandatory pattern for connection-pooled PostgreSQL
+- Pure ASGI middleware (not BaseHTTPMiddleware) for structlog to avoid streaming response issues
+- ContextVars for cross-cutting request context (Sentry, logging, error responses, rate limiting)
+- AST-based decorator coverage tests for infrastructure requirements (rate limiting)
+- Stored auth state in Playwright for multi-spec test suites (auth.setup.ts pattern)
+- Connected E2E journey specs that adapt to actual UI rather than planned wireframes
+
+### Key Lessons
+1. RLS context MUST be transaction-scoped (set_config third param = true) in connection-pooled environments — session-scoped leaks across requests
+2. Centralized dependencies (get_campaign_db) are only effective if audited — 2 endpoints escaped centralization despite 244 being converted
+3. AST-based guard tests are the right pattern for "every endpoint must have X" requirements — no import side effects, catches at CI time
+4. Connected E2E specs should test actual UI, not planned specifications — the implementation may diverge from the plan
+5. Rate limiting requires per-endpoint opt-in with SlowAPI — infrastructure exists but each route file needs decorators
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 2 days from Phase 39 start to milestone completion (2026-03-24 → 2026-03-25)
+- Notable: 37,350 lines added across 348 files; 36 plans across 10 phases; 48/48 requirements satisfied
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -258,6 +311,7 @@
 | v1.2 | 11 | 43 | Full Nyquist compliance, 3-source verification, gap closure phases as standard practice |
 | v1.3 | 7 | 18 | POST body for complex search, Literal-typed sort columns, audit-driven gap closure confirmed as pattern |
 | v1.4 | 9 | 26 | Mobile-first field mode, offline queue + sync, driver.js tours, WCAG AA, shared component reuse across domains |
+| v1.5 | 10 | 36 | Production hardening (RLS fix, Sentry, rate limiting), org management, map editor, WCAG compliance scan, E2E test coverage |
 
 ### Cumulative Quality
 
@@ -268,16 +322,19 @@
 | v1.2 | 252 passing (frontend) | 284 passing (backend) | — | 30,691 TypeScript |
 | v1.3 | 252+ (frontend) | 284+ (backend) | ~34K Python + ~34K TS | +6,771 lines (45 files) |
 | v1.4 | 300+ (frontend) | 284+ (backend) | ~34K Python + ~58K TS | +23,659 lines (304 files) |
+| v1.5 | 300+ (frontend) | 300+ (backend) | ~22K Python + ~43K TS | +37,350 lines (348 files) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Design models and components for cross-phase reuse from the start (survey engine → phone banking; RequireRole/DataTable → all UI phases)
 2. Run integration tests against live infrastructure — deferred testing is deferred risk
-3. Run milestone audit before declaring done — catches real gaps in every milestone (v1.0: 2 gaps, v1.2: 4 gaps)
+3. Run milestone audit before declaring done — catches real gaps in every milestone (v1.0: 2 gaps, v1.2: 4 gaps, v1.5: 3 gaps)
 4. Keep ROADMAP.md checkboxes and progress table updated during execution — manual fixups during archival are wasteful
 5. Build shared infrastructure early — Phase 12's 3-plan investment in RequireRole, DataTable, useFormGuard saved massive duplication across 10 subsequent phases
 6. Gap closure phases are healthy — they mean the audit process works, not that planning failed
 7. POST body search is the right pattern once filter dimensions exceed ~20 — GET query params don't scale
-8. Summary files should include a `one_liner` field — verified as pain point across all 5 milestones
+8. Summary files should include a `one_liner` field — verified as pain point across all 6 milestones
 9. Phase ordering for maximum component reuse (canvassing before phone banking) avoids duplication across domains
 10. Offline queue architecture: localStorage for cross-session survival, sessionStorage for per-session state
+11. Transaction-scoped RLS (set_config true) is mandatory for connection-pooled PostgreSQL — session-scoped leaks
+12. AST-based guard tests catch infrastructure compliance gaps (rate limiting, decorators) at CI time without import side effects

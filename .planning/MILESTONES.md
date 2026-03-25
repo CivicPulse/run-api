@@ -1,5 +1,43 @@
 # Milestones
 
+## v1.5 Go Live — Production Readiness (Shipped: 2026-03-25)
+
+**Phases completed:** 10 phases, 36 plans, 67 tasks
+
+**Key accomplishments:**
+
+- Transaction-scoped set_config fix preventing cross-campaign data leaks, defense-in-depth pool checkout reset, and verified audit of all 33 RLS policies
+- Centralized get_campaign_db FastAPI dependency replacing 244 inline set_campaign_context calls across 17 route files, ensuring zero-skip RLS enforcement
+- Fixed ensure_user_synced to create CampaignMember for all org campaigns, deprecated get_campaign_from_token, and added idempotent backfill migration
+- Defensive campaignId guard on settings button preventing undefined campaign navigation, with type assertion cleanup
+- Sentry error tracking with PII scrubbing and structlog JSON request telemetry via ContextVars-based request context
+- Trusted-proxy-aware IP extraction with Cloudflare CIDR validation and per-user JWT-based rate limit keys
+- OrganizationMember model with OrgRole StrEnum, campaign-equivalent mappings, and Alembic migration seeding org_owner records from existing organizations
+- Additive org role resolution in resolve_campaign_role() with max() semantics, JWT fallback removal, and NULL role backward compatibility
+- GeoJSON file import with Polygon extraction, Nominatim address search, overlap visual highlight, and client-side GeoJSON export download
+- Org management backend with 5 endpoints (CRUD + member assignment) plus frontend hooks, types, RequireOrgRole, and ZITADEL org-switching auth store extension
+- Org-scoped dashboard at / with campaign card grid, archive flow, stats bar, and header org switcher for multi-org users
+- 3-step campaign creation wizard with details/review/invite-team flow, per-step validation, org confirmation, and optional team member invite with role assignment
+- Refactored AppSidebar to always render Organization nav (All Campaigns, Members, Settings) on authenticated routes instead of returning null on non-campaign pages
+- RouteErrorBoundary component with Card-based fallback UI wired to router default and 7 section routes, plus sidebar defaultOpen=false for slide-over behavior
+- Promoted TooltipIcon to shared component, added manager-only volunteer invite radio toggle with alert banner, and placed contextual help tooltips at 4 decision points (turf creation, role assignment, import mapping, campaign type)
+- Replaced 3 page-level Loader2 spinners with layout-matching skeletons and standardized contextual empty state messaging across 14 list pages
+- TooltipIcon on Organization ID, corrected empty state with Users icon, and RouteErrorBoundary on both org route files
+- Shared a11y components (SkipNav, VisuallyHidden, LiveRegion, FocusScope), axe-core fixture, ARIA landmarks, WCAG AA contrast fix, and keyboard focus indicators
+- Skip-map link and ARIA-compliant GeoJSON panel toggle for keyboard/screen reader turf boundary editing
+- Parameterized axe-core WCAG 2.1 AA scan across 38 routes with JSON artifacts, zero critical/serious gate, and D-10 focus management patterns for forms and delete actions
+- 5 Playwright flow tests verifying keyboard operability and screen reader compatibility for voter search, voter import wizard, walk list creation, phone bank sessions, and campaign settings
+- API-level RLS smoke tests verify middleware campaign context across voter/turf endpoints; 10 skipped E2E stubs converted to real mock-based tests
+- 3 Playwright E2E specs (turf, phone bank, volunteer) plus GitHub Actions integration-e2e job running full Docker Compose stack with migration, seed, pytest integration, and Playwright E2E tests
+- Removed hardcoded Tailscale URLs, manual login functions, and waitForTimeout calls from 15 E2E tests across 2 spec files, making all tests CI-compatible with dynamic campaign discovery
+- Fixed last 2 turf endpoints bypassing centralized RLS (get_turf_overlaps, get_turf_voters) with inspect-based unit tests and verified all 48 REQUIREMENTS.md entries
+- 73 endpoints across 5 high-traffic route files rate-limited with tiered per-user limits via SlowAPI
+- 1. [Rule 3 - Blocking] Created get_user_or_ip_key and supporting infrastructure
+- AST-based guard test verifying all 22 route files have @limiter.limit decorators and authenticated endpoints use per-user key functions
+- Single Playwright spec verifying full user journey: campaign list, campaign creation with POST verification, turf creation with GeoJSON, voter section, and phone bank section across 5 serial test.step blocks
+
+---
+
 ## v1.4 Volunteer Field Mode (Shipped: 2026-03-17)
 
 **Phases completed:** 9 phases, 26 plans
@@ -8,6 +46,7 @@
 **Git range:** `feat(30-01)` → `fix(260317-w3n)`
 
 **Key accomplishments:**
+
 1. Mobile-first field layout shell with zero admin chrome, assignment-aware volunteer hub with pull-to-refresh, and volunteer auto-redirect after OIDC login
 2. Linear canvassing wizard — door-by-door with household grouping, inline survey, auto-advance, progress tracking, persistent state via sessionStorage, and resume prompt
 3. Phone banking field mode — tap-to-call via tel: links, clipboard fallback, E.164 formatting, outcome recording with shared OutcomeGrid/InlineSurvey components, session progress
@@ -29,6 +68,7 @@
 **Git range:** `feat(23-01)` → `feat(29-02)`
 
 **Key accomplishments:**
+
 1. Expanded voter model with 22 new first-class columns (propensity scores, mailing address, demographics, household data, military status) via single Alembic migration with indexes
 2. Enhanced import pipeline — auto-VoterPhone creation via RETURNING clause, voting history parsing from L2 General/Primary columns, propensity percentage parsing, fixed upsert SET clause bug
 3. Extended composable filter system with 15 new query conditions (propensity ranges, demographic multi-select, mailing address exact-match) plus backward-compatible year-only voting history expansion
@@ -50,6 +90,7 @@
 **Git range:** `feat(12-01)` → `feat(22-01)`
 
 **Key accomplishments:**
+
 1. Shared UI infrastructure — RequireRole permission gating, useFormGuard navigation protection, and reusable DataTable with server-side sorting/filtering/pagination powering all 11 phases
 2. Complete voter CRM — Contacts (phone/email/address), tags, static/dynamic lists, advanced search with 19 composable filter dimensions, interaction notes, and multi-step CSV import wizard with column mapping
 3. Full phone banking workflow — Session management, Popover+Command member picker for caller assignment, active calling screen with claim/record/skip lifecycle, grouped outcome buttons, inline survey support, and progress dashboards
@@ -71,6 +112,7 @@
 **Git range:** `e246c98` → `f25eb0d`
 
 **Key accomplishments:**
+
 1. Three-stage Docker build (node/uv/python-slim) producing 485MB production image with liveness/readiness health probes and conditional SPA static file serving
 2. Docker Compose full-stack dev environment (API + PostgreSQL/PostGIS + MinIO) with auto-migrations, MinIO bucket bootstrap, and Vite hot-reload proxy
 3. Idempotent Macon-Bibb County seed data script with 50 voters, campaigns, turfs, walk lists, surveys, phone banks, shifts, and 35+ voter interactions
@@ -89,6 +131,7 @@
 **Codebase:** 56,653 LOC Python, 243 files
 
 **Key accomplishments:**
+
 1. ZITADEL OIDC authentication with JWT/JWKS validation, campaign CRUD with compensating transactions, and PostgreSQL RLS-based multi-tenant data isolation
 2. Full voter CRM with CSV import pipeline (RapidFuzz field mapping), composable search/filter query builder, tags, static/dynamic voter lists, and append-only interaction history
 3. PostGIS-powered canvassing with geographic turf cutting, household-clustered walk lists, door-knock recording, and a reusable survey engine
@@ -102,4 +145,3 @@
 **Audit:** .planning/milestones/v1.0-MILESTONE-AUDIT.md (status: tech_debt, 39/39 requirements satisfied)
 
 ---
-

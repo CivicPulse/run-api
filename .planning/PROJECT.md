@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips. A dedicated mobile-first volunteer field mode provides zero-training canvassing and phone banking experiences with offline support, guided onboarding, and WCAG AA accessibility.
+A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. Organization-level management enables multi-campaign oversight with org admin roles, campaign creation wizards, member directories, and org switching. An interactive map-based turf editor provides polygon drawing, GeoJSON import/export, address search, and overlap detection. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips. A dedicated mobile-first volunteer field mode provides zero-training canvassing and phone banking experiences with offline support, guided onboarding, and WCAG AA accessibility. Production hardening includes Sentry error tracking, structlog request telemetry, trusted-proxy rate limiting on all endpoints, and Playwright E2E test coverage.
 
 ## Core Value
 
@@ -74,49 +74,23 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ WCAG AA accessibility audit — ARIA landmarks, 44px touch targets, color contrast, live regions — v1.4
 - ✓ Milestone celebration toasts and voter context cards in canvassing and phone banking — v1.4
 - ✓ Google Maps navigation links (walking directions) in field mode and admin pages — v1.4
-
-## Current Milestone: v1.5 Go Live — Production Readiness
-
-**Goal:** Fix critical data isolation and auth bugs, ship organization management UI and map-based turf editor, systematically audit the full app for WCAG compliance and usability, then harden with observability and E2E test coverage before onboarding real users.
-
-**Target features:**
-- Fix multi-tenancy data leaks (voters + voter lists crossing campaign boundaries)
-- Fix campaign visibility in prod (auth/data migration issue) and broken settings button
-- Organization-level UI: org admin dashboard, multi-org membership, campaign creation gating
-- Map-based turf editor: Leaflet draw/render for GeoJSON boundaries
-- Full WCAG compliance audit + UX simplicity review + built-in documentation (tooltips, hints)
-- Volunteer create vs invite UX clarity; sidebar slide-over; menu consolidation
-- Production hardening: error/empty/loading states, rate limiting, input validation
-- Observability: structlog structured logging, Sentry error tracking, request tracing
-- Testing: Playwright E2E critical flows + 18 pending integration tests
+- ✓ Transaction-scoped RLS context preventing cross-campaign data leaks via pool reuse — v1.5
+- ✓ Defense-in-depth pool checkout event resetting campaign context on every connection acquisition — v1.5
+- ✓ Centralized get_campaign_db dependency replacing inline set_campaign_context calls — v1.5
+- ✓ Multi-campaign membership fix (ensure_user_synced for all org campaigns) with backfill migration — v1.5
+- ✓ Sentry error tracking with PII scrubbing and structlog JSON request telemetry — v1.5
+- ✓ Trusted-proxy-aware rate limiting (CF-Connecting-IP) with per-user JWT-based keys on all 73 endpoints — v1.5
+- ✓ Organization members table with org_owner/org_admin roles and additive role resolution — v1.5
+- ✓ Org dashboard with campaign card grid, archive flow, stats bar, and multi-org switcher — v1.5
+- ✓ Campaign creation wizard with team invite and org member directory with role matrix — v1.5
+- ✓ Interactive map-based turf editor with Leaflet/Geoman, GeoJSON import/export, address search, overlap detection — v1.5
+- ✓ UI/UX polish: sidebar slide-over, error boundaries, empty states, loading skeletons, contextual tooltips — v1.5
+- ✓ WCAG AA compliance: 38-route axe-core scan, 5 screen reader flow tests, keyboard navigation, skip-nav links — v1.5
+- ✓ Playwright E2E tests for critical flows, RLS isolation tests, and connected journey spec with CI integration — v1.5
 
 ### Active
 
-- ✓ Transaction-scoped RLS context (set_config true) preventing cross-campaign data leaks via pool reuse — v1.5
-- ✓ Defense-in-depth pool checkout event resetting campaign context on every connection acquisition — v1.5
-- ✓ Centralized get_campaign_db dependency replacing 244 inline set_campaign_context calls — v1.5
-- ✓ Multi-campaign membership fix (ensure_user_synced creates records for all org campaigns) — v1.5
-- ✓ Alembic data migration backfilling missing CampaignMember records — v1.5
-- ✓ Settings button defensive guard when campaignId unavailable — v1.5
-- ✓ Sentry error tracking with PII scrubbing (before_send strips phone/email) and performance traces — v1.5
-- ✓ Structlog ASGI request middleware with structured JSON logs (request_id, user_id, campaign_id, duration) — v1.5
-- ✓ ContextVar-based request context sharing across Sentry, error responses, and logs — v1.5
-- ✓ Trusted-proxy-aware rate limiting using CF-Connecting-IP with Cloudflare CIDR validation — v1.5
-- ✓ Per-user rate limiting infrastructure for authenticated endpoints via JWT sub extraction — v1.5
-- ✓ Organization members table with org_owner/org_admin roles per user per org (ORG-01) — v1.5
-- ✓ Seed migration promoting org created_by users to org_owner (ORG-02) — v1.5
-- ✓ Additive org role resolution: max(campaign role, org role equivalent) in resolve_campaign_role() (ORG-03) — v1.5
-- ✓ require_org_role() auth dependency gating org-level endpoints with 3 read-only org APIs (ORG-04) — v1.5
-- ✓ Org dashboard with campaign card grid, stats bar, archive flow, and org switcher (ORG-05, ORG-07, ORG-11, ORG-12, ORG-13) — v1.5
-- ✓ Org member directory with per-campaign role matrix and add-to-campaign dialog (ORG-06, ORG-10) — v1.5
-- ✓ Multi-step campaign creation wizard with team invite step (ORG-08) — v1.5
-- ✓ Org settings page with name edit (owner-only) and ZITADEL org ID display (ORG-09) — v1.5
-- ✓ Sidebar nav renders Organization group on all authenticated routes, Campaign group conditional (ORG-05) — v1.5
-- ✓ WCAG AA compliance: 4 shared a11y components, root layout ARIA landmarks, muted-foreground contrast fix — v1.5
-- ✓ Map accessibility: skip-nav link past Leaflet map, ARIA-compliant GeoJSON editor panel — v1.5
-- ✓ 38-route parameterized axe-core scan gating on zero critical/serious violations — v1.5
-- ✓ D-10 focus management: form submission focus, delete action focus, dialog close restoration — v1.5
-- ✓ 5 Playwright screen reader flow tests (voter search, import, walk list, phone bank, settings) — v1.5
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -134,18 +108,24 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Self-computed propensity scores — vendor problem; import vendor data as-is
 - BISG/fBISG ethnicity prediction — 14-26% error rates, legal/ethical concerns
 - Normalized ethnicity/language enums — L2 has 50+ values, fixed enums break with vendor data
+- Shared org-level voter database — legal/vendor compliance risk; voter data stays campaign-scoped with RLS
+- Real-time collaborative turf editing — CRDT/OT for geometry is extreme complexity
+- Shapefile (.shp) or KML import — multi-file format requires GDAL/OGR; GeoJSON only
+- Freehand polygon drawing — produces self-intersecting polygons that Shapely rejects
+- Custom permission builder — fixed 7-role hierarchy (5 campaign + 2 org) is sufficient
+- Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
+- White-label / custom branding per org
 
 ## Current State
 
-Phase 48 complete — v1.5 milestone fully delivered. Phase 48 closed FLOW-01 (connected E2E journey gap) from the v1.5 milestone audit: single Playwright spec covers org dashboard → campaign creation → turf creation → voter search → phone bank section as a connected serial journey with stored auth state. All 48 v1.5 requirements satisfied, all gap closure items resolved. 48 phases, 149 plans shipped across 6 milestones.
+v1.5 shipped. 48 phases, 149 plans delivered across 6 milestones in 17 days (2026-03-08 → 2026-03-25). All 48 v1.5 requirements satisfied. The platform is production-ready with full data isolation, org management, map-based turf editing, WCAG AA compliance, observability, and E2E test coverage.
+
+Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Context
 
-Shipped v1.0 MVP (39 requirements, 7 phases), v1.1 Local Dev & Deployment Readiness (15 requirements, 4 phases), v1.2 Full UI (66 requirements, 11 phases), v1.3 Voter Model & Import Enhancement (27 requirements, 7 phases), and v1.4 Volunteer Field Mode (38 requirements, 9 phases) over 10 days.
 Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ (backend); React + TanStack Router/Query + shadcn/ui + Zustand + driver.js (frontend).
-Codebase: ~34K LOC Python backend + ~58K LOC TypeScript frontend.
 Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s manifests with ArgoCD GitOps.
-18 tech debt items from v1.0 (integration tests need live infrastructure). 7 low-severity tech debt items from v1.2. 3 human verification items from v1.3.
 
 ## Constraints
 
@@ -163,44 +143,19 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 |----------|-----------|---------|
 | ZITADEL for auth | Externalize auth to proven OIDC provider; avoid building auth from scratch | ✓ Good — Authlib JWT decode + JWKS refresh works well |
 | PostgreSQL + PostGIS | Geographic queries essential for turf cutting; PostGIS is the standard | ✓ Good — ST_Contains spatial queries, voter geom backfill |
-| Multi-tenant from start | Shared deployment; data isolation via campaign_id RLS | ✓ Good — RLS policies on all 30+ tables, consistent pattern |
-| API-only (no frontend) | Separation of concerns; enables multiple client apps | ⚠️ Revisit — v1.1 embeds web frontend temporarily via static mount |
+| Multi-tenant from start | Shared deployment; data isolation via campaign_id RLS | ✓ Good — RLS policies on all 33 tables, transaction-scoped context |
 | Multi-source voter import | Campaigns use different data vendors; flexible mapping system needed | ✓ Good — RapidFuzz auto-mapping at 75% threshold |
 | Field ops as core value | Canvassing + phone banking is biggest gap for independents | ✓ Good — full canvassing + phone banking with survey reuse |
 | Reusable survey engine | Decoupled from canvassing for phone banking reuse | ✓ Good — PhoneBankService composes SurveyService directly |
 | Composition over inheritance | Services compose VoterInteractionService, SurveyService, DNCService | ✓ Good — clean dependency injection, no circular imports |
 | native_enum=False | VARCHAR for all StrEnum columns for migration extensibility | ✓ Good — avoids ALTER TYPE in future migrations |
-| Compensating transactions | ZITADEL org creation + DB insert with rollback on failure | ✓ Good — tested with mocks, needs live validation |
-| Claim-on-fetch with SKIP LOCKED | Concurrent call list entry claiming without contention | ✓ Good — PostgreSQL advisory locking pattern |
-| Late imports for cross-phase models | Avoid circular deps between volunteer/canvassing/phone banking | ✓ Good — ShiftService.check_in() imports at call site |
 | Embed web frontend in API container | Temporary convenience; avoids separate static hosting setup for now | ⚠️ Revisit — will move to Cloudflare Pages |
-| GHCR for container images | GitHub-native, free for public repos, matches contact-api pattern | ✓ Good — SHA + latest tagging with CI auto-publish |
-| Plain K8s manifests (no Helm) | Simplicity, matches contact-api pattern, ArgoCD handles sync | ✓ Good — ArgoCD auto-sync works well |
-| Three-stage Docker build | node → uv → python-slim keeps image at 485MB | ✓ Good — clean separation of build concerns |
-| Cloudflare TLS termination | HTTP-only IngressRoute; Cloudflare handles HTTPS | ✓ Good — simplifies K8s config |
-| CI manifest commit-back | Publish workflow updates k8s/deployment.yaml with new SHA | ✓ Good — GITHUB_TOKEN prevents infinite loops |
-| RequireRole hides vs disables | Unauthorized content hidden entirely, not greyed out | ✓ Good — simpler UX, fewer edge cases |
-| Server-side DataTable | manualSorting/manualFiltering/manualPagination via TanStack Table | ✓ Good — consistent pattern across all 11 phases |
-| useFormGuard (route + beforeunload) | Single hook handles both TanStack Router blocking and browser close | ✓ Good — zero data loss reports |
-| XHR for MinIO uploads | ky interceptors break presigned URL auth; raw XMLHttpRequest used | ✓ Good — progress events + clean presigned URL support |
-| Popover+Command combobox pattern | Member/volunteer pickers use cmdk for search with Popover container | ✓ Good — reused in caller picker, volunteer assignment |
-| Client-side DNC search | Strip non-digits before comparing; no backend search endpoint | ✓ Good — DNC lists are campaign-scoped, small enough for client |
-| it.todo test stubs | Wave 0 stubs with no imports keep suite green during development | ✓ Good — Nyquist compliance without blocking progress |
-| Separate /field/ route tree | Zero admin chrome for volunteers; isFieldRoute bypass in __root.tsx | ✓ Good — clean mobile UX with no sidebar or data tables |
-| Zustand + sessionStorage for wizard | Persist canvassing state across phone interruptions; fresh start each session | ✓ Good — resume prompt works reliably, clears on tab close |
-| driver.js over react-joyride | React 19 incompatibility with react-joyride; driver.js is framework-agnostic | ✓ Good — works with React 19, CSS-only customization |
-| Offline queue in localStorage | Cross-session survival for queued outcomes during connectivity loss | ✓ Good — survives app close, drains automatically on reconnect |
-| OutcomeGrid string callback type | Generalize outcome grid for both canvassing and phone banking domains | ✓ Good — single component serves both field modes |
-| Canvassing before phone banking | Phase ordering produces shared components (OutcomeGrid, VoterCard, InlineSurvey) | ✓ Good — 5 components reused across both field modes |
-| Walking travelmode for Maps links | Canvassers are on foot; Google Maps defaults to driving | ✓ Good — one-tap walking directions from HouseholdCard |
-| Single migration for voter expansion | Migration 006 handles all renames + 22 new columns in one file | ✓ Good — simpler than splitting across multiple migrations |
-| func.lower() for filter equality | Case-insensitive matching on registration/mailing address and demographics | ✓ Good — consistent pattern, zip stays exact match |
-| SET clause from model columns | Upsert derives SET from Voter.__table__.columns, not first batch row | ✓ Good — fixed silent column omission bug |
-| RETURNING clause for phone linking | Voter upsert returns IDs for VoterPhone bulk creation | ✓ Good — single round-trip per batch |
-| Year-only voting history expansion | voted_in: ["2024"] expands to General_2024 + Primary_2024 with overlap | ✓ Good — backward compatible with saved filters |
-| POST /voters/search | Body-based search replaces GET query params for complex filters | ✓ Good — all 32 filter dimensions fit cleanly in body |
-| Literal-typed sort_by | 12-column union type with compile-time validation | ✓ Good — type safety without runtime overhead |
-| filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
+| Transaction-scoped RLS (set_config true) | Prevents cross-campaign data leaks via connection pool reuse | ✓ Good — critical security fix in v1.5 |
+| Centralized get_campaign_db | Single dependency for RLS context; no endpoint can skip it | ✓ Good — replaced 244 inline calls |
+| Additive org role resolution | max(campaign role, org role equivalent) — org roles never restrictive | ✓ Good — clean permission hierarchy |
+| Leaflet/Geoman for map editor | Free, well-maintained; leaflet-draw abandoned | ✓ Good — polygon draw/edit, GeoJSON round-trip |
+| Pure ASGI middleware for structlog | Not BaseHTTPMiddleware to avoid streaming issues | ✓ Good — ContextVars shared across Sentry/logs |
+| AST-based rate limit guard test | Verify all route files have decorators without importing app | ✓ Good — catches missing rate limits at CI time |
 
 ---
-*Last updated: 2026-03-25 — Phase 48 complete, v1.5 milestone delivered*
+*Last updated: 2026-03-25 after v1.5 milestone*
