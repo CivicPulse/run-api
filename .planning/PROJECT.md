@@ -137,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 47 complete — gap closure phases in progress. Phase 47 closed INT-01 (turf RLS centralization) and INT-02 (rate limiting gaps) from the v1.5 milestone audit: all 7 turf endpoints now use centralized `get_campaign_db`, 169 `@limiter.limit` decorators applied across all 22 route files with tiered rates, AST-based regression test ensures future endpoints get rate limiting, and REQUIREMENTS.md traceability verified (48/48 Satisfied). 47 phases, 148 plans shipped across 6 milestones.
+Phase 48 complete — v1.5 milestone fully delivered. Phase 48 closed FLOW-01 (connected E2E journey gap) from the v1.5 milestone audit: single Playwright spec covers org dashboard → campaign creation → turf creation → voter search → phone bank section as a connected serial journey with stored auth state. All 48 v1.5 requirements satisfied, all gap closure items resolved. 48 phases, 149 plans shipped across 6 milestones.
 
 ## Context
 
@@ -203,4 +203,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-25 — Phase 47 complete, gap closure in progress*
+*Last updated: 2026-03-25 — Phase 48 complete, v1.5 milestone delivered*
