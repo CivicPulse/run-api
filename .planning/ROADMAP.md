@@ -227,11 +227,12 @@ Plans:
   1. Playwright E2E tests pass for login, voter search, voter import, turf creation, phone bank session, and volunteer signup flows
   2. All 18 pending integration tests from v1.0 pass against live PostgreSQL, PostGIS, MinIO, and ZITADEL
   3. Cross-campaign RLS isolation test suite verifies zero data leaks across 6 isolation dimensions (voters, voter lists, turfs, walk lists, call lists, phone bank sessions)
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
-- [ ] 46-01-PLAN.md — Playwright auth setup + login, voter search, voter import E2E specs (TEST-01)
-- [ ] 46-02-PLAN.md — API-level RLS smoke tests + convert pending test stubs (TEST-02, TEST-03)
-- [ ] 46-03-PLAN.md — Turf, phone bank, volunteer E2E specs + CI workflow (TEST-01, TEST-02, TEST-03)
+- [x] 46-01-PLAN.md — Playwright auth setup + login, voter search, voter import E2E specs (TEST-01)
+- [x] 46-02-PLAN.md — API-level RLS smoke tests + convert pending test stubs (TEST-02, TEST-03)
+- [x] 46-03-PLAN.md — Turf, phone bank, volunteer E2E specs + CI workflow (TEST-01, TEST-02, TEST-03)
+- [ ] 46-04-PLAN.md — Gap closure: fix hardcoded URLs and waitForTimeout in converted E2E specs (TEST-01, TEST-02, TEST-03)
 
 ## Progress
 
@@ -285,4 +286,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
-| 46. E2E Testing & Integration | v1.5 | 0/3 | In progress | - |
+| 46. E2E Testing & Integration | v1.5 | 3/4 | In Progress|  |
