@@ -1,34 +1,35 @@
 import { test, expect } from "@playwright/test"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
-
 test.setTimeout(90_000)
 
 test.describe("Canvassing Wizard", () => {
+  let campaignId: string
+
   test.beforeEach(async ({ page }) => {
-    await login(page)
-    await page.goto(`${BASE}/field/${CAMPAIGN_ID}/canvassing`)
-    await page.waitForTimeout(3000)
+    // Navigate to app root -- uses baseURL from playwright.config.ts
+    await page.goto("/")
+    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    // Click into the seed campaign
+    const campaignLink = page
+      .getByRole("link", { name: /macon|bibb|campaign/i })
+      .first()
+    await campaignLink.click()
+    // Extract campaign ID from the URL for field navigation
+    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
+    const url = page.url()
+    campaignId = url.match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
+    // Navigate to the canvassing wizard via the field route
+    await page.goto(`/field/${campaignId}/canvassing`)
+    await expect(
+      page.locator(".text-lg.font-semibold").first()
+    ).toBeVisible({ timeout: 15_000 })
   })
 
-  // ── CANV-01: Voter Context ──────────────────────────────────────────────
+  // -- CANV-01: Voter Context ------------------------------------------------
   test("voter context - shows name, party, propensity, and address", async ({
     page,
   }) => {
-    // Check for "No Canvassing Assignment" — skip if no walk list assigned
+    // Check for "No Canvassing Assignment" -- skip if no walk list assigned
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
       test.skip(true, "No walk list assigned to test user")
@@ -48,7 +49,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-02: Outcome Buttons ────────────────────────────────────────────
+  // -- CANV-02: Outcome Buttons -----------------------------------------------
   test("outcome buttons - renders 9 options in 2-column grid", async ({
     page,
   }) => {
@@ -68,7 +69,13 @@ test.describe("Canvassing Wizard", () => {
     expect(count).toBeGreaterThanOrEqual(9)
 
     // Verify key button labels are present
-    for (const label of ["Supporter", "Not Home", "Refused", "Undecided", "Opposed"]) {
+    for (const label of [
+      "Supporter",
+      "Not Home",
+      "Refused",
+      "Undecided",
+      "Opposed",
+    ]) {
       await expect(page.getByRole("button", { name: label })).toBeVisible()
     }
 
@@ -77,10 +84,8 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-03: Auto-advance ──────────────────────────────────────────────
-  test("auto-advance - moves to next door after outcome", async ({
-    page,
-  }) => {
+  // -- CANV-03: Auto-advance --------------------------------------------------
+  test("auto-advance - moves to next door after outcome", async ({ page }) => {
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
       test.skip(true, "No walk list assigned to test user")
@@ -92,9 +97,8 @@ test.describe("Canvassing Wizard", () => {
     await expect(addressHeading).toBeVisible({ timeout: 8000 })
     const initialAddress = await addressHeading.textContent()
 
-    // Click "Not Home" — an auto-advance outcome
+    // Click "Not Home" -- an auto-advance outcome
     await page.getByRole("button", { name: "Not Home" }).click()
-    await page.waitForTimeout(500)
 
     // After auto-advance, either the address changed or we're on a multi-voter household
     // Verify the wizard didn't crash and is still showing content
@@ -106,7 +110,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-04: Progress ──────────────────────────────────────────────────
+  // -- CANV-04: Progress ------------------------------------------------------
   test("progress - shows door count and updates", async ({ page }) => {
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
@@ -125,7 +129,11 @@ test.describe("Canvassing Wizard", () => {
 
     // Click an outcome to update progress
     await page.getByRole("button", { name: "Not Home" }).click()
-    await page.waitForTimeout(500)
+
+    // Wait for the wizard to settle after outcome
+    await expect(
+      page.locator(".text-lg.font-semibold").first()
+    ).toBeVisible({ timeout: 5000 })
 
     // Verify progress text updated
     const updatedProgress = await progressText.textContent().catch(() => null)
@@ -137,7 +145,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-05: Survey Panel ──────────────────────────────────────────────
+  // -- CANV-05: Survey Panel --------------------------------------------------
   test("survey - panel appears after contact outcome", async ({ page }) => {
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
@@ -145,13 +153,16 @@ test.describe("Canvassing Wizard", () => {
       return
     }
 
-    // Click "Supporter" — a survey-trigger outcome
+    // Click "Supporter" -- a survey-trigger outcome
     await page.getByRole("button", { name: "Supporter" }).click()
-    await page.waitForTimeout(1000)
 
     // Check if survey panel opened (depends on whether walk list has a script)
-    const surveyHeading = page.getByRole("heading", { name: "Survey Questions" })
-    const hasSurvey = await surveyHeading.isVisible().catch(() => false)
+    const surveyHeading = page.getByRole("heading", {
+      name: "Survey Questions",
+    })
+    const hasSurvey = await surveyHeading
+      .isVisible({ timeout: 5000 })
+      .catch(() => false)
 
     if (hasSurvey) {
       await expect(surveyHeading).toBeVisible()
@@ -162,10 +173,9 @@ test.describe("Canvassing Wizard", () => {
 
       // Click skip and verify panel closes
       await skipBtn.click()
-      await page.waitForTimeout(500)
-      await expect(surveyHeading).not.toBeVisible()
+      await expect(surveyHeading).not.toBeVisible({ timeout: 5000 })
     } else {
-      // No script assigned — survey panel not expected
+      // No script assigned -- survey panel not expected
       test.info().annotations.push({
         type: "info",
         description:
@@ -178,7 +188,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-06: Household Grouping ────────────────────────────────────────
+  // -- CANV-06: Household Grouping --------------------------------------------
   test("household grouping - shows multiple voters at same address", async ({
     page,
   }) => {
@@ -218,7 +228,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-07: State Persistence ─────────────────────────────────────────
+  // -- CANV-07: State Persistence ---------------------------------------------
   test("state persistence - survives page reload", async ({ page }) => {
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
@@ -228,20 +238,25 @@ test.describe("Canvassing Wizard", () => {
 
     // Record an outcome to create persisted state
     await page.getByRole("button", { name: "Not Home" }).click()
-    await page.waitForTimeout(500)
+
+    // Wait for the wizard to settle after outcome
+    await expect(
+      page.locator(".text-lg.font-semibold").first()
+    ).toBeVisible({ timeout: 5000 })
 
     // Reload the page
     await page.reload()
-    await page.waitForTimeout(3000)
 
-    // Verify the wizard doesn't start from scratch — either resume prompt or maintained state
+    // Verify the wizard doesn't start from scratch -- either resume prompt or maintained state
     // The page should still show the canvassing wizard (not loading forever)
     const wizardContent = page.locator(".text-lg.font-semibold").first()
     const resumePrompt = page.getByText(/pick up where you left off/i)
-    const hasWizard = await wizardContent.isVisible().catch(() => false)
+    const hasWizard = await wizardContent
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false)
     const hasResume = await resumePrompt.isVisible().catch(() => false)
 
-    // At least one should be true — state was maintained or resume prompt shown
+    // At least one should be true -- state was maintained or resume prompt shown
     expect(hasWizard || hasResume).toBe(true)
 
     await page.screenshot({
@@ -249,7 +264,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── CANV-08: Resume Prompt ─────────────────────────────────────────────
+  // -- CANV-08: Resume Prompt -------------------------------------------------
   test("resume prompt - appears with correct door number", async ({
     page,
   }) => {
@@ -261,13 +276,23 @@ test.describe("Canvassing Wizard", () => {
 
     // Record an outcome and advance past the first door
     await page.getByRole("button", { name: "Not Home" }).click()
-    await page.waitForTimeout(500)
 
-    // Navigate away and back
-    await page.goto(`${BASE}/field/${CAMPAIGN_ID}`)
-    await page.waitForTimeout(1000)
-    await page.goto(`${BASE}/field/${CAMPAIGN_ID}/canvassing`)
-    await page.waitForTimeout(3000)
+    // Wait for the wizard to settle after outcome
+    await expect(
+      page.locator(".text-lg.font-semibold").first()
+    ).toBeVisible({ timeout: 5000 })
+
+    // Navigate away to campaign root
+    await page.goto(`/field/${campaignId}/`)
+    await page.waitForURL(/field\/[a-f0-9-]+/, { timeout: 10_000 })
+    // Navigate back to canvassing
+    await page.goto(`/field/${campaignId}/canvassing`)
+    await expect(
+      page
+        .locator(".text-lg.font-semibold")
+        .first()
+        .or(page.getByText(/pick up where you left off/i))
+    ).toBeVisible({ timeout: 15_000 })
 
     // Look for resume prompt (sonner toast or inline prompt)
     const resumePrompt = page.getByText(/pick up where you left off/i)
@@ -293,7 +318,7 @@ test.describe("Canvassing Wizard", () => {
     })
   })
 
-  // ── A11Y-04: ARIA Live Region ──────────────────────────────────────────
+  // -- A11Y-04: ARIA Live Region ----------------------------------------------
   test("aria live region - announces transitions", async ({ page }) => {
     const noAssignment = page.getByText("No Canvassing Assignment")
     if (await noAssignment.isVisible().catch(() => false)) {
