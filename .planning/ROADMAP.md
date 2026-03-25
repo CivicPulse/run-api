@@ -100,7 +100,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 43: Organization UI** - Org dashboard, member directory, campaign creation wizard, settings (completed 2026-03-24)
 - [x] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states (completed 2026-03-24)
 - [x] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages (completed 2026-03-25)
-- [ ] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite
+- [x] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite (completed 2026-03-25)
 
 ## Phase Details
 
@@ -286,4 +286,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 43. Organization UI | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
-| 46. E2E Testing & Integration | v1.5 | 3/4 | In Progress|  |
+| 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
