@@ -31,13 +31,13 @@ function TurfDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <section aria-labelledby="page-heading" className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate({ to: `/campaigns/${campaignId}/canvassing` })}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-lg font-semibold">{turf.name}</h2>
+          <h1 id="page-heading" className="text-lg font-semibold">{turf.name}</h1>
         </div>
         <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
           <Trash2 className="mr-1 h-4 w-4" /> Delete
@@ -71,7 +71,7 @@ function TurfDetailPage() {
           })
         }
       />
-    </div>
+    </section>
   )
 }
 

@@ -12,12 +12,12 @@ function NewTurfPage() {
   const createTurf = useCreateTurf(campaignId)
 
   return (
-    <div className="space-y-6">
+    <section aria-labelledby="page-heading" className="space-y-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate({ to: `/campaigns/${campaignId}/canvassing` })}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-lg font-semibold">New Turf</h2>
+        <h1 id="page-heading" className="text-lg font-semibold">New Turf</h1>
       </div>
 
       <TurfForm
@@ -29,7 +29,7 @@ function NewTurfPage() {
           })
         }
       />
-    </div>
+    </section>
   )
 }
 
