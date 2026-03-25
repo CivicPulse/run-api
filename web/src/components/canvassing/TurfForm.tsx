@@ -81,11 +81,24 @@ export function TurfForm({
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" {...register("name")} />
-        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-      </div>
+      {/* Skip link for keyboard users to bypass map area */}
+      <a
+        href="#turf-form-fields"
+        className="sr-only focus:not-sr-only focus:relative focus:block focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg focus:ring-2 focus:ring-ring focus:mb-2"
+      >
+        Skip map, edit turf details
+      </a>
+
+      <div id="turf-form-fields" className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Name</Label>
+          <Input id="name" {...register("name")} />
+          {errors.name && (
+            <p className="text-sm text-destructive" role="alert">
+              {errors.name.message}
+            </p>
+          )}
+        </div>
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Input id="description" {...register("description")} />
@@ -105,7 +118,7 @@ export function TurfForm({
           overlaps={overlaps ?? []}
         />
         {errors.boundary && (
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-destructive" role="alert">
             {errors.boundary.message}
           </p>
         )}
@@ -120,21 +133,33 @@ export function TurfForm({
               setValue("boundary", val, { shouldValidate: true })
             }
           />
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={showAdvanced}
+            aria-controls="geojson-panel"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-sm text-muted-foreground underline"
           >
-            {showAdvanced ? "Hide" : "Show"} Advanced JSON
-          </button>
+            {showAdvanced ? "Hide GeoJSON editor" : "Edit as GeoJSON"}
+          </Button>
         </div>
         {showAdvanced && (
-          <Textarea id="boundary" rows={6} {...register("boundary")} />
+          <div id="geojson-panel" role="region" aria-label="GeoJSON editor">
+            <Textarea
+              id="boundary"
+              rows={6}
+              aria-invalid={!!errors.boundary}
+              aria-describedby={errors.boundary ? "boundary-error" : undefined}
+              {...register("boundary")}
+            />
+          </div>
         )}
       </div>
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving..." : submitLabel}
       </Button>
+      </div>
     </form>
   )
 }
