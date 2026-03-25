@@ -137,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 46 complete — v1.5 milestone shipped. E2E testing & integration delivered 9 Playwright critical flow specs (login, voter search, voter import, turf creation, phone bank, volunteer signup + auth setup), API-level RLS smoke tests with real DB, 15 converted integration tests (canvassing + phone banking polish), and a GitHub Actions CI job running the full E2E + integration suite against Docker Compose. 46 phases, 144 plans shipped across 6 milestones.
+Phase 47 complete — gap closure phases in progress. Phase 47 closed INT-01 (turf RLS centralization) and INT-02 (rate limiting gaps) from the v1.5 milestone audit: all 7 turf endpoints now use centralized `get_campaign_db`, 169 `@limiter.limit` decorators applied across all 22 route files with tiered rates, AST-based regression test ensures future endpoints get rate limiting, and REQUIREMENTS.md traceability verified (48/48 Satisfied). 47 phases, 148 plans shipped across 6 milestones.
 
 ## Context
 
@@ -203,4 +203,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | filterChipUtils shared utility | Centralized chip formatting with category colors for 23 dimensions | ✓ Good — consistent across voter list, detail, and dialog pages |
 
 ---
-*Last updated: 2026-03-25 — Phase 46 complete, v1.5 milestone shipped*
+*Last updated: 2026-03-25 — Phase 47 complete, gap closure in progress*
