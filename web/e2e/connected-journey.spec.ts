@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test"
+import { test, expect } from "@playwright/test"
 
 /**
  * Connected E2E Journey Spec
@@ -8,24 +8,9 @@ import { test, expect, type Page } from "@playwright/test"
  *
  * Closes FLOW-01 gap from v1.5 milestone audit by proving that independently-built
  * features compose into a working end-to-end user journey.
+ *
+ * Uses stored auth state from auth.setup.ts (chromium project dependency).
  */
-
-const BASE = process.env.E2E_BASE_URL ?? "https://localhost:4173"
-
-async function login(page: Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  // Wait for password field to appear after username submission
-  await page.locator('input[type="password"]').waitFor({ timeout: 10_000 })
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  // Wait for redirect back to app after OIDC flow
-  await page.waitForURL(new RegExp(BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), {
-    timeout: 20_000,
-  })
-}
 
 test.describe.serial("Connected user journey", () => {
   let campaignName: string
@@ -35,14 +20,10 @@ test.describe.serial("Connected user journey", () => {
   test("full journey: campaign list -> create -> turf -> voters -> phone bank", async ({
     page,
   }) => {
-    // ── Step 1: Login and verify campaign list loads ─────────────────────
+    // ── Step 1: Navigate to app and verify campaign list loads ──────────
     await test.step("Org dashboard loads with campaign action", async () => {
-      await login(page)
-
-      // After login, we land on / which shows CampaignList for authenticated users
-      await page.waitForURL(new RegExp(`${BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?$`), {
-        timeout: 15_000,
-      })
+      await page.goto("/")
+      await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
 
       // Verify the campaign list page loaded — "New Campaign" button is present
       await expect(
