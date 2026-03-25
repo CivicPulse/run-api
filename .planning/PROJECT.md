@@ -112,6 +112,11 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Multi-step campaign creation wizard with team invite step (ORG-08) — v1.5
 - ✓ Org settings page with name edit (owner-only) and ZITADEL org ID display (ORG-09) — v1.5
 - ✓ Sidebar nav renders Organization group on all authenticated routes, Campaign group conditional (ORG-05) — v1.5
+- ✓ WCAG AA compliance: 4 shared a11y components, root layout ARIA landmarks, muted-foreground contrast fix — v1.5
+- ✓ Map accessibility: skip-nav link past Leaflet map, ARIA-compliant GeoJSON editor panel — v1.5
+- ✓ 38-route parameterized axe-core scan gating on zero critical/serious violations — v1.5
+- ✓ D-10 focus management: form submission focus, delete action focus, dialog close restoration — v1.5
+- ✓ 5 Playwright screen reader flow tests (voter search, import, walk list, phone bank, settings) — v1.5
 
 ### Out of Scope
 
@@ -132,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-Phase 43 complete — shipped organization UI with org dashboard (campaign card grid, stats bar, archive flow), org switcher for multi-org users, 3-step campaign creation wizard with team invite, member directory with per-campaign role matrix, org settings page with owner-gated name edit, and sidebar nav fix ensuring Organization nav group renders on all authenticated routes (ORG-05 through ORG-13). 43 phases, 132 plans shipped. UI/UX polish & frontend hardening is next, then WCAG + UX audit and E2E test coverage complete the milestone.
+Phase 45 complete — WCAG compliance audit shipped with 4 shared a11y components (SkipNav, VisuallyHidden, LiveRegion, FocusScope), ARIA landmarks on root layout, muted-foreground contrast fix, map accessibility (skip-nav + GeoJSON panel), 38-route parameterized axe-core scan, D-10 focus management, and 5 screen reader flow tests (A11Y-01 through A11Y-04). 45 phases, 140 plans shipped. E2E testing & integration is next to complete the milestone.
 
 ## Context
 
