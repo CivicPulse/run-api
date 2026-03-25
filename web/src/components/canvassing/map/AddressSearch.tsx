@@ -52,6 +52,7 @@ export function AddressSearch({ onResult }: AddressSearchProps) {
         type="button"
         variant="outline"
         size="icon"
+        aria-label="Search address"
         onClick={handleSearch}
         disabled={isSearching}
       >

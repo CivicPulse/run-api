@@ -133,7 +133,7 @@ function VoterDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold">{fullName}</h2>
+          <h1 className="text-2xl font-semibold">{fullName}</h1>
           {voter.party && <Badge variant="secondary">{voter.party}</Badge>}
         </div>
         <div className="flex items-center gap-2 shrink-0">

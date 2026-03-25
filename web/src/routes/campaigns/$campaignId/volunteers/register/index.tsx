@@ -219,9 +219,9 @@ function VolunteerRegisterPage() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-xl font-semibold tracking-tight mb-6">
+      <h1 className="text-xl font-semibold tracking-tight mb-6">
         {isManager ? "Create Volunteer" : "Volunteer Registration"}
-      </h2>
+      </h1>
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Volunteer type toggle (managers only) */}

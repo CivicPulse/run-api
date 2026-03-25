@@ -8,16 +8,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, MapIcon } from "lucide-react"
 import { useTurfVoters } from "@/hooks/useTurfs"
+import { resolveCssColor } from "@/lib/cssColor"
 import type { TurfResponse } from "@/types/turf"
 
-// Per D-05: Three distinct colors for turf status
-const TURF_STATUS_COLORS: Record<string, { fill: string; stroke: string }> = {
-  draft: { fill: "#fbbf24", stroke: "#d97706" }, // amber
-  active: { fill: "#34d399", stroke: "#059669" }, // emerald
-  completed: { fill: "#93c5fd", stroke: "#2563eb" }, // blue
+// Per D-05: Three distinct colors for turf status — reads CSS tokens as hex for Leaflet
+function getTurfColors(status: string): { fill: string; stroke: string } {
+  const key = status === "draft" || status === "active" || status === "completed" ? status : "default"
+  return {
+    fill: resolveCssColor(`--turf-${key}`) || resolveCssColor("--turf-default"),
+    stroke: resolveCssColor(`--turf-${key}-stroke`) || resolveCssColor("--turf-default-stroke"),
+  }
 }
-
-const DEFAULT_COLORS = { fill: "#9ca3af", stroke: "#6b7280" } // gray fallback
 
 interface TurfOverviewMapProps {
   turfs: TurfResponse[]
@@ -62,8 +63,7 @@ function OverviewMapContent({
   return (
     <>
       {turfs.map((turf) => {
-        const colors =
-          TURF_STATUS_COLORS[turf.status] ?? DEFAULT_COLORS
+        const colors = getTurfColors(turf.status)
 
         // Wrap bare geometry in a Feature if needed
         const geoData = turf.boundary as GeoJSON.GeoJsonObject

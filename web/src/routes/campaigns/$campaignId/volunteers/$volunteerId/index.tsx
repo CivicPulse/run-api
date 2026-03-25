@@ -225,9 +225,9 @@ function VolunteerDetailPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight">
               {volunteer.first_name} {volunteer.last_name}
-            </h2>
+            </h1>
             <StatusBadge
               status={volunteer.status.charAt(0).toUpperCase() + volunteer.status.slice(1)}
               variant={statusVariant(volunteer.status)}

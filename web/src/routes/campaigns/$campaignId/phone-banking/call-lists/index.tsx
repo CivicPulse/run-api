@@ -159,10 +159,12 @@ function CallListDialog({
             <Input
               id="call-list-name"
               placeholder="e.g. Ward 3 Phone Bank"
+              aria-invalid={!!form.formState.errors.name}
+              aria-describedby={form.formState.errors.name ? "call-list-name-error" : undefined}
               {...form.register("name", { required: true, minLength: 1 })}
             />
             {form.formState.errors.name && (
-              <p className="text-sm text-destructive">Name is required</p>
+              <p id="call-list-name-error" className="text-sm text-destructive">Name is required</p>
             )}
           </div>
 

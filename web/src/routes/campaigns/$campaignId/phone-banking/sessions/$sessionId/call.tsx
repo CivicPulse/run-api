@@ -341,7 +341,7 @@ function ActiveCallingPage() {
         >
           &larr; Back to Session
         </Link>
-        <h2 className="text-xl font-semibold">Active Calling</h2>
+        <h1 className="text-xl font-semibold">Active Calling</h1>
       </div>
 
       {/* State: idle */}

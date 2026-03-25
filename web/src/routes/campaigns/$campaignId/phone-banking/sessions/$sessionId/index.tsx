@@ -796,7 +796,7 @@ function SessionDetailPage() {
         >
           ← Sessions
         </Link>
-        <h2 className="text-2xl font-semibold mt-1">{session.name}</h2>
+        <h1 className="text-2xl font-semibold mt-1">{session.name}</h1>
       </div>
 
       {/* Tabs */}

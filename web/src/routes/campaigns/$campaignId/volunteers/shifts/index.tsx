@@ -134,7 +134,7 @@ function ShiftListPage() {
       {/* Filters */}
       <div className="flex items-center gap-3 justify-end">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -147,7 +147,7 @@ function ShiftListPage() {
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
           <SelectContent>

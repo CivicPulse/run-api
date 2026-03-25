@@ -105,7 +105,7 @@ export function AssignVolunteerDialog({
         </DialogHeader>
 
         {isFieldShift && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2">
+          <p className="text-xs text-[--status-warning-foreground] bg-[--status-warning] rounded-md px-3 py-2">
             This is a field shift — volunteers need emergency contact info on
             file to be assigned.
           </p>

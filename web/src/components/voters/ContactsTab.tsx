@@ -320,7 +320,7 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
                   <Star
                     className="size-4"
                     fill={phone.is_primary ? "currentColor" : "none"}
-                    color={phone.is_primary ? "#f59e0b" : "currentColor"}
+                    color={phone.is_primary ? "var(--status-warning-foreground)" : "currentColor"}
                   />
                 </button>
                 <span className="flex-1 text-sm font-medium">{phone.value}</span>
@@ -465,7 +465,7 @@ function EmailSection({ campaignId, voterId, emails, setPrimary }: EmailSectionP
                   <Star
                     className="size-4"
                     fill={email.is_primary ? "currentColor" : "none"}
-                    color={email.is_primary ? "#f59e0b" : "currentColor"}
+                    color={email.is_primary ? "var(--status-warning-foreground)" : "currentColor"}
                   />
                 </button>
                 <span className="flex-1 text-sm font-medium">{email.value}</span>
@@ -637,7 +637,7 @@ function AddressSection({ campaignId, voterId, addresses, setPrimary }: AddressS
                   <Star
                     className="size-4"
                     fill={address.is_primary ? "currentColor" : "none"}
-                    color={address.is_primary ? "#f59e0b" : "currentColor"}
+                    color={address.is_primary ? "var(--status-warning-foreground)" : "currentColor"}
                   />
                 </button>
                 <span className="flex-1 text-sm font-medium">{formatAddress(address)}</span>

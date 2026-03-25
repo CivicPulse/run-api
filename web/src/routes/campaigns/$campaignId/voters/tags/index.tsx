@@ -32,21 +32,14 @@ import {
   useDeleteTag,
 } from "@/hooks/useVoterTags"
 import type { VoterTag } from "@/types/voter-tag"
+import { resolveCssColor } from "@/lib/cssColor"
 
-// ---- Color palette for visual differentiation ----
-const PALETTE = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#eab308", // yellow-500
-  "#22c55e", // green-500
-  "#06b6d4", // cyan-500
-  "#3b82f6", // blue-500
-  "#8b5cf6", // violet-500
-  "#ec4899", // pink-500
-]
+// ---- Tag color tokens (CSS variables for theme awareness) ----
+const TAG_VARS = Array.from({ length: 8 }, (_, i) => `--tag-${i + 1}`)
 
-function hashTagId(id: string): number {
-  return id.charCodeAt(0) % 8
+function getTagColor(id: string): string {
+  const idx = id.charCodeAt(0) % 8
+  return resolveCssColor(TAG_VARS[idx])
 }
 
 // ---- Form schema ----
@@ -222,7 +215,7 @@ function VoterTagsPage() {
       cell: ({ row }) => (
         <div
           className="w-3 h-3 rounded-full"
-          style={{ backgroundColor: PALETTE[hashTagId(row.original.id)] }}
+          style={{ backgroundColor: getTagColor(row.original.id) }}
         />
       ),
     },

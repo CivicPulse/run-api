@@ -469,9 +469,9 @@ function ShiftDetailPage() {
       {/* Header: Shift name + status badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {shift.name}
-          </h2>
+          </h1>
           <StatusBadge
             status={
               shift.status.charAt(0).toUpperCase() + shift.status.slice(1)

@@ -150,13 +150,14 @@ function ScriptDetail() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Back to surveys"
               onClick={() =>
                 navigate({ to: `/campaigns/${campaignId}/surveys` })
               }
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-lg font-semibold">{script.title}</h2>
+            <h1 className="text-lg font-semibold">{script.title}</h1>
             <Badge variant={statusVariant[script.status]}>{script.status}</Badge>
           </div>
           {script.description && (
@@ -225,6 +226,7 @@ function ScriptDetail() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5"
+                        aria-label={`Move question ${idx + 1} up`}
                         disabled={idx === 0 || reorder.isPending}
                         onClick={() => handleMoveQuestion(idx, "up")}
                       >
@@ -234,6 +236,7 @@ function ScriptDetail() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5"
+                        aria-label={`Move question ${idx + 1} down`}
                         disabled={
                           idx === questions.length - 1 || reorder.isPending
                         }
@@ -265,6 +268,7 @@ function ScriptDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Edit question ${idx + 1}`}
                         onClick={() =>
                           setEditQuestion({
                             id: q.id,
@@ -279,6 +283,7 @@ function ScriptDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Delete question ${idx + 1}`}
                         onClick={() => setDeleteQuestionId(q.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />

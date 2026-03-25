@@ -56,7 +56,7 @@ function SurveysIndex() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Surveys</h2>
+          <h1 className="text-lg font-semibold">Surveys</h1>
           <p className="text-sm text-muted-foreground">
             Create and manage survey scripts for canvassing and phone banking
           </p>

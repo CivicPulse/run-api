@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Sheet,
   SheetContent,
@@ -69,9 +69,13 @@ export function InlineSurvey({
   const recordMutation = useRecordResponses(campaignId, scriptId)
   const [answers, setAnswers] = useState<Record<string, string>>({})
 
-  const questions = scriptDetail?.questions
-    ? [...scriptDetail.questions].sort((a, b) => a.position - b.position)
-    : []
+  const questions = useMemo(
+    () =>
+      scriptDetail?.questions
+        ? [...scriptDetail.questions].sort((a, b) => a.position - b.position)
+        : [],
+    [scriptDetail?.questions],
+  )
 
   // If no scriptId or no questions, skip immediately
   useEffect(() => {

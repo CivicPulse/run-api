@@ -116,7 +116,7 @@ function FieldHub() {
       {/* Success state */}
       {data && (
         <>
-          <h2 data-tour="hub-greeting" className="mb-4 text-2xl font-bold">Hey {firstName}!</h2>
+          <h1 data-tour="hub-greeting" className="mb-4 text-2xl font-bold">Hey {firstName}!</h1>
 
           {hasAssignments ? (
             <div className="flex flex-col gap-4">

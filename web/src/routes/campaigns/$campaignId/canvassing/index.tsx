@@ -39,7 +39,7 @@ function CanvassingIndex() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-semibold">Canvassing</h2>
+        <h1 className="text-lg font-semibold">Canvassing</h1>
         <p className="text-sm text-muted-foreground">
           Manage door-to-door canvassing operations
         </p>

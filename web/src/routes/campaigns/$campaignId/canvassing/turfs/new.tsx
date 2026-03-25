@@ -15,7 +15,7 @@ function NewTurfPage() {
   return (
     <section aria-labelledby="page-heading" className="space-y-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate({ to: `/campaigns/${campaignId}/canvassing` })}>
+        <Button variant="ghost" size="icon" aria-label="Back to canvassing" onClick={() => navigate({ to: `/campaigns/${campaignId}/canvassing` })}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 id="page-heading" className="text-lg font-semibold">New Turf</h1>

@@ -161,10 +161,12 @@ function SessionDialog({
             <Input
               id="session-name"
               placeholder="e.g. Saturday Phone Bank"
+              aria-invalid={!!form.formState.errors.name}
+              aria-describedby={form.formState.errors.name ? "session-name-error" : undefined}
               {...form.register("name", { required: true, minLength: 1 })}
             />
             {form.formState.errors.name && (
-              <p className="text-sm text-destructive">Name is required</p>
+              <p id="session-name-error" className="text-sm text-destructive">Name is required</p>
             )}
           </div>
 

@@ -139,7 +139,7 @@ function ImportsHistoryPage() {
     <RequireRole minimum="admin">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Import History</h2>
+          <h1 className="text-xl font-semibold">Import History</h1>
           <Button
             onClick={() =>
               navigate({

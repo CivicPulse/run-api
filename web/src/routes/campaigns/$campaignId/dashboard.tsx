@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { createFileRoute, useParams } from "@tanstack/react-router"
 import {
   Card,
@@ -77,14 +78,18 @@ function CanvassingTab({ campaignId }: { campaignId: string }) {
   const { data: turfs, isLoading: turfsLoading } =
     useTurfBreakdown(campaignId)
 
-  const chartData = (canvassers ?? [])
-    .sort((a, b) => b.doors_knocked - a.doors_knocked)
-    .slice(0, 10)
-    .map((c) => ({
-      name: c.display_name,
-      doors_knocked: c.doors_knocked,
-      contacts_made: c.contacts_made,
-    }))
+  const chartData = useMemo(
+    () =>
+      (canvassers ?? [])
+        .sort((a, b) => b.doors_knocked - a.doors_knocked)
+        .slice(0, 10)
+        .map((c) => ({
+          name: c.display_name,
+          doors_knocked: c.doors_knocked,
+          contacts_made: c.contacts_made,
+        })),
+    [canvassers],
+  )
 
   return (
     <div className="space-y-6">
@@ -101,32 +106,34 @@ function CanvassingTab({ campaignId }: { campaignId: string }) {
               No canvassing data yet
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar
-                  dataKey="doors_knocked"
-                  name="Doors Knocked"
-                  fill="hsl(var(--chart-1))"
-                />
-                <Bar
-                  dataKey="contacts_made"
-                  name="Contacts Made"
-                  fill="hsl(var(--chart-2))"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Bar chart showing top canvassers by doors knocked and contacts made">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar
+                    dataKey="doors_knocked"
+                    name="Doors Knocked"
+                    fill="var(--chart-1)"
+                  />
+                  <Bar
+                    dataKey="contacts_made"
+                    name="Contacts Made"
+                    fill="var(--chart-2)"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -199,11 +206,15 @@ function PhoneBankingTab({ campaignId }: { campaignId: string }) {
   const { data: callers, isLoading: callersLoading } =
     useCallerBreakdown(campaignId)
 
-  const sessionChartData = (sessions ?? []).map((s) => ({
-    name: s.session_name,
-    calls_made: s.calls_made,
-    contacts_reached: s.contacts_reached,
-  }))
+  const sessionChartData = useMemo(
+    () =>
+      (sessions ?? []).map((s) => ({
+        name: s.session_name,
+        calls_made: s.calls_made,
+        contacts_reached: s.contacts_reached,
+      })),
+    [sessions],
+  )
 
   return (
     <div className="space-y-6">
@@ -220,32 +231,34 @@ function PhoneBankingTab({ campaignId }: { campaignId: string }) {
               No phone banking data yet
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={sessionChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar
-                  dataKey="calls_made"
-                  name="Calls Made"
-                  fill="hsl(var(--chart-1))"
-                />
-                <Bar
-                  dataKey="contacts_reached"
-                  name="Contacts Reached"
-                  fill="hsl(var(--chart-3))"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Bar chart showing calls made and contacts reached by session">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={sessionChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar
+                    dataKey="calls_made"
+                    name="Calls Made"
+                    fill="var(--chart-1)"
+                  />
+                  <Bar
+                    dataKey="contacts_reached"
+                    name="Contacts Reached"
+                    fill="var(--chart-3)"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -470,7 +483,7 @@ function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Dashboard</h2>
+        <h1 className="text-lg font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
           Campaign overview and statistics
         </p>
