@@ -7,7 +7,7 @@
 - ✅ **v1.2 Full UI** — Phases 12-22 (shipped 2026-03-13)
 - ✅ **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (shipped 2026-03-15)
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
-- 🚧 **v1.5 Go Live — Production Readiness** — Phases 39-46 (in progress)
+- 🚧 **v1.5 Go Live — Production Readiness** — Phases 39-48 (in progress)
 
 ## Phases
 
@@ -101,6 +101,8 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 - [x] **Phase 44: UI/UX Polish & Frontend Hardening** - Sidebar redesign, help text, error/empty/loading states (completed 2026-03-24)
 - [x] **Phase 45: WCAG Compliance Audit** - Automated axe-core scan and manual screen reader testing on all admin pages (completed 2026-03-25)
 - [x] **Phase 46: E2E Testing & Integration** - Playwright critical flows, pending integration tests, RLS isolation suite (completed 2026-03-25)
+- [ ] **Phase 47: Integration Consistency & Documentation Cleanup** - Fix RLS centralization bypass in turf endpoints, apply rate limiting to all endpoints, update REQUIREMENTS.md traceability
+- [ ] **Phase 48: Connected E2E Journey Spec** - Single Playwright spec covering full org→campaign→turf→voter→phone bank journey
 
 ## Phase Details
 
@@ -234,6 +236,29 @@ Plans:
 - [x] 46-03-PLAN.md — Turf, phone bank, volunteer E2E specs + CI workflow (TEST-01, TEST-02, TEST-03)
 - [ ] 46-04-PLAN.md — Gap closure: fix hardcoded URLs and waitForTimeout in converted E2E specs (TEST-01, TEST-02, TEST-03)
 
+### Phase 47: Integration Consistency & Documentation Cleanup
+**Goal**: Close audit integration gaps — centralize RLS dependency in Phase 42 turf endpoints, apply rate limiting to all API endpoints, and update REQUIREMENTS.md traceability table
+**Depends on**: Phase 46
+**Requirements**: DATA-03, OBS-03, OBS-04
+**Gap Closure**: Closes INT-01, INT-02 from v1.5 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `GET /turfs/overlaps` and `GET /turfs/{id}/voters` use `Depends(get_campaign_db)` instead of `Depends(get_db)` + inline `set_campaign_context`
+  2. All org, turf, and voter API endpoints have `@limiter.limit` rate limiting decorators
+  3. REQUIREMENTS.md traceability table shows correct plan references and "Satisfied" status for all 48 requirements
+  4. TEST-01, TEST-02, TEST-03 checkboxes are checked
+**Plans**: TBD
+
+### Phase 48: Connected E2E Journey Spec
+**Goal**: Create a single connected Playwright E2E spec that verifies the full user journey across phase boundaries
+**Depends on**: Phase 47
+**Requirements**: TEST-01
+**Gap Closure**: Closes FLOW-01 from v1.5 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Single Playwright spec completes: org dashboard → campaign creation → turf creation → voter search → phone bank session
+  2. Campaign creation form submission (POST to `/api/v1/campaigns`) and redirect to new campaign dashboard is verified
+  3. Spec runs in CI alongside existing E2E suite
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
@@ -287,3 +312,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45 �
 | 44. UI/UX Polish & Frontend Hardening | v1.5 | 5/5 | Complete    | 2026-03-24 |
 | 45. WCAG Compliance Audit | v1.5 | 4/4 | Complete    | 2026-03-25 |
 | 46. E2E Testing & Integration | v1.5 | 3/4 | Complete    | 2026-03-25 |
+| 47. Integration Consistency & Documentation Cleanup | v1.5 | 0/0 | Pending | — |
+| 48. Connected E2E Journey Spec | v1.5 | 0/0 | Pending | — |

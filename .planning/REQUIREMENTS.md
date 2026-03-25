@@ -69,62 +69,62 @@
 
 ## Testing (TEST)
 
-- [ ] **TEST-01**: Playwright E2E tests cover critical user flows: login, voter search, voter import, turf creation, phone bank session, volunteer signup
-- [ ] **TEST-02**: 18 pending integration tests from v1.0 pass against live infrastructure (PostgreSQL, PostGIS, MinIO, ZITADEL)
-- [ ] **TEST-03**: Cross-campaign RLS isolation test suite verifies no data leaks (written before fix, run after)
+- [x] **TEST-01**: Playwright E2E tests cover critical user flows: login, voter search, voter import, turf creation, phone bank session, volunteer signup
+- [x] **TEST-02**: 18 pending integration tests from v1.0 pass against live infrastructure (PostgreSQL, PostGIS, MinIO, ZITADEL)
+- [x] **TEST-03**: Cross-campaign RLS isolation test suite verifies no data leaks (written before fix, run after)
 
 ## Traceability
 
 | REQ-ID | Phase | Plan | Status |
 |--------|-------|------|--------|
-| DATA-01 | Phase 39 | TBD | Pending |
-| DATA-02 | Phase 39 | TBD | Pending |
-| DATA-03 | Phase 39 | TBD | Pending |
-| DATA-04 | Phase 39 | TBD | Pending |
-| DATA-05 | Phase 39 | TBD | Pending |
-| DATA-06 | Phase 39 | TBD | Pending |
-| OBS-01 | Phase 40 | TBD | Pending |
-| OBS-02 | Phase 40 | TBD | Pending |
-| OBS-03 | Phase 40 | TBD | Pending |
-| OBS-04 | Phase 40 | TBD | Pending |
-| OBS-05 | Phase 44 | TBD | Pending |
-| OBS-06 | Phase 44 | TBD | Pending |
-| OBS-07 | Phase 44 | TBD | Pending |
-| ORG-01 | Phase 41 | TBD | Pending |
-| ORG-02 | Phase 41 | TBD | Pending |
-| ORG-03 | Phase 41 | TBD | Pending |
-| ORG-04 | Phase 41 | TBD | Pending |
-| ORG-05 | Phase 43 | TBD | Pending |
-| ORG-06 | Phase 43 | TBD | Pending |
-| ORG-07 | Phase 43 | TBD | Pending |
-| ORG-08 | Phase 43 | TBD | Pending |
-| ORG-09 | Phase 43 | TBD | Pending |
-| ORG-10 | Phase 43 | TBD | Pending |
-| ORG-11 | Phase 43 | TBD | Pending |
-| ORG-12 | Phase 43 | TBD | Pending |
-| ORG-13 | Phase 43 | TBD | Pending |
-| MAP-01 | Phase 42 | TBD | Pending |
-| MAP-02 | Phase 42 | TBD | Pending |
-| MAP-03 | Phase 42 | TBD | Pending |
-| MAP-04 | Phase 42 | TBD | Pending |
-| MAP-05 | Phase 42 | TBD | Pending |
-| MAP-06 | Phase 42 | TBD | Pending |
-| MAP-07 | Phase 42 | TBD | Pending |
-| MAP-08 | Phase 42 | TBD | Pending |
-| MAP-09 | Phase 42 | TBD | Pending |
-| MAP-10 | Phase 42 | TBD | Pending |
-| MAP-11 | Phase 42 | TBD | Pending |
-| UX-01 | Phase 44 | TBD | Pending |
-| UX-02 | Phase 44 | TBD | Pending |
-| UX-03 | Phase 44 | TBD | Pending |
-| UX-04 | Phase 44 | TBD | Pending |
-| A11Y-01 | Phase 45 | TBD | Pending |
-| A11Y-02 | Phase 45 | TBD | Pending |
-| A11Y-03 | Phase 45 | TBD | Pending |
-| A11Y-04 | Phase 45 | TBD | Pending |
-| TEST-01 | Phase 46 | TBD | Pending |
-| TEST-02 | Phase 46 | TBD | Pending |
-| TEST-03 | Phase 46 | TBD | Pending |
+| DATA-01 | Phase 39 | 39-01 | Satisfied |
+| DATA-02 | Phase 39 | 39-01 | Satisfied |
+| DATA-03 | Phase 39 | 39-02 | Satisfied |
+| DATA-04 | Phase 39 | 39-03 | Satisfied |
+| DATA-05 | Phase 39 | 39-03 | Satisfied |
+| DATA-06 | Phase 39 | 39-04 | Satisfied |
+| OBS-01 | Phase 40 | 40-01 | Satisfied |
+| OBS-02 | Phase 40 | 40-01 | Satisfied |
+| OBS-03 | Phase 40 | 40-02 | Satisfied |
+| OBS-04 | Phase 40 | 40-02 | Satisfied |
+| OBS-05 | Phase 44 | 44-01, 44-05 | Satisfied |
+| OBS-06 | Phase 44 | 44-03, 44-05 | Satisfied |
+| OBS-07 | Phase 44 | 44-03 | Satisfied |
+| ORG-01 | Phase 41 | 41-01 | Satisfied |
+| ORG-02 | Phase 41 | 41-01 | Satisfied |
+| ORG-03 | Phase 41 | 41-02 | Satisfied |
+| ORG-04 | Phase 41 | 41-03 | Satisfied |
+| ORG-05 | Phase 43 | 43-01, 43-02 | Satisfied |
+| ORG-06 | Phase 43 | 43-04 | Satisfied |
+| ORG-07 | Phase 43 | 43-02 | Satisfied |
+| ORG-08 | Phase 43 | 43-03 | Satisfied |
+| ORG-09 | Phase 43 | 43-04 | Satisfied |
+| ORG-10 | Phase 43 | 43-03, 43-04 | Satisfied |
+| ORG-11 | Phase 43 | 43-02 | Satisfied |
+| ORG-12 | Phase 43 | 43-01, 43-02 | Satisfied |
+| ORG-13 | Phase 43 | 43-01, 43-02 | Satisfied |
+| MAP-01 | Phase 42 | 42-02 | Satisfied |
+| MAP-02 | Phase 42 | 42-02 | Satisfied |
+| MAP-03 | Phase 42 | 42-03 | Satisfied |
+| MAP-04 | Phase 42 | 42-03 | Satisfied |
+| MAP-05 | Phase 42 | 42-01 | Satisfied |
+| MAP-06 | Phase 42 | 42-04 | Satisfied |
+| MAP-07 | Phase 42 | 42-04 | Satisfied |
+| MAP-08 | Phase 42 | 42-02 | Satisfied |
+| MAP-09 | Phase 42 | 42-04 | Satisfied |
+| MAP-10 | Phase 42 | 42-01 | Satisfied |
+| MAP-11 | Phase 42 | 42-03 | Satisfied |
+| UX-01 | Phase 44 | 44-01 | Satisfied |
+| UX-02 | Phase 44 | 44-02 | Satisfied |
+| UX-03 | Phase 44 | 44-02, 44-05 | Satisfied |
+| UX-04 | Phase 44 | 44-02, 44-05 | Satisfied |
+| A11Y-01 | Phase 45 | 45-03 | Satisfied |
+| A11Y-02 | Phase 45 | 45-04 | Satisfied |
+| A11Y-03 | Phase 45 | 45-01, 45-04 | Satisfied |
+| A11Y-04 | Phase 45 | 45-02 | Satisfied |
+| TEST-01 | Phase 46 | 46-01, 46-03 | Satisfied |
+| TEST-02 | Phase 46 | 46-02 | Satisfied |
+| TEST-03 | Phase 46 | 46-02 | Satisfied |
 
 ## Future Requirements (deferred from v1.5)
 
