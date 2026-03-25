@@ -1,5 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/react-router"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -99,6 +99,10 @@ function MembersSettings() {
   // Dialog state — revoke invite
   const [revokeDialogInvite, setRevokeDialogInvite] = useState<Invite | null>(null)
 
+  // D-10: Refs for focus management after delete actions
+  const membersHeadingRef = useRef<HTMLHeadingElement>(null)
+  const invitesHeadingRef = useRef<HTMLHeadingElement>(null)
+
   // ---- Invite form ----
   const inviteForm = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
@@ -138,6 +142,8 @@ function MembersSettings() {
       await removeMember.mutateAsync(removeDialogMember.user_id)
       toast.success("Member removed")
       setRemoveDialogMember(null)
+      // D-10: Focus the members heading after removal so screen readers don't lose context
+      requestAnimationFrame(() => membersHeadingRef.current?.focus())
     } catch {
       toast.error("Failed to remove member")
     }
@@ -150,6 +156,8 @@ function MembersSettings() {
       await revokeInvite.mutateAsync(revokeDialogInvite.id)
       toast.success("Invite revoked")
       setRevokeDialogInvite(null)
+      // D-10: Focus the invites heading after revocation so screen readers don't lose context
+      requestAnimationFrame(() => invitesHeadingRef.current?.focus())
     } catch {
       toast.error("Failed to revoke invite")
     }
@@ -308,7 +316,7 @@ function MembersSettings() {
       {/* Section 1: Current Members */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">Members</h2>
+          <h2 ref={membersHeadingRef} tabIndex={-1} className="text-lg font-semibold outline-none">Members</h2>
           <Badge variant="secondary">{members.length}</Badge>
         </div>
 
@@ -326,7 +334,7 @@ function MembersSettings() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">Pending Invites</h2>
+            <h2 ref={invitesHeadingRef} tabIndex={-1} className="text-lg font-semibold outline-none">Pending Invites</h2>
             <Badge variant="secondary">{invites.length}</Badge>
           </div>
 
@@ -372,9 +380,11 @@ function MembersSettings() {
                 type="email"
                 placeholder="colleague@example.com"
                 {...inviteForm.register("email")}
+                aria-invalid={!!inviteForm.formState.errors.email}
+                aria-describedby={inviteForm.formState.errors.email ? "invite-email-error" : undefined}
               />
               {inviteForm.formState.errors.email && (
-                <p className="text-sm text-destructive">
+                <p id="invite-email-error" className="text-sm text-destructive" role="alert">
                   {inviteForm.formState.errors.email.message}
                 </p>
               )}
@@ -405,7 +415,7 @@ function MembersSettings() {
                 </SelectContent>
               </Select>
               {inviteForm.formState.errors.role && (
-                <p className="text-sm text-destructive">
+                <p id="invite-role-error" className="text-sm text-destructive" role="alert">
                   {inviteForm.formState.errors.role.message}
                 </p>
               )}
