@@ -62,9 +62,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260317-wpb | Fix failing GH Actions build | 2026-03-17 | d894042 | [260317-wpb](./quick/260317-wpb-address-the-failing-build-step-in-gh-act/) |
 | 260319-241 | Fix misaligned header section | 2026-03-19 | 303070b | [260319-241](./quick/260319-241-fix-the-misaligned-header-section-of-the/) |
 | 260325-jrg | Fix 5 failing unit tests from UAT report | 2026-03-25 | 9391ca6 | [260325-jrg](./quick/260325-jrg-address-planning-full-uat-report-md-find/) |
+| 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-25 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
 
 ## Session Continuity
 
 Last session: 2026-03-25
-Stopped at: v1.5 milestone archived
+Stopped at: Completed quick-260325-u3q
 Resume file: None
