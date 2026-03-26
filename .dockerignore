@@ -29,6 +29,8 @@ web/.vite/
 # Environment files (secrets -- must not be baked into image)
 .env
 .env.*
+web/.env
+web/.env.*
 
 # Docker files
 Dockerfile
