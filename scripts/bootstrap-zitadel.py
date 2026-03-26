@@ -234,8 +234,41 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
     )
     existing = search.get("result", [])
     if existing:
-        client_id = existing[0].get("oidcConfig", {}).get("clientId", "")
+        app_id = existing[0]["id"]
+        oidc_config = existing[0].get("oidcConfig", {})
+        client_id = oidc_config.get("clientId", "")
+        current_type = oidc_config.get("accessTokenType", "")
         print(f"  SPA app already exists, clientId: {client_id}")
+
+        # Ensure the existing app issues JWT access tokens (not opaque).
+        # The API backend (security.py) calls jwt.decode() which only works
+        # with JWT tokens. If the app was created with the default opaque
+        # token type, update it via the ZITADEL Management API.
+        if current_type != "OIDC_TOKEN_TYPE_JWT":
+            print(f"  Updating SPA app token type to JWT (was {current_type!r})...")
+            # PUT requires the full OIDC config body — start from existing
+            # config and override the token type.
+            update_body = {
+                "redirectUris": oidc_config.get("redirectUris", []),
+                "responseTypes": oidc_config.get("responseTypes", []),
+                "grantTypes": oidc_config.get("grantTypes", []),
+                "appType": oidc_config.get("appType", "OIDC_APP_TYPE_USER_AGENT"),
+                "authMethodType": oidc_config.get(
+                    "authMethodType", "OIDC_AUTH_METHOD_TYPE_NONE"
+                ),
+                "postLogoutRedirectUris": oidc_config.get("postLogoutRedirectUris", []),
+                "devMode": oidc_config.get("devMode", True),
+                "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
+            }
+            api_call(
+                client,
+                "PUT",
+                f"/management/v1/projects/{project_id}/apps/{app_id}/oidc",
+                pat,
+                json=update_body,
+            )
+            print(f"  Updated SPA app token type to JWT (was {current_type!r})")
+
         return client_id
 
     # Build redirect URIs for both localhost and optional Tailscale domain
@@ -444,10 +477,11 @@ def main() -> None:
     print("\nStep 0: Waiting for ZITADEL to be ready...")
     wait_for_zitadel()
 
-    # Check if already bootstrapped
-    if validate_existing_env():
-        print("Bootstrap already complete, skipping.")
-        return
+    # Check if already bootstrapped — if credentials are valid, skip only
+    # the secret regeneration step (Step 7) to avoid invalidating working
+    # credentials. All other steps are idempotent and must still run to
+    # ensure configuration (e.g. JWT token type, role grants) is correct.
+    credentials_valid = validate_existing_env()
 
     print("\nStep 1: Reading PAT...")
     pat = read_pat()
@@ -469,12 +503,39 @@ def main() -> None:
         print("\nStep 6: Creating SPA application...")
         spa_client_id = create_spa_app(client, pat, project_id)
 
-        print("\nStep 7: Generating service account secret...")
-        api_client_id, api_client_secret = generate_machine_secret(client, pat, user_id)
+        if credentials_valid:
+            # Credentials still work — read existing values instead of
+            # regenerating (which would invalidate current secrets).
+            print("\nStep 7: Skipping secret regeneration (existing credentials valid)")
+            env_vars: dict[str, str] = {}
+            with open(OUTPUT_PATH) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, value = line.partition("=")
+                        env_vars[key] = value
+            api_client_id = env_vars.get("ZITADEL_SERVICE_CLIENT_ID", "")
+            api_client_secret = env_vars.get("ZITADEL_SERVICE_CLIENT_SECRET", "")
+        else:
+            print("\nStep 7: Generating service account secret...")
+            api_client_id, api_client_secret = generate_machine_secret(
+                client, pat, user_id
+            )
 
         print("\nStep 8: Granting admin user role on project...")
         admin_id = get_admin_user_id(client, pat)
+        # Grant the admin user an "owner" project role. Note: admin@localhost
+        # belongs to the ZITADEL default org, not a CivicPulse org.  At
+        # runtime, security.py's get_current_user() resolves the org_id from
+        # the role claim structure (the nested dict inside
+        # "urn:zitadel:iam:org:project:{pid}:roles") rather than from
+        # "urn:zitadel:iam:user:resourceowner:id", so this grant provides
+        # the correct org_id for API access.
         grant_user_role(client, pat, project_id, admin_id, "owner")
+        if admin_id:
+            print(
+                f"  Admin user {admin_id} granted 'owner' role on project {project_id}"
+            )
 
     print("\nStep 9: Writing .env.zitadel...")
     write_env_file(project_id, spa_client_id, api_client_id, api_client_secret)
