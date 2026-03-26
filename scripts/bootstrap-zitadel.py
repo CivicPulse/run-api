@@ -259,11 +259,14 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
                 "postLogoutRedirectUris": oidc_config.get("postLogoutRedirectUris", []),
                 "devMode": oidc_config.get("devMode", True),
                 "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
+                "accessTokenRoleAssertion": True,
+                "idTokenRoleAssertion": True,
+                "idTokenUserinfoAssertion": True,
             }
             api_call(
                 client,
                 "PUT",
-                f"/management/v1/projects/{project_id}/apps/{app_id}/oidc",
+                f"/management/v1/projects/{project_id}/apps/{app_id}/oidc_config",
                 pat,
                 json=update_body,
             )

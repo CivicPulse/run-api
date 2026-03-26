@@ -86,6 +86,12 @@ The ZITADEL bootstrap script (`scripts/bootstrap-zitadel.py`) previously had two
 - API container starts successfully after bootstrap
 - `docker compose ps` shows all services running
 
+**3. [Orchestrator fix] Wrong ZITADEL API endpoint for OIDC config update**
+- **Found during:** Post-executor verification (docker compose up still failed)
+- **Issue:** The previous quick task (260325-tqb) used `PUT /management/v1/projects/{id}/apps/{appId}/oidc` which returned 404. The correct ZITADEL Management API endpoint is `PUT /management/v1/projects/{id}/apps/{appId}/oidc_config` (with `_config` suffix).
+- **Fix:** Changed endpoint path in `create_spa_app()` and added `accessTokenRoleAssertion`, `idTokenRoleAssertion`, `idTokenUserinfoAssertion` to ensure role claims appear in tokens.
+- **Files modified:** scripts/bootstrap-zitadel.py
+
 ## Known Stubs
 
 None.

@@ -67,6 +67,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-25
+Last activity: 2026-03-26 - Completed quick task 260325-u3q: diagnose and fix docker compose up build issues
 Stopped at: Completed quick-260325-u3q
 Resume file: None
