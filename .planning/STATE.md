@@ -63,9 +63,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260319-241 | Fix misaligned header section | 2026-03-19 | 303070b | [260319-241](./quick/260319-241-fix-the-misaligned-header-section-of-the/) |
 | 260325-jrg | Fix 5 failing unit tests from UAT report | 2026-03-25 | 9391ca6 | [260325-jrg](./quick/260325-jrg-address-planning-full-uat-report-md-find/) |
 | 260325-tqb | Fix opaque token + admin org in bootstrap | 2026-03-25 | 1993358 | [260325-tqb](./quick/260325-tqb-resolve-issues-in-login-test-screenshots/) |
+| 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
 
 ## Session Continuity
 
 Last session: 2026-03-25
-Stopped at: Completed quick-260325-tqb
+Stopped at: Completed quick-260325-u3q
 Resume file: None

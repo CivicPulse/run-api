@@ -421,6 +421,65 @@ VITE_ZITADEL_PROJECT_ID={project_id}
         sys.exit(1)
 
 
+def get_token_via_client_credentials(env_path: str) -> str:
+    """Obtain a bearer token via client_credentials grant.
+
+    Used on re-bootstrap when the PAT file no longer exists but
+    service account credentials are already stored in .env.zitadel.
+    """
+    env_vars: dict[str, str] = {}
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                env_vars[key] = value
+
+    client_id = env_vars.get("ZITADEL_SERVICE_CLIENT_ID", "")
+    client_secret = env_vars.get("ZITADEL_SERVICE_CLIENT_SECRET", "")
+
+    if not client_id or not client_secret:
+        print(
+            "ERROR: Cannot obtain token — missing client_id/secret in env file",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Request the ZITADEL API audience scope so the token can call
+    # management/admin APIs, plus openid for standard OIDC compliance.
+    scope = "openid urn:zitadel:iam:org:project:id:zitadel:aud"
+
+    try:
+        with httpx.Client(verify=_VERIFY_TLS) as http:
+            resp = http.post(
+                f"{ZITADEL_URL}/oauth/v2/token",
+                headers={"Host": _host_header()},
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scope": scope,
+                },
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                token = resp.json().get("access_token", "")
+                if token:
+                    return token
+            print(
+                f"ERROR: client_credentials token request failed "
+                f"({resp.status_code}): {resp.text}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    except Exception as exc:
+        print(
+            f"ERROR: client_credentials token request failed: {exc}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def validate_existing_env() -> bool:
     """Check if .env.zitadel exists and credentials still work."""
     if not os.path.exists(OUTPUT_PATH):
@@ -483,8 +542,18 @@ def main() -> None:
     # ensure configuration (e.g. JWT token type, role grants) is correct.
     credentials_valid = validate_existing_env()
 
-    print("\nStep 1: Reading PAT...")
-    pat = read_pat()
+    print("\nStep 1: Obtaining bearer token...")
+    if credentials_valid:
+        # Re-bootstrap: PAT file may not exist (only written on first init).
+        if os.path.exists(PAT_PATH):
+            pat = read_pat()
+        else:
+            print(f"  PAT file {PAT_PATH} not found (expected on re-bootstrap)")
+            pat = get_token_via_client_credentials(OUTPUT_PATH)
+            print("  Obtained bearer token via client_credentials")
+    else:
+        # Fresh bootstrap: must wait for ZITADEL to write the PAT file.
+        pat = read_pat()
 
     print("\nStep 2: Finding machine user...")
     with httpx.Client(verify=_VERIFY_TLS) as client:
