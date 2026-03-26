@@ -13,6 +13,7 @@ import {
   Loader2,
   LogOut,
   Map,
+  Navigation,
   Phone,
   Settings,
   Users,
@@ -65,6 +66,7 @@ function AppSidebar() {
     { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
     { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
     { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
+    { to: `/field/${campaignId}`, label: "Field Operations", icon: Navigation },
   ]
 
   return (

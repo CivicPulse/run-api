@@ -64,9 +64,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260325-jrg | Fix 5 failing unit tests from UAT report | 2026-03-25 | 9391ca6 | [260325-jrg](./quick/260325-jrg-address-planning-full-uat-report-md-find/) |
 | 260325-tqb | Fix opaque token + admin org in bootstrap | 2026-03-25 | 1993358 | [260325-tqb](./quick/260325-tqb-resolve-issues-in-login-test-screenshots/) |
 | 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
+| 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | pending | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-26 - Completed quick task 260325-u3q: diagnose and fix docker compose up build issues
+Last activity: 2026-03-26 - Completed quick task 260325-vh6: add field operations link to sidebar menu
 Stopped at: Completed quick-260325-u3q
 Resume file: None
