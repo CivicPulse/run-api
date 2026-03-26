@@ -245,9 +245,7 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
         # with JWT tokens. If the app was created with the default opaque
         # token type, update it via the ZITADEL Management API.
         if current_type != "OIDC_TOKEN_TYPE_JWT":
-            print(
-                f"  Updating SPA app token type to JWT (was {current_type!r})..."
-            )
+            print(f"  Updating SPA app token type to JWT (was {current_type!r})...")
             # PUT requires the full OIDC config body — start from existing
             # config and override the token type.
             update_body = {
@@ -258,9 +256,7 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
                 "authMethodType": oidc_config.get(
                     "authMethodType", "OIDC_AUTH_METHOD_TYPE_NONE"
                 ),
-                "postLogoutRedirectUris": oidc_config.get(
-                    "postLogoutRedirectUris", []
-                ),
+                "postLogoutRedirectUris": oidc_config.get("postLogoutRedirectUris", []),
                 "devMode": oidc_config.get("devMode", True),
                 "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
             }
@@ -271,9 +267,7 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
                 pat,
                 json=update_body,
             )
-            print(
-                f"  Updated SPA app token type to JWT (was {current_type!r})"
-            )
+            print(f"  Updated SPA app token type to JWT (was {current_type!r})")
 
         return client_id
 
@@ -540,8 +534,7 @@ def main() -> None:
         grant_user_role(client, pat, project_id, admin_id, "owner")
         if admin_id:
             print(
-                f"  Admin user {admin_id} granted 'owner' role on"
-                f" project {project_id}"
+                f"  Admin user {admin_id} granted 'owner' role on project {project_id}"
             )
 
     print("\nStep 9: Writing .env.zitadel...")
