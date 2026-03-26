@@ -41,7 +41,7 @@ function MapEditor({
     initializedRef.current = true
 
     try {
-      const layer = L.geoJSON(defaultBoundary as GeoJSON.GeoJsonObject)
+      const layer = L.geoJSON(defaultBoundary as unknown as GeoJSON.GeoJsonObject)
       const fg = editLayerRef.current
 
       layer.eachLayer((l) => {

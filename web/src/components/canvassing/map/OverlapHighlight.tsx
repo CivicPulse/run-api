@@ -26,7 +26,7 @@ export function OverlapHighlight({ overlaps }: OverlapHighlightProps) {
       {overlaps.map((turf) => (
         <GeoJSON
           key={turf.id}
-          data={turf.boundary as GeoJSON.GeoJsonObject}
+          data={turf.boundary as unknown as GeoJSON.GeoJsonObject}
           style={overlapStyle}
         />
       ))}

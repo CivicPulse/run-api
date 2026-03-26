@@ -33,8 +33,6 @@ export function MapProvider({
       zoom={zoom}
       className={className}
       scrollWheelZoom={true}
-      role="application"
-      aria-label="Interactive map"
     >
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Street">

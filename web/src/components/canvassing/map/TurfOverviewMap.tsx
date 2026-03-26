@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { GeoJSON, Popup, useMap } from "react-leaflet"
 import { Link } from "@tanstack/react-router"
 import L from "leaflet"
@@ -49,7 +49,7 @@ function OverviewMapContent({
     try {
       const allBounds = L.latLngBounds([])
       for (const turf of turfs) {
-        const layer = L.geoJSON(turf.boundary as GeoJSON.GeoJsonObject)
+        const layer = L.geoJSON(turf.boundary as unknown as GeoJSON.GeoJsonObject)
         allBounds.extend(layer.getBounds())
       }
       if (allBounds.isValid()) {
@@ -80,7 +80,7 @@ function OverviewMapContent({
       {turfs.map((turf) => (
         <GeoJSON
           key={turf.id}
-          data={turf.boundary as GeoJSON.GeoJsonObject}
+          data={turf.boundary as unknown as GeoJSON.GeoJsonObject}
           style={turfStyles[turf.id]}
           eventHandlers={{
             click: () => setSelectedTurfId(turf.id),
@@ -92,7 +92,7 @@ function OverviewMapContent({
         <Popup
           position={
             L.geoJSON(
-              selectedTurf.boundary as GeoJSON.GeoJsonObject,
+              selectedTurf.boundary as unknown as GeoJSON.GeoJsonObject,
             )
               .getBounds()
               .getCenter()
