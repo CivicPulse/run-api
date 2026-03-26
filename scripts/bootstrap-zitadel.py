@@ -412,6 +412,10 @@ def get_token_via_client_credentials(env_path: str) -> str:
         )
         sys.exit(1)
 
+    # Request the ZITADEL API audience scope so the token can call
+    # management/admin APIs, plus openid for standard OIDC compliance.
+    scope = "openid urn:zitadel:iam:org:project:id:zitadel:aud"
+
     try:
         with httpx.Client(verify=_VERIFY_TLS) as http:
             resp = http.post(
@@ -421,7 +425,7 @@ def get_token_via_client_credentials(env_path: str) -> str:
                     "grant_type": "client_credentials",
                     "client_id": client_id,
                     "client_secret": client_secret,
-                    "scope": "openid",
+                    "scope": scope,
                 },
                 timeout=10,
             )
