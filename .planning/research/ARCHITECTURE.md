@@ -1,569 +1,708 @@
-# Architecture Research: v1.5
+# Architecture Patterns: v1.6 Production Ready Polish
 
-**Domain:** Map-based turf editor + Organization-level UI integration
-**Researched:** 2026-03-24
-**Overall confidence:** HIGH (based on thorough codebase analysis)
+**Domain:** Import alias expansion, RLS data isolation audit, sidebar navigation consolidation, in-app markdown guide pages
+**Researched:** 2026-03-27
+**Overall confidence:** HIGH (based on comprehensive codebase analysis of existing patterns)
 
-## Map-Based Turf Editor
+## Feature 1: Import Alias Expansion + Alternate Voting History Formats
 
-### Data Flow (draw -> GeoJSON -> API -> PostGIS -> render)
+### Current Architecture
 
-The complete data flow for the map-based turf editor:
+The import pipeline lives in `app/services/import_service.py` with three core mechanisms:
+
+1. **CANONICAL_FIELDS dict** (lines 32-332): Maps canonical voter column names to lists of known aliases. The `suggest_field_mapping()` function uses RapidFuzz fuzzy matching at a 75% threshold against the flattened alias list.
+
+2. **`_VOTING_HISTORY_RE` regex** (line 414): Currently `r"^(General|Primary)_(\d{4})$"` -- matches only `General_YYYY` and `Primary_YYYY` column patterns. Columns matching this regex with values of Y, A, or E are collected into the voter's `voting_history` array.
+
+3. **`parse_voting_history()` function** (lines 418-429): Scans the raw CSV row dict keys against the regex, collecting matching columns into a sorted list.
+
+### What Needs to Change
+
+**A. New aliases for CANONICAL_FIELDS (MODIFY `import_service.py`)**
+
+The CANONICAL_FIELDS dict needs additional L2 aliases that are currently missing. Based on the L2 VM2 Uniform format and common state voter file conventions, the missing aliases include:
+
+| Canonical Field | Missing Aliases to Add |
+|----------------|----------------------|
+| `source_id` | `voters_voterbaseid`, `voter_base_id`, `l2_voterId` |
+| `registration_line1` | `voters_residentialaddress`, `residential_address` |
+| `registration_city` | `voters_residentialcity`, `residential_city` |
+| `registration_state` | `voters_residentialstate`, `residential_state` |
+| `registration_zip` | `voters_residentialzipcode`, `residential_zipcode` |
+| `registration_county` | `voters_county` |
+| `precinct` | `voters_precinct`, `voters_precinctid` |
+| `congressional_district` | `voters_congressionaldistrict`, `us_cong_dist_abbrv` |
+| `state_senate_district` | `voters_statesenatedistrict`, `nc_senate_abbrv` |
+| `state_house_district` | `voters_statehousedistrict`, `nc_house_abbrv` |
+| `registration_date` | `voters_registrationdate`, `registr_dt` |
+| `party` | `voters_partyregistration`, `party_cd` |
+| `date_of_birth` | `voters_dateofbirth` |
+| `age` | `voters_calculatedage` |
+| `gender` | `voters_sex` |
+| `ethnicity` | `voters_ethnicity`, `ethnic_code` |
+| `propensity_general` | `voters_generalturnoutscore` |
+| `propensity_primary` | `voters_primaryturnoutscore` |
+| `propensity_combined` | `voters_combinedturnoutscore` |
+
+**Impact:** Pure data change to an existing dict. No structural changes. The `_ALIAS_LIST` and `_ALIAS_TO_FIELD` reverse lookups rebuild automatically from CANONICAL_FIELDS at module load time (lines 335-340).
+
+**B. Alternate Voting History Column Formats (MODIFY `import_service.py`)**
+
+The current regex `^(General|Primary)_(\d{4})$` only matches one naming convention. L2 voter files use at least two other conventions:
+
+1. **Underscore-separated with abbreviation:** `GEN_2024`, `PRI_2024`, `GEN_2022`, `PRI_2022`
+2. **No separator:** `General2024`, `Primary2024`, `General2020`, `Primary2020`
+3. **State-specific abbreviated:** `G2024`, `P2024`, `G2022`, `P2022`
+4. **Full year with election type prefix:** `Voters_VotingHistory_General_2024`, `Voters_VotingHistory_Primary_2024`
+
+**Approach:** Replace the single regex with a list of regex patterns, each with a normalization function that maps matched columns to the canonical `General_YYYY` / `Primary_YYYY` format stored in `voting_history`.
+
+```python
+# Current (single regex):
+_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")
+
+# Proposed (multi-pattern with normalization):
+_VOTING_HISTORY_PATTERNS: list[tuple[re.Pattern, Callable[[re.Match], str]]] = [
+    # Original format: General_2024, Primary_2024
+    (re.compile(r"^(General|Primary)_(\d{4})$"),
+     lambda m: f"{m.group(1)}_{m.group(2)}"),
+    # Abbreviated: GEN_2024, PRI_2024
+    (re.compile(r"^(GEN|PRI)_(\d{4})$", re.IGNORECASE),
+     lambda m: f"{'General' if m.group(1).upper() == 'GEN' else 'Primary'}_{m.group(2)}"),
+    # No separator: General2024, Primary2024
+    (re.compile(r"^(General|Primary)(\d{4})$"),
+     lambda m: f"{m.group(1)}_{m.group(2)}"),
+    # Short: G2024, P2024
+    (re.compile(r"^([GP])(\d{4})$", re.IGNORECASE),
+     lambda m: f"{'General' if m.group(1).upper() == 'G' else 'Primary'}_{m.group(2)}"),
+    # L2 long form: Voters_VotingHistory_General_2024
+    (re.compile(r"^Voters_VotingHistory_(General|Primary)_(\d{4})$", re.IGNORECASE),
+     lambda m: f"{m.group(1).capitalize()}_{m.group(2)}"),
+]
+```
+
+**Modified `parse_voting_history()` function:**
+
+```python
+def parse_voting_history(row: dict[str, str]) -> list[str]:
+    history: list[str] = []
+    for col, val in row.items():
+        for pattern, normalizer in _VOTING_HISTORY_PATTERNS:
+            match = pattern.match(col)
+            if match and val.strip().upper() in _VOTED_VALUES:
+                history.append(normalizer(match))
+                break  # first matching pattern wins
+    return sorted(history)
+```
+
+**Impact:** The return format (`list[str]` of `General_YYYY`/`Primary_YYYY` entries) stays identical. The stored `voting_history` array in the Voter model is unchanged. The filter system on the frontend and backend already works with this format. No migration needed. No schema changes.
+
+### Components Affected
+
+| Component | File | Change Type | Scope |
+|-----------|------|-------------|-------|
+| CANONICAL_FIELDS dict | `app/services/import_service.py` | MODIFY | Add ~30 new alias entries |
+| `_VOTING_HISTORY_RE` | `app/services/import_service.py` | REPLACE | Single regex -> pattern list |
+| `parse_voting_history()` | `app/services/import_service.py` | MODIFY | Loop over pattern list |
+| Unit tests | `tests/unit/test_import_parsing.py` | MODIFY | Add test cases for new patterns |
+| Unit tests | `tests/unit/test_field_mapping.py` | MODIFY | Add test cases for new aliases |
+
+### What Does NOT Change
+
+- `ImportService` class methods (no structural changes)
+- `suggest_field_mapping()` function (works automatically from expanded CANONICAL_FIELDS)
+- `apply_field_mapping()` method (unchanged)
+- `process_csv_batch()` method (unchanged)
+- `process_import_file()` method (unchanged)
+- API endpoints in `app/api/v1/imports.py` (unchanged)
+- Frontend import wizard (unchanged)
+- Voter model/schema (unchanged)
+- Voting history filter system (unchanged -- already consumes `General_YYYY`/`Primary_YYYY` format)
+
+---
+
+## Feature 2: RLS Data Isolation Audit
+
+### Current Architecture
+
+The RLS implementation has three layers:
+
+**Layer 1: PostgreSQL RLS Policies (33 policies across 6 migrations)**
+
+All 33 RLS policies use `current_setting('app.current_campaign_id', true)::uuid` as the isolation predicate. Tables with direct `campaign_id` columns use a simple USING clause. Junction tables (voter_tag_members, voter_list_members, walk_list_entries, walk_list_canvassers, call_list_entries, session_callers, volunteer_tag_members, volunteer_availability, shift_volunteers, survey_questions) use subquery joins.
+
+Migration-level audit was completed in v1.5 (noted in `001_initial_schema.py` header: "RLS AUDIT Phase 39, D-11").
+
+**Layer 2: Connection Pool Defense (pool checkout event)**
+
+`app/db/session.py` line 23-38: The `reset_rls_context()` event listener fires on every pool checkout, setting campaign context to a null UUID (`00000000-...`). This ensures no stale context survives pool reuse.
+
+**Layer 3: Transaction-Scoped RLS Context**
+
+`app/db/rls.py` line 27-30: `set_campaign_context()` uses `set_config(..., true)` to scope the campaign context to the current transaction. Context auto-resets at COMMIT/ROLLBACK.
+
+**Layer 4: Centralized Dependency**
+
+`app/api/deps.py` line 24-51: `get_campaign_db()` is the single dependency for all campaign-scoped endpoints. It extracts `campaign_id` from the URL path parameter and calls `set_campaign_context()` before yielding the session. 18 route files depend on it.
+
+### What the Audit Needs to Verify
+
+The audit is about verifying correctness at the data layer, not changing architecture. Key verification points:
+
+**A. Cross-campaign population check (all scoped entities)**
+
+The system has 33 RLS policies across these tables:
+
+| Migration | Tables with RLS |
+|-----------|----------------|
+| 001 | campaigns, campaign_members, users |
+| 002_invites | invites |
+| 002_voter | voters, voter_phones, voter_tags, voter_tag_members, voter_lists, voter_list_members, voter_contacts, voter_interactions, import_jobs, field_mapping_templates |
+| 003 | turfs, walk_lists, walk_list_entries, walk_list_canvassers, surveys, survey_questions, survey_responses |
+| 004 | phone_bank_sessions, call_lists, call_list_entries, session_callers, dnc_entries |
+| 005 | volunteers, volunteer_tags, volunteer_tag_members, volunteer_availability, shifts, shift_volunteers |
+
+For EVERY table with RLS: query as campaign A, verify zero rows from campaign B are visible.
+
+**B. Junction table leak vectors**
+
+The riskiest tables are junction tables that use subquery-based RLS policies instead of direct `campaign_id` checks. These include:
+- `voter_tag_members` (joins through `voters.campaign_id`)
+- `voter_list_members` (joins through `voter_lists.campaign_id`)
+- `walk_list_entries` (joins through `walk_lists.campaign_id`)
+- `walk_list_canvassers` (joins through `walk_lists.campaign_id`)
+- `call_list_entries` (joins through `call_lists.campaign_id`)
+- `session_callers` (joins through `phone_bank_sessions.campaign_id`)
+- `volunteer_tag_members` (joins through `volunteer_tags.campaign_id`)
+- `volunteer_availability` (joins through `volunteers.campaign_id`)
+- `shift_volunteers` (joins through `shifts.campaign_id`)
+- `survey_questions` (joins through `surveys.campaign_id`)
+
+**C. Non-RLS tables that should NOT have RLS**
+
+These tables are correctly NOT RLS-scoped:
+- `organizations` (cross-campaign by design)
+- `organization_members` (org-level, not campaign-scoped)
+
+### Components Affected
+
+| Component | File | Change Type | Scope |
+|-----------|------|-------------|-------|
+| New test file | `tests/integration/test_rls_full_audit.py` | CREATE | Comprehensive cross-campaign test for all 33 tables |
+| Existing tests | `tests/integration/test_rls_isolation.py` | VERIFY | Confirm pool reuse tests still pass |
+| Existing tests | `tests/integration/test_rls_api_smoke.py` | VERIFY | Confirm API-level tests still pass |
+| Seed data | `scripts/seed.py` or test conftest | MODIFY | May need second campaign's data for audit |
+
+### What Does NOT Change
+
+- No migration changes (policies are correct per v1.5 audit)
+- No model changes
+- No service/API changes
+- No frontend changes
+- No `deps.py` changes
+
+### Recommended Audit Approach
+
+Write an integration test that:
+1. Creates two campaigns with data in every RLS-protected table
+2. For each table: sets context to campaign A, queries table, asserts only campaign A data visible
+3. Sets context to campaign B, queries same table, asserts only campaign B data visible
+4. Tests junction tables specifically with cross-campaign ID injection attempts
+5. Tests the pool checkout reset by reusing connections
+
+This is a test-only deliverable. If any policy is found to be incorrect, the fix is a migration to correct the policy. Based on the v1.5 audit note in the migration header, this is expected to pass.
+
+---
+
+## Feature 3: Sidebar Navigation Consolidation
+
+### Current Architecture
+
+Navigation exists in TWO places:
+
+**1. Sidebar (`__root.tsx` AppSidebar, lines 58-167)**
 
 ```
-User draws polygon on Leaflet map
-  |
-  v
-Leaflet.Draw fires `draw:created` event with L.Layer
-  |
-  v
-layer.toGeoJSON() -> GeoJSON Feature with geometry
-  |
-  v
-Extract geometry object: { type: "Polygon", coordinates: [...] }
-  |
-  v
-TanStack Query mutation (useCreateTurf / useUpdateTurf)
-  sends POST/PATCH with { name, boundary: geojsonGeometry }
-  |
-  v
-FastAPI endpoint receives TurfCreate/TurfUpdate schema
-  boundary field: dict[str, Any] (already correct)
-  |
-  v
-TurfService._validate_polygon(geojson)
-  shapely.geometry.shape(geojson) -> Shapely Polygon
-  validates: is Polygon, is_valid, area > 0
-  geoalchemy2.shape.from_shape(geom, srid=4326) -> WKBElement
-  |
-  v
-SQLAlchemy stores WKBElement in PostGIS Geometry(POLYGON, 4326) column
-  |
-  v
-On read: _wkb_to_geojson(turf.boundary)
-  geoalchemy2.shape.to_shape(wkb) -> Shapely geometry
-  shapely.geometry.mapping(geom) -> GeoJSON dict
-  |
-  v
-TurfResponse.boundary = geojson dict
-  |
-  v
-Frontend receives GeoJSON, renders on Leaflet via L.geoJSON(boundary)
+Campaign group (visible when campaignId in URL):
+  - Dashboard
+  - Voters
+  - Canvassing
+  - Phone Banking
+  - Volunteers
+  - Field Operations
+
+Organization group (always visible when authenticated):
+  - All Campaigns
+  - Members (org_admin+)
+  - Settings (org_admin+)
+
+Footer (visible when campaignId, admin+):
+  - Settings
 ```
 
-### Backend Changes Needed
+**2. Inline tab bar (`$campaignId.tsx` CampaignLayout, lines 48-78)**
 
-**The serialization layer already works correctly.** This is the key finding: the existing TurfService already handles the full GeoJSON-to-PostGIS round trip.
+```
+Dashboard | Voters | Canvassing | Phone Banking | Surveys | Volunteers
+```
 
-**What exists and requires NO changes:**
+The duplication is clear: both the sidebar and the tab bar have Dashboard, Voters, Canvassing, Phone Banking, and Volunteers. The tab bar additionally has **Surveys** which the sidebar is missing.
 
-| Component | File | Status |
-|-----------|------|--------|
-| Turf model with PostGIS Geometry column | `app/models/turf.py` | Complete |
-| GeoJSON -> WKBElement validation | `app/services/turf.py:_validate_polygon()` | Complete |
-| WKBElement -> GeoJSON serialization | `app/services/turf.py:_wkb_to_geojson()` | Complete |
-| Pydantic schemas (boundary: dict[str,Any]) | `app/schemas/turf.py` | Complete |
-| CRUD endpoints with proper RLS | `app/api/v1/turfs.py` | Complete |
-| `_turf_to_response()` converter | `app/api/v1/turfs.py` | Complete |
-| ST_Contains spatial voter queries | `app/services/turf.py:get_voter_count()` | Complete |
+### What Needs to Change
 
-**Potential backend enhancement (NEW, not required for MVP):**
+**A. Remove the inline tab bar from `$campaignId.tsx`**
 
-1. **Voter count on turf list response** -- `get_voter_count()` exists but is not called in the list or detail endpoints. Add `voter_count` to `TurfResponse` for map UI display:
-   - Add `voter_count: int | None = None` to `TurfResponse` schema
-   - Call `_service.get_voter_count()` in `get_turf()` endpoint
-   - Optional: batch voter counts for list endpoint (N+1 query risk if done naively)
+The `CampaignLayout` component currently renders a `<nav>` with tabs (lines 67-78). Remove the entire `tabs` array and `<nav>` element. Keep the campaign name header and `<Outlet />`.
 
-2. **MultiPolygon support** -- Current validation only accepts `Polygon`. For complex districts, consider also accepting `MultiPolygon`. This requires changing `_validate_polygon()` to allow both types and updating the PostGIS column type from `POLYGON` to `GEOMETRY` or `MULTIPOLYGON`. **Defer this** unless user feedback demands it.
+**B. Add Surveys to the sidebar in `__root.tsx`**
 
-3. **GeoJSON Feature vs Geometry** -- Leaflet.Draw's `toGeoJSON()` returns a GeoJSON Feature (with `type: "Feature"`, `geometry: {...}`, `properties: {...}`), not a bare geometry. The frontend must extract `.geometry` before sending to the API. The current schema expects a geometry dict, not a Feature.
+Add a Surveys nav item to the Campaign group in AppSidebar. The sidebar currently has 6 items; adding Surveys makes 7.
 
-### Frontend Component Structure
+**C. Ensure sidebar active state is correct**
 
-**Existing components that need MODIFICATION:**
+The sidebar uses `location.pathname.startsWith(item.to)` for active state detection. Since campaign sub-routes are nested under `/campaigns/$campaignId/...`, this pattern already works. No change needed.
 
-| Component | File | Change |
-|-----------|------|--------|
-| `TurfForm` | `web/src/components/canvassing/TurfForm.tsx` | Replace raw JSON textarea with Leaflet map + draw controls |
-| `NewTurfPage` | `web/src/routes/.../turfs/new.tsx` | Minor: may need layout adjustment for map height |
-| `TurfDetailPage` | `web/src/routes/.../turfs/$turfId.tsx` | Add map rendering of existing boundary + edit mode |
-| `CanvassingIndex` | `web/src/routes/.../canvassing/index.tsx` | Add overview map showing all turfs as rendered polygons |
+### Components Affected
 
-**New components to BUILD:**
+| Component | File | Change Type | Scope |
+|-----------|------|-------------|-------|
+| CampaignLayout | `web/src/routes/campaigns/$campaignId.tsx` | MODIFY | Remove tabs array and nav element, keep header + Outlet |
+| AppSidebar | `web/src/routes/__root.tsx` | MODIFY | Add Surveys nav item with FileText icon |
+| Sidebar imports | `web/src/routes/__root.tsx` | MODIFY | Add FileText to lucide-react imports (already imported in $campaignId.tsx) |
 
-| Component | Purpose |
-|-----------|---------|
-| `TurfMap.tsx` | Wrapper around react-leaflet MapContainer with tile layer, configurable center/zoom |
-| `TurfDrawControl.tsx` | Leaflet.Draw integration: polygon draw tool, edit tool, delete tool |
-| `TurfPolygonLayer.tsx` | Renders a single turf boundary as a GeoJSON layer with click handler |
-| `TurfOverviewMap.tsx` | Renders all campaign turfs on a single map, used in canvassing index |
+### What Does NOT Change
 
-**Dependencies already installed:**
+- No backend changes
+- No route structure changes (routes are file-based, independent of navigation)
+- No hook changes
+- No TanStack Router configuration changes
+- Field mode layout (separate layout, no sidebar)
+- Organization nav group (already in sidebar)
 
-| Package | Version | Status |
-|---------|---------|--------|
-| `leaflet` | ^1.9.4 | In package.json |
-| `react-leaflet` | ^5.0.0 | In package.json |
-| `@types/leaflet` | ^1.9.21 | In devDependencies |
+### Specific Code Changes
 
-**New dependency needed:**
-
-| Package | Purpose | Confidence |
-|---------|---------|------------|
-| `leaflet-draw` | Draw/edit polygon controls | HIGH |
-
-Note: `leaflet-draw` is the standard Leaflet draw plugin. While `leaflet-geoman` is a newer alternative, `leaflet-draw` is simpler for polygon-only use and has wider community support. Use it directly via react-leaflet's `useMap()` hook rather than through a React wrapper (avoids stale wrapper dependencies with react-leaflet v5).
-
-**Recommended approach: Use leaflet-draw directly via useMap() hook.**
+**`__root.tsx` AppSidebar navItems array (line 63-70):**
 
 ```typescript
-// TurfDrawControl.tsx (conceptual)
-import { useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet-draw';
-import { useEffect } from 'react';
+// Current:
+const navItems = [
+  { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
+  { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
+  { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
+  { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
+  { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
+  { to: `/field/${campaignId}`, label: "Field Operations", icon: Navigation },
+]
 
-function TurfDrawControl({ onCreated, onEdited }: Props) {
-  const map = useMap();
+// After (add Surveys between Phone Banking and Volunteers):
+const navItems = [
+  { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
+  { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
+  { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
+  { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
+  { to: `/campaigns/${campaignId}/surveys`, label: "Surveys", icon: FileText },
+  { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
+  { to: `/field/${campaignId}`, label: "Field Operations", icon: Navigation },
+]
+```
 
-  useEffect(() => {
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
+**`$campaignId.tsx` CampaignLayout (lines 48-78):**
 
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polygon: { allowIntersections: false, showArea: true },
-        polyline: false, rectangle: false, circle: false,
-        marker: false, circlemarker: false,
-      },
-      edit: { featureGroup: drawnItems },
-    });
-    map.addControl(drawControl);
+Remove the `tabs` array (lines 48-55) and the `<nav>` block (lines 67-78). The component becomes:
 
-    map.on(L.Draw.Event.CREATED, (e) => {
-      const layer = e.layer;
-      drawnItems.addLayer(layer);
-      const geojson = layer.toGeoJSON();
-      onCreated(geojson.geometry); // Extract geometry, not Feature
-    });
+```tsx
+function CampaignLayout() {
+  const { campaignId } = useParams({ from: "/campaigns/$campaignId" })
+  const { data: campaign, isLoading, isError } = useQuery({...})
 
-    return () => { map.removeControl(drawControl); };
-  }, [map, onCreated, onEdited]);
+  if (isLoading) return <Skeleton ... />
+  if (isError || !campaign) return <ErrorState ... />
 
-  return null;
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold">{campaign?.name ?? "Campaign"}</h1>
+        {campaign?.candidate_name && (
+          <p className="text-sm text-muted-foreground">
+            {campaign.candidate_name}
+            {campaign.party_affiliation ? ` (${campaign.party_affiliation})` : ""}
+          </p>
+        )}
+      </div>
+      <Outlet />
+    </div>
+  )
 }
 ```
 
-### Integration with Existing TanStack Query Patterns
-
-The existing `useTurfs.ts` hooks are already well-structured. Integration points:
-
-**No changes needed to existing hooks.** The mutation functions already accept `TurfCreate` and `TurfUpdate` types with `boundary: Record<string, unknown>` which accepts GeoJSON geometry objects.
-
-**Data flow through existing hooks:**
-
-```
-TurfDrawControl fires onCreated(geometry)
-  |
-  v
-TurfForm (modified) stores geometry in form state
-  |
-  v
-onSubmit({ name, description, boundary: geometry })
-  |
-  v
-useCreateTurf.mutate(data) -- existing hook, no changes
-  |
-  v
-api.post('api/v1/campaigns/{id}/turfs', { json: data })
-  |
-  v
-Invalidates ["turfs", campaignId] query key -- existing pattern
-  |
-  v
-useTurfs refetches list, TurfOverviewMap re-renders with new polygon
-```
-
-**For the edit flow:**
-
-```
-TurfDetailPage loads turf via useTurf(campaignId, turfId)
-  |
-  v
-turf.boundary (GeoJSON dict) -> passed to TurfMap as initial polygon
-  |
-  v
-L.geoJSON(turf.boundary).addTo(drawnItems) on mount
-  |
-  v
-User edits polygon via draw:edited event
-  |
-  v
-useUpdateTurf.mutate({ boundary: editedGeometry })
-```
-
-**Leaflet CSS import** -- Must be added to the app entry point or the map component:
-```typescript
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
-```
-
-**Leaflet marker icon workaround** -- Leaflet's default marker icons break with bundlers (Vite). This is a well-known issue. For polygon-only usage, markers are not needed, but if used:
-```typescript
-import L from 'leaflet';
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
-  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
-  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
-});
-```
+The unused icon imports (`LayoutDashboard`, `Users`, `Map`, `Phone`, `ClipboardList`, `FileText`) can be removed from `$campaignId.tsx`.
 
 ---
 
-## Organization-Level UI
+## Feature 4: Progressive Volunteer Onboarding Guides (Markdown Pages)
 
-### Auth Flow (Org Admin vs Campaign-Level RLS)
+### Current Architecture
 
-The current auth architecture has a clear separation:
+The existing onboarding system uses **driver.js** for interactive in-app tours (`web/src/components/field/tour/tourSteps.ts`, `web/src/hooks/useTour.ts`, `web/src/stores/tourStore.ts`). These are step-by-step walkthroughs that highlight UI elements.
 
-**Current model:**
+The v1.6 feature is different: it adds **static guide content** rendered from markdown source files. These are shareable, linkable pages that volunteers can read before arriving at a shift -- not interactive tours.
+
+### Architecture Decision: How to Serve Markdown
+
+**Option A: Build-time compilation with a Vite plugin (RECOMMENDED)**
+
+Use a Vite plugin (`vite-plugin-md` or raw import + `react-markdown`) to import `.md` files as content at build time. The markdown content is bundled into the JavaScript output and rendered client-side.
+
+**Option B: Runtime fetch from API endpoint**
+
+Serve markdown files from a FastAPI endpoint. This requires backend changes and introduces a request for every page view.
+
+**Option C: MDX with full component embedding**
+
+Use MDX to embed React components in markdown. Powerful but unnecessary -- the guides are informational text, not interactive.
+
+**Recommendation: Option A (build-time with `react-markdown`)**
+
+Rationale:
+- Guide content is static -- no need for runtime fetch
+- `react-markdown` is the standard React markdown renderer (3.5M+ weekly npm downloads)
+- Markdown files live in the codebase, are version-controlled, and are part of the build
+- No backend changes needed
+- Content updates require a new deploy, which is acceptable for guides that change infrequently
+- `react-markdown` renders to standard React elements, so Tailwind prose styling works naturally
+
+### New Components
+
+**A. Markdown source files**
+
 ```
-ZITADEL JWT carries:
-  - sub: user ID
-  - urn:zitadel:iam:user:resourceowner:id: ZITADEL org ID
-  - urn:zitadel:iam:org:project:{pid}:roles: { "admin": { "org-id": "domain" } }
-
-Backend resolves:
-  1. get_current_user() extracts org_id and role from JWT
-  2. require_role() checks campaign_id in path -> resolve_campaign_role()
-  3. resolve_campaign_role() checks CampaignMember.role first, falls back to JWT role
-  4. set_campaign_context() sets RLS session variable for DB queries
-```
-
-**The gap for org-level UI:** The existing `require_role()` dependency resolves roles per-campaign. Org-level endpoints need a different authorization path:
-
-**Org admin must:**
-1. See all campaigns belonging to their organization (bypass per-campaign RLS)
-2. Manage org members via ZITADEL Management API
-3. Create new campaigns under their org
-4. NOT bypass RLS when operating within a specific campaign
-
-**Proposed auth extension:**
-
-```python
-# New dependency: require_org_role()
-# Unlike require_role() which resolves per-campaign,
-# this checks org-level authorization.
-
-def require_org_role(minimum: str):
-    """Enforce minimum org-level role (from JWT, not per-campaign)."""
-    min_level = CampaignRole[minimum.upper()]
-
-    async def _check_org_role(
-        request: Request,
-        current_user: AuthenticatedUser = Depends(get_current_user),
-        db: AsyncSession = Depends(get_db),
-    ) -> AuthenticatedUser:
-        # JWT role IS the org-level role (ZITADEL project roles are org-scoped)
-        if current_user.role < min_level:
-            raise HTTPException(403, "Insufficient permissions")
-        return current_user
-
-    return _check_org_role
+web/src/content/guides/
+  getting-started.md          -- First-time volunteer orientation
+  canvassing-guide.md         -- How to canvass door-to-door
+  phone-banking-guide.md      -- How to make calls for the campaign
+  faq.md                      -- Frequently asked questions
 ```
 
-**Key insight:** The JWT role claim IS already the org-level role. ZITADEL project roles are assigned per-org (via project grants). The `resolve_campaign_role()` function resolves a potentially different per-campaign role from `CampaignMember.role`. For org-level endpoints, the JWT role is authoritative -- no additional resolution needed.
+**B. Guide viewer component**
 
-**RLS bypass for org admin listing campaigns:**
-
-The org admin needs to list all campaigns for their org. Current RLS is `campaign_id`-scoped, which does not apply to the campaigns table itself (campaigns are not filtered by `app.current_campaign_id` -- they are looked up by Organization or zitadel_org_id). Looking at `list_campaigns()` in `CampaignService`, it already queries campaigns WITHOUT RLS context. So **no RLS bypass is needed** for listing campaigns.
-
-However, the current `list_campaigns()` returns ALL non-deleted campaigns, not filtered by org. This needs filtering:
-
-```python
-# New method: list_org_campaigns()
-async def list_org_campaigns(
-    self,
-    db: AsyncSession,
-    org_id: str,  # ZITADEL org_id from JWT
-    limit: int = 20,
-    cursor: str | None = None,
-) -> tuple[list[Campaign], PaginationResponse]:
-    """List campaigns belonging to the user's organization."""
-    org = await db.scalar(
-        select(Organization).where(Organization.zitadel_org_id == org_id)
-    )
-    query = (
-        select(Campaign)
-        .where(
-            Campaign.status != CampaignStatus.DELETED,
-            Campaign.organization_id == org.id if org else Campaign.zitadel_org_id == org_id,
-        )
-        .order_by(Campaign.created_at.desc(), Campaign.id.desc())
-    )
-    # ... pagination as before
+```
+web/src/components/guides/GuideViewer.tsx
 ```
 
-### New Backend Routes
+A generic markdown renderer component using `react-markdown` with Tailwind's `prose` class for typography. Accepts markdown content as a string prop.
 
-**New API module: `app/api/v1/organizations.py`**
+```typescript
+// GuideViewer.tsx (conceptual)
+import ReactMarkdown from 'react-markdown'
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | `/api/v1/org` | `require_org_role("admin")` | Get current user's organization details |
-| GET | `/api/v1/org/campaigns` | `require_org_role("admin")` | List all campaigns in org |
-| POST | `/api/v1/org/campaigns` | `require_org_role("admin")` | Create campaign under current org |
-| GET | `/api/v1/org/members` | `require_org_role("admin")` | List org members (proxies to ZITADEL) |
-| POST | `/api/v1/org/members/{user_id}/role` | `require_org_role("admin")` | Change member's org role via ZITADEL |
-| DELETE | `/api/v1/org/members/{user_id}` | `require_org_role("owner")` | Remove member from org via ZITADEL |
+export function GuideViewer({ content }: { content: string }) {
+  return (
+    <article className="prose prose-neutral dark:prose-invert max-w-none">
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </article>
+  )
+}
+```
 
-**Route design rationale:** Use `/api/v1/org` (singular, no ID) because the org is determined from the JWT's `org_id` claim. The user's current org context is implicit, matching ZITADEL's model where the JWT carries the active org. This avoids exposing org UUIDs in URLs and prevents cross-org access attempts.
+**C. Guide routes**
 
-**New service: `app/services/organization.py`**
-
-| Method | Purpose |
-|--------|---------|
-| `get_org_for_user(db, org_id)` | Resolve Organization from zitadel_org_id |
-| `list_org_campaigns(db, org_id, ...)` | Campaigns filtered by org |
-| `list_org_members(zitadel, org_id)` | Proxy to ZITADEL Management API |
-| `change_member_role(zitadel, org_id, user_id, role)` | Update role via ZITADEL |
-| `remove_member(zitadel, org_id, user_id)` | Remove from org via ZITADEL |
-
-**ZitadelService additions needed:**
-
-| Method | ZITADEL API | Purpose |
-|--------|-------------|---------|
-| `list_org_users(org_id)` | `POST /v2/users` with x-zitadel-orgid header | List users belonging to org |
-| `list_user_grants(org_id, project_id)` | `POST /management/v1/users/grants/_search` | Get role assignments for org members |
-
-### Frontend Route Structure
-
-**New route tree for org-level pages:**
+These should be **public routes** (no auth required) so volunteers can read them before logging in. This means they need to be excluded from the auth redirect logic in `__root.tsx`.
 
 ```
 web/src/routes/
-  org/
-    index.tsx              -- Org dashboard: summary stats, campaign list
-    campaigns.tsx          -- Full campaign list for org (admin view)
-    members.tsx            -- Org member management
-    settings.tsx           -- Org settings (name, etc.)
+  guides/
+    index.tsx                  -- Guide listing page (card grid)
+    $slug.tsx                  -- Individual guide page
 ```
 
-**TanStack Router file-based routing means:**
+**D. Route configuration changes**
 
-| File | URL | Purpose |
-|------|-----|---------|
-| `routes/org/index.tsx` | `/org` | Org dashboard |
-| `routes/org/campaigns.tsx` | `/org/campaigns` | Campaign list for org |
-| `routes/org/members.tsx` | `/org/members` | Member management |
-| `routes/org/settings.tsx` | `/org/settings` | Org settings |
+In `__root.tsx`, the `PUBLIC_ROUTES` constant (line 56) needs `/guides` added:
 
-**Sidebar integration:** Add "Organization" group to `__root.tsx` AppSidebar, visible only when user has admin+ role:
-
-```tsx
-// In AppSidebar, add new group above the existing "Overview" group:
-<RequireRole minimum="admin">
-  <SidebarGroup>
-    <SidebarGroupLabel>Organization</SidebarGroupLabel>
-    <SidebarGroupContent>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={location.pathname.startsWith("/org")}>
-            <Link to="/org"><Building2 /><span>Organization</span></Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </SidebarGroupContent>
-  </SidebarGroup>
-</RequireRole>
+```typescript
+const PUBLIC_ROUTES = ["/login", "/callback", "/guides"]
 ```
 
-**New hooks needed:**
+This ensures the guide pages render without the sidebar shell and without requiring authentication.
 
-| Hook | File | Purpose |
-|------|------|---------|
-| `useOrg()` | `hooks/useOrg.ts` | Fetch org details for current user |
-| `useOrgCampaigns()` | `hooks/useOrgCampaigns.ts` | List campaigns in org |
-| `useOrgMembers()` | `hooks/useOrgMembers.ts` | List/manage org members |
+**E. SPA fallback awareness**
 
-### Integration Points with Existing ZITADEL Auth Middleware
+The FastAPI SPA fallback in `app/main.py` (line 122-127) catches all non-API paths and returns `index.html`. Guide routes at `/guides/*` will be handled by the SPA fallback, which then lets TanStack Router render the correct component client-side. No backend changes needed.
 
-**What already works:**
+### New Dependency
 
-1. **JWT extraction** -- `get_current_user()` already extracts `org_id` from the JWT (`urn:zitadel:iam:user:resourceowner:id`)
-2. **Role extraction** -- `_extract_role()` already reads org-level role from JWT claims
-3. **ZitadelService** -- Already has `create_organization()`, `assign_project_role()`, `remove_project_role()`, `create_project_grant()`, `ensure_project_grant()`
-4. **Organization model** -- Already exists with `zitadel_org_id` mapping
-5. **Campaign.organization_id** -- Already links campaigns to organizations
-6. **ensure_user_synced()** -- Already handles the Organization -> Campaign lookup path
-7. **CampaignService.create_campaign()** -- Already accepts `organization_id` param to reuse existing org
+| Package | Version | Purpose | Size Impact |
+|---------|---------|---------|-------------|
+| `react-markdown` | ^9.x | Render markdown to React elements | ~40KB gzipped (with remark-parse, unified) |
 
-**What needs to be ADDED to ZitadelService:**
+Alternatively, use Vite's raw import (`?raw` suffix) to import markdown as strings, avoiding any plugin:
 
-```python
-async def list_org_users(self, org_id: str) -> list[dict]:
-    """List users belonging to an organization.
-
-    Uses ZITADEL's user search with org context header.
-    """
-    token = await self._get_token()
-    headers = self._auth_headers(token)
-    headers["x-zitadel-orgid"] = org_id
-    async with httpx.AsyncClient(verify=self._verify_tls) as client:
-        response = await client.post(
-            f"{self.base_url}/v2/users",
-            headers=headers,
-            json={"queries": []},  # All users in org context
-        )
-        response.raise_for_status()
-        return response.json().get("result", [])
-
-async def list_user_grants(self, org_id: str, project_id: str) -> list[dict]:
-    """List all user grants for a project within an org.
-
-    This tells us which users have which roles.
-    """
-    token = await self._get_token()
-    headers = self._auth_headers(token)
-    headers["x-zitadel-orgid"] = org_id
-    async with httpx.AsyncClient(verify=self._verify_tls) as client:
-        response = await client.post(
-            f"{self.base_url}/management/v1/users/grants/_search",
-            headers=headers,
-            json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
-        )
-        response.raise_for_status()
-        return response.json().get("result", [])
+```typescript
+import gettingStarted from '@/content/guides/getting-started.md?raw'
 ```
+
+This is a Vite built-in feature -- no additional plugin needed. Combined with `react-markdown` for rendering, this is the lightest-weight approach.
+
+### Components Affected
+
+| Component | File | Change Type | Scope |
+|-----------|------|-------------|-------|
+| PUBLIC_ROUTES | `web/src/routes/__root.tsx` | MODIFY | Add `/guides` to public routes array |
+| New: guide content | `web/src/content/guides/*.md` | CREATE | 4 markdown guide files |
+| New: GuideViewer | `web/src/components/guides/GuideViewer.tsx` | CREATE | Markdown renderer component |
+| New: guide listing | `web/src/routes/guides/index.tsx` | CREATE | Guide card grid page |
+| New: guide page | `web/src/routes/guides/$slug.tsx` | CREATE | Individual guide route |
+| package.json | `web/package.json` | MODIFY | Add `react-markdown` dependency |
+
+### What Does NOT Change
+
+- No backend API changes
+- No database changes
+- No auth flow changes (guides are public)
+- No existing component modifications (except PUBLIC_ROUTES)
+- driver.js tour system (remains separate and complementary)
+
+### Navigation to Guides
+
+Guides should be accessible from:
+1. **Public URL** -- `/guides` and `/guides/getting-started` etc. for sharing
+2. **Field mode help button** -- Optionally link from the FieldHeader help menu to relevant guide
+3. **Sidebar** -- Optionally add a "Guides" link in the Organization group
+
+The field mode FieldHeader already has an `onHelpClick` callback (in `$campaignId.tsx` line 62). This currently triggers driver.js tours. A secondary "Read Guide" link could be added alongside the tour trigger, linking to the relevant `/guides/*` page.
 
 ---
 
-## Summary of New vs Modified Components
+## Recommended Build Order
+
+### Phase 1: Import Alias Expansion (backend only, isolated)
+
+**Why first:**
+- Smallest scope, lowest risk
+- Pure data/logic change in one file (`import_service.py`)
+- No dependencies on other features
+- Immediately testable with unit tests
+- Fixes real user friction (L2 files not auto-mapping)
+
+**Dependency chain:**
+```
+Add new aliases to CANONICAL_FIELDS
+  -> Add voting history patterns
+    -> Update parse_voting_history()
+      -> Add unit tests for new aliases
+        -> Add unit tests for new voting history patterns
+```
+
+### Phase 2: Sidebar Consolidation (frontend only, isolated)
+
+**Why second:**
+- Very small scope (2 files modified)
+- No backend dependencies
+- Removes code (tab bar) rather than adding
+- Quick visual verification with screenshots
+- Reduces navigation confusion for all subsequent testing
+
+**Dependency chain:**
+```
+Add Surveys + FileText to sidebar navItems (__root.tsx)
+  -> Remove tab bar from CampaignLayout ($campaignId.tsx)
+    -> Remove unused icon imports from $campaignId.tsx
+      -> Visual verification (screenshot all campaign pages)
+```
+
+### Phase 3: RLS Audit (test-only, validates data layer)
+
+**Why third:**
+- Test-only deliverable -- writes new integration tests
+- Does not modify production code (unless a bug is found)
+- Benefits from sidebar consolidation being done (easier manual testing)
+- Verifies the data isolation foundation before adding more features
+
+**Dependency chain:**
+```
+Create two-campaign test fixture with data in all 33 RLS tables
+  -> Write per-table isolation assertions
+    -> Write junction table cross-reference tests
+      -> Run full test suite
+        -> Fix any discovered issues (migration if needed)
+```
+
+### Phase 4: Onboarding Guides (frontend + new dependency)
+
+**Why last:**
+- Requires new npm dependency (`react-markdown`)
+- Creates new routes and components
+- Content writing is separate from code work
+- Does not block any other feature
+- Least urgency for demo readiness
+
+**Dependency chain:**
+```
+Install react-markdown
+  -> Create GuideViewer component
+    -> Create guide markdown content files
+      -> Create guide routes (index + $slug)
+        -> Add /guides to PUBLIC_ROUTES
+          -> Optional: link from FieldHeader
+            -> Visual verification (screenshot guide pages)
+```
+
+### Cross-Feature Dependencies
+
+```
+Phase 1 (Import) -----> Independent
+Phase 2 (Sidebar) ----> Independent
+Phase 3 (RLS Audit) --> Independent (but benefits from Phase 2 for manual testing)
+Phase 4 (Guides) -----> Independent
+```
+
+**All four features are independent.** No cross-feature dependencies exist. They can theoretically be built in parallel, but the recommended order minimizes risk and provides early value.
+
+---
+
+## Summary: New vs Modified Components
 
 ### Backend -- Modified
 
-| File | Change |
-|------|--------|
-| `app/api/v1/router.py` | Add `organizations` router include |
-| `app/services/zitadel.py` | Add `list_org_users()`, `list_user_grants()` |
-| `app/core/security.py` | Add `require_org_role()` dependency factory |
-| `app/schemas/turf.py` | Optionally add `voter_count` field |
-| `app/api/v1/turfs.py` | Optionally include voter count in detail response |
+| File | Change | Feature |
+|------|--------|---------|
+| `app/services/import_service.py` | Add ~30 aliases, replace voting history regex | Import Aliases |
 
 ### Backend -- New
 
-| File | Purpose |
-|------|---------|
-| `app/api/v1/organizations.py` | Org-level API endpoints |
-| `app/services/organization.py` | Org business logic |
-| `app/schemas/organization.py` | Org request/response schemas |
+| File | Purpose | Feature |
+|------|---------|---------|
+| None | -- | -- |
+
+### Backend -- Test Only
+
+| File | Purpose | Feature |
+|------|---------|---------|
+| `tests/unit/test_import_parsing.py` | New test cases for voting history patterns | Import Aliases |
+| `tests/unit/test_field_mapping.py` | New test cases for expanded aliases | Import Aliases |
+| `tests/integration/test_rls_full_audit.py` | Comprehensive cross-campaign isolation test | RLS Audit |
 
 ### Frontend -- Modified
 
-| File | Change |
-|------|--------|
-| `web/src/components/canvassing/TurfForm.tsx` | Replace textarea with Leaflet map + draw controls |
-| `web/src/routes/.../canvassing/index.tsx` | Add overview map rendering all turfs |
-| `web/src/routes/.../turfs/new.tsx` | Layout adjustments for map component |
-| `web/src/routes/.../turfs/$turfId.tsx` | Map rendering of existing boundary + edit controls |
-| `web/src/routes/__root.tsx` | Add "Organization" sidebar group |
+| File | Change | Feature |
+|------|--------|---------|
+| `web/src/routes/__root.tsx` | Add Surveys nav item + FileText icon; add `/guides` to PUBLIC_ROUTES | Sidebar + Guides |
+| `web/src/routes/campaigns/$campaignId.tsx` | Remove tabs array and nav element | Sidebar |
+| `web/package.json` | Add `react-markdown` dependency | Guides |
 
 ### Frontend -- New
 
-| File | Purpose |
-|------|---------|
-| `web/src/components/map/TurfMap.tsx` | Base map component with react-leaflet |
-| `web/src/components/map/TurfDrawControl.tsx` | Leaflet.Draw polygon tool integration |
-| `web/src/components/map/TurfPolygonLayer.tsx` | Single turf GeoJSON rendering |
-| `web/src/components/map/TurfOverviewMap.tsx` | All-turfs overview map |
-| `web/src/routes/org/index.tsx` | Org dashboard page |
-| `web/src/routes/org/campaigns.tsx` | Org campaign list page |
-| `web/src/routes/org/members.tsx` | Org member management page |
-| `web/src/routes/org/settings.tsx` | Org settings page |
-| `web/src/hooks/useOrg.ts` | Org data hooks |
-| `web/src/hooks/useOrgCampaigns.ts` | Org campaign hooks |
-| `web/src/hooks/useOrgMembers.ts` | Org member hooks |
-| `web/src/types/organization.ts` | Org TypeScript types |
+| File | Purpose | Feature |
+|------|---------|---------|
+| `web/src/content/guides/getting-started.md` | First-time volunteer guide | Guides |
+| `web/src/content/guides/canvassing-guide.md` | Canvassing walkthrough | Guides |
+| `web/src/content/guides/phone-banking-guide.md` | Phone banking walkthrough | Guides |
+| `web/src/content/guides/faq.md` | Frequently asked questions | Guides |
+| `web/src/components/guides/GuideViewer.tsx` | Markdown renderer component | Guides |
+| `web/src/routes/guides/index.tsx` | Guide listing page | Guides |
+| `web/src/routes/guides/$slug.tsx` | Individual guide page | Guides |
 
 ---
 
-## Build Order Recommendation
+## Data Flow Diagrams
 
-### Phase 1: Map-Based Turf Editor (build FIRST)
-
-**Why first:**
-1. The backend serialization layer is already complete -- zero backend changes needed for basic map editor
-2. This is purely a frontend feature: replace TurfForm textarea with a Leaflet map
-3. No new API routes, no auth changes, no migrations
-4. Immediately testable with existing turf data
-5. Lower integration risk -- stays within the existing campaign-scoped route tree
-
-**Build sequence within this phase:**
-1. Install `leaflet-draw` package (and `@types/leaflet-draw` if available)
-2. Create `TurfMap.tsx` base component (MapContainer + TileLayer)
-3. Create `TurfDrawControl.tsx` (draw polygon tool)
-4. Modify `TurfForm.tsx` to use map instead of textarea
-5. Verify create flow works end-to-end (draw -> API -> re-render)
-6. Add `TurfPolygonLayer.tsx` for edit page (render existing boundary)
-7. Modify `TurfDetailPage` to show boundary on map with edit capability
-8. Create `TurfOverviewMap.tsx` for canvassing index page
-9. Add Leaflet CSS imports and fix any bundler issues (marker icons)
-
-### Phase 2: Organization-Level UI (build SECOND)
-
-**Why second:**
-1. Requires new backend routes, new service layer, and ZitadelService additions
-2. Touches the auth middleware (new `require_org_role` dependency)
-3. Requires new frontend route tree (`/org/*`)
-4. More integration points = more risk of regressions
-5. Depends on understanding how ZITADEL Management API responds in production (live testing needed)
-
-**Build sequence within this phase:**
-1. Add `require_org_role()` to security module
-2. Add `list_org_users()` and `list_user_grants()` to ZitadelService
-3. Create `OrganizationService` with `get_org_for_user()`, `list_org_campaigns()`
-4. Create org API endpoints (start with GET `/org` and GET `/org/campaigns`)
-5. Create frontend types and hooks (`useOrg`, `useOrgCampaigns`)
-6. Create `/org` route pages (dashboard first, then campaigns list)
-7. Add sidebar "Organization" nav item with RequireRole gate
-8. Add member management (GET/POST/DELETE `/org/members/*`)
-9. Create member management UI
-
-### Dependency Chain
+### Import Pipeline (after alias expansion)
 
 ```
-Phase 1 (Map Editor):
-  leaflet-draw install
-    -> TurfMap component
-      -> TurfDrawControl component
-        -> TurfForm modification
-          -> TurfPolygonLayer component
-            -> TurfDetailPage modification
-              -> TurfOverviewMap
-                -> CanvassingIndex modification
-
-Phase 2 (Org UI):
-  require_org_role() security dependency
-    -> ZitadelService additions
-      -> OrganizationService
-        -> Org API endpoints
-          -> Frontend hooks
-            -> Route pages
-              -> Sidebar integration
-                -> Member management
+CSV file uploaded to MinIO
+  |
+  v
+detect_columns endpoint downloads first 8KB
+  |
+  v
+ImportService.detect_columns() extracts headers
+  |
+  v
+suggest_field_mapping() fuzzy-matches against EXPANDED CANONICAL_FIELDS
+  (new aliases auto-map more L2 columns -> fewer manual corrections)
+  |
+  v
+User confirms mapping (or tweaks in wizard UI)
+  |
+  v
+Background task: process_import_file()
+  |
+  v
+For each batch of 1000 rows:
+  apply_field_mapping() maps CSV values to voter dicts
+    |
+    v
+  parse_voting_history() now uses MULTI-PATTERN matching
+    (GEN_2024 -> General_2024, G2024 -> General_2024, etc.)
+    |
+    v
+  process_csv_batch() upserts voters + creates VoterPhone records
+  |
+  v
+Voter.voting_history stores canonical ["General_2024", "Primary_2022", ...]
+  (same format regardless of CSV column naming convention)
 ```
 
-**No cross-dependencies between phases** -- they can be built independently and in parallel if desired. However, building the map editor first is lower risk and provides immediate user value with minimal code changes.
+### Navigation Flow (after sidebar consolidation)
+
+```
+Authenticated user at /campaigns/$campaignId/*
+  |
+  v
+__root.tsx RootLayout renders SidebarProvider
+  |
+  v
+AppSidebar renders Campaign group with 7 items:
+  Dashboard, Voters, Canvassing, Phone Banking,
+  Surveys (NEW), Volunteers, Field Operations
+  |
+  v
+$campaignId.tsx CampaignLayout renders:
+  Campaign name header + <Outlet /> (NO TAB BAR)
+  |
+  v
+Nested route component renders in Outlet
+```
+
+### Guide Pages Flow
+
+```
+User navigates to /guides (public, no auth required)
+  |
+  v
+__root.tsx detects /guides in PUBLIC_ROUTES
+  -> Renders without sidebar shell (just Outlet + Toaster)
+  |
+  v
+TanStack Router matches /guides/index.tsx
+  -> Renders card grid of available guides
+  |
+  v
+User clicks guide card
+  -> Navigates to /guides/$slug
+  |
+  v
+$slug.tsx imports markdown via Vite ?raw suffix
+  -> Passes content string to GuideViewer component
+  |
+  v
+GuideViewer renders ReactMarkdown with Tailwind prose styling
+```
 
 ## Sources
 
-- Codebase analysis: `app/services/turf.py`, `app/api/v1/turfs.py`, `app/schemas/turf.py` (serialization layer)
-- Codebase analysis: `app/core/security.py` (auth/role resolution)
-- Codebase analysis: `app/api/deps.py` (RLS setup, user sync)
-- Codebase analysis: `app/services/zitadel.py` (existing ZITADEL Management API methods)
-- Codebase analysis: `app/models/organization.py`, `app/models/campaign.py` (data model)
-- Codebase analysis: `web/package.json` (leaflet, react-leaflet already installed)
-- Codebase analysis: `web/src/hooks/useTurfs.ts` (existing mutation patterns)
-- Training data: Leaflet.Draw API, react-leaflet v5 patterns (MEDIUM confidence -- verify against current docs)
-- Training data: ZITADEL Management API v1 endpoints (MEDIUM confidence -- verify against ZITADEL docs)
+- Codebase analysis: `app/services/import_service.py` (CANONICAL_FIELDS, voting history regex, ImportService methods)
+- Codebase analysis: `app/db/rls.py`, `app/db/session.py` (RLS context, pool checkout defense)
+- Codebase analysis: `app/api/deps.py` (get_campaign_db centralized dependency)
+- Codebase analysis: `alembic/versions/001-005` (all 33 RLS policies enumerated)
+- Codebase analysis: `web/src/routes/__root.tsx` (sidebar navigation, PUBLIC_ROUTES)
+- Codebase analysis: `web/src/routes/campaigns/$campaignId.tsx` (duplicate tab bar)
+- Codebase analysis: `web/src/components/field/tour/tourSteps.ts` (existing driver.js onboarding)
+- Codebase analysis: `app/main.py` (SPA fallback for client-side routing)
+- Codebase analysis: `web/vite.config.ts` (Vite build pipeline, plugin configuration)
+- Codebase analysis: `tests/integration/test_rls_isolation.py`, `test_rls_api_smoke.py` (existing RLS tests)
+- [L2 National Voter File documentation](https://redivis.com/datasets/4r1c-d6j182y87) (voting history column formats: elec_date/elec_type)
+- [L2 voter data guides](https://libguides.wustl.edu/L2_voter_data) (VM2 format documentation)
+- [react-markdown GitHub](https://github.com/remarkjs/react-markdown) (markdown renderer for React, HIGH confidence)
+- [L2 Documentation at Penn Libraries](https://guides.library.upenn.edu/L2/documentation) (VM2 Uniform Format File Layout)
+- [Voter Reference Foundation - Vote History 101](https://www.voterreferencefoundation.com/voter-data-101-vote-history/) (voting history data patterns)
