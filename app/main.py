@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_router)
 
     # Serve built frontend in production (static/ exists only in Docker image)
-    if STATIC_DIR.exists():
+    if (STATIC_DIR / "assets").is_dir():
         app.mount(
             "/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets"
         )

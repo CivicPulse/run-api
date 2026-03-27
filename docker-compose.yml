@@ -40,6 +40,27 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  web:
+    image: node:22-slim
+    container_name: run-api-web
+    working_dir: /home/app/web
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY_TARGET: http://api:8000
+      MINIO_PROXY_TARGET: http://minio:9000
+    env_file:
+      - path: web/.env.local
+        required: false
+    volumes:
+      - ./web:/home/app/web
+      - ./certs:/home/app/certs:ro
+      - web_node_modules:/home/app/web/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
   postgres:
     image: postgis/postgis:17-3.5
     container_name: run-api-postgres
@@ -159,3 +180,4 @@ volumes:
   pgdata:
   minio_data:
   zitadel_pgdata:
+  web_node_modules:
