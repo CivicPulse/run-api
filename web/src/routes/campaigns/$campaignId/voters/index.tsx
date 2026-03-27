@@ -426,6 +426,7 @@ function buildColumns(
       id: "full_name",
       header: "Name",
       enableSorting: true,
+      accessorFn: (row) => row.last_name ?? "",
       cell: ({ row }) => {
         const v = row.original
         const name = [v.first_name, v.last_name].filter(Boolean).join(" ") || "Unknown"
@@ -445,6 +446,7 @@ function buildColumns(
       id: "party",
       header: "Party",
       enableSorting: true,
+      accessorFn: (row) => row.party ?? "",
       cell: ({ row }) => {
         const party = row.original.party
         if (!party) return <span className="text-muted-foreground">—</span>
@@ -459,6 +461,7 @@ function buildColumns(
       id: "city",
       header: "City",
       enableSorting: true,
+      accessorFn: (row) => row.registration_city ?? "",
       cell: ({ row }) => row.original.registration_city ?? <span className="text-muted-foreground">—</span>,
     },
     {
@@ -474,6 +477,7 @@ function buildColumns(
       id: "age",
       header: "Age",
       enableSorting: true,
+      accessorFn: (row) => row.age ?? (row.date_of_birth ? calculateAge(row.date_of_birth) : 0),
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => {
         const v = row.original
