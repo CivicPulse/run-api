@@ -10,11 +10,18 @@ const hasTailscaleCerts = fs.existsSync(
   path.resolve(__dirname, "../certs/dev.tailb56d83.ts.net.crt"),
 )
 
+const isDocker = !!process.env.API_PROXY_TARGET
+const apiTarget =
+  process.env.API_PROXY_TARGET ||
+  (hasTailscaleCerts ? "https://localhost:8000" : "http://localhost:8000")
+const minioTarget = process.env.MINIO_PROXY_TARGET || "http://localhost:9000"
+const useHttps = hasTailscaleCerts && !isDocker
+
 // https://vite.dev/config/
 export default defineConfig({
   server: {
     host: "0.0.0.0",
-    https: hasTailscaleCerts
+    https: useHttps
       ? {
           cert: fs.readFileSync(
             path.resolve(__dirname, "../certs/dev.tailb56d83.ts.net.crt"),
@@ -24,7 +31,7 @@ export default defineConfig({
           ),
         }
       : undefined,
-    hmr: hasTailscaleCerts
+    hmr: useHttps
       ? {
           protocol: "wss",
           host: "dev.tailb56d83.ts.net",
@@ -35,35 +42,29 @@ export default defineConfig({
         },
     proxy: {
       "/api": {
-        target: hasTailscaleCerts
-          ? "https://localhost:8000"
-          : "http://localhost:8000",
+        target: apiTarget,
         changeOrigin: true,
-        secure: false, // Allow self-signed certs in local dev (Tailscale/mkcert)
+        secure: false,
       },
       "/openapi.json": {
-        target: hasTailscaleCerts
-          ? "https://localhost:8000"
-          : "http://localhost:8000",
+        target: apiTarget,
         changeOrigin: true,
         secure: false,
       },
       "/health": {
-        target: hasTailscaleCerts
-          ? "https://localhost:8000"
-          : "http://localhost:8000",
+        target: apiTarget,
         changeOrigin: true,
         secure: false,
       },
       "/voter-imports": {
-        target: "http://localhost:9000",
+        target: minioTarget,
         changeOrigin: true,
       },
     },
   },
   plugins: [
-    // Use Tailscale certs for trusted HTTPS; fall back to basicSsl() for localhost
-    ...(hasTailscaleCerts ? [] : [basicSsl()]),
+    // Use Tailscale certs for trusted HTTPS; fall back to basicSsl() for localhost (skip in Docker)
+    ...(!hasTailscaleCerts && !isDocker ? [basicSsl()] : []),
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
