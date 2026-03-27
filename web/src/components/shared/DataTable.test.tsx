@@ -136,4 +136,55 @@ describe("DataTable", () => {
     )
     expect(screen.getByText("Try adjusting your filters")).toBeInTheDocument()
   })
+
+  it("sorts rows client-side when onSortingChange is not provided", () => {
+    const unsortedData: TestRow[] = [
+      { id: "3", name: "Charlie", status: "active" },
+      { id: "1", name: "Alice", status: "inactive" },
+      { id: "2", name: "Bob", status: "active" },
+    ]
+    const { container } = render(
+      <DataTable columns={columns} data={unsortedData} />
+    )
+
+    // Click the Name column header to sort ascending
+    fireEvent.click(screen.getByText("Name"))
+
+    // Get all cells in the Name column (first column of each data row)
+    const rows = container.querySelectorAll("tbody tr")
+    const names = Array.from(rows).map(
+      (row) => row.querySelector("td")?.textContent
+    )
+    expect(names).toEqual(["Alice", "Bob", "Charlie"])
+  })
+
+  it("does not sort client-side when onSortingChange is provided (manual mode)", () => {
+    const onSortingChange = vi.fn()
+    const unsortedData: TestRow[] = [
+      { id: "3", name: "Charlie", status: "active" },
+      { id: "1", name: "Alice", status: "inactive" },
+      { id: "2", name: "Bob", status: "active" },
+    ]
+    const { container } = render(
+      <DataTable
+        columns={columns}
+        data={unsortedData}
+        sorting={[]}
+        onSortingChange={onSortingChange}
+      />
+    )
+
+    // Click the Name column header
+    fireEvent.click(screen.getByText("Name"))
+
+    // onSortingChange should have been called (server-side delegation)
+    expect(onSortingChange).toHaveBeenCalled()
+
+    // Row order should be unchanged (manualSorting prevents client-side sort)
+    const rows = container.querySelectorAll("tbody tr")
+    const names = Array.from(rows).map(
+      (row) => row.querySelector("td")?.textContent
+    )
+    expect(names).toEqual(["Charlie", "Alice", "Bob"])
+  })
 })

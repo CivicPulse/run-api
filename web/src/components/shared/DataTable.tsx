@@ -2,6 +2,7 @@ import React from "react"
 import {
   useReactTable,
   getCoreRowModel,
+  getSortedRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
@@ -54,20 +55,27 @@ export function DataTable<TData>({
   onNextPage,
   onPreviousPage,
 }: DataTableProps<TData>) {
+  const isManualSorting = !!onSortingChange
+
   const table = useReactTable({
     data,
     columns,
     state: {
-      sorting: sorting ?? [],
+      ...(isManualSorting ? { sorting: sorting ?? [] } : {}),
     },
-    onSortingChange: (updater) => {
-      if (onSortingChange) {
-        const newSorting =
-          typeof updater === "function" ? updater(sorting ?? []) : updater
-        onSortingChange(newSorting)
-      }
-    },
-    manualSorting: true,
+    ...(isManualSorting
+      ? {
+          onSortingChange: (updater) => {
+            const newSorting =
+              typeof updater === "function" ? updater(sorting ?? []) : updater
+            onSortingChange(newSorting)
+          },
+          manualSorting: true,
+        }
+      : {
+          manualSorting: false,
+          getSortedRowModel: getSortedRowModel(),
+        }),
     manualFiltering: true,
     manualPagination: true,
     getCoreRowModel: getCoreRowModel(),

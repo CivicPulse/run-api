@@ -65,9 +65,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260325-tqb | Fix opaque token + admin org in bootstrap | 2026-03-25 | 1993358 | [260325-tqb](./quick/260325-tqb-resolve-issues-in-login-test-screenshots/) |
 | 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
 | 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | bd554f8 | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
+| 260327-o38 | Fix sort buttons on all DataTable columns | 2026-03-27 | 48e0c3e | [260327-o38](./quick/260327-o38-fix-sort-buttons-on-all-datatables-colum/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-26 - Completed quick task 260325-vh6: add field operations link to sidebar menu
-Stopped at: Completed quick-260325-u3q
+Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
+Stopped at: Completed quick-260327-o38
 Resume file: None
