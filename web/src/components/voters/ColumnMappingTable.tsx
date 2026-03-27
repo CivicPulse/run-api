@@ -81,10 +81,10 @@ export function ColumnMappingTable({
                 </SelectContent>
               </Select>
               {badge === "green" && (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" aria-label="High confidence match" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-foreground" aria-label="High confidence match" />
               )}
               {badge === "yellow" && (
-                <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-500" aria-label="No suggestion available" />
+                <AlertTriangle className="h-4 w-4 shrink-0 text-status-warning-foreground" aria-label="No suggestion available" />
               )}
             </div>
           </div>

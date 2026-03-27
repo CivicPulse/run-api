@@ -17,7 +17,7 @@ export function CanvassingCompletionSummary({ stats, campaignId }: CanvassingCom
   return (
     <div className="flex flex-1 items-center justify-center p-4">
       <Card className="p-6 text-center max-w-sm">
-        <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-600" />
+        <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-status-success-foreground" />
         <h2 className="text-xl font-semibold mb-2">Great work!</h2>
         <p className="text-sm text-muted-foreground mb-4">
           You completed your walk list.
