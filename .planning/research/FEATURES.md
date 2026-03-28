@@ -1,204 +1,225 @@
-# Feature Landscape: v1.7 Testing & Validation
+# Feature Landscape: v1.6 Large-File Voter Import & L2 Auto-Mapping
 
-**Domain:** Comprehensive E2E testing pipeline, AI-driven production testing, test user provisioning, small feature gaps
-**Researched:** 2026-03-29
-**Overall confidence:** HIGH (existing Playwright infrastructure well-understood, testing plan is detailed, ZITADEL user provisioning script already exists as a pattern)
+**Domain:** Background import processing, resumable batch imports, progress reporting, L2 voter file format handling
+**Researched:** 2026-03-28
+**Overall confidence:** HIGH (domain is well-understood, codebase patterns clear, L2 format knowledge from existing alias dictionary and real import pipelines)
 
 ---
 
 ## Table Stakes
 
-Features that any comprehensive E2E testing pipeline must have. Missing any of these means the testing suite is unreliable, unmaintainable, or incomplete.
+Features campaigns expect from a voter import system handling files of 50K-500K+ rows. Missing any of these makes large imports unusable or unreliable.
 
 | Feature | Why Expected | Complexity | Depends On | Notes |
 |---------|--------------|------------|------------|-------|
-| Multi-role auth setup projects | Each of the 5 campaign roles + 2 org roles needs its own authenticated storage state. Without this, tests cannot verify role-based UI gating. | Low | Extend existing `playwright.config.ts` projects pattern | Already have 3 auth setups (default user, orgadmin, volunteer). Need to expand to cover all 15 test users from the plan, or at minimum one per distinct role level (owner, admin, manager, volunteer, viewer). |
-| ZITADEL test user provisioning script | Automated tests require known user credentials. Manual user creation in ZITADEL is error-prone and non-repeatable. Must be idempotent. | Low | Extend existing `scripts/create-e2e-users.py` from 2 users to 15 users | Script already handles ZITADEL v1 Management API, project role grants, and org membership insertion. Expand the `E2E_USERS` list and add campaign membership setup. |
-| Test data seeding and isolation | Each test run needs a known-good data state. Tests that depend on previous test output are fragile and order-dependent. | Medium | Seed script + per-suite setup/teardown hooks | Existing `scripts/seed.py` provides Macon-Bibb demo dataset. Tests should use `test.describe.serial()` where ordering matters and API-based setup/teardown for created test data. |
-| Comprehensive RBAC verification | The testing plan defines RBAC-01 through RBAC-09 covering all 5 campaign roles and 2 org roles. This is the most critical test category -- security regressions must be caught. | Medium | All 5+ role auth storage states loaded; viewer, volunteer, manager, admin, owner all exercised | Current suite has `role-gated.volunteer.spec.ts` and `role-gated.orgadmin.spec.ts`. Need equivalent specs for viewer (read-only), manager, and owner (destructive actions). |
-| CRUD lifecycle tests for every entity type | The testing plan covers 10+ entity types (voters, contacts, tags, lists, turfs, walk lists, call lists, sessions, surveys, volunteers, shifts). Each needs create/read/update/delete coverage. | High | Per-entity spec files with setup/teardown | The most labor-intensive portion of the test suite. ~80+ individual test cases across 15+ spec files. Must exercise every form, dialog, and action menu in the app. |
-| Import pipeline E2E tests | L2 import is the primary data ingestion path. Must verify upload, auto-mapping, preview, execution, progress, and completion with real CSV data. | Medium | `data/example-2026-02-24.csv` (551 voters) available in test environment | Existing `voter-import.spec.ts` and `l2-import-wizard.spec.ts` cover basic flows. Need to expand to cover concurrent import prevention (IMP-03), cancellation (IMP-04), and data validation (VAL-01/VAL-02). |
-| Field mode E2E tests | Canvassing and phone banking field modes are the core volunteer UX. Must verify the linear wizard, outcome recording, survey integration, and session persistence. | Medium | Walk list with assigned canvasser, phone bank session with assigned caller | Existing `phase31-canvassing.spec.ts` and `phase30-field-layout.spec.ts` provide partial coverage. Need focused tests for the step-by-step canvassing/calling experience. |
-| Accessibility spot-check automation | axe-core scans across critical routes catch WCAG regressions. Existing `a11y-scan.spec.ts` covers 38 routes. | Low | Already exists; extend if new routes added | Maintain existing a11y-scan coverage. Add keyboard navigation verification for new features (note edit/delete, walk list rename). |
-| Test cleanup strategy | Tests that create data must clean it up. Orphaned test data causes subsequent test runs to fail or produce false results. | Low | `test.afterAll()` hooks or API-based cleanup in each spec | Use API calls in cleanup hooks rather than UI-based deletion to keep cleanup fast and reliable. Where possible, create throwaway campaigns scoped to individual test suites. |
+| Background import processing (non-blocking) | A 200K-row file takes 2-10 minutes to process. Blocking the HTTP request means timeouts, browser hangs, and lost imports. Users expect to start an import and continue working. | Medium | Replace TaskIQ InMemoryBroker with Procrastinate PostgreSQL job queue | Current system dispatches via `broker.task` with `InMemoryBroker` -- jobs evaporate on restart. Procrastinate stores jobs in PostgreSQL alongside application data, using the same database. POST `/confirm` should return 202 Accepted, not block. |
+| Per-batch commits (partial progress survives crashes) | If the API pod crashes at row 150K of 300K, users expect the first 150K to be persisted, not lost. Current `process_import_file` does a single `session.commit()` at the end via `process_import` task. | Medium | Modify `process_import_file` to commit after each batch; add `last_committed_batch` tracking to ImportJob model | The current code does `session.flush()` per batch but only `session.commit()` at the end in `import_task.py:51`. A pod crash loses ALL progress. Each 1000-row batch must be its own committed transaction. |
+| Resume from last committed batch after crash | If a pod crashes mid-import, users expect to click "retry" and have it pick up where it left off rather than re-importing (and duplicating) rows 1-150K. | Medium | `last_committed_batch` column on ImportJob, byte-offset or row-offset tracking, `csv.DictReader` skip logic | The ON CONFLICT upsert makes re-processing idempotent for rows with `source_id`, but re-processing 150K rows is wasteful. Track the byte offset or batch number of last committed batch. Resume from there. |
+| Real-time progress reporting (rows processed, errors, rate) | Users staring at an import screen need to see it moving. Row count, percentage, error count, and estimated time remaining are expected for any import over 10 seconds. | Low | Already exists: `ImportProgress.tsx` polls `useImportJob` every 3s, shows imported/skipped/total counts and percentage bar | Existing progress UI is well-built. The infrastructure is in place. Only need to ensure the polling endpoint returns fresh data after each batch commit (not just after full completion). Currently, `job.imported_rows` updates per-flush but is only visible after commit. With per-batch commits, progress becomes real. |
+| Error report download | When rows fail validation, users need to know which rows failed and why so they can fix the source file and re-import. | Low | Already exists: error CSV uploaded to MinIO, pre-signed download URL returned in `ImportJobResponse.error_report_key` | Fully implemented. No changes needed. |
+| L2 column auto-mapping with zero manual intervention | L2 is the dominant voter data vendor for US campaigns. Campaigns buy L2 files and expect upload-then-go. If 10 of 55 columns fail to auto-map, users have to manually fix them -- unacceptable for a non-technical campaign staffer. | Medium | Expand `CANONICAL_FIELDS` alias dictionary with ALL known L2 "friendly name" headers; lower fuzzy threshold for L2-specific patterns | Current dictionary has ~30 L2 aliases across 42 canonical fields but misses many L2-specific column name patterns. L2 uses several naming conventions: `Voters_FirstName`, `Residence_Addresses_City`, `CommercialData_MaritalStatus`, `EthnicGroups_EthnicGroup1Desc`, `General_YYYY`, `Parties_Description`. Some of these already map; many do not. |
+| Voting history format flexibility | L2 exports use multiple column naming conventions for voting history across different states and export versions. Current regex only handles `General_YYYY` and `Primary_YYYY`. | Low | Extend `_VOTING_HISTORY_RE` regex and `parse_voting_history()` to handle additional formats | Known L2 formats: `General_YYYY`, `Primary_YYYY` (handled), plus `Voted_in_YYYY_General`, `Voted in YYYY`, `GeneralElection_YYYY`, `Gen_YYYY`, `Prim_YYYY`. Need to normalize all to `General_YYYY`/`Primary_YYYY` canonical form. |
 
 ## Differentiators
 
-Features that go beyond standard E2E coverage and add significant quality or operational value. Not universally expected in a test suite but highly valuable for this project.
+Features that set the import experience apart from basic CSV upload tools. Not universally expected but significantly improve campaign staff trust and efficiency.
 
 | Feature | Value Proposition | Complexity | Depends On | Notes |
 |---------|-------------------|------------|------------|-------|
-| AI-driven production testing instructions | Transform the 34-section testing plan into structured step-by-step instructions an AI agent (or human QA tester) can follow against production. Bridges the gap between automated dev tests and production validation. | Low | The testing plan document already exists in `docs/testing-plan.md` | This is a documentation deliverable, not a code feature. Rewrite the testing plan as an imperative instruction set with explicit success criteria, screenshots expectations, and environmental notes for production vs. local dev differences. |
-| Data validation test cases (CSV-to-UI verification) | VAL-01 and VAL-02 from the testing plan verify that imported CSV data appears correctly in the UI across 60 voters. This catches data parsing bugs, display formatting issues, and mapping errors that unit tests miss. | High | Import completed, 551 voters in DB, CSV file accessible to Playwright for comparison | This is the hardest test category to automate. Requires reading expected values from the CSV, navigating to voter detail pages, and comparing field-by-field. Consider a fixture that loads the CSV and provides expected values to tests. |
-| Connected journey tests | A single test that exercises the full user journey: org dashboard to campaign creation to turf creation to voter management to phone banking. Proves features compose into a working application. | Medium | All individual features working | Existing `connected-journey.spec.ts` covers campaign creation flow. Extend to include deeper journeys through canvassing and phone banking. |
-| Offline sync verification | Verify that field mode outcomes queued during network disconnection sync correctly when connectivity resumes. Tests the localStorage queue and auto-sync logic. | Medium | Playwright network throttling/offline simulation | Existing `phase33-offline-sync.spec.ts` provides baseline. The testing plan defines OFFLINE-01 through OFFLINE-03 with specific queue count and sync verification. |
-| Iterative test-fix-retest cycle | Run the full test suite, identify failures, fix the underlying issues (UI bugs, API bugs, missing features), and re-run until 100% pass rate. The milestone goal is not just test creation but validation completion. | High | Full test suite written; developer time to fix bugs | This is the operational differentiator. Most projects write tests and call it done. This milestone explicitly includes fixing all bugs the tests uncover, which produces a genuinely validated product. |
-| Tour and onboarding verification | Verify the driver.js guided onboarding tour starts for first-time users, completes all steps, persists completion state, and replays via help button. | Low | Existing `tour-onboarding.spec.ts` provides baseline | Testing plan defines TOUR-01 through TOUR-03. Existing spec has 17 test/describe calls, likely already covers most of this. Verify coverage completeness. |
-| Rate limiting verification | Verify that rapid API calls trigger 429 responses. Confirms production-hardening works. | Low | No dependencies beyond an authenticated user | Simple to automate: loop 35 API calls in under a minute and assert on 429. More of an API-level test but validates the full stack behavior. |
-| Form navigation guard testing | Verify that partially filled forms warn before navigation. Tests `useFormGuard` hook across all form routes. | Low | Any form-bearing route | Testing plan defines CROSS-01. Automate by filling a form, clicking sidebar navigation, asserting guard dialog appears, then testing both "Stay" and "Leave" paths. |
+| Zero-touch L2 import (skip mapping step entirely) | When 100% of columns auto-map, skip the column mapping step in the wizard. Upload, see confirmation summary, click import. Reduces a 4-step process to 3 steps for the most common file format. | Low | High-confidence auto-mapping for all L2 columns, frontend wizard conditional step skip | Detect L2 format by presence of signature columns (`LALVOTERID`, `Voters_FirstName`, `Residence_Addresses_*`). When all detected columns map at 100% alias-match (not fuzzy), auto-confirm and skip step 2. |
+| Format auto-detection with confidence display | Show "45 of 47 columns auto-mapped (96%)" on the mapping screen. Users see at a glance whether manual review is needed. Builds trust in the auto-mapping. | Low | Compute mapped/total ratio from `suggest_field_mapping()` output (count non-None values / total columns) | Pure frontend calculation from existing data. No backend changes needed. |
+| Per-batch error isolation (partial success is OK) | If batch 5 fails on a database constraint, batches 1-4 and 6+ still succeed. Users get a partial import with a clear error report rather than a total failure. | Medium | Each batch processed in its own subtransaction (SAVEPOINT) with rollback on failure; error details captured per-batch | Current code propagates batch exceptions to fail the entire import. With per-batch error isolation, a corrupted row in batch 5 does not destroy the entire 300K-row import. |
+| Import cancellation | User realizes they uploaded the wrong file after processing starts. Click "Cancel" to stop processing remaining batches. Already-committed batches remain (intentional -- upsert-safe). | Low | Add `CANCELLED` to `ImportStatus` enum, check status before each batch in processing loop, expose `POST /imports/{id}/cancel` endpoint | Simple: worker checks `job.status` at the top of each batch loop iteration. If status has been set to `CANCELLED` by the cancel endpoint, break the loop and finalize. |
+| Stale import cleanup (auto-expire PENDING/QUEUED jobs) | If a user initiates an import but never uploads the file, the PENDING job sits forever. Auto-expire after 24h. Clean up orphaned S3 objects. | Low | Procrastinate periodic task or database-level cleanup; check `created_at < now() - interval '24 hours'` for PENDING/QUEUED jobs | Prevents accumulation of zombie import jobs. Low priority but good hygiene. |
+| Import file size estimation and pre-validation | Before uploading, count lines in the file (browser-side) and display estimated rows and processing time. Warn if file exceeds reasonable limits (>1M rows). | Low | Browser-side `FileReader` line counting on the uploaded file, display in DropZone component | Under-promise on time estimates (say "10-20 minutes" not "12 minutes"). Campaigns appreciate knowing what they are waiting for. |
+| Duplicate import detection | Warn if a file with the same name and similar row count was imported in the last 7 days. Prevents accidental double-imports of the same voter file. | Low | Query `ImportJob` for same campaign + matching `original_filename` + `status=completed` + recent `created_at` | Not a hard block -- just a warning dialog: "A file named 'GA_Voters_2026.csv' was imported 2 days ago (48,392 rows). Import anyway?" |
 
 ## Anti-Features
 
-Features to explicitly NOT build for this milestone. Including rationale so these do not creep into scope.
+Features to explicitly NOT build for v1.6. Including rationale so these do not creep in.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Visual regression testing (screenshot comparison) | Percy, Chromatic, or Playwright screenshot comparison adds snapshot storage, review workflows, and frequent false positives from minor CSS changes. Significant infrastructure and maintenance cost for a fast-moving codebase. | Rely on functional assertions (element visibility, text content, ARIA attributes). Use `screenshot: "only-on-failure"` in config (already set) for debugging failed tests. |
-| Cross-browser testing (Firefox, Safari, Mobile) | Multi-browser E2E testing multiplies test runtime by 3-4x and introduces browser-specific flake. The app is a campaign tool, not a consumer product -- Chromium covers 90%+ of the user base. | Test only in Chromium (already configured). Address browser-specific bugs reactively if users report them. |
-| Performance/load testing | k6, Artillery, or Locust load testing is a separate concern from functional E2E testing. Adds infrastructure complexity and a different skill set. | Defer to a separate milestone if needed. The app's rate limiting (already tested via `test_rate_limit_coverage.py`) provides production safety. |
-| CI/CD pipeline integration for E2E tests | Running 130+ E2E tests in GitHub Actions adds container orchestration (Docker Compose in CI), test parallelization tuning, and flake management. Worth doing eventually, but not in this milestone. | Run tests locally against Docker Compose dev environment. Document the test execution workflow. Add CI integration in a future milestone. |
-| Mobile viewport E2E testing | Testing at mobile widths adds a second dimension to every test. The field mode is mobile-first but testing it at 375px width doubles the test matrix. | Test field mode at desktop width -- the responsive behavior is CSS-only and covered by manual spot-checks. Add mobile viewport tests in a future polish milestone. |
-| End-to-end API tests (bypassing UI) | Writing API-level integration tests duplicates what the E2E tests verify through the UI, and what the pytest unit/integration tests already cover. | Rely on existing 70+ pytest tests for API-level coverage. E2E tests exercise the full stack through the browser. |
-| Automated test report generation | HTML test reports, Allure reports, or test management tool integration adds tooling without improving test quality. | Use Playwright's built-in `html` reporter (already configured for CI mode). Review results in terminal during local development. |
-| Page Object Model refactor of existing specs | The 51 existing spec files do not use POMs. Refactoring them now is a large effort that does not add test coverage. | Write new specs with inline locator patterns matching the existing style. Consider POM adoption in a future refactor milestone if the spec count exceeds 80+. |
-| Parallel test execution optimization | Tuning `fullyParallel`, worker counts, and test sharding for a 130-test suite is premature optimization. | Use Playwright defaults (`fullyParallel: true`, auto worker count). Serial mode (`test.describe.serial`) only for tests with explicit ordering dependencies (e.g., CRUD create-then-delete). |
-| Test data factory / faker library | Generating randomized test data with @faker-js/faker adds variety but makes test assertions harder (what value did we generate?). The testing plan provides specific, deterministic test data tables. | Use the explicit test data from the testing plan (e.g., the 20-voter NATO alphabet table in VCRUD-01). Deterministic data makes assertions straightforward. |
+| Real-time WebSocket/SSE import progress | Push-based progress adds WebSocket infrastructure, connection management, reconnection logic, and a second communication channel. The import progress screen is the only consumer. | Continue using TanStack Query `refetchInterval` polling at 3s. With per-batch commits, each poll returns fresh data. Polling at 3s for a 5-20 minute import is perfectly adequate. |
+| Parallel batch processing (multi-worker) | Splitting a CSV across multiple workers adds coordination complexity, ordering concerns, and row-level locking contention on the voters table upsert. | Single-worker sequential batch processing. A 200K-row file processes in ~2-5 minutes with 1000-row batches. Fast enough. The bottleneck is PostgreSQL INSERT, not Python. |
+| Streaming upload (chunked/multipart direct-to-processor) | Processing rows as they upload sounds efficient but creates complex partial-state management. What if the upload fails at 80%? What batch boundaries apply to a stream? | Upload complete file to MinIO first (existing pattern), then process from S3. Decoupling upload from processing is simpler and more reliable. Already implemented. |
+| AI/LLM-based column mapping | Adds external dependency, latency, cost, and unpredictability to a deterministic problem. L2 column names are not creative prose -- they are fixed vendor formats solvable with a dictionary. | Expand `CANONICAL_FIELDS` alias dictionary comprehensively. RapidFuzz at 75% threshold handles minor variations. Exact-match aliases handle the rest. |
+| Import rollback (undo a completed import) | Campaigns want to undo a bad import. But voters may have been tagged, contacted, added to walk lists, or had interactions recorded against them since import. Cascading rollback is destructive. | Provide clear import history with error reports. If a bad import happened, campaigns can re-import the corrected file (upsert handles dedup) or delete voters via the UI. |
+| Shapefile/GDB direct import | Some voter files come as ESRI shapefiles or file geodatabases. Requires GDAL/OGR dependency, multi-file handling, and spatial data interpretation. | CSV only. Campaigns can use QGIS or ogr2ogr to convert to CSV first. L2 always provides CSV exports. |
+| ZIP file upload with multi-file processing | Some vendors deliver voter files as ZIP archives with multiple CSVs (one per county or split by alphabet). | Single CSV per import. Users can import multiple files sequentially. The import history page already supports this workflow. |
+| Custom row-level transformation rules | Let users define per-column transformation rules (regex replacements, format conversions) during import. | Build transformations into the import service (like `normalize_party`, `parse_propensity`, `normalize_phone`). Deterministic transforms baked into code are testable and reliable. |
+| Import scheduling (schedule import for off-hours) | Let users schedule an import to run at 2 AM to avoid peak hours. | Procrastinate can defer jobs, but the complexity of scheduling UI, timezone handling, and user expectations around scheduled jobs is not worth it. Imports are fast enough to run immediately. |
 
 ## Feature Dependencies
 
 ```
-ZITADEL test user provisioning (15 users)
-    --> Multi-role auth setup projects in playwright.config.ts
-    --> Campaign membership assignment (users must be campaign members)
-    --> Org membership assignment (org_admin, org_owner users)
-    --> All RBAC spec files (RBAC-01 through RBAC-09)
+Procrastinate integration --> Background processing (202 Accepted)
+                         --> Per-batch commits (each batch = own transaction)
+                         --> Resume from last committed batch (crash recovery)
+                         --> Import cancellation (check status between batches)
+                         --> Stale job cleanup (periodic task)
 
-Seed data execution (scripts/seed.py)
-    --> Dashboard tests (need baseline data for KPI cards)
-    --> Import tests (need clean campaign for import target)
-    --> Field mode tests (need walk lists, phone bank sessions)
+Per-batch commits --> Real-time progress visible via polling (already built)
+                 --> Per-batch error isolation (SAVEPOINT per batch)
+                 --> Resume offset tracking (last_committed_batch column)
 
-Voter note edit/delete feature (NEW - must build)
-    --> NOTE-02 and NOTE-03 test cases
-    --> PATCH /interactions/{id} and DELETE /interactions/{id} API endpoints
-    --> Edit/Delete buttons in voter History tab UI
+L2 alias expansion --> Zero-touch L2 auto-detection
+                   --> Format auto-detection confidence display
+                   --> Voting history format flexibility
 
-Walk list rename UI (NEW - must build)
-    --> WL-05 test case
-    --> Inline rename or edit dialog in canvassing index / walk list detail
-    --> Backend PATCH endpoint already exists
-
-L2 import completion (IMP-01)
-    --> Data validation tests (VAL-01, VAL-02 -- need 551 imported voters)
-    --> Filter dimension tests (FLT-02 -- need diverse voter data)
-    --> Voter search tests (FLT-01, FLT-03, FLT-04, FLT-05)
-
-RBAC test completion
-    --> Campaign settings tests (CAMP-01 through CAMP-06 -- require admin/owner role)
-    --> Org management tests (ORG-01 through ORG-08 -- require org_owner/org_admin)
-
-CRUD entity creation tests
-    --> CRUD deletion tests (must create before you can delete)
-    --> Cross-entity tests (e.g., DNC enforcement requires call list + DNC entries)
+Resume tracking (ImportJob model changes) --> Crash recovery logic in worker
+                                          --> UI "retry" button for failed/crashed imports
 ```
 
 ## MVP Recommendation
 
-Prioritize in this order based on dependencies, risk, and value:
+Prioritize in this order:
 
-1. **Voter note edit/delete feature build** -- The testing plan explicitly calls this out as a prerequisite (NOTE-02, NOTE-03 marked "REQUIRES FEATURE BUILD"). This is the only backend API work in the milestone -- PATCH and DELETE for note-type interactions plus UI buttons. Small scope (2 endpoints + 2 UI buttons) but blocks 2 test cases and validates the full CRUD lifecycle for interactions.
+1. **Procrastinate integration** -- Replace InMemoryBroker with PostgreSQL job queue. This is the foundation: without a durable job queue, background processing is unreliable. Jobs survive pod restarts. Currently if the pod dies, all queued imports are lost forever.
 
-2. **Walk list rename UI feature build** -- Second prerequisite from the testing plan (WL-05 marked "REQUIRES FEATURE BUILD"). Backend PATCH already exists. Need an edit action (inline rename or dialog) on the canvassing index page or walk list detail page. Small scope (1 UI component) but blocks 1 test case.
+2. **Per-batch commits with resume tracking** -- Add `last_committed_batch` (int) and `processed_bytes` (bigint, optional) to ImportJob. Commit after each 1000-row batch. On resume, skip to `last_committed_batch + 1`. This makes large imports crash-safe.
 
-3. **ZITADEL test user provisioning expansion** -- Expand `scripts/create-e2e-users.py` from 2 to 15 users covering all 5 campaign roles and 2 org roles. Add campaign membership assignment. This unblocks every RBAC test and every role-specific test in the plan. Without this, the majority of the 130 test cases cannot run.
+3. **L2 "friendly name" alias completion** -- Audit ALL L2 column name patterns and add them to `CANONICAL_FIELDS`. This is the "zero-manual-mapping" goal. The existing fuzzy matching infrastructure is correct; the alias dictionary is just incomplete.
 
-4. **Auth setup projects expansion** -- Add Playwright auth setup files for each distinct role (owner, admin, manager, viewer at minimum -- volunteer already exists). Configure `playwright.config.ts` projects to use these. This is the Playwright-side counterpart to provisioning.
+4. **Voting history format expansion** -- Extend `parse_voting_history()` regex to handle `Voted_in_YYYY_General`, `Gen_YYYY`, and similar L2 variations across states.
 
-5. **RBAC test suite** -- RBAC-01 through RBAC-09. These tests verify the security model, which is the highest-risk area. A broken RBAC means data leaks between campaigns or unauthorized mutations. Write these first among the spec files.
+**Defer:** Import cancellation, stale job cleanup, duplicate detection, file size estimation. All are easy Low-complexity features that can be added after the core reliability features ship.
 
-6. **CRUD lifecycle tests** -- Entity-by-entity specs: voters, contacts, tags, lists, turfs, walk lists, call lists, DNC, sessions, surveys, volunteers, shifts. The bulk of the 130 test cases live here. Follow the testing plan section-by-section (sections 10-24).
+## L2 Voter File Column Patterns (Research Notes)
 
-7. **Import and data validation tests** -- IMP-01 through IMP-04, VAL-01, VAL-02, FLT-01 through FLT-05. These verify the data pipeline end-to-end from CSV upload through UI display.
+L2 (L2 Political, formerly L2 Inc.) is the dominant voter data vendor in the US. Their CSV exports use several naming conventions depending on export version, state, and data package:
 
-8. **Field mode and cross-cutting tests** -- FIELD-01 through FIELD-10, OFFLINE-01 through OFFLINE-03, TOUR-01 through TOUR-03, NAV-01 through NAV-03, UI-01 through UI-03, CROSS-01 through CROSS-03. These verify the volunteer experience and app-wide behaviors.
+### Column Naming Conventions (MEDIUM confidence -- based on existing alias dictionary entries and training data)
 
-9. **AI-driven production testing instructions** -- Rewrite the testing plan as production-specific step-by-step instructions. Last because it requires knowing which tests passed locally (to validate the instructions are accurate).
+**Pattern 1: Prefix_CamelCase** (most common in modern L2 exports)
+- `Voters_FirstName`, `Voters_LastName`, `Voters_MiddleName`, `Voters_NameSuffix`
+- `Voters_Gender`, `Voters_BirthDate`, `Voters_Age`
+- `Voters_CellPhone`, `Voters_CellPhoneFull`
+- `Voters_HHID`, `Voters_HHSize`, `Voters_HHPartyRegistration`, `Voters_FamilyID`
+- `Voters_Language`, `Voters_PartyChangeIndicator`
+- `Voters_Zip4`
 
-**Defer:** Visual regression testing, CI pipeline integration, cross-browser testing, mobile viewport testing, POM refactoring. All add value but do not contribute to the v1.7 goal of "100% test pass rate on the testing plan."
+**Pattern 2: Category_Subcategory** (for address, demographic, commercial data)
+- `Residence_Addresses_AddressLine`, `Residence_Addresses_City`, `Residence_Addresses_State`
+- `Residence_Addresses_Zip`, `Residence_Addresses_Zip4`, `Residence_Addresses_County`
+- `Residence_Addresses_Latitude`, `Residence_Addresses_Longitude`
+- `Residence_Addresses_AptType`
+- `EthnicGroups_EthnicGroup1Desc`
+- `CommercialData_MaritalStatus`, `CommercialData_MilitaryActive`
+- `Parties_Description`
 
-## Complexity Assessment by Testing Plan Section
+**Pattern 3: Mailing address columns**
+- `Mail_VAddressLine1`, `Mail_VAddressLine2`, `Mail_VCity`, `Mail_VState`
+- `Mail_VZip`, `Mail_VZipcode`, `Mail_VZip4`, `Mail_VCountry`
 
-| Section | Test IDs | Test Count | Complexity | Notes |
-|---------|----------|------------|------------|-------|
-| 1. Prerequisites & Setup | N/A | 0 (infrastructure) | Medium | Provisioning script + auth setup |
-| 2. Authentication | AUTH-01 to AUTH-04 | 4 | Low | Login/logout cycles, extend existing login.spec.ts |
-| 3. RBAC | RBAC-01 to RBAC-09 | 9 | High | Requires all role auth states; verifies permission matrix |
-| 4. Org Management | ORG-01 to ORG-08 | 8 | Medium | Campaign creation wizard, archive, org switcher |
-| 5. Campaign Settings | CAMP-01 to CAMP-06 | 6 | Medium | Includes destructive tests (ownership transfer, delete) |
-| 6. Dashboard | DASH-01 to DASH-02 | 2 | Low | Verify KPI cards render with valid values |
-| 7. Voter Import | IMP-01 to IMP-04 | 4 | Medium | L2 auto-mapping, progress, cancel, concurrent prevention |
-| 8. Data Validation | VAL-01 to VAL-02 | 2 | High | 60 voters verified field-by-field against CSV |
-| 9. Search & Filtering | FLT-01 to FLT-05 | 5 | High | 23 filter dimensions plus composition, sort, pagination |
-| 10. Voter CRUD | VCRUD-01 to VCRUD-04 | 4 | Medium | Create 20, edit 5, delete 25 |
-| 11. Voter Contacts | CON-01 to CON-06 | 6 | Medium | Phone, email, address CRUD for 20+ voters |
-| 12. Voter Tags | TAG-01 to TAG-05 | 5 | Medium | Tag CRUD, assignment to 40 voters, cleanup |
-| 13. Voter Notes | NOTE-01 to NOTE-03 | 3 | Medium | Requires feature build for edit/delete |
-| 14. Voter Lists | VLIST-01 to VLIST-06 | 6 | Medium | Static + dynamic lists, add/remove voters |
-| 15. Turfs | TURF-01 to TURF-07 | 7 | High | Polygon drawing, overlap detection, GeoJSON |
-| 16. Walk Lists | WL-01 to WL-07 | 7 | Medium | Generate, assign, rename (requires feature build) |
-| 17. Call Lists | CL-01 to CL-05 | 5 | Low | CRUD + DNC filtering verification |
-| 18. DNC | DNC-01 to DNC-06 | 6 | Medium | Single/bulk add, enforcement verification |
-| 19. Sessions | PB-01 to PB-10 | 10 | High | Session CRUD, caller assignment, active calling |
-| 20. Surveys | SRV-01 to SRV-08 | 8 | Medium | Survey CRUD, question types, status lifecycle |
-| 21. Volunteers | VOL-01 to VOL-08 | 8 | Medium | User/non-user registration, roster, detail |
-| 22. Volunteer Tags | VTAG-01 to VTAG-05 | 5 | Low | Same pattern as voter tags |
-| 23. Availability | AVAIL-01 to AVAIL-03 | 3 | Low | Availability slot CRUD |
-| 24. Shifts | SHIFT-01 to SHIFT-10 | 10 | High | 20 shift creation, assignment, check-in/out, hours |
-| 25-27. Field Mode | FIELD-01 to FIELD-10 | 10 | High | Canvassing wizard, phone banking, tap-to-call |
-| 28. Offline | OFFLINE-01 to OFFLINE-03 | 3 | Medium | Network simulation, queue verification |
-| 29. Tour | TOUR-01 to TOUR-03 | 3 | Low | driver.js tour verification |
-| 30. Navigation | NAV-01 to NAV-03 | 3 | Low | Sidebar links, breadcrumbs |
-| 31. Empty States | UI-01 to UI-03 | 3 | Low | Empty page messages, loading, error boundary |
-| 32. Dashboards | DRILL-01 to DRILL-03 | 3 | Low | Canvassing/phone/volunteer overviews |
-| 33. Accessibility | A11Y-01 to A11Y-03 | 3 | Medium | Keyboard nav, touch targets, ARIA |
-| 34. Cross-Cutting | CROSS-01 to CROSS-03 | 3 | Medium | Form guards, toasts, rate limiting |
-| **TOTAL** | | **~130** | | |
+**Pattern 4: Score/propensity columns**
+- `General_Turnout_Score`, `Primary_Turnout_Score`, `Combined_Turnout_Score`
+- `CellPhoneConfidence`
 
-## Existing Test Infrastructure (What We Start With)
+**Pattern 5: Voting history columns**
+- `General_YYYY` / `Primary_YYYY` -- values are Y/N/A/E (current, handled)
+- `Voted_in_YYYY_General` / `Voted_in_YYYY_Primary` (alternate format, NOT handled)
+- `Voted in YYYY` / `Voted in YYYY Primary` (space-separated, NOT handled)
 
-| Component | Current State | Needed Changes |
-|-----------|---------------|----------------|
-| `playwright.config.ts` | 3 auth projects (default, orgadmin, volunteer), Chromium only, HTTPS preview server | Add owner, admin, manager, viewer projects. Keep Chromium only. |
-| Auth setup files | 3 files: `auth.setup.ts`, `auth-orgadmin.setup.ts`, `auth-volunteer.setup.ts` | Add `auth-owner.setup.ts`, `auth-admin.setup.ts`, `auth-manager.setup.ts`, `auth-viewer.setup.ts` |
-| E2E user provisioning | `scripts/create-e2e-users.py` -- 2 users (orgadmin, volunteer) | Expand to 15 users, add campaign membership, add all 5 role levels |
-| Existing spec files | 51 files, ~293 test/describe references | Keep as-is. New specs organized by testing plan section numbers. |
-| Page Object Model | None -- all specs use inline locators | Do not introduce POM for this milestone. Consistency with existing style. |
-| Fixtures | None -- no custom fixtures | Consider a shared auth fixture for role-specific contexts, but keep simple. |
-| Test data | `scripts/seed.py` -- Macon-Bibb demo dataset | Sufficient. New tests create and clean up their own data on top of seed. |
-| pytest tests | 56 unit + 10 integration tests | No changes needed. E2E tests are a separate concern. |
+**Pattern 6: Voter ID**
+- `LALVOTERID` -- L2's unique voter identifier (the "LAL" prefix is a legacy name)
+- `Voters_StateVoterID` -- state-assigned voter ID
 
-## Small Feature Builds Required
+### Columns Currently Handled vs. Gaps
 
-### 1. Voter Interaction (Note) Edit and Delete
+**Already in CANONICAL_FIELDS alias dictionary (30+ aliases):**
+- Core name fields: `Voters_FirstName`, `Voters_LastName`, etc.
+- Registration address: `Residence_Addresses_*` pattern
+- Demographics: `EthnicGroups_EthnicGroup1Desc`, `Voters_Gender`, `Voters_BirthDate`
+- Household: `Voters_HHID`, `Voters_HHSize`, `Voters_HHPartyRegistration`, `Voters_FamilyID`
+- Phone: `Voters_CellPhoneFull`, `Voters_CellPhone`
+- Mailing: `Mail_VAddressLine1` through `Mail_VCountry`
+- Scores: `General_Turnout_Score`, `Primary_Turnout_Score`, `Combined_Turnout_Score`
+- Commercial: `CommercialData_MaritalStatus`, `CommercialData_MilitaryActive`
+- Party: `Parties_Description`
 
-**What:** PATCH and DELETE endpoints for interactions of type "note" plus Edit/Delete UI buttons in the voter detail History tab.
+**Gaps -- NOT in current alias dictionary but present in L2 exports:**
+- `Voters_StateVoterID` (for `source_id`)
+- `Residence_Addresses_ExtraAddressLine` (for `registration_line2`)
+- `Residence_Addresses_HouseNumber`, `Residence_Addresses_PrefixDirection`, `Residence_Addresses_StreetName`, `Residence_Addresses_Designator`, `Residence_Addresses_SuffixDirection` (component address fields -- need concatenation strategy for `registration_line1`)
+- `Voters_RegistrationDate` (for `registration_date`)
+- `Precinct`, `USCongressionalDistrict`, `StateSenateDistrict`, `StateHouseDistrict` (district columns with varying naming)
+- Voting history in "Voted in" format
+- `Voters_MailingAddress*` variants (alternative mailing prefix)
+- `Voters_OfficialRegParty` (alternative party column)
 
-**Scope:**
-- Backend: Add `update_interaction()` and `delete_interaction()` to `VoterInteractionService`. Add PATCH and DELETE routes to `app/api/v1/voter_interactions.py`. Only allow mutation of `note` type interactions -- system interactions (import, tag_added, etc.) remain immutable.
-- Frontend: Add Edit and Delete icon buttons to note rows in the History tab. Edit opens an inline editor or sheet. Delete shows a ConfirmDialog.
-- Tests: NOTE-02 (edit 10 notes) and NOTE-03 (delete 100 notes).
+### Voting History Format Matrix
 
-**Complexity:** Low-Medium. 2 API endpoints + 2 UI buttons + confirmation dialog.
+| Format | Example Column | Current Status | Action |
+|--------|---------------|----------------|--------|
+| `General_YYYY` | `General_2024` | Handled | None |
+| `Primary_YYYY` | `Primary_2022` | Handled | None |
+| `Gen_YYYY` | `Gen_2024` | NOT handled | Add to regex |
+| `Prim_YYYY` | `Prim_2022` | NOT handled | Add to regex |
+| `GeneralElection_YYYY` | `GeneralElection_2024` | NOT handled | Add to regex |
+| `PrimaryElection_YYYY` | `PrimaryElection_2022` | NOT handled | Add to regex |
+| `Voted_in_YYYY_General` | `Voted_in_2024_General` | NOT handled | Add alternative regex pattern |
+| `Voted in YYYY` | `Voted in 2024` | NOT handled | Requires space-aware column matching; normalize to `General_YYYY` |
+| `Voted in YYYY Primary` | `Voted in 2024 Primary` | NOT handled | Requires space-aware column matching |
+| `Municipal_YYYY` | `Municipal_2023` | NOT handled | Decide: capture or ignore (recommend: capture as `Municipal_YYYY`) |
+| `Special_YYYY` | `Special_2023` | NOT handled | Decide: capture or ignore (recommend: capture as `Special_YYYY`) |
+| `Runoff_YYYY` | `Runoff_2024` | NOT handled | Decide: capture or ignore (recommend: capture as `Runoff_YYYY`) |
 
-### 2. Walk List Rename UI
+**Recommendation:** Expand the regex to capture General, Primary, Gen, Prim, GeneralElection, PrimaryElection as election types and normalize them all to the canonical `General_YYYY` or `Primary_YYYY` format. Also add support for `Municipal_YYYY`, `Special_YYYY`, and `Runoff_YYYY` as-is (pass through without normalization since the voting_history array is a string array). For the "Voted in" space-separated format, add a second regex pattern.
 
-**What:** Frontend UI to rename a walk list. The backend PATCH endpoint already exists.
+## L2 Component Address Fields (Special Case)
 
-**Scope:**
-- Frontend: Add an edit action to the walk list row in the canvassing index page (pencil icon in the action menu or inline edit). Opens a rename dialog or inline text input. Calls existing PATCH endpoint.
-- Tests: WL-05 (rename walk list).
+L2 sometimes exports addresses as individual components rather than a single line:
 
-**Complexity:** Low. 1 dialog/inline edit component. Backend already done.
+| L2 Column | Component |
+|-----------|-----------|
+| `Residence_Addresses_HouseNumber` | House/building number |
+| `Residence_Addresses_PrefixDirection` | N, S, E, W |
+| `Residence_Addresses_StreetName` | Street name |
+| `Residence_Addresses_Designator` | St, Ave, Blvd, Dr |
+| `Residence_Addresses_SuffixDirection` | N, S, E, W (suffix) |
+| `Residence_Addresses_AptNum` | Apartment number |
+
+**Recommendation:** Do NOT map these individually. Instead, detect when these component columns are present (and `Residence_Addresses_AddressLine` is absent) and concatenate them into `registration_line1` during field mapping. Add a concatenation strategy to `apply_field_mapping()` for this special case. This is the only L2-specific transformation that requires logic beyond simple alias mapping.
+
+## Procrastinate Integration Notes (MEDIUM confidence -- based on training data, not verified against current docs)
+
+Procrastinate is a PostgreSQL-based job queue for Python, designed for async/await applications. Key properties relevant to this milestone:
+
+- **PostgreSQL-native:** Jobs stored in PostgreSQL tables alongside application data. No additional infrastructure (Redis, RabbitMQ) required. Uses LISTEN/NOTIFY for instant job pickup.
+- **Async-first:** Native asyncio/asyncpg support. Integrates cleanly with FastAPI's async request handlers.
+- **Durable:** Jobs survive pod restarts since they are in PostgreSQL. Unlike InMemoryBroker, queued imports are not lost on crash.
+- **Retry policies:** Built-in retry with configurable attempts and backoff. Failed imports can auto-retry.
+- **Periodic tasks:** Supports cron-like periodic tasks for stale job cleanup.
+- **Worker process:** Runs as a separate process (`procrastinate worker`) or can be embedded in the FastAPI process for development.
+- **Database schema:** Creates its own tables (`procrastinate_jobs`, `procrastinate_events`, etc.) via migrations.
+
+**Migration path from TaskIQ InMemoryBroker:**
+1. Add `procrastinate` to dependencies (replace `taskiq`, `taskiq-fastapi`)
+2. Create Procrastinate app with asyncpg connector
+3. Run Procrastinate schema migrations (creates its own tables)
+4. Register `process_import` as a Procrastinate task
+5. Dispatch via `await process_import.defer_async(import_job_id=str(import_id))` instead of `await process_import.kiq(str(import_id))`
+6. Run worker via `procrastinate worker` command (or embed in dev)
+
+## Import Job Model Changes Required
+
+Based on feature analysis, the `ImportJob` model needs these additions:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `last_committed_batch` | `Integer, default=0` | Track resume point for crash recovery |
+| `processed_bytes` | `BigInteger, nullable=True` | Optional: track file byte offset for resume (alternative to batch counting) |
+| `total_batches` | `Integer, nullable=True` | Pre-computed batch count for progress percentage |
+| `started_at` | `DateTime, nullable=True` | When processing actually began (vs. created_at which is upload time) |
+| `completed_at` | `DateTime, nullable=True` | When processing finished (for duration reporting) |
+
+The `ImportStatus` enum should also gain `CANCELLED` for the cancellation feature (if built).
 
 ## Sources
 
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices) -- Official Playwright documentation
-- [Playwright Authentication](https://playwright.dev/docs/auth) -- Multi-role auth setup patterns
-- [Playwright Fixtures](https://playwright.dev/docs/test-fixtures) -- Fixture patterns for test setup
-- [Playwright Page Object Models](https://playwright.dev/docs/pom) -- POM documentation
-- [ZITADEL Create Human User API](https://zitadel.com/docs/apis/resources/user_service_v2/user-service-add-human-user) -- User provisioning v2 API
-- [ZITADEL Register and Create User Guide](https://zitadel.com/docs/guides/manage/user/reg-create-user) -- User creation patterns
-- [Building Comprehensive E2E Suite with Playwright](https://dev.to/bugslayer/building-a-comprehensive-e2e-test-suite-with-playwright-lessons-from-100-test-cases-171k) -- Lessons from 100+ test cases
-- [Playwright E2E Testing: 12 Best Practices](https://elionavarrete.com/blog/e2e-best-practices-playwright.html) -- Current best practices
-- [5 Ways to Handle Test Data in Playwright](https://dev.to/testdino01/5-ways-to-handle-test-data-in-playwright-1l32) -- Test data management strategies
-- Codebase analysis: `web/playwright.config.ts`, `web/e2e/auth.setup.ts`, `web/e2e/auth-orgadmin.setup.ts`, `web/e2e/auth-volunteer.setup.ts`, `scripts/create-e2e-users.py`, `docs/testing-plan.md`
+- Codebase analysis: `app/services/import_service.py`, `app/tasks/broker.py`, `app/tasks/import_task.py`, `app/models/import_job.py`, `app/api/v1/imports.py`
+- Frontend analysis: `web/src/routes/campaigns/$campaignId/voters/imports/new.tsx`, `web/src/components/voters/ImportProgress.tsx`, `web/src/hooks/useImports.ts`
+- Test analysis: `tests/unit/test_import_service.py`, `tests/unit/test_import_parsing.py`
+- L2 column patterns: Derived from existing `CANONICAL_FIELDS` alias dictionary entries (HIGH confidence for documented patterns) and training data knowledge of L2 voter file formats (MEDIUM confidence for undocumented patterns)
+- Procrastinate capabilities: Training data (MEDIUM confidence -- recommend verifying against current docs before implementation)
