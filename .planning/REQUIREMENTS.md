@@ -60,26 +60,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BGND-01 | — | Pending |
-| BGND-02 | — | Pending |
-| BGND-03 | — | Pending |
-| BGND-04 | — | Pending |
-| RESL-01 | — | Pending |
-| RESL-02 | — | Pending |
-| RESL-03 | — | Pending |
-| RESL-04 | — | Pending |
-| RESL-05 | — | Pending |
-| MEMD-01 | — | Pending |
-| MEMD-02 | — | Pending |
-| L2MP-01 | — | Pending |
-| L2MP-02 | — | Pending |
-| L2MP-03 | — | Pending |
+| BGND-01 | Phase 49 | Pending |
+| BGND-02 | Phase 49 | Pending |
+| BGND-03 | Phase 53 | Pending |
+| BGND-04 | Phase 53 | Pending |
+| RESL-01 | Phase 50 | Pending |
+| RESL-02 | Phase 50 | Pending |
+| RESL-03 | Phase 50 | Pending |
+| RESL-04 | Phase 50 | Pending |
+| RESL-05 | Phase 50 | Pending |
+| MEMD-01 | Phase 51 | Pending |
+| MEMD-02 | Phase 49 | Pending |
+| L2MP-01 | Phase 52 | Pending |
+| L2MP-02 | Phase 52 | Pending |
+| L2MP-03 | Phase 52 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after initial definition*
+*Last updated: 2026-03-28 after roadmap creation*

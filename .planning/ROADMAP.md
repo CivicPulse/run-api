@@ -8,6 +8,7 @@
 - ✅ **v1.3 Voter Model & Import Enhancement** — Phases 23-29 (shipped 2026-03-15)
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
+- 🚧 **v1.6 Imports** — Phases 49-53 (in progress)
 
 ## Phases
 
@@ -107,6 +108,69 @@ See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v1.6 Imports (In Progress)
+
+**Milestone Goal:** Make large voter file imports reliable and ensure L2 files import with zero manual mapping.
+
+- [ ] **Phase 49: Procrastinate Integration & Worker Infrastructure** - Replace TaskIQ with Procrastinate, deploy worker as separate container, wire 202 Accepted endpoint
+- [ ] **Phase 50: Per-Batch Commits & Crash Resilience** - Independent batch commits with RLS restoration, crash resume, real-time progress, and bounded error storage
+- [ ] **Phase 51: Memory Safety & Streaming** - Stream CSV from MinIO incrementally instead of loading entire file into memory
+- [ ] **Phase 52: L2 Auto-Mapping Completion** - Complete 55-column alias dictionary, voting history format parsing, and auto-detect skip-mapping
+- [ ] **Phase 53: Concurrent Safety & Cancellation** - Cancel running imports and prevent concurrent imports per campaign
+
+## Phase Details
+
+### Phase 49: Procrastinate Integration & Worker Infrastructure
+**Goal**: Imports run as durable background jobs that survive pod restarts, with the worker running as an independent process
+**Depends on**: Phase 48
+**Requirements**: BGND-01, BGND-02, MEMD-02
+**Success Criteria** (what must be TRUE):
+  1. User clicks "Start Import" and receives an immediate response while the import processes in the background
+  2. Killing and restarting the worker pod does not lose the queued import job — it picks up again after restart
+  3. Worker runs as a separate container in both Docker Compose and Kubernetes, using the same image with a different entrypoint
+  4. TaskIQ is fully removed from the codebase and dependency tree
+**Plans**: TBD
+
+### Phase 50: Per-Batch Commits & Crash Resilience
+**Goal**: Partial import progress persists through crashes, with real-time visibility into committed rows and bounded error storage
+**Depends on**: Phase 49
+**Requirements**: RESL-01, RESL-02, RESL-03, RESL-04, RESL-05
+**Success Criteria** (what must be TRUE):
+  1. Importing a 50K-row file and killing the worker mid-import leaves the already-committed batches visible in the voter table (not zero rows)
+  2. Restarting the worker after a crash resumes from the last committed batch instead of re-importing from row 1
+  3. The polling endpoint shows committed row counts that increment after each batch (not just at the end)
+  4. Error rows are retrievable from MinIO after import completes, with constant memory usage regardless of error count
+  5. Voters from all batches (not just the first) are visible under the correct campaign — RLS context is maintained across batch boundaries
+**Plans**: TBD
+
+### Phase 51: Memory Safety & Streaming
+**Goal**: Large CSV files can be imported without exhausting worker memory
+**Depends on**: Phase 50
+**Requirements**: MEMD-01
+**Success Criteria** (what must be TRUE):
+  1. A 30MB+ CSV file imports successfully without the worker pod being OOM-killed
+  2. Worker memory usage stays roughly constant regardless of file size (not proportional to file size)
+**Plans**: TBD
+
+### Phase 52: L2 Auto-Mapping Completion
+**Goal**: L2 voter files import with zero manual column mapping
+**Depends on**: Phase 49
+**Requirements**: L2MP-01, L2MP-02, L2MP-03
+**Success Criteria** (what must be TRUE):
+  1. Uploading a standard L2 voter file auto-maps all columns without requiring manual adjustment in the mapping step
+  2. Voting history columns in "General_YYYY", "Voted in YYYY", and "Voted in YYYY Primary" formats are parsed into canonical voting history records
+  3. The import wizard detects an L2 file from its headers and skips directly to the preview/confirm step
+**Plans**: TBD
+
+### Phase 53: Concurrent Safety & Cancellation
+**Goal**: Users can cancel running imports and the system prevents conflicting concurrent imports
+**Depends on**: Phase 49
+**Requirements**: BGND-03, BGND-04
+**Success Criteria** (what must be TRUE):
+  1. User can cancel a running import and it stops after the current batch completes, leaving already-committed rows intact
+  2. Starting a second import for the same campaign while one is already running is rejected with a clear message (not silently queued or deadlocked)
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -159,3 +223,8 @@ See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
 | 46. E2E Testing & Integration | v1.5 | 4/4 | Complete | 2026-03-25 |
 | 47. Integration Consistency & Documentation Cleanup | v1.5 | 4/4 | Complete | 2026-03-25 |
 | 48. Connected E2E Journey Spec | v1.5 | 1/1 | Complete | 2026-03-25 |
+| 49. Procrastinate Integration & Worker Infrastructure | v1.6 | 0/0 | Not started | - |
+| 50. Per-Batch Commits & Crash Resilience | v1.6 | 0/0 | Not started | - |
+| 51. Memory Safety & Streaming | v1.6 | 0/0 | Not started | - |
+| 52. L2 Auto-Mapping Completion | v1.6 | 0/0 | Not started | - |
+| 53. Concurrent Safety & Cancellation | v1.6 | 0/0 | Not started | - |
