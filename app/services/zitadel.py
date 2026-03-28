@@ -251,6 +251,13 @@ class ZitadelService:
                 "Cannot reach ZITADEL to assign project role"
             ) from exc
         except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 409:
+                # Grant already exists — treat as success
+                logger.debug(
+                    "Project role grant already exists for user {}",
+                    user_id,
+                )
+                return
             if exc.response.status_code >= 500:
                 raise ZitadelUnavailableError(
                     f"ZITADEL returned {exc.response.status_code}"
