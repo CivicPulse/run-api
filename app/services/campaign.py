@@ -188,6 +188,8 @@ class CampaignService:
                     party_affiliation=party_affiliation,
                     organization_id=organization_id,
                 )
+            # Non-slug IntegrityError — re-raise so it's handled below
+            raise
         except Exception:
             logger.warning(
                 "Local DB write failed for campaign '{}', rolling back (org={})",
