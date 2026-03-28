@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
@@ -35,8 +36,19 @@ async def create_campaign(
     """Create a new campaign with ZITADEL org provisioning.
 
     Any authenticated user can create a campaign (they become owner).
+    Reuses the user's existing organization when one exists.
     """
     await ensure_user_synced(user, db)
+
+    # Reuse the user's existing organization if they have one,
+    # instead of creating a new ZITADEL org for every campaign.
+    from app.models.organization import Organization
+
+    user_org_ids = user.org_ids if user.org_ids else [user.org_id]
+    existing_org = await db.scalar(
+        select(Organization).where(Organization.zitadel_org_id.in_(user_org_ids))
+    )
+
     zitadel = request.app.state.zitadel_service
     campaign = await _service.create_campaign(
         db=db,
@@ -49,6 +61,7 @@ async def create_campaign(
         election_date=body.election_date,
         candidate_name=body.candidate_name,
         party_affiliation=body.party_affiliation,
+        organization_id=existing_org.id if existing_org else None,
     )
     return CampaignResponse.model_validate(campaign)
 
