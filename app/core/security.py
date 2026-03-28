@@ -528,6 +528,13 @@ def require_org_role(minimum: str):
                 detail="Insufficient permissions",
             )
 
+        # Update org_id to the resolved org so downstream endpoint code
+        # that re-queries by user.org_id finds the correct org.
+        if org.zitadel_org_id != current_user.org_id:
+            current_user = current_user.model_copy(
+                update={"org_id": org.zitadel_org_id}
+            )
+
         return current_user
 
     return _check_org_role
