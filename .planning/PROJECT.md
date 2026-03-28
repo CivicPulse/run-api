@@ -90,7 +90,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(None — planning next milestone)
+## Current Milestone: v1.6 Production Ready Polish
+
+**Goal:** Make the platform demo-ready and volunteer-friendly — fix import friction, verify data isolation, streamline navigation, and create shareable onboarding guides.
+
+**Target features:**
+- Zero-touch CSV import for L2 voter files (add missing aliases, handle alternate voting history column formats)
+- Audit and fix any campaign data cross-population across all scoped entities
+- Remove duplicate inline tab bar, consolidate navigation into sidebar (add Surveys)
+- Progressive volunteer onboarding guides (markdown source + in-app public pages)
 
 ### Out of Scope
 
@@ -118,7 +126,9 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.5 shipped. 48 phases, 149 plans delivered across 6 milestones in 17 days (2026-03-08 → 2026-03-25). All 48 v1.5 requirements satisfied. The platform is production-ready with full data isolation, org management, map-based turf editing, WCAG AA compliance, observability, and E2E test coverage.
+v1.5 shipped 2026-03-25. 48 phases, 149 plans delivered across 6 milestones in 17 days. The platform is production-ready with full data isolation, org management, map-based turf editing, WCAG AA compliance, observability, and E2E test coverage.
+
+Now entering v1.6: production polish focused on import UX, data isolation verification, navigation cleanup, and volunteer onboarding documentation.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
@@ -158,4 +168,4 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | AST-based rate limit guard test | Verify all route files have decorators without importing app | ✓ Good — catches missing rate limits at CI time |
 
 ---
-*Last updated: 2026-03-25 after v1.5 milestone*
+*Last updated: 2026-03-27 after v1.6 milestone start*

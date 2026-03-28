@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -14,6 +14,19 @@ from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.organization import Organization
+
+# Patch ensure_user_synced for all org API tests — user sync is tested
+# separately in test_user_sync.py. Org API tests mock db.scalar() sequences
+# which don't account for the extra db.execute() calls from user sync.
+pytestmark = pytest.mark.usefixtures("_patch_user_sync")
+
+
+@pytest.fixture(autouse=True)
+def _patch_user_sync():
+    with patch("app.api.deps.ensure_user_synced", new_callable=AsyncMock) as mock:
+        mock.return_value = MagicMock()
+        yield
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -88,17 +101,13 @@ class TestGetOrg:
         mock_db = AsyncMock()
         # require_org_role: (1) org lookup, (2) member role
         # endpoint: (3) org lookup again
-        mock_db.scalar = AsyncMock(
-            side_effect=[org, "org_admin", org]
-        )
+        mock_db.scalar = AsyncMock(side_effect=[org, "org_admin", org])
 
         app.dependency_overrides[get_current_user] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 "/api/v1/org",
                 headers={"Authorization": "Bearer fake"},
@@ -124,9 +133,7 @@ class TestGetOrg:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 "/api/v1/org",
                 headers={"Authorization": "Bearer fake"},
@@ -149,9 +156,7 @@ class TestListOrgCampaigns:
         mock_db = AsyncMock()
         # require_org_role: (1) org, (2) member role
         # endpoint: (3) org lookup again
-        mock_db.scalar = AsyncMock(
-            side_effect=[org, "org_admin", org]
-        )
+        mock_db.scalar = AsyncMock(side_effect=[org, "org_admin", org])
 
         # Mock the service execute call for list_campaigns
         mock_result = MagicMock()
@@ -162,9 +167,7 @@ class TestListOrgCampaigns:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 "/api/v1/org/campaigns",
                 headers={"Authorization": "Bearer fake"},
@@ -202,16 +205,12 @@ class TestListOrgMembers:
         mock_db = AsyncMock()
         # require_org_role: (1) org, (2) member role
         # endpoint: (3) org lookup
-        mock_db.scalar = AsyncMock(
-            side_effect=[org, "org_admin", org]
-        )
+        mock_db.scalar = AsyncMock(side_effect=[org, "org_admin", org])
 
         # list_members_with_campaign_roles calls execute 3 times:
         # 1. list_members() — returns [(member, user)]
         members_result = MagicMock()
-        members_result.all.return_value = [
-            (mock_member, mock_user_record)
-        ]
+        members_result.all.return_value = [(mock_member, mock_user_record)]
         # 2. Campaign list — returns Row-like objects with .id and .name
         mock_campaign = MagicMock()
         mock_campaign.id = uuid.uuid4()
@@ -229,9 +228,7 @@ class TestListOrgMembers:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 "/api/v1/org/members",
                 headers={"Authorization": "Bearer fake"},

@@ -28,27 +28,27 @@ export function AssignmentCard({
     <Link
       to={type === "canvassing" ? "/field/$campaignId/canvassing" : "/field/$campaignId/phone-banking"}
       params={{ campaignId }}
-      className="block min-h-[100px] rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="block min-h-[100px] rounded-xl border bg-card p-4 shadow-md transition-shadow hover:shadow-lg"
       data-tour="assignment-card"
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${iconBg} ${completed === 0 ? "animate-field-shimmer" : ""}`}
           >
-            <Icon className={`h-5 w-5 ${iconColor}`} />
+            <Icon className={`h-6 w-6 ${iconColor}`} />
           </div>
-          <span className="flex-1 text-base font-semibold">{name}</span>
+          <span className="flex-1 text-lg font-bold">{name}</span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm font-medium tabular-nums text-muted-foreground">
           {completed} of {total} {unit}
         </p>
 
-        <Progress value={progressValue} className="h-2" />
+        <Progress value={progressValue} className="h-2.5" />
 
-        <p className="text-right text-xs text-muted-foreground">Tap to start</p>
+        <p className="text-right text-sm font-medium text-primary">Tap to start</p>
       </div>
     </Link>
   )

@@ -22,7 +22,7 @@ export function OutcomeGrid({ outcomes, onSelect, disabled, voterName }: Outcome
           <Button
             key={outcome.code}
             variant="outline"
-            className={`min-h-11 min-w-11 text-sm font-normal border ${outcome.color.bg} ${outcome.color.text} ${outcome.color.border}`}
+            className={`min-h-14 min-w-11 text-sm font-semibold border-2 rounded-xl active:scale-[0.97] transition-transform duration-100 ${outcome.color.bg} ${outcome.color.text} ${outcome.color.border}`}
             onClick={() => onSelect(outcome.code)}
             disabled={disabled}
             aria-label={voterName ? `Record ${outcome.label} for ${voterName}` : `Record outcome: ${outcome.label}`}

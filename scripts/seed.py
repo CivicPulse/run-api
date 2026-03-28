@@ -29,6 +29,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.dnc import DoNotCallEntry
 from app.models.invite import Invite
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.shift import Shift, ShiftVolunteer
 from app.models.survey import SurveyQuestion, SurveyResponse, SurveyScript
@@ -383,6 +384,16 @@ async def main() -> None:  # noqa: C901, PLR0915
         session.add(org)
         await session.flush()
         print(f"  Created organization: {org.name}")
+
+        # Organization member for the owner
+        org_member = OrganizationMember(
+            user_id=user_owner_id,
+            organization_id=org.id,
+            role="org_owner",
+        )
+        session.add(org_member)
+        await session.flush()
+        print(f"  Created organization member: owner -> {org.name}")
 
         # ----------------------------------------------------------
         # 2b. Campaign

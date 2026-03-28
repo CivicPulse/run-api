@@ -288,7 +288,7 @@ function PhoneBanking() {
         {currentEntry && (
           <div
             key={currentEntry.id}
-            className="animate-in slide-in-from-right-4 duration-300"
+            className="animate-in fade-in slide-in-from-right-4 duration-300"
           >
             <CallingVoterCard
               entry={currentEntry}
@@ -297,7 +297,7 @@ function PhoneBanking() {
             />
 
             {/* Outcome grid */}
-            <div className="mt-4">
+            <div className="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-200 delay-150">
               <OutcomeGrid
                 outcomes={CALL_OUTCOME_CONFIGS}
                 onSelect={handleOutcomeSelect}

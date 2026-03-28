@@ -1,256 +1,260 @@
-# Stack Research: v1.5 — Map-Based Turf Editor + Organization-Level UI
+# Technology Stack: v1.6 Production Ready Polish
 
-**Researched:** 2026-03-24
-**Overall confidence:** MEDIUM-HIGH (npm registry verified, codebase analysis complete, WebSearch unavailable)
+**Project:** CivicPulse Run API
+**Researched:** 2026-03-27
+**Overall confidence:** HIGH (npm registry versions verified, codebase patterns analyzed, L2 data dictionary reviewed)
 
 ---
 
-## Map-Based Turf Editor
+## Executive Summary
 
-### Current State
+v1.6 requires minimal stack additions. The four target features (zero-touch CSV import, RLS data isolation audit, navigation consolidation, volunteer onboarding guides) are primarily code-level improvements to existing infrastructure. Only two new npm packages are needed for the onboarding guide pages. Everything else is alias expansion, test additions, and sidebar restructuring using tools already in the stack.
 
-The frontend already has `leaflet` 1.9.4 and `react-leaflet` 5.0.0 installed (package.json lines 29-37), with `@types/leaflet` 1.9.21 for TypeScript support. However, **no react-leaflet components exist anywhere in `web/src/`** — MapContainer, TileLayer, etc. are not used yet. The current `TurfForm.tsx` uses a raw `<Textarea>` for GeoJSON input (users paste JSON manually).
+---
 
-The backend is fully ready: `app/services/turf.py` validates GeoJSON with Shapely, converts to/from WKBElement via geoalchemy2, and the API accepts/returns `dict[str, Any]` boundary objects (GeoJSON Polygon format).
+## Feature-by-Feature Stack Analysis
 
-### Recommended Library: `@geoman-io/leaflet-geoman-free` v2.19.2
+### 1. Zero-Touch CSV Import for L2 Voter Files
 
-**Install:** `npm install @geoman-io/leaflet-geoman-free`
+**Stack changes: NONE. Pure code changes to existing `import_service.py`.**
 
-| Criterion | leaflet-draw 1.0.4 | react-leaflet-draw 0.21.0 | @geoman-io/leaflet-geoman-free 2.19.2 |
-|-----------|--------------------|--------------------------|-----------------------------------------|
-| Last updated | 2022-06-19 (abandoned) | 2025-09-15 | 2026-02-02 (active) |
-| Leaflet 1.9 support | Partial (no updates) | Yes (wraps leaflet-draw) | Yes (peer dep: leaflet ^1.2.0) |
-| React 19 / react-leaflet 5 | N/A (vanilla only) | Yes (peer dep matches) | N/A (vanilla, needs wrapper) |
-| Polygon editing | Basic draw + edit | Basic (wraps leaflet-draw) | Draw, edit, drag, cut, rotate, snap |
-| GeoJSON export | Manual layer conversion | Via leaflet-draw events | Built-in `.toGeoJSON()` on layers |
-| Vertex editing UX | Dated controls | Dated (inherits from leaflet-draw) | Modern drag handles, midpoint insertion |
-| TypeScript types | @types/leaflet-draw (stale) | Bundled | Bundled |
-| Maintenance | Abandoned since 2022 | Thin wrapper over abandoned lib | Active development, regular releases |
-| Bundle size | ~50KB | ~55KB (includes leaflet-draw) | ~120KB |
+The import pipeline already uses RapidFuzz (3.14.3) for fuzzy column matching with a 75% threshold. The "zero-touch" improvement means expanding the `CANONICAL_FIELDS` alias dictionary so that L2 voter files auto-map without user intervention.
 
-### Why Geoman Over Alternatives
+**What needs to change (code, not stack):**
 
-1. **leaflet-draw is abandoned.** Last npm publish was June 2022. Known bugs with Leaflet 1.9 go unfixed. Building on abandoned infrastructure creates tech debt immediately.
+The current `CANONICAL_FIELDS` dict in `app/services/import_service.py` covers ~45 L2 column aliases but is missing several that appear in real L2 exports. Based on the L2 Voter File Available Fields data dictionary, the following alias gaps exist:
 
-2. **react-leaflet-draw is a thin wrapper over leaflet-draw.** It inherits all of leaflet-draw's bugs and limitations. The wrapper adds React-friendly props but does not fix underlying issues.
+| Canonical Field | Missing L2 Aliases | Confidence |
+|----------------|-------------------|------------|
+| `registration_line1` | `residence_addresses_addressline` (has partial), `residence_address_line` | MEDIUM |
+| `registration_county` | `counties` (L2 uses this in Boundaries section) | MEDIUM |
+| `precinct` | `precinct_voting_districts` | LOW |
+| `__cell_phone` | `landline_telephone_number` (different phone type, may need `__landline` field) | MEDIUM |
+| `congressional_district` | `new_congressional_districts`, `old_congressional_districts` | MEDIUM |
+| `state_senate_district` | `new_state_senate_districts`, `old_state_senate_districts` | MEDIUM |
+| `state_house_district` | `new_state_house_districts`, `old_state_house_districts` | MEDIUM |
+| `ethnicity` | `broad_ethnic_groupings` | MEDIUM |
+| `party` | `party_identification` (L2 data dictionary lists this variant) | HIGH |
+| `registration_date` | `official_reg_date`, `calculated_reg_date` | HIGH |
+| (new) `registration_status` | `voters_active`, `registration_status` | MEDIUM |
 
-3. **Geoman is actively maintained** with a release as recent as February 2026. It supports snap-to-vertex (critical for adjacent turf boundaries that share edges), vertex editing with midpoint insertion, and produces clean GeoJSON output.
+**Voting history format variations:**
 
-4. **The "free" version covers all turf editor needs.** Drawing polygons, editing vertices, deleting shapes — all in the free tier. Pro features (split, scale, measurement) are not needed for v1.5.
+The current parser (`parse_voting_history`) only handles `General_YYYY` / `Primary_YYYY` column patterns. Based on L2 documentation, alternate formats observed in the wild include:
 
-5. **No react-leaflet wrapper needed.** Geoman attaches to the Leaflet map instance via `map.pm.addControls()`. With react-leaflet v5, access the map instance via `useMap()` hook inside a `MapContainer`, then call Geoman's imperative API in a `useEffect`. This is actually cleaner than the react-leaflet-draw approach because it avoids wrapper abstraction leaks.
+| Pattern | Example | Currently Handled |
+|---------|---------|------------------|
+| `General_YYYY` | `General_2024` | YES |
+| `Primary_YYYY` | `Primary_2022` | YES |
+| `Elections_General_YYYY` | `Elections_General_2024` | NO |
+| `Elections_Primary_YYYY` | `Elections_Primary_2022` | NO |
+| `General_Election_YYYY` | `General_Election_2020` | NO |
+| `Primary_Election_YYYY` | `Primary_Election_2020` | NO |
+| `Special_YYYY` | `Special_2023` | NO |
+| `Local_YYYY` | `Local_2023` | NO |
+| `Runoff_YYYY` | `Runoff_2024` | NO |
 
-### Integration Pattern with react-leaflet + TanStack Query
+The regex `_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")` needs broadening to handle these additional patterns. This is a one-line regex change, not a library addition.
 
-```typescript
-// TurfMapEditor.tsx — component pattern
-import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet"
-import "@geoman-io/leaflet-geoman-free"
-import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
+**Recommendation:** Expand the regex to `r"^(?:Elections_)?(?:General|Primary|Special|Local|Runoff)(?:_Election)?_(\d{4})$"` and update the `_VOTED_VALUES` frozenset if needed. No new packages required.
 
-function GeomanControls({ onBoundaryChange }: { onBoundaryChange: (geojson: GeoJSON) => void }) {
-  const map = useMap()
+### 2. Campaign Data Isolation Audit (RLS)
 
-  useEffect(() => {
-    map.pm.addControls({
-      position: "topleft",
-      drawMarker: false,
-      drawCircle: false,
-      drawCircleMarker: false,
-      drawPolyline: false,
-      drawRectangle: false,
-      drawText: false,
-      // Only polygon drawing + editing
-      drawPolygon: true,
-      editMode: true,
-      dragMode: true,
-      removalMode: true,
-    })
+**Stack changes: NONE. Uses existing pytest + SQLAlchemy async test infrastructure.**
 
-    map.on("pm:create", (e) => {
-      const geojson = e.layer.toGeoJSON()
-      onBoundaryChange(geojson.geometry)
-    })
+The project already has comprehensive RLS test infrastructure:
+- `tests/integration/conftest.py` provides `superuser_session` (bypasses RLS), `app_user_session` (RLS enforced), and `two_campaigns` fixture
+- 8 RLS test files covering voter, canvassing, phone banking, volunteer, API smoke, and pool isolation
+- Connection patterns: superuser via `postgresql+asyncpg://postgres:postgres@localhost:5432/run_api`, app_user via `postgresql+asyncpg://app_user:app_password@localhost:5432/run_api`
 
-    map.on("pm:edit", (e) => {
-      const geojson = e.layer.toGeoJSON()
-      onBoundaryChange(geojson.geometry)
-    })
+**What the audit needs (code, not stack):**
 
-    return () => {
-      map.pm.removeControls()
-      map.off("pm:create")
-      map.off("pm:edit")
-    }
-  }, [map, onBoundaryChange])
+The existing tests cover the major entities but a comprehensive audit should verify ALL 33+ RLS-enabled tables. The current test files test isolation for:
+- Campaigns, campaign_members, users (test_rls.py)
+- Voters, voter_tags, voter_lists, voter_contacts, voter_interactions, import_jobs (test_voter_rls.py)
+- Turfs, walk_lists, walk_list_entries, walk_list_canvassers, surveys, survey_questions (test_canvassing_rls.py)
+- Phone_banks, call_lists, call_list_entries, session_callers, dnc_entries (test_phone_banking_rls.py)
+- Volunteers, shifts, shift_volunteers, volunteer_tags, volunteer_tag_members, volunteer_availability (test_volunteer_rls.py)
+- API-level smoke tests for voters, turfs (test_rls_api_smoke.py)
+- Pool isolation and transaction scope (test_rls_isolation.py)
 
-  return null
+**Potentially untested entities** (need verification during audit):
+- `survey_responses` (if separate table)
+- `voter_list_members` (junction table)
+- `voter_addresses` (if exists)
+- `field_mapping_templates` (partially tested in test_voter_rls.py)
+- `organization_members` (org-level, not campaign-scoped -- different RLS pattern)
+
+**Testing approach:** Use the existing `two_campaigns` fixture pattern. No new test libraries needed. pytest-asyncio (1.3.0+) and SQLAlchemy async sessions handle everything.
+
+### 3. Navigation Consolidation
+
+**Stack changes: NONE. Pure frontend restructuring of existing components.**
+
+The current sidebar in `web/src/routes/__root.tsx` already uses shadcn/ui's Sidebar component system (`SidebarContent`, `SidebarGroup`, `SidebarMenuItem`, etc.) with Lucide React icons. The current campaign nav items are:
+- Dashboard, Voters, Canvassing, Phone Banking, Volunteers, Field Operations
+
+**What needs to change:**
+- Add "Surveys" to the campaign sidebar nav (currently only accessible via nested tabs in Canvassing/Phone Banking routes)
+- Remove duplicate inline tab bars from layout routes (`canvassing.tsx`, `phone-banking.tsx`, `voters.tsx`, `volunteers.tsx`) where they duplicate sidebar navigation
+- No new components or libraries needed -- just reorganize existing `navItems` array and conditionally show/hide sub-navigation
+
+The Lucide icon for Surveys is already imported (`ClipboardList` is in use for Volunteers). The `FileQuestion` or `ListChecks` icon from `lucide-react` (0.563.0, already installed) would work for Surveys.
+
+### 4. Volunteer Onboarding Guides (Markdown Pages)
+
+**Stack changes: 2 new npm packages needed.**
+
+This is the only feature requiring new dependencies. The goal is to author volunteer guides as markdown files and render them as styled, public-accessible pages within the app.
+
+#### Recommended Approach: react-markdown + @tailwindcss/typography
+
+**Why react-markdown over build-time alternatives:**
+- Guides may eventually be loaded from API/CMS (future-proof)
+- react-markdown renders to React components (safe by default, no raw innerHTML injection)
+- Integrates naturally with the existing component system (can map markdown elements to shadcn/ui components)
+- The content is static but the rendering context is dynamic (route params, auth state for conditional content)
+
+**Why NOT MDX or vite-plugin-markdown:**
+- MDX (@mdx-js/rollup 3.1.1) adds JSX-in-markdown complexity that volunteer guides don't need
+- vite-plugin-markdown (0.21.5) produces raw HTML strings requiring unsafe innerHTML insertion
+- Both add build-time coupling that makes future CMS integration harder
+
+## Recommended Stack Additions
+
+### New Frontend Dependencies
+
+| Package | Version | Purpose | Why This One |
+|---------|---------|---------|-------------|
+| `react-markdown` | ^10.1.0 | Render markdown as React components | 900K+ weekly downloads, safe rendering via virtual DOM, component customization via `components` prop, GFM support via plugins, peer deps satisfied (React >=18) |
+| `@tailwindcss/typography` | ^0.5.19 | `prose` class for beautiful markdown typography | First-party Tailwind plugin, compatible with Tailwind v4 (peer dep: `>=4.0.0-beta.1`), provides heading hierarchy, list styling, blockquote formatting, table styling, code block formatting -- all matching design system |
+
+### Optional Frontend Dependencies (add only if needed)
+
+| Package | Version | Purpose | When to Add |
+|---------|---------|---------|-------------|
+| `remark-gfm` | ^4.0.1 | GitHub Flavored Markdown (tables, task lists, strikethrough) | Only if guides use GFM tables or task lists; start without it, add when first needed |
+| `rehype-slug` | ^6.0.0 | Add `id` attributes to headings for anchor links | Only if guides need in-page navigation / table of contents |
+| `rehype-autolink-headings` | ^7.1.0 | Add clickable anchor links to headings | Only if guides need shareable heading links; depends on rehype-slug |
+
+### New Backend Dependencies
+
+**NONE.** All four features use existing Python packages:
+- RapidFuzz 3.14.3 (import alias matching)
+- SQLAlchemy 2.0.48 + asyncpg 0.31.0 (RLS testing)
+- pytest 9.0.2 + pytest-asyncio 1.3.0 (integration tests)
+
+### New Dev Dependencies
+
+**NONE.** Existing Playwright (1.58.2), Vitest (4.0.18), and pytest handle all testing needs.
+
+## Integration Points
+
+### react-markdown + @tailwindcss/typography Integration
+
+**Tailwind v4 CSS setup** (add to `web/src/index.css`):
+```css
+@plugin "@tailwindcss/typography";
+```
+
+**Component pattern** (markdown page rendering):
+```tsx
+import Markdown from "react-markdown"
+
+function GuidePage({ content }: { content: string }) {
+  return (
+    <article className="prose prose-neutral dark:prose-invert max-w-none">
+      <Markdown>{content}</Markdown>
+    </article>
+  )
 }
 ```
 
-**TanStack Query integration:** The existing `useTurfs.ts` hook already handles turf CRUD via TanStack Query. The map editor component produces a GeoJSON object, which replaces the current `<Textarea>` value in `TurfForm.tsx`. The mutation payload shape (`{ name, description, boundary }`) stays identical — only the input method changes from paste-JSON to draw-on-map.
+**Custom component mapping** (to match shadcn/ui design system):
+```tsx
+<Markdown
+  components={{
+    a: ({ href, children }) => (
+      <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    // Map other elements to shadcn components as needed
+  }}
+>
+  {content}
+</Markdown>
+```
 
-**Rendering existing turfs:** Use react-leaflet's built-in `<GeoJSON>` component to render turf boundaries returned by the list/detail endpoints. The API already returns `boundary` as a GeoJSON dict. No conversion needed.
+**Markdown file location:** Store guide source files at `web/src/content/guides/` and import as raw strings via Vite's `?raw` import suffix (built into Vite, no plugin needed):
+```tsx
+import canvassingGuide from "@/content/guides/canvassing.md?raw"
+```
 
-### Backend Changes Needed: NONE
+This approach avoids adding a Vite markdown plugin while keeping guides as maintainable `.md` files.
 
-The backend is fully ready:
-- `app/services/turf.py` already validates GeoJSON polygons with Shapely
-- `app/schemas/turf.py` accepts `boundary: dict[str, Any]` (GeoJSON)
-- `app/api/v1/turfs.py` converts WKB to GeoJSON for responses
-- PostGIS stores boundaries as `Geometry(POLYGON, 4326)` with spatial index
-- `geoalchemy2` and `shapely` are already installed
+### Route structure for guides
 
-No new Python packages, no schema changes, no migration needed.
+Add routes under an unauthed or lightly-authed path (guides are "public pages" per the milestone description):
+```
+web/src/routes/guides/index.tsx          -- guide listing
+web/src/routes/guides/$guideSlug.tsx     -- individual guide page
+```
 
-### Tile Provider
-
-Use OpenStreetMap tiles (free, no API key): `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
-
-For a more polished look, consider adding `VITE_MAP_TILE_URL` to config for swappable tile providers (Mapbox, Stadia, etc.) later. Not needed for v1.5.
-
----
-
-## Organization-Level UI
-
-### Current State
-
-**Backend:** Organization model exists (`app/models/organization.py`) with `zitadel_org_id` and `zitadel_project_grant_id`. `ZitadelService` (`app/services/zitadel.py`) already handles:
-- `create_organization()` / `delete_organization()` / `deactivate_organization()`
-- `assign_project_role()` / `remove_project_role()` / `remove_all_project_roles()`
-- `create_project_grant()` / `ensure_project_grant()`
-
-Campaign creation already supports `organization_id` parameter to reuse an existing org.
-
-**Frontend:** Auth uses `oidc-client-ts` 3.1.0 with ZITADEL. The OIDC scope already requests `urn:zitadel:iam:user:resourceowner` (returns user's org ID) and `urn:zitadel:iam:org:projects:roles` (returns roles across all orgs). JWT claims already contain org context.
-
-### ZITADEL SDK Recommendation: DO NOT ADD ONE
-
-**Do not install `@zitadel/client` or `@zitadel/node`.** Here is why:
-
-1. **All ZITADEL org management is server-side.** The existing `ZitadelService` Python class handles org CRUD via ZITADEL's REST Management API using `httpx` with a service account (client_credentials grant). This is the correct pattern — org management requires elevated privileges that must not be exposed to the browser.
-
-2. **The frontend already has org context via JWT claims.** The OIDC token includes `urn:zitadel:iam:user:resourceowner` (the user's org ID) and project role claims scoped by org. No additional SDK is needed to read this data.
-
-3. **`@zitadel/client` is designed for server-side Node.js.** It uses `createServerTransport` with service account tokens. Adding it to a React SPA would expose service credentials.
-
-4. **The frontend needs API endpoints, not an SDK.** The org admin dashboard will call your own FastAPI endpoints (e.g., `GET /api/v1/organizations`, `GET /api/v1/organizations/{id}/campaigns`), which internally call `ZitadelService` methods. This maintains the existing architecture pattern.
-
-### What the Backend Needs
-
-New API endpoints to expose organization data (the model and ZITADEL integration exist, but no org-specific REST routes):
-
-| Endpoint | Purpose | Exists? |
-|----------|---------|---------|
-| `GET /api/v1/organizations` | List user's organizations | NO — needs new route |
-| `GET /api/v1/organizations/{id}` | Org detail with campaigns | NO — needs new route |
-| `GET /api/v1/organizations/{id}/members` | Org member list | NO — needs new route |
-| `POST /api/v1/organizations/{id}/campaigns` | Create campaign under org | PARTIAL — campaign create exists but org association is a parameter, not a route |
-| `GET /api/v1/me/organizations` | Current user's org memberships | NO — needs new route |
-
-These endpoints will call existing `ZitadelService` methods and query the `organizations` table. No new Python packages needed.
-
-**New backend service needed:** `OrganizationService` to handle:
-- Listing orgs where user has membership (query ZITADEL grants or local `campaign_members` table grouped by `organization_id`)
-- Org admin role checking (extend existing role hierarchy)
-- Org-scoped campaign listing
-
-### Frontend Additions Needed
-
-| Addition | Purpose | Complexity |
-|----------|---------|------------|
-| Org dashboard page (`/organizations/{orgId}`) | Campaigns list, member management | Medium |
-| Org switcher component | Multi-org membership navigation | Low |
-| `useOrganizations` hook | TanStack Query for org endpoints | Low |
-| Org admin gate | Extend `usePermissions` / `RequireRole` for org-level roles | Low |
-| Campaign creation update | Org selector when user has multiple orgs | Low |
-
-**No new frontend packages needed.** All UI can be built with existing shadcn/ui components (DataTable, Card, Dialog, Command for org switcher).
-
-### Extending Existing ZITADEL Patterns
-
-The `urn:zitadel:iam:user:resourceowner` claim in the JWT provides the user's primary org. For multi-org support:
-
-1. **JWT already includes `urn:zitadel:iam:org:projects:roles`** — this returns roles across ALL projects/orgs the user has grants for. Parse this in `usePermissions` to determine org-level admin status.
-
-2. **Backend role resolution** (`app/core/security.py` + `app/api/deps.py`) already extracts `sub` and role claims. Extend to also extract the `urn:zitadel:iam:user:resourceowner` claim for org context.
-
-3. **`x-zitadel-orgid` header pattern** is already used in `ZitadelService` for org-scoped API calls. The org UI endpoints will follow this same pattern.
-
----
+These routes should use TanStack Router's `createFileRoute` pattern, consistent with the rest of the app. The guide content can be a static map of slug-to-import for v1.6, with API-backed content as a future enhancement.
 
 ## What NOT to Add
 
-| Library | Why Not |
-|---------|---------|
-| `@zitadel/client` / `@zitadel/node` | All ZITADEL management is server-side via existing Python `ZitadelService` + httpx |
-| `leaflet-draw` | Abandoned since 2022, known bugs with Leaflet 1.9 |
-| `react-leaflet-draw` | Thin wrapper over abandoned leaflet-draw |
-| `mapbox-gl` / `react-map-gl` | Requires Mapbox API key, overkill for polygon editing; Leaflet already installed |
-| `@turf/turf` (Turf.js) | Server-side PostGIS handles all spatial queries; no client-side geo computation needed |
-| `geojson` npm package | TypeScript GeoJSON types available from `@types/geojson`; no runtime lib needed |
-| Any new Python geo packages | `geoalchemy2` + `shapely` already handle all GeoJSON/PostGIS operations |
-| Any new auth packages | `oidc-client-ts` (frontend) + `authlib` + `httpx` (backend) cover everything |
+| Technology | Why Not |
+|-----------|---------|
+| MDX / @mdx-js/rollup | Overkill for static volunteer guides; adds JSX-in-markdown complexity |
+| vite-plugin-markdown | Produces raw HTML strings; less safe than react-markdown's virtual DOM approach |
+| Contentful / Sanity / CMS | Out of scope for v1.6; guides are developer-authored markdown files |
+| Docusaurus / Nextra | Full documentation frameworks; we need a few in-app pages, not a docs site |
+| Any Python markdown library | Guides are frontend-rendered; no need for server-side markdown processing |
+| Additional RLS test framework | Existing pytest + SQLAlchemy async fixtures are sufficient and well-established |
+| react-helmet / react-head | Guides are in-app pages, not SEO-critical public pages needing meta tags |
+| Any CSV parsing library | Python stdlib `csv` module handles all import parsing needs |
+| chardet / charset-normalizer | Current UTF-8-sig + Latin-1 fallback handles all observed L2 file encodings |
 
----
-
-## Summary of Changes
-
-### New Frontend Dependencies (1 package)
+## Installation Commands
 
 ```bash
-cd web && npm install @geoman-io/leaflet-geoman-free
+# Frontend: only 2 new packages
+cd web && npm install react-markdown @tailwindcss/typography
+
+# Backend: nothing to install
+# Dev deps: nothing to install
 ```
 
-Optionally for stricter GeoJSON typing:
-```bash
-cd web && npm install -D @types/geojson
-```
+## Version Compatibility Matrix
 
-### New Backend Dependencies: NONE
-
-### New Backend Code Needed
-
-1. **`app/api/v1/organizations.py`** — New router with org list/detail/member endpoints
-2. **`app/services/organization.py`** — New service for org queries (model already exists)
-3. **`app/schemas/organization.py`** — New Pydantic schemas for org responses
-
-### Frontend Components to Build
-
-1. **`TurfMapEditor.tsx`** — MapContainer + Geoman controls + GeoJSON render
-2. **`TurfMapView.tsx`** — Read-only map with turf boundary overlay (for detail/list views)
-3. Update **`TurfForm.tsx`** — Replace `<Textarea>` with `<TurfMapEditor>`
-4. **Org dashboard page** — `/organizations/{orgId}` route
-5. **Org switcher** — Component in sidebar/header for multi-org navigation
-6. **`useOrganizations.ts`** — TanStack Query hooks for org endpoints
-
-### Versions Summary
-
-| Package | Version | Status | Confidence |
-|---------|---------|--------|------------|
-| `@geoman-io/leaflet-geoman-free` | 2.19.2 | Add new | HIGH (npm verified, Feb 2026 release) |
-| `leaflet` | 1.9.4 | Already installed | HIGH |
-| `react-leaflet` | 5.0.0 | Already installed | HIGH |
-| `@types/leaflet` | 1.9.21 | Already installed | HIGH |
-| `@types/geojson` | latest | Optional dev dep for stricter types | MEDIUM |
-| `geoalchemy2` | 0.18.4+ | Already installed | HIGH |
-| `shapely` | 2.1.2+ | Already installed | HIGH |
-| `oidc-client-ts` | 3.1.0 | Already installed, sufficient for org claims | HIGH |
-
----
+| New Package | Requires | Project Has | Compatible |
+|------------|----------|-------------|------------|
+| react-markdown 10.1.0 | React >=18 | React 19.2.0 | YES |
+| react-markdown 10.1.0 | @types/react >=18 | @types/react 19.2.7 | YES |
+| @tailwindcss/typography 0.5.19 | tailwindcss >=3.0.0 or >=4.0.0-beta.1 | tailwindcss 4.1.18 | YES |
+| @tailwindcss/typography 0.5.19 | CSS `@plugin` directive (v4) | Tailwind v4 CSS config | YES |
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Geoman recommendation | HIGH | npm registry verified (version, dates, peer deps), well-known library, active maintenance |
-| leaflet-draw rejection | HIGH | npm confirmed last publish June 2022, 4+ years without updates |
-| No ZITADEL JS SDK needed | HIGH | Codebase analysis confirms all ZITADEL calls are backend-side with service account |
-| No backend package additions | HIGH | Full codebase review of turf service + ZITADEL service confirms existing deps cover all needs |
-| Org API endpoint design | MEDIUM | Endpoint list is based on feature requirements; may need iteration during implementation |
-| JWT org claim parsing | MEDIUM | OIDC scopes already request org claims, but multi-org grant structure may need testing against live ZITADEL |
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Import alias expansion | HIGH | L2 data dictionary reviewed, existing code patterns well understood, pure dict expansion |
+| Voting history regex | MEDIUM | L2 format variations confirmed from data dictionary but exact CSV headers vary by export; regex broadening is safe (additive, not breaking) |
+| RLS audit scope | HIGH | All migration files reviewed, RLS policies enumerated across 8 migration files, existing test patterns well established |
+| Navigation consolidation | HIGH | Sidebar component fully analyzed, navItems array pattern clear, no new deps needed |
+| react-markdown choice | HIGH | npm registry version verified (10.1.0), peer deps checked (React >=18 satisfied), 900K+ weekly downloads, used by Netlify/Gatsby/Stream |
+| @tailwindcss/typography | HIGH | Version verified (0.5.19), Tailwind v4 peer dep confirmed (>=4.0.0-beta.1), first-party Tailwind plugin, `@plugin` directive documented |
+| Vite ?raw imports | HIGH | Built-in Vite feature (no plugin needed), project already uses Vite 7.3.1 |
 
----
+## Sources
 
-*Stack research: 2026-03-24*
+- [react-markdown on npm](https://www.npmjs.com/package/react-markdown) -- version 10.1.0
+- [react-markdown on GitHub](https://github.com/remarkjs/react-markdown) -- component API, plugin system
+- [remark-gfm on npm](https://www.npmjs.com/package/remark-gfm) -- version 4.0.1
+- [@tailwindcss/typography on GitHub](https://github.com/tailwindlabs/tailwindcss-typography) -- Tailwind v4 `@plugin` syntax
+- [L2 Voter File Available Fields](https://l2-data.com/wp-content/uploads/2022/01/L2_Voter-Dictionary_r2.pdf) -- data dictionary for alias mapping
+- [L2 National Voter File on Redivis](https://redivis.com/datasets/4r1c-d6j182y87) -- column naming patterns (Voters_*, Residence_Addresses_*)
+- [React Markdown Complete Guide 2025](https://strapi.io/blog/react-markdown-complete-guide-security-styling) -- security and styling best practices
+- [Tailwind Typography Plugin Docs](https://tailwindcss-typography.vercel.app/) -- prose class usage

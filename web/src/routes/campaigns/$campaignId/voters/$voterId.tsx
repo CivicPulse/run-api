@@ -374,14 +374,14 @@ function VoterDetailPage() {
                             <td className="py-2 font-medium">{row.year}</td>
                             <td className="py-2 text-center">
                               {row.general ? (
-                                <Check className="inline-block size-4 text-green-600" />
+                                <Check className="inline-block size-4 text-status-success-foreground" />
                               ) : (
                                 <Minus className="inline-block size-4 text-muted-foreground" />
                               )}
                             </td>
                             <td className="py-2 text-center">
                               {row.primary ? (
-                                <Check className="inline-block size-4 text-green-600" />
+                                <Check className="inline-block size-4 text-status-success-foreground" />
                               ) : (
                                 <Minus className="inline-block size-4 text-muted-foreground" />
                               )}

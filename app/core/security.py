@@ -54,6 +54,7 @@ class AuthenticatedUser(BaseModel):
 
     id: str
     org_id: str
+    org_ids: list[str] = []
     role: CampaignRole
     email: str | None = None
     display_name: str | None = None
@@ -237,9 +238,7 @@ async def resolve_campaign_role(
     # 2. Org role lookup -- find campaign's org, check OrganizationMember
     org_derived_role: CampaignRole | None = None
     if user_org_id:
-        campaign = await db.scalar(
-            select(Campaign).where(Campaign.id == campaign_id)
-        )
+        campaign = await db.scalar(select(Campaign).where(Campaign.id == campaign_id))
         if campaign is not None and campaign.organization_id is not None:
             # Resolve effective org ID via Organization FK
             effective_org_id: str | None = await db.scalar(
@@ -255,23 +254,18 @@ async def resolve_campaign_role(
                 org_member_role = await db.scalar(
                     select(OrganizationMember.role).where(
                         OrganizationMember.user_id == user_id,
-                        OrganizationMember.organization_id
-                        == campaign.organization_id,
+                        OrganizationMember.organization_id == campaign.organization_id,
                     )
                 )
                 if org_member_role:
                     try:
                         org_role = OrgRole(org_member_role)
-                        org_derived_role = ORG_ROLE_CAMPAIGN_EQUIVALENT[
-                            org_role
-                        ]
+                        org_derived_role = ORG_ROLE_CAMPAIGN_EQUIVALENT[org_role]
                     except (ValueError, KeyError):
                         pass
 
     # 3. Additive resolution: max of explicit campaign + org-derived (D-08)
-    roles = [
-        r for r in [explicit_campaign_role, org_derived_role] if r is not None
-    ]
+    roles = [r for r in [explicit_campaign_role, org_derived_role] if r is not None]
     if roles:
         return max(roles)
 
@@ -310,24 +304,30 @@ async def get_current_user(
         ) from exc
 
     org_id = claims.get("urn:zitadel:iam:user:resourceowner:id")
+
+    # Collect ALL org IDs the user has access to from project role claims.
+    # In ZITADEL multi-tenant setups, resourceowner:id is the user's home
+    # org (e.g. the platform org), while tenant orgs appear in role grants.
+    all_org_ids: set[str] = set()
+    project_id = settings.zitadel_project_id
+    role_claim_key = f"urn:zitadel:iam:org:project:{project_id}:roles"
+    roles_obj = claims.get(role_claim_key, {})
+    for _role_name, org_map in roles_obj.items():
+        if isinstance(org_map, dict):
+            all_org_ids.update(org_map.keys())
+
     if not org_id:
-        # Fallback: extract org_id from role claim structure where org_id
-        # is the key inside role values, e.g.:
-        # "urn:zitadel:iam:org:project:{pid}:roles": {"admin": {"org-id": "domain"}}
-        project_id = settings.zitadel_project_id
-        role_claim_key = f"urn:zitadel:iam:org:project:{project_id}:roles"
-        roles_obj = claims.get(role_claim_key, {})
-        for _role_name, org_map in roles_obj.items():
-            if isinstance(org_map, dict):
-                org_id = next(iter(org_map), None)
-                if org_id:
-                    break
+        # Fallback: use first org from role claims
+        org_id = next(iter(all_org_ids), None)
     if not org_id:
         logger.warning("JWT missing organization claim for sub={}", claims.get("sub"))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing organization claim",
         )
+
+    if org_id not in all_org_ids:
+        all_org_ids.add(org_id)
 
     email = claims.get("email")
     display_name = claims.get("name") or claims.get("preferred_username")
@@ -375,6 +375,7 @@ async def get_current_user(
     return AuthenticatedUser(
         id=claims["sub"],
         org_id=org_id,
+        org_ids=sorted(all_org_ids),
         role=_extract_role(claims),
         email=email,
         display_name=display_name or email,
@@ -471,15 +472,28 @@ def require_org_role(minimum: str):
         current_user: AuthenticatedUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
+        from app.api.deps import ensure_user_synced
         from app.models.organization import Organization
         from app.models.organization_member import OrganizationMember
 
-        # Find org by JWT org_id (D-11: JWT org_id is authoritative)
+        # Ensure local User + OrganizationMember records exist before
+        # checking membership (org endpoints may be hit before any
+        # campaign endpoint triggers ensure_user_synced).
+        await ensure_user_synced(current_user, db)
+
+        # Find org by JWT org_id first; fall back to any org the user
+        # has access to via project role grants (multi-tenant support).
         org = await db.scalar(
             select(Organization).where(
                 Organization.zitadel_org_id == current_user.org_id
             )
         )
+        if not org and current_user.org_ids:
+            org = await db.scalar(
+                select(Organization).where(
+                    Organization.zitadel_org_id.in_(current_user.org_ids)
+                )
+            )
         if not org:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
