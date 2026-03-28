@@ -186,11 +186,10 @@ class TestUpsertSetClause:
             {"First_Name": "John", "Last_Name": "Doe", "VoterID": "V001"},
         ]
 
-        captured_stmt = None
+        captured_stmts: list = []
 
         async def capture_execute(stmt, *args, **kwargs):
-            nonlocal captured_stmt
-            captured_stmt = stmt
+            captured_stmts.append(stmt)
             mock_result = MagicMock()
             mock_result.all.return_value = [(uuid.uuid4(),)]
             return mock_result
@@ -200,9 +199,9 @@ class TestUpsertSetClause:
 
         await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
-        # Compile the captured statement to SQL text
-        assert captured_stmt is not None
-        compiled = captured_stmt.compile(dialect=pg_dialect())
+        # First execute call is the INSERT/upsert; second is the geom UPDATE
+        assert len(captured_stmts) >= 1
+        compiled = captured_stmts[0].compile(dialect=pg_dialect())
         sql_text = str(compiled)
 
         # Verify propensity_general is in the SET clause even though
@@ -227,11 +226,10 @@ class TestUpsertSetClause:
             {"First_Name": "Jane", "Last_Name": "Doe", "VoterID": "V002"},
         ]
 
-        captured_stmt = None
+        captured_stmts: list = []
 
         async def capture_execute(stmt, *args, **kwargs):
-            nonlocal captured_stmt
-            captured_stmt = stmt
+            captured_stmts.append(stmt)
             mock_result = MagicMock()
             mock_result.all.return_value = [(uuid.uuid4(),)]
             return mock_result
@@ -241,8 +239,9 @@ class TestUpsertSetClause:
 
         await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
-        assert captured_stmt is not None
-        compiled = captured_stmt.compile(dialect=pg_dialect())
+        # First execute call is the INSERT/upsert
+        assert len(captured_stmts) >= 1
+        compiled = captured_stmts[0].compile(dialect=pg_dialect())
         sql_text = str(compiled)
         assert "RETURNING" in sql_text.upper()
 
@@ -438,8 +437,8 @@ class TestPhoneCreationInBatch:
         assert errors == []
         # Phone should NOT be created (bad number)
         assert phones == 0
-        # Only one execute call (voter upsert), no phone upsert
-        assert call_count == 1
+        # Two execute calls: voter upsert + geom UPDATE, no phone upsert
+        assert call_count == 2
 
     @pytest.mark.asyncio
     async def test_phone_creation_with_valid_number(self, service, campaign_id):
@@ -479,7 +478,7 @@ class TestPhoneCreationInBatch:
         assert errors == []
         assert phones == 1
         # Two execute calls: voter upsert + phone upsert
-        assert len(captured_stmts) == 2
+        assert len(captured_stmts) == 3  # voter upsert + geom UPDATE + phone upsert
 
     @pytest.mark.asyncio
     async def test_is_primary_excluded_from_phone_upsert_set(
@@ -516,7 +515,7 @@ class TestPhoneCreationInBatch:
         await service.process_csv_batch(rows, mapping, campaign_id, "csv", session)
 
         # The second statement is the phone upsert
-        assert len(captured_stmts) == 2
+        assert len(captured_stmts) == 3  # voter upsert + geom UPDATE + phone upsert
         phone_stmt = captured_stmts[1]
         compiled = phone_stmt.compile(dialect=pg_dialect())
         sql_text = str(compiled)

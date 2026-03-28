@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from rapidfuzz import fuzz, process
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.models.voter import Voter
@@ -660,16 +660,9 @@ class ImportService:
             if voter.get("party") and isinstance(voter["party"], str):
                 voter["party"] = normalize_party(voter["party"])
 
-            # Build PostGIS point geometry from lat/lon
-            lat = voter.get("latitude")
-            lon = voter.get("longitude")
-            if (
-                isinstance(lat, (int, float))
-                and isinstance(lon, (int, float))
-                and -90 <= lat <= 90
-                and -180 <= lon <= 180
-            ):
-                voter["geom"] = f"SRID=4326;POINT({lon} {lat})"
+            # geom is computed post-insert from lat/lon (bulk insert
+            # can't handle PostGIS Geometry as bound parameters)
+            voter.pop("geom", None)
 
             # Parse voting history from original CSV row columns
             voting_history = parse_voting_history(row)
@@ -770,11 +763,7 @@ class ImportService:
                 if col.name not in _UPSERT_EXCLUDE
             }
             update_cols["updated_at"] = func.now()
-            # Preserve existing geometry when incoming value is NULL (partial coords)
-            update_cols["geom"] = func.coalesce(
-                stmt.excluded.geom, Voter.__table__.c.geom
-            )
-            # Keep lat/lon in sync with geom — preserve existing values when
+            # Keep lat/lon in sync — preserve existing values when
             # incoming coordinates are incomplete (NULL).
             update_cols["latitude"] = func.coalesce(
                 stmt.excluded.latitude, Voter.__table__.c.latitude
@@ -782,6 +771,9 @@ class ImportService:
             update_cols["longitude"] = func.coalesce(
                 stmt.excluded.longitude, Voter.__table__.c.longitude
             )
+            # geom is excluded from bulk insert/update (PostGIS Geometry
+            # can't be a bound parameter in multi-row VALUES); computed below.
+            update_cols.pop("geom", None)
 
             stmt = stmt.on_conflict_do_update(
                 index_elements=["campaign_id", "source_type", "source_id"],
@@ -791,6 +783,20 @@ class ImportService:
             result = await session.execute(stmt)
             voter_ids = [row[0] for row in result.all()]
             await session.flush()
+
+            # Compute PostGIS geometry from lat/lon for upserted voters
+            if voter_ids:
+                await session.execute(
+                    text(
+                        "UPDATE voters"
+                        " SET geom = ST_SetSRID("
+                        "ST_MakePoint(longitude, latitude), 4326)"
+                        " WHERE id = ANY(:ids)"
+                        " AND latitude IS NOT NULL"
+                        " AND longitude IS NOT NULL"
+                    ),
+                    {"ids": voter_ids},
+                )
 
             # Create VoterPhone records for voters with phone data
             phone_records: list[dict] = []
