@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -13,6 +13,14 @@ from app.core.security import (
     CampaignRole,
     require_org_role,
 )
+
+
+@pytest.fixture(autouse=True)
+def _patch_user_sync():
+    with patch("app.api.deps.ensure_user_synced", new_callable=AsyncMock) as mock:
+        mock.return_value = MagicMock()
+        yield
+
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -18,7 +18,15 @@ from app.db.session import async_session_factory
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.user import User
+
+# Map JWT role names to OrganizationMember role values
+_JWT_ROLE_TO_ORG_ROLE: dict[str, str] = {
+    "owner": "org_owner",
+    "admin": "org_admin",
+    "manager": "org_admin",
+}
 
 
 async def get_campaign_db(
@@ -116,39 +124,56 @@ async def ensure_user_synced(
         if changed:
             await db.commit()
 
-    # Belt-and-suspenders: ensure campaign_member exists
-    # Try Organization path first (new model), fall back to direct Campaign lookup
-    org_result = await db.execute(
-        select(Organization).where(Organization.zitadel_org_id == user.org_id)
-    )
-    org = org_result.scalar_one_or_none()
+    # Belt-and-suspenders: ensure organization_member + campaign_member exist.
+    # Use all org IDs from JWT role claims (multi-tenant support).
+    user_org_ids = user.org_ids if user.org_ids else [user.org_id]
 
-    if org:
-        # Find ALL campaigns belonging to this organization
+    orgs_result = await db.execute(
+        select(Organization).where(Organization.zitadel_org_id.in_(user_org_ids))
+    )
+    orgs = orgs_result.scalars().all()
+
+    # Determine the best org role from JWT claims
+    jwt_role_name = user.role.name.lower() if user.role else "viewer"
+    org_role = _JWT_ROLE_TO_ORG_ROLE.get(jwt_role_name)
+
+    # Ensure OrganizationMember records exist
+    for org in orgs:
+        existing_member = await db.scalar(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == org.id,
+            )
+        )
+        if existing_member is None and org_role:
+            db.add(
+                OrganizationMember(
+                    user_id=user.id,
+                    organization_id=org.id,
+                    role=org_role,
+                )
+            )
+            logger.info(
+                "Created organization_member for user {} in org {} (role={})",
+                user.id,
+                org.id,
+                org_role,
+            )
+
+    # Ensure CampaignMember records exist for all org campaigns
+    campaigns: list[Campaign] = []
+    for org in orgs:
         campaign_result = await db.execute(
             select(Campaign).where(Campaign.organization_id == org.id)
         )
-        campaigns = campaign_result.scalars().all()
+        campaigns.extend(campaign_result.scalars().all())
 
-        if not campaigns:
-            # Secondary fallback: try legacy zitadel_org_id lookup
-            campaign_result = await db.execute(
-                select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
-            )
-            campaigns = campaign_result.scalars().all()
-
-        if not campaigns:
-            logger.warning(
-                "Organization {} has no campaigns for user {}",
-                org.id,
-                user.id,
-            )
-    else:
-        # Fallback: direct lookup for campaigns not yet migrated
+    if not campaigns:
+        # Fallback: direct lookup by any of the user's org IDs
         campaign_result = await db.execute(
-            select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+            select(Campaign).where(Campaign.zitadel_org_id.in_(user_org_ids))
         )
-        campaigns = campaign_result.scalars().all()
+        campaigns = list(campaign_result.scalars().all())
 
     for campaign in campaigns:
         member_result = await db.execute(
@@ -169,7 +194,7 @@ async def ensure_user_synced(
                 campaign.id,
             )
 
-    if campaigns:
+    if orgs or campaigns:
         await db.commit()
 
     return local_user
@@ -201,10 +226,11 @@ async def get_campaign_from_token(
         CampaignNotFoundError: If no campaign matches the org_id.
     """
     # Try Organization path first, fall back to direct Campaign lookup
+    user_org_ids = user.org_ids if user.org_ids else [user.org_id]
     org_result = await db.execute(
-        select(Organization).where(Organization.zitadel_org_id == user.org_id)
+        select(Organization).where(Organization.zitadel_org_id.in_(user_org_ids))
     )
-    org = org_result.scalar_one_or_none()
+    org = org_result.scalars().first()
 
     if org:
         result = await db.execute(
@@ -214,7 +240,7 @@ async def get_campaign_from_token(
         )
     else:
         result = await db.execute(
-            select(Campaign).where(Campaign.zitadel_org_id == user.org_id)
+            select(Campaign).where(Campaign.zitadel_org_id.in_(user_org_ids))
         )
 
     campaign = result.scalars().first()

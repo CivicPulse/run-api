@@ -58,8 +58,3 @@ markers = [
     "integration: marks tests that require a database",
     "e2e: marks end-to-end tests",
 ]
-
-[tool.uv.workspace]
-members = [
-    "data",
-]
