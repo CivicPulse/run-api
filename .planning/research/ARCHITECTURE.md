@@ -1,708 +1,929 @@
-# Architecture Patterns: v1.6 Production Ready Polish
+# Architecture: Procrastinate Integration with Existing FastAPI Import Pipeline
 
-**Domain:** Import alias expansion, RLS data isolation audit, sidebar navigation consolidation, in-app markdown guide pages
-**Researched:** 2026-03-27
-**Overall confidence:** HIGH (based on comprehensive codebase analysis of existing patterns)
+**Domain:** Background task processing for voter file imports
+**Researched:** 2026-03-28
+**Overall confidence:** HIGH (codebase fully analyzed, Procrastinate API well-understood from documentation and training data)
 
-## Feature 1: Import Alias Expansion + Alternate Voting History Formats
+---
 
-### Current Architecture
+## Executive Summary
 
-The import pipeline lives in `app/services/import_service.py` with three core mechanisms:
+The current import pipeline uses TaskIQ with an `InMemoryBroker` -- a non-production task queue that loses jobs on restart and cannot run in a separate worker process. The v1.6 milestone replaces this with Procrastinate, a PostgreSQL-backed task queue that uses the application's existing database for job storage, supports async workers, and enables resumable batch processing without adding infrastructure (no Redis, no RabbitMQ).
 
-1. **CANONICAL_FIELDS dict** (lines 32-332): Maps canonical voter column names to lists of known aliases. The `suggest_field_mapping()` function uses RapidFuzz fuzzy matching at a 75% threshold against the flattened alias list.
+The integration touches four areas: (1) replacing TaskIQ broker/task definitions with Procrastinate app/task definitions, (2) modifying `ImportService.process_import_file()` to commit per-batch instead of per-file, (3) adding a `last_completed_batch` column to `ImportJob` for crash recovery, and (4) adding a worker entrypoint that can run as a sidecar container or separate deployment.
 
-2. **`_VOTING_HISTORY_RE` regex** (line 414): Currently `r"^(General|Primary)_(\d{4})$"` -- matches only `General_YYYY` and `Primary_YYYY` column patterns. Columns matching this regex with values of Y, A, or E are collected into the voter's `voting_history` array.
+---
 
-3. **`parse_voting_history()` function** (lines 418-429): Scans the raw CSV row dict keys against the regex, collecting matching columns into a sorted list.
+## Why Procrastinate
 
-### What Needs to Change
+Procrastinate is the right choice because it eliminates infrastructure by using the PostgreSQL database the application already depends on. The project already has PostgreSQL 17 with PostGIS. Adding Redis or RabbitMQ for TaskIQ/Celery would increase operational complexity for a single-worker, low-throughput task queue. Procrastinate stores jobs in PostgreSQL tables, uses `LISTEN/NOTIFY` for worker signaling (no polling), and provides a native async connector for asyncpg -- the same driver this project uses.
 
-**A. New aliases for CANONICAL_FIELDS (MODIFY `import_service.py`)**
+Key advantages over TaskIQ InMemoryBroker:
+- **Durable jobs**: Jobs survive process restarts (stored in PostgreSQL)
+- **Worker separation**: Worker can run in a separate process/container from the API
+- **Same database**: No new infrastructure -- uses the existing PostgreSQL instance
+- **Async native**: First-class asyncio support with asyncpg connector
+- **No polling**: Uses PostgreSQL `LISTEN/NOTIFY` for instant job pickup
+- **Built-in retry**: Configurable retry with exponential backoff
+- **Admin visibility**: Jobs queryable via standard SQL
 
-The CANONICAL_FIELDS dict needs additional L2 aliases that are currently missing. Based on the L2 VM2 Uniform format and common state voter file conventions, the missing aliases include:
+Confidence: HIGH -- Procrastinate is a mature library (v2.x), well-documented, and specifically designed for this use case.
 
-| Canonical Field | Missing Aliases to Add |
-|----------------|----------------------|
-| `source_id` | `voters_voterbaseid`, `voter_base_id`, `l2_voterId` |
-| `registration_line1` | `voters_residentialaddress`, `residential_address` |
-| `registration_city` | `voters_residentialcity`, `residential_city` |
-| `registration_state` | `voters_residentialstate`, `residential_state` |
-| `registration_zip` | `voters_residentialzipcode`, `residential_zipcode` |
-| `registration_county` | `voters_county` |
-| `precinct` | `voters_precinct`, `voters_precinctid` |
-| `congressional_district` | `voters_congressionaldistrict`, `us_cong_dist_abbrv` |
-| `state_senate_district` | `voters_statesenatedistrict`, `nc_senate_abbrv` |
-| `state_house_district` | `voters_statehousedistrict`, `nc_house_abbrv` |
-| `registration_date` | `voters_registrationdate`, `registr_dt` |
-| `party` | `voters_partyregistration`, `party_cd` |
-| `date_of_birth` | `voters_dateofbirth` |
-| `age` | `voters_calculatedage` |
-| `gender` | `voters_sex` |
-| `ethnicity` | `voters_ethnicity`, `ethnic_code` |
-| `propensity_general` | `voters_generalturnoutscore` |
-| `propensity_primary` | `voters_primaryturnoutscore` |
-| `propensity_combined` | `voters_combinedturnoutscore` |
+---
 
-**Impact:** Pure data change to an existing dict. No structural changes. The `_ALIAS_LIST` and `_ALIAS_TO_FIELD` reverse lookups rebuild automatically from CANONICAL_FIELDS at module load time (lines 335-340).
+## Current Architecture (What Exists)
 
-**B. Alternate Voting History Column Formats (MODIFY `import_service.py`)**
+### Task Dispatch Chain
 
-The current regex `^(General|Primary)_(\d{4})$` only matches one naming convention. L2 voter files use at least two other conventions:
+```
+POST /imports/{id}/confirm (imports.py line 185-250)
+  |
+  v
+job.status = ImportStatus.QUEUED
+await db.commit()
+  |
+  v
+await process_import.kiq(str(import_id))    # TaskIQ dispatch
+  |
+  v
+InMemoryBroker executes in same process     # NOT durable
+  |
+  v
+process_import() in app/tasks/import_task.py
+  |
+  v
+Creates its own session via async_session_factory()
+Sets RLS context via set_campaign_context()
+  |
+  v
+ImportService.process_import_file()
+  - Downloads entire file from MinIO
+  - Processes ALL batches in single session
+  - Single commit at end (or rollback on failure)
+  - Updates ImportJob progress via flush() (not committed until end)
+```
 
-1. **Underscore-separated with abbreviation:** `GEN_2024`, `PRI_2024`, `GEN_2022`, `PRI_2022`
-2. **No separator:** `General2024`, `Primary2024`, `General2020`, `Primary2020`
-3. **State-specific abbreviated:** `G2024`, `P2024`, `G2022`, `P2022`
-4. **Full year with election type prefix:** `Voters_VotingHistory_General_2024`, `Voters_VotingHistory_Primary_2024`
+### Critical Problems
 
-**Approach:** Replace the single regex with a list of regex patterns, each with a normalization function that maps matched columns to the canonical `General_YYYY` / `Primary_YYYY` format stored in `voting_history`.
+1. **InMemoryBroker is not durable**: If the API process restarts, queued and in-progress jobs are lost. The ImportJob stays in QUEUED/PROCESSING status forever.
+
+2. **Single transaction for entire file**: `process_import_file()` runs all batches in one session. A crash after batch 50 of 100 loses all 50 batches of work. Progress updates via `flush()` are not visible to the polling endpoint because they are uncommitted.
+
+3. **Progress not visible until complete**: Because batches are flushed but not committed, the GET status endpoint reads stale data. The UI shows 0 progress until the entire import finishes.
+
+4. **No crash recovery**: There is no mechanism to resume from the last successful batch. A restart means re-processing the entire file.
+
+### Files Involved
+
+| File | Role | Lines |
+|------|------|-------|
+| `app/tasks/broker.py` | TaskIQ InMemoryBroker | 10 lines |
+| `app/tasks/import_task.py` | Task definition + execution | 78 lines |
+| `app/services/import_service.py` | Import processing logic | 978 lines |
+| `app/api/v1/imports.py` | API endpoints | 467 lines |
+| `app/models/import_job.py` | ImportJob model | 83 lines |
+| `app/main.py` | Broker startup/shutdown in lifespan | 129 lines |
+| `app/db/session.py` | Session factory + pool checkout defense | 50 lines |
+| `app/db/rls.py` | RLS context setter | 30 lines |
+
+---
+
+## Target Architecture (What To Build)
+
+### Component Overview
+
+```
+                         PostgreSQL
+                    +------------------+
+                    |  procrastinate   |
+                    |  job tables      |
+                    |  (auto-created)  |
+                    +--------+---------+
+                             |
+              LISTEN/NOTIFY  |  INSERT job
+              +--------------+-------------+
+              |                            |
+     +--------v--------+         +--------v--------+
+     |  Worker Process  |         |  API Process    |
+     |  (procrastinate  |         |  (FastAPI)      |
+     |   worker CLI or  |         |                 |
+     |   run_worker())  |         |  confirm_mapping|
+     |                  |         |    endpoint     |
+     |  import_task()   |         |    defers job   |
+     |    |             |         |                 |
+     |    v             |         |  get_status     |
+     |  ImportService   |         |    endpoint     |
+     |  .process_import |         |    reads        |
+     |  _file_resumable |         |    ImportJob    |
+     |    |             |         +---------+-------+
+     |    v             |                   |
+     |  Per-batch       |                   |
+     |  commit + update |                   |
+     |  ImportJob       +-------------------+
+     |  progress        |     Same PostgreSQL
+     +------------------+
+```
+
+### New and Modified Components
+
+#### NEW: `app/tasks/procrastinate_app.py` (replaces `broker.py`)
+
+This file creates the Procrastinate `App` instance with the async psycopg connector. Procrastinate uses its own connection to PostgreSQL (separate from SQLAlchemy's pool) for job table operations and `LISTEN/NOTIFY`.
 
 ```python
-# Current (single regex):
-_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")
+"""Procrastinate application configuration.
 
-# Proposed (multi-pattern with normalization):
-_VOTING_HISTORY_PATTERNS: list[tuple[re.Pattern, Callable[[re.Match], str]]] = [
-    # Original format: General_2024, Primary_2024
-    (re.compile(r"^(General|Primary)_(\d{4})$"),
-     lambda m: f"{m.group(1)}_{m.group(2)}"),
-    # Abbreviated: GEN_2024, PRI_2024
-    (re.compile(r"^(GEN|PRI)_(\d{4})$", re.IGNORECASE),
-     lambda m: f"{'General' if m.group(1).upper() == 'GEN' else 'Primary'}_{m.group(2)}"),
-    # No separator: General2024, Primary2024
-    (re.compile(r"^(General|Primary)(\d{4})$"),
-     lambda m: f"{m.group(1)}_{m.group(2)}"),
-    # Short: G2024, P2024
-    (re.compile(r"^([GP])(\d{4})$", re.IGNORECASE),
-     lambda m: f"{'General' if m.group(1).upper() == 'G' else 'Primary'}_{m.group(2)}"),
-    # L2 long form: Voters_VotingHistory_General_2024
-    (re.compile(r"^Voters_VotingHistory_(General|Primary)_(\d{4})$", re.IGNORECASE),
-     lambda m: f"{m.group(1).capitalize()}_{m.group(2)}"),
-]
+Uses PsycopgConnector for async PostgreSQL job queue backed by
+the same database as the application.
+"""
+from __future__ import annotations
+
+import procrastinate
+
+from app.core.config import settings
+
+
+def _get_conninfo() -> str:
+    """Convert SQLAlchemy DATABASE_URL to a psycopg conninfo string.
+
+    Procrastinate uses psycopg3 (not asyncpg), so we need a libpq-style
+    connection string. The app's DATABASE_URL uses asyncpg format:
+      postgresql+asyncpg://user:pass@host:port/dbname
+    We strip the +asyncpg prefix.
+    """
+    url = settings.database_url
+    # Remove SQLAlchemy dialect prefix
+    url = url.replace("postgresql+asyncpg://", "postgresql://")
+    return url
+
+
+procrastinate_app = procrastinate.App(
+    connector=procrastinate.PsycopgConnector(
+        conninfo=_get_conninfo(),
+    ),
+    import_paths=["app.tasks.import_task"],
+)
 ```
 
-**Modified `parse_voting_history()` function:**
+**Key design decisions:**
+- `PsycopgConnector` (not `SyncPsycopgConnector`) for async worker operation
+- `import_paths` enables worker auto-discovery of task modules
+- Connection string derived from existing `settings.database_url`
+- Procrastinate creates its own connection pool internally (separate from SQLAlchemy)
+
+**IMPORTANT**: Procrastinate v2+ uses `psycopg` (psycopg3), NOT `psycopg2`. This is a new dependency separate from the existing `psycopg2-binary` used by Alembic. The `psycopg` package is the modern async-capable PostgreSQL adapter.
+
+#### NEW: `app/tasks/import_task.py` (rewritten)
 
 ```python
-def parse_voting_history(row: dict[str, str]) -> list[str]:
-    history: list[str] = []
-    for col, val in row.items():
-        for pattern, normalizer in _VOTING_HISTORY_PATTERNS:
-            match = pattern.match(col)
-            if match and val.strip().upper() in _VOTED_VALUES:
-                history.append(normalizer(match))
-                break  # first matching pattern wins
-    return sorted(history)
+"""Background task for voter file import processing."""
+from __future__ import annotations
+
+from loguru import logger
+
+from app.tasks.procrastinate_app import procrastinate_app
+
+
+@procrastinate_app.task(
+    name="import_voter_file",
+    retry=procrastinate.RetryStrategy(max_retries=2, wait=30),
+    queue="imports",
+)
+async def import_voter_file(import_job_id: str) -> None:
+    """Process a voter file import as a background job.
+
+    Creates its own DB session (runs outside FastAPI lifecycle),
+    sets RLS context, delegates to ImportService with per-batch commits.
+    """
+    from app.db.rls import set_campaign_context
+    from app.db.session import async_session_factory
+    from app.models.import_job import ImportJob, ImportStatus
+    from app.services.import_service import ImportService
+    from app.services.storage import StorageService
+
+    logger.info("Starting import job {}", import_job_id)
+    storage = StorageService()
+    service = ImportService()
+
+    async with async_session_factory() as session:
+        try:
+            job = await session.get(ImportJob, uuid.UUID(import_job_id))
+            if job is None:
+                raise ValueError(f"ImportJob {import_job_id} not found")
+
+            await set_campaign_context(session, str(job.campaign_id))
+
+            await service.process_import_file_resumable(
+                import_job_id, session, storage
+            )
+
+        except Exception:
+            logger.exception("Import job {} failed", import_job_id)
+            # Mark job as failed in a fresh transaction
+            async with async_session_factory() as err_session:
+                await set_campaign_context(err_session, str(job.campaign_id))
+                err_job = await err_session.get(
+                    ImportJob, uuid.UUID(import_job_id)
+                )
+                if err_job is not None:
+                    err_job.status = ImportStatus.FAILED
+                    err_job.error_message = "Import processing failed"
+                    await err_session.commit()
+            raise
 ```
 
-**Impact:** The return format (`list[str]` of `General_YYYY`/`Primary_YYYY` entries) stays identical. The stored `voting_history` array in the Voter model is unchanged. The filter system on the frontend and backend already works with this format. No migration needed. No schema changes.
+**Key changes from current `import_task.py`:**
+- `@procrastinate_app.task` replaces `@broker.task`
+- Task gets a `name` for stable identification across deploys
+- `retry` strategy with 2 retries and 30s wait handles transient failures
+- `queue="imports"` allows dedicated worker scaling later
+- Error handling uses a fresh session (the failed session may be in a bad state)
+- Delegates to new `process_import_file_resumable()` method
 
-### Components Affected
+#### MODIFIED: `app/models/import_job.py` (add batch tracking columns)
 
-| Component | File | Change Type | Scope |
-|-----------|------|-------------|-------|
-| CANONICAL_FIELDS dict | `app/services/import_service.py` | MODIFY | Add ~30 new alias entries |
-| `_VOTING_HISTORY_RE` | `app/services/import_service.py` | REPLACE | Single regex -> pattern list |
-| `parse_voting_history()` | `app/services/import_service.py` | MODIFY | Loop over pattern list |
-| Unit tests | `tests/unit/test_import_parsing.py` | MODIFY | Add test cases for new patterns |
-| Unit tests | `tests/unit/test_field_mapping.py` | MODIFY | Add test cases for new aliases |
+Add two columns to the ImportJob model for resumability:
 
-### What Does NOT Change
+```python
+# New columns for resumable batch processing
+last_completed_batch: Mapped[int] = mapped_column(default=0)
+batch_size: Mapped[int] = mapped_column(default=1000)
+```
 
-- `ImportService` class methods (no structural changes)
-- `suggest_field_mapping()` function (works automatically from expanded CANONICAL_FIELDS)
-- `apply_field_mapping()` method (unchanged)
-- `process_csv_batch()` method (unchanged)
-- `process_import_file()` method (unchanged)
-- API endpoints in `app/api/v1/imports.py` (unchanged)
-- Frontend import wizard (unchanged)
-- Voter model/schema (unchanged)
-- Voting history filter system (unchanged -- already consumes `General_YYYY`/`Primary_YYYY` format)
+- `last_completed_batch`: The zero-indexed batch number of the last successfully committed batch. On crash recovery, processing resumes from `last_completed_batch + 1`.
+- `batch_size`: Stored on the job so the resume logic uses the same batch size as the original run. Prevents row-skip bugs if default changes between deploys.
+
+**Migration**: A new Alembic migration adds these two nullable integer columns with server defaults. Non-breaking -- existing completed jobs get `last_completed_batch=0`.
+
+The `QUEUED` status already exists in `ImportStatus`. The status flow becomes:
+
+```
+PENDING -> UPLOADED -> QUEUED -> PROCESSING -> COMPLETED
+                                     |
+                                     +------> FAILED (retryable)
+```
+
+On retry, the worker reads `last_completed_batch` and skips already-committed batches.
+
+#### MODIFIED: `app/services/import_service.py` (add `process_import_file_resumable`)
+
+The new method replaces the existing `process_import_file()` with per-batch commits:
+
+```python
+async def process_import_file_resumable(
+    self,
+    import_job_id: str,
+    session: AsyncSession,
+    storage: StorageService,
+) -> None:
+    """Process a voter file import with per-batch commits for resumability.
+
+    Each batch of rows is committed independently. On crash, the job
+    resumes from last_completed_batch + 1 by skipping already-processed
+    rows in the CSV.
+
+    The session's RLS context must be set before calling this method.
+    """
+    from app.db.rls import set_campaign_context
+    from app.models.import_job import ImportJob, ImportStatus
+
+    job = await session.get(ImportJob, uuid.UUID(import_job_id))
+    if job is None:
+        raise ValueError(f"ImportJob {import_job_id} not found")
+
+    campaign_id_str = str(job.campaign_id)
+    start_batch = job.last_completed_batch  # Resume from here
+
+    # Only set PROCESSING if not already (resume case)
+    if job.status != ImportStatus.PROCESSING:
+        job.status = ImportStatus.PROCESSING
+        if start_batch == 0:
+            job.imported_rows = 0
+            job.skipped_rows = 0
+            job.total_rows = 0
+        await session.commit()
+
+    # Download file from S3
+    # (Re-download on resume -- S3 is fast and avoids local state)
+    chunks: list[bytes] = []
+    async for chunk in storage.download_file(job.file_key):
+        chunks.append(chunk)
+    file_content = b"".join(chunks)
+
+    # Decode
+    for encoding in ("utf-8-sig", "latin-1"):
+        try:
+            text_content = file_content.decode(encoding)
+            break
+        except (UnicodeDecodeError, ValueError):
+            continue
+    else:
+        job.status = ImportStatus.FAILED
+        job.error_message = "Unable to decode file content"
+        await session.commit()
+        return
+
+    # Parse CSV
+    reader = csv.DictReader(io.StringIO(text_content))
+    batch: list[dict[str, str]] = []
+    all_errors: list[dict] = []
+    total_imported = job.imported_rows or 0
+    total_skipped = job.skipped_rows or 0
+    total_phones_created = job.phones_created or 0
+    total_rows = 0
+    batch_index = 0
+    batch_size = job.batch_size or 1000
+
+    for row in reader:
+        batch.append(row)
+        total_rows += 1
+
+        if len(batch) >= batch_size:
+            if batch_index < start_batch:
+                # Skip already-committed batches on resume
+                batch = []
+                batch_index += 1
+                continue
+
+            # RLS context resets on commit; re-set it
+            await set_campaign_context(session, campaign_id_str)
+
+            imported, errors, phones = await self.process_csv_batch(
+                batch, job.field_mapping, campaign_id_str,
+                job.source_type, session,
+            )
+            total_imported += imported
+            total_skipped += len(errors)
+            total_phones_created += phones
+            all_errors.extend(errors)
+
+            # Update progress AND commit this batch
+            job.total_rows = total_rows
+            job.imported_rows = total_imported
+            job.skipped_rows = total_skipped
+            job.phones_created = total_phones_created
+            job.last_completed_batch = batch_index + 1
+            await session.commit()  # <-- COMMITTED per batch
+
+            batch = []
+            batch_index += 1
+
+    # Process remaining partial batch
+    if batch and batch_index >= start_batch:
+        await set_campaign_context(session, campaign_id_str)
+        imported, errors, phones = await self.process_csv_batch(
+            batch, job.field_mapping, campaign_id_str,
+            job.source_type, session,
+        )
+        total_imported += imported
+        total_skipped += len(errors)
+        total_phones_created += phones
+        all_errors.extend(errors)
+
+    # Upload error report if needed
+    if all_errors:
+        # ... (same error report logic as current)
+        pass
+
+    # Finalize
+    await set_campaign_context(session, campaign_id_str)
+    job.total_rows = total_rows
+    job.imported_rows = total_imported
+    job.skipped_rows = total_skipped
+    job.phones_created = total_phones_created
+    job.last_completed_batch = batch_index + 1
+    job.status = ImportStatus.COMPLETED
+    await session.commit()
+```
+
+**Critical design detail: RLS context after commit.**
+
+The existing RLS context uses `set_config('app.current_campaign_id', :id, true)` where the third parameter `true` means "transaction-scoped." This means the RLS context **resets on every COMMIT**. The per-batch commit pattern therefore requires re-setting RLS context after each commit. This is already reflected in the code above.
+
+This is the single most important integration detail. Missing this would cause RLS violations or empty query results after the first batch commit.
+
+#### MODIFIED: `app/api/v1/imports.py` (dispatch via Procrastinate)
+
+The `confirm_mapping` endpoint changes from:
+
+```python
+# Old (TaskIQ)
+from app.tasks.import_task import process_import
+await process_import.kiq(str(import_id))
+```
+
+To:
+
+```python
+# New (Procrastinate)
+from app.tasks.import_task import import_voter_file
+await import_voter_file.defer_async(import_job_id=str(import_id))
+```
+
+Procrastinate's `defer_async()` inserts a row into the `procrastinate_jobs` table within the current database. This is an INSERT, not a network call to a broker. The job is durable the moment the surrounding transaction commits.
+
+**HTTP Status**: The endpoint already returns the ImportJobResponse. The status should be `202 Accepted` (currently returns 200). Update the decorator:
+
+```python
+@router.post(
+    "/campaigns/{campaign_id}/imports/{import_id}/confirm",
+    response_model=ImportJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,  # Changed from default 200
+)
+```
+
+#### MODIFIED: `app/main.py` (Procrastinate lifecycle)
+
+Replace TaskIQ broker startup/shutdown with Procrastinate:
+
+```python
+# Old
+from app.tasks.broker import broker
+await broker.startup()
+app.state.broker = broker
+# ...
+await broker.shutdown()
+
+# New
+from app.tasks.procrastinate_app import procrastinate_app
+await procrastinate_app.open_async()
+app.state.procrastinate_app = procrastinate_app
+# ...
+await procrastinate_app.close_async()
+```
+
+`open_async()` opens the Procrastinate connector's connection pool. This is needed in the API process to enable `defer_async()` (job dispatch). The API does NOT run the worker -- it only dispatches jobs.
+
+#### DELETED: `app/tasks/broker.py`
+
+This file is removed entirely. TaskIQ is uninstalled.
+
+#### NEW: Worker Entrypoint
+
+The worker runs separately from the API. Two options for running it:
+
+**Option A: Procrastinate CLI (recommended for production)**
+
+```bash
+procrastinate --app=app.tasks.procrastinate_app.procrastinate_app worker --queue=imports
+```
+
+**Option B: Programmatic worker (for Docker Compose dev)**
+
+Create `scripts/run-worker.py`:
+
+```python
+"""Run the Procrastinate worker for background import processing."""
+import asyncio
+from app.tasks.procrastinate_app import procrastinate_app
+
+async def main():
+    async with procrastinate_app.open_async():
+        await procrastinate_app.run_worker_async(queues=["imports"])
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+#### NEW: Docker Compose worker service
+
+```yaml
+worker:
+  build:
+    context: .
+    target: dev
+  container_name: run-api-worker
+  command: python /home/app/scripts/run-worker.py
+  env_file:
+    - .env
+    - path: .env.zitadel
+      required: false
+  environment:
+    DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/run_api
+    DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
+    S3_ENDPOINT_URL: http://minio:9000
+  volumes:
+    - ./app:/home/app/app
+    - ./scripts:/home/app/scripts
+  depends_on:
+    postgres:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+  restart: unless-stopped
+```
+
+The worker uses the same Docker image as the API but runs a different command. It shares the same codebase, same database, same S3 configuration.
+
+#### NEW: Kubernetes worker deployment
+
+For production, add a separate Deployment for the worker:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-api-worker
+  namespace: civpulse-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-api-worker
+  template:
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/civicpulse/run-api:sha-XXXXX
+          command: ["python", "-m", "procrastinate",
+                    "--app=app.tasks.procrastinate_app.procrastinate_app",
+                    "worker", "--queue=imports"]
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+```
+
+No liveness/readiness probes needed for the worker (it has no HTTP server). The worker is stateless -- it can be killed and restarted at any time. The resumable import logic handles crash recovery.
 
 ---
 
-## Feature 2: RLS Data Isolation Audit
+## Data Flow: Resumable Batch Processing
 
-### Current Architecture
+### Happy Path
 
-The RLS implementation has three layers:
+```
+1. User confirms mapping -> POST /confirm
+   |
+   v
+2. Endpoint sets job.status = QUEUED, commits
+   |
+   v
+3. import_voter_file.defer_async(import_job_id=...)
+   -> INSERT into procrastinate_jobs table
+   -> PostgreSQL NOTIFY signals worker
+   |
+   v
+4. Worker picks up job via LISTEN
+   |
+   v
+5. Worker creates AsyncSession, sets RLS context
+   |
+   v
+6. Downloads CSV from MinIO
+   |
+   v
+7. For each batch of 1000 rows:
+   a. process_csv_batch() upserts voters
+   b. Update job.imported_rows, job.last_completed_batch
+   c. COMMIT (progress now visible to polling endpoint)
+   d. Re-set RLS context (reset by commit)
+   |
+   v
+8. All batches done -> job.status = COMPLETED, commit
+   |
+   v
+9. Procrastinate marks job as "succeeded" in procrastinate_jobs
+```
 
-**Layer 1: PostgreSQL RLS Policies (33 policies across 6 migrations)**
+### Crash Recovery Path
 
-All 33 RLS policies use `current_setting('app.current_campaign_id', true)::uuid` as the isolation predicate. Tables with direct `campaign_id` columns use a simple USING clause. Junction tables (voter_tag_members, voter_list_members, walk_list_entries, walk_list_canvassers, call_list_entries, session_callers, volunteer_tag_members, volunteer_availability, shift_volunteers, survey_questions) use subquery joins.
+```
+1. Worker crashes after batch 50 of 100
+   |
+   v
+2. ImportJob state in DB:
+   - status: PROCESSING
+   - imported_rows: 50000
+   - last_completed_batch: 50
+   - Batches 0-49 are COMMITTED (voters in database)
+   |
+   v
+3. Procrastinate detects job not completed
+   -> Retry after wait period (30s)
+   -> Re-dispatches to available worker
+   |
+   v
+4. Worker picks up retried job
+   |
+   v
+5. Reads job.last_completed_batch = 50
+   |
+   v
+6. Downloads CSV from MinIO (same file)
+   |
+   v
+7. Skips batches 0-49 (CSV rows 0-49999)
+   |
+   v
+8. Processes batches 50-99 (remaining rows)
+   |
+   v
+9. job.status = COMPLETED
+```
 
-Migration-level audit was completed in v1.5 (noted in `001_initial_schema.py` header: "RLS AUDIT Phase 39, D-11").
+### Progress Polling
 
-**Layer 2: Connection Pool Defense (pool checkout event)**
-
-`app/db/session.py` line 23-38: The `reset_rls_context()` event listener fires on every pool checkout, setting campaign context to a null UUID (`00000000-...`). This ensures no stale context survives pool reuse.
-
-**Layer 3: Transaction-Scoped RLS Context**
-
-`app/db/rls.py` line 27-30: `set_campaign_context()` uses `set_config(..., true)` to scope the campaign context to the current transaction. Context auto-resets at COMMIT/ROLLBACK.
-
-**Layer 4: Centralized Dependency**
-
-`app/api/deps.py` line 24-51: `get_campaign_db()` is the single dependency for all campaign-scoped endpoints. It extracts `campaign_id` from the URL path parameter and calls `set_campaign_context()` before yielding the session. 18 route files depend on it.
-
-### What the Audit Needs to Verify
-
-The audit is about verifying correctness at the data layer, not changing architecture. Key verification points:
-
-**A. Cross-campaign population check (all scoped entities)**
-
-The system has 33 RLS policies across these tables:
-
-| Migration | Tables with RLS |
-|-----------|----------------|
-| 001 | campaigns, campaign_members, users |
-| 002_invites | invites |
-| 002_voter | voters, voter_phones, voter_tags, voter_tag_members, voter_lists, voter_list_members, voter_contacts, voter_interactions, import_jobs, field_mapping_templates |
-| 003 | turfs, walk_lists, walk_list_entries, walk_list_canvassers, surveys, survey_questions, survey_responses |
-| 004 | phone_bank_sessions, call_lists, call_list_entries, session_callers, dnc_entries |
-| 005 | volunteers, volunteer_tags, volunteer_tag_members, volunteer_availability, shifts, shift_volunteers |
-
-For EVERY table with RLS: query as campaign A, verify zero rows from campaign B are visible.
-
-**B. Junction table leak vectors**
-
-The riskiest tables are junction tables that use subquery-based RLS policies instead of direct `campaign_id` checks. These include:
-- `voter_tag_members` (joins through `voters.campaign_id`)
-- `voter_list_members` (joins through `voter_lists.campaign_id`)
-- `walk_list_entries` (joins through `walk_lists.campaign_id`)
-- `walk_list_canvassers` (joins through `walk_lists.campaign_id`)
-- `call_list_entries` (joins through `call_lists.campaign_id`)
-- `session_callers` (joins through `phone_bank_sessions.campaign_id`)
-- `volunteer_tag_members` (joins through `volunteer_tags.campaign_id`)
-- `volunteer_availability` (joins through `volunteers.campaign_id`)
-- `shift_volunteers` (joins through `shifts.campaign_id`)
-- `survey_questions` (joins through `surveys.campaign_id`)
-
-**C. Non-RLS tables that should NOT have RLS**
-
-These tables are correctly NOT RLS-scoped:
-- `organizations` (cross-campaign by design)
-- `organization_members` (org-level, not campaign-scoped)
-
-### Components Affected
-
-| Component | File | Change Type | Scope |
-|-----------|------|-------------|-------|
-| New test file | `tests/integration/test_rls_full_audit.py` | CREATE | Comprehensive cross-campaign test for all 33 tables |
-| Existing tests | `tests/integration/test_rls_isolation.py` | VERIFY | Confirm pool reuse tests still pass |
-| Existing tests | `tests/integration/test_rls_api_smoke.py` | VERIFY | Confirm API-level tests still pass |
-| Seed data | `scripts/seed.py` or test conftest | MODIFY | May need second campaign's data for audit |
-
-### What Does NOT Change
-
-- No migration changes (policies are correct per v1.5 audit)
-- No model changes
-- No service/API changes
-- No frontend changes
-- No `deps.py` changes
-
-### Recommended Audit Approach
-
-Write an integration test that:
-1. Creates two campaigns with data in every RLS-protected table
-2. For each table: sets context to campaign A, queries table, asserts only campaign A data visible
-3. Sets context to campaign B, queries same table, asserts only campaign B data visible
-4. Tests junction tables specifically with cross-campaign ID injection attempts
-5. Tests the pool checkout reset by reusing connections
-
-This is a test-only deliverable. If any policy is found to be incorrect, the fix is a migration to correct the policy. Based on the v1.5 audit note in the migration header, this is expected to pass.
+```
+Frontend polls GET /imports/{id} every 2-3 seconds
+  |
+  v
+Endpoint reads ImportJob from database
+  |
+  v
+Because batches are COMMITTED individually:
+  - imported_rows reflects actual committed progress
+  - total_rows updates as file is scanned
+  - Frontend can show: "Imported 45,000 of ~120,000 rows"
+  |
+  v
+On COMPLETED or FAILED, frontend stops polling
+```
 
 ---
 
-## Feature 3: Sidebar Navigation Consolidation
+## RLS Context in the Worker
 
-### Current Architecture
+This is the most critical integration point. The worker runs outside the FastAPI request lifecycle, so it must manage RLS context manually.
 
-Navigation exists in TWO places:
+### How It Works Now
 
-**1. Sidebar (`__root.tsx` AppSidebar, lines 58-167)**
+In the API process, `get_campaign_db()` (deps.py) creates a session and calls `set_campaign_context()` before yielding. This sets `app.current_campaign_id` as a transaction-scoped PostgreSQL config variable.
 
-```
-Campaign group (visible when campaignId in URL):
-  - Dashboard
-  - Voters
-  - Canvassing
-  - Phone Banking
-  - Volunteers
-  - Field Operations
+The existing `import_task.py` already does this correctly:
 
-Organization group (always visible when authenticated):
-  - All Campaigns
-  - Members (org_admin+)
-  - Settings (org_admin+)
-
-Footer (visible when campaignId, admin+):
-  - Settings
+```python
+async with async_session_factory() as session:
+    job = await session.get(ImportJob, uuid.UUID(import_job_id))
+    await set_campaign_context(session, str(job.campaign_id))
 ```
 
-**2. Inline tab bar (`$campaignId.tsx` CampaignLayout, lines 48-78)**
+### What Changes for Per-Batch Commits
 
-```
-Dashboard | Voters | Canvassing | Phone Banking | Surveys | Volunteers
-```
+The critical change: `set_config(..., true)` scopes to the current transaction. When `session.commit()` is called after each batch, the RLS context is **lost**. The next batch would operate with the null-UUID context from the pool checkout defense, which blocks all queries.
 
-The duplication is clear: both the sidebar and the tab bar have Dashboard, Voters, Canvassing, Phone Banking, and Volunteers. The tab bar additionally has **Surveys** which the sidebar is missing.
+**Solution**: Re-call `set_campaign_context()` after every `session.commit()`. This is shown in the `process_import_file_resumable()` code above.
 
-### What Needs to Change
+### Worker Session Pattern
 
-**A. Remove the inline tab bar from `$campaignId.tsx`**
+The worker does NOT use `get_campaign_db()` (that is a FastAPI dependency). Instead, it uses `async_session_factory()` directly and manages RLS context explicitly:
 
-The `CampaignLayout` component currently renders a `<nav>` with tabs (lines 67-78). Remove the entire `tabs` array and `<nav>` element. Keep the campaign name header and `<Outlet />`.
+```python
+async with async_session_factory() as session:
+    # 1. Load job (no RLS needed -- import_jobs is loaded by primary key)
+    job = await session.get(ImportJob, uuid.UUID(import_job_id))
 
-**B. Add Surveys to the sidebar in `__root.tsx`**
+    # 2. Set RLS for voter operations
+    await set_campaign_context(session, str(job.campaign_id))
 
-Add a Surveys nav item to the Campaign group in AppSidebar. The sidebar currently has 6 items; adding Surveys makes 7.
-
-**C. Ensure sidebar active state is correct**
-
-The sidebar uses `location.pathname.startsWith(item.to)` for active state detection. Since campaign sub-routes are nested under `/campaigns/$campaignId/...`, this pattern already works. No change needed.
-
-### Components Affected
-
-| Component | File | Change Type | Scope |
-|-----------|------|-------------|-------|
-| CampaignLayout | `web/src/routes/campaigns/$campaignId.tsx` | MODIFY | Remove tabs array and nav element, keep header + Outlet |
-| AppSidebar | `web/src/routes/__root.tsx` | MODIFY | Add Surveys nav item with FileText icon |
-| Sidebar imports | `web/src/routes/__root.tsx` | MODIFY | Add FileText to lucide-react imports (already imported in $campaignId.tsx) |
-
-### What Does NOT Change
-
-- No backend changes
-- No route structure changes (routes are file-based, independent of navigation)
-- No hook changes
-- No TanStack Router configuration changes
-- Field mode layout (separate layout, no sidebar)
-- Organization nav group (already in sidebar)
-
-### Specific Code Changes
-
-**`__root.tsx` AppSidebar navItems array (line 63-70):**
-
-```typescript
-// Current:
-const navItems = [
-  { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
-  { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
-  { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
-  { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
-  { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
-  { to: `/field/${campaignId}`, label: "Field Operations", icon: Navigation },
-]
-
-// After (add Surveys between Phone Banking and Volunteers):
-const navItems = [
-  { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
-  { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
-  { to: `/campaigns/${campaignId}/canvassing`, label: "Canvassing", icon: Map },
-  { to: `/campaigns/${campaignId}/phone-banking`, label: "Phone Banking", icon: Phone },
-  { to: `/campaigns/${campaignId}/surveys`, label: "Surveys", icon: FileText },
-  { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
-  { to: `/field/${campaignId}`, label: "Field Operations", icon: Navigation },
-]
+    # 3. Process batches with per-batch commit
+    for batch in batches:
+        await process_csv_batch(batch, ..., session)
+        await session.commit()
+        # 4. RLS context lost! Re-set it.
+        await set_campaign_context(session, str(job.campaign_id))
 ```
 
-**`$campaignId.tsx` CampaignLayout (lines 48-78):**
+The pool checkout defense (`reset_rls_context` in session.py) provides an additional safety net. Even if the re-set is missed, the pool checkout event resets to the null UUID, preventing accidental cross-campaign access (queries return empty results rather than wrong-campaign data).
 
-Remove the `tabs` array (lines 48-55) and the `<nav>` block (lines 67-78). The component becomes:
+### Worker Does Not Need FastAPI Dependencies
 
-```tsx
-function CampaignLayout() {
-  const { campaignId } = useParams({ from: "/campaigns/$campaignId" })
-  const { data: campaign, isLoading, isError } = useQuery({...})
+The worker has NO dependency on FastAPI, ZITADEL auth, rate limiting, or CORS. It only needs:
+- `async_session_factory` from `app.db.session`
+- `set_campaign_context` from `app.db.rls`
+- `ImportService` from `app.services.import_service`
+- `StorageService` from `app.services.storage`
+- `ImportJob` model from `app.models.import_job`
 
-  if (isLoading) return <Skeleton ... />
-  if (isError || !campaign) return <ErrorState ... />
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">{campaign?.name ?? "Campaign"}</h1>
-        {campaign?.candidate_name && (
-          <p className="text-sm text-muted-foreground">
-            {campaign.candidate_name}
-            {campaign.party_affiliation ? ` (${campaign.party_affiliation})` : ""}
-          </p>
-        )}
-      </div>
-      <Outlet />
-    </div>
-  )
-}
-```
-
-The unused icon imports (`LayoutDashboard`, `Users`, `Map`, `Phone`, `ClipboardList`, `FileText`) can be removed from `$campaignId.tsx`.
+This means the worker can import these modules without triggering FastAPI app creation. The Procrastinate app (`procrastinate_app.py`) does not import the FastAPI app.
 
 ---
 
-## Feature 4: Progressive Volunteer Onboarding Guides (Markdown Pages)
+## Database Schema Changes
 
-### Current Architecture
+### New Procrastinate Tables (auto-managed)
 
-The existing onboarding system uses **driver.js** for interactive in-app tours (`web/src/components/field/tour/tourSteps.ts`, `web/src/hooks/useTour.ts`, `web/src/stores/tourStore.ts`). These are step-by-step walkthroughs that highlight UI elements.
+Procrastinate creates its own tables when you run its schema migration:
 
-The v1.6 feature is different: it adds **static guide content** rendered from markdown source files. These are shareable, linkable pages that volunteers can read before arriving at a shift -- not interactive tours.
-
-### Architecture Decision: How to Serve Markdown
-
-**Option A: Build-time compilation with a Vite plugin (RECOMMENDED)**
-
-Use a Vite plugin (`vite-plugin-md` or raw import + `react-markdown`) to import `.md` files as content at build time. The markdown content is bundled into the JavaScript output and rendered client-side.
-
-**Option B: Runtime fetch from API endpoint**
-
-Serve markdown files from a FastAPI endpoint. This requires backend changes and introduces a request for every page view.
-
-**Option C: MDX with full component embedding**
-
-Use MDX to embed React components in markdown. Powerful but unnecessary -- the guides are informational text, not interactive.
-
-**Recommendation: Option A (build-time with `react-markdown`)**
-
-Rationale:
-- Guide content is static -- no need for runtime fetch
-- `react-markdown` is the standard React markdown renderer (3.5M+ weekly npm downloads)
-- Markdown files live in the codebase, are version-controlled, and are part of the build
-- No backend changes needed
-- Content updates require a new deploy, which is acceptable for guides that change infrequently
-- `react-markdown` renders to standard React elements, so Tailwind prose styling works naturally
-
-### New Components
-
-**A. Markdown source files**
-
-```
-web/src/content/guides/
-  getting-started.md          -- First-time volunteer orientation
-  canvassing-guide.md         -- How to canvass door-to-door
-  phone-banking-guide.md      -- How to make calls for the campaign
-  faq.md                      -- Frequently asked questions
+```bash
+procrastinate --app=app.tasks.procrastinate_app.procrastinate_app schema --apply
 ```
 
-**B. Guide viewer component**
+This creates tables in the `public` schema:
+- `procrastinate_jobs` -- job queue (task name, args, status, retry info)
+- `procrastinate_events` -- job lifecycle events (for monitoring)
+- `procrastinate_periodic_defers` -- periodic task tracking (not needed for imports)
 
+These tables are managed by Procrastinate, not by Alembic. Run the schema command once during deployment (add to init container or dev-entrypoint.sh).
+
+**Integration with Alembic**: Procrastinate's schema is independent. It does not conflict with Alembic migrations. The `procrastinate schema --apply` command is idempotent (safe to run repeatedly).
+
+**RLS consideration**: Procrastinate's tables do NOT need RLS policies. They store task metadata (job IDs, task names, arguments), not tenant data. The campaign_id is passed as a task argument, and actual tenant data operations happen through the RLS-protected SQLAlchemy session.
+
+### Alembic Migration: ImportJob Columns
+
+New migration `017_import_resumability.py`:
+
+```python
+"""Add resumability columns to import_jobs.
+
+Revision ID: 017
+"""
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade() -> None:
+    op.add_column("import_jobs", sa.Column(
+        "last_completed_batch", sa.Integer(), server_default="0", nullable=False
+    ))
+    op.add_column("import_jobs", sa.Column(
+        "batch_size", sa.Integer(), server_default="1000", nullable=False
+    ))
+
+def downgrade() -> None:
+    op.drop_column("import_jobs", "batch_size")
+    op.drop_column("import_jobs", "last_completed_batch")
 ```
-web/src/components/guides/GuideViewer.tsx
-```
-
-A generic markdown renderer component using `react-markdown` with Tailwind's `prose` class for typography. Accepts markdown content as a string prop.
-
-```typescript
-// GuideViewer.tsx (conceptual)
-import ReactMarkdown from 'react-markdown'
-
-export function GuideViewer({ content }: { content: string }) {
-  return (
-    <article className="prose prose-neutral dark:prose-invert max-w-none">
-      <ReactMarkdown>{content}</ReactMarkdown>
-    </article>
-  )
-}
-```
-
-**C. Guide routes**
-
-These should be **public routes** (no auth required) so volunteers can read them before logging in. This means they need to be excluded from the auth redirect logic in `__root.tsx`.
-
-```
-web/src/routes/
-  guides/
-    index.tsx                  -- Guide listing page (card grid)
-    $slug.tsx                  -- Individual guide page
-```
-
-**D. Route configuration changes**
-
-In `__root.tsx`, the `PUBLIC_ROUTES` constant (line 56) needs `/guides` added:
-
-```typescript
-const PUBLIC_ROUTES = ["/login", "/callback", "/guides"]
-```
-
-This ensures the guide pages render without the sidebar shell and without requiring authentication.
-
-**E. SPA fallback awareness**
-
-The FastAPI SPA fallback in `app/main.py` (line 122-127) catches all non-API paths and returns `index.html`. Guide routes at `/guides/*` will be handled by the SPA fallback, which then lets TanStack Router render the correct component client-side. No backend changes needed.
-
-### New Dependency
-
-| Package | Version | Purpose | Size Impact |
-|---------|---------|---------|-------------|
-| `react-markdown` | ^9.x | Render markdown to React elements | ~40KB gzipped (with remark-parse, unified) |
-
-Alternatively, use Vite's raw import (`?raw` suffix) to import markdown as strings, avoiding any plugin:
-
-```typescript
-import gettingStarted from '@/content/guides/getting-started.md?raw'
-```
-
-This is a Vite built-in feature -- no additional plugin needed. Combined with `react-markdown` for rendering, this is the lightest-weight approach.
-
-### Components Affected
-
-| Component | File | Change Type | Scope |
-|-----------|------|-------------|-------|
-| PUBLIC_ROUTES | `web/src/routes/__root.tsx` | MODIFY | Add `/guides` to public routes array |
-| New: guide content | `web/src/content/guides/*.md` | CREATE | 4 markdown guide files |
-| New: GuideViewer | `web/src/components/guides/GuideViewer.tsx` | CREATE | Markdown renderer component |
-| New: guide listing | `web/src/routes/guides/index.tsx` | CREATE | Guide card grid page |
-| New: guide page | `web/src/routes/guides/$slug.tsx` | CREATE | Individual guide route |
-| package.json | `web/package.json` | MODIFY | Add `react-markdown` dependency |
-
-### What Does NOT Change
-
-- No backend API changes
-- No database changes
-- No auth flow changes (guides are public)
-- No existing component modifications (except PUBLIC_ROUTES)
-- driver.js tour system (remains separate and complementary)
-
-### Navigation to Guides
-
-Guides should be accessible from:
-1. **Public URL** -- `/guides` and `/guides/getting-started` etc. for sharing
-2. **Field mode help button** -- Optionally link from the FieldHeader help menu to relevant guide
-3. **Sidebar** -- Optionally add a "Guides" link in the Organization group
-
-The field mode FieldHeader already has an `onHelpClick` callback (in `$campaignId.tsx` line 62). This currently triggers driver.js tours. A secondary "Read Guide" link could be added alongside the tour trigger, linking to the relevant `/guides/*` page.
 
 ---
 
-## Recommended Build Order
+## Dependency Changes
 
-### Phase 1: Import Alias Expansion (backend only, isolated)
+### Add
 
-**Why first:**
-- Smallest scope, lowest risk
-- Pure data/logic change in one file (`import_service.py`)
-- No dependencies on other features
-- Immediately testable with unit tests
-- Fixes real user friction (L2 files not auto-mapping)
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `procrastinate` | >=2.0 | PostgreSQL job queue | Replaces TaskIQ; uses existing PG, no new infra |
+| `psycopg[binary]` | >=3.1 | Procrastinate's PostgreSQL driver | Procrastinate v2 requires psycopg3, not psycopg2 |
 
-**Dependency chain:**
-```
-Add new aliases to CANONICAL_FIELDS
-  -> Add voting history patterns
-    -> Update parse_voting_history()
-      -> Add unit tests for new aliases
-        -> Add unit tests for new voting history patterns
-```
+### Remove
 
-### Phase 2: Sidebar Consolidation (frontend only, isolated)
+| Package | Purpose | Why Remove |
+|---------|---------|------------|
+| `taskiq` | In-memory task broker | Replaced by Procrastinate |
+| `taskiq-fastapi` | TaskIQ FastAPI integration | No longer needed |
 
-**Why second:**
-- Very small scope (2 files modified)
-- No backend dependencies
-- Removes code (tab bar) rather than adding
-- Quick visual verification with screenshots
-- Reduces navigation confusion for all subsequent testing
+### Keep
 
-**Dependency chain:**
-```
-Add Surveys + FileText to sidebar navItems (__root.tsx)
-  -> Remove tab bar from CampaignLayout ($campaignId.tsx)
-    -> Remove unused icon imports from $campaignId.tsx
-      -> Visual verification (screenshot all campaign pages)
-```
+| Package | Purpose | Notes |
+|---------|---------|-------|
+| `psycopg2-binary` | Alembic sync migrations | Still needed for `DATABASE_URL_SYNC` in alembic.ini |
+| `asyncpg` | SQLAlchemy async driver | Still the primary database driver for all app queries |
 
-### Phase 3: RLS Audit (test-only, validates data layer)
-
-**Why third:**
-- Test-only deliverable -- writes new integration tests
-- Does not modify production code (unless a bug is found)
-- Benefits from sidebar consolidation being done (easier manual testing)
-- Verifies the data isolation foundation before adding more features
-
-**Dependency chain:**
-```
-Create two-campaign test fixture with data in all 33 RLS tables
-  -> Write per-table isolation assertions
-    -> Write junction table cross-reference tests
-      -> Run full test suite
-        -> Fix any discovered issues (migration if needed)
-```
-
-### Phase 4: Onboarding Guides (frontend + new dependency)
-
-**Why last:**
-- Requires new npm dependency (`react-markdown`)
-- Creates new routes and components
-- Content writing is separate from code work
-- Does not block any other feature
-- Least urgency for demo readiness
-
-**Dependency chain:**
-```
-Install react-markdown
-  -> Create GuideViewer component
-    -> Create guide markdown content files
-      -> Create guide routes (index + $slug)
-        -> Add /guides to PUBLIC_ROUTES
-          -> Optional: link from FieldHeader
-            -> Visual verification (screenshot guide pages)
-```
-
-### Cross-Feature Dependencies
-
-```
-Phase 1 (Import) -----> Independent
-Phase 2 (Sidebar) ----> Independent
-Phase 3 (RLS Audit) --> Independent (but benefits from Phase 2 for manual testing)
-Phase 4 (Guides) -----> Independent
-```
-
-**All four features are independent.** No cross-feature dependencies exist. They can theoretically be built in parallel, but the recommended order minimizes risk and provides early value.
+**Two PostgreSQL drivers note**: The application will have both `asyncpg` (for SQLAlchemy async sessions) and `psycopg` (for Procrastinate connector). This is intentional and non-conflicting -- they serve different purposes and maintain separate connection pools.
 
 ---
 
-## Summary: New vs Modified Components
+## Integration with Existing Patterns
 
-### Backend -- Modified
+### StorageService Access
 
-| File | Change | Feature |
-|------|--------|---------|
-| `app/services/import_service.py` | Add ~30 aliases, replace voting history regex | Import Aliases |
+The worker instantiates `StorageService()` directly (same as the current `import_task.py`). StorageService reads S3 credentials from `settings`, which are loaded from environment variables. The worker container gets the same env vars as the API container.
 
-### Backend -- New
+No change needed to StorageService.
 
-| File | Purpose | Feature |
-|------|---------|---------|
-| None | -- | -- |
+### Error Handling and Sentry
 
-### Backend -- Test Only
+The worker process should initialize Sentry separately. Add to the worker entrypoint:
 
-| File | Purpose | Feature |
-|------|---------|---------|
-| `tests/unit/test_import_parsing.py` | New test cases for voting history patterns | Import Aliases |
-| `tests/unit/test_field_mapping.py` | New test cases for expanded aliases | Import Aliases |
-| `tests/integration/test_rls_full_audit.py` | Comprehensive cross-campaign isolation test | RLS Audit |
+```python
+from app.core.sentry import init_sentry
+init_sentry()
+```
 
-### Frontend -- Modified
+Procrastinate task failures will be captured by Sentry's exception handler. The `logger.exception()` calls in the task function trigger structlog/loguru output, and Sentry captures the exception context.
 
-| File | Change | Feature |
-|------|--------|---------|
-| `web/src/routes/__root.tsx` | Add Surveys nav item + FileText icon; add `/guides` to PUBLIC_ROUTES | Sidebar + Guides |
-| `web/src/routes/campaigns/$campaignId.tsx` | Remove tabs array and nav element | Sidebar |
-| `web/package.json` | Add `react-markdown` dependency | Guides |
+### Health Checks
 
-### Frontend -- New
+The worker has no HTTP server, so it cannot expose `/health/live` endpoints. For Kubernetes liveness:
 
-| File | Purpose | Feature |
-|------|---------|---------|
-| `web/src/content/guides/getting-started.md` | First-time volunteer guide | Guides |
-| `web/src/content/guides/canvassing-guide.md` | Canvassing walkthrough | Guides |
-| `web/src/content/guides/phone-banking-guide.md` | Phone banking walkthrough | Guides |
-| `web/src/content/guides/faq.md` | Frequently asked questions | Guides |
-| `web/src/components/guides/GuideViewer.tsx` | Markdown renderer component | Guides |
-| `web/src/routes/guides/index.tsx` | Guide listing page | Guides |
-| `web/src/routes/guides/$slug.tsx` | Individual guide page | Guides |
+1. **Simplest approach**: Rely on Procrastinate's built-in heartbeat -- if the worker process dies, Kubernetes restarts the pod.
+2. **Advanced approach** (not needed for v1.6): Add a sidecar health endpoint that checks the worker process is alive.
+
+The Kubernetes deployment uses `restartPolicy: Always`, so a crashed worker pod restarts automatically.
 
 ---
 
-## Data Flow Diagrams
+## Suggested Build Order
 
-### Import Pipeline (after alias expansion)
+### Phase 1: Procrastinate Schema + App Setup
 
-```
-CSV file uploaded to MinIO
-  |
-  v
-detect_columns endpoint downloads first 8KB
-  |
-  v
-ImportService.detect_columns() extracts headers
-  |
-  v
-suggest_field_mapping() fuzzy-matches against EXPANDED CANONICAL_FIELDS
-  (new aliases auto-map more L2 columns -> fewer manual corrections)
-  |
-  v
-User confirms mapping (or tweaks in wizard UI)
-  |
-  v
-Background task: process_import_file()
-  |
-  v
-For each batch of 1000 rows:
-  apply_field_mapping() maps CSV values to voter dicts
-    |
-    v
-  parse_voting_history() now uses MULTI-PATTERN matching
-    (GEN_2024 -> General_2024, G2024 -> General_2024, etc.)
-    |
-    v
-  process_csv_batch() upserts voters + creates VoterPhone records
-  |
-  v
-Voter.voting_history stores canonical ["General_2024", "Primary_2022", ...]
-  (same format regardless of CSV column naming convention)
-```
+1. Add `procrastinate` and `psycopg[binary]` to `pyproject.toml`
+2. Remove `taskiq` and `taskiq-fastapi` from `pyproject.toml`
+3. Create `app/tasks/procrastinate_app.py` with connector config
+4. Add Procrastinate schema apply to `scripts/dev-entrypoint.sh`
+5. Test: Procrastinate tables created in PostgreSQL
 
-### Navigation Flow (after sidebar consolidation)
+**Rationale**: Foundation must exist before tasks can be defined.
 
-```
-Authenticated user at /campaigns/$campaignId/*
-  |
-  v
-__root.tsx RootLayout renders SidebarProvider
-  |
-  v
-AppSidebar renders Campaign group with 7 items:
-  Dashboard, Voters, Canvassing, Phone Banking,
-  Surveys (NEW), Volunteers, Field Operations
-  |
-  v
-$campaignId.tsx CampaignLayout renders:
-  Campaign name header + <Outlet /> (NO TAB BAR)
-  |
-  v
-Nested route component renders in Outlet
-```
+### Phase 2: Alembic Migration + Model Changes
 
-### Guide Pages Flow
+1. Create migration `017_import_resumability.py` (add `last_completed_batch`, `batch_size`)
+2. Update `ImportJob` model with new columns
+3. Update `ImportJobResponse` schema (add `last_completed_batch` for frontend progress display)
+4. Test: Migration runs, model loads correctly
 
-```
-User navigates to /guides (public, no auth required)
-  |
-  v
-__root.tsx detects /guides in PUBLIC_ROUTES
-  -> Renders without sidebar shell (just Outlet + Toaster)
-  |
-  v
-TanStack Router matches /guides/index.tsx
-  -> Renders card grid of available guides
-  |
-  v
-User clicks guide card
-  -> Navigates to /guides/$slug
-  |
-  v
-$slug.tsx imports markdown via Vite ?raw suffix
-  -> Passes content string to GuideViewer component
-  |
-  v
-GuideViewer renders ReactMarkdown with Tailwind prose styling
-```
+**Rationale**: Model changes needed before service logic can use them.
+
+### Phase 3: Resumable ImportService
+
+1. Add `process_import_file_resumable()` to `ImportService`
+2. Key change: per-batch commits with RLS context re-set after each commit
+3. Key change: skip batches before `last_completed_batch` on resume
+4. Keep existing `process_import_file()` temporarily (for rollback safety)
+5. Test: Unit test batch processing with mock session
+
+**Rationale**: Service logic must be correct before wiring to task queue.
+
+### Phase 4: Task + Endpoint Wiring
+
+1. Rewrite `app/tasks/import_task.py` with Procrastinate task decorator
+2. Update `app/api/v1/imports.py` confirm_mapping to use `defer_async()`
+3. Update `app/main.py` lifespan to open/close Procrastinate app
+4. Remove `app/tasks/broker.py`
+5. Update response status to 202 Accepted
+6. Test: End-to-end import via Procrastinate
+
+**Rationale**: Wiring connects all pieces; test end-to-end.
+
+### Phase 5: Worker Deployment
+
+1. Create `scripts/run-worker.py`
+2. Add `worker` service to `docker-compose.yml`
+3. Create K8s worker Deployment manifest
+4. Update dev-entrypoint.sh for Procrastinate schema
+5. Test: Full import flow with separate worker container
+
+**Rationale**: Deployment is last because it requires all code to be in place.
+
+---
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Sharing SQLAlchemy Session Between Procrastinate and App
+**What**: Using Procrastinate's SQLAlchemy connector to share the app's session factory.
+**Why bad**: Procrastinate needs its own connection for `LISTEN/NOTIFY`. Mixing concerns causes connection pool contention and unpredictable behavior.
+**Instead**: Use `PsycopgConnector` with its own connection string. Let Procrastinate manage its own connections.
+
+### Anti-Pattern 2: Running Worker In-Process
+**What**: Running the Procrastinate worker inside the FastAPI process (like the current InMemoryBroker).
+**Why bad**: Long-running imports block the event loop, affecting API response times. Worker crashes take down the API.
+**Instead**: Always run the worker as a separate process/container. Even in development.
+
+### Anti-Pattern 3: Accumulating Errors in Memory Across Batches
+**What**: Collecting all error rows in a list across all batches, then writing the error report at the end.
+**Why bad**: A 500K-row file with 10% errors means 50K error dicts in memory. On crash, all error data is lost.
+**Instead**: Write error rows to a temporary S3 object per batch, then merge at completion. Or accept that error reports for resumed imports only cover the resumed portion (simpler, and acceptable for v1.6).
+
+### Anti-Pattern 4: Forgetting RLS Context After Commit
+**What**: Committing a batch and proceeding to the next without re-setting `set_campaign_context()`.
+**Why bad**: Transaction-scoped RLS config resets on commit. The next batch operates under the null-UUID context, causing all voter queries to return empty results or fail silently.
+**Instead**: Always call `set_campaign_context()` immediately after `session.commit()`.
+
+### Anti-Pattern 5: Using Procrastinate's `defer()` (Sync) in Async Code
+**What**: Calling `import_voter_file.defer()` instead of `import_voter_file.defer_async()` from the async FastAPI endpoint.
+**Why bad**: `defer()` is synchronous and blocks the event loop. In an async FastAPI endpoint, this causes a warning and potential performance issues.
+**Instead**: Always use `defer_async()` in async contexts.
+
+---
+
+## Scalability Considerations
+
+| Concern | Current (1 pod) | At 10 concurrent imports | At 100 concurrent imports |
+|---------|-----------------|--------------------------|---------------------------|
+| Worker throughput | 1 import at a time | Add worker replicas in K8s | Horizontal scale workers |
+| Database connections | ~5 (API pool) | +1 per worker | Consider PgBouncer |
+| S3 download | 1 file in memory | 10 files in memory (~1GB) | Stream instead of buffer |
+| PostgreSQL locks | No contention | Low (different campaign_ids) | Monitor lock waits |
+| Job queue depth | Instant pickup | Queue backlog possible | Monitor `procrastinate_jobs` |
+
+For v1.6, a single worker replica is sufficient. The import queue is low-throughput (campaigns import files occasionally, not continuously). Scaling to multiple workers is a configuration change (increase K8s replicas), not a code change.
+
+---
 
 ## Sources
 
-- Codebase analysis: `app/services/import_service.py` (CANONICAL_FIELDS, voting history regex, ImportService methods)
-- Codebase analysis: `app/db/rls.py`, `app/db/session.py` (RLS context, pool checkout defense)
-- Codebase analysis: `app/api/deps.py` (get_campaign_db centralized dependency)
-- Codebase analysis: `alembic/versions/001-005` (all 33 RLS policies enumerated)
-- Codebase analysis: `web/src/routes/__root.tsx` (sidebar navigation, PUBLIC_ROUTES)
-- Codebase analysis: `web/src/routes/campaigns/$campaignId.tsx` (duplicate tab bar)
-- Codebase analysis: `web/src/components/field/tour/tourSteps.ts` (existing driver.js onboarding)
-- Codebase analysis: `app/main.py` (SPA fallback for client-side routing)
-- Codebase analysis: `web/vite.config.ts` (Vite build pipeline, plugin configuration)
-- Codebase analysis: `tests/integration/test_rls_isolation.py`, `test_rls_api_smoke.py` (existing RLS tests)
-- [L2 National Voter File documentation](https://redivis.com/datasets/4r1c-d6j182y87) (voting history column formats: elec_date/elec_type)
-- [L2 voter data guides](https://libguides.wustl.edu/L2_voter_data) (VM2 format documentation)
-- [react-markdown GitHub](https://github.com/remarkjs/react-markdown) (markdown renderer for React, HIGH confidence)
-- [L2 Documentation at Penn Libraries](https://guides.library.upenn.edu/L2/documentation) (VM2 Uniform Format File Layout)
-- [Voter Reference Foundation - Vote History 101](https://www.voterreferencefoundation.com/voter-data-101-vote-history/) (voting history data patterns)
+- Codebase analysis: `app/tasks/broker.py` (current InMemoryBroker, 10 lines)
+- Codebase analysis: `app/tasks/import_task.py` (current task definition, RLS pattern)
+- Codebase analysis: `app/services/import_service.py` (full import pipeline, 978 lines)
+- Codebase analysis: `app/api/v1/imports.py` (endpoint dispatch, 467 lines)
+- Codebase analysis: `app/models/import_job.py` (ImportJob model, ImportStatus enum)
+- Codebase analysis: `app/db/rls.py` (set_campaign_context with transaction-scoped set_config)
+- Codebase analysis: `app/db/session.py` (pool checkout defense, async_session_factory)
+- Codebase analysis: `app/core/config.py` (database_url format)
+- Codebase analysis: `app/main.py` (lifespan broker startup/shutdown)
+- Codebase analysis: `docker-compose.yml` (service topology, PostgreSQL 17)
+- Codebase analysis: `k8s/apps/run-api-prod/deployment.yaml` (production deployment pattern)
+- Codebase analysis: `Dockerfile` (multi-stage build, worker would use same image)
+- Codebase analysis: `pyproject.toml` (current dependencies: taskiq 0.12.1, taskiq-fastapi 0.4.0)
+- Procrastinate documentation (training data, HIGH confidence): PsycopgConnector, App configuration, task decorators, defer_async(), worker CLI, schema management, retry strategies
+- Procrastinate GitHub repository (training data, HIGH confidence): psycopg3 requirement, LISTEN/NOTIFY architecture, connection pool management
+- Note: WebSearch and WebFetch were unavailable during this research. Procrastinate findings are based on training data (knowledge cutoff May 2025). The library API should be verified against current docs before implementation. Core concepts (PostgreSQL job storage, LISTEN/NOTIFY, PsycopgConnector) are stable across versions.

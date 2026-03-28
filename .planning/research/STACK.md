@@ -1,260 +1,386 @@
-# Technology Stack: v1.6 Production Ready Polish
+# Technology Stack: v1.6 Imports
 
 **Project:** CivicPulse Run API
-**Researched:** 2026-03-27
-**Overall confidence:** HIGH (npm registry versions verified, codebase patterns analyzed, L2 data dictionary reviewed)
+**Researched:** 2026-03-28
+**Overall confidence:** MEDIUM (Procrastinate version and API details from training data; web verification tools unavailable -- versions MUST be verified at install time)
 
 ---
 
 ## Executive Summary
 
-v1.6 requires minimal stack additions. The four target features (zero-touch CSV import, RLS data isolation audit, navigation consolidation, volunteer onboarding guides) are primarily code-level improvements to existing infrastructure. Only two new npm packages are needed for the onboarding guide pages. Everything else is alias expansion, test additions, and sidebar restructuring using tools already in the stack.
+v1.6 replaces the in-process TaskIQ `InMemoryBroker` with **Procrastinate**, a PostgreSQL-native task queue. This is the right choice for this stack because it adds zero infrastructure: no Redis, no RabbitMQ, no additional containers. Tasks are stored as rows in PostgreSQL (which we already run), surviving pod crashes and enabling resumable imports with per-batch progress commits. The migration is straightforward: one new Python package replaces two existing ones (`taskiq` and `taskiq-fastapi`), the import task function signature stays nearly identical, and the FastAPI integration uses Procrastinate's built-in ASGI app mounting.
+
+The critical technical requirement is the PostgreSQL driver. Procrastinate requires **psycopg 3** (the `psycopg` package, NOT `psycopg2`). The existing codebase uses `asyncpg` for async operations and `psycopg2-binary` for Alembic migrations. Procrastinate cannot use `asyncpg` -- it uses `psycopg`'s native async support. This means adding `psycopg[binary]` as a dependency. The existing `asyncpg`-based SQLAlchemy engine and `psycopg2-binary` for Alembic remain unchanged; Procrastinate manages its own connection pool via `psycopg` independently.
 
 ---
 
-## Feature-by-Feature Stack Analysis
+## Recommended Stack
 
-### 1. Zero-Touch CSV Import for L2 Voter Files
+### Core Addition: Procrastinate
 
-**Stack changes: NONE. Pure code changes to existing `import_service.py`.**
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `procrastinate` | >=2.0.0 | PostgreSQL-based async task queue | Zero-infra (uses existing PostgreSQL), built-in retry/scheduling, async-native, SQLAlchemy-compatible, tasks survive pod crashes |
 
-The import pipeline already uses RapidFuzz (3.14.3) for fuzzy column matching with a 75% threshold. The "zero-touch" improvement means expanding the `CANONICAL_FIELDS` alias dictionary so that L2 voter files auto-map without user intervention.
+**Why Procrastinate over alternatives:**
 
-**What needs to change (code, not stack):**
+| Alternative | Why Not |
+|-------------|---------|
+| TaskIQ (current) | `InMemoryBroker` loses all jobs on restart; production brokers (Redis, RabbitMQ) add infrastructure we do not want |
+| Celery + Redis | Requires Redis container/service; synchronous-first design fights our async codebase; heavy operational burden |
+| Dramatiq + Redis | Same Redis dependency problem; less async support than Procrastinate |
+| ARQ | Redis-required; less mature; no built-in Django/FastAPI integration patterns |
+| Huey | Redis or SQLite backend; not PostgreSQL-native; synchronous API |
+| SAQ (Simple Async Queue) | Redis-required |
+| pg-boss (Node.js) | Wrong language ecosystem |
+| Custom `asyncio.create_task` | No persistence, no retry, no crash recovery, no worker scaling |
+| LISTEN/NOTIFY + custom queue | Reinventing what Procrastinate already does well |
 
-The current `CANONICAL_FIELDS` dict in `app/services/import_service.py` covers ~45 L2 column aliases but is missing several that appear in real L2 exports. Based on the L2 Voter File Available Fields data dictionary, the following alias gaps exist:
+**Why Procrastinate is specifically right for THIS project:**
+1. **Zero new infrastructure** -- uses the existing PostgreSQL 17 + PostGIS database; no Redis/RabbitMQ container to add to docker-compose, no new K8s Deployment to manage
+2. **Crash-resilient by design** -- jobs are PostgreSQL rows; if a pod crashes mid-import, the job remains in `processing` state and can be retried or resumed
+3. **ACID-compliant progress tracking** -- per-batch import progress can be committed transactionally alongside the voter upsert data, so progress is always consistent with actual database state
+4. **Async-native** -- Procrastinate's async API (`ProcrastinateApp` with `psycopg` async connector) fits naturally into the existing FastAPI async codebase
+5. **Worker is the same process** -- for small deployments, the worker can run inside the FastAPI process; for scaling, a separate worker process uses the same Docker image with a different entrypoint
 
-| Canonical Field | Missing L2 Aliases | Confidence |
-|----------------|-------------------|------------|
-| `registration_line1` | `residence_addresses_addressline` (has partial), `residence_address_line` | MEDIUM |
-| `registration_county` | `counties` (L2 uses this in Boundaries section) | MEDIUM |
-| `precinct` | `precinct_voting_districts` | LOW |
-| `__cell_phone` | `landline_telephone_number` (different phone type, may need `__landline` field) | MEDIUM |
-| `congressional_district` | `new_congressional_districts`, `old_congressional_districts` | MEDIUM |
-| `state_senate_district` | `new_state_senate_districts`, `old_state_senate_districts` | MEDIUM |
-| `state_house_district` | `new_state_house_districts`, `old_state_house_districts` | MEDIUM |
-| `ethnicity` | `broad_ethnic_groupings` | MEDIUM |
-| `party` | `party_identification` (L2 data dictionary lists this variant) | HIGH |
-| `registration_date` | `official_reg_date`, `calculated_reg_date` | HIGH |
-| (new) `registration_status` | `voters_active`, `registration_status` | MEDIUM |
+### Driver Requirement: psycopg 3
 
-**Voting history format variations:**
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `psycopg[binary]` | >=3.1.0 | Async PostgreSQL driver for Procrastinate | Procrastinate requires psycopg 3 (NOT psycopg2, NOT asyncpg); the `[binary]` extra bundles libpq so no system package is needed |
 
-The current parser (`parse_voting_history`) only handles `General_YYYY` / `Primary_YYYY` column patterns. Based on L2 documentation, alternate formats observed in the wild include:
+**Driver landscape clarification:**
 
-| Pattern | Example | Currently Handled |
-|---------|---------|------------------|
-| `General_YYYY` | `General_2024` | YES |
-| `Primary_YYYY` | `Primary_2022` | YES |
-| `Elections_General_YYYY` | `Elections_General_2024` | NO |
-| `Elections_Primary_YYYY` | `Elections_Primary_2022` | NO |
-| `General_Election_YYYY` | `General_Election_2020` | NO |
-| `Primary_Election_YYYY` | `Primary_Election_2020` | NO |
-| `Special_YYYY` | `Special_2023` | NO |
-| `Local_YYYY` | `Local_2023` | NO |
-| `Runoff_YYYY` | `Runoff_2024` | NO |
+| Driver | Package | Used By | Status After v1.6 |
+|--------|---------|---------|-------------------|
+| asyncpg | `asyncpg>=0.31.0` | SQLAlchemy async engine, all ORM operations | UNCHANGED -- remains primary ORM driver |
+| psycopg2 | `psycopg2-binary>=2.9.11` | Alembic sync migrations | UNCHANGED -- remains migration driver |
+| psycopg 3 | `psycopg[binary]>=3.1.0` | Procrastinate task queue | NEW -- Procrastinate's own connection pool |
 
-The regex `_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")` needs broadening to handle these additional patterns. This is a one-line regex change, not a library addition.
+These three drivers coexist without conflict. They are separate Python packages with separate C extensions. Procrastinate manages its own connection pool via psycopg 3 and does not interfere with SQLAlchemy's asyncpg pool.
 
-**Recommendation:** Expand the regex to `r"^(?:Elections_)?(?:General|Primary|Special|Local|Runoff)(?:_Election)?_(\d{4})$"` and update the `_VOTED_VALUES` frozenset if needed. No new packages required.
+### Database Schema: Procrastinate Tables
 
-### 2. Campaign Data Isolation Audit (RLS)
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Procrastinate schema migrations | Built-in | Creates `procrastinate_jobs`, `procrastinate_events`, `procrastinate_periodic_defers` tables | Procrastinate provides its own schema management; run `procrastinate schema --apply` or use the provided SQL |
 
-**Stack changes: NONE. Uses existing pytest + SQLAlchemy async test infrastructure.**
+Procrastinate creates its own tables in the `public` schema by default:
+- `procrastinate_jobs` -- job queue (task name, args, status, attempts, scheduled_at, etc.)
+- `procrastinate_events` -- job lifecycle events for monitoring
+- `procrastinate_periodic_defers` -- periodic task scheduling (not needed for v1.6 but created automatically)
 
-The project already has comprehensive RLS test infrastructure:
-- `tests/integration/conftest.py` provides `superuser_session` (bypasses RLS), `app_user_session` (RLS enforced), and `two_campaigns` fixture
-- 8 RLS test files covering voter, canvassing, phone banking, volunteer, API smoke, and pool isolation
-- Connection patterns: superuser via `postgresql+asyncpg://postgres:postgres@localhost:5432/run_api`, app_user via `postgresql+asyncpg://app_user:app_password@localhost:5432/run_api`
+**Integration with Alembic:** Procrastinate's schema is managed separately from Alembic. The recommended approach is to run `procrastinate schema --apply` as part of the init container migration step (alongside `alembic upgrade head`). Alternatively, the SQL can be embedded in an Alembic migration using `op.execute()` for the initial setup, though subsequent Procrastinate version upgrades may require additional schema changes that Procrastinate's own tooling handles better.
 
-**What the audit needs (code, not stack):**
+**RLS consideration:** Procrastinate tables do NOT need RLS policies. They store task metadata (job ID, task name, serialized arguments), not campaign-scoped voter data. The import task receives the `import_job_id` as a string argument and sets RLS context itself when it creates a SQLAlchemy session.
 
-The existing tests cover the major entities but a comprehensive audit should verify ALL 33+ RLS-enabled tables. The current test files test isolation for:
-- Campaigns, campaign_members, users (test_rls.py)
-- Voters, voter_tags, voter_lists, voter_contacts, voter_interactions, import_jobs (test_voter_rls.py)
-- Turfs, walk_lists, walk_list_entries, walk_list_canvassers, surveys, survey_questions (test_canvassing_rls.py)
-- Phone_banks, call_lists, call_list_entries, session_callers, dnc_entries (test_phone_banking_rls.py)
-- Volunteers, shifts, shift_volunteers, volunteer_tags, volunteer_tag_members, volunteer_availability (test_volunteer_rls.py)
-- API-level smoke tests for voters, turfs (test_rls_api_smoke.py)
-- Pool isolation and transaction scope (test_rls_isolation.py)
+## What to Remove
 
-**Potentially untested entities** (need verification during audit):
-- `survey_responses` (if separate table)
-- `voter_list_members` (junction table)
-- `voter_addresses` (if exists)
-- `field_mapping_templates` (partially tested in test_voter_rls.py)
-- `organization_members` (org-level, not campaign-scoped -- different RLS pattern)
+| Technology | Package | Why Remove |
+|------------|---------|------------|
+| `taskiq` | `taskiq>=0.12.1` | Replaced by Procrastinate; InMemoryBroker is not production-viable |
+| `taskiq-fastapi` | `taskiq-fastapi>=0.4.0` | FastAPI integration no longer needed; Procrastinate has its own ASGI mount |
 
-**Testing approach:** Use the existing `two_campaigns` fixture pattern. No new test libraries needed. pytest-asyncio (1.3.0+) and SQLAlchemy async sessions handle everything.
+Both packages and all references (`app/tasks/broker.py`, `app/tasks/import_task.py` broker import, `app/main.py` broker startup/shutdown) will be replaced.
 
-### 3. Navigation Consolidation
+## Supporting Libraries (No Changes)
 
-**Stack changes: NONE. Pure frontend restructuring of existing components.**
+These existing libraries are used by the import pipeline and remain unchanged:
 
-The current sidebar in `web/src/routes/__root.tsx` already uses shadcn/ui's Sidebar component system (`SidebarContent`, `SidebarGroup`, `SidebarMenuItem`, etc.) with Lucide React icons. The current campaign nav items are:
-- Dashboard, Voters, Canvassing, Phone Banking, Volunteers, Field Operations
+| Library | Version | Purpose | Status |
+|---------|---------|---------|--------|
+| `rapidfuzz` | >=3.14.3 | Fuzzy field mapping at 75% threshold | UNCHANGED |
+| `aioboto3` | >=15.5.0 | Async S3/MinIO file download | UNCHANGED |
+| `sqlalchemy` | >=2.0.48 | Async ORM for voter upsert batches | UNCHANGED |
+| `asyncpg` | >=0.31.0 | SQLAlchemy async PostgreSQL driver | UNCHANGED |
+| `geoalchemy2` | >=0.18.4 | PostGIS geometry for voter lat/lon | UNCHANGED |
 
-**What needs to change:**
-- Add "Surveys" to the campaign sidebar nav (currently only accessible via nested tabs in Canvassing/Phone Banking routes)
-- Remove duplicate inline tab bars from layout routes (`canvassing.tsx`, `phone-banking.tsx`, `voters.tsx`, `volunteers.tsx`) where they duplicate sidebar navigation
-- No new components or libraries needed -- just reorganize existing `navItems` array and conditionally show/hide sub-navigation
+## No New Frontend Dependencies
 
-The Lucide icon for Surveys is already imported (`ClipboardList` is in use for Volunteers). The `FileQuestion` or `ListChecks` icon from `lucide-react` (0.563.0, already installed) would work for Surveys.
+The import wizard UI already exists and polls `GET /campaigns/{campaign_id}/imports/{import_id}` for status updates. The only change is that the `POST /confirm` endpoint returns `202 Accepted` instead of `201 Created`, and the polling endpoint reflects batch-level progress rather than waiting for completion. No new npm packages are needed.
 
-### 4. Volunteer Onboarding Guides (Markdown Pages)
+---
 
-**Stack changes: 2 new npm packages needed.**
+## Integration Architecture
 
-This is the only feature requiring new dependencies. The goal is to author volunteer guides as markdown files and render them as styled, public-accessible pages within the app.
+### Procrastinate + FastAPI Integration
 
-#### Recommended Approach: react-markdown + @tailwindcss/typography
+Procrastinate provides a built-in ASGI sub-application (`ProcrastinateApp`) that can be mounted on the FastAPI app. This enables the web process to also function as a worker (processing jobs in the background while serving requests). For production scaling, a separate worker process can be launched from the same Docker image.
 
-**Why react-markdown over build-time alternatives:**
-- Guides may eventually be loaded from API/CMS (future-proof)
-- react-markdown renders to React components (safe by default, no raw innerHTML injection)
-- Integrates naturally with the existing component system (can map markdown elements to shadcn/ui components)
-- The content is static but the rendering context is dynamic (route params, auth state for conditional content)
+**App initialization pattern:**
 
-**Why NOT MDX or vite-plugin-markdown:**
-- MDX (@mdx-js/rollup 3.1.1) adds JSX-in-markdown complexity that volunteer guides don't need
-- vite-plugin-markdown (0.21.5) produces raw HTML strings requiring unsafe innerHTML insertion
-- Both add build-time coupling that makes future CMS integration harder
+```python
+# app/tasks/queue.py (replaces app/tasks/broker.py)
+from procrastinate import App, PsycopgConnector
 
-## Recommended Stack Additions
-
-### New Frontend Dependencies
-
-| Package | Version | Purpose | Why This One |
-|---------|---------|---------|-------------|
-| `react-markdown` | ^10.1.0 | Render markdown as React components | 900K+ weekly downloads, safe rendering via virtual DOM, component customization via `components` prop, GFM support via plugins, peer deps satisfied (React >=18) |
-| `@tailwindcss/typography` | ^0.5.19 | `prose` class for beautiful markdown typography | First-party Tailwind plugin, compatible with Tailwind v4 (peer dep: `>=4.0.0-beta.1`), provides heading hierarchy, list styling, blockquote formatting, table styling, code block formatting -- all matching design system |
-
-### Optional Frontend Dependencies (add only if needed)
-
-| Package | Version | Purpose | When to Add |
-|---------|---------|---------|-------------|
-| `remark-gfm` | ^4.0.1 | GitHub Flavored Markdown (tables, task lists, strikethrough) | Only if guides use GFM tables or task lists; start without it, add when first needed |
-| `rehype-slug` | ^6.0.0 | Add `id` attributes to headings for anchor links | Only if guides need in-page navigation / table of contents |
-| `rehype-autolink-headings` | ^7.1.0 | Add clickable anchor links to headings | Only if guides need shareable heading links; depends on rehype-slug |
-
-### New Backend Dependencies
-
-**NONE.** All four features use existing Python packages:
-- RapidFuzz 3.14.3 (import alias matching)
-- SQLAlchemy 2.0.48 + asyncpg 0.31.0 (RLS testing)
-- pytest 9.0.2 + pytest-asyncio 1.3.0 (integration tests)
-
-### New Dev Dependencies
-
-**NONE.** Existing Playwright (1.58.2), Vitest (4.0.18), and pytest handle all testing needs.
-
-## Integration Points
-
-### react-markdown + @tailwindcss/typography Integration
-
-**Tailwind v4 CSS setup** (add to `web/src/index.css`):
-```css
-@plugin "@tailwindcss/typography";
+# Connector uses psycopg 3 async
+procrastinate_app = App(
+    connector=PsycopgConnector(),
+    import_paths=["app.tasks.import_task"],
+)
 ```
 
-**Component pattern** (markdown page rendering):
-```tsx
-import Markdown from "react-markdown"
+**FastAPI lifespan integration:**
 
-function GuidePage({ content }: { content: string }) {
-  return (
-    <article className="prose prose-neutral dark:prose-invert max-w-none">
-      <Markdown>{content}</Markdown>
-    </article>
-  )
-}
+```python
+# app/main.py lifespan changes
+from app.tasks.queue import procrastinate_app
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ... existing startup code ...
+
+    # Open Procrastinate connection pool
+    async with procrastinate_app.open_async():
+        yield
+
+    # ... existing shutdown code ...
 ```
 
-**Custom component mapping** (to match shadcn/ui design system):
-```tsx
-<Markdown
-  components={{
-    a: ({ href, children }) => (
-      <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-        {children}
-      </a>
-    ),
-    // Map other elements to shadcn components as needed
-  }}
->
-  {content}
-</Markdown>
+**Task definition:**
+
+```python
+# app/tasks/import_task.py (modified)
+from app.tasks.queue import procrastinate_app
+
+@procrastinate_app.task(name="process_import", retry=2, pass_context=True)
+async def process_import(context, import_job_id: str) -> None:
+    """Process a voter file import in the background."""
+    # ... same logic as current import_task.py ...
+    # Key difference: RLS context and per-batch commits
 ```
 
-**Markdown file location:** Store guide source files at `web/src/content/guides/` and import as raw strings via Vite's `?raw` import suffix (built into Vite, no plugin needed):
-```tsx
-import canvassingGuide from "@/content/guides/canvassing.md?raw"
+**Dispatching from the endpoint:**
+
+```python
+# In app/api/v1/imports.py confirm_mapping endpoint
+# Replace: await process_import.kiq(str(import_id))
+# With:
+await process_import.defer_async(import_job_id=str(import_id))
 ```
 
-This approach avoids adding a Vite markdown plugin while keeping guides as maintainable `.md` files.
+### Procrastinate + Resumable Imports
 
-### Route structure for guides
+The critical architectural change for v1.6 is moving from a single-transaction import to per-batch commits. Currently, `process_import_file()` runs the entire import in one SQLAlchemy session with a single final `commit()`. If the pod crashes at row 50,000 of a 100,000-row file, all progress is lost.
 
-Add routes under an unauthed or lightly-authed path (guides are "public pages" per the milestone description):
+**Per-batch commit pattern with Procrastinate:**
+
+```python
+async def process_import_file(self, import_job_id: str, storage: StorageService):
+    """Process import with per-batch commits for crash resilience."""
+    for batch in batches:
+        async with async_session_factory() as session:
+            await set_campaign_context(session, str(job.campaign_id))
+
+            imported, errors, phones = await self.process_csv_batch(
+                batch, job.field_mapping, str(job.campaign_id),
+                job.source_type, session,
+            )
+
+            # Update progress in the SAME transaction as the voter data
+            job = await session.get(ImportJob, uuid.UUID(import_job_id))
+            job.imported_rows = (job.imported_rows or 0) + imported
+            job.skipped_rows = (job.skipped_rows or 0) + len(errors)
+            job.last_committed_batch = batch_number  # NEW column
+
+            await session.commit()  # Batch + progress committed atomically
 ```
-web/src/routes/guides/index.tsx          -- guide listing
-web/src/routes/guides/$guideSlug.tsx     -- individual guide page
+
+**Resume-on-crash pattern:**
+
+The `ImportJob` model needs a `last_committed_batch` column (integer). When the worker picks up a job in `PROCESSING` status (indicating a prior crash), it skips to `last_committed_batch + 1` and continues from there. The CSV file is re-downloaded from MinIO and rows are skipped up to the resume point.
+
+```python
+# In the task, detect resume scenario
+if job.status == ImportStatus.PROCESSING and job.last_committed_batch:
+    # Resume: skip already-committed batches
+    skip_rows = job.last_committed_batch * batch_size
+    for _ in range(skip_rows):
+        next(reader, None)
+    logger.info("Resuming import {} from batch {}", import_job_id, job.last_committed_batch + 1)
 ```
 
-These routes should use TanStack Router's `createFileRoute` pattern, consistent with the rest of the app. The guide content can be a static map of slug-to-import for v1.6, with API-backed content as a future enhancement.
+### Procrastinate Worker Deployment
 
-## What NOT to Add
+**Development (docker-compose):** The worker runs inside the FastAPI process. Procrastinate's `open_async()` context manager starts a background listener that picks up jobs from `procrastinate_jobs` via PostgreSQL `LISTEN/NOTIFY`. No separate container needed.
 
-| Technology | Why Not |
-|-----------|---------|
-| MDX / @mdx-js/rollup | Overkill for static volunteer guides; adds JSX-in-markdown complexity |
-| vite-plugin-markdown | Produces raw HTML strings; less safe than react-markdown's virtual DOM approach |
-| Contentful / Sanity / CMS | Out of scope for v1.6; guides are developer-authored markdown files |
-| Docusaurus / Nextra | Full documentation frameworks; we need a few in-app pages, not a docs site |
-| Any Python markdown library | Guides are frontend-rendered; no need for server-side markdown processing |
-| Additional RLS test framework | Existing pytest + SQLAlchemy async fixtures are sufficient and well-established |
-| react-helmet / react-head | Guides are in-app pages, not SEO-critical public pages needing meta tags |
-| Any CSV parsing library | Python stdlib `csv` module handles all import parsing needs |
-| chardet / charset-normalizer | Current UTF-8-sig + Latin-1 fallback handles all observed L2 file encodings |
+**Production (Kubernetes):** Add a second Deployment using the same Docker image but with a different command:
 
-## Installation Commands
+```yaml
+# k8s/apps/run-api-prod/worker-deployment.yaml
+spec:
+  containers:
+    - name: run-api-worker
+      image: ghcr.io/civicpulse/run-api:sha-XXXXX  # same image
+      command: ["python", "-m", "procrastinate", "--app=app.tasks.queue.procrastinate_app", "worker"]
+```
+
+This reuses the same image, same dependencies, same code. The only difference is the entrypoint command.
+
+### RLS Context in Background Tasks
+
+The current pattern of manually setting RLS context in the background task is correct and carries forward unchanged. Procrastinate tasks create their own SQLAlchemy sessions outside the FastAPI request lifecycle, so they must set RLS context explicitly:
+
+```python
+async with async_session_factory() as session:
+    await set_campaign_context(session, str(job.campaign_id))
+    # ... all queries in this session are campaign-scoped
+```
+
+The pool checkout event in `session.py` resets context to the null UUID on every checkout, so there is no risk of stale context in background task sessions.
+
+### Progress Tracking via Existing Polling Endpoint
+
+The existing `GET /campaigns/{campaign_id}/imports/{import_id}` endpoint already returns `imported_rows`, `skipped_rows`, `total_rows`, and `status`. With per-batch commits, these values update after every batch (currently 1,000 rows). The frontend polling interval of ~2 seconds will show smooth progress for large files.
+
+No new endpoints are needed. The only change is that the `status` field will accurately reflect real-time progress because batch data and progress counters are committed atomically.
+
+---
+
+## ImportJob Model Changes
+
+The `ImportJob` model needs two new columns for resumability:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `last_committed_batch` | `Integer, nullable=True` | Batch number of last successfully committed batch; used for resume-on-crash |
+| `procrastinate_job_id` | `BigInteger, nullable=True` | Foreign reference to `procrastinate_jobs.id` for job correlation and cancellation |
+
+These require an Alembic migration. The `procrastinate_job_id` column enables the API to check Procrastinate's job status or cancel a running import by aborting the Procrastinate job.
+
+---
+
+## Configuration Changes
+
+### Settings Addition
+
+```python
+# app/core/config.py
+class Settings(BaseSettings):
+    # ... existing settings ...
+
+    # Procrastinate (uses same database, separate connection pool)
+    procrastinate_database_url: str = (
+        "postgresql://postgres:postgres@localhost:5432/run_api"
+    )
+```
+
+Note: Procrastinate uses a **plain `postgresql://`** URL (not `postgresql+asyncpg://`). The psycopg 3 driver handles both sync and async connections natively. In docker-compose, this points to the same `postgres` container. The URL can also be derived from the existing `database_url` by stripping the `+asyncpg` dialect prefix.
+
+### Docker Compose Changes
+
+No new services needed. Procrastinate uses the existing PostgreSQL container. The only change is adding the Procrastinate schema initialization to the dev entrypoint:
 
 ```bash
-# Frontend: only 2 new packages
-cd web && npm install react-markdown @tailwindcss/typography
-
-# Backend: nothing to install
-# Dev deps: nothing to install
+# scripts/dev-entrypoint.sh (add after alembic upgrade)
+python -m procrastinate --app=app.tasks.queue.procrastinate_app schema --apply
 ```
+
+### Kubernetes Changes
+
+Two additions to the K8s manifests:
+
+1. **Init container update:** Add `procrastinate schema --apply` after `alembic upgrade head`
+2. **Worker Deployment:** New `worker-deployment.yaml` using the same image with the Procrastinate worker command
+
+---
+
+## Installation
+
+```bash
+# Add Procrastinate with psycopg 3 driver
+uv add procrastinate "psycopg[binary]>=3.1.0"
+
+# Remove TaskIQ (replaced by Procrastinate)
+uv remove taskiq taskiq-fastapi
+```
+
+---
 
 ## Version Compatibility Matrix
 
 | New Package | Requires | Project Has | Compatible |
 |------------|----------|-------------|------------|
-| react-markdown 10.1.0 | React >=18 | React 19.2.0 | YES |
-| react-markdown 10.1.0 | @types/react >=18 | @types/react 19.2.7 | YES |
-| @tailwindcss/typography 0.5.19 | tailwindcss >=3.0.0 or >=4.0.0-beta.1 | tailwindcss 4.1.18 | YES |
-| @tailwindcss/typography 0.5.19 | CSS `@plugin` directive (v4) | Tailwind v4 CSS config | YES |
+| procrastinate >=2.0.0 | Python >=3.8 | Python 3.13 | YES |
+| procrastinate >=2.0.0 | psycopg >=3.0 | Adding psycopg[binary] >=3.1.0 | YES |
+| procrastinate >=2.0.0 | PostgreSQL >=11 | PostgreSQL 17 (PostGIS 17-3.5) | YES |
+| psycopg[binary] >=3.1.0 | Python >=3.8 | Python 3.13 | YES |
+| psycopg[binary] >=3.1.0 | libpq (bundled in binary) | N/A (bundled) | YES |
+
+**Coexistence with existing drivers:**
+- `psycopg[binary]` (psycopg 3) and `psycopg2-binary` are separate packages with separate namespaces (`import psycopg` vs `import psycopg2`). They coexist without conflict.
+- `asyncpg` is a completely separate driver. No namespace conflicts.
+
+---
+
+## What NOT to Add
+
+| Technology | Why Not |
+|-----------|---------|
+| Redis | Procrastinate eliminates the need for Redis; adding Redis for task queuing contradicts the zero-infra goal |
+| RabbitMQ | Same as Redis -- unnecessary infrastructure |
+| Celery | Synchronous-first, requires Redis/RabbitMQ, massive dependency tree, fights async codebase |
+| `taskiq-redis` / `taskiq-aio-pika` | TaskIQ is being replaced entirely, not upgraded to a production broker |
+| WebSocket for progress | SSE or polling is sufficient for import progress; WebSocket adds complexity for a non-real-time use case |
+| `aiofiles` | Not needed; MinIO streaming via aioboto3 is already async; CSV parsing uses in-memory StringIO |
+| `tqdm` / progress bar libraries | Progress is tracked server-side in ImportJob rows, not in a CLI progress bar |
+| `psycopg` without `[binary]` | The plain `psycopg` package requires system `libpq-dev` to be installed; `[binary]` bundles it, matching the pattern used by `psycopg2-binary` |
+| Django-procrastinate | Wrong framework; use the standalone `procrastinate` package directly |
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Reason |
 |------|------------|--------|
-| Import alias expansion | HIGH | L2 data dictionary reviewed, existing code patterns well understood, pure dict expansion |
-| Voting history regex | MEDIUM | L2 format variations confirmed from data dictionary but exact CSV headers vary by export; regex broadening is safe (additive, not breaking) |
-| RLS audit scope | HIGH | All migration files reviewed, RLS policies enumerated across 8 migration files, existing test patterns well established |
-| Navigation consolidation | HIGH | Sidebar component fully analyzed, navItems array pattern clear, no new deps needed |
-| react-markdown choice | HIGH | npm registry version verified (10.1.0), peer deps checked (React >=18 satisfied), 900K+ weekly downloads, used by Netlify/Gatsby/Stream |
-| @tailwindcss/typography | HIGH | Version verified (0.5.19), Tailwind v4 peer dep confirmed (>=4.0.0-beta.1), first-party Tailwind plugin, `@plugin` directive documented |
-| Vite ?raw imports | HIGH | Built-in Vite feature (no plugin needed), project already uses Vite 7.3.1 |
+| Procrastinate as the right tool | HIGH | PostgreSQL-native task queue is the canonical answer for "task queue without Redis"; project already chose this direction in PROJECT.md |
+| psycopg 3 requirement | HIGH | Procrastinate's documentation consistently states psycopg 3 is the required driver; this is a fundamental architectural choice of the library |
+| Coexistence of asyncpg + psycopg2 + psycopg3 | HIGH | These are separate Python packages with separate C extensions and separate import namespaces; confirmed from package documentation |
+| Exact version numbers | LOW | Training data may be 6-18 months stale; `procrastinate>=2.0.0` and `psycopg[binary]>=3.1.0` are minimum known-good versions but the latest PyPI versions should be verified at install time with `uv add procrastinate` |
+| FastAPI integration pattern (open_async in lifespan) | MEDIUM | Pattern is documented in Procrastinate docs but exact API method names should be verified against installed version |
+| Per-batch commit pattern | HIGH | Standard SQLAlchemy pattern; independent of Procrastinate; confirmed from codebase analysis of existing session management |
+| Worker deployment as separate command | HIGH | Standard Procrastinate CLI pattern; `procrastinate worker` is the documented command |
+| Procrastinate schema management | MEDIUM | `procrastinate schema --apply` is the documented command; exact flag names should be verified against installed version |
+
+---
+
+## Verification Steps (Must Do Before Implementation)
+
+Because web search and package registry verification were unavailable during research, the following MUST be verified at implementation time:
+
+1. **`uv add procrastinate`** -- verify the installed version and check the changelog for any breaking changes since training data cutoff
+2. **`uv add "psycopg[binary]"`** -- verify version compatibility with the installed Procrastinate version
+3. **Check Procrastinate's async connector class name** -- training data says `PsycopgConnector` but it may be `AsyncConnector` or `SyncPsycopgConnector` depending on version; check `from procrastinate import` and tab-complete
+4. **Check `open_async()` method** -- verify this is the correct context manager for async operation; may be `open()` in some versions
+5. **Check schema CLI command** -- verify `procrastinate schema --apply` is the correct invocation; may be `procrastinate schema apply` (no double-dash) depending on version
+6. **Test psycopg 3 + asyncpg coexistence** -- run `uv run python -c "import psycopg; import asyncpg; import psycopg2; print('all drivers coexist')"` to confirm no import conflicts
+
+---
 
 ## Sources
 
-- [react-markdown on npm](https://www.npmjs.com/package/react-markdown) -- version 10.1.0
-- [react-markdown on GitHub](https://github.com/remarkjs/react-markdown) -- component API, plugin system
-- [remark-gfm on npm](https://www.npmjs.com/package/remark-gfm) -- version 4.0.1
-- [@tailwindcss/typography on GitHub](https://github.com/tailwindlabs/tailwindcss-typography) -- Tailwind v4 `@plugin` syntax
-- [L2 Voter File Available Fields](https://l2-data.com/wp-content/uploads/2022/01/L2_Voter-Dictionary_r2.pdf) -- data dictionary for alias mapping
-- [L2 National Voter File on Redivis](https://redivis.com/datasets/4r1c-d6j182y87) -- column naming patterns (Voters_*, Residence_Addresses_*)
-- [React Markdown Complete Guide 2025](https://strapi.io/blog/react-markdown-complete-guide-security-styling) -- security and styling best practices
-- [Tailwind Typography Plugin Docs](https://tailwindcss-typography.vercel.app/) -- prose class usage
+### Primary (codebase analysis -- HIGH confidence)
+- `pyproject.toml` -- current dependencies (taskiq 0.12.1, taskiq-fastapi 0.4.0, asyncpg 0.31.0, psycopg2-binary 2.9.11)
+- `app/tasks/broker.py` -- current InMemoryBroker (lines 1-11)
+- `app/tasks/import_task.py` -- current import task structure (lines 1-78)
+- `app/services/import_service.py` -- batch processing and progress tracking (lines 836-978)
+- `app/main.py` -- lifespan startup/shutdown with broker (lines 32-88)
+- `app/db/session.py` -- async engine, pool checkout event, session factory (lines 1-51)
+- `app/db/rls.py` -- transaction-scoped RLS context (lines 1-31)
+- `app/core/config.py` -- settings with database_url patterns (lines 1-90)
+- `app/models/import_job.py` -- ImportJob model with progress columns (lines 1-83)
+- `app/api/v1/imports.py` -- import endpoints including confirm_mapping dispatch (lines 1-467)
+- `docker-compose.yml` -- PostgreSQL 17-3.5, no Redis service (lines 1-178)
+- `Dockerfile` -- multi-stage build, worker can reuse same image (lines 1-103)
+- `k8s/apps/run-api-prod/deployment.yaml` -- current K8s deployment pattern (lines 1-86)
+- `.planning/PROJECT.md` -- v1.6 milestone scope confirming Procrastinate choice (lines 93-104)
+
+### Secondary (training data -- MEDIUM confidence)
+- Procrastinate documentation (procrastinate.readthedocs.io) -- async API, FastAPI integration, psycopg 3 requirement, worker CLI, schema management
+- psycopg 3 documentation (psycopg.org) -- async connector, binary package, coexistence with psycopg2
+- PostgreSQL LISTEN/NOTIFY documentation -- mechanism used by Procrastinate for job pickup without polling
+
+### Unverified (training data only -- LOW confidence)
+- Exact latest version of Procrastinate on PyPI (training data suggests 2.x but may be higher)
+- Exact API method names in latest Procrastinate release (connector class, open method, defer method)
+- Exact schema CLI invocation syntax in latest release

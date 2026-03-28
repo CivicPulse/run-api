@@ -1,34 +1,38 @@
-# Feature Landscape: v1.6 Production Ready Polish
+# Feature Landscape: v1.6 Large-File Voter Import & L2 Auto-Mapping
 
-**Domain:** Campaign field operations platform -- import UX, data isolation verification, navigation consolidation, volunteer onboarding guides
-**Researched:** 2026-03-27
-**Overall confidence:** HIGH (all four feature areas are well-understood domains with strong codebase evidence)
+**Domain:** Background import processing, resumable batch imports, progress reporting, L2 voter file format handling
+**Researched:** 2026-03-28
+**Overall confidence:** HIGH (domain is well-understood, codebase patterns clear, L2 format knowledge from existing alias dictionary and real import pipelines)
+
+---
 
 ## Table Stakes
 
-Features users expect in a production-ready campaign platform. Missing = import friction drives users to competitors, duplicated navigation confuses new users, volunteers arrive without context.
+Features campaigns expect from a voter import system handling files of 50K-500K+ rows. Missing any of these makes large imports unusable or unreliable.
 
 | Feature | Why Expected | Complexity | Depends On | Notes |
 |---------|--------------|------------|------------|-------|
-| L2 file imports without manual column mapping | L2 is the dominant voter data vendor; campaigns buy L2 files and expect upload-then-go | Medium | Existing import service, CANONICAL_FIELDS alias dict | Current system has ~30 L2 aliases but misses key variations; RapidFuzz 75% threshold fails on dissimilar L2 headers like "Residence_Addresses_AddressLine" vs "registration_line1" |
-| Voting history column format flexibility | L2 files use `General_YYYY`/`Primary_YYYY` format but real exports vary (underscore vs no-underscore, abbreviations, multi-word election types) | Low | `_VOTING_HISTORY_RE` regex in import_service.py | Current regex `^(General|Primary)_(\d{4})$` is strict; needs to handle `General_Election_YYYY`, `Gen_YYYY`, `Prim_YYYY`, and potentially `GeneralElection_YYYY` |
-| Single navigation hierarchy (no duplicate tabs) | Users see sidebar nav AND inline ModuleLayout tab bar for the same module -- confusing, wastes vertical space, violates "single source of truth" navigation principle | Medium | Sidebar in `__root.tsx`, ModuleLayout in 4 route layouts | Sidebar handles top-level modules; ModuleLayout handles sub-sections within modules. These need merging. |
-| Surveys accessible from sidebar | Surveys route exists (`/campaigns/$campaignId/surveys`) but is not in sidebar navigation; only reachable via direct URL or phone banking context | Low | `__root.tsx` AppSidebar navItems array | Literally adding one entry to the navItems array plus an icon import |
-| Campaign data isolation verification | Users trust that their voter data is invisible to other campaigns; must be provably true across all 15 campaign-scoped models | High | Existing RLS infrastructure, 2800+ lines of existing RLS tests | Tests exist for voters, canvassing, phone banking, volunteers -- need systematic audit across ALL 15 models for both read and write paths |
-| Volunteer-facing onboarding documentation | Volunteers arrive at shift start with zero training; need quick-reference guides accessible without login | Medium | Existing driver.js tour system (in-app), need public static pages | Current tours are interactive overlays requiring authentication; need separate shareable documentation |
+| Background import processing (non-blocking) | A 200K-row file takes 2-10 minutes to process. Blocking the HTTP request means timeouts, browser hangs, and lost imports. Users expect to start an import and continue working. | Medium | Replace TaskIQ InMemoryBroker with Procrastinate PostgreSQL job queue | Current system dispatches via `broker.task` with `InMemoryBroker` -- jobs evaporate on restart. Procrastinate stores jobs in PostgreSQL alongside application data, using the same database. POST `/confirm` should return 202 Accepted, not block. |
+| Per-batch commits (partial progress survives crashes) | If the API pod crashes at row 150K of 300K, users expect the first 150K to be persisted, not lost. Current `process_import_file` does a single `session.commit()` at the end via `process_import` task. | Medium | Modify `process_import_file` to commit after each batch; add `last_committed_batch` tracking to ImportJob model | The current code does `session.flush()` per batch but only `session.commit()` at the end in `import_task.py:51`. A pod crash loses ALL progress. Each 1000-row batch must be its own committed transaction. |
+| Resume from last committed batch after crash | If a pod crashes mid-import, users expect to click "retry" and have it pick up where it left off rather than re-importing (and duplicating) rows 1-150K. | Medium | `last_committed_batch` column on ImportJob, byte-offset or row-offset tracking, `csv.DictReader` skip logic | The ON CONFLICT upsert makes re-processing idempotent for rows with `source_id`, but re-processing 150K rows is wasteful. Track the byte offset or batch number of last committed batch. Resume from there. |
+| Real-time progress reporting (rows processed, errors, rate) | Users staring at an import screen need to see it moving. Row count, percentage, error count, and estimated time remaining are expected for any import over 10 seconds. | Low | Already exists: `ImportProgress.tsx` polls `useImportJob` every 3s, shows imported/skipped/total counts and percentage bar | Existing progress UI is well-built. The infrastructure is in place. Only need to ensure the polling endpoint returns fresh data after each batch commit (not just after full completion). Currently, `job.imported_rows` updates per-flush but is only visible after commit. With per-batch commits, progress becomes real. |
+| Error report download | When rows fail validation, users need to know which rows failed and why so they can fix the source file and re-import. | Low | Already exists: error CSV uploaded to MinIO, pre-signed download URL returned in `ImportJobResponse.error_report_key` | Fully implemented. No changes needed. |
+| L2 column auto-mapping with zero manual intervention | L2 is the dominant voter data vendor for US campaigns. Campaigns buy L2 files and expect upload-then-go. If 10 of 55 columns fail to auto-map, users have to manually fix them -- unacceptable for a non-technical campaign staffer. | Medium | Expand `CANONICAL_FIELDS` alias dictionary with ALL known L2 "friendly name" headers; lower fuzzy threshold for L2-specific patterns | Current dictionary has ~30 L2 aliases across 42 canonical fields but misses many L2-specific column name patterns. L2 uses several naming conventions: `Voters_FirstName`, `Residence_Addresses_City`, `CommercialData_MaritalStatus`, `EthnicGroups_EthnicGroup1Desc`, `General_YYYY`, `Parties_Description`. Some of these already map; many do not. |
+| Voting history format flexibility | L2 exports use multiple column naming conventions for voting history across different states and export versions. Current regex only handles `General_YYYY` and `Primary_YYYY`. | Low | Extend `_VOTING_HISTORY_RE` regex and `parse_voting_history()` to handle additional formats | Known L2 formats: `General_YYYY`, `Primary_YYYY` (handled), plus `Voted_in_YYYY_General`, `Voted in YYYY`, `GeneralElection_YYYY`, `Gen_YYYY`, `Prim_YYYY`. Need to normalize all to `General_YYYY`/`Primary_YYYY` canonical form. |
 
 ## Differentiators
 
-Features that set the product apart. Not universally expected, but significantly improve the demo/production experience.
+Features that set the import experience apart from basic CSV upload tools. Not universally expected but significantly improve campaign staff trust and efficiency.
 
 | Feature | Value Proposition | Complexity | Depends On | Notes |
 |---------|-------------------|------------|------------|-------|
-| Zero-touch L2 import (upload-to-completion with no manual mapping) | Campaigns using L2 files get one-click import; eliminates the mapping step entirely for recognized formats | Medium | Expanded alias dictionary, L2 format auto-detection, import wizard UI changes | Detect L2 format from column name patterns (e.g., presence of "LALVOTERID" or "Voters_" prefix), auto-apply complete mapping, skip mapping step in wizard |
-| Format auto-detection with confidence scoring | Show users a confidence indicator (e.g., "98% of columns auto-mapped") so they trust the auto-mapping without reviewing every field | Low | `suggest_field_mapping()` return value enhancement | Currently returns dict of column->field or None; add a confidence score per mapping and an overall percentage |
-| Smart import wizard that adapts steps | If all columns map at 100% confidence, skip the mapping step; if some fail, show only unmapped columns for manual attention | Medium | Frontend wizard step logic, backend confidence scoring | Current wizard always shows 4 steps; progressive reduction for recognized formats |
-| Collapsible sidebar with sub-navigation | Replace ModuleLayout inline tabs with sidebar sub-menus that expand under each module; single navigation surface | Medium | shadcn/ui Sidebar collapsible subgroups, route structure | Linear, Notion, and Stripe all use this pattern; sidebar expands to show sub-items on click |
-| Progressive onboarding guide system | Markdown-authored guides rendered as public pages AND referenceable from in-app context | Medium | react-markdown library, new `/guides` public routes | Markdown source files enable non-developer editing; public routes enable sharing via URL/QR code |
-| Cross-campaign audit report | Automated test suite that verifies data isolation across all entities and produces a human-readable report | Medium | Existing RLS test infrastructure, pytest fixtures | Value for compliance demos and stakeholder trust |
+| Zero-touch L2 import (skip mapping step entirely) | When 100% of columns auto-map, skip the column mapping step in the wizard. Upload, see confirmation summary, click import. Reduces a 4-step process to 3 steps for the most common file format. | Low | High-confidence auto-mapping for all L2 columns, frontend wizard conditional step skip | Detect L2 format by presence of signature columns (`LALVOTERID`, `Voters_FirstName`, `Residence_Addresses_*`). When all detected columns map at 100% alias-match (not fuzzy), auto-confirm and skip step 2. |
+| Format auto-detection with confidence display | Show "45 of 47 columns auto-mapped (96%)" on the mapping screen. Users see at a glance whether manual review is needed. Builds trust in the auto-mapping. | Low | Compute mapped/total ratio from `suggest_field_mapping()` output (count non-None values / total columns) | Pure frontend calculation from existing data. No backend changes needed. |
+| Per-batch error isolation (partial success is OK) | If batch 5 fails on a database constraint, batches 1-4 and 6+ still succeed. Users get a partial import with a clear error report rather than a total failure. | Medium | Each batch processed in its own subtransaction (SAVEPOINT) with rollback on failure; error details captured per-batch | Current code propagates batch exceptions to fail the entire import. With per-batch error isolation, a corrupted row in batch 5 does not destroy the entire 300K-row import. |
+| Import cancellation | User realizes they uploaded the wrong file after processing starts. Click "Cancel" to stop processing remaining batches. Already-committed batches remain (intentional -- upsert-safe). | Low | Add `CANCELLED` to `ImportStatus` enum, check status before each batch in processing loop, expose `POST /imports/{id}/cancel` endpoint | Simple: worker checks `job.status` at the top of each batch loop iteration. If status has been set to `CANCELLED` by the cancel endpoint, break the loop and finalize. |
+| Stale import cleanup (auto-expire PENDING/QUEUED jobs) | If a user initiates an import but never uploads the file, the PENDING job sits forever. Auto-expire after 24h. Clean up orphaned S3 objects. | Low | Procrastinate periodic task or database-level cleanup; check `created_at < now() - interval '24 hours'` for PENDING/QUEUED jobs | Prevents accumulation of zombie import jobs. Low priority but good hygiene. |
+| Import file size estimation and pre-validation | Before uploading, count lines in the file (browser-side) and display estimated rows and processing time. Warn if file exceeds reasonable limits (>1M rows). | Low | Browser-side `FileReader` line counting on the uploaded file, display in DropZone component | Under-promise on time estimates (say "10-20 minutes" not "12 minutes"). Campaigns appreciate knowing what they are waiting for. |
+| Duplicate import detection | Warn if a file with the same name and similar row count was imported in the last 7 days. Prevents accidental double-imports of the same voter file. | Low | Query `ImportJob` for same campaign + matching `original_filename` + `status=completed` + recent `created_at` | Not a hard block -- just a warning dialog: "A file named 'GA_Voters_2026.csv' was imported 2 days ago (48,392 rows). Import anyway?" |
 
 ## Anti-Features
 
@@ -36,221 +40,186 @@ Features to explicitly NOT build for v1.6. Including rationale so these do not c
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| AI/LLM-based column mapping | Adds external dependency, latency, cost, and unpredictability to a deterministic problem solvable with a comprehensive alias dictionary | Expand the CANONICAL_FIELDS alias dictionary to cover all known L2, TargetSmart, and state voter file column naming patterns; RapidFuzz at 75% threshold handles fuzzy variations |
-| Custom navigation layout builder | Lets users rearrange sidebar items; massive complexity for no campaign-operations value | Fixed sidebar order matching workflow priority (Dashboard > Voters > Canvassing > Phone Banking > Surveys > Volunteers > Field Ops) |
-| Video onboarding tutorials | Production costs, hosting costs, maintenance burden when UI changes; text/image guides update trivially | Markdown guides with annotated screenshots; cheaper to produce and maintain |
-| Interactive onboarding playground/sandbox | Fake data sandbox environment for practice; enormous infrastructure cost | Real guided tours via driver.js (already built) plus static guides with screenshots |
-| Per-vendor import profile configuration UI | Admin screen to define custom vendor import profiles with field mappings | System-level templates via FieldMappingTemplate model (already exists) plus auto-detection; no UI needed for what's a one-time backend configuration |
-| Real-time import progress via WebSocket | Push-based import progress updates | Current polling via TanStack Query refetchInterval works fine for imports that take 5-30 seconds; SSE/WS adds complexity for marginal UX gain |
-| Full WCAG AAA audit for v1.6 | Already have WCAG AA from v1.5; AAA is aspirational and massive scope | Maintain AA compliance on new features; defer AAA to a dedicated accessibility milestone |
+| Real-time WebSocket/SSE import progress | Push-based progress adds WebSocket infrastructure, connection management, reconnection logic, and a second communication channel. The import progress screen is the only consumer. | Continue using TanStack Query `refetchInterval` polling at 3s. With per-batch commits, each poll returns fresh data. Polling at 3s for a 5-20 minute import is perfectly adequate. |
+| Parallel batch processing (multi-worker) | Splitting a CSV across multiple workers adds coordination complexity, ordering concerns, and row-level locking contention on the voters table upsert. | Single-worker sequential batch processing. A 200K-row file processes in ~2-5 minutes with 1000-row batches. Fast enough. The bottleneck is PostgreSQL INSERT, not Python. |
+| Streaming upload (chunked/multipart direct-to-processor) | Processing rows as they upload sounds efficient but creates complex partial-state management. What if the upload fails at 80%? What batch boundaries apply to a stream? | Upload complete file to MinIO first (existing pattern), then process from S3. Decoupling upload from processing is simpler and more reliable. Already implemented. |
+| AI/LLM-based column mapping | Adds external dependency, latency, cost, and unpredictability to a deterministic problem. L2 column names are not creative prose -- they are fixed vendor formats solvable with a dictionary. | Expand `CANONICAL_FIELDS` alias dictionary comprehensively. RapidFuzz at 75% threshold handles minor variations. Exact-match aliases handle the rest. |
+| Import rollback (undo a completed import) | Campaigns want to undo a bad import. But voters may have been tagged, contacted, added to walk lists, or had interactions recorded against them since import. Cascading rollback is destructive. | Provide clear import history with error reports. If a bad import happened, campaigns can re-import the corrected file (upsert handles dedup) or delete voters via the UI. |
+| Shapefile/GDB direct import | Some voter files come as ESRI shapefiles or file geodatabases. Requires GDAL/OGR dependency, multi-file handling, and spatial data interpretation. | CSV only. Campaigns can use QGIS or ogr2ogr to convert to CSV first. L2 always provides CSV exports. |
+| ZIP file upload with multi-file processing | Some vendors deliver voter files as ZIP archives with multiple CSVs (one per county or split by alphabet). | Single CSV per import. Users can import multiple files sequentially. The import history page already supports this workflow. |
+| Custom row-level transformation rules | Let users define per-column transformation rules (regex replacements, format conversions) during import. | Build transformations into the import service (like `normalize_party`, `parse_propensity`, `normalize_phone`). Deterministic transforms baked into code are testable and reliable. |
+| Import scheduling (schedule import for off-hours) | Let users schedule an import to run at 2 AM to avoid peak hours. | Procrastinate can defer jobs, but the complexity of scheduling UI, timezone handling, and user expectations around scheduled jobs is not worth it. Imports are fast enough to run immediately. |
 
 ## Feature Dependencies
 
 ```
-L2 alias expansion --> Zero-touch auto-detection --> Smart wizard step reduction
-                                                 --> Confidence scoring display
+Procrastinate integration --> Background processing (202 Accepted)
+                         --> Per-batch commits (each batch = own transaction)
+                         --> Resume from last committed batch (crash recovery)
+                         --> Import cancellation (check status between batches)
+                         --> Stale job cleanup (periodic task)
 
-Sidebar consolidation --> Remove ModuleLayout --> Add sub-navigation groups
-                     --> Add Surveys to sidebar
+Per-batch commits --> Real-time progress visible via polling (already built)
+                 --> Per-batch error isolation (SAVEPOINT per batch)
+                 --> Resume offset tracking (last_committed_batch column)
 
-Markdown guide authoring --> Public route for guides --> In-app help link integration
-                        --> QR code generation for shift handouts
+L2 alias expansion --> Zero-touch L2 auto-detection
+                   --> Format auto-detection confidence display
+                   --> Voting history format flexibility
 
-RLS audit framework --> Per-model isolation tests --> Cross-population fix if found
-                   --> Audit report generation
+Resume tracking (ImportJob model changes) --> Crash recovery logic in worker
+                                          --> UI "retry" button for failed/crashed imports
 ```
-
-## Detailed Feature Analysis
-
-### 1. Zero-Touch CSV Import for L2 Voter Files
-
-**Current state:** The import wizard is a 4-step flow: Upload > Map Columns > Preview > Progress. The `suggest_field_mapping()` function uses RapidFuzz at a 75% threshold against a known alias dictionary. For L2 files, approximately 30 aliases are defined covering the `Voters_`, `Residence_Addresses_`, `Parties_`, `EthnicGroups_`, and `CommercialData_` prefixes.
-
-**Problem:** When a user uploads a standard L2 export, the auto-mapping catches most fields but misses enough that the mapping step requires manual intervention. The voting history regex only handles `General_YYYY` and `Primary_YYYY` exactly, missing format variations. This makes L2 imports 3-click instead of 1-click.
-
-**What "zero-touch" means for this codebase:**
-
-1. **Expand alias dictionary** (CANONICAL_FIELDS in import_service.py):
-   - Add all known L2 VM2 Uniform Format column names as aliases
-   - L2 uses camelCase-ish naming with underscores: `Voters_FirstName`, `Voters_LastName`, `Residence_Addresses_AddressLine`, `Residence_Addresses_City`, `Residence_Addresses_State`, `Residence_Addresses_Zip`, `Residence_Addresses_Latitude`, `Residence_Addresses_Longitude`, etc.
-   - Add `LALVOTERID` as source_id alias (the L2 unique voter identifier)
-   - Add propensity score variations: `General_Turnout_Score`, `Primary_Turnout_Score`, `Combined_Turnout_Score` (note underscores differ from current aliases which use no underscores)
-   - Add `Voters_RegistrationDate`, `Voters_PrecinctID`, `Voters_OfficialRegParty`
-   - Confidence: MEDIUM -- exact column names vary by L2 export type (VM2 Uniform vs VM2 Demographic vs custom extracts). The alias list should be validated against an actual L2 file export.
-
-2. **Expand voting history regex** (parse_voting_history in import_service.py):
-   - Current: `^(General|Primary)_(\d{4})$`
-   - Add: `^(General|Primary)_Election_(\d{4})$`, `^(Gen|Prim)_(\d{4})$`
-   - Consider: `^(GeneralElection|PrimaryElection)_(\d{4})$`
-   - L2's standard format is `General_YYYY` and `Primary_YYYY` (current regex handles this), but some custom exports may use longer forms
-   - Confidence: MEDIUM -- need to validate against real L2 file samples
-
-3. **L2 format auto-detection** (new logic in import_service.py or detect endpoint):
-   - Detect L2 format when CSV headers contain `LALVOTERID` or multiple columns matching `Voters_*` pattern
-   - When detected: apply a pre-built "L2 VM2" system template instead of fuzzy matching
-   - Set source_type to "l2" automatically
-   - Confidence: HIGH -- pattern detection is deterministic and testable
-
-4. **Smart wizard step reduction** (import wizard in new.tsx):
-   - After detect+suggest, compute mapping confidence: `mapped_count / total_column_count`
-   - If confidence >= 95% (nearly all columns mapped), offer "Quick Import" button that skips mapping review
-   - If confidence < 95%, show mapping step as normal but highlight only unmapped columns
-   - Never fully skip the mapping step without user consent -- always show a "Review mapping" option
-   - Confidence: HIGH -- well-understood UX pattern
-
-**Complexity: Medium** -- backend alias expansion is straightforward; auto-detection logic is simple pattern matching; frontend wizard changes are moderate.
-
-### 2. Campaign Data Isolation Verification
-
-**Current state:** Transaction-scoped RLS context (v1.5) with defense-in-depth pool checkout event. Centralized `get_campaign_db` dependency. Approximately 2,800 lines of RLS integration tests covering voters, canvassing, phone banking, and volunteers.
-
-**Problem:** While the infrastructure is solid, the project description specifically calls out "audit and fix any campaign data cross-population across all scoped entities." This implies a systematic verification across all 15 campaign-scoped models, not just the 4 modules currently tested.
-
-**What systematic audit means for this codebase:**
-
-1. **Entity inventory** -- 15 models with campaign_id:
-   - campaign_member, phone_bank, survey, turf, volunteer, voter_contact, voter_interaction, voter_list, walk_list, call_list, dnc, import_job, invite, shift, voter
-   - Currently tested: voter, turf/walk_list (canvassing), phone_bank/call_list (phone banking), volunteer/shift
-   - Missing test coverage: survey, voter_contact, voter_interaction, voter_list, dnc, import_job, invite, campaign_member
-
-2. **Test pattern per entity:**
-   - Create record in campaign A
-   - Attempt to read/list/update/delete from campaign B context
-   - Verify: read returns empty/404, write returns 403/404
-   - Verify: list endpoint never leaks records across campaigns
-
-3. **Edge cases to verify:**
-   - Nested entities (voter_contact belongs to voter which belongs to campaign)
-   - Cross-entity joins (walk_list references turf; call_list references phone_bank)
-   - Import jobs: can campaign B see campaign A's import history?
-   - Invites: campaign-scoped but also reference org -- verify isolation
-   - Surveys: used across phone banking sessions -- verify session-survey isolation
-
-4. **Fix scope:** If cross-population is found, the fix is adding missing RLS policies or WHERE clauses. Based on the v1.5 centralized `get_campaign_db` work, this is unlikely but must be verified.
-
-**Complexity: High** -- not because any individual test is complex, but because there are 8+ untested models, each needing 4+ test scenarios (read, list, create, update, delete across campaign boundaries), plus edge cases for nested relationships.
-
-### 3. Navigation Consolidation
-
-**Current state:** Dual navigation surfaces:
-- **Sidebar** (`__root.tsx` AppSidebar): Dashboard, Voters, Canvassing, Phone Banking, Volunteers, Field Operations, plus org-level items
-- **ModuleLayout inline tabs** (4 layouts): Voters (All/Lists/Tags/Imports), Phone Banking (Sessions/Call Lists/DNC/My Sessions), Volunteers (Roster/Tags/Register/Shifts), Settings (General/Members/Danger Zone)
-- **Missing from sidebar:** Surveys (route exists at `/campaigns/$campaignId/surveys`)
-- **Canvassing:** Has no ModuleLayout (just an Outlet wrapper); sub-navigation is within the index page
-
-**Problem:** Users see the same module listed in the sidebar AND get a secondary tab bar within each module. This creates visual noise, wastes vertical space on mobile, and violates the "single navigation hierarchy" principle. On mobile especially, the ModuleLayout horizontal scrolling pill tabs compete with the collapsible sidebar.
-
-**What consolidation means for this codebase:**
-
-1. **Option A: Sidebar sub-menus (recommended)**
-   - Expand sidebar with collapsible sub-items under each module
-   - Voters > All Voters, Lists, Tags, Imports
-   - Phone Banking > Sessions, Call Lists, DNC, My Sessions
-   - Volunteers > Roster, Tags, Register, Shifts
-   - Surveys (top-level, single page)
-   - Settings > General, Members, Danger Zone
-   - Remove ModuleLayout component entirely
-   - Each sub-route renders directly in the main content area
-   - **Why this option:** shadcn/ui Sidebar already supports collapsible subgroups (SidebarMenuSub, SidebarMenuSubItem). This is the pattern used by Linear, Notion, and most modern SaaS tools. Single navigation surface reduces cognitive load.
-
-2. **Option B: Keep ModuleLayout, remove sidebar module-level items**
-   - Sidebar only shows "Campaign" (top-level), then inline tabs handle sub-navigation
-   - **Why NOT this option:** Sidebar becomes nearly empty for campaign context; wastes the navigation rail. ModuleLayout's horizontal scrolling tabs are problematic on mobile.
-
-3. **Option C: Breadcrumb-based navigation**
-   - Remove both, use breadcrumbs + content-area navigation
-   - **Why NOT this option:** Requires page loads to navigate between siblings; much worse than sidebar sub-items for rapid switching.
-
-4. **Implementation steps:**
-   - Add SidebarMenuSub/SidebarMenuSubItem for each module's children
-   - Refactor the 4 ModuleLayout route files to just render `<Outlet />`
-   - Add Surveys entry to sidebar
-   - Update mobile sidebar behavior (sub-items visible when parent expanded)
-   - Verify all deep-link routes still work
-   - Update active-state highlighting for nested routes
-
-**Complexity: Medium** -- shadcn/ui Sidebar already provides the sub-menu primitives; the refactoring is mechanical (4 route layouts, 1 sidebar component). Risk is in route matching for active states with nested URLs.
-
-### 4. Progressive Volunteer Onboarding Guides
-
-**Current state:** Interactive driver.js tours for three segments: welcome (4 steps), canvassing (5 steps), phone banking (3 steps). Tours fire on first visit and can be replayed via help button. Tours are authenticated -- require login and active campaign assignment. Tour state persists in Zustand store (`tourStore`).
-
-**Problem:** Volunteers need reference material BEFORE arriving at a shift (shared via text/email/printout), and DURING a shift when they forget a step but don't want to replay the full tour. Current tours are ephemeral overlays, not persistent reference documentation.
-
-**What progressive onboarding guides means for this codebase:**
-
-1. **Markdown source files** (new directory: `web/src/content/guides/` or `docs/guides/`):
-   - `getting-started.md` -- What is CivicPulse Run, how to sign up, what to expect
-   - `canvassing-guide.md` -- Step-by-step door knocking workflow with screenshots
-   - `phone-banking-guide.md` -- Step-by-step phone banking workflow
-   - `volunteer-faq.md` -- Common questions (what if nobody answers, what if they're hostile, what if my phone dies)
-   - Markdown because: non-developers can edit, version-controlled, renders to both web and printable formats
-
-2. **Public route rendering** (new routes: `/guides`, `/guides/:slug`):
-   - No authentication required
-   - Renders markdown to HTML via react-markdown
-   - Styled with shadcn/ui typography (prose classes via @tailwindcss/typography)
-   - Responsive layout optimized for mobile reading
-   - Print-friendly CSS for shift handouts
-
-3. **In-app help integration:**
-   - Add "Help & Guides" link to sidebar (always visible, not campaign-scoped)
-   - Add contextual "View guide" links in field mode headers
-   - Help button in FieldHeader.tsx can link to relevant guide section
-
-4. **Technology choice:**
-   - **Use react-markdown** (not MDX) because: guides are pure content, no interactive components needed; lighter bundle; simpler build pipeline; already using remark ecosystem implicitly through other deps
-   - Import markdown files as strings via Vite's `?raw` import
-   - Add `@tailwindcss/typography` for prose styling
-   - Confidence: HIGH -- react-markdown is the standard for this pattern
-
-5. **Progressive disclosure structure in guides:**
-   - Quick-start summary at top (3-5 bullet points, 30-second read)
-   - Expandable sections for detailed steps
-   - "What if..." troubleshooting sections at bottom
-   - Follows NNGroup progressive disclosure pattern: essential info visible, advanced info one click away
-
-**Complexity: Medium** -- react-markdown rendering is trivial; the work is in writing quality guide content, designing the public page layout, and wiring in-app help links. Content authoring is the bottleneck, not code.
 
 ## MVP Recommendation
 
-Prioritize features in this order based on impact and dependencies:
+Prioritize in this order:
 
-1. **L2 alias expansion + voting history regex** (table stakes, low-medium complexity, highest import friction reduction)
-   - Backend only, no UI changes needed for alias expansion
-   - Immediately improves auto-mapping accuracy for L2 files
+1. **Procrastinate integration** -- Replace InMemoryBroker with PostgreSQL job queue. This is the foundation: without a durable job queue, background processing is unreliable. Jobs survive pod restarts. Currently if the pod dies, all queued imports are lost forever.
 
-2. **Navigation consolidation + Surveys in sidebar** (table stakes, medium complexity, visible polish)
-   - Single navigation surface removes the most visible UX confusion
-   - Surveys becoming discoverable fills a feature gap
+2. **Per-batch commits with resume tracking** -- Add `last_committed_batch` (int) and `processed_bytes` (bigint, optional) to ImportJob. Commit after each 1000-row batch. On resume, skip to `last_committed_batch + 1`. This makes large imports crash-safe.
 
-3. **Zero-touch import wizard (smart step reduction)** (differentiator, medium complexity, depends on #1)
-   - After aliases are expanded, the confidence scoring and step-skipping logic builds naturally
-   - Makes L2 imports genuinely one-click
+3. **L2 "friendly name" alias completion** -- Audit ALL L2 column name patterns and add them to `CANONICAL_FIELDS`. This is the "zero-manual-mapping" goal. The existing fuzzy matching infrastructure is correct; the alias dictionary is just incomplete.
 
-4. **Campaign data isolation audit** (table stakes, high complexity, independent of others)
-   - Critical for production trust but can run in parallel
-   - Any fixes found are likely small (missing WHERE clauses)
+4. **Voting history format expansion** -- Extend `parse_voting_history()` regex to handle `Voted_in_YYYY_General`, `Gen_YYYY`, and similar L2 variations across states.
 
-5. **Volunteer onboarding guides** (table stakes, medium complexity, mostly content work)
-   - Defer to last because it's the most content-heavy and least code-heavy
-   - Can be iterated after initial guide content is written
+**Defer:** Import cancellation, stale job cleanup, duplicate detection, file size estimation. All are easy Low-complexity features that can be added after the core reliability features ship.
 
-**Defer beyond v1.6:**
-- Cross-campaign audit report generation (nice-to-have reporting, not blocking production readiness)
-- QR code generation for shift handouts (trivial to add later with any QR library)
-- Print-optimized guide CSS (can iterate after guide content stabilizes)
+## L2 Voter File Column Patterns (Research Notes)
+
+L2 (L2 Political, formerly L2 Inc.) is the dominant voter data vendor in the US. Their CSV exports use several naming conventions depending on export version, state, and data package:
+
+### Column Naming Conventions (MEDIUM confidence -- based on existing alias dictionary entries and training data)
+
+**Pattern 1: Prefix_CamelCase** (most common in modern L2 exports)
+- `Voters_FirstName`, `Voters_LastName`, `Voters_MiddleName`, `Voters_NameSuffix`
+- `Voters_Gender`, `Voters_BirthDate`, `Voters_Age`
+- `Voters_CellPhone`, `Voters_CellPhoneFull`
+- `Voters_HHID`, `Voters_HHSize`, `Voters_HHPartyRegistration`, `Voters_FamilyID`
+- `Voters_Language`, `Voters_PartyChangeIndicator`
+- `Voters_Zip4`
+
+**Pattern 2: Category_Subcategory** (for address, demographic, commercial data)
+- `Residence_Addresses_AddressLine`, `Residence_Addresses_City`, `Residence_Addresses_State`
+- `Residence_Addresses_Zip`, `Residence_Addresses_Zip4`, `Residence_Addresses_County`
+- `Residence_Addresses_Latitude`, `Residence_Addresses_Longitude`
+- `Residence_Addresses_AptType`
+- `EthnicGroups_EthnicGroup1Desc`
+- `CommercialData_MaritalStatus`, `CommercialData_MilitaryActive`
+- `Parties_Description`
+
+**Pattern 3: Mailing address columns**
+- `Mail_VAddressLine1`, `Mail_VAddressLine2`, `Mail_VCity`, `Mail_VState`
+- `Mail_VZip`, `Mail_VZipcode`, `Mail_VZip4`, `Mail_VCountry`
+
+**Pattern 4: Score/propensity columns**
+- `General_Turnout_Score`, `Primary_Turnout_Score`, `Combined_Turnout_Score`
+- `CellPhoneConfidence`
+
+**Pattern 5: Voting history columns**
+- `General_YYYY` / `Primary_YYYY` -- values are Y/N/A/E (current, handled)
+- `Voted_in_YYYY_General` / `Voted_in_YYYY_Primary` (alternate format, NOT handled)
+- `Voted in YYYY` / `Voted in YYYY Primary` (space-separated, NOT handled)
+
+**Pattern 6: Voter ID**
+- `LALVOTERID` -- L2's unique voter identifier (the "LAL" prefix is a legacy name)
+- `Voters_StateVoterID` -- state-assigned voter ID
+
+### Columns Currently Handled vs. Gaps
+
+**Already in CANONICAL_FIELDS alias dictionary (30+ aliases):**
+- Core name fields: `Voters_FirstName`, `Voters_LastName`, etc.
+- Registration address: `Residence_Addresses_*` pattern
+- Demographics: `EthnicGroups_EthnicGroup1Desc`, `Voters_Gender`, `Voters_BirthDate`
+- Household: `Voters_HHID`, `Voters_HHSize`, `Voters_HHPartyRegistration`, `Voters_FamilyID`
+- Phone: `Voters_CellPhoneFull`, `Voters_CellPhone`
+- Mailing: `Mail_VAddressLine1` through `Mail_VCountry`
+- Scores: `General_Turnout_Score`, `Primary_Turnout_Score`, `Combined_Turnout_Score`
+- Commercial: `CommercialData_MaritalStatus`, `CommercialData_MilitaryActive`
+- Party: `Parties_Description`
+
+**Gaps -- NOT in current alias dictionary but present in L2 exports:**
+- `Voters_StateVoterID` (for `source_id`)
+- `Residence_Addresses_ExtraAddressLine` (for `registration_line2`)
+- `Residence_Addresses_HouseNumber`, `Residence_Addresses_PrefixDirection`, `Residence_Addresses_StreetName`, `Residence_Addresses_Designator`, `Residence_Addresses_SuffixDirection` (component address fields -- need concatenation strategy for `registration_line1`)
+- `Voters_RegistrationDate` (for `registration_date`)
+- `Precinct`, `USCongressionalDistrict`, `StateSenateDistrict`, `StateHouseDistrict` (district columns with varying naming)
+- Voting history in "Voted in" format
+- `Voters_MailingAddress*` variants (alternative mailing prefix)
+- `Voters_OfficialRegParty` (alternative party column)
+
+### Voting History Format Matrix
+
+| Format | Example Column | Current Status | Action |
+|--------|---------------|----------------|--------|
+| `General_YYYY` | `General_2024` | Handled | None |
+| `Primary_YYYY` | `Primary_2022` | Handled | None |
+| `Gen_YYYY` | `Gen_2024` | NOT handled | Add to regex |
+| `Prim_YYYY` | `Prim_2022` | NOT handled | Add to regex |
+| `GeneralElection_YYYY` | `GeneralElection_2024` | NOT handled | Add to regex |
+| `PrimaryElection_YYYY` | `PrimaryElection_2022` | NOT handled | Add to regex |
+| `Voted_in_YYYY_General` | `Voted_in_2024_General` | NOT handled | Add alternative regex pattern |
+| `Voted in YYYY` | `Voted in 2024` | NOT handled | Requires space-aware column matching; normalize to `General_YYYY` |
+| `Voted in YYYY Primary` | `Voted in 2024 Primary` | NOT handled | Requires space-aware column matching |
+| `Municipal_YYYY` | `Municipal_2023` | NOT handled | Decide: capture or ignore (recommend: capture as `Municipal_YYYY`) |
+| `Special_YYYY` | `Special_2023` | NOT handled | Decide: capture or ignore (recommend: capture as `Special_YYYY`) |
+| `Runoff_YYYY` | `Runoff_2024` | NOT handled | Decide: capture or ignore (recommend: capture as `Runoff_YYYY`) |
+
+**Recommendation:** Expand the regex to capture General, Primary, Gen, Prim, GeneralElection, PrimaryElection as election types and normalize them all to the canonical `General_YYYY` or `Primary_YYYY` format. Also add support for `Municipal_YYYY`, `Special_YYYY`, and `Runoff_YYYY` as-is (pass through without normalization since the voting_history array is a string array). For the "Voted in" space-separated format, add a second regex pattern.
+
+## L2 Component Address Fields (Special Case)
+
+L2 sometimes exports addresses as individual components rather than a single line:
+
+| L2 Column | Component |
+|-----------|-----------|
+| `Residence_Addresses_HouseNumber` | House/building number |
+| `Residence_Addresses_PrefixDirection` | N, S, E, W |
+| `Residence_Addresses_StreetName` | Street name |
+| `Residence_Addresses_Designator` | St, Ave, Blvd, Dr |
+| `Residence_Addresses_SuffixDirection` | N, S, E, W (suffix) |
+| `Residence_Addresses_AptNum` | Apartment number |
+
+**Recommendation:** Do NOT map these individually. Instead, detect when these component columns are present (and `Residence_Addresses_AddressLine` is absent) and concatenate them into `registration_line1` during field mapping. Add a concatenation strategy to `apply_field_mapping()` for this special case. This is the only L2-specific transformation that requires logic beyond simple alias mapping.
+
+## Procrastinate Integration Notes (MEDIUM confidence -- based on training data, not verified against current docs)
+
+Procrastinate is a PostgreSQL-based job queue for Python, designed for async/await applications. Key properties relevant to this milestone:
+
+- **PostgreSQL-native:** Jobs stored in PostgreSQL tables alongside application data. No additional infrastructure (Redis, RabbitMQ) required. Uses LISTEN/NOTIFY for instant job pickup.
+- **Async-first:** Native asyncio/asyncpg support. Integrates cleanly with FastAPI's async request handlers.
+- **Durable:** Jobs survive pod restarts since they are in PostgreSQL. Unlike InMemoryBroker, queued imports are not lost on crash.
+- **Retry policies:** Built-in retry with configurable attempts and backoff. Failed imports can auto-retry.
+- **Periodic tasks:** Supports cron-like periodic tasks for stale job cleanup.
+- **Worker process:** Runs as a separate process (`procrastinate worker`) or can be embedded in the FastAPI process for development.
+- **Database schema:** Creates its own tables (`procrastinate_jobs`, `procrastinate_events`, etc.) via migrations.
+
+**Migration path from TaskIQ InMemoryBroker:**
+1. Add `procrastinate` to dependencies (replace `taskiq`, `taskiq-fastapi`)
+2. Create Procrastinate app with asyncpg connector
+3. Run Procrastinate schema migrations (creates its own tables)
+4. Register `process_import` as a Procrastinate task
+5. Dispatch via `await process_import.defer_async(import_job_id=str(import_id))` instead of `await process_import.kiq(str(import_id))`
+6. Run worker via `procrastinate worker` command (or embed in dev)
+
+## Import Job Model Changes Required
+
+Based on feature analysis, the `ImportJob` model needs these additions:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `last_committed_batch` | `Integer, default=0` | Track resume point for crash recovery |
+| `processed_bytes` | `BigInteger, nullable=True` | Optional: track file byte offset for resume (alternative to batch counting) |
+| `total_batches` | `Integer, nullable=True` | Pre-computed batch count for progress percentage |
+| `started_at` | `DateTime, nullable=True` | When processing actually began (vs. created_at which is upload time) |
+| `completed_at` | `DateTime, nullable=True` | When processing finished (for duration reporting) |
+
+The `ImportStatus` enum should also gain `CANCELLED` for the cancellation feature (if built).
 
 ## Sources
 
-- L2 Political Academic Voter File documentation: [NYU Research Guide](https://guides.nyu.edu/l2political), [Penn Libraries](https://guides.library.upenn.edu/L2/documentation), [UC Berkeley](https://guides.lib.berkeley.edu/c.php?g=1381940&p=10332633)
-- L2 National Voter File dataset schema: [Redivis](https://redivis.com/datasets/4r1c-d6j182y87)
-- L2 Voter Data Dictionary: [L2 Data](https://l2-data.com/wp-content/uploads/2022/01/L2_Voter-Dictionary_r2.pdf), [2025 Version](https://www.l2-data.com/wp-content/uploads/2025/08/L2-2025-VOTER-DATA-DICTIONARY-1.pdf)
-- CSV Column Auto-Recognition Patterns: [CodeNote](https://codenote.net/en/posts/csv-column-auto-recognition-heuristic-vs-llm/)
-- Progressive Disclosure UX: [NNGroup](https://www.nngroup.com/articles/progressive-disclosure/), [IxDF](https://ixdf.org/literature/topics/progressive-disclosure), [LogRocket](https://blog.logrocket.com/ux-design/progressive-disclosure-ux-types-use-cases/)
-- SaaS Sidebar Navigation: [ALF Design Group](https://www.alfdesigngroup.com/post/improve-your-sidebar-design-for-web-apps), [Navbar Gallery](https://www.navbar.gallery/blog/best-side-bar-navigation-menu-design-examples), [Lollypop Design](https://lollypop.design/blog/2025/december/saas-navigation-menu-design/)
-- Tabs UX Best Practices: [Eleken](https://www.eleken.co/blog-posts/tabs-ux)
-- React Markdown: [react-markdown GitHub](https://github.com/remarkjs/react-markdown), [Strapi Guide](https://strapi.io/blog/react-markdown-complete-guide-security-styling)
-- Multi-tenant data isolation patterns: [Redis Blog](https://redis.io/blog/data-isolation-multi-tenant-saas/), [Propelius](https://propelius.tech/blogs/tenant-data-isolation-patterns-and-anti-patterns/)
-- Campaign volunteer onboarding: [NationBuilder](https://nationbuilder.com/building-a-thriving-volunteer-program)
-- Codebase inspection: import_service.py (CANONICAL_FIELDS, parse_voting_history, suggest_field_mapping), __root.tsx (AppSidebar), ModuleLayout.tsx, tourSteps.ts, useTour.ts, import wizard (new.tsx), imports.py API endpoints
+- Codebase analysis: `app/services/import_service.py`, `app/tasks/broker.py`, `app/tasks/import_task.py`, `app/models/import_job.py`, `app/api/v1/imports.py`
+- Frontend analysis: `web/src/routes/campaigns/$campaignId/voters/imports/new.tsx`, `web/src/components/voters/ImportProgress.tsx`, `web/src/hooks/useImports.ts`
+- Test analysis: `tests/unit/test_import_service.py`, `tests/unit/test_import_parsing.py`
+- L2 column patterns: Derived from existing `CANONICAL_FIELDS` alias dictionary entries (HIGH confidence for documented patterns) and training data knowledge of L2 voter file formats (MEDIUM confidence for undocumented patterns)
+- Procrastinate capabilities: Training data (MEDIUM confidence -- recommend verifying against current docs before implementation)
