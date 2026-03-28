@@ -90,15 +90,16 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-## Current Milestone: v1.6 Production Ready Polish
+## Current Milestone: v1.6 Imports
 
-**Goal:** Make the platform demo-ready and volunteer-friendly — fix import friction, verify data isolation, streamline navigation, and create shareable onboarding guides.
+**Goal:** Make large voter file imports reliable and ensure L2 files import with zero manual mapping.
 
 **Target features:**
-- Zero-touch CSV import for L2 voter files (add missing aliases, handle alternate voting history column formats)
-- Audit and fix any campaign data cross-population across all scoped entities
-- Remove duplicate inline tab bar, consolidate navigation into sidebar (add Surveys)
-- Progressive volunteer onboarding guides (markdown source + in-app public pages)
+- Background import processing via Procrastinate (PostgreSQL job queue) — POST returns 202, import runs async
+- Resumable imports with per-batch commits — partial progress survives pod crashes, resumes from last committed batch
+- Progress tracking via existing polling endpoint — real-time row count, batch status, error reporting
+- Complete L2 "friendly name" alias coverage — all 55 columns from L2 CSV files auto-map without manual intervention
+- Voting history format support — "General_YYYY", "Voted in YYYY", "Voted in YYYY Primary" patterns
 
 ### Out of Scope
 
@@ -128,7 +129,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 v1.5 shipped 2026-03-25. 48 phases, 149 plans delivered across 6 milestones in 17 days. The platform is production-ready with full data isolation, org management, map-based turf editing, WCAG AA compliance, observability, and E2E test coverage.
 
-Now entering v1.6: production polish focused on import UX, data isolation verification, navigation cleanup, and volunteer onboarding documentation.
+Now entering v1.6: reliable large-file imports via Procrastinate background processing and complete L2 auto-mapping.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
@@ -168,4 +169,22 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | AST-based rate limit guard test | Verify all route files have decorators without importing app | ✓ Good — catches missing rate limits at CI time |
 
 ---
-*Last updated: 2026-03-27 after v1.6 milestone start*
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-03-28 after v1.6 Imports milestone start*

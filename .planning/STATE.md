@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.6
-milestone_name: Production Ready Polish
+milestone_name: Imports
 status: Defining requirements
-last_updated: "2026-03-27"
+last_updated: "2026-03-28"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -15,7 +15,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-27)
+See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
 **Current focus:** Defining requirements for v1.6
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-03-27 — Milestone v1.6 started
+Last activity: 2026-03-28 — Milestone v1.6 Imports started
 
 ## Performance Metrics
 
@@ -71,6 +71,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
-Stopped at: Completed quick-260327-o38
+Last activity: 2026-03-28 - Milestone v1.6 Imports started
+Stopped at: Defining requirements
 Resume file: None
