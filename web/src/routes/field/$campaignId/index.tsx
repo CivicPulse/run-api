@@ -116,29 +116,33 @@ function FieldHub() {
       {/* Success state */}
       {data && (
         <>
-          <h1 data-tour="hub-greeting" className="mb-4 text-2xl font-bold">Hey {firstName}!</h1>
+          <h1 data-tour="hub-greeting" className="mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300">Hey {firstName}!</h1>
 
           {hasAssignments ? (
             <div className="flex flex-col gap-4">
               {data.canvassing && (
-                <AssignmentCard
-                  type="canvassing"
-                  id={data.canvassing.walk_list_id}
-                  name={data.canvassing.name}
-                  total={data.canvassing.total}
-                  completed={data.canvassing.completed}
-                  campaignId={campaignId}
-                />
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <AssignmentCard
+                    type="canvassing"
+                    id={data.canvassing.walk_list_id}
+                    name={data.canvassing.name}
+                    total={data.canvassing.total}
+                    completed={data.canvassing.completed}
+                    campaignId={campaignId}
+                  />
+                </div>
               )}
               {data.phone_banking && (
-                <AssignmentCard
-                  type="phone-banking"
-                  id={data.phone_banking.session_id}
-                  name={data.phone_banking.name}
-                  total={data.phone_banking.total}
-                  completed={data.phone_banking.completed}
-                  campaignId={campaignId}
-                />
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 delay-100">
+                  <AssignmentCard
+                    type="phone-banking"
+                    id={data.phone_banking.session_id}
+                    name={data.phone_banking.name}
+                    total={data.phone_banking.total}
+                    completed={data.phone_banking.completed}
+                    campaignId={campaignId}
+                  />
+                </div>
               )}
             </div>
           ) : (

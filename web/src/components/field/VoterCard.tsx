@@ -70,12 +70,14 @@ export function VoterCard({
         isSkipped
           ? "opacity-40 py-2"
           : isCompleted
-            ? "opacity-60 py-2"
-            : "py-2"
+            ? "opacity-50 py-2"
+            : isActive && !isCompleted && !isSkipped
+              ? "py-2 border-l-4 border-primary pl-3"
+              : "py-2"
       }
     >
       {/* Voter name */}
-      <p className="text-base font-normal">{voterName}</p>
+      <p className="text-lg font-semibold">{voterName}</p>
 
       {/* Badges row */}
       <div className="flex items-center gap-2 mt-1">
@@ -108,7 +110,7 @@ export function VoterCard({
 
       {/* Completed state: show checkmark + outcome */}
       {isCompleted && !isSkipped && (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 animate-in zoom-in-50 duration-200">
           <Check className="h-4 w-4 text-status-success-foreground" />
           <Badge variant="secondary" className="text-xs">
             {OUTCOME_LABELS[recordedOutcome as DoorKnockResultCode] || recordedOutcome}

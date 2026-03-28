@@ -53,6 +53,9 @@
   --color-status-info-foreground: var(--status-info-foreground);
   --color-status-neutral: var(--status-neutral);
   --color-status-neutral-foreground: var(--status-neutral-foreground);
+  /* Muted status backgrounds for banners */
+  --color-status-warning-muted: var(--status-warning-muted);
+  --color-status-info-muted: var(--status-info-muted);
 }
 
 :root {
@@ -100,6 +103,9 @@
   --status-info-foreground: oklch(0.4 0.1 250);
   --status-neutral: oklch(0.95 0 0);
   --status-neutral-foreground: oklch(0.4 0 0);
+  /* Muted status backgrounds for banners */
+  --status-warning-muted: oklch(0.96 0.04 85);
+  --status-info-muted: oklch(0.96 0.03 250);
   /* Turf status map overlay tokens (fill / stroke) */
   --turf-draft: oklch(0.82 0.14 85);
   --turf-draft-stroke: oklch(0.65 0.16 70);
@@ -167,6 +173,9 @@
   --status-info-foreground: oklch(0.8 0.1 250);
   --status-neutral: oklch(0.25 0 0);
   --status-neutral-foreground: oklch(0.7 0 0);
+  /* Muted status backgrounds for banners */
+  --status-warning-muted: oklch(0.22 0.04 85);
+  --status-info-muted: oklch(0.22 0.03 250);
   /* Turf status map overlay tokens (fill / stroke) */
   --turf-draft: oklch(0.55 0.12 85);
   --turf-draft-stroke: oklch(0.7 0.14 85);
@@ -190,6 +199,25 @@
   --tag-8: oklch(0.6 0.16 340);
 }
 
+/* Field mode animation keyframes */
+@keyframes field-shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes field-progress-fill {
+  from { transform: translateX(-100%); }
+}
+
+@layer utilities {
+  .animate-field-shimmer {
+    animation: field-shimmer 2s ease-in-out infinite;
+  }
+  .animate-field-progress-fill {
+    animation: field-progress-fill 0.6s ease-out;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -200,5 +228,14 @@
   /* Visible focus indicators for keyboard navigation (A11Y-03) */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
+  }
+}
+
+/* Respect prefers-reduced-motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

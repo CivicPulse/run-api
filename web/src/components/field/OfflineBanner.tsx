@@ -20,10 +20,10 @@ export function OfflineBanner() {
         role="status"
         aria-live="polite"
         aria-label={`Syncing ${count} outcomes to server.`}
-        className="flex h-8 items-center justify-center gap-2 border-b border-border bg-muted px-4"
+        className="flex h-8 items-center justify-center gap-2 border-b border-border bg-status-info-muted px-4"
       >
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden="true" />
-        <span className="text-sm text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-status-info-foreground" aria-hidden="true" />
+        <span className="text-sm text-status-info-foreground">
           Syncing <span className="font-semibold">{count}</span> outcomes...
         </span>
       </div>
@@ -42,7 +42,7 @@ export function OfflineBanner() {
       aria-label={ariaLabel}
       className="flex h-8 items-center justify-center gap-2 border-b border-border bg-muted px-4"
     >
-      <WifiOff className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+      <WifiOff className="h-3.5 w-3.5 text-status-warning-foreground" aria-hidden="true" />
       <span className="text-sm text-foreground">
         {count > 0 ? (
           <>

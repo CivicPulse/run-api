@@ -95,9 +95,9 @@ export function CallingVoterCard({
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 shadow-md">
       {/* Voter name */}
-      <p className="text-base font-normal">{voterName}</p>
+      <p className="text-xl font-bold">{voterName}</p>
 
       {/* Badges row */}
       <div className="flex items-center gap-2 mt-1">

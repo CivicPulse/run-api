@@ -36,17 +36,17 @@ export function HouseholdCard({
   onSkip,
 }: HouseholdCardProps) {
   return (
-    <Card className="p-4" data-tour="household-card">
+    <Card className="p-4 shadow-md" data-tour="household-card">
       {/* Address header (plain, non-interactive) */}
       <div className="flex items-center gap-2">
-        <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-        <span className="text-lg font-semibold">{household.address}</span>
+        <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+        <span className="text-xl font-bold">{household.address}</span>
       </div>
 
       {/* Navigate button */}
       {hasAddress(household.entries[0].voter) ? (
         <Button
-          variant="outline"
+          variant="default"
           className="w-full min-h-11 mt-2"
           asChild
         >
