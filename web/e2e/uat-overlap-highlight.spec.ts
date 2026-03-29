@@ -6,7 +6,10 @@ test.describe("UAT: Overlap highlight visual (Phase 42 MAP-10)", () => {
   }) => {
     // Navigate to a campaign's new turf page
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })

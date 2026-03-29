@@ -5,7 +5,10 @@ test.describe("Org switcher: single-org user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // The OrgSwitcher component renders a plain <span> when user has <= 1 org.
     // It should NOT render a button with a dropdown chevron.

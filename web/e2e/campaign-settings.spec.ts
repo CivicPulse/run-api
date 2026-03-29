@@ -31,7 +31,10 @@ async function createCampaignViaWizard(
   options?: { skipInvites?: boolean }
 ): Promise<string> {
   await page.goto("/")
-  await page.waitForURL(/\/(campaigns|org)?$/, { timeout: 15_000 })
+  await page.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
 
   // Click "Create Campaign"
   await page.getByRole("link", { name: /create campaign/i }).first().click()

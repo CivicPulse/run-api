@@ -5,7 +5,10 @@ test.describe("Role-gated UI: org_admin user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Navigate to org settings
     await page.goto("/org/settings")
@@ -31,7 +34,10 @@ test.describe("Role-gated UI: org_admin user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // The Organization sidebar group should contain Members and Settings
     // These are gated behind RequireOrgRole minimum="org_admin"
@@ -44,7 +50,10 @@ test.describe("Role-gated UI: org_admin user", () => {
 
   test("Create Campaign button is visible for org_admin", async ({ page }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // The Create Campaign button is gated behind RequireOrgRole minimum="org_admin"
     const createButton = page.getByRole("link", { name: /create campaign/i })

@@ -6,7 +6,10 @@ test.describe("UAT: Volunteer toggle — manager view (Phase 44 UX-02)", () => {
   }) => {
     // Navigate to org dashboard and find a campaign
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })

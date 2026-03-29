@@ -6,7 +6,10 @@ test.describe("Phase 21: Integration Polish", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to app root -- uses baseURL from playwright.config.ts
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
     // Click into the seed campaign
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })

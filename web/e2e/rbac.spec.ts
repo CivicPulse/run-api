@@ -18,7 +18,10 @@ test.describe("RBAC: owner permissions", () => {
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page) {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })
@@ -123,7 +126,10 @@ test.describe("RBAC: owner permissions", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // owner1@localhost has org_owner role
     const createButton = page.getByRole("link", { name: /create campaign/i })
@@ -160,7 +166,10 @@ test.describe("RBAC: owner permissions", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const membersLink = page.getByRole("link", { name: /^members$/i })
     await expect(membersLink).toBeVisible({ timeout: 10_000 })

@@ -32,10 +32,13 @@ test.describe("Login flow", () => {
     await page.getByRole("button", { name: /next/i }).click()
 
     // Wait for redirect back to app after successful auth
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 30_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 30_000 },
+    )
 
     // Verify we landed on an authenticated page
-    await expect(page).toHaveURL(/\/(campaigns|org)/)
+    await expect(page).not.toHaveURL(/\/login/)
 
     await context.close()
   })

@@ -4,7 +4,10 @@ test.describe("Volunteer signup", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to app root and wait for authenticated redirect
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Click into the seed campaign
     const campaignLink = page

@@ -18,7 +18,10 @@ test.describe("RBAC: admin permissions", () => {
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page) {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })
@@ -140,7 +143,10 @@ test.describe("RBAC: admin permissions", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // admin1@localhost has org_admin role -- Create Campaign should be visible
     const createButton = page.getByRole("link", { name: /create campaign/i })
@@ -170,7 +176,10 @@ test.describe("RBAC: admin permissions", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Organization sidebar Members link is gated behind RequireOrgRole minimum="org_admin"
     const membersLink = page.getByRole("link", { name: /^members$/i })

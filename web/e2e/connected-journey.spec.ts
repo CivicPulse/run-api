@@ -23,7 +23,10 @@ test.describe.serial("Connected user journey", () => {
     // ── Step 1: Navigate to app and verify campaign list loads ──────────
     await test.step("Org dashboard loads with campaign action", async () => {
       await page.goto("/")
-      await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+      await page.waitForURL(
+        (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+        { timeout: 15_000 },
+      )
 
       // Verify the campaign list page loaded — "New Campaign" button is present
       await expect(

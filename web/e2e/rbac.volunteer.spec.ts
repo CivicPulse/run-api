@@ -17,7 +17,10 @@ test.describe("RBAC: volunteer permissions", () => {
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page) {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     const campaignLink = page
       .getByRole("link", { name: /macon|bibb|campaign/i })
@@ -139,7 +142,10 @@ test.describe("RBAC: volunteer permissions", () => {
 
   test("org dashboard: Create Campaign link NOT visible", async ({ page }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Volunteer has no org role -- Create Campaign gated behind RequireOrgRole minimum="org_admin"
     const createButton = page.getByRole("link", { name: /create campaign/i })

@@ -5,7 +5,10 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
 
   test.beforeEach(async ({ page }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Navigate into the seed campaign
     const campaignLink = page

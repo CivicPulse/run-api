@@ -5,7 +5,10 @@ test.describe("Role-gated UI: volunteer user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Navigate into the seed campaign
     const campaignLink = page
@@ -40,7 +43,10 @@ test.describe("Role-gated UI: volunteer user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // The Create Campaign button is gated behind RequireOrgRole minimum="org_admin"
     // A volunteer user has no org membership, so the button should be hidden

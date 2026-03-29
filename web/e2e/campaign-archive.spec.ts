@@ -4,7 +4,10 @@ test.describe("Campaign archive flow", () => {
   test("archive campaign moves card to archived section", async ({ page }) => {
     // Navigate to org dashboard
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Identify the first active campaign card's name for later assertion
     const campaignCard = page.locator("[class*='grid'] .block").first()

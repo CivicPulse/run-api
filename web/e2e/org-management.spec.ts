@@ -26,7 +26,10 @@ test.describe.serial("Org management lifecycle", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)?$/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Verify campaign card grid is visible with seed campaign (Macon-Bibb)
     await expect(
@@ -50,7 +53,10 @@ test.describe.serial("Org management lifecycle", () => {
     campaignName = `E2E Org Test ${Date.now()}`
 
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)?$/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Click "Create Campaign" link
     await page.getByRole("link", { name: /create campaign/i }).first().click()
@@ -106,7 +112,10 @@ test.describe.serial("Org management lifecycle", () => {
   test("ORG-03: Archive the new campaign", async ({ page }) => {
     // Navigate to org dashboard
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)?$/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Find the campaign card by name
     await expect(page.getByText(campaignName).first()).toBeVisible({
@@ -152,7 +161,10 @@ test.describe.serial("Org management lifecycle", () => {
   test("ORG-04: Unarchive the campaign", async ({ page }) => {
     // Navigate to org dashboard
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)?$/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Expand the archived section
     const archivedToggle = page.getByRole("button", { name: /archived/i })
