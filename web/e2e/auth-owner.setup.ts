@@ -1,9 +1,9 @@
 import { test as setup, expect } from "@playwright/test"
 import path from "path"
 
-const authFile = path.join(import.meta.dirname, "../playwright/.auth/orgadmin.json")
+const authFile = path.join(import.meta.dirname, "../playwright/.auth/owner.json")
 
-setup("authenticate as org_admin", async ({ page }) => {
+setup("authenticate as owner", async ({ page }) => {
   // Navigate to /login — auto-redirects to ZITADEL via signinRedirect()
   await page.goto("/login")
 
@@ -16,7 +16,7 @@ setup("authenticate as org_admin", async ({ page }) => {
   // Fill login name
   const loginInput = page.getByLabel(/login ?name/i).or(page.locator("#loginName"))
   await loginInput.fill(
-    process.env.E2E_ORGADMIN_USERNAME ?? "e2e-orgadmin@localhost",
+    process.env.E2E_OWNER_USERNAME ?? "owner1@localhost",
   )
 
   // Click Next to proceed to password step
@@ -27,7 +27,7 @@ setup("authenticate as org_admin", async ({ page }) => {
     .getByLabel(/password/i)
     .or(page.locator("#password"))
   await passwordInput.fill(
-    process.env.E2E_ORGADMIN_PASSWORD ?? "E2eOrgAdmin1!",
+    process.env.E2E_OWNER_PASSWORD ?? "Owner1234!",
   )
 
   // Click Next to submit login

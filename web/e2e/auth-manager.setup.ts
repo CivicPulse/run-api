@@ -1,9 +1,9 @@
 import { test as setup, expect } from "@playwright/test"
 import path from "path"
 
-const authFile = path.join(import.meta.dirname, "../playwright/.auth/volunteer.json")
+const authFile = path.join(import.meta.dirname, "../playwright/.auth/manager.json")
 
-setup("authenticate as volunteer", async ({ page }) => {
+setup("authenticate as manager", async ({ page }) => {
   // Navigate to /login — auto-redirects to ZITADEL via signinRedirect()
   await page.goto("/login")
 
@@ -16,7 +16,7 @@ setup("authenticate as volunteer", async ({ page }) => {
   // Fill login name
   const loginInput = page.getByLabel(/login ?name/i).or(page.locator("#loginName"))
   await loginInput.fill(
-    process.env.E2E_VOLUNTEER_USERNAME ?? "volunteer1@localhost",
+    process.env.E2E_MANAGER_USERNAME ?? "manager1@localhost",
   )
 
   // Click Next to proceed to password step
@@ -27,7 +27,7 @@ setup("authenticate as volunteer", async ({ page }) => {
     .getByLabel(/password/i)
     .or(page.locator("#password"))
   await passwordInput.fill(
-    process.env.E2E_VOLUNTEER_PASSWORD ?? "Volunteer1234!",
+    process.env.E2E_MANAGER_PASSWORD ?? "Manager1234!",
   )
 
   // Click Next to submit login
