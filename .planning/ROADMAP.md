@@ -130,7 +130,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 - [x] **Phase 56: Feature Gap Builds** - Voter note edit/delete API+UI and walk list rename UI (completed 2026-03-29)
 - [x] **Phase 57: Test Infrastructure** - ZITADEL test user provisioning, multi-role Playwright auth, CI sharding (completed 2026-03-29)
-- [ ] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests
+- [x] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests (completed 2026-03-29)
 - [ ] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests
 - [ ] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass
 - [ ] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite
@@ -174,7 +174,7 @@ Plans:
   2. Org management spec exercises dashboard, campaign creation, archive/unarchive, settings, and member management end-to-end
   3. Campaign settings spec exercises CRUD, member invite/remove, ownership transfer, and campaign deletion
   4. Voter CRUD specs create, edit, and delete 20+ voters, manage contacts across 20 voters, assign/remove tags, create/edit/delete notes, and manage static/dynamic voter lists
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [x] 58-01-PLAN.md — RBAC permission-checklist specs (5 role files: viewer, volunteer, manager, admin, owner)
 - [x] 58-02-PLAN.md — Org management and campaign settings lifecycle specs
@@ -231,7 +231,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56. Feature Gap Builds | v1.7 | 3/3 | Complete    | 2026-03-29 |
 | 57. Test Infrastructure | v1.7 | 2/2 | Complete    | 2026-03-29 |
-| 58. E2E Core Tests | v1.7 | 3/4 | In Progress|  |
+| 58. E2E Core Tests | v1.7 | 3/4 | Complete    | 2026-03-29 |
 | 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
