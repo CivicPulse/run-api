@@ -1,44 +1,41 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7
-milestone_name: Testing & Validation
-status: executing
-stopped_at: Phase 59 context gathered
-last_updated: "2026-03-29T18:40:27.041Z"
-last_activity: 2026-03-29
+milestone: v1.0
+milestone_name: milestone
+status: Defining requirements
+stopped_at: Completed 59-01-PLAN.md
+last_updated: "2026-03-29T19:15:26.785Z"
+last_activity: 2026-03-27 — Milestone v1.6 started
 progress:
-  total_phases: 6
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 0
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-29)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 58 — e2e-core-tests
+**Current focus:** Defining requirements for v1.6
 
 ## Current Position
 
-Phase: 59
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-03-29
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-27 — Milestone v1.6 started
 
 ## Performance Metrics
 
-**Velocity (v1.0-v1.6):**
+**Velocity (v1.0-v1.5):**
 
-- Total plans completed: 165
-- Milestones shipped: 7 in 21 days
-- Average: ~7.9 plans/day
+- Total plans completed: 149
+- Milestones shipped: 6 in 17 days
+- Average: ~8.8 plans/day
 
 **By Milestone:**
 
@@ -50,14 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 | v1.3 | 7 | 18 | 3 days |
 | v1.4 | 9 | 26 | 3 days |
 | v1.5 | 10 | 36 | 2 days |
-| v1.6 | 7 | 16 | 2 days |
-| Phase 56 P01 | 5min | 3 tasks | 9 files |
-| Phase 56 P02 | 3min | 3 tasks | 5 files |
-| Phase 56 P03 | 16min | 1 tasks | 2 files |
-| Phase 57 P01 | 3min | 2 tasks | 4 files |
-| Phase 57 P02 | 2min | 2 tasks | 8 files |
-| Phase 58 P04 | 2min | 3 tasks | 3 files |
-| Phase 58 P02 | 7min | 2 tasks | 5 files |
+| Phase 59 P01 | 5min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -65,26 +55,27 @@ Progress: [░░░░░░░░░░] 0%
 
 Decisions logged in PROJECT.md Key Decisions table.
 
-- [Phase 56]: Relaxed append-only invariant for note-type interactions only; system events remain immutable
-- [Phase 56]: Edit/delete actions gated to note-type interactions only; system events remain immutable
-- [Phase 56]: Dual query invalidation on walk list rename prevents stale name across index and detail views
-- [Phase 56]: Added libpq-dev to Dockerfile for psycopg v3 (procrastinate dependency)
-- [Phase 57]: Owner is default auth context (unsuffixed specs), replacing admin@localhost
-- [Phase 57]: All 15 E2E users get campaign membership to seed campaign via ensure_campaign_membership()
-- [Phase 57]: Blob reporter in CI for downstream shard merging; wildcard .gitignore for auth files
-- [Phase 57]: Auth setup files follow orgadmin pattern (no password change handling) for all 5 roles
-- [Phase 57]: Split monolithic CI job into 3 independent jobs: integration, 4-shard E2E, report merger
-- [Phase 58]: Reduced entity counts for E2E speed while proving lifecycle patterns (5 tags, 5 voters, 3 note voters)
-- [Phase 58]: Added useUnarchiveCampaign hook and CampaignCard unarchive action to enable ORG-04 E2E test (missing UI feature)
-- [Phase 58]: Used API-based member addition for CAMP-03/05 setup to avoid invite acceptance complexity in E2E tests
+- [Phase 59]: L2 CSV fixture preserves exact L2 typos for accurate auto-detection testing
 
 ### Blockers/Concerns
 
-- Research gap: Email domain for test users (@test.civicpulse.local vs @localhost) needs decision during Phase 57
-- Research gap: Turf polygon drawing automation may need GeoJSON import workaround (Phase 59)
+(None — milestone archived)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260317-whd | Create getting started documentation | 2026-03-17 | baab93e | [260317-whd](./quick/260317-whd-create-getting-started-documentation-for/) |
+| 260317-wpb | Fix failing GH Actions build | 2026-03-17 | d894042 | [260317-wpb](./quick/260317-wpb-address-the-failing-build-step-in-gh-act/) |
+| 260319-241 | Fix misaligned header section | 2026-03-19 | 303070b | [260319-241](./quick/260319-241-fix-the-misaligned-header-section-of-the/) |
+| 260325-jrg | Fix 5 failing unit tests from UAT report | 2026-03-25 | 9391ca6 | [260325-jrg](./quick/260325-jrg-address-planning-full-uat-report-md-find/) |
+| 260325-tqb | Fix opaque token + admin org in bootstrap | 2026-03-25 | 1993358 | [260325-tqb](./quick/260325-tqb-resolve-issues-in-login-test-screenshots/) |
+| 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
+| 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | bd554f8 | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
+| 260327-o38 | Fix sort buttons on all DataTable columns | 2026-03-27 | 48e0c3e | [260327-o38](./quick/260327-o38-fix-sort-buttons-on-all-datatables-colum/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-29 — Roadmap created for v1.7
-Stopped at: Phase 59 context gathered
-Resume file: .planning/phases/59-e2e-advanced-tests/59-CONTEXT.md
+Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
+Stopped at: Completed 59-01-PLAN.md
+Resume file: None
