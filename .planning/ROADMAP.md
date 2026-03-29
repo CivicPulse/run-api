@@ -160,9 +160,9 @@ Plans:
   1. Running the provisioning script creates 15 ZITADEL test users (3 per role) with verified emails that can log in immediately without password change
   2. Playwright config defines 5+ auth projects with per-role storageState files so any spec can run as owner, admin, manager, volunteer, or viewer
   3. CI workflow runs the full E2E suite with sharding, and a clean run completes without infrastructure failures
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 57-01-PLAN.md — Provisioning script expansion (15 users) + Playwright config restructure (5 roles)
+- [x] 57-01-PLAN.md — Provisioning script expansion (15 users) + Playwright config restructure (5 roles)
 - [ ] 57-02-PLAN.md — Auth setup files, spec migration, and CI sharding with merged reports
 
 ### Phase 58: E2E Core Tests
@@ -225,7 +225,7 @@ Phases execute in numeric order: 56 → 57 → 58 → 59 → 60 → 61
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56. Feature Gap Builds | v1.7 | 3/3 | Complete    | 2026-03-29 |
-| 57. Test Infrastructure | v1.7 | 0/2 | Not started | - |
+| 57. Test Infrastructure | v1.7 | 1/2 | In Progress|  |
 | 58. E2E Core Tests | v1.7 | 0/? | Not started | - |
 | 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
