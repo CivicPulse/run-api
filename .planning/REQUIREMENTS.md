@@ -28,8 +28,8 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 ### E2E Tests — Voter Workflows
 
 - [ ] **E2E-04**: Automated tests verify L2 voter import with auto-mapping, progress tracking, cancellation, and concurrent import prevention (IMP-01 through IMP-04)
-- [ ] **E2E-05**: Automated tests verify imported voter data accuracy against the source CSV for 40+ voters (VAL-01, VAL-02)
-- [ ] **E2E-06**: Automated tests verify all 23 voter filter dimensions individually and in combination (FLT-01 through FLT-05)
+- [x] **E2E-05**: Automated tests verify imported voter data accuracy against the source CSV for 40+ voters (VAL-01, VAL-02)
+- [x] **E2E-06**: Automated tests verify all 23 voter filter dimensions individually and in combination (FLT-01 through FLT-05)
 - [x] **E2E-07**: Automated tests verify voter create, edit, delete lifecycle for 20+ voters (VCRUD-01 through VCRUD-04)
 - [x] **E2E-08**: Automated tests verify voter contact (phone, email, address) CRUD across 20 voters (CON-01 through CON-06)
 - [x] **E2E-09**: Automated tests verify voter tag create, assign, remove, and delete lifecycle (TAG-01 through TAG-05)
@@ -87,8 +87,8 @@ None deferred for this milestone.
 | E2E-02 | Phase 58 | Complete |
 | E2E-03 | Phase 58 | Complete |
 | E2E-04 | Phase 59 | Pending |
-| E2E-05 | Phase 59 | Pending |
-| E2E-06 | Phase 59 | Pending |
+| E2E-05 | Phase 59 | Complete |
+| E2E-06 | Phase 59 | Complete |
 | E2E-07 | Phase 58 | Complete |
 | E2E-08 | Phase 58 | Complete |
 | E2E-09 | Phase 58 | Complete |

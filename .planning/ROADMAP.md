@@ -191,14 +191,14 @@ Plans:
   2. Data validation spec verifies imported voter data accuracy against the source CSV for 40+ voters
   3. Filter spec exercises all 23 filter dimensions individually and in multi-filter combinations
   4. Operations specs cover turf CRUD with GeoJSON, walk list lifecycle, call list and DNC management, phone bank sessions with active calling, survey script management, volunteer registration/roster, volunteer tags/availability, and shift scheduling with check-in/out
-**Plans:** 6 plans
+**Plans:** 5/6 plans executed
 Plans:
-- [ ] 59-01-PLAN.md — Test fixtures (L2 CSV + GeoJSON), old spec cleanup, voter import spec
-- [ ] 59-02-PLAN.md — Data validation spec and voter filters spec (23 dimensions + 10 combos)
+- [x] 59-01-PLAN.md — Test fixtures (L2 CSV + GeoJSON), old spec cleanup, voter import spec
+- [x] 59-02-PLAN.md — Data validation spec and voter filters spec (23 dimensions + 10 combos)
 - [ ] 59-03-PLAN.md — Turfs spec (GeoJSON API + file import) and walk lists spec
-- [ ] 59-04-PLAN.md — Call lists/DNC spec and phone banking sessions spec
-- [ ] 59-05-PLAN.md — Surveys spec and volunteers spec
-- [ ] 59-06-PLAN.md — Volunteer tags/availability spec and shifts spec (20 shifts)
+- [x] 59-04-PLAN.md — Call lists/DNC spec and phone banking sessions spec
+- [x] 59-05-PLAN.md — Surveys spec and volunteers spec
+- [x] 59-06-PLAN.md — Volunteer tags/availability spec and shifts spec (20 shifts)
 **UI hint**: yes
 
 ### Phase 60: E2E Field Mode, Cross-Cutting & Validation
@@ -239,6 +239,6 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 56. Feature Gap Builds | v1.7 | 3/3 | Complete    | 2026-03-29 |
 | 57. Test Infrastructure | v1.7 | 2/2 | Complete    | 2026-03-29 |
 | 58. E2E Core Tests | v1.7 | 4/4 | Complete    | 2026-03-29 |
-| 59. E2E Advanced Tests | v1.7 | 0/6 | Not started | - |
+| 59. E2E Advanced Tests | v1.7 | 5/6 | In Progress|  |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
