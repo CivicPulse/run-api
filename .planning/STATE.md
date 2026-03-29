@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-27 — Milestone v1.6 started
+Phase: 60-e2e-field-mode-cross-cutting-validation
+Plan: 02 of 03
+Status: Executing
+Last activity: 2026-03-29 — Completed 60-02 (cross-cutting & navigation E2E specs)
 
 ## Performance Metrics
 
@@ -52,6 +52,9 @@ Last activity: 2026-03-27 — Milestone v1.6 started
 
 Decisions logged in PROJECT.md Key Decisions table.
 
+- 60-02: Used settings/general page for form guard test (has full ConfirmDialog vs /campaigns/new which lacks dialog rendering)
+- 60-02: Rate limiting test gracefully skips if 429 not triggered locally
+
 ### Blockers/Concerns
 
 (None — milestone archived)
@@ -71,6 +74,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
-Stopped at: Completed quick-260327-o38
+Last activity: 2026-03-29 - Completed plan 60-02 (cross-cutting & navigation E2E specs)
+Stopped at: Completed 60-02-PLAN.md
 Resume file: None
