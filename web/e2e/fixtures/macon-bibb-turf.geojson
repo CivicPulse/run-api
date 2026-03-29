@@ -1,0 +1,14 @@
+{
+  "type": "Feature",
+  "properties": { "name": "E2E Test Turf" },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-83.68, 32.87],
+      [-83.62, 32.87],
+      [-83.62, 32.82],
+      [-83.68, 32.82],
+      [-83.68, 32.87]
+    ]]
+  }
+}
