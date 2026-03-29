@@ -1,4 +1,4 @@
-"""Unit tests for VoterInteractionService -- append-only event log."""
+"""Unit tests for VoterInteractionService -- event log with mutable notes."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.models.voter_interaction import InteractionType, VoterInteraction
 
 
 class TestVoterInteractionService:
-    """Tests for immutable interaction event creation and retrieval."""
+    """Tests for interaction event creation, retrieval, and note mutation."""
 
     @pytest.fixture
     def mock_db(self):
@@ -85,13 +85,6 @@ class TestVoterInteractionService:
 
         added_obj = mock_db.add.call_args[0][0]
         assert before <= added_obj.created_at <= after
-
-    async def test_service_has_no_update_or_delete_methods(self, service):
-        """VoterInteractionService has no update or delete methods for interactions."""
-        method_names = [m for m in dir(service) if not m.startswith("_")]
-        for name in method_names:
-            assert "update_interaction" not in name
-            assert "delete_interaction" not in name
 
     async def test_get_voter_history_returns_ordered_events(
         self, service, mock_db, voter_id, campaign_id
@@ -178,3 +171,139 @@ class TestVoterInteractionService:
         assert added_obj.payload["original_event_id"] == str(original_event_id)
         assert added_obj.payload["correction"] is True
         assert added_obj.payload["text"] == "Corrected info"
+
+    async def test_update_note(self, service, mock_db, voter_id, campaign_id):
+        """update_note updates a note interaction's payload."""
+        interaction = VoterInteraction(
+            id=uuid.uuid4(),
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            type=InteractionType.NOTE,
+            payload={"text": "Original"},
+            created_by="user-1",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = interaction
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.update_note(
+            session=mock_db,
+            interaction_id=interaction.id,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            payload={"text": "Updated"},
+        )
+
+        assert result.payload == {"text": "Updated"}
+        mock_db.flush.assert_awaited()
+
+    async def test_update_rejects_non_note(
+        self, service, mock_db, voter_id, campaign_id
+    ):
+        """update_note raises ValueError for non-note interaction types."""
+        interaction = VoterInteraction(
+            id=uuid.uuid4(),
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            type=InteractionType.TAG_ADDED,
+            payload={"tag": "priority"},
+            created_by="user-1",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = interaction
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="not a note"):
+            await service.update_note(
+                session=mock_db,
+                interaction_id=interaction.id,
+                campaign_id=campaign_id,
+                voter_id=voter_id,
+                payload={"text": "Should fail"},
+            )
+
+    async def test_update_note_not_found(self, service, mock_db, voter_id, campaign_id):
+        """update_note raises ValueError when interaction not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.update_note(
+                session=mock_db,
+                interaction_id=uuid.uuid4(),
+                campaign_id=campaign_id,
+                voter_id=voter_id,
+                payload={"text": "Should fail"},
+            )
+
+    async def test_delete_note(self, service, mock_db, voter_id, campaign_id):
+        """delete_note deletes a note interaction."""
+        interaction = VoterInteraction(
+            id=uuid.uuid4(),
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            type=InteractionType.NOTE,
+            payload={"text": "To be deleted"},
+            created_by="user-1",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = interaction
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.delete = AsyncMock()
+
+        await service.delete_note(
+            session=mock_db,
+            interaction_id=interaction.id,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+        )
+
+        mock_db.delete.assert_awaited_once_with(interaction)
+        mock_db.flush.assert_awaited()
+
+    async def test_delete_rejects_non_note(
+        self, service, mock_db, voter_id, campaign_id
+    ):
+        """delete_note raises ValueError for non-note interaction types."""
+        interaction = VoterInteraction(
+            id=uuid.uuid4(),
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            type=InteractionType.DOOR_KNOCK,
+            payload={"result_code": "not_home"},
+            created_by="user-1",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = interaction
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="not a note"):
+            await service.delete_note(
+                session=mock_db,
+                interaction_id=interaction.id,
+                campaign_id=campaign_id,
+                voter_id=voter_id,
+            )
+
+    async def test_delete_note_not_found(self, service, mock_db, voter_id, campaign_id):
+        """delete_note raises ValueError when interaction not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.delete_note(
+                session=mock_db,
+                interaction_id=uuid.uuid4(),
+                campaign_id=campaign_id,
+                voter_id=voter_id,
+            )
