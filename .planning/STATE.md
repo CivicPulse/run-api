@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Imports
-status: completed
-stopped_at: Milestone v1.6 archived
-last_updated: "2026-03-29T13:30:00.000Z"
+milestone: v1.7
+milestone_name: Testing & Validation
+status: active
+stopped_at: null
+last_updated: "2026-03-29T18:00:00.000Z"
 last_activity: 2026-03-29
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.7
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v1.6 complete — ready for next milestone
-Last activity: 2026-03-29
+Status: Defining requirements
+Last activity: 2026-03-29 — Milestone v1.7 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -64,6 +64,6 @@ None — milestone complete.
 
 ## Session Continuity
 
-Last activity: 2026-03-29 - Milestone v1.6 archived
-Stopped at: Milestone v1.6 complete
+Last activity: 2026-03-29 - Milestone v1.7 started
+Stopped at: Defining requirements
 Resume file: None

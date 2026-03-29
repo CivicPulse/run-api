@@ -99,7 +99,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(No active milestone — ready for `/gsd:new-milestone`)
+## Current Milestone: v1.7 Testing & Validation
+
+**Goal:** Build a comprehensive E2E testing pipeline — plain English test plan, automated Playwright tests against local dev, AI-driven prod test instructions, and iterative fix cycles until fully validated.
+
+**Target features:**
+- Voter interaction note edit and delete (API + UI)
+- Walk list rename/edit UI
+- Test user provisioning script for ZITADEL
+- Automated Playwright E2E test suite (~130 test cases across 34 sections)
+- AI instruction set for production testing
+- Iterative test-fix-retest cycle to 100% pass rate
 
 ### Out of Scope
 
@@ -127,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days.
+v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days. v1.7 milestone started 2026-03-29.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
@@ -192,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after v1.6 milestone completion*
+*Last updated: 2026-03-29 after v1.7 milestone start*
