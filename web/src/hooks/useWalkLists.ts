@@ -48,6 +48,34 @@ export function useDeleteWalkList(campaignId: string) {
   })
 }
 
+export function useRenameWalkList(campaignId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      walkListId,
+      name,
+    }: {
+      walkListId: string
+      name: string
+    }) =>
+      api
+        .patch(`api/v1/campaigns/${campaignId}/walk-lists/${walkListId}`, {
+          json: { name },
+        })
+        .json<WalkListResponse>(),
+    onSuccess: (_data, { walkListId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["walk-lists", campaignId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["walk-lists", campaignId, walkListId],
+      })
+      toast.success("Walk list renamed")
+    },
+    onError: () => toast.error("Failed to rename walk list"),
+  })
+}
+
 export function useWalkListEntries(campaignId: string, walkListId: string) {
   return useQuery({
     queryKey: ["walk-list-entries", campaignId, walkListId],

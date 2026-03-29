@@ -52,6 +52,47 @@ export function useCreateInteraction(campaignId: string, voterId: string) {
   })
 }
 
+export function useUpdateInteraction(campaignId: string, voterId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      interactionId,
+      payload,
+    }: {
+      interactionId: string
+      payload: Record<string, unknown>
+    }) =>
+      api
+        .patch(
+          `api/v1/campaigns/${campaignId}/voters/${voterId}/interactions/${interactionId}`,
+          { json: { payload } },
+        )
+        .json<VoterInteraction>(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["voters", campaignId, voterId, "interactions"],
+      })
+    },
+  })
+}
+
+export function useDeleteInteraction(campaignId: string, voterId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (interactionId: string) =>
+      api
+        .delete(
+          `api/v1/campaigns/${campaignId}/voters/${voterId}/interactions/${interactionId}`,
+        )
+        .then(() => undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["voters", campaignId, voterId, "interactions"],
+      })
+    },
+  })
+}
+
 export function useCreateVoter(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation({
