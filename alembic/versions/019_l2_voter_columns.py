@@ -21,7 +21,9 @@ depends_on: Sequence[str] | None = None
 
 def upgrade() -> None:
     # Registration Address (L2 detail)
-    op.add_column("voters", sa.Column("house_number", sa.String(50), nullable=True))
+    op.add_column(
+        "voters", sa.Column("house_number", sa.String(50), nullable=True)
+    )
     op.add_column(
         "voters",
         sa.Column("street_number_parity", sa.String(10), nullable=True),

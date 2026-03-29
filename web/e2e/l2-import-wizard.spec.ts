@@ -1,10 +1,39 @@
 import { test, expect } from "@playwright/test"
 import type { Page } from "@playwright/test"
-import { setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CAMPAIGN_ID = "test-campaign-l2"
 const JOB_ID = "import-job-l2-001"
+const OIDC_STORAGE_KEY =
+  "oidc.user:https://auth.civpulse.org:363437283614916644"
+
+// ── Auth & Mock Helpers ────────────────────────────────────────────────────
+
+function mockOidcUser(): string {
+  return JSON.stringify({
+    id_token: "mock-id-token",
+    session_state: null,
+    access_token: "mock-access-token",
+    refresh_token: "mock-refresh-token",
+    token_type: "Bearer",
+    scope: "openid profile email",
+    profile: {
+      sub: "mock-user-l2",
+      name: "Test Admin",
+      email: "admin@test.com",
+    },
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+  })
+}
+
+async function setupAuth(page: Page) {
+  await page.addInitScript(
+    ({ key, user }: { key: string; user: string }) => {
+      localStorage.setItem(key, user)
+    },
+    { key: OIDC_STORAGE_KEY, user: mockOidcUser() },
+  )
+}
 
 // L2-shaped detect response with all columns having exact matches
 const L2_COLUMNS = [
@@ -65,14 +94,21 @@ async function setupApiMocks(
     formatDetected: string | null
   },
 ) {
-  await mockConfigEndpoint(page)
   await page.route("**/api/v1/**", (route) => {
     const url = route.request().url()
     const method = route.request().method()
 
-    // Public config — let mockConfigEndpoint handle it (registered separately)
+    // Public config — /config/public
     if (url.includes("/config/public")) {
-      return route.fallback()
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          zitadel_issuer: "https://auth.civpulse.org",
+          zitadel_client_id: "363437283614916644",
+          zitadel_project_id: "363437283614916644",
+        }),
+      })
     }
 
     // User info — /me
@@ -217,7 +253,7 @@ test.describe("L2 Import Wizard", () => {
   test("shows L2 detection banner and auto-mapped badges after file upload", async ({
     page,
   }) => {
-    await setupMockAuth(page, { sub: "mock-user-l2" })
+    await setupAuth(page)
     await setupApiMocks(page, {
       columns: L2_COLUMNS,
       mapping: L2_MAPPING,
@@ -225,7 +261,7 @@ test.describe("L2 Import Wizard", () => {
     })
 
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForLoadState("domcontentloaded")
+    await page.waitForLoadState("networkidle")
 
     // Wait for the wizard page to render (Step 1 heading visible)
     await expect(
@@ -261,7 +297,7 @@ test.describe("L2 Import Wizard", () => {
   })
 
   test("does not show L2 banner for generic CSV", async ({ page }) => {
-    await setupMockAuth(page, { sub: "mock-user-l2" })
+    await setupAuth(page)
     await setupApiMocks(page, {
       columns: GENERIC_COLUMNS,
       mapping: GENERIC_MAPPING,
@@ -269,7 +305,7 @@ test.describe("L2 Import Wizard", () => {
     })
 
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForLoadState("domcontentloaded")
+    await page.waitForLoadState("networkidle")
 
     // Wait for the wizard page to render (Step 1 heading visible)
     await expect(

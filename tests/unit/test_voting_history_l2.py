@@ -47,18 +47,16 @@ class TestVotingHistoryL2Patterns:
             "Voted in 2018 Primary": "Y",
         }
         result = parse_voting_history(row)
-        assert result == sorted(
-            [
-                "General_2024",
-                "Primary_2024",
-                "General_2022",
-                "General_2020",
-                "General_2018",
-                "Primary_2022",
-                "Primary_2020",
-                "Primary_2018",
-            ]
-        )
+        assert result == sorted([
+            "General_2024",
+            "Primary_2024",
+            "General_2022",
+            "General_2020",
+            "General_2018",
+            "Primary_2022",
+            "Primary_2020",
+            "Primary_2018",
+        ])
 
     def test_empty_value_excluded(self):
         row = {"General_2024": "", "Voted in 2022": "  "}

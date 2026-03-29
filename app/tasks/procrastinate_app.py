@@ -3,7 +3,6 @@
 Shared by both the API process (for deferring jobs via open_async)
 and the worker process (for executing jobs via run_worker_async).
 """
-
 from __future__ import annotations
 
 import re

@@ -124,7 +124,9 @@ async def _post_confirm(app):
     transport = httpx.ASGITransport(app=app)
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(transport=transport, base_url="http://test") as client,
+        httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client,
     ):
         resp = await client.post(
             f"/api/v1/campaigns/{CAMPAIGN_ID}/imports/{IMPORT_ID}/confirm",
@@ -139,7 +141,9 @@ async def _post_confirm(app):
 
 
 @pytest.mark.asyncio()
-async def test_confirm_mapping_returns_202(_mock_settings, _mock_infra):
+async def test_confirm_mapping_returns_202(
+    _mock_settings, _mock_infra
+):
     """confirm_mapping returns 202 Accepted (not 201 Created)."""
     from app.services.zitadel import ZitadelService
 
@@ -153,7 +157,9 @@ async def test_confirm_mapping_returns_202(_mock_settings, _mock_infra):
 
     # Mock user sync (ensure_user_synced)
     mock_db.execute = AsyncMock(
-        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=local_user))
+        return_value=MagicMock(
+            scalar_one_or_none=MagicMock(return_value=local_user)
+        )
     )
 
     defer_mock = AsyncMock()
@@ -166,7 +172,9 @@ async def test_confirm_mapping_returns_202(_mock_settings, _mock_infra):
             new_callable=AsyncMock,
             return_value="tok",
         ),
-        patch("app.api.v1.imports.process_import") as task_mock,
+        patch(
+            "app.api.v1.imports.process_import"
+        ) as task_mock,
         patch(
             "app.core.security.resolve_campaign_role",
             new_callable=AsyncMock,
@@ -197,7 +205,9 @@ async def test_confirm_mapping_defer_async_called_with_correct_args(
     mock_db.refresh = AsyncMock()
 
     mock_db.execute = AsyncMock(
-        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=local_user))
+        return_value=MagicMock(
+            scalar_one_or_none=MagicMock(return_value=local_user)
+        )
     )
 
     defer_mock = AsyncMock()
@@ -210,7 +220,9 @@ async def test_confirm_mapping_defer_async_called_with_correct_args(
             new_callable=AsyncMock,
             return_value="tok",
         ),
-        patch("app.api.v1.imports.process_import") as task_mock,
+        patch(
+            "app.api.v1.imports.process_import"
+        ) as task_mock,
         patch(
             "app.core.security.resolve_campaign_role",
             new_callable=AsyncMock,
@@ -234,7 +246,9 @@ async def test_confirm_mapping_defer_async_called_with_correct_args(
 
 
 @pytest.mark.asyncio()
-async def test_confirm_mapping_returns_409_on_duplicate(_mock_settings, _mock_infra):
+async def test_confirm_mapping_returns_409_on_duplicate(
+    _mock_settings, _mock_infra
+):
     """When AlreadyEnqueued is raised, endpoint returns 409."""
     from procrastinate.exceptions import AlreadyEnqueued
 
@@ -249,7 +263,9 @@ async def test_confirm_mapping_returns_409_on_duplicate(_mock_settings, _mock_in
     mock_db.refresh = AsyncMock()
 
     mock_db.execute = AsyncMock(
-        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=local_user))
+        return_value=MagicMock(
+            scalar_one_or_none=MagicMock(return_value=local_user)
+        )
     )
 
     defer_mock = AsyncMock(side_effect=AlreadyEnqueued())
@@ -262,7 +278,9 @@ async def test_confirm_mapping_returns_409_on_duplicate(_mock_settings, _mock_in
             new_callable=AsyncMock,
             return_value="tok",
         ),
-        patch("app.api.v1.imports.process_import") as task_mock,
+        patch(
+            "app.api.v1.imports.process_import"
+        ) as task_mock,
         patch(
             "app.core.security.resolve_campaign_role",
             new_callable=AsyncMock,

@@ -97,17 +97,9 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
 - ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
 
-- ✓ AI-consumable production testing runbook with tiered smoke/extended suites, deployment health checks, and pass/fail reporting — v1.7
-- ✓ Voter interaction note edit/delete API+UI and walk list rename — v1.7
-- ✓ 15-user ZITADEL test provisioning with 5 role-based Playwright auth projects and CI sharding — v1.7
-- ✓ Comprehensive Playwright E2E suite: RBAC matrix, org/campaign management, voter CRUD, import, filters, all operational domains — v1.7
-- ✓ Field mode E2E coverage with deterministic disposable fixtures and order-independence verification — v1.7
-- ✓ CI auth policy automation (no-MFA org login policy) with strict pre-shard verification gate — v1.7
-- ✓ Phone bank session hard-delete endpoint and deterministic active-calling test fixtures — v1.7
-
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+(No active milestone — ready for `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -135,9 +127,9 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.7 shipped 2026-04-01. 64 phases, 193 plans delivered across 8 milestones in 24 days. The v1.7 milestone added comprehensive E2E testing: 340+ Playwright tests across 34 spec files covering RBAC, org/campaign management, voter CRUD, import, filters, all operational domains, field mode, and cross-cutting UI. CI auth policy automation ensures deterministic ZITADEL setup. Phone bank session delete endpoint completed the API surface. Test isolation hardening with disposable fixtures and order-independence verification gates.
+v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days.
 
-The platform provides a production-ready multi-tenant campaign field operations API with full web UI and comprehensive E2E test coverage. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and 340+ Playwright E2E tests with CI sharding.
+The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
@@ -200,4 +192,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v1.7 milestone*
+*Last updated: 2026-03-29 after v1.6 milestone completion*

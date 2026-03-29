@@ -9,7 +9,6 @@ full schema SQL (tables, functions, triggers, types).
 Per D-01: Alembic owns all schema changes.
 Per D-02: Procrastinate tables live in separate schema.
 """
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -627,10 +626,7 @@ CREATE TRIGGER procrastinate_trigger_delete_jobs_v1
 def upgrade() -> None:
     op.execute("CREATE SCHEMA IF NOT EXISTS procrastinate")
     op.execute("SET search_path TO procrastinate")
-    # Use exec_driver_sql to bypass SQLAlchemy text() parameter handling.
-    # The SQL contains PL/pgSQL %% (literal %) and % (format param) markers
-    # that conflict with SQLAlchemy's parameter substitution layer.
-    op.get_bind().exec_driver_sql(PROCRASTINATE_SCHEMA_SQL)
+    op.execute(PROCRASTINATE_SCHEMA_SQL)
     op.execute("SET search_path TO public")
 
 

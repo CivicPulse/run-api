@@ -19,7 +19,9 @@ from app.services.import_service import (
     suggest_field_mapping,
 )
 
-_SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
+_SAMPLE_PATH = (
+    Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
+)
 
 
 def _read_sample_rows(
@@ -81,9 +83,9 @@ class TestL2FullImportFlow:
             # Every row should produce some history entries
             # (sample has Y values in various history columns)
             for entry in history:
-                assert entry.startswith("General_") or entry.startswith("Primary_"), (
-                    f"Row {i}: non-canonical history entry '{entry}'"
-                )
+                assert entry.startswith("General_") or entry.startswith(
+                    "Primary_"
+                ), f"Row {i}: non-canonical history entry '{entry}'"
 
     def test_apply_field_mapping_populates_new_columns(self):
         """apply_field_mapping correctly maps L2 CSV values to canonical
@@ -98,7 +100,9 @@ class TestL2FullImportFlow:
             field_mapping[col] = entry.get("field")
 
         svc = ImportService()
-        results = svc.apply_field_mapping(rows, field_mapping, "test-campaign-id", "l2")
+        results = svc.apply_field_mapping(
+            rows, field_mapping, "test-campaign-id", "l2"
+        )
 
         for i, result in enumerate(results):
             voter = result["voter"]
@@ -119,25 +123,29 @@ class TestL2FullImportFlow:
             original_row = rows[i]
 
             if original_row.get("House Number"):
-                assert voter.get("house_number") == original_row["House Number"], (
-                    f"Row {i}: house_number mismatch"
-                )
+                assert voter.get("house_number") == original_row[
+                    "House Number"
+                ], f"Row {i}: house_number mismatch"
 
             if original_row.get("Mailng Designator"):
-                assert (
-                    voter.get("mailing_designator") == original_row["Mailng Designator"]
-                ), f"Row {i}: mailing_designator mismatch (typo alias)"
+                assert voter.get("mailing_designator") == original_row[
+                    "Mailng Designator"
+                ], f"Row {i}: mailing_designator mismatch (typo alias)"
 
             if original_row.get("Mailing Aptartment Number"):
-                assert (
-                    voter.get("mailing_apartment_number")
-                    == original_row["Mailing Aptartment Number"]
-                ), f"Row {i}: mailing_apartment_number mismatch (typo alias)"
+                assert voter.get("mailing_apartment_number") == original_row[
+                    "Mailing Aptartment Number"
+                ], f"Row {i}: mailing_apartment_number mismatch (typo alias)"
 
             # Verify voting history was parsed (integrated into voter dict)
-            if any(original_row.get(col) in ("Y", "A", "E") for col in _HISTORY_COLS):
+            if any(
+                original_row.get(col) in ("Y", "A", "E")
+                for col in _HISTORY_COLS
+            ):
                 history = voter.get("voting_history", [])
-                assert len(history) > 0, f"Row {i}: voting_history should be non-empty"
+                assert len(history) > 0, (
+                    f"Row {i}: voting_history should be non-empty"
+                )
 
     def test_integer_coercion_mailing_household_size(self):
         """mailing_household_size CSV string values coerce to integers."""
@@ -149,7 +157,9 @@ class TestL2FullImportFlow:
             field_mapping[col] = entry.get("field")
 
         svc = ImportService()
-        results = svc.apply_field_mapping(rows, field_mapping, "test-campaign-id", "l2")
+        results = svc.apply_field_mapping(
+            rows, field_mapping, "test-campaign-id", "l2"
+        )
 
         for i, result in enumerate(results):
             voter = result["voter"]
@@ -170,7 +180,9 @@ class TestL2FullImportFlow:
             field_mapping[col] = entry.get("field")
 
         svc = ImportService()
-        results = svc.apply_field_mapping(rows, field_mapping, "test-campaign-id", "l2")
+        results = svc.apply_field_mapping(
+            rows, field_mapping, "test-campaign-id", "l2"
+        )
 
         for i, result in enumerate(results):
             voter = result["voter"]
@@ -196,7 +208,9 @@ class TestL2FullImportFlow:
             field_mapping[col] = entry.get("field")
 
         svc = ImportService()
-        results = svc.apply_field_mapping(rows, field_mapping, "test-campaign-id", "l2")
+        results = svc.apply_field_mapping(
+            rows, field_mapping, "test-campaign-id", "l2"
+        )
 
         for i, result in enumerate(results):
             voter = result["voter"]
@@ -204,9 +218,11 @@ class TestL2FullImportFlow:
             lon = voter.get("longitude")
             if lat is not None:
                 assert isinstance(lat, float), (
-                    f"Row {i}: latitude should be float, got {type(lat).__name__}"
+                    f"Row {i}: latitude should be float, "
+                    f"got {type(lat).__name__}"
                 )
             if lon is not None:
                 assert isinstance(lon, float), (
-                    f"Row {i}: longitude should be float, got {type(lon).__name__}"
+                    f"Row {i}: longitude should be float, "
+                    f"got {type(lon).__name__}"
                 )
