@@ -17,6 +17,12 @@ class InteractionCreateRequest(BaseSchema):
     payload: dict = Field(default_factory=dict)
 
 
+class InteractionUpdateRequest(BaseSchema):
+    """Update a note interaction's payload (notes only)."""
+
+    payload: dict = Field(...)
+
+
 class InteractionResponse(BaseSchema):
     """Interaction event returned from the API."""
 

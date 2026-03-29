@@ -1,4 +1,4 @@
-"""Voter interaction service -- append-only event log operations."""
+"""Voter interaction service -- event log operations with mutable notes."""
 
 from __future__ import annotations
 
@@ -26,10 +26,12 @@ class InteractionPage:
 
 
 class VoterInteractionService:
-    """Append-only interaction event service.
+    """Voter interaction event service.
 
-    Interactions are never modified or deleted. Corrections are recorded
-    as new events referencing the original event ID in the payload.
+    System-generated events are append-only (never modified or deleted).
+    Note-type interactions may be updated or deleted by users.
+    Corrections for system events are recorded as new events referencing
+    the original event ID in the payload.
     """
 
     async def record_interaction(
@@ -171,3 +173,86 @@ class VoterInteractionService:
             payload=payload,
             user_id=user_id,
         )
+
+    async def update_note(
+        self,
+        session: AsyncSession,
+        interaction_id: uuid.UUID,
+        campaign_id: uuid.UUID,
+        voter_id: uuid.UUID,
+        payload: dict,
+    ) -> VoterInteraction:
+        """Update a note interaction's payload.
+
+        Only interactions with type=NOTE can be updated.
+        System-generated events remain immutable.
+
+        Args:
+            session: Async database session.
+            interaction_id: Interaction UUID.
+            campaign_id: Campaign UUID (for scoping).
+            voter_id: Voter UUID (for scoping).
+            payload: New payload dict to replace existing.
+
+        Returns:
+            The updated VoterInteraction record.
+
+        Raises:
+            ValueError: If interaction not found or is not a note type.
+        """
+        result = await session.execute(
+            select(VoterInteraction).where(
+                VoterInteraction.id == interaction_id,
+                VoterInteraction.campaign_id == campaign_id,
+                VoterInteraction.voter_id == voter_id,
+            )
+        )
+        interaction = result.scalar_one_or_none()
+        if interaction is None:
+            raise ValueError(f"Interaction {interaction_id} not found")
+        if interaction.type != InteractionType.NOTE:
+            raise ValueError(
+                f"Interaction {interaction_id} is not a note (only notes can be edited)"
+            )
+        interaction.payload = payload
+        await session.flush()
+        return interaction
+
+    async def delete_note(
+        self,
+        session: AsyncSession,
+        interaction_id: uuid.UUID,
+        campaign_id: uuid.UUID,
+        voter_id: uuid.UUID,
+    ) -> None:
+        """Delete a note interaction.
+
+        Only interactions with type=NOTE can be deleted.
+        System-generated events remain immutable.
+
+        Args:
+            session: Async database session.
+            interaction_id: Interaction UUID.
+            campaign_id: Campaign UUID (for scoping).
+            voter_id: Voter UUID (for scoping).
+
+        Raises:
+            ValueError: If interaction not found or is not a note type.
+        """
+        result = await session.execute(
+            select(VoterInteraction).where(
+                VoterInteraction.id == interaction_id,
+                VoterInteraction.campaign_id == campaign_id,
+                VoterInteraction.voter_id == voter_id,
+            )
+        )
+        interaction = result.scalar_one_or_none()
+        if interaction is None:
+            raise ValueError(f"Interaction {interaction_id} not found")
+        if interaction.type != InteractionType.NOTE:
+            raise ValueError(
+                f"Interaction {interaction_id} is not a note"
+                " (only notes can be deleted)"
+            )
+        await session.delete(interaction)
+        await session.flush()
