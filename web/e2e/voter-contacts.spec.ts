@@ -153,9 +153,9 @@ test.describe.serial("Voter contacts CRUD", () => {
       await test.step(`Add phone to Contact ${NATO_NAMES[i]}`, async () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
-        // Click Contacts tab
+        // Click Contacts tab and wait for panel
         await page.getByRole("tab", { name: /contacts/i }).click()
-        await page.waitForTimeout(300)
+        await expect(page.getByRole("tabpanel")).toBeVisible()
 
         // Click "Add phone" button
         await page
@@ -186,7 +186,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Add second phone to Contact Alpha", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await page.waitForTimeout(300)
+      await expect(page.getByRole("tabpanel")).toBeVisible()
 
       await page
         .getByRole("button", { name: /add phone/i })
@@ -218,7 +218,7 @@ test.describe.serial("Voter contacts CRUD", () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
         await page.getByRole("tab", { name: /contacts/i }).click()
-        await page.waitForTimeout(300)
+        await expect(page.getByRole("tabpanel")).toBeVisible()
 
         // Click "Add email" button
         await page
@@ -287,7 +287,7 @@ test.describe.serial("Voter contacts CRUD", () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
         await page.getByRole("tab", { name: /contacts/i }).click()
-        await page.waitForTimeout(300)
+        await expect(page.getByRole("tabpanel")).toBeVisible()
 
         // Click "Add address" button
         await page
@@ -318,7 +318,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Edit Contact Alpha phone: change to 478-555-9999", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await page.waitForTimeout(300)
+      await expect(page.getByRole("tabpanel")).toBeVisible()
 
       // Click edit (pencil) button on the first phone
       const editBtn = page
@@ -341,7 +341,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Edit Contact Bravo email: change to bravo-updated@test.com", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[1])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await page.waitForTimeout(300)
+      await expect(page.getByRole("tabpanel")).toBeVisible()
 
       // Click edit button on the email
       const editBtn = page
@@ -367,7 +367,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Delete Contact Alpha phone", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await page.waitForTimeout(300)
+      await expect(page.getByRole("tabpanel")).toBeVisible()
 
       // Click delete button on the first phone (the edited 478-555-9999)
       const deleteBtn = page
@@ -397,7 +397,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Delete Contact Bravo email", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[1])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await page.waitForTimeout(300)
+      await expect(page.getByRole("tabpanel")).toBeVisible()
 
       // Click delete button on the email
       const deleteBtn = page
@@ -451,7 +451,8 @@ test.describe.serial("Voter contacts CRUD", () => {
           page.getByText(/deleted|removed|success/i).first(),
         ).toBeVisible({ timeout: 10_000 })
 
-        await page.waitForTimeout(500)
+        // Wait for navigation back to voter list after deletion
+        await page.waitForURL(/voters/, { timeout: 5_000 }).catch(() => {})
       }
     })
 

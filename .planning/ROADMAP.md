@@ -178,7 +178,7 @@ Plans:
 Plans:
 - [x] 58-01-PLAN.md — RBAC permission-checklist specs (5 role files: viewer, volunteer, manager, admin, owner)
 - [x] 58-02-PLAN.md — Org management and campaign settings lifecycle specs
-- [ ] 58-03-PLAN.md — Voter CRUD (20+ voters) and voter contacts specs
+- [x] 58-03-PLAN.md — Voter CRUD (20+ voters) and voter contacts specs
 - [x] 58-04-PLAN.md — Voter tags, voter notes, and voter lists specs
 **UI hint**: yes
 

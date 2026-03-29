@@ -156,8 +156,7 @@ test.describe.serial("Voter lists lifecycle", () => {
       timeout: 10_000,
     })
 
-    // Verify the list now shows the test voters
-    await page.waitForTimeout(1_000) // Allow refetch
+    // Verify the list now shows the test voters (first assertion has longer timeout for refetch)
     for (const lastName of voterLastNames) {
       await expect(
         page.getByText(`List ${lastName}`).first(),

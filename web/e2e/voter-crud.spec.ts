@@ -331,8 +331,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
           page.getByText(/voter created|created/i).first(),
         ).toBeVisible({ timeout: 10_000 })
 
-        // Short pause for sheet to close and table to refresh
-        await page.waitForTimeout(500)
+        // Wait for sheet to close
+        await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
       })
     }
 
@@ -546,8 +546,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
           page.getByText(/deleted|removed|success/i).first(),
         ).toBeVisible({ timeout: 10_000 })
 
-        // Wait for table to refresh
-        await page.waitForTimeout(500)
+        // Wait for delete confirmation to clear
+        await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
       }
     })
 
@@ -597,7 +597,7 @@ test.describe.serial("Voter CRUD lifecycle", () => {
           page.getByText(/deleted|removed|success/i).first(),
         ).toBeVisible({ timeout: 10_000 })
 
-        await page.waitForTimeout(500)
+        await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
       }
     })
 
