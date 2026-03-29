@@ -159,3 +159,4 @@ See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
 | 46. E2E Testing & Integration | v1.5 | 4/4 | Complete | 2026-03-25 |
 | 47. Integration Consistency & Documentation Cleanup | v1.5 | 4/4 | Complete | 2026-03-25 |
 | 48. Connected E2E Journey Spec | v1.5 | 1/1 | Complete | 2026-03-25 |
+| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 1/3 | In Progress | — |
