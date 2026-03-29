@@ -20,7 +20,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 FROM python:3.13-slim AS dev
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgeos-dev \
+    && apt-get install -y --no-install-recommends libgeos-dev libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /bin/bash app \
@@ -59,9 +59,9 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 FROM python:3.13-slim AS runtime
 
-# System dependencies for shapely/geoalchemy2 (libgeos)
+# System dependencies for shapely/geoalchemy2 (libgeos) and psycopg v3 (libpq)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgeos-dev \
+    && apt-get install -y --no-install-recommends libgeos-dev libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user (home dir must be world-readable for K8s runAsUser override)
