@@ -7,6 +7,7 @@ import uuid
 import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
@@ -227,7 +228,15 @@ async def assign_caller(
             detail=str(exc),
             type="caller-assignment-failed",
         )
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise problem.ProblemException(
+            status=status.HTTP_409_CONFLICT,
+            title="Conflict",
+            detail="Caller is already assigned to this session",
+        ) from None
     return SessionCallerResponse.model_validate(caller)
 
 

@@ -7,6 +7,7 @@ import uuid
 
 import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
@@ -268,10 +269,18 @@ async def assign_canvasser(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    canvasser = await _walk_list_service.assign_canvasser(
-        db, walk_list_id, body.user_id
-    )
-    await db.commit()
+    try:
+        canvasser = await _walk_list_service.assign_canvasser(
+            db, walk_list_id, body.user_id
+        )
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise problem.ProblemException(
+            status=status.HTTP_409_CONFLICT,
+            title="Conflict",
+            detail="Canvasser is already assigned to this walk list",
+        ) from None
     return {
         "walk_list_id": str(canvasser.walk_list_id),
         "user_id": canvasser.user_id,

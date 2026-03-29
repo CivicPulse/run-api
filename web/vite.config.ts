@@ -17,8 +17,34 @@ const apiTarget =
 const minioTarget = process.env.MINIO_PROXY_TARGET || "http://localhost:9000"
 const useHttps = hasTailscaleCerts && !isDocker
 
+// Shared proxy configuration for both dev and preview servers
+const proxyConfig = {
+  "/api": {
+    target: apiTarget,
+    changeOrigin: true,
+    secure: false,
+  },
+  "/openapi.json": {
+    target: apiTarget,
+    changeOrigin: true,
+    secure: false,
+  },
+  "/health": {
+    target: apiTarget,
+    changeOrigin: true,
+    secure: false,
+  },
+  "/voter-imports": {
+    target: minioTarget,
+    changeOrigin: true,
+  },
+} as const
+
 // https://vite.dev/config/
 export default defineConfig({
+  preview: {
+    proxy: proxyConfig,
+  },
   server: {
     host: "0.0.0.0",
     https: useHttps
@@ -40,27 +66,7 @@ export default defineConfig({
       : {
           clientPort: 5173,
         },
-    proxy: {
-      "/api": {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-      },
-      "/openapi.json": {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-      },
-      "/health": {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-      },
-      "/voter-imports": {
-        target: minioTarget,
-        changeOrigin: true,
-      },
-    },
+    proxy: proxyConfig,
   },
   plugins: [
     // Use Tailscale certs for trusted HTTPS; fall back to basicSsl() for localhost (skip in Docker)

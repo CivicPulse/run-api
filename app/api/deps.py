@@ -182,16 +182,28 @@ async def ensure_user_synced(
                 CampaignMember.campaign_id == campaign.id,
             )
         )
-        if member_result.scalar_one_or_none() is None:
+        existing_campaign_member = member_result.scalar_one_or_none()
+        if existing_campaign_member is None:
             member = CampaignMember(
                 user_id=user.id,
                 campaign_id=campaign.id,
+                role=jwt_role_name,
             )
             db.add(member)
             logger.info(
-                "Created campaign_member for user {} in campaign {}",
+                "Created campaign_member for user {} in campaign {} (role={})",
                 user.id,
                 campaign.id,
+                jwt_role_name,
+            )
+        elif existing_campaign_member.role is None:
+            # Backfill: existing members without a role get the JWT claim role
+            existing_campaign_member.role = jwt_role_name
+            logger.info(
+                "Backfilled campaign_member role for user {} in campaign {} (role={})",
+                user.id,
+                campaign.id,
+                jwt_role_name,
             )
 
     if orgs or campaigns:

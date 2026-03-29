@@ -45,11 +45,22 @@ setup("authenticate as owner", async ({ page }) => {
     await skipButton.click({ timeout: 5_000 })
   }
 
-  // Wait for redirect back to the app after successful authentication
-  // User may land on / (org dashboard), /campaigns/*, or /org/*
+  // Wait for OIDC callback to fully complete and navigate to final destination.
+  // The callback page at /callback processes tokens async, then navigates away.
+  // We must wait until we're past /callback, /login, and /ui/login.
   await page.waitForURL(
-    (url) => url.host.includes("localhost") && !url.pathname.includes("/ui/login"),
+    (url) =>
+      url.host.includes("localhost") &&
+      !url.pathname.includes("/ui/login") &&
+      !url.pathname.includes("/callback") &&
+      !url.pathname.includes("/login"),
     { timeout: 30_000 },
+  )
+
+  // Wait for OIDC tokens to be stored in localStorage by oidc-client-ts
+  await page.waitForFunction(
+    () => Object.keys(localStorage).some((k) => k.startsWith("oidc.")),
+    { timeout: 10_000 },
   )
 
   // Verify we are authenticated
