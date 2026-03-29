@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Defining requirements
-stopped_at: Completed 59-05-PLAN.md
-last_updated: "2026-03-29T19:15:33.885Z"
+stopped_at: Completed 59-06-PLAN.md
+last_updated: "2026-03-29T19:15:52.509Z"
 last_activity: 2026-03-27 — Milestone v1.6 started
 progress:
   total_phases: 1
@@ -47,7 +47,7 @@ Last activity: 2026-03-27 — Milestone v1.6 started
 | v1.3 | 7 | 18 | 3 days |
 | v1.4 | 9 | 26 | 3 days |
 | v1.5 | 10 | 36 | 2 days |
-| Phase 59 P05 | 3min | 2 tasks | 2 files |
+| Phase 59-e2e-advanced-tests P06 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -55,7 +55,7 @@ Last activity: 2026-03-27 — Milestone v1.6 started
 
 Decisions logged in PROJECT.md Key Decisions table.
 
-- [Phase 59]: VOL-08 uses Deactivate instead of Delete because API has no DELETE /volunteers endpoint
+- [Phase 59-e2e-advanced-tests]: Used delete+recreate for availability editing (no UI inline edit); shift availability enforcement is observational
 
 ### Blockers/Concerns
 
@@ -77,5 +77,5 @@ Decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
-Stopped at: Completed 59-05-PLAN.md
+Stopped at: Completed 59-06-PLAN.md
 Resume file: None
