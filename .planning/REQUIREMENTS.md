@@ -17,7 +17,7 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 - [x] **INFRA-01**: Provisioning script creates 15 ZITADEL test users (3 per campaign role: owner, admin, manager, volunteer, viewer) with verified emails and no password change required
 - [x] **INFRA-02**: Playwright config has 5+ auth projects with per-role storageState files (owner, admin, manager, volunteer, viewer)
-- [ ] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
+- [x] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
 
 ### E2E Tests — RBAC & Organization
 
@@ -82,7 +82,7 @@ None deferred for this milestone.
 | FEAT-03 | Phase 56 | Complete |
 | INFRA-01 | Phase 57 | Complete |
 | INFRA-02 | Phase 57 | Complete |
-| INFRA-03 | Phase 57 | Pending |
+| INFRA-03 | Phase 57 | Complete |
 | E2E-01 | Phase 58 | Pending |
 | E2E-02 | Phase 58 | Pending |
 | E2E-03 | Phase 58 | Pending |

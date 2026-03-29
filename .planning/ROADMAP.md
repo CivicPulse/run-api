@@ -129,7 +129,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 **Milestone Goal:** Build a comprehensive E2E testing pipeline -- plain English test plan, automated Playwright tests against local dev, AI-driven prod test instructions, and iterative fix cycles until fully validated.
 
 - [x] **Phase 56: Feature Gap Builds** - Voter note edit/delete API+UI and walk list rename UI (completed 2026-03-29)
-- [ ] **Phase 57: Test Infrastructure** - ZITADEL test user provisioning, multi-role Playwright auth, CI sharding
+- [x] **Phase 57: Test Infrastructure** - ZITADEL test user provisioning, multi-role Playwright auth, CI sharding (completed 2026-03-29)
 - [ ] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests
 - [ ] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests
 - [ ] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass
@@ -160,10 +160,10 @@ Plans:
   1. Running the provisioning script creates 15 ZITADEL test users (3 per role) with verified emails that can log in immediately without password change
   2. Playwright config defines 5+ auth projects with per-role storageState files so any spec can run as owner, admin, manager, volunteer, or viewer
   3. CI workflow runs the full E2E suite with sharding, and a clean run completes without infrastructure failures
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 57-01-PLAN.md — Provisioning script expansion (15 users) + Playwright config restructure (5 roles)
-- [ ] 57-02-PLAN.md — Auth setup files, spec migration, and CI sharding with merged reports
+- [x] 57-02-PLAN.md — Auth setup files, spec migration, and CI sharding with merged reports
 
 ### Phase 58: E2E Core Tests
 **Goal**: Automated tests validate the RBAC permission matrix, org/campaign management, and all voter entity CRUD lifecycles
@@ -225,7 +225,7 @@ Phases execute in numeric order: 56 → 57 → 58 → 59 → 60 → 61
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56. Feature Gap Builds | v1.7 | 3/3 | Complete    | 2026-03-29 |
-| 57. Test Infrastructure | v1.7 | 1/2 | In Progress|  |
+| 57. Test Infrastructure | v1.7 | 2/2 | Complete   | 2026-03-29 |
 | 58. E2E Core Tests | v1.7 | 0/? | Not started | - |
 | 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
