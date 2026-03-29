@@ -32,9 +32,9 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 - [ ] **E2E-06**: Automated tests verify all 23 voter filter dimensions individually and in combination (FLT-01 through FLT-05)
 - [ ] **E2E-07**: Automated tests verify voter create, edit, delete lifecycle for 20+ voters (VCRUD-01 through VCRUD-04)
 - [ ] **E2E-08**: Automated tests verify voter contact (phone, email, address) CRUD across 20 voters (CON-01 through CON-06)
-- [ ] **E2E-09**: Automated tests verify voter tag create, assign, remove, and delete lifecycle (TAG-01 through TAG-05)
-- [ ] **E2E-10**: Automated tests verify voter note create, edit, and delete lifecycle (NOTE-01 through NOTE-03)
-- [ ] **E2E-11**: Automated tests verify voter list CRUD including static/dynamic lists and add/remove voters (VLIST-01 through VLIST-06)
+- [x] **E2E-09**: Automated tests verify voter tag create, assign, remove, and delete lifecycle (TAG-01 through TAG-05)
+- [x] **E2E-10**: Automated tests verify voter note create, edit, and delete lifecycle (NOTE-01 through NOTE-03)
+- [x] **E2E-11**: Automated tests verify voter list CRUD including static/dynamic lists and add/remove voters (VLIST-01 through VLIST-06)
 
 ### E2E Tests — Operations
 
@@ -91,9 +91,9 @@ None deferred for this milestone.
 | E2E-06 | Phase 59 | Pending |
 | E2E-07 | Phase 58 | Pending |
 | E2E-08 | Phase 58 | Pending |
-| E2E-09 | Phase 58 | Pending |
-| E2E-10 | Phase 58 | Pending |
-| E2E-11 | Phase 58 | Pending |
+| E2E-09 | Phase 58 | Complete |
+| E2E-10 | Phase 58 | Complete |
+| E2E-11 | Phase 58 | Complete |
 | E2E-12 | Phase 59 | Pending |
 | E2E-13 | Phase 59 | Pending |
 | E2E-14 | Phase 59 | Pending |
