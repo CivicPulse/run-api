@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Testing & Validation
 status: executing
-stopped_at: Completed 58-04-PLAN.md
-last_updated: "2026-03-29T17:54:02.654Z"
+stopped_at: Completed 58-02-PLAN.md
+last_updated: "2026-03-29T17:58:50.622Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 8
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 58 (e2e-core-tests) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-03-29
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 57 P01 | 3min | 2 tasks | 4 files |
 | Phase 57 P02 | 2min | 2 tasks | 8 files |
 | Phase 58 P04 | 2min | 3 tasks | 3 files |
+| Phase 58 P02 | 7min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Decisions logged in PROJECT.md Key Decisions table.
 - [Phase 57]: Auth setup files follow orgadmin pattern (no password change handling) for all 5 roles
 - [Phase 57]: Split monolithic CI job into 3 independent jobs: integration, 4-shard E2E, report merger
 - [Phase 58]: Reduced entity counts for E2E speed while proving lifecycle patterns (5 tags, 5 voters, 3 note voters)
+- [Phase 58]: Added useUnarchiveCampaign hook and CampaignCard unarchive action to enable ORG-04 E2E test (missing UI feature)
+- [Phase 58]: Used API-based member addition for CAMP-03/05 setup to avoid invite acceptance complexity in E2E tests
 
 ### Blockers/Concerns
 
@@ -83,5 +86,5 @@ Decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last activity: 2026-03-29 — Roadmap created for v1.7
-Stopped at: Completed 58-04-PLAN.md
+Stopped at: Completed 58-02-PLAN.md
 Resume file: None

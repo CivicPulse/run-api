@@ -22,8 +22,8 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 ### E2E Tests — RBAC & Organization
 
 - [ ] **E2E-01**: Automated tests verify each of the 5 campaign roles can/cannot access role-gated UI actions (RBAC-01 through RBAC-09)
-- [ ] **E2E-02**: Automated tests verify org dashboard, campaign creation, archive/unarchive, org settings, and org member management (ORG-01 through ORG-08)
-- [ ] **E2E-03**: Automated tests verify campaign settings CRUD, member management, ownership transfer, and campaign deletion (CAMP-01 through CAMP-06)
+- [x] **E2E-02**: Automated tests verify org dashboard, campaign creation, archive/unarchive, org settings, and org member management (ORG-01 through ORG-08)
+- [x] **E2E-03**: Automated tests verify campaign settings CRUD, member management, ownership transfer, and campaign deletion (CAMP-01 through CAMP-06)
 
 ### E2E Tests — Voter Workflows
 
@@ -84,8 +84,8 @@ None deferred for this milestone.
 | INFRA-02 | Phase 57 | Complete |
 | INFRA-03 | Phase 57 | Complete |
 | E2E-01 | Phase 58 | Pending |
-| E2E-02 | Phase 58 | Pending |
-| E2E-03 | Phase 58 | Pending |
+| E2E-02 | Phase 58 | Complete |
+| E2E-03 | Phase 58 | Complete |
 | E2E-04 | Phase 59 | Pending |
 | E2E-05 | Phase 59 | Pending |
 | E2E-06 | Phase 59 | Pending |
