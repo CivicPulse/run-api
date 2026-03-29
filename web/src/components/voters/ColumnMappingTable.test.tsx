@@ -2,11 +2,12 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { ColumnMappingTable } from "./ColumnMappingTable"
 import { CANONICAL_FIELDS, FIELD_GROUPS } from "./column-mapping-constants"
+import type { FieldMapping } from "@/types/import-job"
 
 const columns = ["First Name", "Email"]
-const suggestedMapping: Record<string, string | null> = {
-  "First Name": "first_name",
-  Email: null,
+const suggestedMapping: Record<string, FieldMapping> = {
+  "First Name": { field: "first_name", match_type: "exact" },
+  Email: { field: null, match_type: null },
 }
 const mapping: Record<string, string> = {
   "First Name": "first_name",
@@ -34,7 +35,7 @@ describe("ColumnMappingTable", () => {
       render(
         <ColumnMappingTable
           columns={["Address"]}
-          suggestedMapping={{ Address: "registration_line1" }}
+          suggestedMapping={{ Address: { field: "registration_line1", match_type: "exact" } }}
           mapping={{ Address: "registration_line1" }}
           onMappingChange={vi.fn()}
         />,
@@ -43,7 +44,7 @@ describe("ColumnMappingTable", () => {
       expect(screen.getByText("Registration Line 1")).toBeTruthy()
     })
 
-    it("shows green badge (CheckCircle2) when suggested_mapping is non-null and unchanged", () => {
+    it("shows exact badge when match_type is 'exact' and unchanged", () => {
       render(
         <ColumnMappingTable
           columns={columns}
@@ -52,7 +53,7 @@ describe("ColumnMappingTable", () => {
           onMappingChange={vi.fn()}
         />,
       )
-      expect(screen.getByLabelText("High confidence match")).toBeTruthy()
+      expect(screen.getByLabelText("Exact match — auto-mapped")).toBeTruthy()
     })
 
     it("shows yellow badge (AlertTriangle) when suggested_mapping is null", () => {
@@ -87,7 +88,7 @@ describe("ColumnMappingTable", () => {
       render(
         <ColumnMappingTable
           columns={["Email Col"]}
-          suggestedMapping={{ "Email Col": null }}
+          suggestedMapping={{ "Email Col": { field: null, match_type: null } }}
           mapping={{ "Email Col": "" }}
           onMappingChange={onMappingChange}
         />,
@@ -119,7 +120,7 @@ describe("ColumnMappingTable", () => {
       render(
         <ColumnMappingTable
           columns={["Test Col"]}
-          suggestedMapping={{ "Test Col": null }}
+          suggestedMapping={{ "Test Col": { field: null, match_type: null } }}
           mapping={{ "Test Col": "" }}
           onMappingChange={vi.fn()}
         />,
@@ -154,7 +155,7 @@ describe("ColumnMappingTable", () => {
       render(
         <ColumnMappingTable
           columns={["Test Col"]}
-          suggestedMapping={{ "Test Col": null }}
+          suggestedMapping={{ "Test Col": { field: null, match_type: null } }}
           mapping={{ "Test Col": "" }}
           onMappingChange={vi.fn()}
         />,
@@ -166,6 +167,74 @@ describe("ColumnMappingTable", () => {
       expect(screen.getByText("Registration Line 1")).toBeTruthy()
       expect(screen.getByText("Mailing City")).toBeTruthy()
       expect(screen.getByText("General Propensity")).toBeTruthy()
+    })
+  })
+
+  describe("L2 format detection", () => {
+    it("shows L2 detection banner when formatDetected is 'l2'", () => {
+      render(
+        <ColumnMappingTable
+          columns={columns}
+          suggestedMapping={suggestedMapping}
+          mapping={mapping}
+          onMappingChange={vi.fn()}
+          formatDetected="l2"
+        />,
+      )
+      expect(screen.getByText("L2 voter file detected — columns auto-mapped")).toBeTruthy()
+    })
+
+    it("does not show L2 banner when formatDetected is 'generic'", () => {
+      render(
+        <ColumnMappingTable
+          columns={columns}
+          suggestedMapping={suggestedMapping}
+          mapping={mapping}
+          onMappingChange={vi.fn()}
+          formatDetected="generic"
+        />,
+      )
+      expect(screen.queryByText("L2 voter file detected — columns auto-mapped")).toBeNull()
+    })
+
+    it("does not show L2 banner when formatDetected is null", () => {
+      render(
+        <ColumnMappingTable
+          columns={columns}
+          suggestedMapping={suggestedMapping}
+          mapping={mapping}
+          onMappingChange={vi.fn()}
+          formatDetected={null}
+        />,
+      )
+      expect(screen.queryByText("L2 voter file detected — columns auto-mapped")).toBeNull()
+    })
+
+    it("shows fuzzy badge for fuzzy match_type", () => {
+      const fuzzyMapping: Record<string, FieldMapping> = {
+        "Fuzzy Col": { field: "first_name", match_type: "fuzzy" },
+      }
+      render(
+        <ColumnMappingTable
+          columns={["Fuzzy Col"]}
+          suggestedMapping={fuzzyMapping}
+          mapping={{ "Fuzzy Col": "first_name" }}
+          onMappingChange={vi.fn()}
+        />,
+      )
+      expect(screen.getByLabelText("Fuzzy match — review suggested")).toBeTruthy()
+    })
+
+    it("shows exact badge for exact match_type", () => {
+      render(
+        <ColumnMappingTable
+          columns={["First Name"]}
+          suggestedMapping={{ "First Name": { field: "first_name", match_type: "exact" } }}
+          mapping={{ "First Name": "first_name" }}
+          onMappingChange={vi.fn()}
+        />,
+      )
+      expect(screen.getByLabelText("Exact match — auto-mapped")).toBeTruthy()
     })
   })
 })

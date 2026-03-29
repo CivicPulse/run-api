@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     s3_bucket: str = "voter-imports"
     s3_region: str = "us-east-1"
 
+    # Import processing
+    import_batch_size: int = 1000
+
     # Observability
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.1

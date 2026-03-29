@@ -20,6 +20,8 @@ class ImportStatus(enum.StrEnum):
     UPLOADED = "uploaded"
     QUEUED = "queued"
     PROCESSING = "processing"
+    CANCELLING = "cancelling"
+    CANCELLED = "cancelled"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -49,8 +51,10 @@ class ImportJob(Base):
     imported_rows: Mapped[int | None] = mapped_column()
     skipped_rows: Mapped[int | None] = mapped_column()
     phones_created: Mapped[int | None] = mapped_column()
+    last_committed_row: Mapped[int | None] = mapped_column(default=0)
     error_report_key: Mapped[str | None] = mapped_column(String(500))
     error_message: Mapped[str | None] = mapped_column()
+    cancelled_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

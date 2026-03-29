@@ -61,6 +61,30 @@ services:
       - api
     restart: unless-stopped
 
+  worker:
+    build:
+      context: .
+      target: dev
+    container_name: run-api-worker
+    command: ["python", "scripts/worker.py"]
+    env_file:
+      - .env
+      - path: .env.zitadel
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/run_api
+      DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
+      S3_ENDPOINT_URL: http://minio:9000
+    volumes:
+      - ./app:/home/app/app
+      - ./scripts:/home/app/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
   postgres:
     image: postgis/postgis:17-3.5
     container_name: run-api-postgres

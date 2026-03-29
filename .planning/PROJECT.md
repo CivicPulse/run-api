@@ -88,18 +88,18 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ WCAG AA compliance: 38-route axe-core scan, 5 screen reader flow tests, keyboard navigation, skip-nav links — v1.5
 - ✓ Playwright E2E tests for critical flows, RLS isolation tests, and connected journey spec with CI integration — v1.5
 
+- ✓ Procrastinate PostgreSQL job queue replacing TaskIQ, with dedicated schema, queueing locks, and 202 Accepted endpoint — v1.6
+- ✓ Standalone worker process with HTTP health endpoint, Docker Compose service, and K8s Deployment manifests — v1.6
+- ✓ Per-batch import commits with RLS restoration, crash resume from last committed row, real-time polling progress, and bounded per-batch error storage to MinIO — v1.6
+- ✓ Streaming CSV import from MinIO with async line-by-line iterator, constant memory usage regardless of file size — v1.6
+- ✓ Complete L2 auto-mapping with 58-field canonical dictionary (217 aliases), 6-pattern voting history parser, format auto-detection, and frontend match-type badges — v1.6
+- ✓ Import cancellation with cooperative batch-loop detection, CANCELLING/CANCELLED status lifecycle, cancel endpoint (202 Accepted), and frontend cancel UI with ConfirmDialog — v1.6
+- ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
+- ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
+
 ### Active
 
-## Current Milestone: v1.6 Imports
-
-**Goal:** Make large voter file imports reliable and ensure L2 files import with zero manual mapping.
-
-**Target features:**
-- Background import processing via Procrastinate (PostgreSQL job queue) — POST returns 202, import runs async
-- Resumable imports with per-batch commits — partial progress survives pod crashes, resumes from last committed batch
-- Progress tracking via existing polling endpoint — real-time row count, batch status, error reporting
-- Complete L2 "friendly name" alias coverage — all 55 columns from L2 CSV files auto-map without manual intervention
-- Voting history format support — "General_YYYY", "Voted in YYYY", "Voted in YYYY Primary" patterns
+(No active milestone — ready for `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -127,15 +127,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.5 shipped 2026-03-25. 48 phases, 149 plans delivered across 6 milestones in 17 days. The platform is production-ready with full data isolation, org management, map-based turf editing, WCAG AA compliance, observability, and E2E test coverage.
+v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days.
 
-Now entering v1.6: reliable large-file imports via Procrastinate background processing and complete L2 auto-mapping.
+The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Context
 
-Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, TaskIQ (backend); React + TanStack Router/Query + shadcn/ui + Zustand + driver.js (frontend).
+Tech stack: FastAPI, SQLAlchemy (async), PostgreSQL + PostGIS, ZITADEL, MinIO, Procrastinate (backend); React + TanStack Router/Query + shadcn/ui + Zustand + driver.js (frontend).
 Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s manifests with ArgoCD GitOps.
 
 ## Constraints
@@ -167,6 +167,11 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Leaflet/Geoman for map editor | Free, well-maintained; leaflet-draw abandoned | ✓ Good — polygon draw/edit, GeoJSON round-trip |
 | Pure ASGI middleware for structlog | Not BaseHTTPMiddleware to avoid streaming issues | ✓ Good — ContextVars shared across Sentry/logs |
 | AST-based rate limit guard test | Verify all route files have decorators without importing app | ✓ Good — catches missing rate limits at CI time |
+| Procrastinate over Celery/TaskIQ | PostgreSQL-native job queue; no Redis/RabbitMQ dependency | ✓ Good — durable jobs with queueing locks, simple setup |
+| Per-batch commits with RLS restore | COMMIT resets RLS context; must re-set after each batch | ✓ Good — crash-resilient imports, real-time progress |
+| Streaming CSV with async generator | Memory-bounded import regardless of file size | ✓ Good — constant ~2 batch + 1 chunk memory footprint |
+| cancelled_at timestamp over status enum | Race-safe cancellation signal independent of status transitions | ✓ Good — avoids lost-update race between worker and API |
+| format_detected as transient (not persisted) | L2 detection computed at detect time, no schema change needed | ✓ Good — simple, no migration required |
 
 ---
 ## Evolution
@@ -187,4 +192,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after v1.6 Imports milestone start*
+*Last updated: 2026-03-29 after v1.6 milestone completion*

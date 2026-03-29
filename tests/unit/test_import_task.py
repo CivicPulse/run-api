@@ -1,0 +1,254 @@
+"""Tests for the Procrastinate import task.
+
+Validates that process_import uses the Procrastinate decorator,
+accepts campaign_id, sets RLS before querying, and handles
+status transitions correctly.
+"""
+
+from __future__ import annotations
+
+import ast
+import inspect
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+
+@pytest.fixture
+def campaign_id() -> str:
+    return str(uuid.uuid4())
+
+
+@pytest.fixture
+def import_job_id() -> str:
+    return str(uuid.uuid4())
+
+
+def test_process_import_is_procrastinate_task():
+    """process_import is decorated with @procrastinate_app.task, not @broker.task."""
+    source = inspect.getsource(
+        __import__("app.tasks.import_task", fromlist=["import_task"])
+    )
+    tree = ast.parse(source)
+    # Find the function definition for process_import
+    for node in ast.walk(tree):
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "process_import":
+            # Check decorator list for procrastinate_app.task call
+            found = False
+            for dec in node.decorator_list:
+                if isinstance(dec, ast.Call):
+                    func = dec.func
+                    if (
+                        isinstance(func, ast.Attribute)
+                        and func.attr == "task"
+                        and isinstance(func.value, ast.Name)
+                        and func.value.id == "procrastinate_app"
+                    ):
+                        found = True
+            assert found, (
+                "process_import must be decorated with @procrastinate_app.task"
+            )
+            break
+    else:
+        pytest.fail("process_import async function not found in module")
+
+
+def test_process_import_accepts_campaign_id():
+    """process_import accepts both import_job_id and campaign_id parameters."""
+    from app.tasks.import_task import process_import
+
+    sig = inspect.signature(process_import)
+    params = list(sig.parameters.keys())
+    assert "import_job_id" in params, "Missing import_job_id parameter"
+    assert "campaign_id" in params, "Missing campaign_id parameter"
+
+
+def test_no_broker_imports():
+    """No imports from app.tasks.broker exist in the file."""
+    source = inspect.getsource(
+        __import__("app.tasks.import_task", fromlist=["import_task"])
+    )
+    assert "app.tasks.broker" not in source, (
+        "import_task.py must not import from app.tasks.broker"
+    )
+    assert "broker.task" not in source, (
+        "import_task.py must not use broker.task decorator"
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_campaign_context_called_before_query(
+    import_job_id: str, campaign_id: str
+):
+    """set_campaign_context is called BEFORE session.get (RLS fix)."""
+    call_order: list[str] = []
+
+    mock_job = MagicMock()
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = "queued"
+    mock_job.imported_rows = 10
+    mock_job.skipped_rows = 0
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+
+    mock_session = AsyncMock()
+
+    async def mock_set_context(session, cid):
+        call_order.append("set_campaign_context")
+
+    async def mock_get(model, pk):
+        call_order.append("session.get")
+        return mock_job
+
+    mock_session.get = mock_get
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            side_effect=mock_set_context,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    assert call_order.index("set_campaign_context") < call_order.index("session.get"), (
+        "set_campaign_context must be called BEFORE session.get"
+    )
+
+
+@pytest.mark.asyncio
+async def test_status_transitions_on_success(import_job_id: str, campaign_id: str):
+    """On success, task sets PROCESSING; COMPLETED is set by the service."""
+    from app.models.import_job import ImportStatus
+
+    status_changes: list[str] = []
+
+    class MockJob:
+        def __init__(self):
+            self.campaign_id = uuid.UUID(campaign_id)
+            self._status = ImportStatus.QUEUED
+            self.imported_rows = 10
+            self.skipped_rows = 0
+            self.last_committed_row = 0
+            self.cancelled_at = None
+
+        @property
+        def status(self):
+            return self._status
+
+        @status.setter
+        def status(self, value):
+            status_changes.append(str(value))
+            self._status = value
+
+    mock_job = MockJob()
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    # Task sets PROCESSING; COMPLETED is now set inside process_import_file
+    assert "processing" in status_changes, "Job should transition to PROCESSING"
+    # Task should NOT set COMPLETED -- that moved to import_service.py
+    assert "completed" not in status_changes, (
+        "Task should not set COMPLETED -- service handles it now"
+    )
+
+
+@pytest.mark.asyncio
+async def test_status_set_to_failed_on_error(import_job_id: str, campaign_id: str):
+    """On failure, job status is set to FAILED with error_message."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock(side_effect=RuntimeError("test error"))
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        pytest.raises(RuntimeError, match="test error"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    assert mock_job.status == ImportStatus.FAILED
+    assert mock_job.error_message is not None

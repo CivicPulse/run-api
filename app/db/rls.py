@@ -28,3 +28,19 @@ async def set_campaign_context(session: AsyncSession, campaign_id: str) -> None:
         text("SELECT set_config('app.current_campaign_id', :campaign_id, true)"),
         {"campaign_id": str(campaign_id)},
     )
+
+
+async def commit_and_restore_rls(session: AsyncSession, campaign_id: str) -> None:
+    """Commit the current transaction and restore RLS context.
+
+    PostgreSQL set_config(..., true) is transaction-scoped and resets
+    on COMMIT. This helper ensures RLS is always restored after commit,
+    preventing the silent failure mode where subsequent queries return
+    zero rows or insert into the wrong campaign context.
+
+    Args:
+        session: The async database session.
+        campaign_id: The campaign UUID to restore as RLS context.
+    """
+    await session.commit()
+    await set_campaign_context(session, campaign_id)

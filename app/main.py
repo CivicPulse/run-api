@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from app.core.security import JWKSManager
     from app.services.storage import StorageService
     from app.services.zitadel import ZitadelService
-    from app.tasks.broker import broker
+    from app.tasks.procrastinate_app import procrastinate_app
 
     logger.info("Starting {}", settings.app_name)
 
@@ -77,14 +77,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await storage_service.ensure_bucket()
     app.state.storage_service = storage_service
 
-    # Background task broker
-    await broker.startup()
-    app.state.broker = broker
+    # Procrastinate task queue (replaces TaskIQ broker per D-07)
+    async with procrastinate_app.open_async():
+        app.state.procrastinate_app = procrastinate_app
+        yield
 
-    yield
-
-    # Shutdown
-    await broker.shutdown()
     logger.info("Shutting down {}", settings.app_name)
 
 

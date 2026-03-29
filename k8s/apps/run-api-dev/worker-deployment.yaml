@@ -1,0 +1,61 @@
+# Worker Deployment — runs Procrastinate background job processor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-api-worker
+  namespace: civpulse-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-api-worker
+  template:
+    metadata:
+      labels:
+        app: run-api-worker
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ghcr.io/civicpulse/run-api:sha-778e907
+          command: ["python", "scripts/worker.py"]
+          envFrom:
+            - configMapRef:
+                name: run-api-config
+            - secretRef:
+                name: run-api-secret
+          ports:
+            - containerPort: 8001
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]

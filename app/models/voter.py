@@ -66,6 +66,10 @@ class Voter(Base):
     registration_county: Mapped[str | None] = mapped_column(String(255))
     registration_apartment_type: Mapped[str | None] = mapped_column(String(20))
 
+    # Registration Address (L2 detail)
+    house_number: Mapped[str | None] = mapped_column(String(50))
+    street_number_parity: Mapped[str | None] = mapped_column(String(10))
+
     # Mailing Address
     mailing_line1: Mapped[str | None] = mapped_column(String(500))
     mailing_line2: Mapped[str | None] = mapped_column(String(500))
@@ -75,6 +79,16 @@ class Voter(Base):
     mailing_zip4: Mapped[str | None] = mapped_column(String(4))
     mailing_country: Mapped[str | None] = mapped_column(String(100))
     mailing_type: Mapped[str | None] = mapped_column(String(20))
+
+    # Mailing Address (L2 detail)
+    mailing_house_number: Mapped[str | None] = mapped_column(String(50))
+    mailing_address_prefix: Mapped[str | None] = mapped_column(String(50))
+    mailing_street_name: Mapped[str | None] = mapped_column(String(255))
+    mailing_designator: Mapped[str | None] = mapped_column(String(50))
+    mailing_suffix_direction: Mapped[str | None] = mapped_column(String(10))
+    mailing_apartment_number: Mapped[str | None] = mapped_column(String(50))
+    mailing_bar_code: Mapped[str | None] = mapped_column(String(50))
+    mailing_verifier: Mapped[str | None] = mapped_column(String(50))
 
     # Political
     party: Mapped[str | None] = mapped_column(String(50))
@@ -113,6 +127,10 @@ class Voter(Base):
     household_party_registration: Mapped[str | None] = mapped_column(String(50))
     household_size: Mapped[int | None] = mapped_column(SmallInteger)
     family_id: Mapped[str | None] = mapped_column(String(255))
+    mailing_household_party_registration: Mapped[str | None] = mapped_column(
+        String(50)
+    )
+    mailing_household_size: Mapped[int | None] = mapped_column(SmallInteger)
 
     # Extras
     extra_data: Mapped[dict | None] = mapped_column(JSONB, default=dict)

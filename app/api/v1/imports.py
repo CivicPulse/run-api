@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
+from app.core.time import utcnow
 from app.models.import_job import (
     FieldMappingTemplate,
     ImportJob,
@@ -30,7 +31,11 @@ from app.schemas.import_job import (
     ImportJobResponse,
     ImportUploadResponse,
 )
-from app.services.import_service import ImportService, suggest_field_mapping
+from app.services.import_service import (
+    ImportService,
+    detect_l2_format,
+    suggest_field_mapping,
+)
 from app.tasks.import_task import process_import
 
 logger = logging.getLogger(__name__)
@@ -172,6 +177,9 @@ async def detect_columns(
     else:
         suggested = suggest_field_mapping(columns)
 
+    # Detect L2 format from auto-suggested mapping
+    format_detected = detect_l2_format(suggested) if template_id is None else None
+
     # Update job
     job.detected_columns = columns
     job.suggested_mapping = suggested
@@ -179,12 +187,15 @@ async def detect_columns(
     await db.commit()
     await db.refresh(job)
 
-    return ImportJobResponse.model_validate(job)
+    response = ImportJobResponse.model_validate(job)
+    response.format_detected = format_detected
+    return response
 
 
 @router.post(
     "/campaigns/{campaign_id}/imports/{import_id}/confirm",
     response_model=ImportJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 @limiter.limit("5/minute", key_func=get_user_or_ip_key)
 async def confirm_mapping(
@@ -198,7 +209,8 @@ async def confirm_mapping(
     """Confirm field mapping and start background import processing.
 
     Step 2 of the import flow. Saves the confirmed mapping, optionally
-    saves it as a reusable template, then dispatches the background task.
+    saves it as a reusable template, then dispatches the background task
+    via Procrastinate with a queueing lock per campaign.
 
     Args:
         campaign_id: Campaign UUID.
@@ -208,8 +220,10 @@ async def confirm_mapping(
         db: Database session.
 
     Returns:
-        ImportJobResponse with status=QUEUED.
+        ImportJobResponse with status=QUEUED (202 Accepted).
     """
+    from procrastinate.exceptions import AlreadyEnqueued
+
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
@@ -244,9 +258,70 @@ async def confirm_mapping(
     await db.commit()
     await db.refresh(job)
 
-    # Dispatch background task
-    await process_import.kiq(str(import_id))
+    # Dispatch background task with queueing lock per D-05
+    try:
+        await process_import.configure(
+            queueing_lock=str(campaign_id),
+        ).defer_async(
+            import_job_id=str(import_id),
+            campaign_id=str(campaign_id),
+        )
+    except AlreadyEnqueued as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An import is already in progress for this campaign",
+        ) from exc
 
+    return ImportJobResponse.model_validate(job)
+
+
+@router.post(
+    "/campaigns/{campaign_id}/imports/{import_id}/cancel",
+    response_model=ImportJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@limiter.limit("5/minute", key_func=get_user_or_ip_key)
+async def cancel_import(
+    campaign_id: uuid.UUID,
+    import_id: uuid.UUID,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Cancel a running or queued import.
+
+    Sets status to CANCELLING and cancelled_at timestamp. The worker
+    detects this between batches and transitions to CANCELLED.
+
+    Args:
+        campaign_id: Campaign UUID.
+        import_id: Import job UUID.
+        request: FastAPI request.
+        user: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        ImportJobResponse with status=CANCELLING (202 Accepted).
+    """
+    await ensure_user_synced(user, db)
+
+    job = await db.get(ImportJob, import_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Import job not found",
+        )
+
+    if job.status not in (ImportStatus.QUEUED, ImportStatus.PROCESSING):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot cancel import in status '{job.status}'",
+        )
+
+    job.cancelled_at = utcnow()
+    job.status = ImportStatus.CANCELLING
+    await db.commit()
+    await db.refresh(job)
     return ImportJobResponse.model_validate(job)
 
 
@@ -333,7 +408,11 @@ async def delete_import(
             detail="Import job not found",
         )
 
-    if job.status in (ImportStatus.QUEUED, ImportStatus.PROCESSING):
+    if job.status in (
+        ImportStatus.QUEUED,
+        ImportStatus.PROCESSING,
+        ImportStatus.CANCELLING,
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Cannot delete an import that is currently in progress",

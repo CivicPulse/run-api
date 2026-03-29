@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.6 Imports (Shipped: 2026-03-29)
+
+**Phases completed:** 7 phases, 16 plans, 31 tasks
+**Timeline:** 2 days (2026-03-28 → 2026-03-29)
+**Files modified:** 44 | **Lines added:** 5,214 | **Commits:** ~65
+**Git range:** `docs(v1.6)` → `docs(phase-55)`
+
+**Key accomplishments:**
+
+1. Procrastinate PostgreSQL job queue replacing TaskIQ — durable background imports with 202 Accepted, per-campaign queueing lock, FastAPI lifespan integration, and complete TaskIQ removal
+2. Standalone worker container with asyncio health endpoint, Docker Compose service, and K8s Deployments for dev/prod environments
+3. Per-batch commit pipeline with RLS restoration, crash resume from last_committed_row, batch failure isolation, real-time polling progress, and bounded per-batch error writes to MinIO
+4. Streaming CSV import from MinIO with async line-by-line iterator, first-chunk encoding detection, BOM stripping, and constant memory regardless of file size
+5. Complete L2 auto-mapping: 58-field canonical dictionary with 217 aliases, 6-pattern voting history parser, format auto-detection via >80% exact alias ratio, frontend match-type badges (exact/fuzzy/unmapped), and L2 detection banner
+6. Import cancellation with cooperative batch-loop detection, CANCELLING/CANCELLED status lifecycle, cancel endpoint (202), concurrent import prevention, and full frontend cancel UI with ConfirmDialog
+
+**Gap closure (Phases 54-55):** Error report download link fixed to use MinIO pre-signed URL, ImportUploadResponse type aligned with backend schema, 6 audit tech debt items resolved (SUMMARY frontmatter, dead code, stale VERIFICATION text)
+
+**Audit:** .planning/milestones/v1.6-MILESTONE-AUDIT.md (status: tech_debt, 14/14 requirements satisfied, all gaps closed by phases 54-55)
+
+---
+
 ## v1.5 Go Live — Production Readiness (Shipped: 2026-03-25)
 
 **Phases completed:** 10 phases, 36 plans, 67 tasks

@@ -11,10 +11,12 @@ import {
   useInitiateImport,
   useDetectColumns,
   useConfirmMapping,
+  useCancelImport,
   useImportJob,
   deriveStep,
 } from "@/hooks/useImports"
 import { uploadToMinIO } from "@/lib/uploadToMinIO"
+import type { FieldMapping } from "@/types/import-job"
 
 // ---------------------------------------------------------------------------
 // Route definition
@@ -87,14 +89,16 @@ export function ImportWizardPage() {
   // Mapping state
   const [detectedColumns, setDetectedColumns] = useState<string[]>([])
   const [suggestedMapping, setSuggestedMapping] = useState<
-    Record<string, string | null>
+    Record<string, FieldMapping>
   >({})
   const [mapping, setMapping] = useState<Record<string, string>>({})
+  const [formatDetected, setFormatDetected] = useState<"l2" | "generic" | null>(null)
 
   // Hooks
   const initiateImport = useInitiateImport(campaignId)
   const detectColumns = useDetectColumns(campaignId, jobId)
   const confirmMapping = useConfirmMapping(campaignId, jobId)
+  const cancelImport = useCancelImport(campaignId, jobId)
   const jobQuery = useImportJob(campaignId, jobId)
 
   // Auto-restore step from job status when jobId is in URL
@@ -140,14 +144,15 @@ export function ImportWizardPage() {
 
       // Upload done — detect columns
       const detected = await detectColumns.mutateAsync()
-      const { detected_columns, suggested_mapping } = detected
+      const { detected_columns, suggested_mapping, format_detected } = detected
 
       setDetectedColumns(detected_columns)
       setSuggestedMapping(suggested_mapping)
-      // Initialize mapping: replace null values with ""
+      setFormatDetected(format_detected)
+      // Initialize mapping: extract field from new shape, replace null with ""
       const initialMapping: Record<string, string> = {}
       for (const col of detected_columns) {
-        initialMapping[col] = suggested_mapping[col] ?? ""
+        initialMapping[col] = suggested_mapping[col]?.field ?? ""
       }
       setMapping(initialMapping)
 
@@ -192,6 +197,18 @@ export function ImportWizardPage() {
 
   function handleImportFailed() {
     navigate({ search: { jobId, step: 4 } })
+  }
+
+  function handleImportCancelled() {
+    navigate({ search: { jobId, step: 4 } })
+  }
+
+  async function handleCancel() {
+    try {
+      await cancelImport.mutateAsync()
+    } catch {
+      toast.error("Failed to cancel import.")
+    }
   }
 
   function handleImportAnother() {
@@ -246,6 +263,7 @@ export function ImportWizardPage() {
                 suggestedMapping={suggestedMapping}
                 mapping={mapping}
                 onMappingChange={handleMappingChange}
+                formatDetected={formatDetected}
               />
               <div className="flex justify-end">
                 <button
@@ -301,6 +319,9 @@ export function ImportWizardPage() {
                 job={pollingJob.data}
                 onComplete={handleImportComplete}
                 onFailed={handleImportFailed}
+                onCancelled={handleImportCancelled}
+                onCancel={handleCancel}
+                cancelPending={cancelImport.isPending}
               />
             </div>
           )}
@@ -308,14 +329,21 @@ export function ImportWizardPage() {
           {/* Step 4: Completion */}
           {currentStep === 4 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Import Complete</h2>
+              <h2 className="text-lg font-semibold">
+                {jobQuery.data?.status === "cancelled"
+                  ? "Import Cancelled"
+                  : "Import Complete"}
+              </h2>
               {jobQuery.data && (
                 <div className="rounded-md border p-4 space-y-2">
                   <p className="text-sm">
                     <span className="font-medium text-status-success-foreground">
-                      {jobQuery.data.imported_rows}
+                      {jobQuery.data.imported_rows ?? 0}
                     </span>{" "}
-                    rows imported successfully
+                    rows imported
+                    {jobQuery.data.status === "cancelled"
+                      ? " before cancellation"
+                      : " successfully"}
                   </p>
                   {jobQuery.data.phones_created != null && jobQuery.data.phones_created > 0 && (
                     <p className="text-sm">
@@ -327,9 +355,10 @@ export function ImportWizardPage() {
                   )}
                   {jobQuery.data.error_report_key && (
                     <a
-                      href={`/api/v1/campaigns/${campaignId}/imports/${jobId}/error-report`}
+                      href={jobQuery.data.error_report_key}
                       className="text-sm text-primary underline"
-                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       Download error report
                     </a>

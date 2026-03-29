@@ -29,8 +29,8 @@ const importKeys = {
 //
 //   1  Upload     (pending)
 //   2  Detect     (uploaded)
-//   3  Map        (queued | processing)
-//   4  Done       (completed | failed)
+//   3  Progress   (queued | processing | cancelling)
+//   4  Done       (completed | failed | cancelled)
 // ---------------------------------------------------------------------------
 export function deriveStep(status: ImportStatus | string | undefined): number {
   switch (status) {
@@ -40,9 +40,11 @@ export function deriveStep(status: ImportStatus | string | undefined): number {
       return 2
     case "queued":
     case "processing":
+    case "cancelling":
       return 3
     case "completed":
     case "failed":
+    case "cancelled":
       return 4
     default:
       return 1
@@ -51,7 +53,7 @@ export function deriveStep(status: ImportStatus | string | undefined): number {
 
 // ---------------------------------------------------------------------------
 // useInitiateImport — POST /api/v1/campaigns/{campaignId}/imports
-// Returns ImportUploadResponse { job_id, upload_url, expires_in }
+// Returns ImportUploadResponse { job_id, upload_url, file_key }
 // ---------------------------------------------------------------------------
 export function useInitiateImport(campaignId: string) {
   const qc = useQueryClient()
@@ -101,8 +103,24 @@ export function useConfirmMapping(campaignId: string, jobId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// useCancelImport — POST /api/v1/campaigns/{campaignId}/imports/{jobId}/cancel
+// Returns ImportJob with status=cancelling (202 Accepted).
+// ---------------------------------------------------------------------------
+export function useCancelImport(campaignId: string, jobId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post(`api/v1/campaigns/${campaignId}/imports/${jobId}/cancel`)
+        .json<ImportJob>(),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: importKeys.detail(campaignId, jobId) }),
+  })
+}
+
+// ---------------------------------------------------------------------------
 // useImportJob — GET /api/v1/campaigns/{campaignId}/imports/{jobId}
-// Polls every 3 s while status is not completed/failed.
+// Polls every 3 s while status is not completed/failed/cancelled.
 // ---------------------------------------------------------------------------
 export function useImportJob(
   campaignId: string,
@@ -119,7 +137,9 @@ export function useImportJob(
     refetchInterval: polling
       ? (query) => {
           const status = query.state.data?.status
-          return status === "completed" || status === "failed" ? false : 3000
+          return status === "completed" || status === "failed" || status === "cancelled"
+            ? false
+            : 3000
         }
       : false,
   })
@@ -141,7 +161,10 @@ export function useImports(campaignId: string) {
     refetchInterval: (query) => {
       const items = query.state.data?.items ?? []
       const hasActive = items.some(
-        (j) => j.status !== "completed" && j.status !== "failed",
+        (j) =>
+          j.status !== "completed" &&
+          j.status !== "failed" &&
+          j.status !== "cancelled",
       )
       return hasActive ? 3000 : false
     },

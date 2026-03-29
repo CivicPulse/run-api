@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertTriangle } from "lucide-react"
+import { CheckCircle2, AlertTriangle, Info, Sparkles } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -8,15 +8,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { ImportTemplate } from "@/types/import-job"
+import type { FieldMapping, ImportTemplate } from "@/types/import-job"
 import { SKIP_VALUE, FIELD_GROUPS, FIELD_LABELS } from "./column-mapping-constants"
 
 interface ColumnMappingTableProps {
   columns: string[]
-  suggestedMapping: Record<string, string | null>
+  suggestedMapping: Record<string, FieldMapping>
   mapping: Record<string, string>
   onMappingChange: (col: string, field: string) => void
+  formatDetected?: "l2" | "generic" | null
   templates?: ImportTemplate[]
 }
 
@@ -25,6 +27,7 @@ export function ColumnMappingTable({
   suggestedMapping,
   mapping,
   onMappingChange,
+  formatDetected,
 }: ColumnMappingTableProps) {
   if (columns.length === 0) {
     return (
@@ -41,16 +44,27 @@ export function ColumnMappingTable({
 
   return (
     <div className="space-y-2">
+      {formatDetected === "l2" && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <AlertDescription className="text-blue-800 dark:text-blue-200">
+            L2 voter file detected — columns auto-mapped
+          </AlertDescription>
+        </Alert>
+      )}
       {columns.map((col) => {
-        const suggested = suggestedMapping[col]
+        const suggestedEntry = suggestedMapping[col]
+        const suggestedField = suggestedEntry?.field ?? null
+        const matchType = suggestedEntry?.match_type ?? null
         // External mapping uses "" for skip; internally map "" ↔ SKIP_VALUE
         const externalValue = mapping[col] ?? ""
         const selectValue = externalValue === "" ? SKIP_VALUE : externalValue
-        const isChanged = externalValue !== (suggested ?? "")
-        const badge =
-          !isChanged && suggested != null ? "green" :
-          !isChanged && suggested == null ? "yellow" :
-          null
+        const isChanged = externalValue !== (suggestedField ?? "")
+
+        // Badge based on match_type when unchanged from suggestion
+        const showExactBadge = !isChanged && matchType === "exact" && suggestedField != null
+        const showFuzzyBadge = !isChanged && matchType === "fuzzy" && suggestedField != null
+        const showUnmappedBadge = !isChanged && suggestedField == null
 
         return (
           <div key={col} className="flex items-center gap-4 rounded-md border p-3">
@@ -80,10 +94,19 @@ export function ColumnMappingTable({
                   ))}
                 </SelectContent>
               </Select>
-              {badge === "green" && (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-foreground" aria-label="High confidence match" />
+              {showExactBadge && (
+                <span className="flex items-center gap-1 text-xs text-status-success-foreground" aria-label="Exact match — auto-mapped">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">auto</span>
+                </span>
               )}
-              {badge === "yellow" && (
+              {showFuzzyBadge && (
+                <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400" aria-label="Fuzzy match — review suggested">
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">fuzzy</span>
+                </span>
+              )}
+              {showUnmappedBadge && (
                 <AlertTriangle className="h-4 w-4 shrink-0 text-status-warning-foreground" aria-label="No suggestion available" />
               )}
             </div>

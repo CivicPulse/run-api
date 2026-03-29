@@ -81,6 +81,9 @@ COPY main.py ./
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
+# Worker entrypoint script (for K8s worker Deployment)
+COPY scripts/worker.py ./scripts/worker.py
+
 # Built frontend assets
 COPY --from=frontend /build/dist/ ./static/
 
