@@ -16,7 +16,10 @@ async function navigateToSeedCampaign(
   page: import("@playwright/test").Page,
 ): Promise<string> {
   await page.goto("/")
-  await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+  await page.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
   const campaignLink = page
     .getByRole("link", { name: /macon|bibb|campaign/i })
     .first()
@@ -76,7 +79,10 @@ test.describe.serial("Voter Import Lifecycle", () => {
   test("IMP-01: Import L2 voter file with auto-mapping", async ({ page }) => {
     // 1. Navigate to seed campaign and imports page
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
     await page
       .getByRole("link", { name: /macon|bibb|campaign/i })
       .first()
@@ -159,7 +165,10 @@ test.describe.serial("Voter Import Lifecycle", () => {
   test("IMP-02: Validate import progress and history", async ({ page }) => {
     // Navigate to the campaign imports history page
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
     await page
       .getByRole("link", { name: /macon|bibb|campaign/i })
       .first()
@@ -190,7 +199,10 @@ test.describe.serial("Voter Import Lifecycle", () => {
   test("IMP-03: Concurrent import prevention", async ({ page }) => {
     // Navigate to campaign
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
     await page
       .getByRole("link", { name: /macon|bibb|campaign/i })
       .first()
@@ -262,7 +274,10 @@ test.describe.serial("Voter Import Lifecycle", () => {
   test("IMP-04: Cancel an import", async ({ page }) => {
     // Navigate to campaign and imports
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
     await page
       .getByRole("link", { name: /macon|bibb|campaign/i })
       .first()
