@@ -35,7 +35,7 @@ ZITADEL_EXTERNAL_SECURE = (
 )
 _INTERNAL_SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
 ZITADEL_URL = os.environ.get("ZITADEL_URL", f"{_INTERNAL_SCHEME}://zitadel:8080")
-PAT_PATH = "/zitadel-data/pat.txt"
+PAT_PATH = os.environ.get("PAT_PATH", "/zitadel-data/pat.txt")
 _VERIFY_TLS = False
 
 PROJECT_NAME = "CivicPulse"
@@ -347,21 +347,23 @@ def create_human_user(
     data = api_call(
         client,
         "POST",
-        "/management/v1/users/human",
+        "/v2beta/users/human",
         pat,
         json={
-            "userName": username,
+            "username": username,
             "profile": {
-                "firstName": user_def["firstName"],
-                "lastName": user_def["lastName"],
+                "givenName": user_def["firstName"],
+                "familyName": user_def["lastName"],
                 "displayName": f"{user_def['firstName']} {user_def['lastName']}",
             },
             "email": {
                 "email": user_def["email"],
-                "isEmailVerified": True,
+                "isVerified": True,
             },
-            "password": user_def["password"],
-            "passwordChangeRequired": False,
+            "password": {
+                "password": user_def["password"],
+                "changeRequired": False,
+            },
         },
         allow_conflict=True,
     )

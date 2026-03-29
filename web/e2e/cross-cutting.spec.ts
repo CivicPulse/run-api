@@ -15,7 +15,11 @@ import { test, expect, type Page } from "@playwright/test"
 
 async function navigateToSeedCampaign(page: Page): Promise<string> {
   await page.goto("/")
-  await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+  // App may land at / (org dashboard), /campaigns/*, or /org/*
+  await page.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
   const campaignLink = page
     .getByRole("link", { name: /macon|bibb|campaign/i })
     .first()
@@ -242,7 +246,10 @@ test.describe.serial("Cross-Cutting -- Empty States", () => {
 
     // Navigate first to establish auth context
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Create a fresh campaign with no data
     emptyCampaignId = await createEmptyCampaignViaApi(page)

@@ -29,7 +29,10 @@ async function navigateToSeedCampaign(
   page: Page,
 ): Promise<string> {
   await page.goto("/")
-  await page.waitForURL(/\/(campaigns|org|field)/, { timeout: 15_000 })
+  await page.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
   // Volunteer may land on org page or field hub -- find campaign link
   const campaignLink = page
     .getByRole("link", { name: /macon|bibb|campaign/i })

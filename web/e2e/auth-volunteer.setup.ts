@@ -33,8 +33,22 @@ setup("authenticate as volunteer", async ({ page }) => {
   // Click Next to submit login
   await page.getByRole("button", { name: /next/i }).click()
 
+  // Handle MFA setup screen if it appears (click "skip" to bypass)
+  const mfaHeading = page.getByText(/2-Factor Setup|MFA Setup/i)
+  if (await mfaHeading.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    const skipButton = page.getByRole("button", { name: /skip/i })
+      .or(page.getByRole("link", { name: /skip/i }))
+      .or(page.locator("button:has-text('skip')"))
+      .or(page.locator("a:has-text('skip')"))
+    await skipButton.scrollIntoViewIfNeeded()
+    await skipButton.click({ timeout: 5_000 })
+  }
+
   // Wait for redirect back to the app after successful authentication
-  await page.waitForURL(/\/(campaigns|org)/, { timeout: 30_000 })
+  await page.waitForURL(
+    (url) => url.host.includes("localhost") && !url.pathname.includes("/ui/login"),
+    { timeout: 30_000 },
+  )
 
   // Verify we are authenticated
   await expect(page.locator("body")).toBeVisible()

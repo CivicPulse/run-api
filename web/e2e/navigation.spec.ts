@@ -14,7 +14,10 @@ import { test, expect, type Page } from "@playwright/test"
 
 async function navigateToSeedCampaign(page: Page): Promise<string> {
   await page.goto("/")
-  await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+  await page.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
   const campaignLink = page
     .getByRole("link", { name: /macon|bibb|campaign/i })
     .first()
@@ -180,7 +183,10 @@ test.describe.serial("Navigation", () => {
 
     // Navigate to org level by going to root
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org|\/)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Organization sidebar links (from __root.tsx):
     //   "All Campaigns" -> /

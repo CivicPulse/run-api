@@ -278,10 +278,12 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
     redirect_uris = [
         "http://localhost:5173/callback",
         "http://localhost:8000/callback",
+        "https://localhost:4173/callback",
     ]
     post_logout_uris = [
         "http://localhost:5173",
         "http://localhost:8000",
+        "https://localhost:4173",
     ]
     if ZITADEL_DOMAIN != "localhost":
         redirect_uris.extend(
