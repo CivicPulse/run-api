@@ -9,7 +9,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "html" : "list",
+  reporter: process.env.CI ? "blob" : "html",
 
   use: {
     baseURL: "https://localhost:4173",
@@ -20,27 +20,41 @@ export default defineConfig({
   },
 
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // Owner auth setup (default role)
+    { name: "setup-owner", testMatch: /auth-owner\.setup\.ts/ },
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
+        storageState: "playwright/.auth/owner.json",
       },
-      dependencies: ["setup"],
+      dependencies: ["setup-owner"],
       testIgnore: /.*\.setup\.ts/,
-      testMatch: /^(?!.*\.(orgadmin|volunteer)\.spec\.ts).*\.spec\.ts$/,
+      testMatch: /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
     },
-    { name: "setup-orgadmin", testMatch: /auth-orgadmin\.setup\.ts/ },
+    // Admin auth setup
+    { name: "setup-admin", testMatch: /auth-admin\.setup\.ts/ },
     {
-      name: "orgadmin",
+      name: "admin",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/orgadmin.json",
+        storageState: "playwright/.auth/admin.json",
       },
-      dependencies: ["setup-orgadmin"],
-      testMatch: /.*\.orgadmin\.spec\.ts/,
+      dependencies: ["setup-admin"],
+      testMatch: /.*\.admin\.spec\.ts/,
     },
+    // Manager auth setup
+    { name: "setup-manager", testMatch: /auth-manager\.setup\.ts/ },
+    {
+      name: "manager",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/manager.json",
+      },
+      dependencies: ["setup-manager"],
+      testMatch: /.*\.manager\.spec\.ts/,
+    },
+    // Volunteer auth setup
     { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
     {
       name: "volunteer",
@@ -50,6 +64,17 @@ export default defineConfig({
       },
       dependencies: ["setup-volunteer"],
       testMatch: /.*\.volunteer\.spec\.ts/,
+    },
+    // Viewer auth setup
+    { name: "setup-viewer", testMatch: /auth-viewer\.setup\.ts/ },
+    {
+      name: "viewer",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/viewer.json",
+      },
+      dependencies: ["setup-viewer"],
+      testMatch: /.*\.viewer\.spec\.ts/,
     },
   ],
 
