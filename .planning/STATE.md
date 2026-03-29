@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Testing & Validation
 status: executing
-stopped_at: Phase 60 context gathered
-last_updated: "2026-03-29T20:55:58.303Z"
-last_activity: 2026-03-29 -- Phase 60 execution started
+stopped_at: Completed 60-03-PLAN.md
+last_updated: "2026-03-29T21:41:20.826Z"
+last_activity: 2026-03-29
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 18
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 60 (e2e-field-mode-cross-cutting-validation) — EXECUTING
-Plan: 02 of 03 (01, 02 complete)
-Status: Executing Phase 60
-Last activity: 2026-03-29 — Completed 60-01 and 60-02 (Wave 1)
+Plan: 3 of 03 (01, 02 complete)
+Status: Ready to execute
+Last activity: 2026-03-29
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Last activity: 2026-03-29 — Completed 60-01 and 60-02 (Wave 1)
 | v1.4 | 9 | 26 | 3 days |
 | v1.5 | 10 | 36 | 2 days |
 | Phase 59 P03 | 4min | 2 tasks | 2 files |
+| Phase 60 P03 | 30min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -58,6 +59,8 @@ Decisions logged in PROJECT.md Key Decisions table.
 - [Phase 59]: Turfs created via API with GeoJSON polygons per D-01; GeoJSON import tested via setInputFiles per D-02; turf verification is list-based per D-03
 - 60-02: Used settings/general page for form guard test (has full ConfirmDialog vs /campaigns/new which lacks dialog rendering)
 - 60-02: Rate limiting test gracefully skips if 429 not triggered locally
+- [Phase 60]: Switched create-e2e-users.py to v2beta API for proper user activation without forced password change
+- [Phase 60]: Created org-level ZITADEL login policy without MFA for E2E testing; added MFA skip handling to auth setup scripts
 
 ### Blockers/Concerns
 
@@ -79,5 +82,5 @@ Decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last activity: 2026-03-29 - Completed Wave 1 (60-01, 60-02)
-Stopped at: Executing phase 60, starting wave 2
-Resume file: .planning/phases/60-e2e-field-mode-cross-cutting-validation/60-CONTEXT.md
+Stopped at: Completed 60-03-PLAN.md
+Resume file: None

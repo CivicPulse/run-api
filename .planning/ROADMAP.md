@@ -132,7 +132,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 57: Test Infrastructure** - ZITADEL test user provisioning, multi-role Playwright auth, CI sharding (completed 2026-03-29)
 - [x] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests (completed 2026-03-29)
 - [x] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests (completed 2026-03-29)
-- [ ] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass
+- [x] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass (completed 2026-03-29)
 - [ ] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite
 
 ## Phase Details
@@ -210,11 +210,11 @@ Plans:
   2. Cross-cutting spec exercises navigation, empty states, loading skeletons, error boundaries, form guards, and toasts
   3. Running the full E2E suite against local Docker Compose produces a 100% pass rate with zero failures
   4. All bugs discovered during the test-fix-retest cycle are fixed and verified by re-running the affected specs
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 60-01-PLAN.md — Field mode E2E spec (volunteer hub, canvassing, phone banking, offline, tour)
-- [ ] 60-02-PLAN.md — Cross-cutting and navigation E2E specs (form guards, toasts, empty states, error boundary, sidebar nav)
-- [ ] 60-03-PLAN.md — Full suite validation run, bug tracking, old spec cleanup, human verification
+- [x] 60-01-PLAN.md — Field mode E2E spec (volunteer hub, canvassing, phone banking, offline, tour)
+- [x] 60-02-PLAN.md — Cross-cutting and navigation E2E specs (form guards, toasts, empty states, error boundary, sidebar nav)
+- [x] 60-03-PLAN.md — Full suite validation run, bug tracking, old spec cleanup, human verification
 **UI hint**: yes
 
 ### Phase 61: AI Production Testing Instructions
@@ -244,5 +244,5 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 57. Test Infrastructure | v1.7 | 2/2 | Complete    | 2026-03-29 |
 | 58. E2E Core Tests | v1.7 | 4/4 | Complete    | 2026-03-29 |
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
-| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 1/3 | In Progress | - |
+| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 3/3 | Complete   | 2026-03-29 |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
