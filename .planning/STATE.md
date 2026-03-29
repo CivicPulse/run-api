@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-27 — Milestone v1.6 started
+Phase: 59-e2e-advanced-tests
+Plan: 04 of N
+Status: Executing
+Last activity: 2026-03-29 — Completed 59-04 (Call Lists/DNC + Phone Banking E2E specs)
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Last activity: 2026-03-27 — Milestone v1.6 started
 
 Decisions logged in PROJECT.md Key Decisions table.
 
+- **59-04:** DNC bulk add via API for headless reliability; active calling tested as UI flow only (no telephony); session activated via API before call screen testing
+
 ### Blockers/Concerns
 
 (None — milestone archived)
@@ -71,6 +73,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
-Stopped at: Completed quick-260327-o38
+Last activity: 2026-03-29 - Completed 59-04 call lists/DNC and phone banking E2E specs
+Stopped at: Completed 59-04-PLAN.md
 Resume file: None
