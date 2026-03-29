@@ -174,9 +174,9 @@ Plans:
   2. Org management spec exercises dashboard, campaign creation, archive/unarchive, settings, and member management end-to-end
   3. Campaign settings spec exercises CRUD, member invite/remove, ownership transfer, and campaign deletion
   4. Voter CRUD specs create, edit, and delete 20+ voters, manage contacts across 20 voters, assign/remove tags, create/edit/delete notes, and manage static/dynamic voter lists
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 Plans:
-- [ ] 58-01-PLAN.md — RBAC permission-checklist specs (5 role files: viewer, volunteer, manager, admin, owner)
+- [x] 58-01-PLAN.md — RBAC permission-checklist specs (5 role files: viewer, volunteer, manager, admin, owner)
 - [ ] 58-02-PLAN.md — Org management and campaign settings lifecycle specs
 - [ ] 58-03-PLAN.md — Voter CRUD (20+ voters) and voter contacts specs
 - [ ] 58-04-PLAN.md — Voter tags, voter notes, and voter lists specs
@@ -231,7 +231,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56. Feature Gap Builds | v1.7 | 3/3 | Complete    | 2026-03-29 |
 | 57. Test Infrastructure | v1.7 | 2/2 | Complete    | 2026-03-29 |
-| 58. E2E Core Tests | v1.7 | 0/4 | Not started | - |
+| 58. E2E Core Tests | v1.7 | 1/4 | In Progress|  |
 | 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
