@@ -137,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days. v1.7 milestone started 2026-03-29.
+v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days. v1.7 milestone started 2026-03-29. Phase 56 complete — note edit/delete and walk list rename features added, unblocking downstream E2E tests.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
