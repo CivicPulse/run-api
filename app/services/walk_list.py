@@ -139,6 +139,40 @@ class WalkListService:
         )
         return result.scalar_one_or_none()
 
+    async def rename_walk_list(
+        self,
+        session: AsyncSession,
+        walk_list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
+        name: str,
+    ) -> WalkList:
+        """Rename a walk list.
+
+        Args:
+            session: Async database session.
+            walk_list_id: Walk list UUID.
+            campaign_id: Campaign UUID (for scoping).
+            name: New name for the walk list.
+
+        Returns:
+            The updated WalkList.
+
+        Raises:
+            ValueError: If walk list not found in the given campaign.
+        """
+        result = await session.execute(
+            select(WalkList).where(
+                WalkList.id == walk_list_id,
+                WalkList.campaign_id == campaign_id,
+            )
+        )
+        walk_list = result.scalar_one_or_none()
+        if walk_list is None:
+            raise ValueError(f"Walk list {walk_list_id} not found")
+        walk_list.name = name
+        await session.flush()
+        return walk_list
+
     async def list_walk_lists(
         self,
         session: AsyncSession,
