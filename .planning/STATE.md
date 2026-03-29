@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 60 (e2e-field-mode-cross-cutting-validation) — EXECUTING
-Plan: 01 (complete)
+Plan: 02 of 03 (01, 02 complete)
 Status: Executing Phase 60
-Last activity: 2026-03-29 — Completed 60-01 field mode E2E spec
+Last activity: 2026-03-29 — Completed 60-01 and 60-02 (Wave 1)
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Last activity: 2026-03-29 — Completed 60-01 field mode E2E spec
 Decisions logged in PROJECT.md Key Decisions table.
 
 - [Phase 59]: Turfs created via API with GeoJSON polygons per D-01; GeoJSON import tested via setInputFiles per D-02; turf verification is list-based per D-03
+- 60-02: Used settings/general page for form guard test (has full ConfirmDialog vs /campaigns/new which lacks dialog rendering)
+- 60-02: Rate limiting test gracefully skips if 429 not triggered locally
 
 ### Blockers/Concerns
 
@@ -76,6 +78,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last activity: 2026-03-29 - Completed 60-01 field mode E2E spec (16 test cases)
-Stopped at: Executing phase 60 wave 1
+Last activity: 2026-03-29 - Completed Wave 1 (60-01, 60-02)
+Stopped at: Executing phase 60, starting wave 2
 Resume file: .planning/phases/60-e2e-field-mode-cross-cutting-validation/60-CONTEXT.md
