@@ -73,14 +73,60 @@ jobs:
             --build-arg GIT_SHA=${{ github.sha }} \
             --build-arg BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  integration-e2e:
-    name: Integration & E2E Tests
+  integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
     needs: [lint, test, frontend]
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v4
+
+      - name: Start services
+        run: docker compose up -d --build --wait
+        env:
+          ZITADEL_TLS_MODE: disabled
+          ZITADEL_EXTERNAL_SECURE: "false"
+          ZITADEL_DOMAIN: localhost
+          DISABLE_TLS: "true"
+
+      - name: Wait for ZITADEL readiness
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/debug/ready && echo "ZITADEL ready" && exit 0
+            echo "Waiting for ZITADEL... ($i/60)"
+            sleep 2
+          done
+          echo "ZITADEL did not become ready" && exit 1
+
+      - name: Run migrations and seed
+        run: |
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app alembic upgrade head"
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
+
+      - name: Install Python test dependencies
+        run: uv sync --frozen --dev
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration/ -m integration -x -q
+        env:
+          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5433/run_api"
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  e2e-tests:
+    name: E2E Tests (Shard ${{ matrix.shardIndex }}/4)
+    runs-on: ubuntu-latest
+    needs: [lint, test, frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -112,14 +158,6 @@ jobs:
         run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"
 
-      - name: Install Python test dependencies
-        run: uv sync --frozen --dev
-
-      - name: Run integration tests
-        run: uv run pytest tests/integration/ -m integration -x -q
-        env:
-          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5433/run_api"
-
       - name: Install Playwright browsers
         working-directory: web
         run: |
@@ -128,31 +166,69 @@ jobs:
 
       - name: Run E2E tests
         working-directory: web
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
-          E2E_USERNAME: admin@localhost
-          E2E_PASSWORD: "Admin1234!"
-          E2E_ORGADMIN_USERNAME: e2e-orgadmin@localhost
-          E2E_ORGADMIN_PASSWORD: "E2eOrgAdmin1!"
-          E2E_VOLUNTEER_USERNAME: e2e-volunteer@localhost
-          E2E_VOLUNTEER_PASSWORD: "E2eVolunteer1!"
+          E2E_OWNER_USERNAME: owner1@localhost
+          E2E_OWNER_PASSWORD: "Owner1234!"
+          E2E_ADMIN_USERNAME: admin1@localhost
+          E2E_ADMIN_PASSWORD: "Admin1234!"
+          E2E_MANAGER_USERNAME: manager1@localhost
+          E2E_MANAGER_PASSWORD: "Manager1234!"
+          E2E_VOLUNTEER_USERNAME: volunteer1@localhost
+          E2E_VOLUNTEER_PASSWORD: "Volunteer1234!"
+          E2E_VIEWER_USERNAME: viewer1@localhost
+          E2E_VIEWER_PASSWORD: "Viewer1234!"
 
-      - name: Upload Playwright report
+      - name: Upload blob report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
-          path: web/playwright-report/
-          retention-days: 7
+          name: blob-report-${{ matrix.shardIndex }}
+          path: web/blob-report
+          retention-days: 1
 
       - name: Upload Playwright traces
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.shardIndex }}
           path: web/test-results/
           retention-days: 7
 
       - name: Stop services
         if: always()
         run: docker compose down -v
+
+  merge-e2e-reports:
+    name: Merge E2E Reports
+    if: ${{ !cancelled() }}
+    needs: [e2e-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright
+        working-directory: web
+        run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: web/all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge reports
+        working-directory: web
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7
