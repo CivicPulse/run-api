@@ -49,6 +49,26 @@ export function useArchiveCampaign() {
   })
 }
 
+export function useUnarchiveCampaign() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (campaignId: string) =>
+      api
+        .patch(`api/v1/campaigns/${campaignId}`, {
+          json: { status: "active" },
+        })
+        .json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["org", "campaigns"],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["campaigns"],
+      })
+    },
+  })
+}
+
 export function useUpdateOrg() {
   const queryClient = useQueryClient()
   return useMutation({

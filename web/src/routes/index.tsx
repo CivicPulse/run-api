@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthStore } from "@/stores/authStore"
-import { useOrgCampaigns, useArchiveCampaign } from "@/hooks/useOrg"
+import { useOrgCampaigns, useArchiveCampaign, useUnarchiveCampaign } from "@/hooks/useOrg"
 import { useOrgPermissions } from "@/hooks/useOrgPermissions"
 import { RequireOrgRole } from "@/components/shared/RequireOrgRole"
 import { CampaignCard } from "@/components/org/CampaignCard"
@@ -32,6 +32,7 @@ function OrgDashboard() {
   // Archive state
   const [archiveTarget, setArchiveTarget] = useState<OrgCampaign | null>(null)
   const archiveMutation = useArchiveCampaign()
+  const unarchiveMutation = useUnarchiveCampaign()
   const [archivedOpen, setArchivedOpen] = useState(false)
 
   // Calculate total member count from campaign data
@@ -43,6 +44,14 @@ function OrgDashboard() {
       onSuccess: () => {
         toast(`${archiveTarget.name} archived.`)
         setArchiveTarget(null)
+      },
+    })
+  }
+
+  const handleUnarchive = (campaign: OrgCampaign) => {
+    unarchiveMutation.mutate(campaign.id, {
+      onSuccess: () => {
+        toast(`${campaign.name} restored.`)
       },
     })
   }
@@ -115,6 +124,7 @@ function OrgDashboard() {
                       key={campaign.id}
                       campaign={campaign}
                       onArchive={setArchiveTarget}
+                      onUnarchive={handleUnarchive}
                     />
                   ))}
                 </div>
