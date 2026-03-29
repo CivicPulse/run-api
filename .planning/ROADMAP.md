@@ -210,11 +210,13 @@ Plans:
   2. Cross-cutting spec exercises navigation, empty states, loading skeletons, error boundaries, form guards, and toasts
   3. Running the full E2E suite against local Docker Compose produces a 100% pass rate with zero failures
   4. All bugs discovered during the test-fix-retest cycle are fixed and verified by re-running the affected specs
-**Plans:** 3/3 plans complete
+**Plans:** 5 plans (3 complete + 2 gap closure)
 Plans:
 - [x] 60-01-PLAN.md — Field mode E2E spec (volunteer hub, canvassing, phone banking, offline, tour)
 - [x] 60-02-PLAN.md — Cross-cutting and navigation E2E specs (form guards, toasts, empty states, error boundary, sidebar nav)
 - [x] 60-03-PLAN.md — Full suite validation run, bug tracking, old spec cleanup, human verification
+- [ ] 60-04-PLAN.md — Gap closure: fix broken waitForURL pattern in 35 pre-existing spec files
+- [ ] 60-05-PLAN.md — Gap closure: phone banking test investigation, full suite validation, REQUIREMENTS.md update
 **UI hint**: yes
 
 ### Phase 61: AI Production Testing Instructions
@@ -244,5 +246,5 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 57. Test Infrastructure | v1.7 | 2/2 | Complete    | 2026-03-29 |
 | 58. E2E Core Tests | v1.7 | 4/4 | Complete    | 2026-03-29 |
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
-| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 3/3 | Complete   | 2026-03-29 |
+| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 3/5 | In Progress | - |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
