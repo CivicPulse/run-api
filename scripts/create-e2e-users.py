@@ -1,11 +1,15 @@
-"""Create additional ZITADEL users for E2E role-gated testing.
+"""Create ZITADEL users for E2E role-gated testing.
 
-Creates two human users with specific project roles:
-  - e2e-orgadmin@localhost  (admin role)   -> org_admin in DB
-  - e2e-volunteer@localhost (volunteer role)
+Creates 15 human users across 5 campaign roles (3 per role):
+  - owner1-3@localhost   (owner role)      -> org_owner in DB + campaign owner
+  - admin1-3@localhost   (admin role)      -> org_admin in DB + campaign admin
+  - manager1-3@localhost (manager role)    -> campaign manager (no org membership)
+  - volunteer1-3@localhost (volunteer role) -> campaign volunteer (no org membership)
+  - viewer1-3@localhost  (viewer role)     -> campaign viewer (no org membership)
 
-Also inserts organization_members rows so the org_admin user has
-DB-level org membership. Idempotent — safe to run multiple times.
+Each user gets ZITADEL user creation, project role grant, optional
+organization membership (owner/admin only), and campaign membership
+(all users). Idempotent — safe to run multiple times.
 
 Usage:
   docker compose exec api bash -c \
@@ -41,23 +45,160 @@ PROJECT_NAME = "CivicPulse"
 # ---------------------------------------------------------------------------
 
 E2E_USERS = [
+    # Owners (3) — org_owner + campaign owner
     {
-        "userName": "e2e-orgadmin@localhost",
-        "password": "E2eOrgAdmin1!",
-        "firstName": "E2E",
-        "lastName": "OrgAdmin",
-        "email": "e2e-orgadmin@localhost",
-        "projectRole": "admin",
-        "orgRole": "org_admin",
+        "userName": "owner1@localhost",
+        "password": "Owner1234!",
+        "firstName": "Test",
+        "lastName": "Owner1",
+        "email": "owner1@localhost",
+        "projectRole": "owner",
+        "orgRole": "org_owner",
+        "campaignRole": "owner",
     },
     {
-        "userName": "e2e-volunteer@localhost",
-        "password": "E2eVolunteer1!",
-        "firstName": "E2E",
-        "lastName": "Volunteer",
-        "email": "e2e-volunteer@localhost",
+        "userName": "owner2@localhost",
+        "password": "Owner1234!",
+        "firstName": "Test",
+        "lastName": "Owner2",
+        "email": "owner2@localhost",
+        "projectRole": "owner",
+        "orgRole": "org_owner",
+        "campaignRole": "owner",
+    },
+    {
+        "userName": "owner3@localhost",
+        "password": "Owner1234!",
+        "firstName": "Test",
+        "lastName": "Owner3",
+        "email": "owner3@localhost",
+        "projectRole": "owner",
+        "orgRole": "org_owner",
+        "campaignRole": "owner",
+    },
+    # Admins (3) — org_admin + campaign admin
+    {
+        "userName": "admin1@localhost",
+        "password": "Admin1234!",
+        "firstName": "Test",
+        "lastName": "Admin1",
+        "email": "admin1@localhost",
+        "projectRole": "admin",
+        "orgRole": "org_admin",
+        "campaignRole": "admin",
+    },
+    {
+        "userName": "admin2@localhost",
+        "password": "Admin1234!",
+        "firstName": "Test",
+        "lastName": "Admin2",
+        "email": "admin2@localhost",
+        "projectRole": "admin",
+        "orgRole": "org_admin",
+        "campaignRole": "admin",
+    },
+    {
+        "userName": "admin3@localhost",
+        "password": "Admin1234!",
+        "firstName": "Test",
+        "lastName": "Admin3",
+        "email": "admin3@localhost",
+        "projectRole": "admin",
+        "orgRole": "org_admin",
+        "campaignRole": "admin",
+    },
+    # Managers (3) — campaign manager only (no org membership)
+    {
+        "userName": "manager1@localhost",
+        "password": "Manager1234!",
+        "firstName": "Test",
+        "lastName": "Manager1",
+        "email": "manager1@localhost",
+        "projectRole": "manager",
+        "orgRole": None,
+        "campaignRole": "manager",
+    },
+    {
+        "userName": "manager2@localhost",
+        "password": "Manager1234!",
+        "firstName": "Test",
+        "lastName": "Manager2",
+        "email": "manager2@localhost",
+        "projectRole": "manager",
+        "orgRole": None,
+        "campaignRole": "manager",
+    },
+    {
+        "userName": "manager3@localhost",
+        "password": "Manager1234!",
+        "firstName": "Test",
+        "lastName": "Manager3",
+        "email": "manager3@localhost",
+        "projectRole": "manager",
+        "orgRole": None,
+        "campaignRole": "manager",
+    },
+    # Volunteers (3) — campaign volunteer only (no org membership)
+    {
+        "userName": "volunteer1@localhost",
+        "password": "Volunteer1234!",
+        "firstName": "Test",
+        "lastName": "Volunteer1",
+        "email": "volunteer1@localhost",
         "projectRole": "volunteer",
         "orgRole": None,
+        "campaignRole": "volunteer",
+    },
+    {
+        "userName": "volunteer2@localhost",
+        "password": "Volunteer1234!",
+        "firstName": "Test",
+        "lastName": "Volunteer2",
+        "email": "volunteer2@localhost",
+        "projectRole": "volunteer",
+        "orgRole": None,
+        "campaignRole": "volunteer",
+    },
+    {
+        "userName": "volunteer3@localhost",
+        "password": "Volunteer1234!",
+        "firstName": "Test",
+        "lastName": "Volunteer3",
+        "email": "volunteer3@localhost",
+        "projectRole": "volunteer",
+        "orgRole": None,
+        "campaignRole": "volunteer",
+    },
+    # Viewers (3) — campaign viewer only (no org membership)
+    {
+        "userName": "viewer1@localhost",
+        "password": "Viewer1234!",
+        "firstName": "Test",
+        "lastName": "Viewer1",
+        "email": "viewer1@localhost",
+        "projectRole": "viewer",
+        "orgRole": None,
+        "campaignRole": "viewer",
+    },
+    {
+        "userName": "viewer2@localhost",
+        "password": "Viewer1234!",
+        "firstName": "Test",
+        "lastName": "Viewer2",
+        "email": "viewer2@localhost",
+        "projectRole": "viewer",
+        "orgRole": None,
+        "campaignRole": "viewer",
+    },
+    {
+        "userName": "viewer3@localhost",
+        "password": "Viewer1234!",
+        "firstName": "Test",
+        "lastName": "Viewer3",
+        "email": "viewer3@localhost",
+        "projectRole": "viewer",
+        "orgRole": None,
+        "campaignRole": "viewer",
     },
 ]
 
@@ -266,7 +407,12 @@ def grant_project_role(
 # ---------------------------------------------------------------------------
 
 
-def ensure_org_membership(user_zitadel_id: str, org_role: str) -> None:
+def ensure_org_membership(
+    user_zitadel_id: str,
+    org_role: str,
+    display_name: str,
+    email: str,
+) -> None:
     """Insert an organization_members row via psycopg2.
 
     The user.id in our DB is the ZITADEL subject ID (user_zitadel_id).
@@ -294,7 +440,7 @@ def ensure_org_membership(user_zitadel_id: str, org_role: str) -> None:
             VALUES (%s, %s, %s)
             ON CONFLICT (id) DO NOTHING
             """,
-            (user_zitadel_id, f"E2E {org_role}", f"e2e-{org_role}@localhost"),
+            (user_zitadel_id, display_name, email),
         )
 
         # Find the first organization
@@ -325,6 +471,45 @@ def ensure_org_membership(user_zitadel_id: str, org_role: str) -> None:
         print(f"  WARNING: Could not insert org membership: {exc}", file=sys.stderr)
 
 
+def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None:
+    """Insert campaign_members row with explicit role for the seed campaign."""
+    import psycopg2  # noqa: PLC0415
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        print("  WARNING: DATABASE_URL not set, skipping campaign membership insert")
+        return
+
+    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+    try:
+        conn = psycopg2.connect(sync_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            INSERT INTO campaign_members (id, user_id, campaign_id, role)
+            VALUES (gen_random_uuid(), %s, (SELECT id FROM campaigns LIMIT 1), %s)
+            ON CONFLICT ON CONSTRAINT uq_user_campaign DO UPDATE
+            SET role = EXCLUDED.role
+            """,
+            (user_zitadel_id, campaign_role),
+        )
+        print(
+            f"  Ensured campaign membership: "
+            f"user={user_zitadel_id}, role={campaign_role}"
+        )
+
+        cur.close()
+        conn.close()
+    except Exception as exc:
+        print(
+            f"  WARNING: Could not insert campaign membership: {exc}",
+            file=sys.stderr,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -332,7 +517,7 @@ def ensure_org_membership(user_zitadel_id: str, org_role: str) -> None:
 
 def main() -> None:
     print("=" * 60)
-    print("Create E2E Test Users")
+    print("Create E2E Test Users (15 users across 5 roles)")
     print("=" * 60)
     print(f"  ZITADEL URL: {ZITADEL_URL}")
 
@@ -347,9 +532,9 @@ def main() -> None:
         project_id = find_project_id(client, pat)
         print(f"  Project ID: {project_id}")
 
-        for user_def in E2E_USERS:
+        for i, user_def in enumerate(E2E_USERS, 1):
             username = user_def["userName"]
-            print(f"\nStep 3: Creating user '{username}'...")
+            print(f"\nUser {i}/{len(E2E_USERS)}: Creating '{username}'...")
             user_id = create_human_user(client, pat, user_def)
 
             print(f"  Granting project role '{user_def['projectRole']}'...")
@@ -357,15 +542,30 @@ def main() -> None:
                 client, pat, project_id, user_id, user_def["projectRole"]
             )
 
-            # Insert org membership if needed
+            # Insert org membership if needed (owner/admin only)
             if user_def["orgRole"]:
+                display_name = f"{user_def['firstName']} {user_def['lastName']}"
                 print(f"  Ensuring org membership (role={user_def['orgRole']})...")
-                ensure_org_membership(user_id, user_def["orgRole"])
+                ensure_org_membership(
+                    user_id,
+                    user_def["orgRole"],
+                    display_name,
+                    user_def["email"],
+                )
+
+            # Insert campaign membership for ALL users
+            print(
+                f"  Ensuring campaign membership (role={user_def['campaignRole']})..."
+            )
+            ensure_campaign_membership(user_id, user_def["campaignRole"])
 
     print("\n" + "=" * 60)
     print("E2E users created successfully!")
-    print("  e2e-orgadmin@localhost  / E2eOrgAdmin1!  (admin + org_admin)")
-    print("  e2e-volunteer@localhost / E2eVolunteer1! (volunteer)")
+    print("  Owners:     owner1-3@localhost     / Owner1234!")
+    print("  Admins:     admin1-3@localhost     / Admin1234!")
+    print("  Managers:   manager1-3@localhost   / Manager1234!")
+    print("  Volunteers: volunteer1-3@localhost / Volunteer1234!")
+    print("  Viewers:    viewer1-3@localhost    / Viewer1234!")
     print("=" * 60)
 
 
