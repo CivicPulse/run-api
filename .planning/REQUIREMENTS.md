@@ -9,9 +9,9 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### Feature Gaps
 
-- [ ] **FEAT-01**: User can edit a voter interaction note (type="note" only) via the voter detail History tab
-- [ ] **FEAT-02**: User can delete a voter interaction note (type="note" only) via the voter detail History tab
-- [ ] **FEAT-03**: User can rename a walk list from the canvassing page or walk list detail page
+- [x] **FEAT-01**: User can edit a voter interaction note (type="note" only) via the voter detail History tab
+- [x] **FEAT-02**: User can delete a voter interaction note (type="note" only) via the voter detail History tab
+- [x] **FEAT-03**: User can rename a walk list from the canvassing page or walk list detail page
 
 ### Test Infrastructure
 
@@ -77,9 +77,9 @@ None deferred for this milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEAT-01 | Phase 56 | Pending |
-| FEAT-02 | Phase 56 | Pending |
-| FEAT-03 | Phase 56 | Pending |
+| FEAT-01 | Phase 56 | Complete |
+| FEAT-02 | Phase 56 | Complete |
+| FEAT-03 | Phase 56 | Complete |
 | INFRA-01 | Phase 57 | Pending |
 | INFRA-02 | Phase 57 | Pending |
 | INFRA-03 | Phase 57 | Pending |

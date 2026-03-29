@@ -145,9 +145,9 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
   1. User can click an edit action on a voter interaction note (type="note") in the History tab and save updated text
   2. User can click a delete action on a voter interaction note (type="note") in the History tab and confirm removal
   3. User can rename a walk list from the canvassing page or walk list detail page via an inline edit or modal
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
-- [ ] 56-01-PLAN.md — Backend API + service + tests for note edit/delete and walk list rename
+- [x] 56-01-PLAN.md — Backend API + service + tests for note edit/delete and walk list rename
 - [ ] 56-02-PLAN.md — Frontend hooks + UI for note edit/delete and walk list rename
 - [ ] 56-03-PLAN.md — Visual verification checkpoint
 **UI hint**: yes
@@ -221,7 +221,7 @@ Phases execute in numeric order: 56 → 57 → 58 → 59 → 60 → 61
 | 30-38 | v1.4 | 26/26 | Complete | 2026-03-17 |
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
-| 56. Feature Gap Builds | v1.7 | 0/3 | Not started | - |
+| 56. Feature Gap Builds | v1.7 | 1/3 | In Progress|  |
 | 57. Test Infrastructure | v1.7 | 0/? | Not started | - |
 | 58. E2E Core Tests | v1.7 | 0/? | Not started | - |
 | 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
