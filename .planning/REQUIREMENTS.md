@@ -77,42 +77,42 @@ None deferred for this milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEAT-01 | — | Pending |
-| FEAT-02 | — | Pending |
-| FEAT-03 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| E2E-01 | — | Pending |
-| E2E-02 | — | Pending |
-| E2E-03 | — | Pending |
-| E2E-04 | — | Pending |
-| E2E-05 | — | Pending |
-| E2E-06 | — | Pending |
-| E2E-07 | — | Pending |
-| E2E-08 | — | Pending |
-| E2E-09 | — | Pending |
-| E2E-10 | — | Pending |
-| E2E-11 | — | Pending |
-| E2E-12 | — | Pending |
-| E2E-13 | — | Pending |
-| E2E-14 | — | Pending |
-| E2E-15 | — | Pending |
-| E2E-16 | — | Pending |
-| E2E-17 | — | Pending |
-| E2E-18 | — | Pending |
-| E2E-19 | — | Pending |
-| E2E-20 | — | Pending |
-| E2E-21 | — | Pending |
-| VAL-01 | — | Pending |
-| VAL-02 | — | Pending |
-| PROD-01 | — | Pending |
+| FEAT-01 | Phase 56 | Pending |
+| FEAT-02 | Phase 56 | Pending |
+| FEAT-03 | Phase 56 | Pending |
+| INFRA-01 | Phase 57 | Pending |
+| INFRA-02 | Phase 57 | Pending |
+| INFRA-03 | Phase 57 | Pending |
+| E2E-01 | Phase 58 | Pending |
+| E2E-02 | Phase 58 | Pending |
+| E2E-03 | Phase 58 | Pending |
+| E2E-04 | Phase 59 | Pending |
+| E2E-05 | Phase 59 | Pending |
+| E2E-06 | Phase 59 | Pending |
+| E2E-07 | Phase 58 | Pending |
+| E2E-08 | Phase 58 | Pending |
+| E2E-09 | Phase 58 | Pending |
+| E2E-10 | Phase 58 | Pending |
+| E2E-11 | Phase 58 | Pending |
+| E2E-12 | Phase 59 | Pending |
+| E2E-13 | Phase 59 | Pending |
+| E2E-14 | Phase 59 | Pending |
+| E2E-15 | Phase 59 | Pending |
+| E2E-16 | Phase 59 | Pending |
+| E2E-17 | Phase 59 | Pending |
+| E2E-18 | Phase 59 | Pending |
+| E2E-19 | Phase 59 | Pending |
+| E2E-20 | Phase 60 | Pending |
+| E2E-21 | Phase 60 | Pending |
+| VAL-01 | Phase 60 | Pending |
+| VAL-02 | Phase 60 | Pending |
+| PROD-01 | Phase 61 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30
+- Mapped to phases: 30
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-29 after initial definition*
+*Last updated: 2026-03-29 after roadmap creation*

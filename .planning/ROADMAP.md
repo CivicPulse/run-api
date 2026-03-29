@@ -9,6 +9,7 @@
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
+- 🚧 **v1.7 Testing & Validation** — Phases 56-61 (in progress)
 
 ## Phases
 
@@ -123,7 +124,89 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v1.7 Testing & Validation (In Progress)
+
+**Milestone Goal:** Build a comprehensive E2E testing pipeline -- plain English test plan, automated Playwright tests against local dev, AI-driven prod test instructions, and iterative fix cycles until fully validated.
+
+- [ ] **Phase 56: Feature Gap Builds** - Voter note edit/delete API+UI and walk list rename UI
+- [ ] **Phase 57: Test Infrastructure** - ZITADEL test user provisioning, multi-role Playwright auth, CI sharding
+- [ ] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests
+- [ ] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests
+- [ ] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass
+- [ ] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite
+
+## Phase Details
+
+### Phase 56: Feature Gap Builds
+**Goal**: Users can edit and delete voter interaction notes and rename walk lists, unblocking downstream E2E test cases
+**Depends on**: Nothing (first phase of v1.7)
+**Requirements**: FEAT-01, FEAT-02, FEAT-03
+**Success Criteria** (what must be TRUE):
+  1. User can click an edit action on a voter interaction note (type="note") in the History tab and save updated text
+  2. User can click a delete action on a voter interaction note (type="note") in the History tab and confirm removal
+  3. User can rename a walk list from the canvassing page or walk list detail page via an inline edit or modal
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 57: Test Infrastructure
+**Goal**: The test suite has 15 ZITADEL users across all 5 campaign roles with pre-configured Playwright auth contexts and CI support
+**Depends on**: Phase 56
+**Requirements**: INFRA-01, INFRA-02, INFRA-03
+**Success Criteria** (what must be TRUE):
+  1. Running the provisioning script creates 15 ZITADEL test users (3 per role) with verified emails that can log in immediately without password change
+  2. Playwright config defines 5+ auth projects with per-role storageState files so any spec can run as owner, admin, manager, volunteer, or viewer
+  3. CI workflow runs the full E2E suite with sharding, and a clean run completes without infrastructure failures
+**Plans**: TBD
+
+### Phase 58: E2E Core Tests
+**Goal**: Automated tests validate the RBAC permission matrix, org/campaign management, and all voter entity CRUD lifecycles
+**Depends on**: Phase 57
+**Requirements**: E2E-01, E2E-02, E2E-03, E2E-07, E2E-08, E2E-09, E2E-10, E2E-11
+**Success Criteria** (what must be TRUE):
+  1. Running the RBAC spec confirms each of the 5 roles can access permitted actions and is blocked from unpermitted ones
+  2. Org management spec exercises dashboard, campaign creation, archive/unarchive, settings, and member management end-to-end
+  3. Campaign settings spec exercises CRUD, member invite/remove, ownership transfer, and campaign deletion
+  4. Voter CRUD specs create, edit, and delete 20+ voters, manage contacts across 20 voters, assign/remove tags, create/edit/delete notes, and manage static/dynamic voter lists
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 59: E2E Advanced Tests
+**Goal**: Automated tests validate voter import with L2 auto-mapping, all 23 filter dimensions, and every operational domain (canvassing, phone banking, surveys, volunteers, shifts)
+**Depends on**: Phase 58
+**Requirements**: E2E-04, E2E-05, E2E-06, E2E-12, E2E-13, E2E-14, E2E-15, E2E-16, E2E-17, E2E-18, E2E-19
+**Success Criteria** (what must be TRUE):
+  1. Import spec exercises L2 upload with auto-mapping, tracks progress to completion, verifies cancellation, and confirms concurrent import prevention
+  2. Data validation spec verifies imported voter data accuracy against the source CSV for 40+ voters
+  3. Filter spec exercises all 23 filter dimensions individually and in multi-filter combinations
+  4. Operations specs cover turf CRUD with GeoJSON, walk list lifecycle, call list and DNC management, phone bank sessions with active calling, survey script management, volunteer registration/roster, volunteer tags/availability, and shift scheduling with check-in/out
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 60: E2E Field Mode, Cross-Cutting & Validation
+**Goal**: All E2E tests pass at 100% against local Docker Compose, with field mode and cross-cutting UI behaviors fully covered and all discovered bugs fixed
+**Depends on**: Phase 59
+**Requirements**: E2E-20, E2E-21, VAL-01, VAL-02
+**Success Criteria** (what must be TRUE):
+  1. Field mode spec exercises volunteer hub, canvassing wizard, phone banking mode, offline queue sync, and onboarding tour
+  2. Cross-cutting spec exercises navigation, empty states, loading skeletons, error boundaries, form guards, and toasts
+  3. Running the full E2E suite against local Docker Compose produces a 100% pass rate with zero failures
+  4. All bugs discovered during the test-fix-retest cycle are fixed and verified by re-running the affected specs
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 61: AI Production Testing Instructions
+**Goal**: A production-specific testing instruction document exists that an AI agent can follow to validate the deployed application
+**Depends on**: Phase 60
+**Requirements**: PROD-01
+**Success Criteria** (what must be TRUE):
+  1. The document covers production-specific URLs, authentication flow, and data considerations that differ from local dev
+  2. The document references the validated local test plan sections and maps them to production equivalents
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 56 → 57 → 58 → 59 → 60 → 61
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -134,3 +217,9 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 | 30-38 | v1.4 | 26/26 | Complete | 2026-03-17 |
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
+| 56. Feature Gap Builds | v1.7 | 0/? | Not started | - |
+| 57. Test Infrastructure | v1.7 | 0/? | Not started | - |
+| 58. E2E Core Tests | v1.7 | 0/? | Not started | - |
+| 59. E2E Advanced Tests | v1.7 | 0/? | Not started | - |
+| 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 0/? | Not started | - |
+| 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
