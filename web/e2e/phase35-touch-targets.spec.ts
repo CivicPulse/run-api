@@ -398,6 +398,11 @@ async function assertTouchTargets(page: Page, route: string) {
     if (!box) continue
 
     if (box.width < MIN_TARGET_SIZE || box.height < MIN_TARGET_SIZE) {
+      // Skip sr-only elements (e.g. "Skip to main content" links) that are
+      // intentionally 1x1px and only visible on focus — they expand to full
+      // size via focus:not-sr-only when activated by keyboard.
+      if (box.width <= 1 && box.height <= 1) continue
+
       const label =
         (await el.getAttribute("aria-label")) ||
         (await el.textContent()) ||

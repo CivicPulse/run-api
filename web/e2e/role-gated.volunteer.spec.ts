@@ -1,25 +1,11 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
 test.describe("Role-gated UI: volunteer user", () => {
   test("volunteer type toggle is not visible for non-manager on register page", async ({
     page,
   }) => {
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-
-    // Navigate into the seed campaign
-    const campaignLink = page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-
-    // Extract campaign ID and navigate to volunteer register page
-    const url = page.url()
-    const campaignId = url.match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
+    const campaignId = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${campaignId}/volunteers/register`)
 
     // Wait for the register page to load

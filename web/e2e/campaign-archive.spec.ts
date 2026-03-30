@@ -1,24 +1,40 @@
 import { test, expect } from "@playwright/test"
+import { apiPost } from "./helpers"
 
 test.describe("Campaign archive flow", () => {
   test("archive campaign moves card to archived section", async ({ page }) => {
-    // Navigate to org dashboard
+    test.setTimeout(60_000)
+
+    // Navigate to org dashboard and wait for auth
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
       { timeout: 15_000 },
     )
+    await page.waitForLoadState("networkidle")
 
-    // Identify the first active campaign card's name for later assertion
-    const campaignCard = page.locator("[class*='grid'] .block").first()
-    await expect(campaignCard).toBeVisible({ timeout: 10_000 })
+    // Create a dedicated throwaway campaign for this test
+    const campaignName = `E2E Archive ${Date.now()}`
+    const resp = await apiPost(page, "/api/v1/campaigns", {
+      name: campaignName,
+      type: "local",
+    })
+    expect(resp.ok()).toBeTruthy()
 
-    // Get campaign name from the card title
-    const campaignName = await campaignCard
-      .getByRole("heading")
-      .first()
-      .textContent()
-    expect(campaignName).toBeTruthy()
+    // Navigate to home to pick up the new campaign in the list
+    // Use TanStack Query invalidation by navigating away and back
+    await page.goto("/org/settings")
+    await expect(page.getByText(/organization/i).first()).toBeVisible({ timeout: 10_000 })
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    // Wait for the campaign list to render — look for the new campaign
+    await expect(
+      page.getByText(campaignName).first(),
+    ).toBeVisible({ timeout: 15_000 })
+
+    // Find the campaign card link that contains our campaign name
+    const campaignCard = page.locator("a").filter({ hasText: campaignName }).first()
 
     // Open the three-dot menu on the campaign card
     const actionsButton = campaignCard.getByRole("button", {
@@ -51,8 +67,9 @@ test.describe("Campaign archive flow", () => {
     await archivedToggle.click()
 
     // Verify the campaign name appears in the archived section
-    await expect(page.getByText(campaignName!.trim())).toBeVisible({
-      timeout: 5_000,
-    })
+    // Use getByRole("link") to avoid matching the toast notification text
+    await expect(
+      page.getByRole("link", { name: new RegExp(campaignName) }).first(),
+    ).toBeVisible({ timeout: 5_000 })
   })
 })

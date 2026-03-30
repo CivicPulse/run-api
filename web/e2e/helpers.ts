@@ -13,8 +13,7 @@ export async function navigateToSeedCampaign(page: Page): Promise<string> {
 
 /**
  * Get the seed campaign ID without navigating into it.
- * Navigates to org dashboard, extracts campaign ID from the card link href,
- * then returns it for use in direct page.goto() calls.
+ * Uses the /me/campaigns API to find the seed campaign by name.
  */
 export async function getSeedCampaignId(page: Page): Promise<string> {
   // First, ensure we're authenticated by navigating to the app
@@ -27,27 +26,32 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
   )
   await page.waitForLoadState("networkidle")
 
-  // Try to find the campaign ID via API first (more reliable than clicking cards)
-  try {
-    const token = await getAuthToken(page)
-    const resp = await page.request.get("/api/v1/campaigns", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (resp.ok()) {
-      const data = await resp.json()
-      const campaigns = data.items ?? data
-      const seed = campaigns.find((c: { name?: string }) =>
-        /macon.?bibb/i.test(c.name ?? ""),
-      )
-      if (seed?.id) return seed.id
+  // Try to find the campaign ID via API (retries for parallel resilience).
+  // Use /me/campaigns (flat list of user's memberships) instead of /campaigns
+  // (paginated, newest first) to avoid E2E test campaigns pushing seed off page 1.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const token = await getAuthToken(page)
+      const resp = await page.request.get("/api/v1/me/campaigns", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (resp.ok()) {
+        const campaigns = await resp.json()
+        const seed = campaigns.find(
+          (c: { campaign_name?: string; name?: string }) =>
+            /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
+        )
+        if (seed?.campaign_id ?? seed?.id) return seed.campaign_id ?? seed.id
+      }
+    } catch {
+      // Retry after a short delay on failure
+      if (attempt < 2) await page.waitForTimeout(1000)
     }
-  } catch {
-    // Fall through to UI-based approach
   }
 
-  // Fallback: try to find the campaign link on the page (may require scrolling)
+  // Fallback: try to find the campaign link on the page
   const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
+    .getByRole("link", { name: /macon-bibb/i })
     .first()
   await campaignLink.waitFor({ state: "visible", timeout: 30_000 })
   const href = await campaignLink.getAttribute("href")

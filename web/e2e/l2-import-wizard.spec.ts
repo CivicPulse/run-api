@@ -70,17 +70,9 @@ async function setupApiMocks(
     const url = route.request().url()
     const method = route.request().method()
 
-    // Public config — /config/public
+    // Public config — let mockConfigEndpoint handle it (registered separately)
     if (url.includes("/config/public")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          zitadel_issuer: "https://auth.civpulse.org",
-          zitadel_client_id: "363437283614916644",
-          zitadel_project_id: "363437283614916644",
-        }),
-      })
+      return route.fallback()
     }
 
     // User info — /me

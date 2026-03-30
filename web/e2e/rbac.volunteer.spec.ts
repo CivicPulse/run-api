@@ -13,13 +13,25 @@ import { getSeedCampaignId } from "./helpers"
  * does not fully cover.
  */
 test.describe("RBAC: volunteer permissions", () => {
+  // Increase timeout to handle slow auth initialization under parallel load
+  test.setTimeout(60_000)
+
   let campaignId: string
 
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page) {
     campaignId = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForLoadState("networkidle")
+    // Wait for auth to finish (root layout shows "Loading..." during OIDC init)
+    const loadingText = page.getByText("Loading...", { exact: true })
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const isLoading = await loadingText.isVisible().catch(() => false)
+      if (isLoading) {
+        await loadingText.waitFor({ state: "hidden", timeout: 20_000 }).catch(() => {})
+        break
+      }
+      await page.waitForTimeout(200)
+    }
   }
 
   test("voter detail: Add Interaction IS visible, Edit button is NOT visible", async ({
@@ -119,9 +131,10 @@ test.describe("RBAC: volunteer permissions", () => {
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
     await page.waitForURL(/roster/, { timeout: 10_000 })
 
+    // Wait for the Volunteer Roster heading to confirm data loaded
     await expect(
-      page.getByText(/roster/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+      page.getByRole("heading", { name: /volunteer roster/i }),
+    ).toBeVisible({ timeout: 15_000 })
 
     // Manager-gated row actions should not be visible
     const editVolunteerButton = page.getByRole("button", {

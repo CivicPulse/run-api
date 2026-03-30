@@ -30,7 +30,7 @@ export function RouteErrorBoundary({ error, reset }: RouteErrorProps) {
             An unexpected error occurred. Please try again.
           </p>
           {import.meta.env.DEV && error?.message && (
-            <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 text-left text-xs">
+            <pre tabIndex={0} className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 text-left text-xs">
               {error.message}
             </pre>
           )}

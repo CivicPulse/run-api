@@ -1,19 +1,10 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign } from "./helpers"
 
 test.describe("Volunteer signup", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to app root and wait for authenticated redirect
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-
-    // Click into the seed campaign
-    const campaignLink = page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-    await campaignLink.click()
+    // Navigate to seed campaign via API-first approach
+    await navigateToSeedCampaign(page)
 
     // Navigate to volunteers section
     const volunteersNav = page

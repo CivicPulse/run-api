@@ -4,12 +4,13 @@ import { getSeedCampaignId } from "./helpers"
 let CAMPAIGN_ID: string
 
 
-/** Wait for a table to fully load (visible + no skeleton rows) */
+/** Wait for a table to fully load (visible + no skeleton rows + headers rendered) */
 async function waitForTable(page: import("@playwright/test").Page) {
   const table = page.getByRole("table").first()
-  await expect(table).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator(".animate-pulse").first()).toBeHidden({ timeout: 10_000 }).catch(() => {})
-  await page.waitForTimeout(500)
+  await expect(table).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator(".animate-pulse").first()).toBeHidden({ timeout: 15_000 }).catch(() => {})
+  // Wait for table headers to stabilize after data loads
+  await page.waitForTimeout(1000)
 }
 
 /** Count sortable columns (th[aria-sort]) via JS to avoid Playwright strict-mode issues */
@@ -31,36 +32,42 @@ async function auditSortButtons(page: import("@playwright/test").Page) {
   })
 }
 
-// ─── BUG: Voters table — sorting infrastructure exists but sort UI never renders ─
+// ─── FIXED: Voters table — sorting now works ───────────────────────────────
 //
-// Root cause: voters/index.tsx columns use `id:` without `accessorKey` or `accessorFn`.
-// In @tanstack/react-table v8, getCanSort() requires `!!column.accessorFn` (RowSorting.ts:482).
-// Columns without an accessor never get aria-sort, cursor-pointer, or sort icons.
-// The full sorting wiring (SORT_COLUMN_MAP, handleSortingChange, API params) is dead code.
+// Previous bug: columns used `id:` without `accessorKey` or `accessorFn`.
+// Fix: columns now use `accessorFn`, and sorting/onSortingChange are wired to DataTable.
 
-test.describe("Voters table — sort buttons missing (BUG)", () => {
-  test("Name, Party, City, Age columns have enableSorting but no sort UI renders", async ({ page }) => {
+test.describe("Voters table — sorting works", () => {
+  test("Name, Party, City, Age columns render sort UI and respond to clicks", async ({ page }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await waitForTable(page)
 
-    // These 4 columns have enableSorting: true but use `id:` without accessorKey
+    // 4 columns have enableSorting: true with accessorFn
     const sortableCount = await countSortableHeaders(page)
 
-    // BUG: should be 4 sortable columns, but 0 render because columns lack accessorFn
     test.info().annotations.push({
-      type: "bug",
-      description: `Voters table: ${sortableCount} sortable columns found (expected 0 due to missing accessorKey bug)`,
+      type: "info",
+      description: `Voters table: ${sortableCount} sortable columns found (expected 4)`,
     })
 
-    // Currently: zero sortable columns render (bug confirmed)
-    expect(sortableCount).toBe(0)
+    expect(sortableCount).toBe(4)
 
-    // Document the fix needed:
-    // Change each column from { id: "name", ... } to { accessorKey: "name", ... }
-    // or add accessorFn to enable sorting.
+    // Click the first sortable header and verify aria-sort changes.
+    // The voters DataTable uses manualSorting (server-side), so we need to
+    // click via Playwright (not page.evaluate) to allow React to re-render.
+    const firstSortableHeader = page.locator("th[aria-sort]").first()
+    const beforeSort = await firstSortableHeader.getAttribute("aria-sort")
+    expect(beforeSort).toBe("none")
 
-    await page.screenshot({ path: "screenshots/table-sort/voters-no-sort-buttons.png" })
+    await firstSortableHeader.click()
+    // Wait for React to re-render with the new sort state
+    await page.waitForTimeout(500)
+
+    const afterSort = await firstSortableHeader.getAttribute("aria-sort")
+    expect(afterSort).toBe("ascending")
+
+    await page.screenshot({ path: "screenshots/table-sort/voters-sort-working.png" })
   })
 })
 

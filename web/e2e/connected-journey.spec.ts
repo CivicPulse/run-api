@@ -102,9 +102,12 @@ test.describe.serial("Connected user journey", () => {
       // Fill turf name
       await page.getByLabel(/^name$/i).first().fill("Journey Test Turf")
 
-      // Fill boundary GeoJSON directly (TurfForm has a simple textarea, not a toggle panel)
+      // Open the GeoJSON editor panel (boundary textarea is hidden by default)
+      await page.getByRole("button", { name: /edit as geojson/i }).click()
+
+      // Fill boundary GeoJSON in the now-visible textarea
       await page
-        .getByLabel(/boundary/i)
+        .locator("#boundary")
         .fill(
           '{"type":"Polygon","coordinates":[[[-83.65,32.84],[-83.64,32.84],[-83.64,32.85],[-83.65,32.85],[-83.65,32.84]]]}'
         )

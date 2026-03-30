@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign } from "./helpers"
 
 test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => {
   let campaignId: string
@@ -6,21 +7,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
   test.setTimeout(60_000)
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-    await page.waitForLoadState("networkidle")
-
-    // Navigate into the seed campaign
-    const campaignLink = page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-    await campaignLink.waitFor({ state: "visible", timeout: 30_000 })
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-    campaignId = page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
+    campaignId = await navigateToSeedCampaign(page)
   })
 
   test("turf name tooltip shows sizing guidance", async ({ page }) => {

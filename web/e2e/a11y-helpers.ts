@@ -16,7 +16,8 @@ export const OIDC_STORAGE_KEY = `oidc.user:${MOCK_AUTHORITY}:${MOCK_CLIENT_ID}`
 /**
  * Return a JSON-serialised mock OIDC user object compatible with oidc-client-ts.
  */
-export function mockOidcUser(overrides?: { sub?: string; name?: string; email?: string }): string {
+export function mockOidcUser(overrides?: { sub?: string; name?: string; email?: string; role?: string }): string {
+  const role = overrides?.role ?? "owner"
   return JSON.stringify({
     id_token: "mock-id-token",
     session_state: null,
@@ -28,6 +29,9 @@ export function mockOidcUser(overrides?: { sub?: string; name?: string; email?: 
       sub: overrides?.sub ?? "mock-user-a11y",
       name: overrides?.name ?? "Test Admin",
       email: overrides?.email ?? "admin@test.com",
+      [`urn:zitadel:iam:org:project:${MOCK_PROJECT_ID}:roles`]: {
+        [role]: { "mock-org": "mock-org" },
+      },
     },
     expires_at: Math.floor(Date.now() / 1000) + 3600,
   })

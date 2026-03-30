@@ -6,16 +6,29 @@ test.setTimeout(90_000)
 
 let CAMPAIGN_ID: string
 
+/** Navigate to a campaign sub-page, re-navigating if auth redirects away. */
+async function gotoAndWaitForAuth(page: Page, path: string): Promise<void> {
+  await page.goto(path)
+  await page.waitForLoadState("networkidle")
+  // If the app redirected away for auth, wait briefly and retry
+  if (!page.url().includes("/campaigns/")) {
+    await page.waitForTimeout(2000)
+    await page.goto(path)
+    await page.waitForLoadState("networkidle")
+  }
+}
 
 /** Navigate to the voters index and return the voterId of the first row by clicking it. */
 async function getFirstVoterId(page: Page): Promise<string | null> {
-  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-  await page.waitForLoadState("networkidle")
+  await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters`)
+
+  // Wait for the "All Voters" heading to confirm the page loaded
+  const heading = page.getByRole("heading", { name: /all voters/i })
+  await heading.waitFor({ state: "visible", timeout: 20_000 })
+
   // Click the first voter name link in the table to navigate to their detail page
   const firstLink = page.locator('table a[href*="/voters/"]').first()
-  const count = await firstLink.count()
-  if (count === 0) return null
-  const href = await firstLink.getAttribute("href")
+  await firstLink.waitFor({ state: "visible", timeout: 20_000 })
   await firstLink.click()
   await page.waitForURL(/\/voters\/[^/]+$/, { timeout: 10_000 })
   await page.waitForLoadState("networkidle")
@@ -41,16 +54,18 @@ test.describe("VOTR-01: Voter contacts tab renders phone/email/address sections"
 
     // The voter detail page must show the tab bar
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
-    await expect(contactsTab).toBeVisible({ timeout: 8000 })
+    await expect(contactsTab).toBeVisible({ timeout: 15_000 })
     await contactsTab.click()
-    await page.waitForTimeout(500)
+
+    // Wait for contacts data to load — the section headings appear after loading.
+    // Use exact match to avoid matching the empty state headings (e.g. "No phone numbers").
+    const phoneHeading = page.getByRole("heading", { name: "Phone Numbers", exact: true })
+    await expect(phoneHeading).toBeVisible({ timeout: 10_000 })
     await page.screenshot({ path: "test-results/p13-01-contacts-tab.png" })
 
     // ContactsTab renders three h3 sections
-    const bodyText = await page.locator("body").innerText()
-    expect(bodyText).toMatch(/Phone Numbers/i)
-    expect(bodyText).toMatch(/Email Addresses/i)
-    expect(bodyText).toMatch(/Mailing Addresses/i)
+    await expect(page.getByRole("heading", { name: "Email Addresses", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Mailing Addresses", exact: true })).toBeVisible()
   })
 })
 
@@ -64,14 +79,19 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
     await getFirstVoterId(page)
 
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
-    await expect(contactsTab).toBeVisible({ timeout: 8000 })
+    await expect(contactsTab).toBeVisible({ timeout: 15_000 })
     await contactsTab.click()
     await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-02-contacts-stars.png" })
 
-    // Either star buttons appear (contacts exist) OR empty states are shown
+    // Wait for contacts data to load — skeletons appear first, then either
+    // star buttons (contacts exist) or empty states (no contacts).
+    // Use a combined locator that waits for either condition.
     const starButtons = page.locator('button[aria-label*="primary"], button[aria-label*="Primary"]')
     const emptyStates = page.getByText(/no phone numbers|no email addresses|no mailing addresses/i)
+
+    // Wait until at least one star button or one empty state message appears
+    await expect(starButtons.first().or(emptyStates.first())).toBeVisible({ timeout: 10_000 })
 
     const starCount = await starButtons.count()
     const emptyCount = await emptyStates.count()
@@ -90,17 +110,16 @@ test.describe("VOTR-03: Create new voter — New Voter sheet opens with form fie
   test("clicking + New Voter opens Sheet with First Name, Last Name, Party fields", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters`)
+
+    // "All Voters" heading must be present — allow extra time for auth
+    const heading = page.getByRole("heading", { name: /all voters/i })
+    await expect(heading).toBeVisible({ timeout: 20_000 })
     await page.screenshot({ path: "test-results/p13-03-voters-index.png" })
 
-    // "All Voters" heading must be present
-    const heading = page.getByRole("heading", { name: /all voters/i })
-    await expect(heading).toBeVisible({ timeout: 8000 })
-
-    // "+ New Voter" button must be visible (manager-gated but tester is owner)
+    // "+ New Voter" button must be visible (manager-gated but tester is owner; role API may load slowly)
     const newVoterBtn = page.getByRole("button", { name: /\+ new voter/i })
-    await expect(newVoterBtn).toBeVisible({ timeout: 8000 })
+    await expect(newVoterBtn).toBeVisible({ timeout: 15_000 })
     await newVoterBtn.click()
 
     // Sheet title "New Voter" must appear
@@ -130,14 +149,14 @@ test.describe("VOTR-04: Edit existing voter — Edit button visible on voter det
     await getFirstVoterId(page)
     await page.screenshot({ path: "test-results/p13-04-voter-detail.png" })
 
-    // Voter name h2 must be visible
-    const voterName = page.locator("h2").first()
+    // Voter name h1 must be visible (the detail page uses h1 for the name)
+    const voterName = page.locator("h1").first()
     await expect(voterName).toBeVisible({ timeout: 8000 })
 
-    // Edit button must be visible (RequireRole manager — tester is owner so it should be visible)
+    // Edit button must be visible (RequireRole manager — tester is owner; role API may still be loading)
     // The button contains "Edit" text alongside a Pencil icon
     const editBtn = page.getByRole("button", { name: /edit/i }).first()
-    await expect(editBtn).toBeVisible({ timeout: 8000 })
+    await expect(editBtn).toBeVisible({ timeout: 15_000 })
 
     // Tabs must be visible: Overview, Contacts, Tags, History
     await expect(page.getByRole("tab", { name: /overview/i })).toBeVisible()
@@ -162,17 +181,16 @@ test.describe("VOTR-05: Campaign tags page — DataTable with + New Tag button",
   test("navigating to /voters/tags shows Campaign Tags heading, DataTable, and + New Tag button", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/tags`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters/tags`)
+
+    // "Campaign Tags" heading must be visible — allow extra time for auth redirect
+    const tagsHeading = page.getByRole("heading", { name: /campaign tags/i })
+    await expect(tagsHeading).toBeVisible({ timeout: 20_000 })
     await page.screenshot({ path: "test-results/p13-05-tags-index.png" })
 
-    // "Campaign Tags" heading must be visible
-    const tagsHeading = page.getByRole("heading", { name: /campaign tags/i })
-    await expect(tagsHeading).toBeVisible({ timeout: 8000 })
-
-    // "+ New Tag" button (RequireRole manager — tester is owner)
+    // "+ New Tag" button (RequireRole manager — tester is owner; role API may still be loading)
     const newTagBtn = page.getByRole("button", { name: /\+ new tag/i })
-    await expect(newTagBtn).toBeVisible({ timeout: 8000 })
+    await expect(newTagBtn).toBeVisible({ timeout: 15_000 })
     await page.screenshot({ path: "test-results/p13-05-tags-table.png" })
 
     // Sidebar nav contains "Tags" link (voters layout)
@@ -211,9 +229,9 @@ test.describe("VOTR-06: Tags tab on voter detail — tag chips with remove and a
       "Should show tag chips with remove buttons or empty state"
     ).toBe(true)
 
-    // "Add Tag" section must be visible (RequireRole manager — tester is owner)
+    // "Add Tag" section must be visible (RequireRole manager — tester is owner; role API may still be loading)
     const addTagSection = page.getByText(/add tag/i).first()
-    await expect(addTagSection).toBeVisible({ timeout: 5000 })
+    await expect(addTagSection).toBeVisible({ timeout: 15_000 })
 
     await page.screenshot({ path: "test-results/p13-06-tags-tab-state.png" })
   })
@@ -226,17 +244,16 @@ test.describe("VOTR-07: Voter lists index — DataTable renders with + New List 
   test("navigating to /voters/lists shows Voter Lists heading, DataTable, and + New List button", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters/lists`)
+
+    // "Voter Lists" heading must be visible — allow extra time for auth
+    const listsHeading = page.getByRole("heading", { name: /voter lists/i })
+    await expect(listsHeading).toBeVisible({ timeout: 15_000 })
     await page.screenshot({ path: "test-results/p13-07-lists-index.png" })
 
-    // "Voter Lists" heading must be visible
-    const listsHeading = page.getByRole("heading", { name: /voter lists/i })
-    await expect(listsHeading).toBeVisible({ timeout: 8000 })
-
-    // "+ New List" button (RequireRole manager — tester is owner)
+    // "+ New List" button (RequireRole manager — tester is owner; role API may still be loading)
     const newListBtn = page.getByRole("button", { name: /\+ new list/i })
-    await expect(newListBtn).toBeVisible({ timeout: 8000 })
+    await expect(newListBtn).toBeVisible({ timeout: 15_000 })
 
     // Sidebar nav "Lists" link visible
     const listsNavLink = page.getByRole("link", { name: /^lists$/i })
@@ -253,12 +270,11 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
   test("clicking + New List → Dynamic List card renders VoterFilterBuilder with Party/Age Range sections", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters/lists`)
 
-    // Click "+ New List"
+    // Click "+ New List" (RequireRole manager — role API may still be loading)
     const newListBtn = page.getByRole("button", { name: /\+ new list/i })
-    await expect(newListBtn).toBeVisible({ timeout: 8000 })
+    await expect(newListBtn).toBeVisible({ timeout: 15_000 })
     await newListBtn.click()
 
     // Dialog "New Voter List" opens with type selector step
@@ -279,7 +295,7 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
 
     // VoterFilterBuilder renders — check for Party and Age Range labels
     const partyLabel = page.getByText(/^party$/i).first()
-    await expect(partyLabel).toBeVisible({ timeout: 5000 })
+    await expect(partyLabel).toBeVisible({ timeout: 10_000 })
 
     const ageRangeLabel = page.getByText(/age range/i).first()
     await expect(ageRangeLabel).toBeVisible()
@@ -295,20 +311,22 @@ test.describe("VOTR-09: List detail page renders member DataTable", () => {
   test("clicking a list navigates to detail page with list name, type badge, and member DataTable", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters/lists`)
+
+    // Wait for the "Voter Lists" heading to confirm page has loaded
+    const listsHeading = page.getByRole("heading", { name: /voter lists/i })
+    await expect(listsHeading).toBeVisible({ timeout: 15_000 })
     await page.screenshot({ path: "test-results/p13-09-lists-index-for-detail.png" })
 
-    // Check if any list links exist in the table
+    // Wait for the DataTable to finish loading — either list links or empty state
     const listLinks = page.locator('table a[href*="/voters/lists/"]')
+    const emptyState = page.getByText(/no voter lists yet/i)
+    await expect(listLinks.first().or(emptyState.first())).toBeVisible({ timeout: 10_000 })
+
     const linkCount = await listLinks.count()
 
     if (linkCount === 0) {
-      // No lists exist — verify DataTable is rendered with empty state
-      const bodyText = await page.locator("body").innerText()
-      const hasEmptyState = bodyText.toLowerCase().includes("no voter lists") ||
-        bodyText.toLowerCase().includes("voter lists")
-      expect(hasEmptyState, "Should show voter lists page (empty or with data)").toBe(true)
+      // No lists exist — empty state verified above
       console.log("VOTR-09: No lists exist — skipping detail navigation")
       return
     }
@@ -350,8 +368,11 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
   test("clicking Filters button toggles filter panel open with Party/Age Range/City sections", async ({
     page,
   }) => {
-    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForLoadState("networkidle")
+    await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters`)
+
+    // Wait for the "All Voters" heading to confirm page has loaded
+    const heading = page.getByRole("heading", { name: /all voters/i })
+    await expect(heading).toBeVisible({ timeout: 20_000 })
     await page.screenshot({ path: "test-results/p13-10-voters-before-filter.png" })
 
     // "Filters" toggle button must be visible
@@ -363,19 +384,20 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
     await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-10-filter-panel-open.png" })
 
-    // VoterFilterBuilder renders with primary dimensions
+    // VoterFilterBuilder renders with accordion sections.
+    // The Demographics section is expanded by default and contains Party and Age Range.
     const partyLabel = page.getByText(/^party$/i).first()
     await expect(partyLabel).toBeVisible({ timeout: 5000 })
 
     const ageRangeLabel = page.getByText(/age range/i).first()
     await expect(ageRangeLabel).toBeVisible()
 
-    const cityLabel = page.getByText(/^city$/i).first()
-    await expect(cityLabel).toBeVisible()
+    // Additional accordion sections exist (collapsed by default): Location, Political, Scoring, Advanced
+    const locationTrigger = page.getByRole("button", { name: /location/i })
+    await expect(locationTrigger).toBeVisible()
 
-    // "More filters" toggle button is present
-    const moreFiltersBtn = page.getByRole("button", { name: /more filters/i })
-    await expect(moreFiltersBtn).toBeVisible()
+    const politicalTrigger = page.getByRole("button", { name: /political/i })
+    await expect(politicalTrigger).toBeVisible()
 
     await page.screenshot({ path: "test-results/p13-10-filter-panel-sections.png" })
   })
@@ -392,9 +414,12 @@ test.describe("VOTR-11: History tab — textarea and Add Note button for interac
 
     // Switch to History tab
     const historyTab = page.getByRole("tab", { name: /history/i })
-    await expect(historyTab).toBeVisible({ timeout: 8000 })
+    await expect(historyTab).toBeVisible({ timeout: 15_000 })
     await historyTab.click()
-    await page.waitForTimeout(500)
+
+    // Wait for the "Add a Note" heading to confirm history tab content loaded
+    const addNoteHeading = page.getByText(/add a note/i).first()
+    await expect(addNoteHeading).toBeVisible({ timeout: 10_000 })
     await page.screenshot({ path: "test-results/p13-11-history-tab.png" })
 
     // Textarea with placeholder "Add a note..."
@@ -408,9 +433,8 @@ test.describe("VOTR-11: History tab — textarea and Add Note button for interac
     // Add Note button disabled when textarea empty
     await expect(addNoteBtn).toBeDisabled()
 
-    // "Add a Note" heading visible
-    const addNoteHeading = page.getByText(/add a note/i).first()
-    await expect(addNoteHeading).toBeVisible()
+    // "Add a Note" heading visible (already verified above during load wait)
+    await expect(page.getByText(/add a note/i).first()).toBeVisible()
 
     await page.screenshot({ path: "test-results/p13-11-history-form.png" })
   })

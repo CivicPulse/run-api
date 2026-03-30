@@ -297,6 +297,14 @@ test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
+    // Dismiss driver.js tour overlay if it appears (auto-starts after 200ms)
+    const tourDialog = page.getByRole("dialog")
+    if (await tourDialog.isVisible({ timeout: 1_500 }).catch(() => false)) {
+      await tourDialog.getByRole("button", { name: "Close" }).click()
+      // Wait for the overlay to fully disappear
+      await expect(page.locator(".driver-active")).toBeHidden({ timeout: 2_000 })
+    }
+
     // Open the door list via the "All Doors" button
     const listButton = page.getByRole("button", { name: /All Doors/i })
     await listButton.click()
@@ -336,51 +344,53 @@ test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
 // ── Tests: A11Y-03 — WCAG AA Color Contrast ──────────────────────────────────
 
 test.describe("A11Y-03: WCAG AA contrast — propensity badge text colors", () => {
-  test("high propensity voter badge uses text-green-800 class (not text-green-700)", async ({ page }) => {
+  test("high propensity voter badge uses semantic success token (text-status-success-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Alice Smith has propensity_combined: 85 → should render bg-green-100 text-green-800
-    // VoterCard renders a Badge with the propensity color class
-    const greenBadge = page.locator(".text-green-800").first()
-    await expect(greenBadge).toBeVisible()
+    // Alice Smith has propensity_combined: 85 → getPropensityDisplay returns
+    // bg-status-success text-status-success-foreground (AA-compliant semantic tokens)
+    const successBadge = page.locator(".text-status-success-foreground").first()
+    await expect(successBadge).toBeVisible()
 
-    // Ensure the old non-AA class is NOT present on any propensity badge
+    // Ensure the old non-AA Tailwind color class is NOT present
     const badBadge = page.locator(".text-green-700")
     await expect(badBadge).toHaveCount(0)
   })
 
-  test("medium propensity voter badge uses text-yellow-800 class (not text-yellow-700)", async ({ page }) => {
+  test("medium propensity voter badge uses semantic warning token (text-status-warning-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Bob Johnson (we2) has propensity_combined: 45 → yellow range → text-yellow-800
+    // Bob Johnson (we2) has propensity_combined: 45 → getPropensityDisplay returns
+    // bg-status-warning text-status-warning-foreground (AA-compliant semantic tokens)
     // Both voters at 123 Elm St are rendered in the same household card
-    const yellowBadge = page.locator(".text-yellow-800").first()
-    await expect(yellowBadge).toBeVisible()
+    const warningBadge = page.locator(".text-status-warning-foreground").first()
+    await expect(warningBadge).toBeVisible()
 
-    // Ensure old class is gone
+    // Ensure old Tailwind color class is gone
     const badBadge = page.locator(".text-yellow-700")
     await expect(badBadge).toHaveCount(0)
   })
 
-  test("low propensity voter badge uses text-red-800 class (not text-red-700)", async ({ page }) => {
+  test("low propensity voter badge uses semantic error token (text-status-error-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Carol Davis (we3) has propensity_combined: 20 → red range → text-red-800
+    // Carol Davis (we3) has propensity_combined: 20 → getPropensityDisplay returns
+    // bg-status-error text-status-error-foreground (AA-compliant semantic tokens)
     // She's the second household; navigate to see her
     const skipButton = page.getByRole("button", { name: /skip/i }).first()
     if (await skipButton.isVisible()) {
       await skipButton.click()
     }
 
-    // After advancing, Carol Davis card should appear with red badge
-    const redBadge = page.locator(".text-red-800").first()
-    await expect(redBadge).toBeVisible({ timeout: 5_000 })
+    // After advancing, Carol Davis card should appear with error badge
+    const errorBadge = page.locator(".text-status-error-foreground").first()
+    await expect(errorBadge).toBeVisible({ timeout: 5_000 })
 
     const badBadge = page.locator(".text-red-700")
     await expect(badBadge).toHaveCount(0)
