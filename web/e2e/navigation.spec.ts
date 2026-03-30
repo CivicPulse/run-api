@@ -27,18 +27,23 @@ async function navigateToSeedCampaign(page: Page): Promise<string> {
 }
 
 /**
- * Open the sidebar. The app defaults to sidebar collapsed (defaultOpen={false}).
- * Click the sidebar trigger button to open it.
+ * Ensure the sidebar is visible. The app defaults to sidebar open
+ * (defaultOpen={true}). data-state lives on the outer wrapper div
+ * (data-slot="sidebar"), not the inner [data-sidebar="sidebar"] div.
+ * On desktop, the sidebar should already be expanded.
  */
 async function openSidebar(page: Page): Promise<void> {
-  const trigger = page.getByRole("button", { name: /open sidebar/i })
-  // Only click if the sidebar is not already open
-  const sidebar = page.locator("[data-sidebar='sidebar']")
-  const isOpen = await sidebar.getAttribute("data-state").catch(() => null)
-  if (isOpen !== "expanded") {
+  // The outer wrapper carries data-state="expanded" | "collapsed"
+  const wrapper = page.locator("[data-slot='sidebar'][data-state]")
+  const state = await wrapper.getAttribute("data-state").catch(() => null)
+  if (state === "expanded") return
+
+  // If collapsed, click the trigger to expand
+  const trigger = page.getByRole("button", { name: /toggle sidebar/i })
+  const isVisible = await trigger.isVisible().catch(() => false)
+  if (isVisible) {
     await trigger.click()
-    // Wait for the sidebar to expand
-    await expect(sidebar).toHaveAttribute("data-state", "expanded", {
+    await expect(wrapper).toHaveAttribute("data-state", "expanded", {
       timeout: 3_000,
     })
   }

@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import CampaignNotFoundError
@@ -207,7 +208,17 @@ async def ensure_user_synced(
             )
 
     if orgs or campaigns:
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Race condition: another concurrent request already inserted
+            # the same org_member or campaign_member row. Safe to ignore.
+            await db.rollback()
+            logger.debug(
+                "IntegrityError in ensure_user_synced for user {} "
+                "(concurrent insert race condition, safe to ignore)",
+                user.id,
+            )
 
     return local_user
 

@@ -55,16 +55,17 @@ async function createCampaignViaWizard(
   // Step 3: Invite Team -- intercept the POST
   const responsePromise = page.waitForResponse(
     (resp) =>
-      resp.url().includes("api/v1/campaigns") &&
-      resp.request().method() === "POST"
+      resp.url().includes("/api/v1/campaigns") &&
+      resp.request().method() === "POST" &&
+      !resp.url().includes("/search") &&
+      !resp.url().includes("/members"),
+    { timeout: 15_000 },
   )
 
-  if (options?.skipInvites !== false) {
-    // Click "Create Campaign" without selecting members
-    await page.getByRole("button", { name: /create campaign/i }).click()
-  } else {
-    await page.getByRole("button", { name: /create campaign/i }).click()
-  }
+  // Click "Create Campaign" (no members selected)
+  const createBtn = page.getByRole("button", { name: /^Create Campaign$/i })
+  await expect(createBtn).toBeEnabled({ timeout: 5_000 })
+  await createBtn.click()
 
   const response = await responsePromise
   expect(response.status()).toBeLessThan(300)
@@ -133,7 +134,7 @@ test.describe.serial(
       await saveResponsePromise
 
       // Verify toast/success
-      await expect(page.getByText(/campaign updated/i)).toBeVisible({
+      await expect(page.getByText(/campaign updated/i).first()).toBeVisible({
         timeout: 10_000,
       })
 
@@ -153,7 +154,7 @@ test.describe.serial(
       await revertResponsePromise
 
       // Verify toast
-      await expect(page.getByText(/campaign updated/i)).toBeVisible({
+      await expect(page.getByText(/campaign updated/i).first()).toBeVisible({
         timeout: 10_000,
       })
     })
@@ -375,11 +376,13 @@ test.describe.serial("Campaign settings: ownership transfer", () => {
 
     // Add admin1@localhost as an admin member to this campaign via API
     // This is necessary so they appear in the ownership transfer dropdown
+    const token = await getAuthToken(page)
     const adminUserId = await getUserId(page, "admin1@localhost")
     const addResponse = await page.request.post(
-      `/api/v1/org/campaigns/${campaignId}/members`,
+      `/api/v1/campaigns/${campaignId}/members`,
       {
         data: { user_id: adminUserId, role: "admin" },
+        headers: { Authorization: `Bearer ${token}` },
       }
     )
     expect(addResponse.status()).toBeLessThan(400)
@@ -440,13 +443,34 @@ test.describe.serial("Campaign settings: ownership transfer", () => {
   })
 })
 
+// ─── Helper: extract Bearer token from page's auth store ─────────────────────
+
+async function getAuthToken(page: import("@playwright/test").Page): Promise<string> {
+  return page.evaluate(() => {
+    // Find the OIDC user object in localStorage (key format: oidc.user:...)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)!
+      if (key.startsWith("oidc.user:")) {
+        try {
+          const user = JSON.parse(localStorage.getItem(key)!)
+          if (user?.access_token) return user.access_token as string
+        } catch { /* skip */ }
+      }
+    }
+    throw new Error("No OIDC access token found in localStorage")
+  })
+}
+
 // ─── Helper: Get user ID from org members API ───────────────────────────────
 
 async function getUserId(
   page: import("@playwright/test").Page,
   email: string
 ): Promise<string> {
-  const response = await page.request.get("/api/v1/org/members")
+  const token = await getAuthToken(page)
+  const response = await page.request.get("/api/v1/org/members", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   expect(response.status()).toBe(200)
   const members = (await response.json()) as Array<{
     user_id: string
