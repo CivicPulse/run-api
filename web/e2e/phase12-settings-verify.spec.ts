@@ -15,8 +15,8 @@ test.describe("INFR-01: Settings gear icon in sidebar", () => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/dashboard`)
     await page.waitForLoadState("networkidle")
 
-    // Settings link rendered in SidebarFooter — scope to sidebar nav to avoid matching page content
-    const settingsLink = page.getByLabel("Main navigation").getByRole("link", { name: /settings/i })
+    // Settings link rendered in SidebarFooter — scope to sidebar nav; pick campaign settings link
+    const settingsLink = page.getByLabel("Main navigation").getByRole("link", { name: /settings/i }).last()
     await expect(settingsLink).toBeVisible({ timeout: 8000 })
 
     // Clicking navigates to the settings area
