@@ -84,9 +84,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | bd554f8 | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
 | 260327-o38 | Fix sort buttons on all DataTable columns | 2026-03-27 | 48e0c3e | [260327-o38](./quick/260327-o38-fix-sort-buttons-on-all-datatables-colum/) |
 | 260330-ipp | Tier 1+2 Playwright speed improvements | 2026-03-30 | 3e152ed | [260330-ipp](./quick/260330-ipp-implement-tier-1-and-tier-2-playwright-s/) |
+| 260330-kfq | Add --loop flag to run-e2e.sh | 2026-03-30 | 5043743 | [260330-kfq](./quick/260330-kfq-add-loop-flag-to-run-e2e-sh-for-continuo/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-30 - Completed quick task 260330-ipp: Tier 1+2 Playwright speed improvements
-Stopped at: Completed 260330-ipp quick task
+Last activity: 2026-03-30 - Completed quick task 260330-kfq: Add --loop flag to run-e2e.sh
+Stopped at: Completed 260330-kfq quick task
 Resume file: None
