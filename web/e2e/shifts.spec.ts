@@ -22,7 +22,10 @@ async function createVolunteerViaApi(page: Page, campaignId: string, data: Recor
 
 async function createShiftViaApi(page: Page, campaignId: string, data: { name: string; type: string; start_at: string; end_at: string; max_volunteers: number; description?: string }): Promise<string> {
   const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts`, data)
-  expect(resp.ok()).toBeTruthy()
+  if (!resp.ok()) {
+    const body = await resp.text()
+    throw new Error(`Shift creation API failed: ${resp.status()} ${resp.statusText()} - ${body}`)
+  }
   return (await resp.json()).id
 }
 
@@ -87,6 +90,9 @@ function generateShiftData(): Array<{
 
   const types = ["canvassing", "phone_banking", "general"]
 
+  // Helper to format datetime without timezone (API uses naive timestamps)
+  const fmt = (d: Date) => d.toISOString().replace("Z", "").replace(/\.\d{3}$/, "")
+
   // 5 shifts this week, morning (9am-12pm)
   for (let d = 0; d < 5; d++) {
     const date = new Date(baseDate)
@@ -98,8 +104,8 @@ function generateShiftData(): Array<{
     shifts.push({
       name: `E2E Shift W1 AM ${d + 1}`,
       type: types[d % 3],
-      start_at: startAt.toISOString(),
-      end_at: endAt.toISOString(),
+      start_at: fmt(startAt),
+      end_at: fmt(endAt),
       max_volunteers: d < 2 ? 2 : d < 4 ? 5 : 10,
       description: `Morning shift day ${d + 1}`,
     })
@@ -116,8 +122,8 @@ function generateShiftData(): Array<{
     shifts.push({
       name: `E2E Shift W1 PM ${d + 1}`,
       type: types[d % 3],
-      start_at: startAt.toISOString(),
-      end_at: endAt.toISOString(),
+      start_at: fmt(startAt),
+      end_at: fmt(endAt),
       max_volunteers: d < 2 ? 2 : d < 4 ? 5 : 10,
       description: `Afternoon shift day ${d + 1}`,
     })
@@ -134,8 +140,8 @@ function generateShiftData(): Array<{
     shifts.push({
       name: `E2E Shift W2 AM ${d - 6}`,
       type: "general",
-      start_at: startAt.toISOString(),
-      end_at: endAt.toISOString(),
+      start_at: fmt(startAt),
+      end_at: fmt(endAt),
       max_volunteers: 5,
       description: `Next week morning shift ${d - 6}`,
     })
@@ -152,8 +158,8 @@ function generateShiftData(): Array<{
     shifts.push({
       name: `E2E Shift W2 PM ${d - 6}`,
       type: "general",
-      start_at: startAt.toISOString(),
-      end_at: endAt.toISOString(),
+      start_at: fmt(startAt),
+      end_at: fmt(endAt),
       max_volunteers: 5,
       description: `Next week afternoon shift ${d - 6}`,
     })

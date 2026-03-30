@@ -133,6 +133,7 @@ test.describe.serial("Walk List Lifecycle", () => {
       await page.getByRole("combobox").click()
       await page
         .getByRole("option", { name: /e2e wl source turf/i })
+        .first()
         .click()
     })
 
@@ -440,6 +441,7 @@ test.describe.serial("Walk List Lifecycle", () => {
       await page.getByRole("combobox").click()
       await page
         .getByRole("option", { name: /e2e wl source turf/i })
+        .first()
         .click()
 
       // Intercept API response
