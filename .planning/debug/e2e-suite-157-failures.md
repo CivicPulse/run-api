@@ -7,10 +7,10 @@ updated: 2026-03-29T22:50:00Z
 
 ## Current Focus
 
-hypothesis: require_role._check_role does NOT call ensure_user_synced before resolving campaign role, so first-time users get 403 on campaign endpoints
-test: Add ensure_user_synced call in require_role._check_role (matching require_org_role pattern)
-expecting: E2E users auto-synced on first campaign API call, eliminating ~84 membership failures
-next_action: Implementing fix in app/core/security.py require_role function
+hypothesis: Multiple remaining test categories still failing: a11y settings (7), campaign creation/settings (10+), cross-cutting (6), viewer voter detail (2), and test state pollution from campaign name mutations
+test: Categorize remaining failures and fix each category
+expecting: Further failure reduction
+next_action: Fix campaign name pollution (tests edit seed campaign name), then address remaining categories
 
 ## Symptoms
 
@@ -37,6 +37,36 @@ started: After initial E2E infrastructure setup
   checked: Sidebar visibility
   found: Sidebar was collapsed by default, causing elements to be outside viewport
   implication: Fixed with defaultOpen and cookie; committed as a4265a5
+
+- timestamp: 2026-03-30T03:00:00Z
+  checked: require_role._check_role user sync
+  found: require_role does not call ensure_user_synced before resolve_campaign_role; first-time users get 403
+  implication: Fixed by adding ensure_user_synced call matching require_org_role pattern; committed 6dd79e9
+
+- timestamp: 2026-03-30T03:30:00Z
+  checked: OIDC storage key in a11y specs
+  found: All a11y specs hardcode stale key oidc.user:https://auth.civpulse.org:363437283614916644
+  implication: Created shared a11y-helpers.ts with consistent mock config/OIDC setup; committed 6dd79e9
+
+- timestamp: 2026-03-30T03:30:00Z
+  checked: RBAC voter link locator
+  found: getByRole('link', { name: /voter|first|last/i }) matches "All Voters" tab, not voter name link
+  implication: Fixed to table.getByRole('link').first(); committed 6dd79e9
+
+- timestamp: 2026-03-30T04:00:00Z
+  checked: Non-admin users on org dashboard
+  found: list_org_campaigns requires org_admin; viewer/volunteer/manager JWTs have no role claims
+  implication: Added useOrgCampaigns fallback to /api/v1/campaigns for non-admin users; committed 142ad65
+
+- timestamp: 2026-03-30T04:15:00Z
+  checked: Campaign member roles for E2E users
+  found: manager1@localhost had role=viewer (JWT defaults to viewer, no ZITADEL role claims)
+  implication: Fixed via direct DB update. Roles don't get overwritten by ensure_user_synced for existing members
+
+- timestamp: 2026-03-30T04:30:00Z
+  checked: Viewer voter detail tests
+  found: Voter search requires volunteer+ role; viewer gets 403; table shows empty. Test expectation wrong.
+  implication: These 2 tests have incorrect expectations for viewer role permissions
 
 ## Resolution
 
