@@ -133,7 +133,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 58: E2E Core Tests** - RBAC matrix, org management, campaign settings, and voter entity CRUD lifecycle tests (completed 2026-03-29)
 - [x] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests (completed 2026-03-29)
 - [x] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass (completed 2026-03-29)
-- [ ] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite
+- [x] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite (completed 2026-03-30)
 
 ## Phase Details
 
@@ -226,9 +226,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. The document covers production-specific URLs, authentication flow, and data considerations that differ from local dev
   2. The document references the validated local test plan sections and maps them to production equivalents
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 61-01-PLAN.md — Author standalone production testing runbook (health checks, user provisioning, data setup, smoke + extended suites)
+- [x] 61-01-PLAN.md — Author standalone production testing runbook (health checks, user provisioning, data setup, smoke + extended suites)
 
 ## Progress
 
@@ -249,7 +249,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 58. E2E Core Tests | v1.7 | 4/4 | Complete    | 2026-03-29 |
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
-| 61. AI Production Testing Instructions | v1.7 | 0/1 | Not started | - |
+| 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete   | 2026-03-30 |
 
 ## Backlog
 

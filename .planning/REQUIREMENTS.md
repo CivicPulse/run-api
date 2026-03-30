@@ -56,7 +56,7 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 - [x] **VAL-01**: All E2E tests pass at 100% against local Docker Compose environment
 - [x] **VAL-02**: All bugs discovered during testing are fixed and verified
-- [ ] **PROD-01**: AI-consumable production testing instruction document is created with production-specific URLs, auth, and data considerations
+- [x] **PROD-01**: AI-consumable production testing instruction document is created with production-specific URLs, auth, and data considerations
 
 ## Future Requirements
 
@@ -106,7 +106,7 @@ None deferred for this milestone.
 | E2E-21 | Phase 60 | Complete |
 | VAL-01 | Phase 60 | Complete |
 | VAL-02 | Phase 60 | Complete |
-| PROD-01 | Phase 61 | Pending |
+| PROD-01 | Phase 61 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 30 total
