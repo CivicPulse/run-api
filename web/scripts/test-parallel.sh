@@ -2,9 +2,14 @@
 # Run Playwright E2E tests with each project as a separate parallel process.
 #
 # Usage:
-#   ./scripts/test-parallel.sh              # all projects
-#   ./scripts/test-parallel.sh chromium     # single project
-#   ./scripts/test-parallel.sh chromium admin volunteer  # subset
+#   ./scripts/test-parallel.sh                    # all projects, parallel
+#   ./scripts/test-parallel.sh chromium           # single project
+#   ./scripts/test-parallel.sh chromium admin      # subset of projects
+#
+# Options (via env vars):
+#   E2E_USE_DEV_SERVER=1  ./scripts/test-parallel.sh   # use dev server (skip build)
+#   E2E_SHARD=1/4         ./scripts/test-parallel.sh   # run shard 1 of 4
+#   E2E_SKIP_BUILD=1      ./scripts/test-parallel.sh   # skip build (use last build)
 #
 # The preview server starts once; all projects reuse it.
 # Exit code is non-zero if ANY project has failures.
@@ -26,6 +31,13 @@ SKIP=0
 DID_NOT_RUN=0
 TOTAL=0
 FAILED_PROJECTS=()
+SHARD_ARG=""
+
+# ── Parse shard config ───────────────────────────────────────────────────────
+if [ -n "${E2E_SHARD:-}" ]; then
+  SHARD_ARG="--shard=${E2E_SHARD}"
+  echo "▸ Sharding: ${E2E_SHARD}"
+fi
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -35,13 +47,21 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# ── Build ────────────────────────────────────────────────────────────────────
-echo -e "${CYAN}▸ Building app...${NC}"
-npm run build --silent 2>&1 | tail -1
+# ── Build (skip in dev server mode or when told to) ──────────────────────────
+if [ "${E2E_USE_DEV_SERVER:-}" = "1" ]; then
+  echo -e "${CYAN}▸ Dev server mode — skipping build${NC}"
+elif [ "${E2E_SKIP_BUILD:-}" = "1" ]; then
+  echo -e "${CYAN}▸ Skipping build (E2E_SKIP_BUILD=1)${NC}"
+else
+  echo -e "${CYAN}▸ Building app...${NC}"
+  npm run build --silent 2>&1 | tail -1
+fi
 
-# ── Start preview server ────────────────────────────────────────────────────
-# Check if already running (e.g. from a previous run or docker-compose web service)
-if curl -sk https://localhost:4173/ &>/dev/null; then
+# ── Start preview server (skip in dev server mode) ──────────────────────────
+if [ "${E2E_USE_DEV_SERVER:-}" = "1" ]; then
+  echo -e "${GREEN}▸ Using dev server at :5173${NC}"
+  PREVIEW_PID=""
+elif curl -sk https://localhost:4173/ &>/dev/null; then
   echo -e "${GREEN}▸ Preview server already running${NC}"
   PREVIEW_PID=""
 else
@@ -76,6 +96,9 @@ START_TIME=$(date +%s)
 
 echo -e "\n${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BOLD} Running ${#PROJECTS[@]} project(s) in parallel${NC}"
+if [ -n "$SHARD_ARG" ]; then
+  echo -e "${BOLD} Shard: ${E2E_SHARD}${NC}"
+fi
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 
 PIDS=()
@@ -83,13 +106,12 @@ for project in "${PROJECTS[@]}"; do
   echo -e "${CYAN}▸ Spawning: ${project}${NC}"
 
   # Each project runs as its own playwright process.
-  # The preview server is already running — reuseExistingServer in config detects it.
-  # --output=per-project dir prevents the test-results/ cleanup race condition
-  # where 5 concurrent processes compete to wipe the same directory.
+  # --output per project prevents test-results cleanup race.
   npx playwright test \
-    --project="setup-${project}" --project="${project}" \
+    --project="auth-setup" --project="${project}" \
     --reporter=line \
     --output="test-results/${project}" \
+    ${SHARD_ARG} \
     > "$RESULTS_DIR/${project}.txt" 2>&1 || true &
 
   PIDS+=("$!:${project}")

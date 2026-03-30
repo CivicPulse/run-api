@@ -13,7 +13,9 @@
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:parallel": "bash scripts/test-parallel.sh"
+    "test:e2e:parallel": "bash scripts/test-parallel.sh",
+    "test:e2e:fast": "E2E_USE_DEV_SERVER=1 E2E_SKIP_BUILD=1 bash scripts/test-parallel.sh",
+    "test:e2e:reauth": "rm -rf playwright/.auth && playwright test"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.19.2",

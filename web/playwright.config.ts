@@ -1,7 +1,36 @@
 import { defineConfig, devices } from "@playwright/test"
+import fs from "fs"
+import path from "path"
 
 // Allow self-signed certs for local HTTPS preview server
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
+// ── Optimization: Auth state caching (#7) ───────────────────────────────────
+// Skip auth setup when cached tokens are fresh (< 30 min old).
+// Delete playwright/.auth/ to force re-auth.
+const AUTH_DIR = path.join(import.meta.dirname, "playwright/.auth")
+const AUTH_MAX_AGE_MS = 30 * 60 * 1000 // 30 minutes
+
+function isAuthFresh(role: string): boolean {
+  try {
+    const file = path.join(AUTH_DIR, `${role}.json`)
+    const stat = fs.statSync(file)
+    return Date.now() - stat.mtimeMs < AUTH_MAX_AGE_MS
+  } catch {
+    return false
+  }
+}
+
+const allAuthFresh =
+  ["owner", "admin", "manager", "volunteer", "viewer"].every(isAuthFresh)
+
+// ── Optimization: Dev server mode (#3) ──────────────────────────────────────
+// Set E2E_USE_DEV_SERVER=1 to skip build+preview and use the docker-compose
+// web dev server on :5173 (faster iteration, no build step).
+const useDevServer = process.env.E2E_USE_DEV_SERVER === "1"
+const baseURL = useDevServer
+  ? "https://localhost:5173"
+  : "https://localhost:4173"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -12,7 +41,7 @@ export default defineConfig({
   reporter: process.env.CI ? "blob" : "html",
 
   use: {
-    baseURL: "https://localhost:4173",
+    baseURL,
     ignoreHTTPSErrors: true,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
@@ -20,69 +49,73 @@ export default defineConfig({
   },
 
   projects: [
-    // Owner auth setup (default role)
-    { name: "setup-owner", testMatch: /auth-owner\.setup\.ts/ },
+    // ── Optimization: Single shared auth setup (#1) ─────────────────────────
+    // One setup project authenticates ALL roles in sequence.
+    // When auth is cached (#7), this project is skipped entirely.
+    ...(allAuthFresh
+      ? []
+      : [{ name: "auth-setup", testMatch: /auth-.*\.setup\.ts/ }]),
+
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/owner.json",
       },
-      dependencies: ["setup-owner"],
+      dependencies: allAuthFresh ? [] : ["auth-setup"],
       testIgnore: /.*\.setup\.ts/,
-      testMatch: /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
+      testMatch:
+        /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
     },
-    // Admin auth setup
-    { name: "setup-admin", testMatch: /auth-admin\.setup\.ts/ },
     {
       name: "admin",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/admin.json",
       },
-      dependencies: ["setup-admin"],
+      dependencies: allAuthFresh ? [] : ["auth-setup"],
       testMatch: /.*\.admin\.spec\.ts/,
     },
-    // Manager auth setup
-    { name: "setup-manager", testMatch: /auth-manager\.setup\.ts/ },
     {
       name: "manager",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/manager.json",
       },
-      dependencies: ["setup-manager"],
+      dependencies: allAuthFresh ? [] : ["auth-setup"],
       testMatch: /.*\.manager\.spec\.ts/,
     },
-    // Volunteer auth setup
-    { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
     {
       name: "volunteer",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/volunteer.json",
       },
-      dependencies: ["setup-volunteer"],
+      dependencies: allAuthFresh ? [] : ["auth-setup"],
       testMatch: /.*\.volunteer\.spec\.ts/,
     },
-    // Viewer auth setup
-    { name: "setup-viewer", testMatch: /auth-viewer\.setup\.ts/ },
     {
       name: "viewer",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/viewer.json",
       },
-      dependencies: ["setup-viewer"],
+      dependencies: allAuthFresh ? [] : ["auth-setup"],
       testMatch: /.*\.viewer\.spec\.ts/,
     },
   ],
 
-  webServer: {
-    command: "npm run preview",
-    url: "https://localhost:4173",
-    reuseExistingServer: !process.env.CI,
-    ignoreHTTPSErrors: true,
-    timeout: 60_000,
-  },
+  // Skip webServer entirely when using dev server or when explicitly
+  // started externally (parallel test script).
+  ...(useDevServer
+    ? {}
+    : {
+        webServer: {
+          command: "npm run preview",
+          url: "https://localhost:4173",
+          reuseExistingServer: !process.env.CI,
+          ignoreHTTPSErrors: true,
+          timeout: 60_000,
+        },
+      }),
 })
