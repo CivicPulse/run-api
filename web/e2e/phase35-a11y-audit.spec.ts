@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 const CAMPAIGN_ID = "test-campaign-123"
 
@@ -169,6 +170,83 @@ async function setupCanvassingMocks(page: Page) {
   })
 }
 
+async function setupShellMocks(page: Page) {
+  await mockConfigEndpoint(page)
+
+  await page.route("**/api/v1/me", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "mock-user-a11y",
+        display_name: "Test Admin",
+        email: "admin@test.com",
+        role: "owner",
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    })
+  })
+
+  await page.route("**/api/v1/me/campaigns", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          campaign_id: CAMPAIGN_ID,
+          campaign_name: "A11Y Test Campaign",
+          role: "owner",
+        },
+      ]),
+    })
+  })
+
+  await page.route("**/api/v1/me/orgs", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "org-a11y",
+          name: "A11Y Test Org",
+          slug: "a11y-test-org",
+          role: "org_owner",
+          zitadel_org_id: "mock-org",
+        },
+      ]),
+    })
+  })
+
+  await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}`, (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: CAMPAIGN_ID,
+        name: "A11Y Test Campaign",
+        description: "Accessibility test campaign",
+        slug: "a11y-test",
+        status: "active",
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    })
+  })
+
+  await page.route("**/api/v1/campaigns", (route) => {
+    if (route.request().method() !== "GET") {
+      return route.fallback()
+    }
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ id: CAMPAIGN_ID, name: "A11Y Test Campaign", status: "active", role: "owner" }],
+        pagination: { next_cursor: null, has_more: false },
+      }),
+    })
+  })
+}
+
 async function setupPhoneBankingMocks(page: Page) {
   await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}/field/me`, (route) => {
     route.fulfill({
@@ -260,6 +338,11 @@ async function setupPhoneBankingMocks(page: Page) {
 
 test.setTimeout(30_000)
 
+test.beforeEach(async ({ page }) => {
+  await setupMockAuth(page)
+  await setupShellMocks(page)
+})
+
 test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
   test("canvassing route has Field navigation nav landmark", async ({ page }) => {
     await setupCanvassingMocks(page)
@@ -297,17 +380,44 @@ test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Dismiss driver.js tour overlay if it appears (auto-starts after 200ms)
-    const tourDialog = page.getByRole("dialog")
-    if (await tourDialog.isVisible({ timeout: 1_500 }).catch(() => false)) {
-      await tourDialog.getByRole("button", { name: "Close" }).click()
-      // Wait for the overlay to fully disappear
-      await expect(page.locator(".driver-active")).toBeHidden({ timeout: 2_000 })
+    // Dismiss driver.js tour overlay if it appears (auto-starts after 200ms).
+    const dismissTourOverlay = async () => {
+      await page.keyboard.press("Escape").catch(() => {})
+
+      const closeButton = page
+        .locator(
+          ".driver-popover button[aria-label='Close'], .driver-popover .driver-popover-close-btn, [role='dialog'] button:has-text('Close')",
+        )
+        .first()
+      if (await closeButton.isVisible().catch(() => false)) {
+        await closeButton.click({ force: true }).catch(() => {})
+      }
+
+      await expect(page.locator("body.driver-active")).toHaveCount(0, {
+        timeout: 5_000,
+      })
+      await expect(page.locator(".driver-overlay")).toHaveCount(0, {
+        timeout: 5_000,
+      })
+    }
+
+    if (
+      (await page.locator("body.driver-active").count()) > 0 ||
+      (await page.locator(".driver-overlay").count()) > 0
+    ) {
+      await dismissTourOverlay()
     }
 
     // Open the door list via the "All Doors" button
     const listButton = page.getByRole("button", { name: /All Doors/i })
-    await listButton.click()
+    for (let i = 0; i < 3; i++) {
+      try {
+        await listButton.click({ timeout: 2_500 })
+        break
+      } catch {
+        await dismissTourOverlay()
+      }
+    }
 
     // DoorListView renders buttons with aria-label="Jump to door N, address, status"
     const door1Button = page.locator('button[aria-label*="Jump to door 1"]')

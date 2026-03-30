@@ -131,6 +131,7 @@ function CanvassingIndex() {
                       variant="ghost"
                       size="icon"
                       className="relative z-20"
+                      aria-label={`Delete turf ${turf.name}`}
                       onClick={(e) => {
                         e.preventDefault()
                         setDeleteTurfId(turf.id)
