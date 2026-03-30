@@ -107,7 +107,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
     // 1. Navigate to settings general page (index redirects to general)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // 2. Verify ARIA landmarks — mock auth may not render the sidebar shell
     // so <main> may not exist; use page body as fallback content root.
@@ -187,7 +187,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
     // 8. Navigate to danger zone settings
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify danger zone heading
     const dangerHeadings = page.getByRole("main").getByRole("heading")
@@ -258,7 +258,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
   test("settings members page is keyboard-navigable", async ({ page }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify ARIA landmarks — mock auth may not render <main>
     const mainEl = page.getByRole("main")

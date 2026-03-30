@@ -462,7 +462,7 @@ test.describe.serial("Field Mode -- Volunteer Hub", () => {
     })
 
     // Wait for refresh to complete -- data should still be present
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
     await expect(page.locator("[data-tour='hub-greeting']")).toBeVisible({
       timeout: 15_000,
     })
@@ -601,7 +601,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     }
 
     // Wait for wizard to advance or stay on same household
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Record another outcome if there are more entries
     const outcomeGrid2 = page.locator("[data-tour='outcome-grid']")
@@ -755,7 +755,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     }
 
     // Either way, verify the wizard is still functional
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
     // Should either show next door or completion summary
     const hasHousehold = await householdCard.isVisible().catch(() => false)
     const hasCompletion = await page
@@ -893,7 +893,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     }
 
     // Check for empty state or missing voter card (BUG-01: call list exhausted)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     const voterCard = page.locator("p.text-xl.font-bold").first()
     const hasVoter = await voterCard.isVisible().catch(() => false)
     if (!hasVoter) {
@@ -942,7 +942,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     }
 
     // Check for empty state or missing voter card (BUG-01: call list exhausted)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     const voterCardCheck = page.locator("p.text-xl.font-bold").first()
     if (!(await voterCardCheck.isVisible().catch(() => false))) {
       test.skip(
@@ -967,7 +967,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await noAnswerBtn.click()
 
     // Wait for auto-advance
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(500)
 
     // Should either show next voter or completion summary
     const hasNextVoter = await page
@@ -992,7 +992,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
       })
       if (await voicemailBtn.isVisible().catch(() => false)) {
         await voicemailBtn.click()
-        await page.waitForTimeout(1000)
+        await page.waitForTimeout(500)
       }
     }
 
@@ -1042,7 +1042,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
     await page.waitForURL(/\/field\//, { timeout: 15_000 })
 
     // Wait for page content to load
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
 
     // Simulate going offline
     await context.setOffline(true)
@@ -1165,7 +1165,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
       const offlineBanner = page.getByText(/offline/i)
 
       // Wait briefly for UI to update
-      await page.waitForTimeout(2000)
+      await page.waitForLoadState("networkidle")
 
       const hasCaughtUp = await allCaughtUp
         .isVisible({ timeout: 5_000 })
@@ -1179,7 +1179,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
     } catch {
       // Sync may not trigger if queue was empty or already synced
       // Check that we're online and banner is gone
-      await page.waitForTimeout(3000)
+      await page.waitForLoadState("networkidle")
       const offlineText = page.locator(
         "[role='status'][aria-label*='offline' i]",
       )

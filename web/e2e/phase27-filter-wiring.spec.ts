@@ -8,7 +8,7 @@ let CAMPAIGN_ID: string
 async function openVoterFilters(page: import("@playwright/test").Page) {
   CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-  await page.waitForTimeout(2000)
+  await page.waitForLoadState("networkidle")
   // Click the "Filters" button to open the filter panel
   await page.getByRole("button", { name: /filters/i }).click()
   await page.waitForTimeout(500)
@@ -306,7 +306,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // First navigate to the voters page so we have a valid session
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
 
     // Make a direct GET request to the legacy endpoint
     const response = await apiGet(

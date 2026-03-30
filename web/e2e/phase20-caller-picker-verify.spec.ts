@@ -9,7 +9,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     // Navigate to sessions list
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Click on the first session to go to detail page
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -19,7 +19,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p20-01-session-detail.png" })
 
     const bodyText = await page.locator("body").innerText()
@@ -32,7 +32,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
 
   test("Add Caller dialog shows combobox picker (not text input)", async ({ page }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Click first session
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -42,7 +42,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Look for the Add Caller button
     const addCallerBtn = page.getByRole("button", { name: /add caller/i })
@@ -53,7 +53,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
     }
 
     await addCallerBtn.click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p20-02-add-caller-dialog.png" })
 
     // Dialog should be open
@@ -97,7 +97,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
 
   test("callers table shows display names with role badges", async ({ page }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Click first session
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -107,7 +107,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Check the Overview tab callers section
     const bodyText = await page.locator("body").innerText()

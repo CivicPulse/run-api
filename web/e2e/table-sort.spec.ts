@@ -160,7 +160,7 @@ test.describe("Shift detail — no sort buttons (correct)", () => {
   test("shift detail roster table has zero sortable columns", async ({ page }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/volunteers/shifts`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     const shiftLink = page.locator("a[href*='/shifts/']").first()
     const hasShifts = await shiftLink.count()
@@ -172,7 +172,7 @@ test.describe("Shift detail — no sort buttons (correct)", () => {
 
     await shiftLink.click()
     await page.waitForURL(/shifts\/[^/]+/, { timeout: 10_000 })
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
 
     // This table correctly has zero sortable columns (no accessorKey columns with enableSorting)
     const sortableCount = await countSortableHeaders(page)

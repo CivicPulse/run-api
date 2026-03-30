@@ -10,7 +10,7 @@ let CAMPAIGN_ID: string
 /** Navigate to the voters index and return the voterId of the first row by clicking it. */
 async function getFirstVoterId(page: Page): Promise<string | null> {
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-  await page.waitForTimeout(3000)
+  await page.waitForLoadState("networkidle")
   // Click the first voter name link in the table to navigate to their detail page
   const firstLink = page.locator('table a[href*="/voters/"]').first()
   const count = await firstLink.count()
@@ -18,7 +18,7 @@ async function getFirstVoterId(page: Page): Promise<string | null> {
   const href = await firstLink.getAttribute("href")
   await firstLink.click()
   await page.waitForURL(/\/voters\/[^/]+$/, { timeout: 10_000 })
-  await page.waitForTimeout(2000)
+  await page.waitForLoadState("networkidle")
   // Extract voterId from URL
   const url = page.url()
   const match = url.match(/\/voters\/([^/]+)$/)
@@ -43,7 +43,7 @@ test.describe("VOTR-01: Voter contacts tab renders phone/email/address sections"
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
     await expect(contactsTab).toBeVisible({ timeout: 8000 })
     await contactsTab.click()
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-01-contacts-tab.png" })
 
     // ContactsTab renders three h3 sections
@@ -66,7 +66,7 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
     await expect(contactsTab).toBeVisible({ timeout: 8000 })
     await contactsTab.click()
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-02-contacts-stars.png" })
 
     // Either star buttons appear (contacts exist) OR empty states are shown
@@ -91,7 +91,7 @@ test.describe("VOTR-03: Create new voter — New Voter sheet opens with form fie
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-03-voters-index.png" })
 
     // "All Voters" heading must be present
@@ -163,7 +163,7 @@ test.describe("VOTR-05: Campaign tags page — DataTable with + New Tag button",
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/tags`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-05-tags-index.png" })
 
     // "Campaign Tags" heading must be visible
@@ -193,7 +193,7 @@ test.describe("VOTR-06: Tags tab on voter detail — tag chips with remove and a
     const tagsTab = page.getByRole("tab", { name: /tags/i })
     await expect(tagsTab).toBeVisible({ timeout: 8000 })
     await tagsTab.click()
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-06-tags-tab.png" })
 
     // "Current Tags" section heading must be visible
@@ -227,7 +227,7 @@ test.describe("VOTR-07: Voter lists index — DataTable renders with + New List 
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-07-lists-index.png" })
 
     // "Voter Lists" heading must be visible
@@ -254,7 +254,7 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // Click "+ New List"
     const newListBtn = page.getByRole("button", { name: /\+ new list/i })
@@ -274,7 +274,7 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
 
     // Click "Dynamic List" card
     await dynamicCard.click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-08-dynamic-type-selected.png" })
 
     // VoterFilterBuilder renders — check for Party and Age Range labels
@@ -296,7 +296,7 @@ test.describe("VOTR-09: List detail page renders member DataTable", () => {
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-09-lists-index-for-detail.png" })
 
     // Check if any list links exist in the table
@@ -316,7 +316,7 @@ test.describe("VOTR-09: List detail page renders member DataTable", () => {
     // Click the first list link
     await listLinks.first().click()
     await page.waitForURL(/\/voters\/lists\/[^/]+$/, { timeout: 10_000 })
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-09-list-detail.png" })
 
     // List detail shows the list name (h2) and type badge
@@ -351,7 +351,7 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
     page,
   }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p13-10-voters-before-filter.png" })
 
     // "Filters" toggle button must be visible
@@ -360,7 +360,7 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
 
     // Click to open filter panel
     await filtersBtn.click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-10-filter-panel-open.png" })
 
     // VoterFilterBuilder renders with primary dimensions
@@ -394,7 +394,7 @@ test.describe("VOTR-11: History tab — textarea and Add Note button for interac
     const historyTab = page.getByRole("tab", { name: /history/i })
     await expect(historyTab).toBeVisible({ timeout: 8000 })
     await historyTab.click()
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-11-history-tab.png" })
 
     // Textarea with placeholder "Add a note..."

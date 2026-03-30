@@ -536,7 +536,7 @@ test.describe("A11Y Scan: axe-core WCAG 2.1 AA compliance", () => {
       await page.waitForLoadState("networkidle")
 
       // Additional wait for React hydration/rendering
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(500)
 
       // Run axe-core analysis
       const results = await makeAxeBuilder().analyze()

@@ -114,7 +114,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
     // ── Step 1: File Upload ─────────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify ARIA landmarks
     const nav = page.getByRole("navigation")
@@ -183,7 +183,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
     // Navigate to step 2 with a mock job that has columns detected
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=2`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify heading exists for column mapping step
     const step2Headings = main.getByRole("heading")
@@ -214,7 +214,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
     // ── Step 3: Preview ─────────────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=3`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify heading for preview step
     const step3Headings = main.getByRole("heading")
@@ -232,7 +232,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
     // ── Step 4: Import Progress ─────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=4`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // Verify heading for progress step
     const step4Headings = main.getByRole("heading")

@@ -16,7 +16,7 @@ test.describe("IMPT-06: Import history page — DataTable or EmptyState with New
   }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p14-06-imports-index.png" })
 
     // "Import History" heading must be visible
@@ -54,7 +54,7 @@ test.describe("IMPT-01: Import wizard — DropZone renders with CSV drag-and-dro
   }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
     await page.screenshot({ path: "test-results/p14-01-import-wizard.png" })
 
     // "Import Voters" heading must be visible
@@ -82,7 +82,7 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
   }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     // The route schema defaults step to 1 — verify the wizard renders step 1 content
     const step1Heading = page.getByText(/step 1 of 4/i).first()
@@ -92,7 +92,7 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
     await page.goto(
       `/campaigns/${CAMPAIGN_ID}/voters/imports/new?step=1`,
     )
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState("networkidle")
 
     const uploadHeading = page.getByText(/step 1 of 4/i).first()
     await expect(uploadHeading).toBeVisible({ timeout: 8000 })
@@ -111,7 +111,7 @@ test.describe("IMPT-02 / IMPT-03: Wizard step navigation structure is present (s
   }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     const bodyText = await page.locator("body").innerText()
 
@@ -134,7 +134,7 @@ test.describe("IMPT-06: New Import button navigates to wizard route", () => {
   }) => {
     CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState("networkidle")
 
     const newImportBtn = page.getByRole("button", { name: /new import/i })
     await expect(newImportBtn).toBeVisible({ timeout: 8000 })

@@ -161,7 +161,7 @@ test.describe("A11Y Flow: Walk List Creation", () => {
     // 1. Navigate to canvassing overview page
     await page.goto(`/campaigns/${CAMPAIGN_ID}/canvassing`)
     await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
     // 2. Verify ARIA landmarks
     const nav = page.getByRole("navigation")
