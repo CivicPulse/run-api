@@ -84,10 +84,12 @@ for project in "${PROJECTS[@]}"; do
 
   # Each project runs as its own playwright process.
   # The preview server is already running — reuseExistingServer in config detects it.
-  # Include the setup-* project so auth runs, then the test project.
+  # --output=per-project dir prevents the test-results/ cleanup race condition
+  # where 5 concurrent processes compete to wipe the same directory.
   npx playwright test \
     --project="setup-${project}" --project="${project}" \
     --reporter=line \
+    --output="test-results/${project}" \
     > "$RESULTS_DIR/${project}.txt" 2>&1 || true &
 
   PIDS+=("$!:${project}")
