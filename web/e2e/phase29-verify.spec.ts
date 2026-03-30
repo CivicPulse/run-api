@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 async function openVoterFilters(page: import("@playwright/test").Page) {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(2000)
   await page.getByRole("button", { name: /filters/i }).click()
@@ -17,6 +19,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   test("1. import history table shows Filename column correctly", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 
@@ -36,6 +39,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
 
   // ── Test 2: Errors Column Removed ───────────────────────────────────────
   test("2. import history table has no Errors column", async ({ page }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 
@@ -118,6 +122,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
     page,
   }) => {
     // Navigate to voter lists page
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await page.waitForTimeout(2000)
 

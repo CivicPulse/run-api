@@ -65,6 +65,14 @@ setup("authenticate as volunteer", async ({ page }) => {
   // Verify we are authenticated
   await expect(page.locator("body")).toBeVisible()
 
+  // Set sidebar to open for E2E tests (avoids "outside viewport" issues with collapsed sidebar)
+  await page.context().addCookies([{
+    name: "sidebar_state",
+    value: "true",
+    domain: "localhost",
+    path: "/",
+  }])
+
   // Persist browser storage state
   await page.context().storageState({ path: authFile })
 })

@@ -264,7 +264,7 @@ function RootLayout() {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true}>
       <SkipNav />
       <AppSidebar />
       <SidebarInset>

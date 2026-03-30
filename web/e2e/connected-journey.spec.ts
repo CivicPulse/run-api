@@ -28,9 +28,9 @@ test.describe.serial("Connected user journey", () => {
         { timeout: 15_000 },
       )
 
-      // Verify the campaign list page loaded — "New Campaign" button is present
+      // Verify the campaign list page loaded — "Create Campaign" button is present
       await expect(
-        page.getByRole("link", { name: /new campaign/i }).first()
+        page.getByRole("link", { name: /create campaign/i }).first()
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -38,8 +38,8 @@ test.describe.serial("Connected user journey", () => {
     await test.step("Create campaign via form", async () => {
       campaignName = `E2E Journey ${Date.now()}`
 
-      // Click "New Campaign" link
-      await page.getByRole("link", { name: /new campaign/i }).first().click()
+      // Click "Create Campaign" link
+      await page.getByRole("link", { name: /create campaign/i }).first().click()
       await page.waitForURL(/campaigns\/new/)
 
       // Fill campaign name

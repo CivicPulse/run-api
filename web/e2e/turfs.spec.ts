@@ -147,7 +147,7 @@ async function navigateToSeedCampaign(
     { timeout: 15_000 },
   )
   const campaignLink = page
-    .getByRole("link", { name: /macon|bibb|campaign/i })
+    .getByRole("link", { name: /macon-bibb demo/i })
     .first()
   await campaignLink.click()
   await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })

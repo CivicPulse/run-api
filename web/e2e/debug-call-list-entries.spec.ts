@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 test("debug call list entries", async ({ page }) => {
   const apiRequests: { url: string; status: number; body: string }[] = []
@@ -17,27 +18,8 @@ test("debug call list entries", async ({ page }) => {
     }
   })
 
-  // Go to /login — auto-triggers signinRedirect to ZITADEL
-  await page.goto(`/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  console.log("At ZITADEL:", page.url())
-  await page.screenshot({ path: "test-results/01-zitadel-login.png" })
-
-  // Fill username
-  await page.locator('input').first().fill("tester")
-  await page.screenshot({ path: "test-results/02-username-filled.png" })
-  await page.click('button[type="submit"]')
-
-  // Wait for password field
-  await page.waitForTimeout(1500)
-  await page.screenshot({ path: "test-results/03-password-screen.png" })
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-
-  // Wait for OIDC callback to complete and redirect to app
-  console.log("Redirected to:", page.url())
-  await page.waitForTimeout(2000)
-  await page.screenshot({ path: "test-results/04-back-in-app.png" })
+  // Use stored auth state (already authenticated via setup project)
+  CAMPAIGN_ID = await getSeedCampaignId(page)
 
   // Navigate to call lists
   await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/call-lists`)

@@ -59,7 +59,7 @@ async function navigateToSeedCampaign(
 
   // Fallback: try to find campaign link on org dashboard (for non-volunteer roles)
   const campaignLink = page
-    .getByRole("link", { name: /macon|bibb|campaign/i })
+    .getByRole("link", { name: /macon-bibb demo/i })
     .first()
   if (await campaignLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await campaignLink.click()

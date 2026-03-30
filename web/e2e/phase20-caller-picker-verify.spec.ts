@@ -1,10 +1,12 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 test.describe("Phase 20: Caller Picker UX", () => {
   test("session detail page shows callers with display names (not UUIDs)", async ({ page }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     // Navigate to sessions list
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
     await page.waitForTimeout(3000)

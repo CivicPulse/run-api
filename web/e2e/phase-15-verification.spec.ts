@@ -1,15 +1,15 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 test("call list page renders with heading and table or empty state", async ({ page }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/call-lists`)
   await page.waitForTimeout(3000)
-  await page.screenshot({ path: "test-results/p15-01-call-lists.png" })
 
   const bodyText = await page.locator("body").innerText()
-  console.log("Call lists page (500 chars):", bodyText.slice(0, 500))
 
   expect(bodyText).not.toContain("404")
   expect(bodyText).not.toContain("Not Found")
@@ -22,12 +22,11 @@ test("call list page renders with heading and table or empty state", async ({ pa
 })
 
 test("DNC list page renders with search input and action buttons", async ({ page }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/dnc`)
   await page.waitForTimeout(3000)
-  await page.screenshot({ path: "test-results/p15-02-dnc-list.png" })
 
   const bodyText = await page.locator("body").innerText()
-  console.log("DNC page (500 chars):", bodyText.slice(0, 500))
 
   expect(bodyText).not.toContain("404")
   expect(bodyText).not.toContain("Not Found")
@@ -41,6 +40,7 @@ test("DNC list page renders with search input and action buttons", async ({ page
 })
 
 test("phone banking routes do not 404", async ({ page }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
 
   const routes = [
     `/campaigns/${CAMPAIGN_ID}/phone-banking/call-lists`,
@@ -55,8 +55,5 @@ test("phone banking routes do not 404", async ({ page }) => {
     expect(bodyText, `Route ${route} returned Not Found`).not.toContain(
       "Not Found",
     )
-    console.log(`Route OK: ${route}`)
   }
-
-  await page.screenshot({ path: "test-results/p15-03-routes-final.png" })
 })

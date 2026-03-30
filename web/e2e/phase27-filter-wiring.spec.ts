@@ -1,10 +1,12 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 /** Navigate to voter list page and open the filter panel */
 async function openVoterFilters(page: import("@playwright/test").Page) {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(2000)
   // Click the "Filters" button to open the filter panel
@@ -302,6 +304,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // Note: This requires an auth token. We extract it from the logged-in page context.
 
     // First navigate to the voters page so we have a valid session
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await page.waitForTimeout(2000)
 

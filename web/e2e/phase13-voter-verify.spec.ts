@@ -1,9 +1,10 @@
 import { test, expect, type Page } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
 // Increase global timeout for all tests — login + navigation can be slow on the dev tailnet server
 test.setTimeout(90_000)
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 /** Navigate to the voters index and return the voterId of the first row by clicking it. */
@@ -23,6 +24,10 @@ async function getFirstVoterId(page: Page): Promise<string | null> {
   const match = url.match(/\/voters\/([^/]+)$/)
   return match ? match[1] : null
 }
+
+test.beforeEach(async ({ page }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
+})
 
 // ---------------------------------------------------------------------------
 // VOTR-01 — View/manage voter contacts

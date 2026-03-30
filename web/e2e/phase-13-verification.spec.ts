@@ -11,11 +11,12 @@
  * naming convention (phase-{N}-verification.spec.ts).
  */
 import { test, expect, type Page } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
 // Increase global timeout — login + navigation can be slow on the dev tailnet server
 test.setTimeout(90_000)
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
 test("VOTR-07: Static voter lists — list table renders with New List button", async ({
   page,
 }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
   await page.waitForTimeout(3000)
 
@@ -55,6 +57,7 @@ test("VOTR-07: Static voter lists — list table renders with New List button", 
 test("VOTR-08: Dynamic voter lists — selecting Dynamic shows VoterFilterBuilder", async ({
   page,
 }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
   await page.waitForTimeout(3000)
 
@@ -93,6 +96,7 @@ test("VOTR-08: Dynamic voter lists — selecting Dynamic shows VoterFilterBuilde
 test("VOTR-10: Advanced search — Filters button toggles VoterFilterBuilder panel", async ({
   page,
 }) => {
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(3000)
 
@@ -133,6 +137,7 @@ test("VOTR-11: History tab — Add a Note textarea and Add Note button render", 
 }) => {
 
   // Navigate to voters index and click first voter to get to detail page
+  CAMPAIGN_ID = await getSeedCampaignId(page)
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(3000)
 

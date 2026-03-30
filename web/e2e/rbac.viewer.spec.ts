@@ -18,7 +18,7 @@ test.describe("RBAC: viewer permissions", () => {
     )
 
     const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
+      .getByRole("link", { name: /macon-bibb demo/i })
       .first()
     await campaignLink.click()
     await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
@@ -47,7 +47,7 @@ test.describe("RBAC: viewer permissions", () => {
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
     // Click the first voter row to go to detail
-    const voterLink = page.getByRole("link", { name: /voter|first|last/i }).first()
+    const voterLink = page.locator('#main-content').getByRole('link', { name: /voter|first|last/i }).first()
     await expect(voterLink).toBeVisible({ timeout: 10_000 })
     await voterLink.click()
     await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
@@ -63,7 +63,7 @@ test.describe("RBAC: viewer permissions", () => {
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
-    const voterLink = page.getByRole("link", { name: /voter|first|last/i }).first()
+    const voterLink = page.locator('#main-content').getByRole('link', { name: /voter|first|last/i }).first()
     await expect(voterLink).toBeVisible({ timeout: 10_000 })
     await voterLink.click()
     await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })

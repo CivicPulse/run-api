@@ -1,9 +1,10 @@
 import { test, expect, type Page } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
 // Increase global timeout — login + navigation can be slow on the dev tailnet server
 test.setTimeout(90_000)
 
-const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
+let CAMPAIGN_ID: string
 
 
 // ---------------------------------------------------------------------------
@@ -13,6 +14,7 @@ test.describe("IMPT-06: Import history page — DataTable or EmptyState with New
   test("navigating to /voters/imports shows Import History heading and New Import button", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p14-06-imports-index.png" })
@@ -50,6 +52,7 @@ test.describe("IMPT-01: Import wizard — DropZone renders with CSV drag-and-dro
   test("navigating to /voters/imports/new shows Import Voters heading, step indicator, and DropZone", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p14-01-import-wizard.png" })
@@ -77,6 +80,7 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
   test("import wizard URL includes ?step= parameter defaulting to 1", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
 
@@ -105,6 +109,7 @@ test.describe("IMPT-02 / IMPT-03: Wizard step navigation structure is present (s
   test("step indicator shows all four steps: Upload, Map Columns, Preview, Progress", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
 
@@ -127,6 +132,7 @@ test.describe("IMPT-06: New Import button navigates to wizard route", () => {
   test("clicking New Import from history page navigates to /voters/imports/new", async ({
     page,
   }) => {
+    CAMPAIGN_ID = await getSeedCampaignId(page)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 

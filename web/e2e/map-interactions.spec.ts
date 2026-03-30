@@ -12,7 +12,7 @@ test.describe("Map interactions", () => {
 
     // Click into the seed campaign
     const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
+      .getByRole("link", { name: /macon-bibb demo/i })
       .first()
     await campaignLink.click()
 
