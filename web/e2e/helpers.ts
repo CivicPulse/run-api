@@ -12,9 +12,11 @@ export async function navigateToSeedCampaign(page: Page): Promise<string> {
       !url.pathname.includes("/ui/login"),
     { timeout: 15_000 },
   )
+  await page.waitForLoadState("networkidle")
   const campaignLink = page
     .getByRole("link", { name: /macon-bibb demo/i })
     .first()
+  await campaignLink.waitFor({ state: "visible", timeout: 30_000 })
   await campaignLink.click()
   await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
   return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
@@ -33,9 +35,11 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
       !url.pathname.includes("/ui/login"),
     { timeout: 15_000 },
   )
+  await page.waitForLoadState("networkidle")
   const campaignLink = page
     .getByRole("link", { name: /macon-bibb demo/i })
     .first()
+  await campaignLink.waitFor({ state: "visible", timeout: 30_000 })
   const href = await campaignLink.getAttribute("href")
   const match = href?.match(/campaigns\/([a-f0-9-]+)/)
   if (!match) throw new Error("Could not find seed campaign ID from card link")

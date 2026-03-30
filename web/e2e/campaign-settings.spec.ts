@@ -175,7 +175,7 @@ test.describe.serial(
       // Fill invite form: email
       const emailInput = page.getByLabel("Email")
       await expect(emailInput).toBeVisible({ timeout: 5_000 })
-      await emailInput.fill("viewer2@localhost")
+      await emailInput.fill("viewer2@example.com")
 
       // Select role "Volunteer" from the role select
       await page.getByRole("combobox").last().click()
@@ -194,7 +194,7 @@ test.describe.serial(
       expect(inviteResponse.status()).toBeLessThan(300)
 
       // Verify the invite appears in the pending invites section
-      await expect(page.getByText("viewer2@localhost")).toBeVisible({
+      await expect(page.getByText("viewer2@example.com")).toBeVisible({
         timeout: 10_000,
       })
     })
@@ -216,7 +216,7 @@ test.describe.serial(
         `/api/v1/campaigns/${campaignId}/members`,
         {
           data: {
-            user_id: await getUserId(page, "viewer2@localhost"),
+            user_id: await getUserId(page, "viewer2@example.com"),
             role: "volunteer",
           },
           headers: { Authorization: `Bearer ${token}` },

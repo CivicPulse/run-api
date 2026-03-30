@@ -23,7 +23,7 @@ test.use({
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
-const BASE_URL = "https://localhost:4173"
+// page.request uses Playwright's baseURL for relative paths — no hardcoded URL needed
 
 async function navigateToSeedCampaign(
   page: Page,
@@ -34,21 +34,18 @@ async function navigateToSeedCampaign(
     { timeout: 15_000 },
   )
 
-  // Check if we landed on a field or campaign URL already
-  const fieldMatch = page.url().match(/field\/([a-f0-9-]+)/)
-  if (fieldMatch) return fieldMatch[1]
-  const campaignMatch = page.url().match(/campaigns\/([a-f0-9-]+)/)
-  if (campaignMatch) return campaignMatch[1]
-
   // Volunteer users can't access org campaigns (403). Use /api/v1/me/campaigns
-  // to find the campaign ID, same approach the callback page uses.
+  // to find the seed campaign ID (Macon-Bibb Demo), not just the first campaign.
   try {
     const campaigns = (await apiGet(
       page,
       "/api/v1/me/campaigns",
-    )) as Array<{ campaign_id: string }>
-    if (campaigns.length > 0) {
-      const id = campaigns[0].campaign_id
+    )) as Array<{ campaign_id: string; campaign_name?: string }>
+    // Prefer the seed campaign (Macon-Bibb Demo) if the volunteer is in multiple campaigns
+    const seedCampaign = campaigns.find((c) => /macon.?bibb/i.test(c.campaign_name ?? ""))
+    const target = seedCampaign ?? campaigns[0]
+    if (target) {
+      const id = target.campaign_id
       await page.goto(`/field/${id}`)
       await page.waitForURL(/\/field\//, { timeout: 10_000 })
       return id
@@ -56,6 +53,12 @@ async function navigateToSeedCampaign(
   } catch {
     // Fall through to campaign link search
   }
+
+  // Check if we landed on a field or campaign URL already
+  const fieldMatch = page.url().match(/field\/([a-f0-9-]+)/)
+  if (fieldMatch) return fieldMatch[1]
+  const campaignMatch = page.url().match(/campaigns\/([a-f0-9-]+)/)
+  if (campaignMatch) return campaignMatch[1]
 
   // Fallback: try to find campaign link on org dashboard (for non-volunteer roles)
   const campaignLink = page
@@ -101,7 +104,7 @@ async function apiGet(
   if (cookies.length > 0) {
     headers["Cookie"] = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
   }
-  const resp = await page.request.get(`${BASE_URL}${path}`, { headers })
+  const resp = await page.request.get(path, { headers })
   if (!resp.ok()) {
     throw new Error(`API GET ${path} failed: ${resp.status()} ${resp.statusText()}`)
   }
@@ -122,7 +125,7 @@ async function apiPost(
   if (cookies.length > 0) {
     headers["Cookie"] = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
   }
-  const resp = await page.request.post(`${BASE_URL}${path}`, { data, headers })
+  const resp = await page.request.post(path, { data, headers })
   return { status: resp.status(), body: resp.ok() ? await resp.json() : null }
 }
 
@@ -274,6 +277,7 @@ test.beforeAll(async ({ browser }) => {
     hasTouch: true,
     isMobile: true,
     ignoreHTTPSErrors: true,
+    baseURL: "http://localhost:5173",
   })
   const page = await context.newPage()
 
@@ -290,6 +294,7 @@ test.beforeAll(async ({ browser }) => {
   const ownerContext = await browser.newContext({
     storageState: "playwright/.auth/owner.json",
     ignoreHTTPSErrors: true,
+    baseURL: "http://localhost:5173",
   })
   const ownerPage = await ownerContext.newPage()
   // Trigger auth initialization by visiting a page

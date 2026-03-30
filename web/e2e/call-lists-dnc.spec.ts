@@ -207,10 +207,9 @@ test.describe.serial("Call Lists & DNC", () => {
     await navigateToCallLists(page)
 
     await test.step("Open edit dialog for E2E Call List 1", async () => {
-      // Find the row with "E2E Call List 1" and open its action menu
-      const row = page.getByRole("row").filter({ hasText: "E2E Call List 1" })
-      const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
-        .or(row.locator("button").last())
+      // Find the row with "E2E Call List 1" (exact match to avoid "E2E Call List 10" etc.)
+      const row = page.getByRole("row").filter({ hasText: /E2E Call List 1(?!\d)/ }).first()
+      const actionBtn = row.getByRole("button").last()
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /edit/i }).click()

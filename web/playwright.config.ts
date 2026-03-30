@@ -29,7 +29,7 @@ const allAuthFresh =
 // web dev server on :5173 (faster iteration, no build step).
 const useDevServer = process.env.E2E_USE_DEV_SERVER === "1"
 const baseURL = useDevServer
-  ? "https://localhost:5173"
+  ? "http://localhost:5173"
   : "https://localhost:4173"
 
 export default defineConfig({

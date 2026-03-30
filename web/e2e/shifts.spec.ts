@@ -210,7 +210,7 @@ test.describe.serial("Shift Lifecycle", () => {
       await page.getByRole("button", { name: /create shift/i }).click()
 
       // Fill the shift form dialog
-      await page.getByLabel(/name/i).fill(shiftData.name)
+      await page.getByLabel("Name", { exact: true }).fill(shiftData.name)
 
       // Select shift type
       const typeSelect = page.locator('[name="type"], [data-testid="shift-type"]').first()

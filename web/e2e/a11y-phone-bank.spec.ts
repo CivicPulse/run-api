@@ -138,12 +138,23 @@ async function setupApiMocks(page: Page) {
       })
     }
 
-    // My role
+    // My campaigns (must be checked before /me catch-all)
+    if (url.includes("/me/campaigns")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { campaign_id: CAMPAIGN_ID, campaign_name: "A11Y Test Campaign", role: "owner" },
+        ]),
+      })
+    }
+
+    // My role / profile
     if (url.includes("/me") || url.includes("/my-role")) {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ role: "owner" }),
+        body: JSON.stringify({ id: "mock-user-a11y", display_name: "Test Admin", email: "admin@test.com", role: "owner", created_at: "2026-01-01T00:00:00Z" }),
       })
     }
 

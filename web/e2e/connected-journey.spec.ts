@@ -49,6 +49,13 @@ test.describe.serial("Connected user journey", () => {
       await page.getByRole("combobox").first().click()
       await page.getByRole("option", { name: "Local" }).click()
 
+      // Step through the wizard: Details -> Review -> Invite Team -> Create
+      await page.getByRole("button", { name: /continue to review/i }).click()
+      await expect(page.getByText(/review your campaign/i)).toBeVisible({ timeout: 5_000 })
+
+      await page.getByRole("button", { name: /continue to invite/i }).click()
+      await expect(page.getByText(/add team members/i)).toBeVisible({ timeout: 5_000 })
+
       // Set up response promise BEFORE clicking submit
       const responsePromise = page.waitForResponse(
         (resp) =>
@@ -56,7 +63,7 @@ test.describe.serial("Connected user journey", () => {
           resp.request().method() === "POST"
       )
 
-      // Submit the form
+      // Submit the form (final step)
       await page.getByRole("button", { name: /create campaign/i }).click()
 
       // Verify API response

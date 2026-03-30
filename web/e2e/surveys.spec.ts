@@ -83,8 +83,10 @@ test.describe.serial("Survey Lifecycle", () => {
       timeout: 5_000,
     })
 
-    // Click the survey card to get the ID from the URL
-    await page.getByText("E2E Voter Sentiment Survey").first().click()
+    // Click the survey card link (the card has an overlay <a> that intercepts pointer events)
+    const surveyCard = page.locator('a[href*="/surveys/"]').filter({ hasText: /E2E Voter Sentiment Survey/i }).first()
+      .or(page.getByText("E2E Voter Sentiment Survey").first())
+    await surveyCard.click({ force: true })
     await page.waitForURL(/surveys\/([a-f0-9-]+)/, { timeout: 10_000 })
     surveyId = page.url().match(/surveys\/([a-f0-9-]+)/)?.[1] ?? ""
     expect(surveyId).toBeTruthy()

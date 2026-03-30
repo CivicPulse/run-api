@@ -104,7 +104,7 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
     // Navigate to voters page
     await page.getByRole("link", { name: /voters/i }).first().click()
     await expect(
-      page.getByRole("table").or(page.getByText(/no voters|all voters/i).first()),
+      page.getByRole("table").first(),
     ).toBeVisible({ timeout: 15_000 })
 
     // Create a voter via UI to trigger a success toast
