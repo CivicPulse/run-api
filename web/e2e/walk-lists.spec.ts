@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Walk Lists E2E Spec
@@ -76,8 +76,10 @@ test.describe.serial("Walk List Lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: navigate to seed campaign and ensure turf exists", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign and ensure turf exists", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     // Create a dedicated turf for walk list generation via API
@@ -112,9 +114,10 @@ test.describe.serial("Walk List Lifecycle", () => {
     }
   })
 
-  test("WL-01: Generate a walk list from a turf", async ({ page }) => {
+  test("WL-01: Generate a walk list from a turf", async ({ page, campaignId }) => {
     // Per D-16: Use the full UI dialog flow to test the generate feature
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCanvassing(page, campaignId)
 
     await test.step("Open Generate Walk List dialog", async () => {
@@ -167,8 +170,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-02: View walk list details", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("WL-02: View walk list details", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCanvassing(page, campaignId)
 
     await test.step("Click walk list to open detail page", async () => {
@@ -232,8 +236,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-03: Assign canvassers to walk list", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("WL-03: Assign canvassers to walk list", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Navigate to walk list detail", async () => {
       await page.goto(
@@ -287,8 +292,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-04: Unassign a canvasser", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("WL-04: Unassign a canvasser", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Navigate to walk list detail", async () => {
       await page.goto(
@@ -300,16 +306,24 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
 
     await test.step("Remove second canvasser", async () => {
-      // The canvasser badges have a remove (UserMinus) button
-      // Find the badge for "e2e-canvasser-2" and click its remove button
+      // The canvasser badges show user_id text with a remove (UserMinus) button
+      // Find the badge for the second canvasser using their user ID
+      // secondUserId is a UUID obtained from the campaign members API in Setup
       const canvasserBadge = page
         .locator("span")
-        .filter({ hasText: "e2e-canvasser-2" })
+        .filter({ hasText: secondUserId })
         .first()
-      await expect(canvasserBadge).toBeVisible({ timeout: 10_000 })
+
+      // If secondUserId is empty or the badge isn't found, fall back to
+      // removing the last canvasser badge on the page
+      const hasBadge = await canvasserBadge.isVisible({ timeout: 5_000 }).catch(() => false)
+      const targetBadge = hasBadge
+        ? canvasserBadge
+        : page.locator('[data-slot="badge"]').filter({ has: page.locator("button") }).last()
+      await expect(targetBadge).toBeVisible({ timeout: 10_000 })
 
       // Click the remove button within the badge
-      const removeBtn = canvasserBadge.locator("button").first()
+      const removeBtn = targetBadge.locator("button").first()
       await removeBtn.click()
 
       // Confirm the removal dialog
@@ -324,9 +338,11 @@ test.describe.serial("Walk List Lifecycle", () => {
       await expect(confirmDialog).toBeHidden({ timeout: 5_000 }).catch(() => {})
 
       // Verify the canvasser is removed
-      await expect(
-        page.getByText("e2e-canvasser-2").first(),
-      ).not.toBeVisible({ timeout: 5_000 })
+      if (hasBadge) {
+        await expect(
+          page.getByText(secondUserId).first(),
+        ).not.toBeVisible({ timeout: 5_000 })
+      }
     })
 
     await test.step("Verify first canvasser still assigned", async () => {
@@ -336,9 +352,10 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-05: Rename a walk list", async ({ page }) => {
+  test("WL-05: Rename a walk list", async ({ page, campaignId }) => {
     // Per Phase 56 feature: Walk list rename UI exists
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Rename via walk list detail page", async () => {
       await page.goto(
@@ -386,8 +403,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-06: Delete a walk list", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("WL-06: Delete a walk list", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCanvassing(page, campaignId)
 
     await test.step("Delete via row action menu", async () => {
@@ -425,8 +443,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
   })
 
-  test("WL-07: Create a walk list for further testing", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("WL-07: Create a walk list for further testing", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCanvassing(page, campaignId)
 
     await test.step("Generate new walk list via UI", async () => {

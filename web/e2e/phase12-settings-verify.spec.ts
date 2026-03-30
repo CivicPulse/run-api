@@ -1,5 +1,5 @@
-import { test, expect, type Page } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
 
 let CAMPAIGN_ID: string
 
@@ -11,9 +11,9 @@ test.describe("INFR-01: Settings gear icon in sidebar", () => {
   test("gear icon visible in sidebar for admin/owner user and navigates to settings", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/dashboard`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Settings link rendered in SidebarFooter — scope to sidebar nav; pick campaign settings link
     const settingsLink = page.getByLabel("Main navigation").getByRole("link", { name: /settings/i }).last()
@@ -34,9 +34,9 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
   test("form loads with campaign data, edit saves and shows success toast", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Form must be visible with the name input populated from API
     const nameInput = page.locator('input[name="name"]')
@@ -75,9 +75,9 @@ test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
   test("dirty form blocks navigation and shows unsaved changes dialog; Keep editing stays on page", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for form to load with campaign data
     const nameInput = page.locator('input[name="name"]')
@@ -112,9 +112,9 @@ test.describe("CAMP-05: Members tab — member list with role badges", () => {
   test("member list table renders with Name, Email, Role, Joined columns and role badges", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Page heading
     const membersHeading = page.getByRole("heading", { name: /^members$/i })
@@ -142,9 +142,9 @@ test.describe("CAMP-03: Invite member dialog", () => {
   test("invite dialog opens with email input and role selector, send invite shows toast", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Click "Invite member" button
     const inviteBtn = page.getByRole("button", { name: /invite member/i })
@@ -188,9 +188,9 @@ test.describe("CAMP-04: Pending Invites section", () => {
   test("Pending Invites section heading visible with table or empty state", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // "Pending Invites" section heading must be present (exact match to avoid matching "No pending invites" empty state)
     const invitesHeading = page.getByRole("heading", { name: "Pending Invites", exact: true })
@@ -211,9 +211,9 @@ test.describe("CAMP-06: Change member role via kebab menu", () => {
   test("kebab menu on non-owner row opens role change dialog with save button", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Find a row with a three-dot (MoreHorizontal) actions button
     // The DropdownMenuTrigger button has an sr-only "Actions" span
@@ -276,9 +276,9 @@ test.describe("CAMP-07: Remove member via kebab menu", () => {
   test("kebab menu shows Remove member; confirmation dialog appears with Remove button", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     const actionButtons = page.getByRole("button", { name: /actions/i })
     const count = await actionButtons.count()
@@ -321,9 +321,9 @@ test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
   test("delete dialog opens, confirm button disabled until campaign name typed, then enables", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // "Delete this campaign" section must be visible
     const deleteSection = page.getByText(/delete this campaign/i)
@@ -373,9 +373,9 @@ test.describe("CAMP-08: Transfer ownership", () => {
   test("transfer ownership section visible, dialog opens with admin selector", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // "Transfer ownership" section must be visible
     const transferSection = page.getByText(/transfer ownership/i).first()

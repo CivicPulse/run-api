@@ -203,9 +203,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
   }) => {
     // 1. Navigate to phone banking sessions page (index redirects to call-lists)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // 2. Verify ARIA landmarks
     const nav = page.getByRole("navigation")
     await expect(nav.first()).toBeVisible()
@@ -259,9 +257,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
 
     // 6. Navigate to session detail page
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions/${SESSION_ID}`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify detail page ARIA landmarks
     await expect(page.getByRole("main")).toBeVisible()
 

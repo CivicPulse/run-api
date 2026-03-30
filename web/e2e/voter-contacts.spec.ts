@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter Contacts E2E Spec
@@ -21,16 +21,16 @@ async function createVoterViaApi(
   data: Record<string, unknown>,
 ): Promise<string> {
   const url = `/api/v1/campaigns/${campaignId}/voters`
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const resp = await apiPost(page, url, data)
     if (resp.ok()) return (await resp.json()).id
-    if (resp.status() === 429 && attempt < 4) {
-      await page.waitForTimeout(3000 * (attempt + 1))
+    if (resp.status() === 429 && attempt < 7) {
+      await page.waitForTimeout(2000 * (attempt + 1))
       continue
     }
     throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
   }
-  throw new Error(`POST ${url} failed after 5 retries`)
+  throw new Error(`POST ${url} failed after 8 retries`)
 }
 
 async function deleteVoterViaApi(
@@ -96,9 +96,12 @@ test.describe.serial("Voter contacts CRUD", () => {
 
   test("Setup: Create 20 test voters for contact operations", async ({
     page,
+    campaignId: cid,
   }) => {
+    campaignId = cid
     await test.step("Navigate to seed campaign", async () => {
-      campaignId = await navigateToSeedCampaign(page)
+      await page.goto(`/campaigns/${campaignId}/dashboard`)
+      await page.waitForURL(/campaigns\//, { timeout: 10_000 })
       expect(campaignId).toBeTruthy()
     })
 
@@ -112,6 +115,10 @@ test.describe.serial("Voter contacts CRUD", () => {
         })
         testVoterIds.push(id)
         testVoterNames.push(`Contact ${name}`)
+        // Small delay between creates to stay under 30/min rate limit
+        if (i > 0 && i % 10 === 0) {
+          await page.waitForTimeout(2000)
+        }
       }
       expect(testVoterIds.length).toBe(20)
     })
@@ -126,9 +133,10 @@ test.describe.serial("Voter contacts CRUD", () => {
     })
   })
 
-  test("CON-01: Add phone numbers to 20 voters", async ({ page }) => {
+  test("CON-01: Add phone numbers to 20 voters", async ({ page, campaignId }) => {
     // Navigate to establish context
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     for (let i = 0; i < 20; i++) {
       await test.step(`Add phone to Contact ${NATO_NAMES[i]}`, async () => {
@@ -150,7 +158,7 @@ test.describe.serial("Voter contacts CRUD", () => {
 
         // Select phone type (cycle through mobile, home, work)
         const phoneType = PHONE_TYPES[i % 3]
-        await page.locator("#phone-type").locator("..").locator("button").first().click()
+        await page.locator("#phone-type").click()
         await page.getByRole("option", { name: new RegExp(`^${phoneType}$`, "i") }).click()
 
         // Save
@@ -177,7 +185,7 @@ test.describe.serial("Voter contacts CRUD", () => {
       await page.locator("#phone-value").fill("478-555-9000")
 
       // Select work type
-      await page.locator("#phone-type").locator("..").locator("button").first().click()
+      await page.locator("#phone-type").click()
       await page.getByRole("option", { name: /^work$/i }).click()
 
       await page.getByRole("button", { name: /^save$/i }).first().click()
@@ -190,8 +198,9 @@ test.describe.serial("Voter contacts CRUD", () => {
     })
   })
 
-  test("CON-02: Add email addresses to 10 voters", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CON-02: Add email addresses to 10 voters", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Add emails to Contact Alpha through Contact Juliet (first 10)
     for (let i = 0; i < 10; i++) {
@@ -212,7 +221,7 @@ test.describe.serial("Voter contacts CRUD", () => {
 
         // Email type defaults to "personal" which is fine; vary some
         if (i % 3 === 1) {
-          await page.locator("#email-type").locator("..").locator("button").first().click()
+          await page.locator("#email-type").click()
           await page.getByRole("option", { name: /^work$/i }).click()
         }
 
@@ -226,8 +235,9 @@ test.describe.serial("Voter contacts CRUD", () => {
     }
   })
 
-  test("CON-03: Add mailing addresses to 5 voters", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CON-03: Add mailing addresses to 5 voters", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     const addresses = [
       {
@@ -292,8 +302,9 @@ test.describe.serial("Voter contacts CRUD", () => {
     }
   })
 
-  test("CON-04: Edit contacts", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CON-04: Edit contacts", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Edit Contact Alpha's phone number
     await test.step("Edit Contact Alpha phone: change to 478-555-9999", async () => {
@@ -341,8 +352,9 @@ test.describe.serial("Voter contacts CRUD", () => {
     })
   })
 
-  test("CON-05: Delete contacts", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CON-05: Delete contacts", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Delete Contact Alpha's edited phone
     await test.step("Delete Contact Alpha phone", async () => {
@@ -405,7 +417,8 @@ test.describe.serial("Voter contacts CRUD", () => {
   test("Final: Verify all test voters can be deleted (lifecycle assertion)", async ({
     page,
   }) => {
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.getByRole("link", { name: /voters/i }).first().click()
     await page.waitForURL(/voters/, { timeout: 10_000 })
     await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })

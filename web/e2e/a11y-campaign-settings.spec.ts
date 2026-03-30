@@ -117,9 +117,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
   }) => {
     // 1. Navigate to settings general page (index redirects to general)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // 2. Verify ARIA landmarks — mock auth may not render the sidebar shell
     // so <main> may not exist; use page body as fallback content root.
     const nav = page.getByRole("navigation")
@@ -197,9 +195,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
 
     // 8. Navigate to danger zone settings
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify danger zone heading
     const dangerHeadings = page.getByRole("main").getByRole("heading")
     expect(await dangerHeadings.count()).toBeGreaterThan(0)
@@ -222,8 +218,6 @@ test.describe("A11Y Flow: Campaign Settings", () => {
       const firstVisibleButton = dangerButtons.first()
       if (await firstVisibleButton.isVisible()) {
         await firstVisibleButton.click()
-        await page.waitForTimeout(500)
-
         // Check if a dialog opened
         const dialog = page.getByRole("dialog")
         const dialogCount = await dialog.count()
@@ -253,8 +247,6 @@ test.describe("A11Y Flow: Campaign Settings", () => {
 
           // Escape should close the dialog
           await page.keyboard.press("Escape")
-          await page.waitForTimeout(300)
-
           // After closing, dialog should not be visible
           const dialogAfterClose = page.getByRole("dialog")
           const dialogAfterCount = await dialogAfterClose.count()
@@ -268,9 +260,7 @@ test.describe("A11Y Flow: Campaign Settings", () => {
 
   test("settings members page is keyboard-navigable", async ({ page }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify ARIA landmarks — mock auth may not render <main>
     const mainEl = page.getByRole("main")
     const hasMain = await mainEl.count().then((c) => c > 0)

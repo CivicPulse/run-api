@@ -1,17 +1,6 @@
 import type { Page, APIResponse } from "@playwright/test"
 
 /**
- * Navigate to the seed campaign (Macon-Bibb Demo Campaign) and return its UUID.
- * Works by going to the org dashboard and clicking the campaign card.
- */
-export async function navigateToSeedCampaign(page: Page): Promise<string> {
-  const id = await getSeedCampaignId(page)
-  await page.goto(`/campaigns/${id}/dashboard`)
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return id
-}
-
-/**
  * Get the seed campaign ID without navigating into it.
  * Uses the /me/campaigns API to find the seed campaign by name.
  */
@@ -24,7 +13,7 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
       !url.pathname.includes("/ui/login"),
     { timeout: 15_000 },
   )
-  await page.waitForLoadState("networkidle")
+  await page.waitForLoadState("domcontentloaded")
 
   // Try to find the campaign ID via API (retries for parallel resilience).
   // Use /me/campaigns (flat list of user's memberships) instead of /campaigns

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 import { authHeaders } from "./helpers"
 
 /**
@@ -12,22 +12,6 @@ import { authHeaders } from "./helpers"
  */
 
 // -- Helper Functions ---------------------------------------------------------
-
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
 
 async function navigateToImportsPage(
   page: import("@playwright/test").Page,
@@ -71,12 +55,14 @@ test.describe.serial("Voter Import Lifecycle", () => {
 
   test.setTimeout(180_000)
 
-  test("Setup: navigate to seed campaign", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
   })
 
-  test("IMP-01: Import L2 voter file with auto-mapping", async ({ page }) => {
+  test("IMP-01: Import L2 voter file with auto-mapping", async ({ page, campaignId }) => {
     // 1. Navigate to seed campaign and imports page
     await page.goto("/")
     await page.waitForURL(
@@ -162,7 +148,7 @@ test.describe.serial("Voter Import Lifecycle", () => {
     })
   })
 
-  test("IMP-02: Validate import progress and history", async ({ page }) => {
+  test("IMP-02: Validate import progress and history", async ({ page, campaignId }) => {
     // Navigate to the campaign imports history page
     await page.goto("/")
     await page.waitForURL(
@@ -196,7 +182,7 @@ test.describe.serial("Voter Import Lifecycle", () => {
     })
   })
 
-  test("IMP-03: Concurrent import prevention", async ({ page }) => {
+  test("IMP-03: Concurrent import prevention", async ({ page, campaignId }) => {
     // Navigate to campaign
     await page.goto("/")
     await page.waitForURL(
@@ -266,7 +252,7 @@ test.describe.serial("Voter Import Lifecycle", () => {
     ).toBeVisible({ timeout: 60_000 })
   })
 
-  test("IMP-04: Cancel an import", async ({ page }) => {
+  test("IMP-04: Cancel an import", async ({ page, campaignId }) => {
     // Navigate to campaign and imports
     await page.goto("/")
     await page.waitForURL(

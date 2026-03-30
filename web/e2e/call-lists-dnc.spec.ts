@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Call Lists & DNC E2E Spec
@@ -127,15 +127,18 @@ test.describe.serial("Call Lists & DNC", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: navigate to seed campaign", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
   })
 
   // ── Call List CRUD ────────────────────────────────────────────────────────
 
-  test("CL-01: Create a call list via UI", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CL-01: Create a call list via UI", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
 
     await test.step("Open new call list dialog", async () => {
@@ -175,8 +178,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("CL-02: View call list details", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CL-02: View call list details", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
 
     await test.step("Click on E2E Call List 1", async () => {
@@ -202,8 +206,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("CL-03: Edit a call list name", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CL-03: Edit a call list name", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
 
     await test.step("Open edit dialog for E2E Call List 1", async () => {
@@ -237,8 +242,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("CL-04: Delete a call list", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CL-04: Delete a call list", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Create throwaway call list via API", async () => {
       await createCallListViaApi(page, campaignId, "E2E Call List -- Delete Me")
@@ -254,7 +260,7 @@ test.describe.serial("Call Lists & DNC", () => {
 
       // Open action menu on the delete-me list
       const row = page.getByRole("row").filter({ hasText: "E2E Call List -- Delete Me" })
-      const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
+      const actionBtn = row.getByRole("button").last()
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /delete/i }).click()
@@ -275,8 +281,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("CL-05: Create call list for further testing", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("CL-05: Create call list for further testing", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Create E2E Active Call List via API", async () => {
       const id = await createCallListViaApi(
@@ -298,8 +305,9 @@ test.describe.serial("Call Lists & DNC", () => {
 
   // ── DNC Management ────────────────────────────────────────────────────────
 
-  test("DNC-01: Add a single phone to DNC", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-01: Add a single phone to DNC", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
     await navigateToDNC(page)
 
@@ -328,8 +336,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("DNC-02: Bulk add to DNC", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-02: Bulk add to DNC", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
     await navigateToDNC(page)
 
@@ -365,8 +374,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("DNC-03: Add voter phone numbers to DNC", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-03: Add voter phone numbers to DNC", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Find 5 seed voters with phone numbers", async () => {
       const voterPhones = await getVoterPhonesViaApi(page, campaignId, 5)
@@ -405,8 +415,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("DNC-04: Verify DNC enforcement in call lists", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-04: Verify DNC enforcement in call lists", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Create a new call list and check entries", async () => {
       const newListId = await createCallListViaApi(
@@ -446,8 +457,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("DNC-05: Delete DNC entries", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-05: Delete DNC entries", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
     await navigateToDNC(page)
 
@@ -498,8 +510,9 @@ test.describe.serial("Call Lists & DNC", () => {
     })
   })
 
-  test("DNC-06: Search DNC list", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("DNC-06: Search DNC list", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)
     await navigateToDNC(page)
 
@@ -512,7 +525,6 @@ test.describe.serial("Call Lists & DNC", () => {
       await searchInput.fill("4785550101")
 
       // Wait for client-side filtering
-      await page.waitForTimeout(500)
     })
 
     await test.step("Verify filtered results", async () => {
@@ -532,8 +544,6 @@ test.describe.serial("Call Lists & DNC", () => {
       await searchInput.clear()
 
       // Wait for client-side filtering reset
-      await page.waitForTimeout(500)
-
       // Multiple entries should now be visible again
       await expect(
         page.getByText("4785550105").first(),

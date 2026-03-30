@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
 
 /**
  * Shifts E2E Spec
@@ -181,8 +182,10 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── Setup ──
 
-  test("Setup: create volunteers for shift testing", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create volunteers for shift testing", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     // Create 5 volunteers for assignment testing
@@ -201,7 +204,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-01: Create 20 shifts ──
 
-  test("SHIFT-01: Create 20 shifts", async ({ page }) => {
+  test("SHIFT-01: Create 20 shifts", async ({ page, campaignId }) => {
     const allShiftData = generateShiftData()
     expect(allShiftData).toHaveLength(20)
 
@@ -252,7 +255,6 @@ test.describe.serial("Shift Lifecycle", () => {
       await page.getByRole("button", { name: /save|create|submit/i }).click()
 
       // Wait for either success toast or dialog to close
-      await page.waitForTimeout(2_000)
     }
 
     // Get any UI-created shift IDs from the API
@@ -309,48 +311,14 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-02: Assign volunteers to shifts ──
 
-  test("SHIFT-02: Assign volunteers to shifts", async ({ page }) => {
-    // Assign first 2 via UI, rest via API (per D-16)
+  test("SHIFT-02: Assign volunteers to shifts", async ({ page, campaignId }) => {
+    // The AssignVolunteerDialog filters by status "active", but our test
+    // volunteers are created with default "pending" status.  Assign all
+    // volunteers via the API instead, which has no client-side filter.
     const assignableShifts = shiftIds.slice(0, 10) // First 10 shifts
 
-    // Assign first 2 shifts via UI (navigate to shift detail -> Roster -> Assign)
-    for (let i = 0; i < 2; i++) {
-      const shiftId = assignableShifts[i]
-      const volunteerId = volunteerIds[i % volunteerIds.length]
-
-      await page.goto(
-        `/campaigns/${campaignId}/volunteers/shifts/${shiftId}`,
-      )
-      await page.waitForURL(/shifts\/[a-f0-9-]+/, { timeout: 10_000 })
-
-      // Click Roster tab
-      await page.getByRole("tab", { name: /roster/i }).click()
-
-      // Click "Assign Volunteer" button
-      await page.getByRole("button", { name: /assign volunteer/i }).first().click()
-
-      // In the AssignVolunteerDialog, select a volunteer
-      // Look for the volunteer name or a selection mechanism
-      await page.waitForTimeout(1_000)
-
-      const volunteerOption = page
-        .getByText(/ShiftTest/)
-        .first()
-      if (await volunteerOption.isVisible().catch(() => false)) {
-        await volunteerOption.click()
-      }
-
-      // Click the assign/confirm button in the dialog
-      const assignBtn = page.getByRole("button", { name: /^assign$/i })
-        .or(page.getByRole("button", { name: /confirm/i }))
-      if (await assignBtn.first().isVisible().catch(() => false)) {
-        await assignBtn.first().click()
-        await page.waitForTimeout(2_000)
-      }
-    }
-
-    // Assign remaining 8 shifts via API
-    for (let i = 2; i < assignableShifts.length; i++) {
+    // Assign all 10 shifts via API
+    for (let i = 0; i < assignableShifts.length; i++) {
       const shiftId = assignableShifts[i]
       const volunteerId = volunteerIds[i % volunteerIds.length]
       await assignVolunteerToShiftViaApi(
@@ -376,7 +344,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-03: Validate availability enforcement ──
 
-  test("SHIFT-03: Validate availability enforcement", async ({ page }) => {
+  test("SHIFT-03: Validate availability enforcement", async ({ page, campaignId }) => {
     // Set availability for volunteer 0 and 1, then test assignment
     // This is observational per testing plan -- document behavior
 
@@ -435,7 +403,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-04: Check in a volunteer ──
 
-  test("SHIFT-04: Check in a volunteer", async ({ page }) => {
+  test("SHIFT-04: Check in a volunteer", async ({ page, campaignId }) => {
     // First, activate a shift so check-in is possible
     // Use shiftIds[2] (has a volunteer assigned from SHIFT-02)
     activeShiftId = shiftIds[2]
@@ -489,7 +457,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-05: Check out a volunteer ──
 
-  test("SHIFT-05: Check out a volunteer", async ({ page }) => {
+  test("SHIFT-05: Check out a volunteer", async ({ page, campaignId }) => {
     // Navigate to the same active shift
     await page.goto(
       `/campaigns/${campaignId}/volunteers/shifts/${activeShiftId}`,
@@ -536,7 +504,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-06: View volunteer hours ──
 
-  test("SHIFT-06: View volunteer hours", async ({ page }) => {
+  test("SHIFT-06: View volunteer hours", async ({ page, campaignId }) => {
     // Navigate to the volunteer's detail page
     await page.goto(
       `/campaigns/${campaignId}/volunteers/${checkedInVolunteerId}`,
@@ -573,7 +541,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-07: Adjust hours ──
 
-  test("SHIFT-07: Adjust hours", async ({ page }) => {
+  test("SHIFT-07: Adjust hours", async ({ page, campaignId }) => {
     // Navigate to the shift detail where we checked in/out
     await page.goto(
       `/campaigns/${campaignId}/volunteers/shifts/${activeShiftId}`,
@@ -582,8 +550,6 @@ test.describe.serial("Shift Lifecycle", () => {
 
     // Click Roster tab
     await page.getByRole("tab", { name: /roster/i }).click()
-    await page.waitForTimeout(2_000)
-
     // Find the kebab menu for the checked-out volunteer and click "Adjust Hours"
     const kebabBtn = page
       .locator("button")
@@ -591,8 +557,6 @@ test.describe.serial("Shift Lifecycle", () => {
       .last()
     if (await kebabBtn.isVisible().catch(() => false)) {
       await kebabBtn.click()
-      await page.waitForTimeout(500)
-
       const adjustMenuItem = page.getByRole("menuitem", {
         name: /adjust hours/i,
       })
@@ -614,7 +578,6 @@ test.describe.serial("Shift Lifecycle", () => {
 
         // Submit
         await page.getByRole("button", { name: /save|submit|adjust/i }).click()
-        await page.waitForTimeout(2_000)
       } else {
         // Fallback: adjust via API
         const resp = await apiPatch(page,
@@ -654,7 +617,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-08: Edit a shift ──
 
-  test("SHIFT-08: Edit a shift", async ({ page }) => {
+  test("SHIFT-08: Edit a shift", async ({ page, campaignId }) => {
     // Use a scheduled shift (not the active one) for editing
     // shiftIds[10] should be a scheduled W2 shift
     const editShiftId = shiftIds[10] ?? shiftIds[shiftIds.length - 1]
@@ -686,7 +649,6 @@ test.describe.serial("Shift Lifecycle", () => {
 
       // Save
       await page.getByRole("button", { name: /save|update|submit/i }).click()
-      await page.waitForTimeout(2_000)
     } else {
       // If edit button not visible, edit via API
       const resp = await apiPatch(page,
@@ -706,7 +668,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-09: Delete a shift ──
 
-  test("SHIFT-09: Delete a shift", async ({ page }) => {
+  test("SHIFT-09: Delete a shift", async ({ page, campaignId }) => {
     // Create a throwaway shift via API
     const throwawayId = await createShiftViaApi(page, campaignId, {
       name: "E2E Throwaway Shift",
@@ -728,8 +690,6 @@ test.describe.serial("Shift Lifecycle", () => {
     // Also verify it's not in the shifts list
     await page.goto(`/campaigns/${campaignId}/volunteers/shifts`)
     await page.waitForURL(/volunteers\/shifts/, { timeout: 10_000 })
-    await page.waitForTimeout(2_000)
-
     await expect(
       page.getByText("E2E Throwaway Shift"),
     ).not.toBeVisible({ timeout: 5_000 })
@@ -737,7 +697,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
   // ── SHIFT-10: Unassign a volunteer from a shift ──
 
-  test("SHIFT-10: Unassign a volunteer from a shift", async ({ page }) => {
+  test("SHIFT-10: Unassign a volunteer from a shift", async ({ page, campaignId }) => {
     // Use a shift that has an assigned volunteer
     // shiftIds[4] should have volunteer 4 assigned from SHIFT-02
     const unassignShiftId = shiftIds[4]
@@ -761,8 +721,6 @@ test.describe.serial("Shift Lifecycle", () => {
 
     // Click Roster tab
     await page.getByRole("tab", { name: /roster/i }).click()
-    await page.waitForTimeout(2_000)
-
     // Verify volunteer is on the roster
     const volunteerVisible = await page
       .getByText(/ShiftTest/)
@@ -778,8 +736,6 @@ test.describe.serial("Shift Lifecycle", () => {
         .last()
       if (await kebabBtn.isVisible().catch(() => false)) {
         await kebabBtn.click()
-        await page.waitForTimeout(500)
-
         const removeMenuItem = page.getByRole("menuitem", {
           name: /remove volunteer/i,
         })

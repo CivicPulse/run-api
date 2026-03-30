@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiGet } from "./helpers"
 
 let CAMPAIGN_ID: string
 
@@ -7,12 +7,11 @@ test.setTimeout(60_000)
 
 /** Navigate to voter list page and open the filter panel */
 async function openVoterFilters(page: import("@playwright/test").Page) {
-  CAMPAIGN_ID = await getSeedCampaignId(page)
+  CAMPAIGN_ID = campaignId
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-  await page.waitForLoadState("networkidle")
+  await page.waitForLoadState("domcontentloaded")
   // Click the "Filters" button to open the filter panel
   await page.getByRole("button", { name: /filters/i }).click()
-  await page.waitForTimeout(500)
 }
 
 /**
@@ -44,7 +43,6 @@ async function captureSearchBodies(page: import("@playwright/test").Page) {
     waitForNew: async (currentCount: number) => {
       const startTime = Date.now()
       while (bodies.length <= currentCount && Date.now() - startTime < 15_000) {
-        await page.waitForTimeout(200)
       }
       return bodies.length > currentCount
     },
@@ -65,8 +63,6 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // Wait for accordion content to expand and slider to be visible
     const generalLabel = page.locator("text=General Propensity")
     await expect(generalLabel).toBeVisible({ timeout: 5_000 })
-    await page.waitForTimeout(300)
-
     // Note how many requests have been captured so far (initial page load)
     const beforeCount = capture.getBodies().length
 
@@ -118,8 +114,6 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     await openVoterFilters(page)
 
     // The "Demographics" accordion section is open by default
-    await page.waitForTimeout(500)
-
     // Note how many requests have been captured so far
     const beforeCount = capture.getBodies().length
 
@@ -176,8 +170,6 @@ test.describe("Phase 27: Filter wiring E2E", () => {
       .locator("button")
       .filter({ hasText: "Location" })
     await locationTrigger.click()
-    await page.waitForTimeout(500)
-
     // Note how many requests have been captured so far
     const beforeCount = capture.getBodies().length
 
@@ -224,7 +216,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     })
   })
 
-  test("combined new + legacy filters work together", async ({ page }) => {
+  test("combined new + legacy filters work together", async ({ page, campaignId }) => {
     const capture = await captureSearchBodies(page)
     await openVoterFilters(page)
 
@@ -241,8 +233,6 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // Expand the "Scoring" accordion and set a propensity slider (new filter)
     const scoringTrigger = page.locator("button").filter({ hasText: "Scoring" })
     await scoringTrigger.click()
-    await page.waitForTimeout(500)
-
     // Note current count before slider interaction
     const beforeCount = capture.getBodies().length
 
@@ -284,9 +274,9 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     page,
   }) => {
     // First navigate to the voters page so we have a valid session
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Make a direct GET request to the legacy endpoint
     const response = await apiGet(

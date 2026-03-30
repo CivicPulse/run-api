@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 /**
  * RBAC-05: Manager can create and manage operational resources.
@@ -10,17 +9,14 @@ import { getSeedCampaignId } from "./helpers"
  * campaign members or campaign-level settings (admin+).
  */
 test.describe("RBAC: manager permissions", () => {
-  let campaignId: string
-
-  /** Navigate into the seed campaign and extract campaignId. */
-  async function enterCampaign(page: import("@playwright/test").Page) {
-    campaignId = await getSeedCampaignId(page)
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForLoadState("networkidle")
+  /** Navigate into the seed campaign dashboard. */
+  async function enterCampaign(page: import("@playwright/test").Page, id: string) {
+    await page.goto(`/campaigns/${id}/dashboard`)
+    await page.waitForLoadState("domcontentloaded")
   }
 
-  test("voters page: New Voter button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voters page: New Voter button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -32,8 +28,8 @@ test.describe("RBAC: manager permissions", () => {
     await expect(newVoterButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("voter detail: Edit button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voter detail: Edit button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -47,8 +43,8 @@ test.describe("RBAC: manager permissions", () => {
     await expect(editButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("voter detail: Add Interaction button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voter detail: Add Interaction button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -63,8 +59,8 @@ test.describe("RBAC: manager permissions", () => {
     await expect(addInteractionButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("canvassing: New Turf link IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("canvassing: New Turf link IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
     await page.waitForURL(/canvassing/, { timeout: 10_000 })
 
@@ -77,9 +73,9 @@ test.describe("RBAC: manager permissions", () => {
   })
 
   test("phone banking: New Call List and New Session buttons ARE visible", async ({
-    page,
+    page, campaignId,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
 
     // Check call lists page
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
@@ -102,8 +98,8 @@ test.describe("RBAC: manager permissions", () => {
     await expect(newSessionButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("surveys: New Script button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("surveys: New Script button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/surveys`)
     await page.waitForURL(/surveys/, { timeout: 10_000 })
 
@@ -117,9 +113,9 @@ test.describe("RBAC: manager permissions", () => {
   })
 
   test("volunteers roster: management actions ARE visible for manager", async ({
-    page,
+    page, campaignId,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
     await page.waitForURL(/roster/, { timeout: 10_000 })
 
@@ -138,9 +134,9 @@ test.describe("RBAC: manager permissions", () => {
   })
 
   test("campaign settings: Members nav link is visible but members content is NOT accessible", async ({
-    page,
+    page, campaignId,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings/, { timeout: 10_000 })
 
@@ -158,9 +154,9 @@ test.describe("RBAC: manager permissions", () => {
   })
 
   test("campaign settings danger zone: Transfer and Delete NOT visible", async ({
-    page,
+    page, campaignId,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
     await page.waitForURL(/danger/, { timeout: 10_000 })
 
@@ -175,7 +171,7 @@ test.describe("RBAC: manager permissions", () => {
     await expect(deleteButton).not.toBeVisible()
   })
 
-  test("org dashboard: Create Campaign link NOT visible", async ({ page }) => {
+  test("org dashboard: Create Campaign link NOT visible", async ({ page, campaignId }) => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),

@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter Notes E2E Lifecycle Spec
@@ -46,8 +47,10 @@ test.describe.serial("Voter notes lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: create test voters", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create test voters", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     const voters = [
@@ -64,7 +67,7 @@ test.describe.serial("Voter notes lifecycle", () => {
     expect(testVoterIds).toHaveLength(3)
   })
 
-  test("NOTE-01: Add 2 notes to each of 3 test voters", async ({ page }) => {
+  test("NOTE-01: Add 2 notes to each of 3 test voters", async ({ page, campaignId }) => {
     for (let i = 0; i < testVoterIds.length; i++) {
       // Navigate to voter detail page
       await page.goto(
@@ -173,7 +176,7 @@ test.describe.serial("Voter notes lifecycle", () => {
     ).toBeVisible({ timeout: 10_000 })
   })
 
-  test("NOTE-03: Delete all test notes from all voters", async ({ page }) => {
+  test("NOTE-03: Delete all test notes from all voters", async ({ page, campaignId }) => {
     // The notes per voter after edits:
     // Note Alpha: "Initial contact - friendly - UPDATED", "Called back, left voicemail"
     // Note Bravo: "Initial contact - friendly", "Called back, spoke briefly - UPDATED"

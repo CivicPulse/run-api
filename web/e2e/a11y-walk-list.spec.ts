@@ -11,7 +11,8 @@ const WALK_LIST_ID = "wl-a11y-001"
 // ── API Mock Helpers ────────────────────────────────────────────────────────
 
 async function setupApiMocks(page: Page) {
-  await mockConfigEndpoint(page)
+  // Register catch-all FIRST so that more-specific routes registered later
+  // take priority (Playwright matches last-registered first).
   await page.route("**/api/v1/**", (route) => {
     const url = route.request().url()
     const method = route.request().method()
@@ -154,6 +155,10 @@ async function setupApiMocks(page: Page) {
       body: JSON.stringify({}),
     })
   })
+
+  // Register config endpoint AFTER catch-all so it takes priority
+  // (Playwright matches last-registered route first).
+  await mockConfigEndpoint(page)
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -171,9 +176,7 @@ test.describe("A11Y Flow: Walk List Creation", () => {
   }) => {
     // 1. Navigate to canvassing overview page
     await page.goto(`/campaigns/${CAMPAIGN_ID}/canvassing`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // 2. Verify ARIA landmarks
     const nav = page.getByRole("navigation")
     await expect(nav.first()).toBeVisible()

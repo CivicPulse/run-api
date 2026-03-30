@@ -1,5 +1,5 @@
-import { test, expect, type Page } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
 
 // Increase global timeout for all tests — login + navigation can be slow on the dev tailnet server
 test.setTimeout(90_000)
@@ -9,12 +9,15 @@ let CAMPAIGN_ID: string
 /** Navigate to a campaign sub-page, re-navigating if auth redirects away. */
 async function gotoAndWaitForAuth(page: Page, path: string): Promise<void> {
   await page.goto(path)
-  await page.waitForLoadState("networkidle")
-  // If the app redirected away for auth, wait briefly and retry
+  await page.waitForLoadState("domcontentloaded")
+  // If the app redirected away for auth, wait and retry
   if (!page.url().includes("/campaigns/")) {
-    await page.waitForTimeout(2000)
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    ).catch(() => {})
     await page.goto(path)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
   }
 }
 
@@ -31,15 +34,15 @@ async function getFirstVoterId(page: Page): Promise<string | null> {
   await firstLink.waitFor({ state: "visible", timeout: 20_000 })
   await firstLink.click()
   await page.waitForURL(/\/voters\/[^/]+$/, { timeout: 10_000 })
-  await page.waitForLoadState("networkidle")
+  await page.waitForLoadState("domcontentloaded")
   // Extract voterId from URL
   const url = page.url()
   const match = url.match(/\/voters\/([^/]+)$/)
   return match ? match[1] : null
 }
 
-test.beforeEach(async ({ page }) => {
-  CAMPAIGN_ID = await getSeedCampaignId(page)
+test.beforeEach(async ({ campaignId }) => {
+  CAMPAIGN_ID = campaignId
 })
 
 // ---------------------------------------------------------------------------
@@ -81,7 +84,7 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
     await expect(contactsTab).toBeVisible({ timeout: 15_000 })
     await contactsTab.click()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for contacts data to finish loading — section headings appear after skeletons resolve
     const phoneHeading = page.getByRole("heading", { name: "Phone Numbers", exact: true })
@@ -213,12 +216,12 @@ test.describe("VOTR-06: Tags tab on voter detail — tag chips with remove and a
     const tagsTab = page.getByRole("tab", { name: /tags/i })
     await expect(tagsTab).toBeVisible({ timeout: 8000 })
     await tagsTab.click()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
     await page.screenshot({ path: "test-results/p13-06-tags-tab.png" })
 
-    // "Current Tags" section heading must be visible
+    // "Current Tags" section heading must be visible — wait for tags API to complete
     const currentTagsHeading = page.getByText(/current tags/i).first()
-    await expect(currentTagsHeading).toBeVisible({ timeout: 8000 })
+    await expect(currentTagsHeading).toBeVisible({ timeout: 20_000 })
 
     // Either tag chips with X buttons OR empty state
     const removeButtons = page.locator('button[aria-label^="Remove tag"]')
@@ -292,7 +295,6 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
 
     // Click "Dynamic List" card
     await dynamicCard.click()
-    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-08-dynamic-type-selected.png" })
 
     // VoterFilterBuilder renders — check for Party and Age Range labels
@@ -336,7 +338,7 @@ test.describe("VOTR-09: List detail page renders member DataTable", () => {
     // Click the first list link
     await listLinks.first().click()
     await page.waitForURL(/\/voters\/lists\/[^/]+$/, { timeout: 10_000 })
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
     await page.screenshot({ path: "test-results/p13-09-list-detail.png" })
 
     // List detail shows the list name (h2) and type badge
@@ -383,7 +385,6 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
 
     // Click to open filter panel
     await filtersBtn.click()
-    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p13-10-filter-panel-open.png" })
 
     // VoterFilterBuilder renders with accordion sections.

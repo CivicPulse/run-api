@@ -1,5 +1,5 @@
-import { test, expect, type Page } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
 
 // Increase global timeout — login + navigation can be slow on the dev tailnet server
 test.setTimeout(90_000)
@@ -31,7 +31,6 @@ async function gotoAndWaitReady(page: Page, url: string) {
   await campaignsResponse
 
   // Give React time to re-render after the role data arrives
-  await page.waitForTimeout(500)
 }
 
 // ---------------------------------------------------------------------------
@@ -40,8 +39,9 @@ async function gotoAndWaitReady(page: Page, url: string) {
 test.describe("IMPT-06: Import history page — DataTable or EmptyState with New Import button", () => {
   test("navigating to /voters/imports shows Import History heading and New Import button", async ({
     page,
+    campaignId,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await gotoAndWaitReady(page, `/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.screenshot({ path: "test-results/p14-06-imports-index.png" })
 
@@ -77,8 +77,9 @@ test.describe("IMPT-06: Import history page — DataTable or EmptyState with New
 test.describe("IMPT-01: Import wizard — DropZone renders with CSV drag-and-drop UI", () => {
   test("navigating to /voters/imports/new shows Import Voters heading, step indicator, and DropZone", async ({
     page,
+    campaignId,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await gotoAndWaitReady(page, `/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.screenshot({ path: "test-results/p14-01-import-wizard.png" })
 
@@ -104,8 +105,9 @@ test.describe("IMPT-01: Import wizard — DropZone renders with CSV drag-and-dro
 test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", () => {
   test("import wizard URL includes ?step= parameter defaulting to 1", async ({
     page,
+    campaignId,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await gotoAndWaitReady(page, `/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
 
     // The route schema defaults step to 1 — verify the wizard renders step 1 content
@@ -129,8 +131,9 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
 test.describe("IMPT-02 / IMPT-03: Wizard step navigation structure is present (smoke)", () => {
   test("step indicator shows all four steps: Upload, Map Columns, Preview, Progress", async ({
     page,
+    campaignId,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await gotoAndWaitReady(page, `/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
 
     // Wait for the step indicator to render
@@ -155,8 +158,9 @@ test.describe("IMPT-02 / IMPT-03: Wizard step navigation structure is present (s
 test.describe("IMPT-06: New Import button navigates to wizard route", () => {
   test("clicking New Import from history page navigates to /voters/imports/new", async ({
     page,
+    campaignId,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await gotoAndWaitReady(page, `/campaigns/${CAMPAIGN_ID}/voters/imports`)
 
     const newImportBtn = page.getByRole("button", { name: /new import/i })

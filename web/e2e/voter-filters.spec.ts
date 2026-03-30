@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost } from "./helpers"
 
 /**
  * Voter Filters E2E Spec
@@ -59,15 +59,10 @@ async function openFilterSection(
 async function waitForVoterResults(
   page: import("@playwright/test").Page,
 ): Promise<void> {
-  await page.waitForResponse(
-    (resp) =>
-      resp.url().includes("/voters") &&
-      resp.request().method() === "POST" &&
-      resp.status() === 200,
-    { timeout: 10_000 },
-  )
-  // Allow UI to update
-  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {})
+  // Wait for the table to re-render after a filter change triggers a new search POST.
+  await page.waitForLoadState("domcontentloaded")
+  // Wait for the voter table to show results or empty state
+  await page.locator("table tbody tr, [data-testid='empty-state']").first().waitFor({ state: "visible", timeout: 10_000 }).catch(() => {})
 }
 
 async function clearAllFilters(
@@ -100,8 +95,9 @@ test.describe.serial("Voter Filters", () => {
 
   test("Setup: navigate to seed campaign voters and open filter panel", async ({
     page,
+    campaignId: cid,
   }) => {
-    campaignId = await navigateToSeedCampaign(page)
+    campaignId = cid
     expect(campaignId).toBeTruthy()
 
     await navigateToVoters(page, campaignId)
@@ -112,7 +108,7 @@ test.describe.serial("Voter Filters", () => {
     await openFilterPanel(page)
   })
 
-  test("FLT-01: Text search by name", async ({ page }) => {
+  test("FLT-01: Text search by name", async ({ page, campaignId }) => {
     await navigateToVoters(page, campaignId)
 
     // The voters page uses POST /voters/search with a query parameter
@@ -120,7 +116,7 @@ test.describe.serial("Voter Filters", () => {
     const searchResp = await apiPost(
       page,
       `/api/v1/campaigns/${campaignId}/voters/search`,
-      { filters: {}, limit: 5, query: "Washington" },
+      { filters: { search: "Washington" }, limit: 5 },
     )
     expect(searchResp.ok()).toBeTruthy()
     const searchBody = await searchResp.json()
@@ -990,7 +986,7 @@ test.describe.serial("Voter Filters", () => {
     })
   })
 
-  test("FLT-04: Sort voters", async ({ page }) => {
+  test("FLT-04: Sort voters", async ({ page, campaignId }) => {
     await navigateToVoters(page, campaignId)
 
     // Sort by Name (Last Name) column - click header
@@ -1043,7 +1039,7 @@ test.describe.serial("Voter Filters", () => {
     })
   })
 
-  test("FLT-05: Filter persistence and URL sync", async ({ page }) => {
+  test("FLT-05: Filter persistence and URL sync", async ({ page, campaignId }) => {
     await navigateToVoters(page, campaignId)
     await openFilterPanel(page)
 

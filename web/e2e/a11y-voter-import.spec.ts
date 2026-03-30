@@ -124,9 +124,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
   test("voter import wizard is accessible at every step", async ({ page }) => {
     // ── Step 1: File Upload ─────────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify ARIA landmarks
     const nav = page.getByRole("navigation")
     await expect(nav.first()).toBeVisible()
@@ -193,9 +191,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
     // ── Step 2: Column Mapping ──────────────────────────────────────────────
     // Navigate to step 2 with a mock job that has columns detected
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=2`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify heading exists for column mapping step
     const step2Headings = main.getByRole("heading")
     const step2HeadingCount = await step2Headings.count()
@@ -224,9 +220,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
 
     // ── Step 3: Preview ─────────────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=3`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify heading for preview step
     const step3Headings = main.getByRole("heading")
     expect(await step3Headings.count()).toBeGreaterThan(0)
@@ -242,9 +236,7 @@ test.describe("A11Y Flow: Voter Import Wizard", () => {
 
     // ── Step 4: Import Progress ─────────────────────────────────────────────
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=4`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify heading for progress step
     const step4Headings = main.getByRole("heading")
     expect(await step4Headings.count()).toBeGreaterThan(0)

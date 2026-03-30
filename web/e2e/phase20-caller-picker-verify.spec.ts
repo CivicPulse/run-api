@@ -1,15 +1,14 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 let CAMPAIGN_ID: string
 
 
 test.describe("Phase 20: Caller Picker UX", () => {
-  test("session detail page shows callers with display names (not UUIDs)", async ({ page }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+  test("session detail page shows callers with display names (not UUIDs)", async ({ page, campaignId }) => {
+    CAMPAIGN_ID = campaignId
     // Navigate to sessions list
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Click on the first session to go to detail page
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -19,7 +18,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
     await page.screenshot({ path: "test-results/p20-01-session-detail.png" })
 
     const bodyText = await page.locator("body").innerText()
@@ -30,9 +29,9 @@ test.describe("Phase 20: Caller Picker UX", () => {
     expect(bodyText).not.toContain("Not Found")
   })
 
-  test("Add Caller dialog shows combobox picker (not text input)", async ({ page }) => {
+  test("Add Caller dialog shows combobox picker (not text input)", async ({ page, campaignId }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Click first session
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -42,7 +41,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Look for the Add Caller button
     const addCallerBtn = page.getByRole("button", { name: /add caller/i })
@@ -53,7 +52,6 @@ test.describe("Phase 20: Caller Picker UX", () => {
     }
 
     await addCallerBtn.click()
-    await page.waitForTimeout(500)
     await page.screenshot({ path: "test-results/p20-02-add-caller-dialog.png" })
 
     // Dialog should be open
@@ -76,7 +74,6 @@ test.describe("Phase 20: Caller Picker UX", () => {
     // If combobox is present, click it to open the picker
     if (hasCombobox) {
       await comboboxTrigger.click()
-      await page.waitForTimeout(500)
       await page.screenshot({ path: "test-results/p20-03-combobox-open.png" })
 
       // Should show member options with names (not UUIDs)
@@ -95,9 +92,9 @@ test.describe("Phase 20: Caller Picker UX", () => {
     }
   })
 
-  test("callers table shows display names with role badges", async ({ page }) => {
+  test("callers table shows display names with role badges", async ({ page, campaignId }) => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Click first session
     const sessionLink = page.locator("table tbody tr a, table tbody tr td").first()
@@ -107,7 +104,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
       return
     }
     await sessionLink.click()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Check the Overview tab callers section
     const bodyText = await page.locator("body").innerText()

@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter Lists E2E Lifecycle Spec
@@ -44,8 +45,10 @@ test.describe.serial("Voter lists lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: create test voters for list operations", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create test voters for list operations", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     const voters = voterLastNames.map((last) => ({
@@ -62,7 +65,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     expect(testVoterIds).toHaveLength(5)
   })
 
-  test("VLIST-01: Create a static voter list", async ({ page }) => {
+  test("VLIST-01: Create a static voter list", async ({ page, campaignId }) => {
     // Navigate to voter lists page
     await page.goto(`/campaigns/${campaignId}/voters/lists`)
     await page.waitForURL(/voters\/lists/, { timeout: 10_000 })
@@ -90,7 +93,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     })
   })
 
-  test("VLIST-02: Add 5 voters to the static list", async ({ page }) => {
+  test("VLIST-02: Add 5 voters to the static list", async ({ page, campaignId }) => {
     // Navigate to lists page and click into the static list
     await page.goto(`/campaigns/${campaignId}/voters/lists`)
     await page.waitForURL(/voters\/lists/, { timeout: 10_000 })
@@ -138,7 +141,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     }
   })
 
-  test("VLIST-03: Remove 2 voters from the static list", async ({ page }) => {
+  test("VLIST-03: Remove 2 voters from the static list", async ({ page, campaignId }) => {
     // Navigate to the static list detail
     await page.goto(`/campaigns/${campaignId}/voters/lists`)
     await page.waitForURL(/voters\/lists/, { timeout: 10_000 })
@@ -227,7 +230,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     await expect(page.getByText("Dynamic")).toBeVisible({ timeout: 10_000 })
   })
 
-  test("VLIST-05: Rename the static list", async ({ page }) => {
+  test("VLIST-05: Rename the static list", async ({ page, campaignId }) => {
     // Navigate to voter lists page
     await page.goto(`/campaigns/${campaignId}/voters/lists`)
     await page.waitForURL(/voters\/lists/, { timeout: 10_000 })
@@ -263,7 +266,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     })
   })
 
-  test("VLIST-06: Delete both voter lists", async ({ page }) => {
+  test("VLIST-06: Delete both voter lists", async ({ page, campaignId }) => {
     // Navigate to voter lists page
     await page.goto(`/campaigns/${campaignId}/voters/lists`)
     await page.waitForURL(/voters\/lists/, { timeout: 10_000 })

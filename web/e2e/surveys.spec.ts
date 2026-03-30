@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiGet, apiPost, apiPatch, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiGet, apiPost, apiPatch, apiDelete } from "./helpers"
 
 /**
  * Surveys E2E Spec
@@ -44,14 +44,18 @@ test.describe.serial("Survey Lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: navigate to seed campaign", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
   })
 
-  test("SRV-01: Create a survey script via UI", async ({ page }) => {
+  test("SRV-01: Create a survey script via UI", async ({ page, campaignId }) => {
     // Navigate to surveys page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.getByRole("link", { name: /surveys/i }).first().click()
     await page.waitForURL(/surveys/, { timeout: 10_000 })
 
@@ -97,135 +101,102 @@ test.describe.serial("Survey Lifecycle", () => {
     expect(surveyId).toBeTruthy()
   })
 
-  test("SRV-02: Add questions to a survey", async ({ page }) => {
+  test("SRV-02: Add questions to a survey", async ({ page, campaignId }) => {
     // Navigate to survey detail page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
+    await page.waitForURL(/surveys\/[a-f0-9-]+/, { timeout: 10_000 })
     await expect(
       page.getByText("E2E Voter Sentiment Survey").first(),
     ).toBeVisible({ timeout: 10_000 })
 
-    // -- Q1: Multiple Choice --
-    await test.step("Add Q1: Multiple Choice - Issue importance", async () => {
+    // Helper: add a question via dialog
+    async function addQuestionViaDialog(
+      text: string,
+      type: "multiple_choice" | "scale" | "free_text",
+      choices?: string,
+    ) {
+      // Wait for any previous dialog to close
+      await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
+
+      // Click "Add Question" button
       await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByText("Add Question")).toBeVisible({
-        timeout: 5_000,
-      })
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 })
 
-      // Fill question text
-      await page
-        .locator("textarea")
-        .first()
-        .fill("What is the most important issue to you?")
+      // Fill question text (first textarea in dialog)
+      const dialog = page.getByRole("dialog")
+      await dialog.locator("textarea").first().fill(text)
 
-      // Type is already "Multiple Choice" (default)
-      // Fill choices (one per line)
-      await page
-        .locator("textarea")
-        .nth(1)
-        .fill("Economy\nHealthcare\nEducation\nEnvironment\nOther")
+      // Select type if not the default (multiple_choice)
+      if (type !== "multiple_choice") {
+        await dialog.getByRole("combobox").click()
+        const label = type === "scale" ? /^Scale$/i : /^Free Text$/i
+        await page.getByRole("option", { name: label }).click()
+      } else {
+        // Ensure Multiple Choice is selected
+        const typeSelect = dialog.getByRole("combobox")
+        const currentType = await typeSelect.textContent()
+        if (currentType && !currentType.includes("Multiple Choice")) {
+          await typeSelect.click()
+          await page.getByRole("option", { name: /Multiple Choice/i }).click()
+        }
+      }
 
-      await page.getByRole("button", { name: /^add$/i }).click()
+      // Fill choices if applicable
+      if (choices && type === "multiple_choice") {
+        await dialog.locator("textarea").nth(1).fill(choices)
+      }
+
+      await dialog.getByRole("button", { name: /^add$/i }).click()
       await expect(page.getByText(/question added/i).first()).toBeVisible({
         timeout: 10_000,
       })
+    }
+
+    // -- Q1: Multiple Choice --
+    await test.step("Add Q1: Multiple Choice - Issue importance", async () => {
+      await addQuestionViaDialog(
+        "What is the most important issue to you?",
+        "multiple_choice",
+        "Economy\nHealthcare\nEducation\nEnvironment\nOther",
+      )
     })
 
     // -- Q2: Scale --
     await test.step("Add Q2: Scale - Voting likelihood", async () => {
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByText("Add Question")).toBeVisible({
-        timeout: 5_000,
-      })
-
-      await page
-        .locator("textarea")
-        .first()
-        .fill("How likely are you to vote in the next election?")
-
-      // Change type to Scale
-      await page.getByRole("combobox").click()
-      await page.getByRole("option", { name: /scale/i }).click()
-
-      await page.getByRole("button", { name: /^add$/i }).click()
-      await expect(page.getByText(/question added/i).first()).toBeVisible({
-        timeout: 10_000,
-      })
+      await addQuestionViaDialog(
+        "How likely are you to vote in the next election?",
+        "scale",
+      )
     })
 
     // -- Q3: Multiple Choice --
     await test.step("Add Q3: Multiple Choice - Volunteer interest", async () => {
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByText("Add Question")).toBeVisible({
-        timeout: 5_000,
-      })
-
-      await page
-        .locator("textarea")
-        .first()
-        .fill("Would you like to volunteer for the campaign?")
-
-      // Type is already "Multiple Choice" (default on reopen)
-      // Ensure Multiple Choice is selected
-      const typeSelect = page.getByRole("combobox")
-      const currentType = await typeSelect.textContent()
-      if (!currentType?.includes("Multiple Choice")) {
-        await typeSelect.click()
-        await page.getByRole("option", { name: /multiple choice/i }).click()
-      }
-
-      await page.locator("textarea").nth(1).fill("Yes\nNo\nMaybe")
-
-      await page.getByRole("button", { name: /^add$/i }).click()
-      await expect(page.getByText(/question added/i).first()).toBeVisible({
-        timeout: 10_000,
-      })
+      await addQuestionViaDialog(
+        "Would you like to volunteer for the campaign?",
+        "multiple_choice",
+        "Yes\nNo\nMaybe",
+      )
     })
 
     // -- Q4: Free Text --
     await test.step("Add Q4: Free Text - Additional comments", async () => {
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByText("Add Question")).toBeVisible({
-        timeout: 5_000,
-      })
-
-      await page
-        .locator("textarea")
-        .first()
-        .fill("Any additional comments?")
-
-      // Change type to Free Text
-      await page.getByRole("combobox").click()
-      await page.getByRole("option", { name: /free text/i }).click()
-
-      await page.getByRole("button", { name: /^add$/i }).click()
-      await expect(page.getByText(/question added/i).first()).toBeVisible({
-        timeout: 10_000,
-      })
+      await addQuestionViaDialog(
+        "Any additional comments?",
+        "free_text",
+      )
     })
 
     // -- Q5: Scale --
     await test.step("Add Q5: Scale - Administration rating", async () => {
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByText("Add Question")).toBeVisible({
-        timeout: 5_000,
-      })
-
-      await page
-        .locator("textarea")
-        .first()
-        .fill("How would you rate the current administration?")
-
-      // Change type to Scale
-      await page.getByRole("combobox").click()
-      await page.getByRole("option", { name: /scale/i }).click()
-
-      await page.getByRole("button", { name: /^add$/i }).click()
-      await expect(page.getByText(/question added/i).first()).toBeVisible({
-        timeout: 10_000,
-      })
+      await addQuestionViaDialog(
+        "How would you rate the current administration?",
+        "scale",
+      )
     })
 
     // Verify all 5 questions are visible
@@ -260,9 +231,11 @@ test.describe.serial("Survey Lifecycle", () => {
     await expect(page.getByText("Free Text").first()).toBeVisible()
   })
 
-  test("SRV-03: Edit a question", async ({ page }) => {
+  test("SRV-03: Edit a question", async ({ page, campaignId }) => {
     // Navigate to survey detail page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
@@ -296,9 +269,11 @@ test.describe.serial("Survey Lifecycle", () => {
     })
   })
 
-  test("SRV-04: Reorder questions", async ({ page }) => {
+  test("SRV-04: Reorder questions", async ({ page, campaignId }) => {
     // Navigate to survey detail page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
@@ -312,16 +287,14 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // Move Q5 up to Q4 position
     await page.getByRole("button", { name: /move question 5 up/i }).click()
-    await page.waitForTimeout(500) // Wait for reorder to settle
+    // Wait for the button label to update after reorder
+    await expect(page.getByRole("button", { name: /move question 4 up/i })).toBeVisible({ timeout: 5_000 })
 
     // Now it's Q4 at index 3, move up to Q3 position
     await page.getByRole("button", { name: /move question 4 up/i }).click()
-    await page.waitForTimeout(500)
-
+    await expect(page.getByRole("button", { name: /move question 3 up/i })).toBeVisible({ timeout: 5_000 })
     // Now it's Q3 at index 2, move up to Q2 position
     await page.getByRole("button", { name: /move question 3 up/i }).click()
-    await page.waitForTimeout(500)
-
     // Verify new order: Q1 (issue), Q5/now Q2 (admin rating), Q2/now Q3 (voting likelihood), Q3/now Q4 (volunteer), Q4/now Q5 (comments)
     // Check that "How would you rate" appears as the second question
     const questionCards = page.locator('[class*="card"]').filter({
@@ -339,9 +312,11 @@ test.describe.serial("Survey Lifecycle", () => {
     expect(adminRatingPos).toBeLessThan(votingLikelihoodPos)
   })
 
-  test("SRV-05: Delete a question", async ({ page }) => {
+  test("SRV-05: Delete a question", async ({ page, campaignId }) => {
     // Navigate to survey detail page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
@@ -374,9 +349,11 @@ test.describe.serial("Survey Lifecycle", () => {
     })
   })
 
-  test("SRV-06: Change survey status lifecycle", async ({ page }) => {
+  test("SRV-06: Change survey status lifecycle", async ({ page, campaignId }) => {
     // Navigate to survey detail page
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
@@ -407,9 +384,11 @@ test.describe.serial("Survey Lifecycle", () => {
     })
   })
 
-  test("SRV-07: Create 4 more surveys (5 total)", async ({ page }) => {
+  test("SRV-07: Create 4 more surveys (5 total)", async ({ page, campaignId }) => {
     // Navigate to establish auth context
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Survey 2: E2E Canvassing Script with 3 questions
     await test.step("Create E2E Canvassing Script via API", async () => {
@@ -523,9 +502,11 @@ test.describe.serial("Survey Lifecycle", () => {
     ).toBeVisible({ timeout: 5_000 })
   })
 
-  test("SRV-08: Delete a survey", async ({ page }) => {
+  test("SRV-08: Delete a survey", async ({ page, campaignId }) => {
     // Navigate to establish auth context
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Create a throwaway survey via API (must be draft to delete)
     const throwawayId = await createSurveyViaApi(

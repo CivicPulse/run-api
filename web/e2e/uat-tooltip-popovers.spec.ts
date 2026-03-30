@@ -1,16 +1,11 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign } from "./helpers"
+import { test, expect } from "./fixtures"
+
+// Uses worker-scoped campaignId fixture from ./fixtures for seed campaign navigation
 
 test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => {
-  let campaignId: string
-
   test.setTimeout(60_000)
 
-  test.beforeEach(async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
-  })
-
-  test("turf name tooltip shows sizing guidance", async ({ page }) => {
+  test("turf name tooltip shows sizing guidance", async ({ page, campaignId }) => {
     await page.goto(`/campaigns/${campaignId}/canvassing/turfs/new`)
     await expect(page.getByLabel(/name/i).first()).toBeVisible({ timeout: 10_000 })
 
@@ -29,10 +24,16 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
   })
 
   test("campaign settings member role tooltip shows role descriptions", async ({
-    page,
+    page, campaignId,
   }) => {
     await page.goto(`/campaigns/${campaignId}/settings/members`)
     await expect(page.getByText(/member/i).first()).toBeVisible({ timeout: 10_000 })
+
+    // The TooltipIcon for role descriptions is inside the Invite dialog.
+    // Open the invite dialog first.
+    const inviteButton = page.getByRole("button", { name: /invite member/i })
+    await inviteButton.click()
+    await expect(page.getByText(/send an invitation/i)).toBeVisible({ timeout: 5_000 })
 
     const helpIcon = page.locator("button:has(svg.lucide-circle-help)").first()
     await helpIcon.click()
@@ -42,7 +43,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     await expect(popover).toContainText(/viewer|volunteer|manager|admin|owner/i)
   })
 
-  test("campaign creation type tooltip shows election types", async ({ page }) => {
+  test("campaign creation type tooltip shows election types", async ({ page, campaignId }) => {
     await page.goto("/campaigns/new")
     await expect(page.getByText(/campaign/i).first()).toBeVisible({ timeout: 10_000 })
 
@@ -58,7 +59,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
   })
 
   test("org settings ZITADEL ID tooltip shows auth system explanation", async ({
-    page,
+    page, campaignId,
   }) => {
     await page.goto("/org/settings")
     await expect(page.getByText(/organization/i).first()).toBeVisible({
@@ -73,7 +74,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     await expect(popover).toContainText(/unique identifier.*authentication/i)
   })
 
-  test("voter import mapping tooltip shows column guidance", async ({ page }) => {
+  test("voter import mapping tooltip shows column guidance", async ({ page, campaignId }) => {
     await page.goto(`/campaigns/${campaignId}/voters/imports/new`)
     await expect(page.getByText(/import/i).first()).toBeVisible({ timeout: 10_000 })
 

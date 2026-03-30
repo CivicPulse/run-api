@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
 
 /**
  * Phone Banking E2E Spec
@@ -65,8 +65,10 @@ test.describe.serial("Phone Banking Sessions", () => {
 
   test.setTimeout(180_000) // 10 test cases + setup
 
-  test("Setup: create call list for sessions", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create call list for sessions", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     // Create a call list via API for session creation
@@ -78,8 +80,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     expect(members.length).toBeGreaterThan(0)
   })
 
-  test("PB-01: Create a phone banking session via UI", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-01: Create a phone banking session via UI", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Open new session dialog", async () => {
@@ -130,8 +133,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-02: Assign callers to session", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-02: Assign callers to session", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Navigate to session detail page", async () => {
@@ -170,7 +174,6 @@ test.describe.serial("Phone Banking Sessions", () => {
         ).toBeVisible({ timeout: 10_000 })
 
         // Wait for dialog to close
-        await page.waitForTimeout(500)
       }
     })
 
@@ -181,8 +184,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-03: Remove a caller", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-03: Remove a caller", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Navigate to session detail", async () => {
@@ -207,8 +211,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-04: Create 10 sessions via API for bulk testing", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-04: Create 10 sessions via API for bulk testing", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Create 9 sessions via API (1 already created via UI)", async () => {
       // Per D-16: PB-01 already created 1 via UI, create remaining 9 via API
@@ -239,11 +244,12 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-05: Verify caller access filtering", async ({ page }) => {
+  test("PB-05: Verify caller access filtering", async ({ page, campaignId }) => {
     // NOTE: Full cross-role testing would require logging in as different users.
     // Since this spec runs as owner, we verify the sessions list shows all sessions.
     // Full caller access filtering is Phase 60 territory.
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Verify owner sees all sessions", async () => {
@@ -258,8 +264,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-06: Active calling -- claim and record a call", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-06: Active calling -- claim and record a call", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Activate session and navigate to detail", async () => {
@@ -338,8 +345,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-07: Skip a call", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-07: Skip a call", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Navigate to calling screen for Session 1", async () => {
@@ -364,8 +372,6 @@ test.describe.serial("Phone Banking Sessions", () => {
         await claimBtn.click()
 
         // Wait for voter to be claimed
-        await page.waitForTimeout(2_000)
-
         // Click Skip button
         const skipBtn = page.getByRole("button", { name: /skip/i }).first()
         if (await skipBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
@@ -381,8 +387,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-08: Session progress tracking", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-08: Session progress tracking", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Navigate to session detail and check progress tab", async () => {
@@ -416,13 +423,14 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-09: Edit a session", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-09: Edit a session", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToSessions(page)
 
     await test.step("Open edit dialog for E2E Session 1", async () => {
       const row = page.getByRole("row").filter({ hasText: "E2E Session 1" })
-      const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
+      const actionBtn = row.getByRole("button").last()
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /edit/i }).click()
@@ -450,8 +458,9 @@ test.describe.serial("Phone Banking Sessions", () => {
     })
   })
 
-  test("PB-10: Delete a session", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("PB-10: Delete a session", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     let throwawaySessionId = ""
 
@@ -475,8 +484,7 @@ test.describe.serial("Phone Banking Sessions", () => {
 
       // Open action menu on the delete-me session
       const row = page.getByRole("row").filter({ hasText: "E2E Session -- Delete Me" })
-      const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
-        .or(row.locator("button").last())
+      const actionBtn = row.getByRole("button").last()
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /delete/i }).click()

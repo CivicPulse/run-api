@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 let CAMPAIGN_ID: string
 
@@ -10,7 +9,6 @@ async function waitForTable(page: import("@playwright/test").Page) {
   await expect(table).toBeVisible({ timeout: 20_000 })
   await expect(page.locator(".animate-pulse").first()).toBeHidden({ timeout: 15_000 }).catch(() => {})
   // Wait for table headers to stabilize after data loads
-  await page.waitForTimeout(1000)
 }
 
 /** Count sortable columns (th[aria-sort]) via JS to avoid Playwright strict-mode issues */
@@ -39,7 +37,7 @@ async function auditSortButtons(page: import("@playwright/test").Page) {
 
 test.describe("Voters table — sorting works", () => {
   test("Name, Party, City, Age columns render sort UI and respond to clicks", async ({ page }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await waitForTable(page)
 
@@ -62,8 +60,6 @@ test.describe("Voters table — sorting works", () => {
 
     await firstSortableHeader.click()
     // Wait for React to re-render with the new sort state
-    await page.waitForTimeout(500)
-
     const afterSort = await firstSortableHeader.getAttribute("aria-sort")
     expect(afterSort).toBe("ascending")
 
@@ -128,10 +124,10 @@ const TABLES_WITH_BROKEN_SORT: TableConfig[] = [
 
 test.describe("Sort buttons visible but non-functional (BUG)", () => {
   for (const tbl of TABLES_WITH_BROKEN_SORT) {
-    test(`${tbl.name}: sort buttons render but clicking does nothing`, async ({ page }) => {
-      CAMPAIGN_ID = await getSeedCampaignId(page)
+    test(`${tbl.name}: sort buttons render but clicking does nothing`, async ({ page, campaignId }) => {
+      CAMPAIGN_ID = campaignId
       await page.goto(`/campaigns/${CAMPAIGN_ID}/${tbl.pathSuffix}`)
-      await waitForTable(page).catch(() => page.waitForTimeout(2000))
+      await waitForTable(page).catch(() => page.waitForLoadState("domcontentloaded"))
 
       const sortableCount = await countSortableHeaders(page)
 
@@ -164,10 +160,10 @@ test.describe("Sort buttons visible but non-functional (BUG)", () => {
 // ─── Shift Detail — all sorting correctly disabled ───────────────────────────
 
 test.describe("Shift detail — no sort buttons (correct)", () => {
-  test("shift detail roster table has zero sortable columns", async ({ page }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+  test("shift detail roster table has zero sortable columns", async ({ page, campaignId }) => {
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/volunteers/shifts`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     const shiftLink = page.locator("a[href*='/shifts/']").first()
     const hasShifts = await shiftLink.count()
@@ -179,7 +175,7 @@ test.describe("Shift detail — no sort buttons (correct)", () => {
 
     await shiftLink.click()
     await page.waitForURL(/shifts\/[^/]+/, { timeout: 10_000 })
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // This table correctly has zero sortable columns (no accessorKey columns with enableSorting)
     const sortableCount = await countSortableHeaders(page)

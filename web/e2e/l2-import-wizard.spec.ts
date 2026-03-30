@@ -225,7 +225,7 @@ test.describe("L2 Import Wizard", () => {
     })
 
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for the wizard page to render (Step 1 heading visible)
     await expect(
@@ -269,7 +269,7 @@ test.describe("L2 Import Wizard", () => {
     })
 
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for the wizard page to render (Step 1 heading visible)
     await expect(

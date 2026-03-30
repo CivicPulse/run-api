@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 /**
  * RBAC-04: Volunteer can record interactions but cannot manage resources.
@@ -16,12 +15,9 @@ test.describe("RBAC: volunteer permissions", () => {
   // Increase timeout to handle slow auth initialization under parallel load
   test.setTimeout(60_000)
 
-  let campaignId: string
-
   /** Navigate into the seed campaign and extract campaignId. */
-  async function enterCampaign(page: import("@playwright/test").Page) {
-    campaignId = await getSeedCampaignId(page)
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
+  async function enterCampaign(page: import("@playwright/test").Page, cid: string) {
+    await page.goto(`/campaigns/${cid}/dashboard`)
     // Wait for auth to finish (root layout shows "Loading..." during OIDC init)
     const loadingText = page.getByText("Loading...", { exact: true })
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -30,14 +26,13 @@ test.describe("RBAC: volunteer permissions", () => {
         await loadingText.waitFor({ state: "hidden", timeout: 20_000 }).catch(() => {})
         break
       }
-      await page.waitForTimeout(200)
     }
   }
 
   test("voter detail: Add Interaction IS visible, Edit button is NOT visible", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -58,8 +53,8 @@ test.describe("RBAC: volunteer permissions", () => {
     await expect(editButton).not.toBeVisible()
   })
 
-  test("voters page: New Voter button is NOT visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voters page: New Voter button is NOT visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -74,7 +69,7 @@ test.describe("RBAC: volunteer permissions", () => {
   test("phone banking: New Call List and New Session buttons NOT visible", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
 
     // Check call lists page
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
@@ -100,7 +95,7 @@ test.describe("RBAC: volunteer permissions", () => {
   test("campaign settings: members page invite gated, danger zone gated", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
 
     // Navigate to members page
     await page.goto(`/campaigns/${campaignId}/settings/members`)
@@ -127,7 +122,7 @@ test.describe("RBAC: volunteer permissions", () => {
   test("volunteers roster: edit actions NOT visible for volunteer", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
     await page.waitForURL(/roster/, { timeout: 10_000 })
 
@@ -143,7 +138,7 @@ test.describe("RBAC: volunteer permissions", () => {
     await expect(editVolunteerButton).not.toBeVisible()
   })
 
-  test("org dashboard: Create Campaign link NOT visible", async ({ page }) => {
+  test("org dashboard: Create Campaign link NOT visible", async ({ page, campaignId }) => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),

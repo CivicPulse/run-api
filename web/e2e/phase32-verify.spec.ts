@@ -533,8 +533,6 @@ test.describe("Phone Banking Field Mode", () => {
     })
 
     // Small delay for React to pick up the store change
-    await page.waitForTimeout(500)
-
     // Reload to force re-hydration from sessionStorage with completed state
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
     await dismissTourIfPresent(page)

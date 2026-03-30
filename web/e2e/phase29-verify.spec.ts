@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 let CAMPAIGN_ID: string
 
@@ -10,12 +9,11 @@ async function waitForAppReady(page: import("@playwright/test").Page) {
 }
 
 async function openVoterFilters(page: import("@playwright/test").Page) {
-  CAMPAIGN_ID = await getSeedCampaignId(page)
+  CAMPAIGN_ID = campaignId
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await waitForAppReady(page)
-  await page.waitForLoadState("networkidle")
+  await page.waitForLoadState("domcontentloaded")
   await page.getByRole("button", { name: /filters/i }).click()
-  await page.waitForTimeout(500)
 }
 
 test.setTimeout(90_000)
@@ -25,10 +23,10 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   test("1. import history table shows Filename column correctly", async ({
     page,
   }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await waitForAppReady(page)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for either the import heading or empty state to appear
     const heading = page.getByRole("heading", { name: /import history/i })
@@ -63,11 +61,11 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   })
 
   // ── Test 2: Errors Column Removed ───────────────────────────────────────
-  test("2. import history table has no Errors column", async ({ page }) => {
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+  test("2. import history table has no Errors column", async ({ page, campaignId }) => {
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await waitForAppReady(page)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for the page heading to confirm the page is loaded
     const heading = page.getByRole("heading", { name: /import history/i })
@@ -118,8 +116,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
       .locator("button")
       .filter({ hasText: "Advanced" })
     await advancedTrigger.click()
-    await page.waitForTimeout(500)
-
     // Check if tags exist in this campaign
     const tagsLabel = page.getByText("Tags").first()
     await expect(tagsLabel).toBeVisible({ timeout: 5000 })
@@ -147,8 +143,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
       const firstBadge = tagBadges.first()
       if (await firstBadge.isVisible().catch(() => false)) {
         await firstBadge.click()
-        await page.waitForTimeout(500)
-
         // Verify "Tags (all)" chip appeared
         const tagsChip = page.locator("text=Tags (all)")
         await expect(tagsChip).toBeVisible({ timeout: 5000 })
@@ -165,10 +159,10 @@ test.describe("Phase 29: Integration Polish UAT", () => {
     page,
   }) => {
     // Navigate to voter lists page
-    CAMPAIGN_ID = await getSeedCampaignId(page)
+    CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await waitForAppReady(page)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Open the create list dialog
     const createBtn = page.getByRole("button", { name: /create.*list|new.*list/i })
@@ -180,8 +174,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
       return
     }
     await createBtn.click()
-    await page.waitForTimeout(500)
-
     // Step 1: Select "Dynamic List" in the dialog
     const dialog = page.locator('[role="dialog"]')
     await expect(dialog).toBeVisible({ timeout: 5000 })
@@ -189,8 +181,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
     const dynamicBtn = dialog.getByText("Dynamic List")
     await expect(dynamicBtn).toBeVisible({ timeout: 3000 })
     await dynamicBtn.click()
-    await page.waitForTimeout(500)
-
     // Step 2: VoterFilterBuilder should now be visible with "Filter Criteria" label
     const filterLabel = dialog.getByText("Filter Criteria")
     await expect(filterLabel).toBeVisible({ timeout: 5000 })
@@ -215,16 +205,12 @@ test.describe("Phase 29: Integration Polish UAT", () => {
       .locator("button")
       .filter({ hasText: "Location" })
     await locationTrigger.click()
-    await page.waitForTimeout(500)
-
     // Fill Registration County input
     const regCountyInput = page
       .locator("text=Registration County")
       .locator("..")
       .locator("input")
     await regCountyInput.fill("Franklin")
-    await page.waitForTimeout(500)
-
     // Verify a registration county chip appeared with location color (bg-status-success)
     const countyChip = page
       .locator('[class*="bg-status-success"]')
@@ -238,8 +224,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
     // Click dismiss
     const dismissBtn = countyChip.locator('button[aria-label*="Remove"]')
     await dismissBtn.click()
-    await page.waitForTimeout(500)
-
     // Verify chip disappeared
     await expect(countyChip).not.toBeVisible()
 
@@ -259,8 +243,6 @@ test.describe("Phase 29: Integration Polish UAT", () => {
       .locator("button")
       .filter({ hasText: "Location" })
     await locationTrigger.click()
-    await page.waitForTimeout(500)
-
     // Registration County label and input must be visible
     const regCountyLabel = page.getByText("Registration County")
     await expect(regCountyLabel).toBeVisible({ timeout: 5000 })

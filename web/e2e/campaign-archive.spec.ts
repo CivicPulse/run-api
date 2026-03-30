@@ -11,7 +11,7 @@ test.describe("Campaign archive flow", () => {
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
       { timeout: 15_000 },
     )
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Create a dedicated throwaway campaign for this test
     const campaignName = `E2E Archive ${Date.now()}`
@@ -26,7 +26,7 @@ test.describe("Campaign archive flow", () => {
     await page.goto("/org/settings")
     await expect(page.getByText(/organization/i).first()).toBeVisible({ timeout: 10_000 })
     await page.goto("/")
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Wait for the campaign list to render — look for the new campaign
     await expect(

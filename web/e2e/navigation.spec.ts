@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
 
 /**
  * Navigation E2E Spec
@@ -11,20 +12,6 @@ import { test, expect, type Page } from "@playwright/test"
  */
 
 // -- Helper Functions ----------------------------------------------------------
-
-async function navigateToSeedCampaign(page: Page): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
 
 /**
  * Ensure the sidebar is visible. The app defaults to sidebar open
@@ -52,14 +39,15 @@ async function openSidebar(page: Page): Promise<void> {
 // -- NAV-01, NAV-02, NAV-03 ---------------------------------------------------
 
 test.describe.serial("Navigation", () => {
-  let campaignId: string
-
   test("NAV-01: campaign sidebar navigation links work correctly", async ({
     page,
+    campaignId,
   }) => {
     test.setTimeout(90_000)
 
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // The sidebar has these campaign links (from __root.tsx AppSidebar):
     //   Dashboard, Voters, Canvassing, Phone Banking, Volunteers, Field Operations
@@ -247,11 +235,14 @@ test.describe.serial("Navigation", () => {
 
   test("NAV-03: breadcrumb and back navigation work correctly", async ({
     page,
+    campaignId,
   }) => {
     test.setTimeout(60_000)
 
     // Navigate deep: seed campaign -> voters -> click a voter for detail
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Navigate to voters list", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()

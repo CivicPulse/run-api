@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiPatch } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiPatch } from "./helpers"
 
 /**
  * Volunteers E2E Spec
@@ -97,20 +97,22 @@ const USER_VOLUNTEERS_API = [
 // -- Tests --------------------------------------------------------------------
 
 test.describe.serial("Volunteer Lifecycle", () => {
-  let campaignId = ""
   const volunteerIds: string[] = []
 
   test.setTimeout(120_000)
 
-  test("Setup: navigate to seed campaign", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
   })
 
   test("VOL-01: Register a user volunteer via UI (record mode)", async ({
-    page,
+    page, campaignId,
   }) => {
-    campaignId = await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to Volunteers > Register
     await page.getByRole("link", { name: /volunteers/i }).first().click()
@@ -176,9 +178,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
   })
 
   test("VOL-02: Register a non-user volunteer via UI (record mode)", async ({
-    page,
+    page, campaignId,
   }) => {
-    campaignId = await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to Volunteers > Register
     await page.getByRole("link", { name: /volunteers/i }).first().click()
@@ -240,8 +243,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
     ).toBeVisible({ timeout: 10_000 })
   })
 
-  test("VOL-03: Register via invite mode", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VOL-03: Register via invite mode", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to Volunteers > Register
     await page.getByRole("link", { name: /volunteers/i }).first().click()
@@ -301,10 +306,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
   })
 
   test("VOL-04: Create remaining volunteers via API (10 total)", async ({
-    page,
+    page, campaignId,
   }) => {
-    // Navigate to establish auth context
-    campaignId = await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Create 5 non-user volunteers via API
     await test.step("Create 5 non-user volunteers via API", async () => {
@@ -341,8 +346,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
     ).toBeVisible({ timeout: 5_000 })
   })
 
-  test("VOL-05: View volunteer roster", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VOL-05: View volunteer roster", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to Volunteers > Roster
     await page.getByRole("link", { name: /volunteers/i }).first().click()
@@ -373,7 +380,6 @@ test.describe.serial("Volunteer Lifecycle", () => {
       const searchInput = page.getByPlaceholder(/search by name/i)
       await expect(searchInput).toBeVisible({ timeout: 5_000 })
       await searchInput.fill("NonUser Vol A")
-      await page.waitForTimeout(500) // Wait for debounced search
 
       // Verify "NonUser Vol A" is visible
       await expect(
@@ -382,12 +388,13 @@ test.describe.serial("Volunteer Lifecycle", () => {
 
       // Clear search
       await searchInput.clear()
-      await page.waitForTimeout(500)
     })
   })
 
-  test("VOL-06: View volunteer detail page", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VOL-06: View volunteer detail page", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to roster
     await page.getByRole("link", { name: /volunteers/i }).first().click()
@@ -437,8 +444,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
     ).toBeVisible({ timeout: 5_000 })
   })
 
-  test("VOL-07: Edit a volunteer", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VOL-07: Edit a volunteer", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to the first volunteer's detail page
     await page.goto(
@@ -485,8 +494,10 @@ test.describe.serial("Volunteer Lifecycle", () => {
     ).toBeVisible({ timeout: 10_000 })
   })
 
-  test("VOL-08: Deactivate a volunteer", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VOL-08: Deactivate a volunteer", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Create a throwaway volunteer via API
     const throwawayId = await createVolunteerViaApi(page, campaignId, {

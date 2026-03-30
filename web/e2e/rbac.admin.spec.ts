@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 /**
  * RBAC-06: Admin can manage members and settings.
@@ -14,22 +13,16 @@ import { getSeedCampaignId } from "./helpers"
  * admin1@localhost has org_admin role for RBAC-08 tests.
  */
 test.describe("RBAC: admin permissions", () => {
-  let campaignId: string
-
   /** Navigate into the seed campaign and extract campaignId. */
-  async function enterCampaign(page: import("@playwright/test").Page) {
-    campaignId = await getSeedCampaignId(page)
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForLoadState("networkidle")
-
-    campaignId = page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-    expect(campaignId).toBeTruthy()
+  async function enterCampaign(page: import("@playwright/test").Page, cid: string) {
+    await page.goto(`/campaigns/${cid}/dashboard`)
+    await page.waitForLoadState("domcontentloaded")
   }
 
   // --- RBAC-06: Admin has all manager capabilities plus settings ---
 
-  test("voters page: New Voter button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voters page: New Voter button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -41,8 +34,8 @@ test.describe("RBAC: admin permissions", () => {
     await expect(newVoterButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("voter detail: Edit button IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voter detail: Edit button IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -55,8 +48,8 @@ test.describe("RBAC: admin permissions", () => {
     await expect(editButton).toBeVisible({ timeout: 10_000 })
   })
 
-  test("canvassing: New Turf link IS visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("canvassing: New Turf link IS visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
     await page.waitForURL(/canvassing/, { timeout: 10_000 })
 
@@ -71,7 +64,7 @@ test.describe("RBAC: admin permissions", () => {
   test("campaign settings > members: page loads and invite button IS visible", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/members`)
     await page.waitForURL(/members/, { timeout: 10_000 })
 
@@ -88,7 +81,7 @@ test.describe("RBAC: admin permissions", () => {
   test("campaign settings > general: form fields are editable", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/general/, { timeout: 10_000 })
 
@@ -105,7 +98,7 @@ test.describe("RBAC: admin permissions", () => {
   test("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
     await page.waitForURL(/danger/, { timeout: 10_000 })
 

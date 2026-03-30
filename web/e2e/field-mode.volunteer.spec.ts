@@ -265,7 +265,7 @@ async function dismissTourIfVisible(page: Page): Promise<void> {
     const closeBtn = page.locator(".driver-popover-close-btn")
     if (await closeBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
       await closeBtn.click()
-      await page.waitForTimeout(300)
+      await tourPopover.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {})
     }
   }
 }
@@ -545,8 +545,8 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     })
     await dismissTourIfVisible(page)
 
-    // Wait for entry animations to complete (animate-in duration-300)
-    await page.waitForTimeout(500)
+    // Wait for assignment cards to be visible (replaces animation wait)
+    await page.locator("[data-tour='assignment-card']").first().waitFor({ state: "visible", timeout: 10_000 }).catch(() => {})
 
     // Click canvassing assignment card
     const canvassingCard = page.locator("[data-tour='assignment-card']").filter({
@@ -638,9 +638,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
         await noButton.click()
       }
     }
-
-    // Wait for wizard to advance or stay on same household
-    await page.waitForTimeout(500)
 
     // Record another outcome if there are more entries
     const outcomeGrid2 = page.locator("[data-tour='outcome-grid']")
@@ -794,7 +791,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     }
 
     // Either way, verify the wizard is still functional
-    await page.waitForTimeout(500)
     // Should either show next door or completion summary
     const hasHousehold = await householdCard.isVisible().catch(() => false)
     const hasCompletion = await page
@@ -838,7 +834,8 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
       timeout: 15_000,
     })
     await dismissTourIfVisible(page)
-    await page.waitForTimeout(500)
+    // Wait for assignment cards to be visible
+    await page.locator("[data-tour='assignment-card']").first().waitFor({ state: "visible", timeout: 10_000 }).catch(() => {})
 
     // Click phone banking assignment card
     const phoneBankCard = page.locator("[data-tour='assignment-card']").filter({
@@ -1010,9 +1007,6 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await expect(noAnswerBtn).toBeVisible()
     await noAnswerBtn.click()
 
-    // Wait for auto-advance
-    await page.waitForTimeout(500)
-
     // Should either show next voter or completion summary
     const hasNextVoter = await page
       .locator("p.text-xl.font-bold")
@@ -1036,7 +1030,6 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
       })
       if (await voicemailBtn.isVisible().catch(() => false)) {
         await voicemailBtn.click()
-        await page.waitForTimeout(500)
       }
     }
 
@@ -1154,8 +1147,6 @@ test.describe.serial("Field Mode -- Offline Support", () => {
             await noBtn.click()
           }
         }
-
-        await page.waitForTimeout(500)
       }
 
       // Record another outcome if possible
@@ -1302,7 +1293,6 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
 
       const btnText = await nextOrDoneBtn.textContent()
       await nextOrDoneBtn.click()
-      await page.waitForTimeout(500)
 
       if (btnText?.trim().toLowerCase() === "done") {
         break
@@ -1350,7 +1340,6 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
 
       const btnText = await nextOrDoneBtn.textContent()
       await nextOrDoneBtn.click()
-      await page.waitForTimeout(500)
 
       // If the button said "Done", the tour is complete
       if (btnText?.trim().toLowerCase() === "done") {

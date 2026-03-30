@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Turfs E2E Spec
@@ -179,14 +179,17 @@ test.describe.serial("Turf Lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: navigate to seed campaign", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
   })
 
-  test("TURF-01: Create 5 non-overlapping turfs via API", async ({ page }) => {
+  test("TURF-01: Create 5 non-overlapping turfs via API", async ({ page, campaignId }) => {
     // Per D-01: Create turfs via API with GeoJSON polygons (no Leaflet drawing)
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     const nonOverlapping = [
       { key: "north", name: "E2E Turf North" },
@@ -221,8 +224,9 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-02: Create 5 overlapping turfs", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("TURF-02: Create 5 overlapping turfs", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     const overlapping = [
       { key: "overlap_ne", name: "E2E Overlap NE" },
@@ -256,9 +260,10 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-03: Edit turf name", async ({ page }) => {
+  test("TURF-03: Edit turf name", async ({ page, campaignId }) => {
     // Per D-01/D-03: Only test name/description edit via form, not boundary editing
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     const turfsToEdit = [
       { key: "north", oldName: "E2E Turf North", newName: "E2E Turf North (Updated)" },
@@ -311,9 +316,10 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-04: GeoJSON import via file upload", async ({ page }) => {
+  test("TURF-04: GeoJSON import via file upload", async ({ page, campaignId }) => {
     // Per D-02: Test the GeoJSON file import UI flow using fixture
-    await navigateToSeedCampaign(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Navigate to new turf page", async () => {
       await page.goto(`/campaigns/${campaignId}/canvassing/turfs/new`)
@@ -353,8 +359,9 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-05: GeoJSON export", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("TURF-05: GeoJSON export", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Navigate to turf detail page", async () => {
       // Use the "north" turf (now renamed)
@@ -393,8 +400,9 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-06: Check turf overlap detection", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("TURF-06: Check turf overlap detection", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Verify overlap detection via API", async () => {
       // Query overlaps for the "overlap_center" polygon which overlaps
@@ -439,8 +447,9 @@ test.describe.serial("Turf Lifecycle", () => {
     })
   })
 
-  test("TURF-07: Delete turfs", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+  test("TURF-07: Delete turfs", async ({ page, campaignId }) => {
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Delete "E2E Overlap SW" and "E2E Overlap Center" via API for speed
     await test.step("Delete E2E Overlap SW via API", async () => {
@@ -476,51 +485,33 @@ test.describe.serial("Turf Lifecycle", () => {
 
     // Also test UI delete for one turf to verify the ConfirmDialog
     await test.step("Delete E2E Overlap NE via UI", async () => {
-      // Click the trash icon on the "E2E Overlap NE" card
-      const turfCard = page.locator("div").filter({ hasText: /^E2E Overlap NE/ }).first()
-      const deleteButton = turfCard
-        .locator("button")
-        .filter({ has: page.locator("svg") })
-        .first()
+      // Navigate to the turf detail page and use the Delete button there
+      // (the canvassing index card has an overlay <a> making the trash
+      // button click unreliable, so the detail page is more robust)
+      await page.goto(
+        `/campaigns/${campaignId}/canvassing/turfs/${turfIds.overlap_ne}`,
+      )
+      await expect(
+        page.getByText("E2E Overlap NE").first(),
+      ).toBeVisible({ timeout: 10_000 })
 
-      // The canvassing page cards have a z-20 trash button
-      // Try clicking it, or fall back to navigating to the detail page
-      const cardDeleteBtn = page
-        .locator(`a[href*="${turfIds.overlap_ne}"]`)
-        .locator("..")
-        .locator("button")
-        .first()
+      // Click the "Delete" button on the detail page
+      await page.getByRole("button", { name: /delete/i }).click()
 
-      if (await cardDeleteBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await cardDeleteBtn.click()
-      } else {
-        // Navigate to detail page and use the Delete button there
-        await page.goto(
-          `/campaigns/${campaignId}/canvassing/turfs/${turfIds.overlap_ne}`,
-        )
-        await expect(
-          page.getByText("E2E Overlap NE").first(),
-        ).toBeVisible({ timeout: 10_000 })
-
-        await page.getByRole("button", { name: /delete/i }).click()
-      }
-
-      // Handle the confirm dialog (ConfirmDialog on index, DestructiveConfirmDialog on detail)
-      const confirmDialog = page.getByRole("dialog")
+      // Handle the DestructiveConfirmDialog (AlertDialog role="alertdialog")
+      // which requires typing the turf name to confirm
+      const confirmDialog = page.getByRole("alertdialog")
       await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
 
-      // The DestructiveConfirmDialog on the detail page requires typing the turf name
       const confirmInput = page.getByTestId("destructive-confirm-input")
-      if (await confirmInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await confirmInput.fill("E2E Overlap NE")
-      }
+      await confirmInput.fill("E2E Overlap NE")
 
       // Click the Delete confirm button
       await page
         .getByRole("button", { name: /^delete$/i })
         .click()
 
-      // Wait for delete to complete
+      // Wait for navigation back to canvassing page
       await page.waitForURL(/canvassing/, { timeout: 10_000 }).catch(() => {})
 
       // Verify it's gone

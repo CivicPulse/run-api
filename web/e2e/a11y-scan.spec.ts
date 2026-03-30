@@ -548,11 +548,9 @@ test.describe("A11Y Scan: axe-core WCAG 2.1 AA compliance", () => {
       await page.goto(route.path)
 
       // Wait for page to settle (loading states to resolve)
-      await page.waitForLoadState("networkidle")
+      await page.waitForLoadState("domcontentloaded")
 
       // Additional wait for React hydration/rendering
-      await page.waitForTimeout(500)
-
       // Run axe-core analysis
       const results = await makeAxeBuilder().analyze()
 

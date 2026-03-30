@@ -137,9 +137,7 @@ test.describe("A11Y Flow: Voter Search", () => {
   }) => {
     // 1. Navigate to voters list page
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(500)
-
+    await page.waitForLoadState("domcontentloaded")
     // 2. Verify ARIA landmarks exist
     const nav = page.getByRole("navigation")
     await expect(nav.first()).toBeVisible()

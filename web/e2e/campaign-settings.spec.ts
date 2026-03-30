@@ -218,7 +218,7 @@ test.describe.serial(
       const token = await getAuthToken(page)
       const adminUserId = await getUserId(page, "admin1@localhost")
       const addMemberResponse = await page.request.post(
-        `/api/v1/campaigns/${campaignId}/members`,
+        `/api/v1/org/campaigns/${campaignId}/members`,
         {
           data: {
             user_id: adminUserId,
@@ -376,7 +376,7 @@ test.describe.serial("Campaign settings: ownership transfer", () => {
     const token = await getAuthToken(page)
     const adminUserId = await getUserId(page, "admin1@localhost")
     const addResponse = await page.request.post(
-      `/api/v1/campaigns/${campaignId}/members`,
+      `/api/v1/org/campaigns/${campaignId}/members`,
       {
         data: { user_id: adminUserId, role: "admin" },
         headers: { Authorization: `Bearer ${token}` },

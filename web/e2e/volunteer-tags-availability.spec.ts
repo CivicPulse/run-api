@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Volunteer Tags & Availability E2E Spec
@@ -69,7 +70,6 @@ const TAG_NAMES = [
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe.serial("Volunteer Tags & Availability", () => {
-  let campaignId = ""
   const volunteerIds: string[] = []
   const tagIds: string[] = []
   const availabilityIds: Map<string, string[]> = new Map()
@@ -77,8 +77,10 @@ test.describe.serial("Volunteer Tags & Availability", () => {
 
   // ── Setup ──
 
-  test("Setup: create 10 volunteers via API", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create 10 volunteers via API", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     for (let i = 1; i <= 10; i++) {
@@ -96,16 +98,23 @@ test.describe.serial("Volunteer Tags & Availability", () => {
 
   // ── Volunteer Tags ──
 
-  test("VTAG-01: Create 10 volunteer tags", async ({ page }) => {
+  test("VTAG-01: Create 10 volunteer tags", async ({ page, campaignId }) => {
     // Navigate to Volunteers > Tags management page
     await page.goto(`/campaigns/${campaignId}/volunteers/tags`)
     await page.waitForURL(/volunteers\/tags/, { timeout: 10_000 })
 
     // Create first 3 tags via UI form
     for (const tagName of TAG_NAMES.slice(0, 3)) {
+      // Wait for any previous dialog to close before opening a new one
+      await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
+
       await page.getByRole("button", { name: /new tag/i }).click()
-      await page.getByLabel("Tag name").fill(tagName)
-      await page.getByRole("button", { name: /save/i }).click()
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 })
+
+      // The label is "Tag name" with htmlFor="volunteer-tag-name"
+      const nameInput = page.getByRole("dialog").locator("#volunteer-tag-name")
+      await nameInput.fill(tagName)
+      await page.getByRole("dialog").getByRole("button", { name: /save/i }).click()
       await expect(page.getByText("Tag created")).toBeVisible({
         timeout: 10_000,
       })
@@ -148,7 +157,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     }
   })
 
-  test("VTAG-02: Assign tags to 9 of 10 volunteers", async ({ page }) => {
+  test("VTAG-02: Assign tags to 9 of 10 volunteers", async ({ page, campaignId }) => {
     // Assign tags to volunteers 0-8, leave volunteer 9 untagged
     // First 2 volunteers via UI, rest via API (per D-16)
     const tagAssignments = [
@@ -211,7 +220,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     }
   })
 
-  test("VTAG-03: Edit tags on 5 volunteers", async ({ page }) => {
+  test("VTAG-03: Edit tags on 5 volunteers", async ({ page, campaignId }) => {
     // For 5 volunteers, remove one tag and add a different one
     // Edit plan: remove first assigned tag, add last tag not yet assigned
     const edits = [
@@ -282,7 +291,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     ).toBeVisible({ timeout: 10_000 })
   })
 
-  test("VTAG-04: Remove all tags from 2 volunteers", async ({ page }) => {
+  test("VTAG-04: Remove all tags from 2 volunteers", async ({ page, campaignId }) => {
     // Remove all tags from volunteer 0 and volunteer 1
     for (const volIdx of [0, 1]) {
       await page.goto(
@@ -298,7 +307,6 @@ test.describe.serial("Volunteer Tags & Availability", () => {
           timeout: 10_000,
         })
         // Wait for toast to clear before next click
-        await page.waitForTimeout(500)
         removeBtn = page.getByRole("button", { name: /^Remove tag /i }).first()
       }
 
@@ -310,7 +318,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     }
   })
 
-  test("VTAG-05: Delete all 10 volunteer tags", async ({ page }) => {
+  test("VTAG-05: Delete all 10 volunteer tags", async ({ page, campaignId }) => {
     // Navigate to tag management page
     await page.goto(`/campaigns/${campaignId}/volunteers/tags`)
     await page.waitForURL(/volunteers\/tags/, { timeout: 10_000 })
@@ -370,7 +378,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
 
   // ── Volunteer Availability ──
 
-  test("AVAIL-01: Set availability for 5 volunteers", async ({ page }) => {
+  test("AVAIL-01: Set availability for 5 volunteers", async ({ page, campaignId }) => {
     // Set availability: 2 via UI dialog, 3 via API (per D-16)
     const baseDate = new Date()
     baseDate.setDate(baseDate.getDate() + 7) // Start next week
@@ -442,8 +450,6 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     await endInput2.fill(formatDatetimeLocal(satEnd))
 
     await page.getByRole("button", { name: /save|add|submit/i }).click()
-    await page.waitForTimeout(1_000)
-
     const avResp2 = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteers/${volunteerIds[1]}/availability`,
     )
@@ -483,7 +489,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     ).not.toBeVisible({ timeout: 10_000 })
   })
 
-  test("AVAIL-02: Edit availability", async ({ page }) => {
+  test("AVAIL-02: Edit availability", async ({ page, campaignId }) => {
     // Edit = delete old slot + add new slot (no inline edit in UI)
     // For volunteers 0 and 1, delete their current availability and set new times
 
@@ -529,7 +535,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     ).not.toBeVisible({ timeout: 10_000 })
   })
 
-  test("AVAIL-03: Delete availability", async ({ page }) => {
+  test("AVAIL-03: Delete availability", async ({ page, campaignId }) => {
     // Delete all availability from volunteer 0 via UI
     await page.goto(
       `/campaigns/${campaignId}/volunteers/${volunteerIds[0]}`,
@@ -547,7 +553,6 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       // Click each delete button
       for (let i = count - 1; i >= 0; i--) {
         await slotDeleteButtons.nth(i).click()
-        await page.waitForTimeout(500)
       }
     } else {
       // Fallback: delete via API

@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter CRUD Lifecycle E2E Spec
@@ -19,20 +19,21 @@ async function createVoterViaApi(
   data: Record<string, unknown>,
 ): Promise<string> {
   const url = `/api/v1/campaigns/${campaignId}/voters`
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const resp = await apiPost(page, url, data)
     if (resp.ok()) {
       const body = await resp.json()
       return body.id
     }
-    if (resp.status() === 429 && attempt < 4) {
-      await page.waitForTimeout(3000 * (attempt + 1))
+    if (resp.status() === 429 && attempt < 7) {
+      // Rate limit hit — wait with exponential backoff (shorter initial delay)
+      await page.waitForTimeout(2000 * (attempt + 1))
       continue
     }
     const body = await resp.text()
     throw new Error(`POST ${url} failed: ${resp.status()} ${resp.statusText()} — ${body}`)
   }
-  throw new Error(`POST ${url} failed after 5 retries`)
+  throw new Error(`POST ${url} failed after 8 retries`)
 }
 
 async function deleteVoterViaApi(
@@ -255,9 +256,11 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
   test.setTimeout(180_000)
 
-  test("VCRUD-01a: Create 3 voters via UI form", async ({ page }) => {
+  test("VCRUD-01a: Create 3 voters via UI form", async ({ page, campaignId }) => {
     await test.step("Navigate to seed campaign", async () => {
-      campaignId = await navigateToSeedCampaign(page)
+      // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
       expect(campaignId).toBeTruthy()
     })
 
@@ -334,14 +337,20 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     })
   })
 
-  test("VCRUD-01b: Create 17 voters via API", async ({ page }) => {
+  test("VCRUD-01b: Create 17 voters via API", async ({ page, campaignId }) => {
     // Navigate to establish auth context for API calls
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     await test.step("Create 17 voters via API with cookie forwarding", async () => {
-      for (const voter of API_VOTERS) {
-        const id = await createVoterViaApi(page, campaignId, voter)
+      for (let i = 0; i < API_VOTERS.length; i++) {
+        const id = await createVoterViaApi(page, campaignId, API_VOTERS[i])
         createdVoterIds.push(id)
+        // Small delay between creates to stay under 30/min rate limit
+        if (i > 0 && i % 10 === 0) {
+          await page.waitForTimeout(2000)
+        }
       }
       expect(createdVoterIds.length).toBe(20)
     })
@@ -358,9 +367,11 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     })
   })
 
-  test("VCRUD-02: Edit 5 voters with varied field changes", async ({ page }) => {
+  test("VCRUD-02: Edit 5 voters with varied field changes", async ({ page, campaignId }) => {
     // Navigate to campaign
-    campaignId = await navigateToSeedCampaign(page)
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.getByRole("link", { name: /voters/i }).first().click()
     await page.waitForURL(/voters/, { timeout: 10_000 })
     await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
@@ -493,8 +504,10 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     })
   })
 
-  test("VCRUD-03: Delete 5 seed/imported voters via UI", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VCRUD-03: Delete 5 seed/imported voters via UI", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.getByRole("link", { name: /voters/i }).first().click()
     await page.waitForURL(/voters/, { timeout: 10_000 })
     await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
@@ -564,8 +577,10 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     })
   })
 
-  test("VCRUD-04: Delete all 20 test-created voters", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("VCRUD-04: Delete all 20 test-created voters", async ({ page, campaignId }) => {
+    // campaignId resolved via fixture — navigate to dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.getByRole("link", { name: /voters/i }).first().click()
     await page.waitForURL(/voters/, { timeout: 10_000 })
     await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })

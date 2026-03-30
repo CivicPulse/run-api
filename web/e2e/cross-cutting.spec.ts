@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { apiPost, apiDelete, navigateToSeedCampaign } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Cross-Cutting E2E Spec
@@ -35,12 +36,9 @@ async function deleteEmptyCampaignViaApi(
 
 test.describe.serial("Cross-Cutting -- Form Guards", () => {
   test("CROSS-01: form navigation guard blocks leaving a dirty form", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(60_000)
-
-    // Navigate to seed campaign settings where form guard has a proper dialog
-    const campaignId = await navigateToSeedCampaign(page)
 
     // Go to campaign settings (general tab has useFormGuard with ConfirmDialog)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
@@ -55,9 +53,6 @@ test.describe.serial("Cross-Cutting -- Form Guards", () => {
     await nameField.fill("Modified Campaign Name For Guard Test")
     // Blur the field to trigger react-hook-form validation and dirty detection
     await page.getByLabel("Description").click()
-
-    // Wait briefly for react-hook-form to register the dirty state
-    await page.waitForTimeout(300)
 
     // Navigate away using the campaign sub-navigation (always visible, no sidebar needed)
     const dashboardLink = page.locator("main").getByRole("link", { name: /dashboard/i }).first()
@@ -90,14 +85,12 @@ test.describe.serial("Cross-Cutting -- Form Guards", () => {
 
 test.describe.serial("Cross-Cutting -- Toasts", () => {
   test("CROSS-02: toast notifications appear on CRUD operations", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(90_000)
 
-    const campaignId = await navigateToSeedCampaign(page)
-
     // Navigate to voters page
-    await page.getByRole("link", { name: /voters/i }).first().click()
+    await page.goto(`/campaigns/${campaignId}/voters`)
     await expect(
       page.getByRole("table").first(),
     ).toBeVisible({ timeout: 15_000 })
@@ -151,11 +144,13 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
 
 test.describe.serial("Cross-Cutting -- Rate Limiting", () => {
   test("CROSS-03: rate limiting returns 429 on rapid requests", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(60_000)
 
-    const campaignId = await navigateToSeedCampaign(page)
+    // Navigate to establish auth context
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // The join endpoint has a 5/minute limit -- easiest to trigger.
     // But we need an endpoint the owner can access. Voters has 60/minute via
@@ -206,7 +201,7 @@ test.describe.serial("Cross-Cutting -- Empty States", () => {
   let emptyCampaignId: string
 
   test("UI-01: empty states render on all list pages of a fresh campaign", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(120_000)
 
@@ -298,7 +293,7 @@ test.describe.serial("Cross-Cutting -- Empty States", () => {
 
 test.describe.serial("Cross-Cutting -- Loading & Errors", () => {
   test("UI-02: loading skeletons are visible during delayed API fetch", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(60_000)
 
@@ -307,8 +302,6 @@ test.describe.serial("Cross-Cutting -- Loading & Errors", () => {
       await new Promise((r) => setTimeout(r, 2000))
       await route.continue()
     })
-
-    const campaignId = await navigateToSeedCampaign(page)
 
     // Navigate to voters page
     await page.goto(`/campaigns/${campaignId}/voters`)
@@ -336,7 +329,7 @@ test.describe.serial("Cross-Cutting -- Loading & Errors", () => {
   })
 
   test("UI-03: error boundary renders on invalid campaign ID", async ({
-    page,
+    page, campaignId,
   }) => {
     test.setTimeout(60_000)
     // The invalid campaign renders an empty main area because TanStack Query
@@ -351,7 +344,7 @@ test.describe.serial("Cross-Cutting -- Loading & Errors", () => {
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
       { timeout: 15_000 },
     )
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("domcontentloaded")
 
     // Navigate to a campaign that doesn't exist.
     // The API may return 403 (not a member) or 404 (not found).

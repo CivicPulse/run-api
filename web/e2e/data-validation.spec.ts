@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 import { readFileSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
@@ -42,22 +42,6 @@ function parseFixtureCSV(): CsvRow[] {
 }
 
 // -- Helper Functions ----------------------------------------------------------
-
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
 
 async function importFixtureCSV(
   page: import("@playwright/test").Page,
@@ -153,8 +137,11 @@ test.describe.serial("Data Validation", () => {
 
   test.setTimeout(180_000)
 
-  test("Setup: import fixture CSV", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: import fixture CSV", async ({ page, campaignId: cid }) => {
+    campaignId = cid
+    // Navigate to campaign dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
     await importFixtureCSV(page)
   })
@@ -177,7 +164,7 @@ test.describe.serial("Data Validation", () => {
       const resp = await apiPost(
         page,
         `/api/v1/campaigns/${campaignId}/voters/search`,
-        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
+        { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
       )
       expect(resp.ok()).toBeTruthy()
       const body = await resp.json()
@@ -223,7 +210,7 @@ test.describe.serial("Data Validation", () => {
           const searchResp = await apiPost(
             page,
             `/api/v1/campaigns/${campaignId}/voters/search`,
-            { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
+            { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
           )
           expect(searchResp.ok()).toBeTruthy()
           const searchBody = await searchResp.json()
@@ -310,7 +297,7 @@ test.describe.serial("Data Validation", () => {
     }
   })
 
-  test("VAL-02: Validate missing data handling", async ({ page }) => {
+  test("VAL-02: Validate missing data handling", async ({ page, campaignId }) => {
 
     // Select voters with known missing fields from the CSV
     // Voters without phone: indices 3, 6, 9, 13, 16 (Latisha Brown, Chen Liu, Shaniqua Jackson, Keisha Moore, Kevin Clark)
@@ -360,7 +347,7 @@ test.describe.serial("Data Validation", () => {
         const searchResp = await apiPost(
           page,
           `/api/v1/campaigns/${campaignId}/voters/search`,
-          { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
+          { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
         )
         expect(searchResp.ok()).toBeTruthy()
         const searchBody = await searchResp.json()
@@ -431,7 +418,7 @@ test.describe.serial("Data Validation", () => {
       const searchResp = await apiPost(
         page,
         `/api/v1/campaigns/${campaignId}/voters/search`,
-        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
+        { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
       )
       expect(searchResp.ok()).toBeTruthy()
       const searchBody = await searchResp.json()
@@ -468,7 +455,7 @@ test.describe.serial("Data Validation", () => {
       const searchResp = await apiPost(
         page,
         `/api/v1/campaigns/${campaignId}/voters/search`,
-        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
+        { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
       )
       expect(searchResp.ok()).toBeTruthy()
       const searchBody = await searchResp.json()

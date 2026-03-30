@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
+import { test, expect } from "./fixtures"
+import type { Page } from "@playwright/test"
+import { apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter Tags E2E Lifecycle Spec
@@ -20,16 +21,16 @@ async function createVoterViaApi(
   data: Record<string, unknown>,
 ): Promise<string> {
   const url = `/api/v1/campaigns/${campaignId}/voters`
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const resp = await apiPost(page, url, data)
     if (resp.ok()) return (await resp.json()).id
-    if (resp.status() === 429 && attempt < 4) {
-      await page.waitForTimeout(3000 * (attempt + 1))
+    if (resp.status() === 429 && attempt < 7) {
+      await page.waitForTimeout(2000 * (attempt + 1))
       continue
     }
     throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
   }
-  throw new Error(`POST ${url} failed after 5 retries`)
+  throw new Error(`POST ${url} failed after 8 retries`)
 }
 
 async function deleteVoterViaApi(
@@ -56,8 +57,11 @@ test.describe.serial("Voter tags lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: create test voters", async ({ page }) => {
-    campaignId = await navigateToSeedCampaign(page)
+  test("Setup: create test voters", async ({ page, campaignId: cid }) => {
+    campaignId = cid
+    // Navigate to campaign dashboard
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     expect(campaignId).toBeTruthy()
 
     const voters = [
@@ -83,9 +87,18 @@ test.describe.serial("Voter tags lifecycle", () => {
     await page.goto(`/campaigns/${campaignId}/voters/tags`)
     await page.waitForURL(/voters\/tags/, { timeout: 10_000 })
 
+    // Wait for RequireRole to resolve — the heading confirms the page loaded
+    await expect(
+      page.getByRole("heading", { name: /campaign tags/i }),
+    ).toBeVisible({ timeout: 15_000 })
+
+    // Wait for "+ New Tag" button to be visible (RequireRole gate)
+    const newTagBtn = page.getByRole("button", { name: /new tag/i })
+    await expect(newTagBtn).toBeVisible({ timeout: 15_000 })
+
     for (const tagName of tagNames) {
       // Click "+ New Tag" button
-      await page.getByRole("button", { name: /new tag/i }).click()
+      await newTagBtn.click()
 
       // Fill tag name in dialog
       await page.getByLabel("Tag name").fill(tagName)
@@ -152,7 +165,7 @@ test.describe.serial("Voter tags lifecycle", () => {
     }
   })
 
-  test("TAG-03: Validate tags persist after navigation", async ({ page }) => {
+  test("TAG-03: Validate tags persist after navigation", async ({ page, campaignId }) => {
     const assignments = [
       ["Priority Voter", "Door Knocked"],
       ["Door Knocked", "Phone Contacted"],
@@ -184,7 +197,7 @@ test.describe.serial("Voter tags lifecycle", () => {
     }
   })
 
-  test("TAG-04: Remove tags from all test voters", async ({ page }) => {
+  test("TAG-04: Remove tags from all test voters", async ({ page, campaignId }) => {
     const assignments = [
       ["Priority Voter", "Door Knocked"],
       ["Door Knocked", "Phone Contacted"],

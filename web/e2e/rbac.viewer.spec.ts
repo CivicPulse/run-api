@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { test, expect } from "./fixtures"
 
 /**
  * RBAC-03: Viewer cannot access mutation actions.
@@ -8,17 +7,14 @@ import { getSeedCampaignId } from "./helpers"
  * Viewer role should be able to view data but cannot create, edit, or delete anything.
  */
 test.describe("RBAC: viewer permissions", () => {
-  let campaignId: string
-
   /** Navigate into the seed campaign and extract campaignId. */
-  async function enterCampaign(page: import("@playwright/test").Page) {
-    campaignId = await getSeedCampaignId(page)
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForLoadState("networkidle")
+  async function enterCampaign(page: import("@playwright/test").Page, cid: string) {
+    await page.goto(`/campaigns/${cid}/dashboard`)
+    await page.waitForLoadState("domcontentloaded")
   }
 
-  test("voters page: New Voter button is NOT visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("voters page: New Voter button is NOT visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -36,7 +32,7 @@ test.describe("RBAC: viewer permissions", () => {
   // table shows empty and detail pages return 403.  These tests are
   // skipped because viewer cannot access voter data by design.
   test.skip("voter detail: Edit button is NOT visible", async ({ page }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -52,7 +48,7 @@ test.describe("RBAC: viewer permissions", () => {
   test.skip("voter detail: Add Interaction button IS visible for viewer", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
@@ -70,7 +66,7 @@ test.describe("RBAC: viewer permissions", () => {
   test("canvassing: page loads and New Turf link is present (not role-gated in UI)", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
     await page.waitForURL(/canvassing/, { timeout: 10_000 })
 
@@ -86,8 +82,8 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(newTurfLink).toBeVisible({ timeout: 10_000 })
   })
 
-  test("phone banking: New Call List button is NOT visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("phone banking: New Call List button is NOT visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
     await page.waitForURL(/call-lists/, { timeout: 10_000 })
 
@@ -99,8 +95,8 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(newCallListButton).not.toBeVisible()
   })
 
-  test("phone banking: New Session button is NOT visible", async ({ page }) => {
-    await enterCampaign(page)
+  test("phone banking: New Session button is NOT visible", async ({ page, campaignId }) => {
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/phone-banking/sessions`)
     await page.waitForURL(/sessions/, { timeout: 10_000 })
 
@@ -115,7 +111,7 @@ test.describe("RBAC: viewer permissions", () => {
   test("volunteers roster: edit/delete actions are NOT visible", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
     await page.waitForURL(/roster/, { timeout: 10_000 })
 
@@ -133,7 +129,7 @@ test.describe("RBAC: viewer permissions", () => {
   test("campaign settings: Members nav link IS visible but members content is gated", async ({
     page,
   }) => {
-    await enterCampaign(page)
+    await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings/, { timeout: 10_000 })
 
@@ -150,7 +146,7 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(inviteSection).not.toBeVisible()
   })
 
-  test("org dashboard: Create Campaign link is NOT visible", async ({ page }) => {
+  test("org dashboard: Create Campaign link is NOT visible", async ({ page, campaignId }) => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
