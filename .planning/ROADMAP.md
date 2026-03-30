@@ -248,3 +248,14 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
 | 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Update ZITADEL to v3 or v4 (BACKLOG)
+
+**Goal:** Upgrade ZITADEL from v2.71.6 to v3.x or v4.x to unlock modern APIs (v2beta OIDC authorize, password grant for E2E, improved session management). Current version blocks API-based auth setup for Playwright tests and lacks newer security features.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
