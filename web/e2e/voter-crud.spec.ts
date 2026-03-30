@@ -257,7 +257,7 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     await test.step("Navigate to voters page", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()
       await expect(
-        page.getByRole("table").or(page.getByText(/no voters|all voters/i).first()),
+        page.getByRole("table").first(),
       ).toBeVisible({ timeout: 15_000 })
     })
 

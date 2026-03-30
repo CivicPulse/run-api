@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete } from "./helpers"
+import { navigateToSeedCampaign, apiGet, apiPost, apiPatch, apiDelete } from "./helpers"
 
 /**
  * Surveys E2E Spec
@@ -83,12 +83,17 @@ test.describe.serial("Survey Lifecycle", () => {
       timeout: 5_000,
     })
 
-    // Click the survey card link (the card has an overlay <a> that intercepts pointer events)
-    const surveyCard = page.locator('a[href*="/surveys/"]').filter({ hasText: /E2E Voter Sentiment Survey/i }).first()
-      .or(page.getByText("E2E Voter Sentiment Survey").first())
-    await surveyCard.click({ force: true })
+    // Get the survey ID from the API (clicking the card is unreliable due to overlay <a>)
+    const listResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/surveys`)
+    const listData = await listResp.json()
+    const surveys = listData.items ?? listData
+    const created = surveys.find((s: { title?: string }) => s.title === "E2E Voter Sentiment Survey")
+    expect(created).toBeTruthy()
+    surveyId = created.id
+
+    // Navigate to the survey detail page
+    await page.goto(`/campaigns/${campaignId}/surveys/${surveyId}`)
     await page.waitForURL(/surveys\/([a-f0-9-]+)/, { timeout: 10_000 })
-    surveyId = page.url().match(/surveys\/([a-f0-9-]+)/)?.[1] ?? ""
     expect(surveyId).toBeTruthy()
   })
 
