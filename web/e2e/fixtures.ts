@@ -55,7 +55,7 @@ export const test = base.extend<{}, { campaignId: string }>({
       try {
         const resp = await page.request.get("/api/v1/me/campaigns", {
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 10_000, // per-request timeout (default 30s is too long for retries)
+          timeout: 15_000, // per-request timeout (default 30s is too long for retries)
         })
         lastRespStatus = resp.status()
         lastError = undefined

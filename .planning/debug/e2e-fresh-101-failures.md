@@ -8,10 +8,10 @@ updated: 2026-03-30T22:00:00Z
 ## Current Focus
 <!-- OVERWRITE on each update - reflects NOW -->
 
-hypothesis: All three root causes are fully fixed. Full suite should show near-zero failures for the originally identified 101 (some pre-existing functional failures may remain but are unrelated to these three root causes).
-test: Run full E2E suite with ./scripts/run-e2e.sh from web/ directory
-expecting: Near-zero failures in fixture, campaignId, and RBAC spec tests
-next_action: Await human verification of full suite run result
+hypothesis: All original root causes confirmed fixed. Remaining 40 failures are pre-existing functional issues unrelated to the original 101.
+test: Two full suite runs completed — 12 workers (59 fail) then 6 workers (40 fail). Zero occurrences of original error patterns.
+expecting: N/A — investigation complete
+next_action: Await human confirmation to archive
 
 ## Symptoms
 <!-- Written during gathering, then IMMUTABLE -->
