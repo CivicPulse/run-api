@@ -4,19 +4,7 @@ import { test, expect, type Page } from "@playwright/test"
 test.setTimeout(90_000)
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 25_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(2000)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 30_000 })
-  await page.waitForTimeout(2000)
-}
 
 // ---------------------------------------------------------------------------
 // IMPT-06 — Import history page renders DataTable / EmptyState and New Import button
@@ -25,8 +13,7 @@ test.describe("IMPT-06: Import history page — DataTable or EmptyState with New
   test("navigating to /voters/imports shows Import History heading and New Import button", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p14-06-imports-index.png" })
 
@@ -63,8 +50,7 @@ test.describe("IMPT-01: Import wizard — DropZone renders with CSV drag-and-dro
   test("navigating to /voters/imports/new shows Import Voters heading, step indicator, and DropZone", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p14-01-import-wizard.png" })
 
@@ -91,8 +77,7 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
   test("import wizard URL includes ?step= parameter defaulting to 1", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
 
     // The route schema defaults step to 1 — verify the wizard renders step 1 content
@@ -101,7 +86,7 @@ test.describe("IMPT-07: Wizard URL contains step parameter for step tracking", (
 
     // With ?step=1 explicitly in URL the wizard renders correctly
     await page.goto(
-      `${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports/new?step=1`,
+      `/campaigns/${CAMPAIGN_ID}/voters/imports/new?step=1`,
     )
     await page.waitForTimeout(2000)
 
@@ -120,8 +105,7 @@ test.describe("IMPT-02 / IMPT-03: Wizard step navigation structure is present (s
   test("step indicator shows all four steps: Upload, Map Columns, Preview, Progress", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports/new`)
     await page.waitForTimeout(3000)
 
     const bodyText = await page.locator("body").innerText()
@@ -143,8 +127,7 @@ test.describe("IMPT-06: New Import button navigates to wizard route", () => {
   test("clicking New Import from history page navigates to /voters/imports/new", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 
     const newImportBtn = page.getByRole("button", { name: /new import/i })

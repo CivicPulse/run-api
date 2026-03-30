@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
 test("debug call list entries", async ({ page }) => {
   const apiRequests: { url: string; status: number; body: string }[] = []
@@ -19,7 +18,7 @@ test("debug call list entries", async ({ page }) => {
   })
 
   // Go to /login — auto-triggers signinRedirect to ZITADEL
-  await page.goto(`${BASE}/login`)
+  await page.goto(`/login`)
   await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
   console.log("At ZITADEL:", page.url())
   await page.screenshot({ path: "test-results/01-zitadel-login.png" })
@@ -36,13 +35,12 @@ test("debug call list entries", async ({ page }) => {
   await page.click('button[type="submit"]')
 
   // Wait for OIDC callback to complete and redirect to app
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
   console.log("Redirected to:", page.url())
   await page.waitForTimeout(2000)
   await page.screenshot({ path: "test-results/04-back-in-app.png" })
 
   // Navigate to call lists
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/phone-banking/call-lists`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/call-lists`)
   await page.waitForTimeout(3000)
   await page.screenshot({ path: "test-results/05-call-lists.png" })
   console.log("Call lists page URL:", page.url())

@@ -1,19 +1,7 @@
 import { test, expect } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
 
 /** Wait for a table to fully load (visible + no skeleton rows) */
 async function waitForTable(page: import("@playwright/test").Page) {
@@ -51,8 +39,7 @@ async function auditSortButtons(page: import("@playwright/test").Page) {
 
 test.describe("Voters table — sort buttons missing (BUG)", () => {
   test("Name, Party, City, Age columns have enableSorting but no sort UI renders", async ({ page }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await waitForTable(page)
 
     // These 4 columns have enableSorting: true but use `id:` without accessorKey
@@ -147,13 +134,9 @@ const TABLES_WITH_BROKEN_SORT: TableConfig[] = [
 ]
 
 test.describe("Sort buttons visible but non-functional (BUG)", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
-
   for (const tbl of TABLES_WITH_BROKEN_SORT) {
     test(`${tbl.name}: sort buttons render but clicking does nothing`, async ({ page }) => {
-      await page.goto(`${BASE}${tbl.path}`)
+      await page.goto(`${tbl.path}`)
       await waitForTable(page).catch(() => page.waitForTimeout(2000))
 
       const sortableCount = await countSortableHeaders(page)
@@ -188,8 +171,7 @@ test.describe("Sort buttons visible but non-functional (BUG)", () => {
 
 test.describe("Shift detail — no sort buttons (correct)", () => {
   test("shift detail roster table has zero sortable columns", async ({ page }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/volunteers/shifts`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/volunteers/shifts`)
     await page.waitForTimeout(3000)
 
     const shiftLink = page.locator("a[href*='/shifts/']").first()

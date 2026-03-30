@@ -1,19 +1,7 @@
 import { test, expect, type Page } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
 
 // ---------------------------------------------------------------------------
 // INFR-01 — Settings Gear Icon Visibility
@@ -22,8 +10,7 @@ test.describe("INFR-01: Settings gear icon in sidebar", () => {
   test("gear icon visible in sidebar for admin/owner user and navigates to settings", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/dashboard`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/dashboard`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-01-sidebar.png" })
 
@@ -47,8 +34,7 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
   test("form loads with campaign data, edit saves and shows success toast", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/general`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-02-general-loaded.png" })
 
@@ -90,8 +76,7 @@ test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
   test("dirty form blocks navigation and shows unsaved changes dialog; Keep editing stays on page", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/general`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
     await page.waitForTimeout(3000)
 
     // Wait for form to load with campaign data
@@ -130,8 +115,7 @@ test.describe("CAMP-05: Members tab — member list with role badges", () => {
   test("member list table renders with Name, Email, Role, Joined columns and role badges", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/members`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-04-members-loaded.png" })
 
@@ -163,8 +147,7 @@ test.describe("CAMP-03: Invite member dialog", () => {
   test("invite dialog opens with email input and role selector, send invite shows toast", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/members`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForTimeout(3000)
 
     // Click "Invite member" button
@@ -212,8 +195,7 @@ test.describe("CAMP-04: Pending Invites section", () => {
   test("Pending Invites section heading visible with table or empty state", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/members`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-06-pending-invites.png" })
 
@@ -238,8 +220,7 @@ test.describe("CAMP-06: Change member role via kebab menu", () => {
   test("kebab menu on non-owner row opens role change dialog with save button", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/members`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForTimeout(3000)
 
     await page.screenshot({ path: "test-results/p12-07-members-for-role-change.png" })
@@ -308,8 +289,7 @@ test.describe("CAMP-07: Remove member via kebab menu", () => {
   test("kebab menu shows Remove member; confirmation dialog appears with Remove button", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/members`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
     await page.waitForTimeout(3000)
 
     const actionButtons = page.getByRole("button", { name: /actions/i })
@@ -358,8 +338,7 @@ test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
   test("delete dialog opens, confirm button disabled until campaign name typed, then enables", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/danger`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-09-danger-zone.png" })
 
@@ -414,8 +393,7 @@ test.describe("CAMP-08: Transfer ownership", () => {
   test("transfer ownership section visible, dialog opens with admin selector", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/settings/danger`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p12-10-danger-transfer.png" })
 

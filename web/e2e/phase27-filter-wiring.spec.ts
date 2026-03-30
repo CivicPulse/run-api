@@ -1,23 +1,11 @@
 import { test, expect } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
 
 /** Navigate to voter list page and open the filter panel */
 async function openVoterFilters(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(2000)
   // Click the "Filters" button to open the filter panel
   await page.getByRole("button", { name: /filters/i }).click()
@@ -37,10 +25,6 @@ function interceptSearchPost(page: import("@playwright/test").Page) {
 }
 
 test.describe("Phase 27: Filter wiring E2E", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
-
   test("propensity range filter sends POST with correct body", async ({
     page,
   }) => {
@@ -318,7 +302,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // Note: This requires an auth token. We extract it from the logged-in page context.
 
     // First navigate to the voters page so we have a valid session
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await page.waitForTimeout(2000)
 
     // Extract auth cookies/tokens from the browser context
@@ -329,7 +313,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
 
     // Make a direct GET request to the legacy endpoint
     const response = await page.request.get(
-      `${BASE}/api/v1/campaigns/${CAMPAIGN_ID}/voters?party=DEM`,
+      `/api/v1/campaigns/${CAMPAIGN_ID}/voters?party=DEM`,
       {
         headers: {
           Cookie: cookieHeader,

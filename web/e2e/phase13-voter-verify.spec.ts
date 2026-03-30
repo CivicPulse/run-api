@@ -4,23 +4,11 @@ import { test, expect, type Page } from "@playwright/test"
 test.setTimeout(90_000)
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 25_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(2000)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 30_000 })
-  await page.waitForTimeout(2000)
-}
 
 /** Navigate to the voters index and return the voterId of the first row by clicking it. */
 async function getFirstVoterId(page: Page): Promise<string | null> {
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(3000)
   // Click the first voter name link in the table to navigate to their detail page
   const firstLink = page.locator('table a[href*="/voters/"]').first()
@@ -43,7 +31,6 @@ test.describe("VOTR-01: Voter contacts tab renders phone/email/address sections"
   test("contacts tab shows Phone Numbers, Email Addresses, Mailing Addresses sections", async ({
     page,
   }) => {
-    await login(page)
     await getFirstVoterId(page)
     await page.screenshot({ path: "test-results/p13-01-voter-detail.png" })
 
@@ -69,7 +56,6 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
   test("contacts tab renders star buttons for set-primary on contact rows or empty state visible", async ({
     page,
   }) => {
-    await login(page)
     await getFirstVoterId(page)
 
     const contactsTab = page.getByRole("tab", { name: /contacts/i })
@@ -99,8 +85,7 @@ test.describe("VOTR-03: Create new voter — New Voter sheet opens with form fie
   test("clicking + New Voter opens Sheet with First Name, Last Name, Party fields", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p13-03-voters-index.png" })
 
@@ -137,7 +122,6 @@ test.describe("VOTR-04: Edit existing voter — Edit button visible on voter det
   test("voter detail page shows Edit button gated to manager role", async ({
     page,
   }) => {
-    await login(page)
     await getFirstVoterId(page)
     await page.screenshot({ path: "test-results/p13-04-voter-detail.png" })
 
@@ -173,8 +157,7 @@ test.describe("VOTR-05: Campaign tags page — DataTable with + New Tag button",
   test("navigating to /voters/tags shows Campaign Tags heading, DataTable, and + New Tag button", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/tags`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/tags`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p13-05-tags-index.png" })
 
@@ -200,7 +183,6 @@ test.describe("VOTR-06: Tags tab on voter detail — tag chips with remove and a
   test("Tags tab renders Current Tags section with remove buttons or empty state, plus Add Tag selector", async ({
     page,
   }) => {
-    await login(page)
     await getFirstVoterId(page)
 
     const tagsTab = page.getByRole("tab", { name: /tags/i })
@@ -239,8 +221,7 @@ test.describe("VOTR-07: Voter lists index — DataTable renders with + New List 
   test("navigating to /voters/lists shows Voter Lists heading, DataTable, and + New List button", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p13-07-lists-index.png" })
 
@@ -267,8 +248,7 @@ test.describe("VOTR-08: New List dialog — selecting Dynamic shows VoterFilterB
   test("clicking + New List → Dynamic List card renders VoterFilterBuilder with Party/Age Range sections", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await page.waitForTimeout(3000)
 
     // Click "+ New List"
@@ -310,8 +290,7 @@ test.describe("VOTR-09: List detail page renders member DataTable", () => {
   test("clicking a list navigates to detail page with list name, type badge, and member DataTable", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p13-09-lists-index-for-detail.png" })
 
@@ -366,8 +345,7 @@ test.describe("VOTR-10: Voters index — Filters button opens VoterFilterBuilder
   test("clicking Filters button toggles filter panel open with Party/Age Range/City sections", async ({
     page,
   }) => {
-    await login(page)
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await page.waitForTimeout(3000)
     await page.screenshot({ path: "test-results/p13-10-voters-before-filter.png" })
 
@@ -405,7 +383,6 @@ test.describe("VOTR-11: History tab — textarea and Add Note button for interac
   test("History tab renders Add a Note textarea and Add Note button", async ({
     page,
   }) => {
-    await login(page)
     await getFirstVoterId(page)
 
     // Switch to History tab

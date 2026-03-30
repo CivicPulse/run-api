@@ -1,28 +1,12 @@
 import { test, expect } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
 
 test.describe("Phase 20: Caller Picker UX", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
-
   test("session detail page shows callers with display names (not UUIDs)", async ({ page }) => {
     // Navigate to sessions list
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
     await page.waitForTimeout(3000)
 
     // Click on the first session to go to detail page
@@ -45,7 +29,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
   })
 
   test("Add Caller dialog shows combobox picker (not text input)", async ({ page }) => {
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
     await page.waitForTimeout(3000)
 
     // Click first session
@@ -110,7 +94,7 @@ test.describe("Phase 20: Caller Picker UX", () => {
   })
 
   test("callers table shows display names with role badges", async ({ page }) => {
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
     await page.waitForTimeout(3000)
 
     // Click first session

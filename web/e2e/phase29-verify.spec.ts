@@ -1,22 +1,10 @@
 import { test, expect } from "@playwright/test"
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 15_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(1500)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 20_000 })
-  await page.waitForTimeout(2000)
-}
 
 async function openVoterFilters(page: import("@playwright/test").Page) {
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(2000)
   await page.getByRole("button", { name: /filters/i }).click()
   await page.waitForTimeout(500)
@@ -25,15 +13,11 @@ async function openVoterFilters(page: import("@playwright/test").Page) {
 test.setTimeout(90_000)
 
 test.describe("Phase 29: Integration Polish UAT", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
-
   // ── Test 1: Import History Filename Column ──────────────────────────────
   test("1. import history table shows Filename column correctly", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 
     // "Filename" column header must be present
@@ -52,7 +36,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
 
   // ── Test 2: Errors Column Removed ───────────────────────────────────────
   test("2. import history table has no Errors column", async ({ page }) => {
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/imports`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
     await page.waitForTimeout(3000)
 
     const headerRow = page.locator("thead tr").first()
@@ -134,7 +118,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
     page,
   }) => {
     // Navigate to voter lists page
-    await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+    await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
     await page.waitForTimeout(2000)
 
     // Open the create list dialog

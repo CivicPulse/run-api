@@ -16,19 +16,7 @@ import { test, expect, type Page } from "@playwright/test"
 test.setTimeout(90_000)
 
 const CAMPAIGN_ID = "9e7e3f63-75fe-4e86-a412-e5149645b8be"
-const BASE = "https://dev.tailb56d83.ts.net:5173"
 
-async function login(page: Page) {
-  await page.goto(`${BASE}/login`)
-  await page.waitForURL(/auth\.civpulse\.org/, { timeout: 25_000 })
-  await page.locator("input").first().fill("tester")
-  await page.click('button[type="submit"]')
-  await page.waitForTimeout(2000)
-  await page.locator('input[type="password"]').fill("Crank-Arbitrate8-Spearman")
-  await page.click('button[type="submit"]')
-  await page.waitForURL(/tailb56d83\.ts\.net:5173/, { timeout: 30_000 })
-  await page.waitForTimeout(2000)
-}
 
 // ---------------------------------------------------------------------------
 // VOTR-07: Static voter list management
@@ -36,8 +24,7 @@ async function login(page: Page) {
 test("VOTR-07: Static voter lists — list table renders with New List button", async ({
   page,
 }) => {
-  await login(page)
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
   await page.waitForTimeout(3000)
 
   // "Voter Lists" heading must be visible
@@ -68,8 +55,7 @@ test("VOTR-07: Static voter lists — list table renders with New List button", 
 test("VOTR-08: Dynamic voter lists — selecting Dynamic shows VoterFilterBuilder", async ({
   page,
 }) => {
-  await login(page)
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters/lists`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/lists`)
   await page.waitForTimeout(3000)
 
   // Click "+ New List"
@@ -107,8 +93,7 @@ test("VOTR-08: Dynamic voter lists — selecting Dynamic shows VoterFilterBuilde
 test("VOTR-10: Advanced search — Filters button toggles VoterFilterBuilder panel", async ({
   page,
 }) => {
-  await login(page)
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(3000)
 
   // "All Voters" heading must be visible
@@ -146,10 +131,9 @@ test("VOTR-10: Advanced search — Filters button toggles VoterFilterBuilder pan
 test("VOTR-11: History tab — Add a Note textarea and Add Note button render", async ({
   page,
 }) => {
-  await login(page)
 
   // Navigate to voters index and click first voter to get to detail page
-  await page.goto(`${BASE}/campaigns/${CAMPAIGN_ID}/voters`)
+  await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForTimeout(3000)
 
   // Click the first voter name link in the table
