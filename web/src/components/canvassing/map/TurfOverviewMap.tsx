@@ -136,7 +136,7 @@ export function TurfOverviewMap({ turfs, campaignId }: TurfOverviewMapProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MapIcon className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-md font-medium">Map</h3>
+          <h2 className="text-md font-medium">Map</h2>
         </div>
         <Button
           variant="ghost"

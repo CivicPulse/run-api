@@ -472,6 +472,7 @@ test.describe("Phone Banking Field Mode", () => {
   test("skip releases entry and advances", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Click "Skip" button

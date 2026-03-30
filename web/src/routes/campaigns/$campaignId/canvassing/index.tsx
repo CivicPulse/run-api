@@ -71,7 +71,7 @@ function CanvassingIndex() {
       {/* Turfs Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-md font-medium">Turfs</h3>
+          <h2 className="text-md font-medium">Turfs</h2>
           <Button size="sm" asChild>
             <Link to={`/campaigns/${campaignId}/canvassing/turfs/new` as string}>
               <Plus className="mr-1 h-4 w-4" /> New Turf
@@ -151,7 +151,7 @@ function CanvassingIndex() {
       {/* Walk Lists Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-md font-medium">Walk Lists</h3>
+          <h2 className="text-md font-medium">Walk Lists</h2>
           <Button size="sm" onClick={() => setGenerateOpen(true)}>
             <Plus className="mr-1 h-4 w-4" /> Generate Walk List
           </Button>

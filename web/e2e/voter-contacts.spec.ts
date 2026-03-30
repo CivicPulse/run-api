@@ -20,10 +20,17 @@ async function createVoterViaApi(
   campaignId: string,
   data: Record<string, unknown>,
 ): Promise<string> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/voters`, data)
-  expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  const url = `/api/v1/campaigns/${campaignId}/voters`
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const resp = await apiPost(page, url, data)
+    if (resp.ok()) return (await resp.json()).id
+    if (resp.status() === 429 && attempt < 4) {
+      await page.waitForTimeout(3000 * (attempt + 1))
+      continue
+    }
+    throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
+  }
+  throw new Error(`POST ${url} failed after 5 retries`)
 }
 
 async function deleteVoterViaApi(
@@ -111,7 +118,8 @@ test.describe.serial("Voter contacts CRUD", () => {
 
     await test.step("Verify last voter exists in the list", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
       await expect(
         page.getByText("Contact Tango").first(),
       ).toBeVisible({ timeout: 10_000 })
@@ -399,7 +407,8 @@ test.describe.serial("Voter contacts CRUD", () => {
   }) => {
     await navigateToSeedCampaign(page)
     await page.getByRole("link", { name: /voters/i }).first().click()
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // Delete 2 test voters via UI to prove UI deletion works
     await test.step("Delete 2 test voters via UI", async () => {
@@ -440,7 +449,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     // Final verification
     await test.step("Verify no test voters remain", async () => {
       await page.reload()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
       // Check several representative names
       for (const name of [

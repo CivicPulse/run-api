@@ -17,11 +17,11 @@ test.describe("Login flow", () => {
       { timeout: 15_000 },
     )
 
-    // Fill login name
+    // Use an E2E test user (not admin@localhost which triggers forced password change)
     const loginInput = page
       .getByLabel(/login ?name/i)
       .or(page.locator("#loginName"))
-    await loginInput.fill("admin@localhost")
+    await loginInput.fill("owner1@localhost")
 
     // Click Next to proceed to password step
     await page.getByRole("button", { name: /next/i }).click()
@@ -30,7 +30,7 @@ test.describe("Login flow", () => {
     const passwordInput = page
       .getByLabel(/password/i)
       .or(page.locator("#password"))
-    await passwordInput.fill("Admin1234!")
+    await passwordInput.fill("Owner1234!")
 
     // Click Next to submit credentials
     await page.getByRole("button", { name: /next/i }).click()
@@ -71,11 +71,11 @@ test.describe("Login flow", () => {
       { timeout: 15_000 },
     )
 
-    // Fill login name
+    // Use an E2E test user (not admin@localhost which triggers forced password change)
     const loginInput = page
       .getByLabel(/login ?name/i)
       .or(page.locator("#loginName"))
-    await loginInput.fill("admin@localhost")
+    await loginInput.fill("owner1@localhost")
     await page.getByRole("button", { name: /next/i }).click()
 
     // Fill wrong password

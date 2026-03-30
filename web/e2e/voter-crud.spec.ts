@@ -18,14 +18,21 @@ async function createVoterViaApi(
   campaignId: string,
   data: Record<string, unknown>,
 ): Promise<string> {
-  const resp = await apiPost(
-    page,
-    `/api/v1/campaigns/${campaignId}/voters`,
-    data,
-  )
-  expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  const url = `/api/v1/campaigns/${campaignId}/voters`
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const resp = await apiPost(page, url, data)
+    if (resp.ok()) {
+      const body = await resp.json()
+      return body.id
+    }
+    if (resp.status() === 429 && attempt < 4) {
+      await page.waitForTimeout(3000 * (attempt + 1))
+      continue
+    }
+    const body = await resp.text()
+    throw new Error(`POST ${url} failed: ${resp.status()} ${resp.statusText()} — ${body}`)
+  }
+  throw new Error(`POST ${url} failed after 5 retries`)
 }
 
 async function deleteVoterViaApi(
@@ -256,8 +263,9 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
     await test.step("Navigate to voters page", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()
+      await page.waitForURL(/voters/, { timeout: 10_000 })
       await expect(
-        page.getByRole("table").first(),
+        page.locator('table[data-slot="table"]'),
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -328,7 +336,7 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
   test("VCRUD-01b: Create 17 voters via API", async ({ page }) => {
     // Navigate to establish auth context for API calls
-    await navigateToSeedCampaign(page)
+    campaignId = await navigateToSeedCampaign(page)
 
     await test.step("Create 17 voters via API with cookie forwarding", async () => {
       for (const voter of API_VOTERS) {
@@ -340,7 +348,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
     await test.step("Verify last API-created voter exists in the list", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
       // Search or scroll to find the last created voter
       await expect(
@@ -351,9 +360,10 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
   test("VCRUD-02: Edit 5 voters with varied field changes", async ({ page }) => {
     // Navigate to campaign
-    await navigateToSeedCampaign(page)
+    campaignId = await navigateToSeedCampaign(page)
     await page.getByRole("link", { name: /voters/i }).first().click()
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // Edit 1: Test Alpha - change party from DEM to IND
     await test.step("Edit Test Alpha: change party to Independent", async () => {
@@ -384,7 +394,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
 
       // Navigate back to voters list
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     // Edit 2: Test Bravo - change address to 201 New Ave
@@ -407,7 +418,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
       await expect(page.getByText("201 New Ave").first()).toBeVisible({ timeout: 5_000 })
 
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     // Edit 3: Test Charlie - add address 300 Charlie St, Macon, GA, 31201
@@ -431,7 +443,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
       await expect(page.getByText("300 Charlie St").first()).toBeVisible({ timeout: 5_000 })
 
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     // Edit 4: Test Delta - change city to Warner Robins -> already Warner Robins, change to Macon
@@ -452,7 +465,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
       await expect(page.getByText("Perry").first()).toBeVisible({ timeout: 5_000 })
 
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     // Edit 5: Test Echo - change DOB
@@ -474,14 +488,16 @@ test.describe.serial("Voter CRUD lifecycle", () => {
       await expect(page.getByText(/Sep 5, 1960/).first()).toBeVisible({ timeout: 5_000 })
 
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 10_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
   })
 
   test("VCRUD-03: Delete 5 seed/imported voters via UI", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+    campaignId = await navigateToSeedCampaign(page)
     await page.getByRole("link", { name: /voters/i }).first().click()
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // We'll delete 5 seed voters by clicking through rows visible in the table.
     // The seed data has 50 Macon-Bibb County voters. We pick ones we can find.
@@ -537,7 +553,8 @@ test.describe.serial("Voter CRUD lifecycle", () => {
         if (name) {
           // Reload the voters page to get fresh data
           await page.getByRole("link", { name: /voters/i }).first().click()
-          await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+          await page.waitForURL(/voters/, { timeout: 10_000 })
+          await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
           // Verify the voter is no longer in the table (checking first page)
           const voterLink = page.getByRole("link", { name: name }).first()
@@ -548,9 +565,10 @@ test.describe.serial("Voter CRUD lifecycle", () => {
   })
 
   test("VCRUD-04: Delete all 20 test-created voters", async ({ page }) => {
-    await navigateToSeedCampaign(page)
+    campaignId = await navigateToSeedCampaign(page)
     await page.getByRole("link", { name: /voters/i }).first().click()
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // Delete 3 test voters via UI to prove UI deletion works on test data
     const uiDeleteVoters = ["Test Alpha", "Test Bravo", "Test Charlie"]
@@ -595,7 +613,7 @@ test.describe.serial("Voter CRUD lifecycle", () => {
     await test.step("Verify all test voters are deleted", async () => {
       // Reload the page to get fresh data
       await page.reload()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
       const testVoterNames = [
         "Test Alpha",

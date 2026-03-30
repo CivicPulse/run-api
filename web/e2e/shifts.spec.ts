@@ -327,7 +327,7 @@ test.describe.serial("Shift Lifecycle", () => {
       await page.getByRole("tab", { name: /roster/i }).click()
 
       // Click "Assign Volunteer" button
-      await page.getByRole("button", { name: /assign volunteer/i }).click()
+      await page.getByRole("button", { name: /assign volunteer/i }).first().click()
 
       // In the AssignVolunteerDialog, select a volunteer
       // Look for the volunteer name or a selection mechanism

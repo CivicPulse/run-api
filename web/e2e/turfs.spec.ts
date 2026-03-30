@@ -453,6 +453,9 @@ test.describe.serial("Turf Lifecycle", () => {
 
     await test.step("Verify deleted turfs no longer appear", async () => {
       await navigateToCanvassing(page, campaignId)
+      // Reload to ensure fresh data after API-only deletions
+      await page.reload()
+      await expect(page.getByText(/turfs/i).first()).toBeVisible({ timeout: 10_000 })
 
       // Should NOT find the deleted turfs
       await expect(

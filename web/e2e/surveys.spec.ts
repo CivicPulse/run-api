@@ -109,7 +109,7 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // -- Q1: Multiple Choice --
     await test.step("Add Q1: Multiple Choice - Issue importance", async () => {
-      await page.getByRole("button", { name: /add question/i }).click()
+      await page.getByRole("button", { name: /add question/i }).first().click()
       await expect(page.getByText("Add Question")).toBeVisible({
         timeout: 5_000,
       })
@@ -135,7 +135,7 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // -- Q2: Scale --
     await test.step("Add Q2: Scale - Voting likelihood", async () => {
-      await page.getByRole("button", { name: /add question/i }).click()
+      await page.getByRole("button", { name: /add question/i }).first().click()
       await expect(page.getByText("Add Question")).toBeVisible({
         timeout: 5_000,
       })
@@ -157,7 +157,7 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // -- Q3: Multiple Choice --
     await test.step("Add Q3: Multiple Choice - Volunteer interest", async () => {
-      await page.getByRole("button", { name: /add question/i }).click()
+      await page.getByRole("button", { name: /add question/i }).first().click()
       await expect(page.getByText("Add Question")).toBeVisible({
         timeout: 5_000,
       })
@@ -186,7 +186,7 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // -- Q4: Free Text --
     await test.step("Add Q4: Free Text - Additional comments", async () => {
-      await page.getByRole("button", { name: /add question/i }).click()
+      await page.getByRole("button", { name: /add question/i }).first().click()
       await expect(page.getByText("Add Question")).toBeVisible({
         timeout: 5_000,
       })
@@ -208,7 +208,7 @@ test.describe.serial("Survey Lifecycle", () => {
 
     // -- Q5: Scale --
     await test.step("Add Q5: Scale - Administration rating", async () => {
-      await page.getByRole("button", { name: /add question/i }).click()
+      await page.getByRole("button", { name: /add question/i }).first().click()
       await expect(page.getByText("Add Question")).toBeVisible({
         timeout: 5_000,
       })

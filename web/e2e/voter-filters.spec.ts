@@ -19,7 +19,7 @@ async function navigateToVoters(
 ): Promise<void> {
   await page.goto(`/campaigns/${campaignId}/voters`)
   await page.waitForURL(/voters/, { timeout: 10_000 })
-  await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 }
 
 async function openFilterPanel(
@@ -1068,7 +1068,7 @@ test.describe.serial("Voter Filters", () => {
 
     // Reload the page
     await page.reload()
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // After reload, filters may or may not persist depending on URL sync implementation
     // The important thing is the page loads correctly and filters can be re-applied

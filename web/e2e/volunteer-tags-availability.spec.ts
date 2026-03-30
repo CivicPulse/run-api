@@ -109,7 +109,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       await expect(page.getByText("Tag created")).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(tagName)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(tagName).first()).toBeVisible({ timeout: 10_000 })
     }
 
     // Create remaining 7 tags via API for speed (per D-16)

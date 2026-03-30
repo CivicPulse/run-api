@@ -28,10 +28,11 @@ test.describe.serial("Connected user journey", () => {
         { timeout: 15_000 },
       )
 
-      // Verify the campaign list page loaded — "Create Campaign" button is present
+      // Verify the campaign list page loaded — "Create Campaign" link is present
+      // (gated by RequireOrgRole — org permission resolution can take time)
       await expect(
         page.getByRole("link", { name: /create campaign/i }).first()
-      ).toBeVisible({ timeout: 15_000 })
+      ).toBeVisible({ timeout: 30_000 })
     })
 
     // ── Step 2: Create campaign via form ─────────────────────────────────

@@ -82,11 +82,13 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
     await expect(contactsTab).toBeVisible({ timeout: 15_000 })
     await contactsTab.click()
     await page.waitForLoadState("networkidle")
+
+    // Wait for contacts data to finish loading — section headings appear after skeletons resolve
+    const phoneHeading = page.getByRole("heading", { name: "Phone Numbers", exact: true })
+    await expect(phoneHeading).toBeVisible({ timeout: 15_000 })
     await page.screenshot({ path: "test-results/p13-02-contacts-stars.png" })
 
-    // Wait for contacts data to load — skeletons appear first, then either
-    // star buttons (contacts exist) or empty states (no contacts).
-    // Use a combined locator that waits for either condition.
+    // Now check for star buttons (contacts exist) or empty states (no contacts).
     const starButtons = page.locator('button[aria-label*="primary"], button[aria-label*="Primary"]')
     const emptyStates = page.getByText(/no phone numbers|no email addresses|no mailing addresses/i)
 

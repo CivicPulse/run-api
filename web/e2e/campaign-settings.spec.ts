@@ -36,8 +36,12 @@ async function createCampaignViaWizard(
     { timeout: 15_000 },
   )
 
+  // Wait for the org dashboard to fully load (Create Campaign link requires org role resolution)
+  const createCampaignLink = page.getByRole("link", { name: /create campaign/i }).first()
+  await expect(createCampaignLink).toBeVisible({ timeout: 30_000 })
+
   // Click "Create Campaign"
-  await page.getByRole("link", { name: /create campaign/i }).first().click()
+  await createCampaignLink.click()
   await page.waitForURL(/campaigns\/new/, { timeout: 10_000 })
 
   // Step 1: Campaign Details
@@ -210,33 +214,23 @@ test.describe.serial(
       // The owner is the only direct member. We need to find a member to change role.
       // Since the invite in CAMP-02 creates a pending invite (not an active member),
       // we need to work with the existing members. The owner can't change their own role.
-      // Let's use the API to add a member directly for this test.
+      // Add admin1@localhost (an org member) as a volunteer to this campaign via API.
       const token = await getAuthToken(page)
+      const adminUserId = await getUserId(page, "admin1@localhost")
       const addMemberResponse = await page.request.post(
         `/api/v1/campaigns/${campaignId}/members`,
         {
           data: {
-            user_id: await getUserId(page, "viewer2@example.com"),
+            user_id: adminUserId,
             role: "volunteer",
           },
           headers: { Authorization: `Bearer ${token}` },
         }
       )
-      // If member already exists (from invite), that's okay
-      if (addMemberResponse.status() >= 400 && addMemberResponse.status() !== 409) {
-        // Try with admin1@localhost instead
-        const altResponse = await page.request.post(
-          `/api/v1/campaigns/${campaignId}/members`,
-          {
-            data: {
-              user_id: await getUserId(page, "admin1@localhost"),
-              role: "volunteer",
-            },
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
-        expect(altResponse.status()).toBeLessThan(400)
-      }
+      // 409 = already exists, which is fine
+      expect(
+        addMemberResponse.status() < 400 || addMemberResponse.status() === 409
+      ).toBeTruthy()
 
       // Reload the members page to see the new member
       await page.reload()

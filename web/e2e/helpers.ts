@@ -29,7 +29,7 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
   // Try to find the campaign ID via API (retries for parallel resilience).
   // Use /me/campaigns (flat list of user's memberships) instead of /campaigns
   // (paginated, newest first) to avoid E2E test campaigns pushing seed off page 1.
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const token = await getAuthToken(page)
       const resp = await page.request.get("/api/v1/me/campaigns", {
@@ -43,9 +43,11 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
         )
         if (seed?.campaign_id ?? seed?.id) return seed.campaign_id ?? seed.id
       }
+      // Rate-limited or transient error — back off before retrying
+      if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     } catch {
       // Retry after a short delay on failure
-      if (attempt < 2) await page.waitForTimeout(1000)
+      if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     }
   }
 

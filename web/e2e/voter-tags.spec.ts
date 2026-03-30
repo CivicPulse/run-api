@@ -19,10 +19,17 @@ async function createVoterViaApi(
   campaignId: string,
   data: Record<string, unknown>,
 ): Promise<string> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/voters`, data)
-  expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  const url = `/api/v1/campaigns/${campaignId}/voters`
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const resp = await apiPost(page, url, data)
+    if (resp.ok()) return (await resp.json()).id
+    if (resp.status() === 429 && attempt < 4) {
+      await page.waitForTimeout(3000 * (attempt + 1))
+      continue
+    }
+    throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
+  }
+  throw new Error(`POST ${url} failed after 5 retries`)
 }
 
 async function deleteVoterViaApi(

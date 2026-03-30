@@ -34,10 +34,9 @@ async function navigateToImportsPage(
 ): Promise<void> {
   // Navigate to Voters section
   await page.getByRole("link", { name: /voters/i }).first().click()
+  await page.waitForURL(/voters/, { timeout: 10_000 })
   await expect(
-    page
-      .getByRole("table")
-      .or(page.getByText(/no voters|all voters/i).first()),
+    page.locator('table[data-slot="table"]').or(page.getByText(/no voters/i).first()),
   ).toBeVisible({ timeout: 15_000 })
 
   // Click "Imports" tab within the voters module
@@ -179,7 +178,7 @@ test.describe.serial("Voter Import Lifecycle", () => {
     await navigateToImportsPage(page)
 
     // Verify the completed import appears in the history table
-    await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 
     // Check for the filename
     await expect(

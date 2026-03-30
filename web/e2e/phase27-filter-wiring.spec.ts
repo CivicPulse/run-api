@@ -61,13 +61,17 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     // Expand the "Scoring" accordion section (contains propensity sliders)
     const scoringTrigger = page.locator("button").filter({ hasText: "Scoring" })
     await scoringTrigger.click()
-    await page.waitForTimeout(500)
+
+    // Wait for accordion content to expand and slider to be visible
+    const generalLabel = page.locator("text=General Propensity")
+    await expect(generalLabel).toBeVisible({ timeout: 5_000 })
+    await page.waitForTimeout(300)
 
     // Note how many requests have been captured so far (initial page load)
     const beforeCount = capture.getBodies().length
 
     // Interact with the General Propensity slider
-    const generalSection = page.locator("text=General Propensity").locator("..")
+    const generalSection = generalLabel.locator("..")
     const sliderThumbs = generalSection.locator('[role="slider"]')
 
     // Set min thumb by keyboard: press ArrowRight a few times to increase from 0

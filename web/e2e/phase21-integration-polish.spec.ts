@@ -3,6 +3,8 @@ import { test, expect } from "@playwright/test"
 test.describe("Phase 21: Integration Polish", () => {
   let campaignId: string
 
+  test.setTimeout(90_000)
+
   test.beforeEach(async ({ page }) => {
     // Navigate to app root -- uses baseURL from playwright.config.ts
     await page.goto("/")
@@ -10,10 +12,11 @@ test.describe("Phase 21: Integration Polish", () => {
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
       { timeout: 15_000 },
     )
-    // Click into the seed campaign
+    // Wait for org dashboard to load (campaigns list requires org permissions)
     const campaignLink = page
       .getByRole("link", { name: /macon-bibb demo/i })
       .first()
+    await expect(campaignLink).toBeVisible({ timeout: 30_000 })
     await campaignLink.click()
     // Extract campaign ID from URL
     await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })

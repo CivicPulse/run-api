@@ -69,9 +69,10 @@ test.describe.serial("Walk List Lifecycle", () => {
   let walkListId = ""
   let secondWalkListId = ""
 
-  // We need a known user ID for canvasser assignment.
+  // We need known user IDs for canvasser assignment.
   // The owner user (from auth setup) is already a campaign member.
   let ownerUserId = ""
+  let secondUserId = ""
 
   test.setTimeout(120_000)
 
@@ -99,6 +100,10 @@ test.describe.serial("Walk List Lifecycle", () => {
       if (Array.isArray(members) && members.length > 0) {
         // Use the first member (likely the owner) as our canvasser
         ownerUserId = members[0].user_id ?? members[0].id ?? ""
+        // Use a second member if available for the second canvasser
+        if (members.length > 1) {
+          secondUserId = members[1].user_id ?? members[1].id ?? ""
+        }
       }
     }
     // Fallback: use a dummy user ID if members call didn't work
@@ -270,8 +275,8 @@ test.describe.serial("Walk List Lifecycle", () => {
     })
 
     await test.step("Assign second canvasser via API", async () => {
-      // Use a different user ID for the second canvasser
-      const secondUserId = "e2e-canvasser-2"
+      // Use a real member from the campaign (FK constraint requires valid user)
+      expect(secondUserId).toBeTruthy()
       await assignCanvasserViaApi(page, campaignId, walkListId, secondUserId)
 
       // Reload to verify

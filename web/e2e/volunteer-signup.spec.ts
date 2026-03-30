@@ -61,8 +61,13 @@ test.describe("Volunteer signup", () => {
   })
 
   test("view volunteer detail shows contact info", async ({ page }) => {
+    // Wait for actual data rows to load (not skeleton rows)
+    await expect(page.locator("table tbody td").first()).toBeVisible({ timeout: 10_000 })
+    // Wait for non-skeleton content in the first data cell
+    await expect(page.locator("table tbody tr .font-medium").first()).toBeVisible({ timeout: 10_000 })
+
     // Click on the first volunteer in the roster (seed data has 20 volunteers)
-    const firstRow = page.getByRole("row").nth(1) // skip header
+    const firstRow = page.locator("table tbody tr").first()
     await firstRow.click()
 
     // Wait for volunteer detail page to load

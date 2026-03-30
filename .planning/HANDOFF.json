@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-03-30T14:57:17.939Z",
+  "timestamp": "2026-03-30T16:44:40.387Z",
   "phase": "60",
   "phase_name": "e2e-field-mode-cross-cutting-validation",
   "phase_dir": ".planning/phases/60-e2e-field-mode-cross-cutting-validation",
@@ -15,27 +15,59 @@
     {"id": "60-04", "name": "Fix broken waitForURL regex in 35 spec files", "status": "done", "commit": "eed10e8"},
     {"id": "60-05-T1", "name": "Phone banking investigation and BUG-01 tracking", "status": "done", "commit": "fb6c313"},
     {"id": "60-05-T2", "name": "REQUIREMENTS.md update", "status": "done", "commit": "125d08b"},
-    {"id": "debug-round5", "name": "Fix 43 E2E failures (88→45) via 5 parallel agents", "status": "done", "commit": "afea64a"}
+    {"id": "debug-round5", "name": "Fix 43 E2E failures (88→45) via 5 parallel agents", "status": "done", "commit": "afea64a"},
+    {"id": "debug-round6-infra", "name": "Fix Alembic migration 017 + env.py sync driver + org memberships", "status": "done"},
+    {"id": "debug-round6-login", "name": "Fix login.spec.ts (admin→owner1)", "status": "done"},
+    {"id": "debug-round6-agents", "name": "6-agent team: fix 26 E2E failures across 34 files (77→51)", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": "debug-remaining", "name": "Fix remaining 45 E2E failures", "status": "in_progress", "progress": "222→88→45 failures fixed across 6 debug rounds. 212 tests passing, 45 failing, 98 did not run, 8 skipped."}
+    {"id": "debug-remaining-51", "name": "Fix remaining 51 E2E failures", "status": "in_progress", "progress": "77→51 failures this session. 236 passing, 51 failing, 67 did not run, 9 skipped."}
   ],
-  "blockers": [
-    {"description": "45 E2E failures remain — 13 parallel-timing regressions, 19 long-tail single-failure specs, 13 small clusters", "type": "technical", "workaround": "Many pass individually but fail under 4-worker parallelism. Cross-cutting auth timing fix in helpers.ts would solve many."},
-    {"description": "3 manual DB fixes still not in Alembic migrations", "type": "technical", "workaround": "Manager role, campaign index uniqueness, import_jobs.last_committed_row column"}
-  ],
+  "blockers": [],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "Replaced 106 waitForTimeout calls with waitForLoadState(networkidle)", "rationale": "Saves ~144s of unnecessary sleep per full suite run", "phase": "60"},
-    {"decision": "Auth state caching — skip auth setup when tokens < 30 min old", "rationale": "Saves ~90s on re-runs by not re-authenticating", "phase": "60"},
-    {"decision": "API-based auth (#2) not feasible with ZITADEL v2.71.6", "rationale": "No password grant, no v2beta OIDC API, PATs are machine-user only", "phase": "60"},
-    {"decision": "Sidebar defaultOpen=true", "rationale": "Eliminated 231 'element outside viewport' test errors", "phase": "60"},
-    {"decision": "Switch getSeedCampaignId to /me/campaigns API", "rationale": "E2E test campaigns accumulate across runs, pushing seed campaign past page 1 of paginated /campaigns API", "phase": "60"},
-    {"decision": "Fix real a11y violations in source code", "rationale": "3 CSS fixes for WCAG AA: destructive token contrast (4.31→5.0), nav text opacity removal, scrollable pre tabIndex", "phase": "60"},
-    {"decision": "Use page.route() instead of waitForRequest for ky fetch interception", "rationale": "Playwright postData() returns undefined for fetch API requests used by ky", "phase": "60"},
-    {"decision": "Add waitForAuth helper for parallel worker resilience", "rationale": "4 parallel Playwright workers overwhelm OIDC config fetch, leaving pages on Loading... screen", "phase": "60"}
+    {"decision": "Switch Alembic to psycopg2 sync driver when DATABASE_URL_SYNC available", "rationale": "asyncpg prepared-statement protocol rejects complex DDL (CREATE FUNCTION with $$ bodies). psycopg2 handles natively.", "phase": "60"},
+    {"decision": "Use exec_driver_sql for procrastinate migration 017", "rationale": "SQLAlchemy text() parameter handling conflicts with PL/pgSQL %% format specifiers in RAISE statements", "phase": "60"},
+    {"decision": "Add org memberships in create-e2e-users.py", "rationale": "RBAC org-level tests failed because E2E users had campaign roles but no organization_members records. Fixed all org-level RBAC failures.", "phase": "60"},
+    {"decision": "Replace admin@localhost with owner1@localhost in login.spec.ts", "rationale": "ZITADEL admin gets forced password change on fresh environments; E2E test users don't", "phase": "60"},
+    {"decision": "Add BASE_URL constant to field-mode.volunteer.spec.ts", "rationale": "Manual browser.newContext() doesn't inherit Playwright config baseURL; 5 serial blocks needed explicit baseURL", "phase": "60"}
   ],
-  "uncommitted_files": [],
-  "next_action": "Continue fixing remaining 45 E2E failures. Priority: (1) Add waitForAuth pattern to helpers.ts as cross-cutting fix for parallel timing — this alone could fix 13+ regressions, (2) Fix 19 single-failure long-tail specs the scattered-specs agent didn't finish, (3) Fix small clusters (tooltip 3, table-sort 3, signup 2, cross-cutting 2, campaign-settings 2), (4) Create Alembic migrations for 3 manual DB fixes.",
-  "context_notes": "Phase 60 debug work reduced failures from 222→88→45 across 6 debug rounds in 3 sessions. This session used 5 parallel agents: a11y-specs (10 fixed), voter-verify (8 fixed), filter-import-sort (10 fixed), volunteer-specs (10 fixed), scattered-specs (stopped early, partial fixes). Key cross-cutting insight: auth initialization timing under 4 parallel Playwright workers is the #1 cause of regressions — specs pass individually but fail in full suite. The waitForAuth helper (poll for Loading... to disappear) is more reliable than networkidle under parallel load. The 45 remaining failures are: 13 parallel-timing regressions, 19 long-tail single-failure specs, 13 small clusters (3 tooltip, 3 sort, 2 signup, 2 cross-cutting, 2 campaign-settings, 1 overlap)."
+  "uncommitted_files": [
+    "alembic/env.py",
+    "alembic/versions/017_procrastinate_schema.py",
+    "scripts/create-e2e-users.py",
+    "web/e2e/call-lists-dnc.spec.ts",
+    "web/e2e/campaign-settings.spec.ts",
+    "web/e2e/connected-journey.spec.ts",
+    "web/e2e/data-validation.spec.ts",
+    "web/e2e/field-mode.volunteer.spec.ts",
+    "web/e2e/helpers.ts",
+    "web/e2e/login.spec.ts",
+    "web/e2e/org-management.spec.ts",
+    "web/e2e/org-switcher.spec.ts",
+    "web/e2e/phase13-voter-verify.spec.ts",
+    "web/e2e/phase21-integration-polish.spec.ts",
+    "web/e2e/phase27-filter-wiring.spec.ts",
+    "web/e2e/phase32-verify.spec.ts",
+    "web/e2e/phone-banking.spec.ts",
+    "web/e2e/shifts.spec.ts",
+    "web/e2e/surveys.spec.ts",
+    "web/e2e/turfs.spec.ts",
+    "web/e2e/uat-tooltip-popovers.spec.ts",
+    "web/e2e/volunteer-signup.spec.ts",
+    "web/e2e/volunteer-tags-availability.spec.ts",
+    "web/e2e/voter-contacts.spec.ts",
+    "web/e2e/voter-crud.spec.ts",
+    "web/e2e/voter-filters.spec.ts",
+    "web/e2e/voter-import.spec.ts",
+    "web/e2e/voter-lists.spec.ts",
+    "web/e2e/voter-notes.spec.ts",
+    "web/e2e/voter-tags.spec.ts",
+    "web/e2e/walk-lists.spec.ts",
+    "web/src/components/canvassing/map/TurfOverviewMap.tsx",
+    "web/src/hooks/useFormGuard.ts",
+    "web/src/routes/campaigns/$campaignId/canvassing/index.tsx"
+  ],
+  "next_action": "Fix remaining 51 E2E failures in 7 categories: (1) RBAC campaign-level nav — 9 failures in rbac.manager/viewer/volunteer specs, likely sidebar navigation timing, (2) voter suite cascading — 8 failures in later serial tests, (3) phase verification — 8 failures in phase13/14/29/35, (4) operations — 6 failures in surveys/shifts/phone-banking/turfs/walk-lists/call-lists, (5) volunteer — 3 failures, (6) UI/cross-cutting — 5 failures (tooltips, empty states, a11y), (7) other — 3 (campaign-settings, navigation, org-management). Commit all 34 modified files first, then dispatch targeted agents per category.",
+  "context_notes": "Clean environment reset this session: docker compose down -v, fresh DB, fresh seed, fresh E2E users with org memberships. Alembic migration 017 fixed for fresh-start compatibility (asyncpg→psycopg2). Session used two rounds of agent teams (6 agents, then 4 agents). The org membership fix resolved ALL org-level RBAC failures. Remaining 51 failures are mostly: campaign-level navigation timing (RBAC), cascading serial test failures (voter/ops suites where early tests now pass but later tests have new issues), and untouched specs (cross-cutting, a11y, tooltips, some phase verifications). Full suite runs in ~8.5min with 4 workers."
 }

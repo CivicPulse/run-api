@@ -21,6 +21,13 @@ test.use({
   isMobile: true,
 })
 
+// browser.newContext() does NOT inherit the config's `use.baseURL`, so we must
+// pass it explicitly when creating contexts manually in beforeAll hooks.
+const BASE_URL =
+  process.env.E2E_USE_DEV_SERVER === "1"
+    ? "http://localhost:5173"
+    : "https://localhost:4173"
+
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
 // page.request uses Playwright's baseURL for relative paths — no hardcoded URL needed
@@ -296,7 +303,7 @@ test.beforeAll(async ({ browser }) => {
     hasTouch: true,
     isMobile: true,
     ignoreHTTPSErrors: true,
-    baseURL: "http://localhost:5173",
+    baseURL: BASE_URL,
   })
   const page = await context.newPage()
 
@@ -313,7 +320,7 @@ test.beforeAll(async ({ browser }) => {
   const ownerContext = await browser.newContext({
     storageState: "playwright/.auth/owner.json",
     ignoreHTTPSErrors: true,
-    baseURL: "http://localhost:5173",
+    baseURL: BASE_URL,
   })
   const ownerPage = await ownerContext.newPage()
   // Trigger auth initialization by visiting a page
@@ -365,6 +372,7 @@ test.describe.serial("Field Mode -- Volunteer Hub", () => {
       hasTouch: true,
       isMobile: true,
       ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
     page = await context.newPage()
     // Suppress tour to avoid Welcome dialog blocking interactions
@@ -512,6 +520,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       hasTouch: true,
       isMobile: true,
       ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
     page = await context.newPage()
     // Clear canvassing store and suppress tour so we start fresh
@@ -808,6 +817,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
       hasTouch: true,
       isMobile: true,
       ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
     page = await context.newPage()
     // Suppress tour to avoid blocking
@@ -1052,6 +1062,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
       hasTouch: true,
       isMobile: true,
       ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
     page = await context.newPage()
     // Clear offline queue and suppress tour before tests
@@ -1250,6 +1261,7 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
       hasTouch: true,
       isMobile: true,
       ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
     page = await context.newPage()
   })

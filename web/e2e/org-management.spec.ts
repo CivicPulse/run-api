@@ -181,11 +181,23 @@ test.describe.serial("Org management lifecycle", () => {
     })
     await actionsButton.click()
 
+    // Intercept the PATCH request for status change
+    const patchPromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes(`/api/v1/campaigns/`) &&
+        resp.request().method() === "PATCH",
+      { timeout: 15_000 },
+    )
+
     // Click "Unarchive Campaign" in the dropdown
     await page.getByRole("menuitem", { name: /unarchive campaign/i }).click()
 
+    // Verify the PATCH succeeded
+    const patchResponse = await patchPromise
+    expect(patchResponse.status()).toBeLessThan(400)
+
     // Verify toast notification
-    await expect(page.getByText(/restored\./i)).toBeVisible({
+    await expect(page.getByText(/restored/i)).toBeVisible({
       timeout: 10_000,
     })
 

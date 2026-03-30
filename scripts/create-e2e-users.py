@@ -405,15 +405,95 @@ def grant_project_role(
 
 
 # ---------------------------------------------------------------------------
-# Database: insert organization_members row for org_admin
+# Database helpers
 # ---------------------------------------------------------------------------
+
+
+def _get_sync_url() -> str | None:
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        return None
+    return database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+
+def ensure_user_row(
+    user_zitadel_id: str,
+    display_name: str,
+    email: str,
+) -> None:
+    """Ensure a users table row exists for the given ZITADEL user."""
+    import psycopg2  # noqa: PLC0415
+
+    sync_url = _get_sync_url()
+    if not sync_url:
+        print("  WARNING: DATABASE_URL not set, skipping user row insert")
+        return
+
+    try:
+        conn = psycopg2.connect(sync_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO users (id, display_name, email)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (id) DO UPDATE
+            SET display_name = EXCLUDED.display_name,
+                email = EXCLUDED.email
+            """,
+            (user_zitadel_id, display_name, email),
+        )
+        print(f"  Ensured user row: {user_zitadel_id} ({display_name})")
+        cur.close()
+        conn.close()
+    except Exception as exc:
+        print(f"  WARNING: Could not insert user row: {exc}", file=sys.stderr)
+
+
+def update_seed_org_zitadel_id(zitadel_org_id: str) -> None:
+    """Update the seed organization's zitadel_org_id to match ZITADEL.
+
+    The seed script creates the org with a placeholder zitadel_org_id.
+    We need to fix it so the frontend's useOrgPermissions hook can
+    match it against the JWT claims.
+    """
+    import psycopg2  # noqa: PLC0415
+
+    sync_url = _get_sync_url()
+    if not sync_url:
+        print("  WARNING: DATABASE_URL not set, skipping org ID update")
+        return
+
+    try:
+        conn = psycopg2.connect(sync_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        # Update the seed org (identified by its seed- prefix zitadel_org_id)
+        cur.execute(
+            """
+            UPDATE organizations
+            SET zitadel_org_id = %s
+            WHERE zitadel_org_id LIKE 'seed-%%'
+            """,
+            (zitadel_org_id,),
+        )
+        rows = cur.rowcount
+        if rows > 0:
+            print(f"  Updated seed org zitadel_org_id to {zitadel_org_id}")
+        else:
+            print("  No seed org found to update (already has real ID)")
+        cur.close()
+        conn.close()
+    except Exception as exc:
+        print(
+            f"  WARNING: Could not update seed org zitadel_org_id: {exc}",
+            file=sys.stderr,
+        )
 
 
 def ensure_org_membership(
     user_zitadel_id: str,
     org_role: str,
-    display_name: str,
-    email: str,
 ) -> None:
     """Insert an organization_members row via psycopg2.
 
@@ -422,31 +502,20 @@ def ensure_org_membership(
     """
     import psycopg2  # noqa: PLC0415
 
-    database_url = os.environ.get("DATABASE_URL", "")
-    if not database_url:
+    sync_url = _get_sync_url()
+    if not sync_url:
         print("  WARNING: DATABASE_URL not set, skipping org membership insert")
         return
-
-    # Convert async URL to sync for psycopg2
-    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
 
     try:
         conn = psycopg2.connect(sync_url)
         conn.autocommit = True
         cur = conn.cursor()
 
-        # Ensure user row exists (users table expects string PK = ZITADEL sub)
+        # Find the seed organization specifically
         cur.execute(
-            """
-            INSERT INTO users (id, display_name, email)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (id) DO NOTHING
-            """,
-            (user_zitadel_id, display_name, email),
+            "SELECT id FROM organizations WHERE name LIKE 'Macon-Bibb%%' LIMIT 1"
         )
-
-        # Find the first organization
-        cur.execute("SELECT id FROM organizations LIMIT 1")
         row = cur.fetchone()
         if not row:
             print("  WARNING: No organizations found, skipping org membership")
@@ -474,33 +543,52 @@ def ensure_org_membership(
 
 
 def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None:
-    """Insert campaign_members row with explicit role for the seed campaign."""
+    """Insert campaign_members row with explicit role for the seed campaign.
+
+    Targets the seed campaign specifically (name starts with 'Macon-Bibb')
+    to avoid accidentally joining E2E-created campaigns with the wrong role.
+    """
     import psycopg2  # noqa: PLC0415
 
-    database_url = os.environ.get("DATABASE_URL", "")
-    if not database_url:
+    sync_url = _get_sync_url()
+    if not sync_url:
         print("  WARNING: DATABASE_URL not set, skipping campaign membership insert")
         return
-
-    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
 
     try:
         conn = psycopg2.connect(sync_url)
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Find the seed campaign specifically (not just any campaign)
+        cur.execute(
+            "SELECT id FROM campaigns WHERE name LIKE 'Macon-Bibb%%' LIMIT 1"
+        )
+        row = cur.fetchone()
+        if not row:
+            # Fallback to first campaign if seed campaign not found
+            cur.execute("SELECT id FROM campaigns LIMIT 1")
+            row = cur.fetchone()
+        if not row:
+            print("  WARNING: No campaigns found, skipping campaign membership")
+            cur.close()
+            conn.close()
+            return
+        campaign_id = row[0]
+
         cur.execute(
             """
             INSERT INTO campaign_members (id, user_id, campaign_id, role)
-            VALUES (gen_random_uuid(), %s, (SELECT id FROM campaigns LIMIT 1), %s)
+            VALUES (gen_random_uuid(), %s, %s, %s)
             ON CONFLICT ON CONSTRAINT uq_user_campaign DO UPDATE
             SET role = EXCLUDED.role
             """,
-            (user_zitadel_id, campaign_role),
+            (user_zitadel_id, str(campaign_id), campaign_role),
         )
         print(
             f"  Ensured campaign membership: "
-            f"user={user_zitadel_id}, role={campaign_role}"
+            f"user={user_zitadel_id}, role={campaign_role}, "
+            f"campaign={campaign_id}"
         )
 
         cur.close()
@@ -515,6 +603,16 @@ def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+
+def get_zitadel_org_id(client: httpx.Client, pat: str) -> str:
+    """Get the default ZITADEL organization ID."""
+    data = api_call(client, "GET", "/management/v1/orgs/me", pat)
+    org_id = data.get("org", {}).get("id", "")
+    if not org_id:
+        print("ERROR: Could not determine ZITADEL org ID", file=sys.stderr)
+        sys.exit(1)
+    return org_id
 
 
 def main() -> None:
@@ -534,6 +632,11 @@ def main() -> None:
         project_id = find_project_id(client, pat)
         print(f"  Project ID: {project_id}")
 
+        print("\nStep 3: Getting ZITADEL org ID and updating seed org...")
+        zitadel_org_id = get_zitadel_org_id(client, pat)
+        print(f"  ZITADEL org ID: {zitadel_org_id}")
+        update_seed_org_zitadel_id(zitadel_org_id)
+
         for i, user_def in enumerate(E2E_USERS, 1):
             username = user_def["userName"]
             print(f"\nUser {i}/{len(E2E_USERS)}: Creating '{username}'...")
@@ -544,16 +647,14 @@ def main() -> None:
                 client, pat, project_id, user_id, user_def["projectRole"]
             )
 
+            # Ensure user row exists in our DB for ALL users
+            display_name = f"{user_def['firstName']} {user_def['lastName']}"
+            ensure_user_row(user_id, display_name, user_def["email"])
+
             # Insert org membership if needed (owner/admin only)
             if user_def["orgRole"]:
-                display_name = f"{user_def['firstName']} {user_def['lastName']}"
                 print(f"  Ensuring org membership (role={user_def['orgRole']})...")
-                ensure_org_membership(
-                    user_id,
-                    user_def["orgRole"],
-                    display_name,
-                    user_def["email"],
-                )
+                ensure_org_membership(user_id, user_def["orgRole"])
 
             # Insert campaign membership for ALL users
             print(

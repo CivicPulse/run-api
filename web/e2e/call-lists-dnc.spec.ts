@@ -255,7 +255,6 @@ test.describe.serial("Call Lists & DNC", () => {
       // Open action menu on the delete-me list
       const row = page.getByRole("row").filter({ hasText: "E2E Call List -- Delete Me" })
       const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
-        .or(row.locator("button").last())
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /delete/i }).click()

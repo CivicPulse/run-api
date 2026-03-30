@@ -62,6 +62,19 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+def _run_sync_migrations() -> None:
+    """Run migrations with the sync psycopg2 driver (handles complex DDL)."""
+    from sqlalchemy import create_engine
+
+    url = config.get_main_option("sqlalchemy.url") or ""
+    connectable = create_engine(url, poolclass=pool.NullPool)
+
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
+
+    connectable.dispose()
+
+
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode using async engine."""
     configuration = config.get_section(config.config_ini_section, {})
@@ -84,8 +97,16 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    asyncio.run(run_async_migrations())
+    """Run migrations in 'online' mode.
+
+    Prefer sync psycopg2 driver when DATABASE_URL_SYNC is available — asyncpg's
+    prepared-statement protocol rejects complex DDL (CREATE FUNCTION with $$ bodies).
+    """
+    url = config.get_main_option("sqlalchemy.url") or ""
+    if "+psycopg2" in url:
+        _run_sync_migrations()
+    else:
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

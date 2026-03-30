@@ -64,10 +64,9 @@ async function importFixtureCSV(
 ): Promise<void> {
   // Navigate to Voters section
   await page.getByRole("link", { name: /voters/i }).first().click()
+  await page.waitForURL(/voters/, { timeout: 10_000 })
   await expect(
-    page
-      .getByRole("table")
-      .or(page.getByText(/no voters|all voters/i).first()),
+    page.locator('table[data-slot="table"]').or(page.getByText(/no voters/i).first()),
   ).toBeVisible({ timeout: 15_000 })
 
   // Navigate to Imports page
@@ -130,9 +129,7 @@ async function navigateToVoters(
   await page.goto(`/campaigns/${campaignId}/voters`)
   await page.waitForURL(/voters/, { timeout: 10_000 })
   await expect(
-    page
-      .getByRole("table")
-      .or(page.getByText(/no voters|all voters/i).first()),
+    page.locator('table[data-slot="table"]').or(page.getByText(/no voters/i).first()),
   ).toBeVisible({ timeout: 15_000 })
 }
 
@@ -145,7 +142,7 @@ async function searchVoterByName(
   // Navigate to voters page with search applied
   await page.goto(`/campaigns/${campaignId}/voters`)
   await page.waitForURL(/voters/, { timeout: 10_000 })
-  await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
 }
 
 // -- Tests ---------------------------------------------------------------------

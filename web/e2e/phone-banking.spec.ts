@@ -423,7 +423,6 @@ test.describe.serial("Phone Banking Sessions", () => {
     await test.step("Open edit dialog for E2E Session 1", async () => {
       const row = page.getByRole("row").filter({ hasText: "E2E Session 1" })
       const actionBtn = row.getByRole("button").filter({ has: page.locator(".sr-only:text('Actions')") }).first()
-        .or(row.locator("button").last())
       await actionBtn.click()
 
       await page.getByRole("menuitem", { name: /edit/i }).click()

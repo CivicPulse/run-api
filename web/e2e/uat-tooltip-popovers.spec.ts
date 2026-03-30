@@ -19,7 +19,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     await helpIcon.click()
 
     // Verify popover content appears with turf sizing guidance
-    const popover = page.getByRole("dialog").or(page.locator("[data-radix-popper-content-wrapper]")).first()
+    const popover = page.getByRole("tooltip").or(page.locator("[data-radix-popper-content-wrapper]")).first()
     await expect(popover).toBeVisible({ timeout: 5_000 })
     await expect(popover).toContainText(/50-200 households/i)
 
@@ -37,7 +37,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     const helpIcon = page.locator("button:has(svg.lucide-circle-help)").first()
     await helpIcon.click()
 
-    const popover = page.getByRole("dialog").or(page.locator("[data-radix-popper-content-wrapper]")).first()
+    const popover = page.getByRole("tooltip").or(page.locator("[data-radix-popper-content-wrapper]")).first()
     await expect(popover).toBeVisible({ timeout: 5_000 })
     await expect(popover).toContainText(/viewer|volunteer|manager|admin|owner/i)
   })
@@ -51,7 +51,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     const count = await helpIcons.count()
     if (count > 0) {
       await helpIcons.first().click()
-      const popover = page.getByRole("dialog").or(page.locator("[data-radix-popper-content-wrapper]")).first()
+      const popover = page.getByRole("tooltip").or(page.locator("[data-radix-popper-content-wrapper]")).first()
       await expect(popover).toBeVisible({ timeout: 5_000 })
       await expect(popover).toContainText(/primary|general|special|local/i)
     }
@@ -68,7 +68,7 @@ test.describe("UAT: Tooltip popover interactions (Phase 44 UX-03/UX-04)", () => 
     const helpIcon = page.locator("button:has(svg.lucide-circle-help)").first()
     await helpIcon.click()
 
-    const popover = page.getByRole("dialog").or(page.locator("[data-radix-popper-content-wrapper]")).first()
+    const popover = page.getByRole("tooltip").or(page.locator("[data-radix-popper-content-wrapper]")).first()
     await expect(popover).toBeVisible({ timeout: 5_000 })
     await expect(popover).toContainText(/unique identifier.*authentication/i)
   })
