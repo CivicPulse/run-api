@@ -1,5 +1,5 @@
 ---
-status: investigating
+status: fixing
 trigger: "E2E suite has ~157 failures across multiple categories"
 created: 2026-03-29T22:50:00Z
 updated: 2026-03-29T22:50:00Z
@@ -7,10 +7,10 @@ updated: 2026-03-29T22:50:00Z
 
 ## Current Focus
 
-hypothesis: Multiple remaining test categories still failing: a11y settings (7), campaign creation/settings (10+), cross-cutting (6), viewer voter detail (2), and test state pollution from campaign name mutations
-test: Categorize remaining failures and fix each category
-expecting: Further failure reduction
-next_action: Fix campaign name pollution (tests edit seed campaign name), then address remaining categories
+hypothesis: Remaining 86 failures are a mix of: (1) ZITADEL flakiness under load causing "Loading..." hang, (2) campaign creation 500 from unique index (fixed in DB, not yet in migration), (3) a11y color-contrast violations on settings pages, (4) various spec-specific UI test issues
+test: Fixed campaign unique index, reduced workers, fixed DB roles. Remaining failures need individual investigation.
+expecting: Next batch of fixes should target campaign creation 500 (now fixed in DB), then individual spec issues
+next_action: Return checkpoint - significant progress made (157 -> 86 failures, 45% reduction)
 
 ## Symptoms
 
@@ -70,7 +70,23 @@ started: After initial E2E infrastructure setup
 
 ## Resolution
 
-root_cause: Multiple issues - (1) e2e users not members of seed campaign, (2) stale OIDC key in a11y specs, (3) campaign creation 500, (4) tour dialog blocking, (5) color contrast
-fix: Fixing in priority order
-verification:
-files_changed: []
+root_cause: Multiple cascading issues - (1) require_role missing ensure_user_synced causing 403 for first-time users, (2) stale OIDC storage key in a11y specs, (3) broken voter link locator in RBAC specs, (4) non-admin users blocked from org dashboard, (5) manager CampaignMember role was "viewer" instead of "manager", (6) campaign creation 500 from unique index on zitadel_org_id, (7) missing last_committed_row column in import_jobs, (8) too many parallel workers overwhelming ZITADEL
+fix: (1) Added ensure_user_synced to require_role._check_role, (2) Created shared a11y-helpers.ts with consistent mock config, (3) Fixed voter link locator to table.getByRole('link').first(), (4) Added useOrgCampaigns fallback to /api/v1/campaigns, (5) Fixed manager role via DB update, (6) Recreated campaigns.zitadel_org_id index as non-unique, (7) Added last_committed_row column to import_jobs, (8) Reduced Playwright workers to 4
+verification: Full suite: 157 failures -> 86 failures (45% reduction). RBAC suite: 35/37 passing in isolation.
+files_changed:
+  - app/core/security.py
+  - web/e2e/a11y-helpers.ts
+  - web/e2e/a11y-scan.spec.ts
+  - web/e2e/a11y-campaign-settings.spec.ts
+  - web/e2e/a11y-phone-bank.spec.ts
+  - web/e2e/a11y-voter-import.spec.ts
+  - web/e2e/a11y-voter-search.spec.ts
+  - web/e2e/a11y-walk-list.spec.ts
+  - web/e2e/l2-import-wizard.spec.ts
+  - web/e2e/rbac.admin.spec.ts
+  - web/e2e/rbac.manager.spec.ts
+  - web/e2e/rbac.spec.ts
+  - web/e2e/rbac.viewer.spec.ts
+  - web/e2e/rbac.volunteer.spec.ts
+  - web/src/hooks/useOrg.ts
+  - web/playwright.config.ts
