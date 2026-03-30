@@ -97,6 +97,8 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
 - ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
 
+- ✓ AI-consumable production testing runbook with tiered smoke/extended suites, deployment health checks, and pass/fail reporting — v1.7
+
 ### Active
 
 ## Current Milestone: v1.7 Testing & Validation
