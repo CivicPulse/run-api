@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { getSeedCampaignId } from "./helpers"
 
 /**
  * RBAC-05: Manager can create and manage operational resources.
@@ -13,20 +14,9 @@ test.describe("RBAC: manager permissions", () => {
 
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page) {
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-
-    const campaignLink = page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-
-    campaignId = page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-    expect(campaignId).toBeTruthy()
+    campaignId = await getSeedCampaignId(page)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForLoadState("networkidle")
   }
 
   test("voters page: New Voter button IS visible", async ({ page }) => {

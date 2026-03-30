@@ -5,21 +5,10 @@ import type { Page, APIResponse } from "@playwright/test"
  * Works by going to the org dashboard and clicking the campaign card.
  */
 export async function navigateToSeedCampaign(page: Page): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) =>
-      !url.pathname.includes("/login") &&
-      !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  await page.waitForLoadState("networkidle")
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.waitFor({ state: "visible", timeout: 30_000 })
-  await campaignLink.click()
+  const id = await getSeedCampaignId(page)
+  await page.goto(`/campaigns/${id}/dashboard`)
   await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
+  return id
 }
 
 /**
@@ -28,6 +17,7 @@ export async function navigateToSeedCampaign(page: Page): Promise<string> {
  * then returns it for use in direct page.goto() calls.
  */
 export async function getSeedCampaignId(page: Page): Promise<string> {
+  // First, ensure we're authenticated by navigating to the app
   await page.goto("/")
   await page.waitForURL(
     (url) =>
@@ -36,6 +26,26 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
     { timeout: 15_000 },
   )
   await page.waitForLoadState("networkidle")
+
+  // Try to find the campaign ID via API first (more reliable than clicking cards)
+  try {
+    const token = await getAuthToken(page)
+    const resp = await page.request.get("/api/v1/campaigns", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (resp.ok()) {
+      const data = await resp.json()
+      const campaigns = data.items ?? data
+      const seed = campaigns.find((c: { name?: string }) =>
+        /macon.?bibb/i.test(c.name ?? ""),
+      )
+      if (seed?.id) return seed.id
+    }
+  } catch {
+    // Fall through to UI-based approach
+  }
+
+  // Fallback: try to find the campaign link on the page (may require scrolling)
   const campaignLink = page
     .getByRole("link", { name: /macon-bibb demo/i })
     .first()
