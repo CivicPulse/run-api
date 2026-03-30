@@ -10,6 +10,7 @@ let CAMPAIGN_ID: string
 test.describe("INFR-01: Settings gear icon in sidebar", () => {
   test("gear icon visible in sidebar for admin/owner user and navigates to settings", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/dashboard`)
@@ -33,6 +34,7 @@ test.describe("INFR-01: Settings gear icon in sidebar", () => {
 test.describe("CAMP-01: General settings tab — campaign edit form", () => {
   test("form loads with campaign data, edit saves and shows success toast", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
@@ -74,6 +76,7 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
 test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
   test("dirty form blocks navigation and shows unsaved changes dialog; Keep editing stays on page", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/general`)
@@ -111,6 +114,7 @@ test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
 test.describe("CAMP-05: Members tab — member list with role badges", () => {
   test("member list table renders with Name, Email, Role, Joined columns and role badges", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
@@ -141,6 +145,7 @@ test.describe("CAMP-05: Members tab — member list with role badges", () => {
 test.describe("CAMP-03: Invite member dialog", () => {
   test("invite dialog opens with email input and role selector, send invite shows toast", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
@@ -187,6 +192,7 @@ test.describe("CAMP-03: Invite member dialog", () => {
 test.describe("CAMP-04: Pending Invites section", () => {
   test("Pending Invites section heading visible with table or empty state", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
@@ -210,6 +216,7 @@ test.describe("CAMP-04: Pending Invites section", () => {
 test.describe("CAMP-06: Change member role via kebab menu", () => {
   test("kebab menu on non-owner row opens role change dialog with save button", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
@@ -275,6 +282,7 @@ test.describe("CAMP-06: Change member role via kebab menu", () => {
 test.describe("CAMP-07: Remove member via kebab menu", () => {
   test("kebab menu shows Remove member; confirmation dialog appears with Remove button", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/members`)
@@ -320,6 +328,7 @@ test.describe("CAMP-07: Remove member via kebab menu", () => {
 test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
   test("delete dialog opens, confirm button disabled until campaign name typed, then enables", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)
@@ -372,6 +381,7 @@ test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
 test.describe("CAMP-08: Transfer ownership", () => {
   test("transfer ownership section visible, dialog opens with admin selector", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/settings/danger`)

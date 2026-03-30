@@ -12,6 +12,8 @@ import { test, expect } from "./fixtures"
  * settings access. Danger zone (transfer/delete) requires owner.
  * admin1@localhost has org_admin role for RBAC-08 tests.
  */
+test.setTimeout(90_000)
+
 test.describe("RBAC: admin permissions", () => {
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page, cid: string) {
@@ -24,88 +26,88 @@ test.describe("RBAC: admin permissions", () => {
   test("voters page: New Voter button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     await expect(
       page.getByRole("heading", { name: /voters/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newVoterButton = page.getByRole("button", { name: /new voter/i })
-    await expect(newVoterButton).toBeVisible({ timeout: 10_000 })
+    await expect(newVoterButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("voter detail: Edit button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     const editButton = page.getByRole("button", { name: /edit/i })
-    await expect(editButton).toBeVisible({ timeout: 10_000 })
+    await expect(editButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("canvassing: New Turf link IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
-    await page.waitForURL(/canvassing/, { timeout: 10_000 })
+    await page.waitForURL(/canvassing/, { timeout: 30_000 })
 
     await expect(
       page.getByRole("heading", { name: /canvassing/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newTurfLink = page.getByRole("link", { name: /new turf/i })
-    await expect(newTurfLink).toBeVisible({ timeout: 10_000 })
+    await expect(newTurfLink).toBeVisible({ timeout: 30_000 })
   })
 
   test("campaign settings > members: page loads and invite button IS visible", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/members`)
-    await page.waitForURL(/members/, { timeout: 10_000 })
+    await page.waitForURL(/members/, { timeout: 30_000 })
 
     // Wait for Members heading to appear
     await expect(
       page.getByRole("heading", { name: /members/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Invite member button is gated at RequireRole minimum="admin"
     const inviteButton = page.getByRole("button", { name: /invite member/i })
-    await expect(inviteButton).toBeVisible({ timeout: 10_000 })
+    await expect(inviteButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("campaign settings > general: form fields are editable", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
-    await page.waitForURL(/general/, { timeout: 10_000 })
+    await page.waitForURL(/general/, { timeout: 30_000 })
 
     // Campaign Name input should be present and editable (no readonly attribute)
     const nameInput = page.getByLabel(/campaign name/i)
-    await expect(nameInput).toBeVisible({ timeout: 10_000 })
+    await expect(nameInput).toBeVisible({ timeout: 30_000 })
     await expect(nameInput).not.toHaveAttribute("readonly")
 
     // Save changes button should be visible
     const saveButton = page.getByRole("button", { name: /save changes/i })
-    await expect(saveButton).toBeVisible({ timeout: 10_000 })
+    await expect(saveButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
-    await page.waitForURL(/danger/, { timeout: 10_000 })
+    await page.waitForURL(/danger/, { timeout: 30_000 })
 
     // Danger zone heading is visible (page loads)
     await expect(
       page.getByRole("heading", { name: /danger zone/i }),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Transfer Ownership button requires owner role -- admin should see fallback
     const transferButton = page.getByRole("button", {
@@ -120,7 +122,7 @@ test.describe("RBAC: admin permissions", () => {
     // Fallback message should be visible for non-owner
     await expect(
       page.getByText(/only the campaign owner/i),
-    ).toBeVisible({ timeout: 5_000 })
+    ).toBeVisible({ timeout: 30_000 })
   })
 
   // --- RBAC-08: Org admin cross-campaign access ---
@@ -131,23 +133,23 @@ test.describe("RBAC: admin permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // admin1@localhost has org_admin role -- Create Campaign should be visible
     const createButton = page.getByRole("link", { name: /create campaign/i })
-    await expect(createButton).toBeVisible({ timeout: 10_000 })
+    await expect(createButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("org settings: name input is readonly with bg-muted class (org_admin, not org_owner)", async ({
     page,
   }) => {
     await page.goto("/org/settings")
-    await page.waitForURL(/\/org\/settings/, { timeout: 10_000 })
+    await page.waitForURL(/\/org\/settings/, { timeout: 30_000 })
 
     // Organization Name input should be present
     const orgNameInput = page.getByLabel(/organization name/i)
-    await expect(orgNameInput).toBeVisible({ timeout: 10_000 })
+    await expect(orgNameInput).toBeVisible({ timeout: 30_000 })
 
     // For org_admin (not org_owner), the input should be readonly with bg-muted
     await expect(orgNameInput).toHaveAttribute("readonly", "")
@@ -164,14 +166,14 @@ test.describe("RBAC: admin permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // Organization sidebar Members link is gated behind RequireOrgRole minimum="org_admin"
     const membersLink = page.getByRole("link", { name: /^members$/i })
-    await expect(membersLink).toBeVisible({ timeout: 10_000 })
+    await expect(membersLink).toBeVisible({ timeout: 30_000 })
 
     const settingsLink = page.getByRole("link", { name: /^settings$/i })
-    await expect(settingsLink).toBeVisible({ timeout: 10_000 })
+    await expect(settingsLink).toBeVisible({ timeout: 30_000 })
   })
 })

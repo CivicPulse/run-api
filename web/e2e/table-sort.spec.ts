@@ -36,7 +36,7 @@ async function auditSortButtons(page: import("@playwright/test").Page) {
 // Fix: columns now use `accessorFn`, and sorting/onSortingChange are wired to DataTable.
 
 test.describe("Voters table — sorting works", () => {
-  test("Name, Party, City, Age columns render sort UI and respond to clicks", async ({ page }) => {
+  test("Name, Party, City, Age columns render sort UI and respond to clicks", async ({ page, campaignId }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await waitForTable(page)

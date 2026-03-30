@@ -41,6 +41,41 @@ elif [ "${E2E_USE_DEV_SERVER}" = "1" ]; then
   echo "▸ Dev server mode (forced)"
 fi
 
+# ── Help ───────────────────────────────────────────────────────────────────
+show_help() {
+  cat <<'HELP'
+run-e2e.sh — Run Playwright E2E tests with logging
+
+Usage:
+  ./scripts/run-e2e.sh [options] [spec-file|playwright-args...]
+
+Options:
+  -h, --help            Show this help message and exit
+  --workers N           Number of parallel workers (default: 12)
+  --grep PATTERN        Playwright grep filter (passed through)
+  --loop                Run tests in a continuous loop with sleep between runs
+  --loop-sleep N        Seconds to sleep between loop iterations (default: 120)
+
+Environment variables:
+  E2E_USE_DEV_SERVER=1  Force dev server mode (localhost:5173)
+  E2E_USE_DEV_SERVER=0  Force build+preview mode (localhost:4173)
+                        (Auto-detects by default)
+
+Examples:
+  ./scripts/run-e2e.sh                              # full suite
+  ./scripts/run-e2e.sh voter-crud.spec.ts            # single spec
+  ./scripts/run-e2e.sh --grep "RBAC"                 # grep filter
+  ./scripts/run-e2e.sh --workers 8 voter-crud.spec.ts
+  ./scripts/run-e2e.sh --loop                        # continuous: run, sleep 120s, repeat
+  ./scripts/run-e2e.sh --loop --loop-sleep 60        # continuous with 60s interval
+
+Output:
+  Streams live to terminal and saves to e2e-logs/<timestamp>.log
+  Appends structured JSON to e2e-runs.jsonl after each run
+HELP
+  exit 0
+}
+
 # ── Parse flags from arguments ────────────────────────────────────────────
 DEFAULT_WORKERS=12
 WORKERS_FLAG="--workers $DEFAULT_WORKERS"
@@ -49,6 +84,9 @@ LOOP_SLEEP=120
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    -h|--help)
+      show_help
+      ;;
     --workers)
       WORKERS_FLAG="--workers $2"
       shift 2

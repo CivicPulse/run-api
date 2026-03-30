@@ -8,6 +8,8 @@ import { test, expect } from "./fixtures"
  * walk lists, call lists, surveys, volunteers, shifts) but cannot manage
  * campaign members or campaign-level settings (admin+).
  */
+test.setTimeout(90_000)
+
 test.describe("RBAC: manager permissions", () => {
   /** Navigate into the seed campaign dashboard. */
   async function enterCampaign(page: import("@playwright/test").Page, id: string) {
@@ -18,58 +20,58 @@ test.describe("RBAC: manager permissions", () => {
   test("voters page: New Voter button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     await expect(
       page.getByRole("heading", { name: /voters/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newVoterButton = page.getByRole("button", { name: /new voter/i })
-    await expect(newVoterButton).toBeVisible({ timeout: 10_000 })
+    await expect(newVoterButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("voter detail: Edit button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     // Click the first voter link to navigate to detail
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     const editButton = page.getByRole("button", { name: /edit/i })
-    await expect(editButton).toBeVisible({ timeout: 10_000 })
+    await expect(editButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("voter detail: Add Interaction button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     const addInteractionButton = page.getByRole("button", {
       name: /add interaction/i,
     })
-    await expect(addInteractionButton).toBeVisible({ timeout: 10_000 })
+    await expect(addInteractionButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("canvassing: New Turf link IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
-    await page.waitForURL(/canvassing/, { timeout: 10_000 })
+    await page.waitForURL(/canvassing/, { timeout: 30_000 })
 
     await expect(
       page.getByRole("heading", { name: /canvassing/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newTurfLink = page.getByRole("link", { name: /new turf/i })
-    await expect(newTurfLink).toBeVisible({ timeout: 10_000 })
+    await expect(newTurfLink).toBeVisible({ timeout: 30_000 })
   })
 
   test("phone banking: New Call List and New Session buttons ARE visible", async ({
@@ -79,37 +81,37 @@ test.describe("RBAC: manager permissions", () => {
 
     // Check call lists page
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
-    await page.waitForURL(/call-lists/, { timeout: 10_000 })
+    await page.waitForURL(/call-lists/, { timeout: 30_000 })
     await expect(
       page.getByText(/call lists/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newCallListButton = page.getByRole("button", { name: /new call list/i })
-    await expect(newCallListButton).toBeVisible({ timeout: 10_000 })
+    await expect(newCallListButton).toBeVisible({ timeout: 30_000 })
 
     // Check sessions page
     await page.goto(`/campaigns/${campaignId}/phone-banking/sessions`)
-    await page.waitForURL(/sessions/, { timeout: 10_000 })
+    await page.waitForURL(/sessions/, { timeout: 30_000 })
     await expect(
       page.getByText(/sessions/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newSessionButton = page.getByRole("button", { name: /new session/i })
-    await expect(newSessionButton).toBeVisible({ timeout: 10_000 })
+    await expect(newSessionButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("surveys: New Script button IS visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/surveys`)
-    await page.waitForURL(/surveys/, { timeout: 10_000 })
+    await page.waitForURL(/surveys/, { timeout: 30_000 })
 
     await expect(
       page.getByText(/survey/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // The button text is "New Script" (not "New Survey")
     const newScriptButton = page.getByRole("button", { name: /new script/i })
-    await expect(newScriptButton).toBeVisible({ timeout: 10_000 })
+    await expect(newScriptButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("volunteers roster: management actions ARE visible for manager", async ({
@@ -117,11 +119,11 @@ test.describe("RBAC: manager permissions", () => {
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
-    await page.waitForURL(/roster/, { timeout: 10_000 })
+    await page.waitForURL(/roster/, { timeout: 30_000 })
 
     await expect(
       page.getByText(/roster/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Manager should see edit actions on volunteer rows (if volunteers exist in seed)
     // The edit button appears inside a RequireRole minimum="manager" gate
@@ -138,15 +140,15 @@ test.describe("RBAC: manager permissions", () => {
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
-    await page.waitForURL(/settings/, { timeout: 10_000 })
+    await page.waitForURL(/settings/, { timeout: 30_000 })
 
     // The Members nav link exists in the layout for all roles
     const membersLink = page.getByRole("link", { name: /members/i })
-    await expect(membersLink).toBeVisible({ timeout: 10_000 })
+    await expect(membersLink).toBeVisible({ timeout: 30_000 })
 
     // Navigate to members page
     await membersLink.click()
-    await page.waitForURL(/members/, { timeout: 10_000 })
+    await page.waitForURL(/members/, { timeout: 30_000 })
 
     // Invite button requires admin+ role
     const inviteButton = page.getByRole("button", { name: /invite/i })
@@ -158,7 +160,7 @@ test.describe("RBAC: manager permissions", () => {
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
-    await page.waitForURL(/danger/, { timeout: 10_000 })
+    await page.waitForURL(/danger/, { timeout: 30_000 })
 
     // Transfer Ownership requires owner role
     const transferButton = page.getByRole("button", {

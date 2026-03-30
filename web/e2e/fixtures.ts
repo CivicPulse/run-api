@@ -20,32 +20,70 @@ export const test = base.extend<{}, { campaignId: string }>({
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
       { timeout: 15_000 },
     )
+    // Wait for app to finish rendering (ensures OIDC token is written to localStorage)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Extract auth token from localStorage
-    const token = await page.evaluate(() => {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)!
-        if (key.startsWith("oidc.user:")) {
-          try {
-            const user = JSON.parse(localStorage.getItem(key)!)
-            if (user?.access_token) return user.access_token as string
-          } catch { /* skip */ }
+    // Extract auth token from localStorage (retry until OIDC token appears)
+    let token: string | undefined
+    for (let i = 0; i < 10; i++) {
+      token = await page.evaluate(() => {
+        for (let j = 0; j < localStorage.length; j++) {
+          const key = localStorage.key(j)!
+          if (key.startsWith("oidc.user:")) {
+            try {
+              const user = JSON.parse(localStorage.getItem(key)!)
+              if (user?.access_token) return user.access_token as string
+            } catch { /* skip */ }
+          }
         }
-      }
-      throw new Error("No OIDC access token found in localStorage")
-    })
+        return undefined
+      })
+      if (token) break
+      await page.waitForTimeout(500)
+    }
+    if (!token) throw new Error("No OIDC access token found in localStorage")
 
-    // Resolve campaign ID via API
-    const resp = await page.request.get("/api/v1/me/campaigns", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const campaigns = await resp.json()
-    const seed = campaigns.find(
-      (c: { campaign_id?: string; campaign_name?: string; name?: string }) =>
-        /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
-    )
-    const campaignId = seed?.campaign_id ?? seed?.id
-    if (!campaignId) throw new Error("Could not find seed campaign via API")
+    // Add initial jitter (0–500ms) to spread out parallel workers hitting the API simultaneously
+    await page.waitForTimeout(Math.floor(Math.random() * 500))
+
+    // Resolve campaign ID via API (with retries for rate-limit / transient errors)
+    let campaignId: string | undefined
+    let lastRespStatus: number | undefined
+    let lastRespBody: string | undefined
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const resp = await page.request.get("/api/v1/me/campaigns", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      lastRespStatus = resp.status()
+      if (resp.ok()) {
+        const campaigns = await resp.json()
+        if (Array.isArray(campaigns)) {
+          const seed = campaigns.find(
+            (c: { campaign_id?: string; campaign_name?: string; name?: string }) =>
+              /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
+          )
+          campaignId = seed?.campaign_id ?? seed?.id
+          if (campaignId) break
+          // Array is valid but seed campaign not found - log for debugging
+          const names = campaigns.slice(0, 3).map((c: { campaign_name?: string }) => c.campaign_name).join(", ")
+          console.warn(`[fixture] Attempt ${attempt + 1}: campaigns array has ${campaigns.length} entries, no macon-bibb match. First 3: ${names}`)
+        } else {
+          lastRespBody = JSON.stringify(campaigns).substring(0, 200)
+          console.warn(`[fixture] Attempt ${attempt + 1}: API returned non-array:`, lastRespBody)
+        }
+      } else {
+        lastRespBody = await resp.text().catch(() => "(unreadable)")
+        console.warn(`[fixture] Attempt ${attempt + 1}: API returned HTTP ${lastRespStatus}:`, lastRespBody.substring(0, 200))
+      }
+      if (attempt < 4) {
+        // Use moderate backoff for 429 rate-limit responses (keep under 30s fixture timeout)
+        const backoffMs = lastRespStatus === 429
+          ? 3_000 + Math.floor(Math.random() * 2_000)
+          : 1000 * (attempt + 1)
+        await page.waitForTimeout(backoffMs)
+      }
+    }
+    if (!campaignId) throw new Error(`Could not find seed campaign via API (last status: ${lastRespStatus}, body: ${lastRespBody?.substring(0, 100)})`)
 
     await context.close()
     await use(campaignId)

@@ -8,7 +8,7 @@ async function waitForAppReady(page: import("@playwright/test").Page) {
   await loadingText.waitFor({ state: "hidden", timeout: 30_000 }).catch(() => {})
 }
 
-async function openVoterFilters(page: import("@playwright/test").Page) {
+async function openVoterFilters(page: import("@playwright/test").Page, campaignId: string) {
   CAMPAIGN_ID = campaignId
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await waitForAppReady(page)
@@ -22,6 +22,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   // ── Test 1: Import History Filename Column ──────────────────────────────
   test("1. import history table shows Filename column correctly", async ({
     page,
+    campaignId,
   }) => {
     CAMPAIGN_ID = campaignId
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters/imports`)
@@ -108,8 +109,9 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   // uses same chip infrastructure, then verify tags_any code path via source check
   test("3. tags chip appears on voter list when tag filter is selected", async ({
     page,
+    campaignId,
   }) => {
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // Scroll to Advanced section where Tags filter lives
     const advancedTrigger = page
@@ -157,6 +159,7 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   // ── Test 4: Tags (any) chip in dynamic list dialog ──────────────────────
   test("4. tags_any chip renders in dynamic list dialog when present", async ({
     page,
+    campaignId,
   }) => {
     // Navigate to voter lists page
     CAMPAIGN_ID = campaignId
@@ -197,8 +200,9 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   // ── Test 5: Registration County chip appears and dismisses ──────────────
   test("5. registration_county chip appears and dismiss clears filter", async ({
     page,
+    campaignId,
   }) => {
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // Expand the "Location" accordion section
     const locationTrigger = page
@@ -235,8 +239,9 @@ test.describe("Phase 29: Integration Polish UAT", () => {
   // ── Test 6: Registration County input in filter builder ─────────────────
   test("6. Registration County input visible in filter builder Location section", async ({
     page,
+    campaignId,
   }) => {
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // Expand the "Location" accordion section
     const locationTrigger = page

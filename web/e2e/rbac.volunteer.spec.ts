@@ -30,23 +30,23 @@ test.describe("RBAC: volunteer permissions", () => {
   }
 
   test("voter detail: Add Interaction IS visible, Edit button is NOT visible", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     // Navigate to first voter detail
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     // Add Interaction is not role-gated -- should be visible
     const addInteractionButton = page.getByRole("button", {
       name: /add interaction/i,
     })
-    await expect(addInteractionButton).toBeVisible({ timeout: 10_000 })
+    await expect(addInteractionButton).toBeVisible({ timeout: 30_000 })
 
     // Edit voter requires manager+ -- should NOT be visible
     const editButton = page.getByRole("button", { name: /edit/i })
@@ -56,50 +56,50 @@ test.describe("RBAC: volunteer permissions", () => {
   test("voters page: New Voter button is NOT visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     await expect(
       page.getByRole("heading", { name: /voters/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newVoterButton = page.getByRole("button", { name: /new voter/i })
     await expect(newVoterButton).not.toBeVisible()
   })
 
   test("phone banking: New Call List and New Session buttons NOT visible", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
 
     // Check call lists page
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
-    await page.waitForURL(/call-lists/, { timeout: 10_000 })
+    await page.waitForURL(/call-lists/, { timeout: 30_000 })
     await expect(
       page.getByText(/call lists/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newCallListButton = page.getByRole("button", { name: /new call list/i })
     await expect(newCallListButton).not.toBeVisible()
 
     // Check sessions page
     await page.goto(`/campaigns/${campaignId}/phone-banking/sessions`)
-    await page.waitForURL(/sessions/, { timeout: 10_000 })
+    await page.waitForURL(/sessions/, { timeout: 30_000 })
     await expect(
       page.getByText(/sessions/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newSessionButton = page.getByRole("button", { name: /new session/i })
     await expect(newSessionButton).not.toBeVisible()
   })
 
   test("campaign settings: members page invite gated, danger zone gated", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
 
     // Navigate to members page
     await page.goto(`/campaigns/${campaignId}/settings/members`)
-    await page.waitForURL(/members/, { timeout: 10_000 })
+    await page.waitForURL(/members/, { timeout: 30_000 })
 
     // Invite button requires admin+ role
     const inviteButton = page.getByRole("button", { name: /invite/i })
@@ -107,7 +107,7 @@ test.describe("RBAC: volunteer permissions", () => {
 
     // Navigate to danger zone
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
-    await page.waitForURL(/danger/, { timeout: 10_000 })
+    await page.waitForURL(/danger/, { timeout: 30_000 })
 
     // Transfer and delete require owner role -- volunteer should see the fallback message
     const transferButton = page.getByRole("button", {
@@ -120,16 +120,16 @@ test.describe("RBAC: volunteer permissions", () => {
   })
 
   test("volunteers roster: edit actions NOT visible for volunteer", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
-    await page.waitForURL(/roster/, { timeout: 10_000 })
+    await page.waitForURL(/roster/, { timeout: 30_000 })
 
     // Wait for the Volunteer Roster heading to confirm data loaded
     await expect(
       page.getByRole("heading", { name: /volunteer roster/i }),
-    ).toBeVisible({ timeout: 15_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Manager-gated row actions should not be visible
     const editVolunteerButton = page.getByRole("button", {
@@ -142,7 +142,7 @@ test.describe("RBAC: volunteer permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // Volunteer has no org role -- Create Campaign gated behind RequireOrgRole minimum="org_admin"

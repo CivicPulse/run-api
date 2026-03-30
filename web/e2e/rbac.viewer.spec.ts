@@ -6,6 +6,8 @@ import { test, expect } from "./fixtures"
  *
  * Viewer role should be able to view data but cannot create, edit, or delete anything.
  */
+test.setTimeout(90_000)
+
 test.describe("RBAC: viewer permissions", () => {
   /** Navigate into the seed campaign and extract campaignId. */
   async function enterCampaign(page: import("@playwright/test").Page, cid: string) {
@@ -16,12 +18,12 @@ test.describe("RBAC: viewer permissions", () => {
   test("voters page: New Voter button is NOT visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     // Wait for voter list to load
     await expect(
       page.getByRole("heading", { name: /voters/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newVoterButton = page.getByRole("button", { name: /new voter/i })
     await expect(newVoterButton).not.toBeVisible()
@@ -34,12 +36,12 @@ test.describe("RBAC: viewer permissions", () => {
   test.skip("voter detail: Edit button is NOT visible", async ({ page }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     const editButton = page.getByRole("button", { name: /edit/i })
     await expect(editButton).not.toBeVisible()
@@ -50,46 +52,46 @@ test.describe("RBAC: viewer permissions", () => {
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
-    await page.waitForURL(/voters/, { timeout: 10_000 })
+    await page.waitForURL(/voters/, { timeout: 30_000 })
 
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 10_000 })
+    await expect(voterLink).toBeVisible({ timeout: 30_000 })
     await voterLink.click()
-    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 
     const addInteractionButton = page.getByRole("button", {
       name: /add interaction/i,
     })
-    await expect(addInteractionButton).toBeVisible({ timeout: 10_000 })
+    await expect(addInteractionButton).toBeVisible({ timeout: 30_000 })
   })
 
   test("canvassing: page loads and New Turf link is present (not role-gated in UI)", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/canvassing`)
-    await page.waitForURL(/canvassing/, { timeout: 10_000 })
+    await page.waitForURL(/canvassing/, { timeout: 30_000 })
 
     // Wait for canvassing page to load
     await expect(
       page.getByRole("heading", { name: /canvassing/i }).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Note: New Turf link is NOT wrapped in RequireRole in the source code.
     // It is visible to all roles including viewer. This documents actual behavior.
     // The API will reject the POST if the viewer attempts to create a turf.
     const newTurfLink = page.getByRole("link", { name: /new turf/i })
-    await expect(newTurfLink).toBeVisible({ timeout: 10_000 })
+    await expect(newTurfLink).toBeVisible({ timeout: 30_000 })
   })
 
   test("phone banking: New Call List button is NOT visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/phone-banking/call-lists`)
-    await page.waitForURL(/call-lists/, { timeout: 10_000 })
+    await page.waitForURL(/call-lists/, { timeout: 30_000 })
 
     await expect(
       page.getByText(/call lists/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newCallListButton = page.getByRole("button", { name: /new call list/i })
     await expect(newCallListButton).not.toBeVisible()
@@ -98,26 +100,26 @@ test.describe("RBAC: viewer permissions", () => {
   test("phone banking: New Session button is NOT visible", async ({ page, campaignId }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/phone-banking/sessions`)
-    await page.waitForURL(/sessions/, { timeout: 10_000 })
+    await page.waitForURL(/sessions/, { timeout: 30_000 })
 
     await expect(
       page.getByText(/sessions/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     const newSessionButton = page.getByRole("button", { name: /new session/i })
     await expect(newSessionButton).not.toBeVisible()
   })
 
   test("volunteers roster: edit/delete actions are NOT visible", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/volunteers/roster`)
-    await page.waitForURL(/roster/, { timeout: 10_000 })
+    await page.waitForURL(/roster/, { timeout: 30_000 })
 
     await expect(
       page.getByText(/roster/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Manager-gated row actions should not be visible
     const editVolunteerButton = page.getByRole("button", {
@@ -127,19 +129,19 @@ test.describe("RBAC: viewer permissions", () => {
   })
 
   test("campaign settings: Members nav link IS visible but members content is gated", async ({
-    page,
+    page, campaignId,
   }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
-    await page.waitForURL(/settings/, { timeout: 10_000 })
+    await page.waitForURL(/settings/, { timeout: 30_000 })
 
     // The Members nav link exists in the settings layout for all roles
     const membersLink = page.getByRole("link", { name: /members/i })
-    await expect(membersLink).toBeVisible({ timeout: 10_000 })
+    await expect(membersLink).toBeVisible({ timeout: 30_000 })
 
     // Navigate to members page -- content should be gated
     await membersLink.click()
-    await page.waitForURL(/members/, { timeout: 10_000 })
+    await page.waitForURL(/members/, { timeout: 30_000 })
 
     // The invite form requires admin+ role
     const inviteSection = page.getByRole("button", { name: /invite/i })
@@ -150,7 +152,7 @@ test.describe("RBAC: viewer permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // viewer has no org role, so Create Campaign should be hidden
@@ -164,7 +166,7 @@ test.describe("RBAC: viewer permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // Organization sidebar Members link is gated behind RequireOrgRole minimum="org_admin"

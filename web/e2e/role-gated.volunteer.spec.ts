@@ -3,8 +3,8 @@ import { test, expect } from "./fixtures"
 test.describe("Role-gated UI: volunteer user", () => {
   test("volunteer type toggle is not visible for non-manager on register page", async ({
     page,
+    campaignId,
   }) => {
-    const campaignId = campaignId
     await page.goto(`/campaigns/${campaignId}/volunteers/register`)
 
     // Wait for the register page to load

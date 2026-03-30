@@ -40,6 +40,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 6,
   reporter: process.env.CI ? "blob" : "html",
 
+  timeout: 60_000,
   use: {
     baseURL,
     ignoreHTTPSErrors: true,

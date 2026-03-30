@@ -6,7 +6,7 @@ let CAMPAIGN_ID: string
 test.setTimeout(60_000)
 
 /** Navigate to voter list page and open the filter panel */
-async function openVoterFilters(page: import("@playwright/test").Page) {
+async function openVoterFilters(page: import("@playwright/test").Page, campaignId: string) {
   CAMPAIGN_ID = campaignId
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await page.waitForLoadState("domcontentloaded")
@@ -43,6 +43,7 @@ async function captureSearchBodies(page: import("@playwright/test").Page) {
     waitForNew: async (currentCount: number) => {
       const startTime = Date.now()
       while (bodies.length <= currentCount && Date.now() - startTime < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
       }
       return bodies.length > currentCount
     },
@@ -52,9 +53,10 @@ async function captureSearchBodies(page: import("@playwright/test").Page) {
 test.describe("Phase 27: Filter wiring E2E", () => {
   test("propensity range filter sends POST with correct body", async ({
     page,
+    campaignId,
   }) => {
     const capture = await captureSearchBodies(page)
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // Expand the "Scoring" accordion section (contains propensity sliders)
     const scoringTrigger = page.locator("button").filter({ hasText: "Scoring" })
@@ -109,9 +111,10 @@ test.describe("Phase 27: Filter wiring E2E", () => {
 
   test("demographic multi-select filter sends POST with correct body", async ({
     page,
+    campaignId,
   }) => {
     const capture = await captureSearchBodies(page)
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // The "Demographics" accordion section is open by default
     // Note how many requests have been captured so far
@@ -161,9 +164,10 @@ test.describe("Phase 27: Filter wiring E2E", () => {
 
   test("mailing address filter sends POST with correct body", async ({
     page,
+    campaignId,
   }) => {
     const capture = await captureSearchBodies(page)
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // Expand the "Location" accordion section
     const locationTrigger = page
@@ -218,7 +222,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
 
   test("combined new + legacy filters work together", async ({ page, campaignId }) => {
     const capture = await captureSearchBodies(page)
-    await openVoterFilters(page)
+    await openVoterFilters(page, campaignId)
 
     // The "Demographics" section is open by default. Check a party checkbox (legacy filter).
     const repCheckbox = page
@@ -272,6 +276,7 @@ test.describe("Phase 27: Filter wiring E2E", () => {
 
   test("GET /voters endpoint still works for backward compatibility", async ({
     page,
+    campaignId,
   }) => {
     // First navigate to the voters page so we have a valid session
     CAMPAIGN_ID = campaignId

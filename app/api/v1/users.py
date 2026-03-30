@@ -39,7 +39,7 @@ async def get_me(
     "/campaigns",
     response_model=list[UserCampaignResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def get_my_campaigns(
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
