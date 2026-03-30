@@ -404,6 +404,15 @@ def require_role(minimum: str):
         current_user: AuthenticatedUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
+        from app.api.deps import ensure_user_synced
+
+        # Ensure local User + CampaignMember records exist before
+        # checking membership.  Without this, first-time users who
+        # hit a campaign endpoint get 403 because resolve_campaign_role
+        # finds no CampaignMember row yet.  (Mirrors the pattern
+        # already used in require_org_role.)
+        await ensure_user_synced(current_user, db)
+
         effective_role = current_user.role
 
         # Resolve per-campaign role if campaign_id is in the path

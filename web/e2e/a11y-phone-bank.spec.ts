@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import type { Page } from "@playwright/test"
+import { setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -7,37 +8,11 @@ const CAMPAIGN_ID = "test-campaign-a11y"
 const SESSION_ID = "session-a11y-001"
 const CALL_LIST_ID = "cl-a11y-001"
 const SCRIPT_ID = "script-a11y-001"
-const OIDC_STORAGE_KEY = "oidc.user:https://auth.civpulse.org:363437283614916644"
 
-// ── Auth & Mock Helpers ──────────────────────────────────────────────────────
-
-function mockOidcUser(): string {
-  return JSON.stringify({
-    id_token: "mock-id-token",
-    session_state: null,
-    access_token: "mock-access-token",
-    refresh_token: "mock-refresh-token",
-    token_type: "Bearer",
-    scope: "openid profile email",
-    profile: {
-      sub: "mock-user-a11y",
-      name: "Test Admin",
-      email: "admin@test.com",
-    },
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-  })
-}
-
-async function setupAuth(page: Page) {
-  await page.addInitScript(
-    ({ key, user }: { key: string; user: string }) => {
-      localStorage.setItem(key, user)
-    },
-    { key: OIDC_STORAGE_KEY, user: mockOidcUser() },
-  )
-}
+// ── API Mock Helpers ────────────────────────────────────────────────────────
 
 async function setupApiMocks(page: Page) {
+  await mockConfigEndpoint(page)
   await page.route("**/api/v1/**", (route) => {
     const url = route.request().url()
     const method = route.request().method()
@@ -208,7 +183,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
   test.setTimeout(30_000)
 
   test.beforeEach(async ({ page }) => {
-    await setupAuth(page)
+    await setupMockAuth(page)
     await setupApiMocks(page)
   })
 

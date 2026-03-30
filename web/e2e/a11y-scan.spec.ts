@@ -1,5 +1,6 @@
 import { test, expect } from "./axe-test"
 import type { Page } from "@playwright/test"
+import { OIDC_STORAGE_KEY, setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -13,7 +14,6 @@ const CALL_LIST_ID = "cl-a11y-001"
 const VOLUNTEER_ID = "vol-a11y-001"
 const SHIFT_ID = "shift-a11y-001"
 const SCRIPT_ID = "script-a11y-001"
-const OIDC_STORAGE_KEY = "oidc.user:https://auth.civpulse.org:363437283614916644"
 
 // ── Route Definitions ────────────────────────────────────────────────────────
 
@@ -67,37 +67,12 @@ const ROUTES: RouteEntry[] = [
   { path: `/field/${CAMPAIGN_ID}/phone-banking`, name: "field-phone-banking", needsCampaign: true },
 ]
 
-// ── Mock OIDC User ───────────────────────────────────────────────────────────
-
-function mockOidcUser(): string {
-  return JSON.stringify({
-    id_token: "mock-id-token",
-    session_state: null,
-    access_token: "mock-access-token",
-    refresh_token: "mock-refresh-token",
-    token_type: "Bearer",
-    scope: "openid profile email",
-    profile: {
-      sub: "mock-user-a11y",
-      name: "Test Admin",
-      email: "admin@test.com",
-    },
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-  })
-}
-
 // ── Mock API Setup ───────────────────────────────────────────────────────────
 
-async function setupAuth(page: Page) {
-  await page.addInitScript(
-    ({ key, user }: { key: string; user: string }) => {
-      localStorage.setItem(key, user)
-    },
-    { key: OIDC_STORAGE_KEY, user: mockOidcUser() },
-  )
-}
-
 async function setupApiMocks(page: Page) {
+  // Config endpoint must be mocked BEFORE the catch-all so the app
+  // gets a consistent authority/client_id matching the OIDC storage key.
+  await mockConfigEndpoint(page)
   // Catch-all API mock: return empty/minimal valid responses for all API calls
   // This prevents network errors while scanning pages for accessibility
   await page.route("**/api/v1/**", (route) => {
@@ -548,7 +523,7 @@ test.describe("A11Y Scan: axe-core WCAG 2.1 AA compliance", () => {
       // Set up auth for admin routes
       const isFieldRoute = route.path.startsWith("/field")
       if (!isFieldRoute) {
-        await setupAuth(page)
+        await setupMockAuth(page)
       }
 
       // Set up API mocks
