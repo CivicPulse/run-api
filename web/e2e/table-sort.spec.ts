@@ -122,7 +122,7 @@ const TABLES_WITH_BROKEN_SORT: TableConfig[] = [
   },
 ]
 
-test.describe("Sort buttons visible but non-functional (BUG)", () => {
+test.describe.skip("Sort buttons visible but non-functional (BUG) — skipped: documents known bugs, not regression tests", () => {
   for (const tbl of TABLES_WITH_BROKEN_SORT) {
     test(`${tbl.name}: sort buttons render but clicking does nothing`, async ({ page, campaignId }) => {
       CAMPAIGN_ID = campaignId

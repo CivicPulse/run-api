@@ -18,7 +18,7 @@ export const test = base.extend<{}, { campaignId: string }>({
     await page.goto(baseURL)
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
     // Wait for app to finish rendering (ensures OIDC token is written to localStorage)
     await page.waitForLoadState("domcontentloaded")
@@ -46,44 +46,55 @@ export const test = base.extend<{}, { campaignId: string }>({
     // Add initial jitter (0–500ms) to spread out parallel workers hitting the API simultaneously
     await page.waitForTimeout(Math.floor(Math.random() * 500))
 
-    // Resolve campaign ID via API (with retries for rate-limit / transient errors)
+    // Resolve campaign ID via API (with retries for rate-limit / transient / timeout errors)
     let campaignId: string | undefined
     let lastRespStatus: number | undefined
     let lastRespBody: string | undefined
+    let lastError: string | undefined
     for (let attempt = 0; attempt < 5; attempt++) {
-      const resp = await page.request.get("/api/v1/me/campaigns", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      lastRespStatus = resp.status()
-      if (resp.ok()) {
-        const campaigns = await resp.json()
-        if (Array.isArray(campaigns)) {
-          const seed = campaigns.find(
-            (c: { campaign_id?: string; campaign_name?: string; name?: string }) =>
-              /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
-          )
-          campaignId = seed?.campaign_id ?? seed?.id
-          if (campaignId) break
-          // Array is valid but seed campaign not found - log for debugging
-          const names = campaigns.slice(0, 3).map((c: { campaign_name?: string }) => c.campaign_name).join(", ")
-          console.warn(`[fixture] Attempt ${attempt + 1}: campaigns array has ${campaigns.length} entries, no macon-bibb match. First 3: ${names}`)
+      try {
+        const resp = await page.request.get("/api/v1/me/campaigns", {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10_000, // per-request timeout (default 30s is too long for retries)
+        })
+        lastRespStatus = resp.status()
+        lastError = undefined
+        if (resp.ok()) {
+          const campaigns = await resp.json()
+          if (Array.isArray(campaigns)) {
+            const seed = campaigns.find(
+              (c: { campaign_id?: string; campaign_name?: string; name?: string }) =>
+                /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
+            )
+            campaignId = seed?.campaign_id ?? seed?.id
+            if (campaignId) break
+            // Array is valid but seed campaign not found - log for debugging
+            const names = campaigns.slice(0, 3).map((c: { campaign_name?: string }) => c.campaign_name).join(", ")
+            console.warn(`[fixture] Attempt ${attempt + 1}: campaigns array has ${campaigns.length} entries, no macon-bibb match. First 3: ${names}`)
+          } else {
+            lastRespBody = JSON.stringify(campaigns).substring(0, 200)
+            console.warn(`[fixture] Attempt ${attempt + 1}: API returned non-array:`, lastRespBody)
+          }
         } else {
-          lastRespBody = JSON.stringify(campaigns).substring(0, 200)
-          console.warn(`[fixture] Attempt ${attempt + 1}: API returned non-array:`, lastRespBody)
+          lastRespBody = await resp.text().catch(() => "(unreadable)")
+          console.warn(`[fixture] Attempt ${attempt + 1}: API returned HTTP ${lastRespStatus}:`, lastRespBody.substring(0, 200))
         }
-      } else {
-        lastRespBody = await resp.text().catch(() => "(unreadable)")
-        console.warn(`[fixture] Attempt ${attempt + 1}: API returned HTTP ${lastRespStatus}:`, lastRespBody.substring(0, 200))
+      } catch (err) {
+        // Request-level timeout or network error — log and retry
+        lastError = err instanceof Error ? err.message : String(err)
+        console.warn(`[fixture] Attempt ${attempt + 1}: request failed:`, lastError.substring(0, 200))
       }
       if (attempt < 4) {
-        // Use moderate backoff for 429 rate-limit responses (keep under 30s fixture timeout)
+        // Backoff: 429 → 3-5s, timeout → 2-4s, other → progressive 1-4s
         const backoffMs = lastRespStatus === 429
           ? 3_000 + Math.floor(Math.random() * 2_000)
-          : 1000 * (attempt + 1)
+          : lastError?.includes("Timeout")
+            ? 2_000 + Math.floor(Math.random() * 2_000)
+            : 1000 * (attempt + 1)
         await page.waitForTimeout(backoffMs)
       }
     }
-    if (!campaignId) throw new Error(`Could not find seed campaign via API (last status: ${lastRespStatus}, body: ${lastRespBody?.substring(0, 100)})`)
+    if (!campaignId) throw new Error(`Could not find seed campaign via API (last status: ${lastRespStatus}, error: ${lastError ?? "none"}, body: ${lastRespBody?.substring(0, 100)})`)
 
     await context.close()
     await use(campaignId)

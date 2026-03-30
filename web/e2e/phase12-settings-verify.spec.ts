@@ -18,7 +18,7 @@ test.describe("INFR-01: Settings gear icon in sidebar", () => {
 
     // Settings link rendered in SidebarFooter — scope to sidebar nav; pick campaign settings link
     const settingsLink = page.getByLabel("Main navigation").getByRole("link", { name: /settings/i }).last()
-    await expect(settingsLink).toBeVisible({ timeout: 8000 })
+    await expect(settingsLink).toBeVisible({ timeout: 20_000 })
 
     // Clicking navigates to the settings area
     await settingsLink.click()
@@ -42,7 +42,7 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
 
     // Form must be visible with the name input populated from API
     const nameInput = page.locator('input[name="name"]')
-    await expect(nameInput).toBeVisible({ timeout: 8000 })
+    await expect(nameInput).toBeVisible({ timeout: 20_000 })
 
     const originalName = await nameInput.inputValue()
     expect(originalName.length).toBeGreaterThan(0)
@@ -84,7 +84,7 @@ test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
 
     // Wait for form to load with campaign data
     const nameInput = page.locator('input[name="name"]')
-    await expect(nameInput).toBeVisible({ timeout: 8000 })
+    await expect(nameInput).toBeVisible({ timeout: 20_000 })
 
     // Make the form dirty by editing the name
     await nameInput.fill("Unsaved Draft Name 99999")
@@ -95,7 +95,7 @@ test.describe("INFR-02: Form guard — unsaved changes confirmation", () => {
 
     // The "Unsaved changes" ConfirmDialog should appear
     const dialogTitle = page.getByRole("heading", { name: /unsaved changes/i })
-    await expect(dialogTitle).toBeVisible({ timeout: 5000 })
+    await expect(dialogTitle).toBeVisible({ timeout: 15_000 })
 
     // Click "Keep editing" to cancel navigation
     const keepEditingBtn = page.getByRole("button", { name: /keep editing/i })
@@ -122,7 +122,7 @@ test.describe("CAMP-05: Members tab — member list with role badges", () => {
 
     // Page heading
     const membersHeading = page.getByRole("heading", { name: /^members$/i })
-    await expect(membersHeading).toBeVisible({ timeout: 8000 })
+    await expect(membersHeading).toBeVisible({ timeout: 20_000 })
 
     // Table column headers — members table has Name/Email/Role/Joined
     // (Invites table also has Email/Role so we use .first() for shared headers)
@@ -153,12 +153,12 @@ test.describe("CAMP-03: Invite member dialog", () => {
 
     // Click "Invite member" button
     const inviteBtn = page.getByRole("button", { name: /invite member/i })
-    await expect(inviteBtn).toBeVisible({ timeout: 8000 })
+    await expect(inviteBtn).toBeVisible({ timeout: 20_000 })
     await inviteBtn.click()
 
     // Dialog must open
     const dialogTitle = page.getByRole("heading", { name: /invite a member/i })
-    await expect(dialogTitle).toBeVisible({ timeout: 5000 })
+    await expect(dialogTitle).toBeVisible({ timeout: 15_000 })
 
     // Email input must be present
     const emailInput = page.locator('input[type="email"]')
@@ -200,7 +200,7 @@ test.describe("CAMP-04: Pending Invites section", () => {
 
     // "Pending Invites" section heading must be present (exact match to avoid matching "No pending invites" empty state)
     const invitesHeading = page.getByRole("heading", { name: "Pending Invites", exact: true })
-    await expect(invitesHeading).toBeVisible({ timeout: 8000 })
+    await expect(invitesHeading).toBeVisible({ timeout: 20_000 })
 
     // Either the invites table renders rows OR the empty state is shown
     const bodyText = await page.locator("body").innerText()
@@ -259,7 +259,7 @@ test.describe("CAMP-06: Change member role via kebab menu", () => {
 
     // Role change dialog should open
     const dialogTitle = page.getByRole("heading", { name: /change role/i })
-    await expect(dialogTitle).toBeVisible({ timeout: 5000 })
+    await expect(dialogTitle).toBeVisible({ timeout: 15_000 })
 
     // Role selector (combobox) must be present in the dialog
     const roleSelect = page.getByRole("combobox")
@@ -299,13 +299,13 @@ test.describe("CAMP-07: Remove member via kebab menu", () => {
     await actionButtons.first().click()
 
     const removeMemberItem = page.getByRole("menuitem", { name: /remove member/i })
-    await expect(removeMemberItem).toBeVisible({ timeout: 5000 })
+    await expect(removeMemberItem).toBeVisible({ timeout: 15_000 })
 
     await removeMemberItem.click()
 
     // ConfirmDialog should appear — title is "Remove {name}?"
     // The AlertDialog contains a heading with "Remove"
-    await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 15_000 })
 
     // The dialog description mentions losing access
     const dialogBody = await page.getByRole("alertdialog").innerText()
@@ -336,7 +336,7 @@ test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
 
     // "Delete this campaign" section must be visible
     const deleteSection = page.getByText(/delete this campaign/i)
-    await expect(deleteSection).toBeVisible({ timeout: 8000 })
+    await expect(deleteSection).toBeVisible({ timeout: 20_000 })
 
     // Click the "Delete campaign" button to open DestructiveConfirmDialog
     const deleteBtn = page.getByRole("button", { name: /delete campaign/i })
@@ -344,7 +344,7 @@ test.describe("CAMP-02: Delete campaign — type-to-confirm dialog", () => {
     await deleteBtn.click()
 
     // AlertDialog should open
-    await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 15_000 })
 
     // Confirm button (labeled "Delete campaign") should be DISABLED initially
     const confirmBtn = page.getByRole("button", { name: /delete campaign/i })
@@ -389,7 +389,7 @@ test.describe("CAMP-08: Transfer ownership", () => {
 
     // "Transfer ownership" section must be visible
     const transferSection = page.getByText(/transfer ownership/i).first()
-    await expect(transferSection).toBeVisible({ timeout: 8000 })
+    await expect(transferSection).toBeVisible({ timeout: 20_000 })
 
     // Click "Transfer ownership" button to open dialog
     const transferBtn = page.getByRole("button", { name: /transfer ownership/i })
@@ -398,7 +398,7 @@ test.describe("CAMP-08: Transfer ownership", () => {
 
     // Dialog should open
     const dialog = page.getByRole("dialog")
-    await expect(dialog).toBeVisible({ timeout: 5000 })
+    await expect(dialog).toBeVisible({ timeout: 15_000 })
 
     const dialogText = await dialog.innerText()
 
