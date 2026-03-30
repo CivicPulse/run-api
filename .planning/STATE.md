@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Testing & Validation
-status: executing
-stopped_at: Completed 60-05-PLAN.md (Phase 60 complete)
-last_updated: "2026-03-29T23:11:57.122Z"
+status: completed
+stopped_at: Completed 260330-ipp quick task
+last_updated: "2026-03-30T17:50:04.460Z"
 last_activity: 2026-03-29
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
   total_plans: 20
   completed_plans: 20
@@ -65,6 +65,7 @@ Decisions logged in PROJECT.md Key Decisions table.
 - [Phase 60]: Created org-level ZITADEL login policy without MFA for E2E testing; added MFA skip handling to auth setup scripts
 - [Phase 60]: Used exclusion-based waitForURL pattern for all 35 pre-existing specs to match Phase 60 new spec convention
 - [Phase 60]: Phone banking skip traced to seed data exhaustion (BUG-01), not app logic; E2E-20/E2E-21 marked Complete based on spec existence evidence
+- [Phase quick]: 260330-ipp: Worker-scoped campaignId fixture, 73 waitForTimeout + 54 networkidle eliminated, CI npm cache + build artifact sharing
 
 ### Blockers/Concerns
 
@@ -82,9 +83,10 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
 | 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | bd554f8 | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
 | 260327-o38 | Fix sort buttons on all DataTable columns | 2026-03-27 | 48e0c3e | [260327-o38](./quick/260327-o38-fix-sort-buttons-on-all-datatables-colum/) |
+| 260330-ipp | Tier 1+2 Playwright speed improvements | 2026-03-30 | 1b8d737 | [260330-ipp](./quick/260330-ipp-implement-tier-1-and-tier-2-playwright-s/) |
 
 ## Session Continuity
 
 Last activity: 2026-03-29 - Completed Wave 1 (60-01, 60-02)
-Stopped at: Completed 60-05-PLAN.md (Phase 60 complete)
+Stopped at: Completed 260330-ipp quick task
 Resume file: None

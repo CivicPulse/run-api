@@ -6,3 +6,5 @@ coverage/
 test-results/
 playwright/.auth/
 !playwright/.auth/.gitkeep
+e2e-logs/
+e2e-runs.jsonl
