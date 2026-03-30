@@ -226,7 +226,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. The document covers production-specific URLs, authentication flow, and data considerations that differ from local dev
   2. The document references the validated local test plan sections and maps them to production equivalents
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 61-01-PLAN.md — Author standalone production testing runbook (health checks, user provisioning, data setup, smoke + extended suites)
 
 ## Progress
 
@@ -247,7 +249,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 58. E2E Core Tests | v1.7 | 4/4 | Complete    | 2026-03-29 |
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
-| 61. AI Production Testing Instructions | v1.7 | 0/? | Not started | - |
+| 61. AI Production Testing Instructions | v1.7 | 0/1 | Not started | - |
 
 ## Backlog
 
