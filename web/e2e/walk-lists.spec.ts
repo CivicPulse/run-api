@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Walk Lists E2E Spec
@@ -12,95 +13,25 @@ import { test, expect } from "@playwright/test"
 
 // ── Helper Functions ─────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
-async function createTurfViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  name: string,
-  boundary: Record<string, unknown>,
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/turfs`,
-    {
-      data: { name, boundary },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function createTurfViaApi(page: import("@playwright/test").Page, campaignId: string, name: string, boundary: Record<string, unknown>): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/turfs`, { name, boundary })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function generateWalkListViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  turfId: string,
-  name: string,
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/walk-lists`,
-    {
-      data: { turf_id: turfId, name },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function generateWalkListViaApi(page: import("@playwright/test").Page, campaignId: string, turfId: string, name: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/walk-lists`, { turf_id: turfId, name })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function deleteWalkListViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  walkListId: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
+async function deleteWalkListViaApi(page: import("@playwright/test").Page, campaignId: string, walkListId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function assignCanvasserViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  walkListId: string,
-  userId: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/canvassers`,
-    {
-      data: { user_id: userId },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function assignCanvasserViaApi(page: import("@playwright/test").Page, campaignId: string, walkListId: string, userId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/canvassers`, { user_id: userId })
   expect(resp.ok()).toBeTruthy()
 }
 
@@ -158,14 +89,9 @@ test.describe.serial("Walk List Lifecycle", () => {
     expect(turfId).toBeTruthy()
 
     // Get the current user's ID from a campaign members API call
-    // or extract from auth context. We'll use the owner's user ID
-    // from a members list call.
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-    const membersResp = await page.request.get(
-      `https://localhost:4173/api/v1/campaigns/${campaignId}/members`,
-      { headers: { Cookie: cookieHeader } },
+    const membersResp = await apiGet(
+      page,
+      `/api/v1/campaigns/${campaignId}/members`,
     )
     if (membersResp.ok()) {
       const membersBody = await membersResp.json()

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Volunteer Tags & Availability E2E Spec
@@ -10,119 +11,43 @@ import { test, expect, type Page } from "@playwright/test"
  * Runs as: owner (unsuffixed spec -> chromium -> owner auth)
  */
 
-// ── Helpers (self-contained, cookie forwarding per D-10) ─────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(page: Page): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
-async function createVolunteerViaApi(
-  page: Page,
-  campaignId: string,
-  data: Record<string, unknown>,
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteers`,
-    {
-      data,
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function createVolunteerViaApi(page: Page, campaignId: string, data: Record<string, unknown>): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers`, data)
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function createVolunteerTagViaApi(
-  page: Page,
-  campaignId: string,
-  name: string,
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteer-tags`,
-    {
-      data: { name },
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function createVolunteerTagViaApi(page: Page, campaignId: string, name: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteer-tags`, { name })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function deleteVolunteerTagViaApi(
-  page: Page,
-  campaignId: string,
-  tagId: string,
-): Promise<void> {
-  const resp = await page.request.delete(
-    `/api/v1/campaigns/${campaignId}/volunteer-tags/${tagId}`,
-  )
+async function deleteVolunteerTagViaApi(page: Page, campaignId: string, tagId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/volunteer-tags/${tagId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function addTagToVolunteerViaApi(
-  page: Page,
-  campaignId: string,
-  volunteerId: string,
-  tagId: string,
-): Promise<void> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/tags/${tagId}`,
-  )
+async function addTagToVolunteerViaApi(page: Page, campaignId: string, volunteerId: string, tagId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/tags/${tagId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function removeTagFromVolunteerViaApi(
-  page: Page,
-  campaignId: string,
-  volunteerId: string,
-  tagId: string,
-): Promise<void> {
-  const resp = await page.request.delete(
-    `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/tags/${tagId}`,
-  )
+async function removeTagFromVolunteerViaApi(page: Page, campaignId: string, volunteerId: string, tagId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/tags/${tagId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function addAvailabilityViaApi(
-  page: Page,
-  campaignId: string,
-  volunteerId: string,
-  startAt: string,
-  endAt: string,
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability`,
-    {
-      data: { start_at: startAt, end_at: endAt },
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function addAvailabilityViaApi(page: Page, campaignId: string, volunteerId: string, startAt: string, endAt: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability`, { start_at: startAt, end_at: endAt })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function deleteAvailabilityViaApi(
-  page: Page,
-  campaignId: string,
-  volunteerId: string,
-  availabilityId: string,
-): Promise<void> {
-  const resp = await page.request.delete(
-    `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability/${availabilityId}`,
-  )
+async function deleteAvailabilityViaApi(page: Page, campaignId: string, volunteerId: string, availabilityId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability/${availabilityId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
@@ -198,7 +123,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     await page.waitForURL(/volunteers\/tags/, { timeout: 10_000 })
 
     // Retrieve the IDs for the UI-created tags via the tag list API
-    const resp = await page.request.get(
+    const resp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteer-tags`,
     )
     expect(resp.ok()).toBeTruthy()
@@ -486,7 +411,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     ).toBeVisible({ timeout: 10_000 })
 
     // Store availability for later edit/delete
-    const avResp = await page.request.get(
+    const avResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteers/${volunteerIds[0]}/availability`,
     )
     const avData = await avResp.json()
@@ -519,7 +444,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     await page.getByRole("button", { name: /save|add|submit/i }).click()
     await page.waitForTimeout(1_000)
 
-    const avResp2 = await page.request.get(
+    const avResp2 = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteers/${volunteerIds[1]}/availability`,
     )
     const avData2 = await avResp2.json()

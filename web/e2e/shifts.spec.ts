@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
 
 /**
  * Shifts E2E Spec
@@ -11,154 +12,54 @@ import { test, expect, type Page } from "@playwright/test"
  * Runs as: owner (unsuffixed spec -> chromium -> owner auth)
  */
 
-// ── Helpers (self-contained, cookie forwarding per D-10) ─────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(page: Page): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
-async function createVolunteerViaApi(
-  page: Page,
-  campaignId: string,
-  data: Record<string, unknown>,
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteers`,
-    {
-      data,
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function createVolunteerViaApi(page: Page, campaignId: string, data: Record<string, unknown>): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers`, data)
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function createShiftViaApi(
-  page: Page,
-  campaignId: string,
-  data: {
-    name: string
-    type: string
-    start_at: string
-    end_at: string
-    max_volunteers: number
-    description?: string
-  },
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/shifts`,
-    {
-      data,
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function createShiftViaApi(page: Page, campaignId: string, data: { name: string; type: string; start_at: string; end_at: string; max_volunteers: number; description?: string }): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts`, data)
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function deleteShiftViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-): Promise<void> {
-  const resp = await page.request.delete(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}`,
-  )
+async function deleteShiftViaApi(page: Page, campaignId: string, shiftId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function assignVolunteerToShiftViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-  volunteerId: string,
-): Promise<void> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/assign/${volunteerId}`,
-  )
+async function assignVolunteerToShiftViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/assign/${volunteerId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function checkInViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-  volunteerId: string,
-): Promise<void> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/check-in/${volunteerId}`,
-  )
+async function checkInViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/check-in/${volunteerId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function checkOutViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-  volunteerId: string,
-): Promise<void> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/check-out/${volunteerId}`,
-  )
+async function checkOutViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/check-out/${volunteerId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function activateShiftViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-): Promise<void> {
-  const resp = await page.request.patch(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/status`,
-    {
-      data: { status: "active" },
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function activateShiftViaApi(page: Page, campaignId: string, shiftId: string): Promise<void> {
+  const resp = await apiPatch(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/status`, { status: "active" })
   expect(resp.ok()).toBeTruthy()
 }
 
-async function removeVolunteerFromShiftViaApi(
-  page: Page,
-  campaignId: string,
-  shiftId: string,
-  volunteerId: string,
-): Promise<void> {
-  const resp = await page.request.delete(
-    `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/volunteers/${volunteerId}`,
-  )
+async function removeVolunteerFromShiftViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/volunteers/${volunteerId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
-async function addAvailabilityViaApi(
-  page: Page,
-  campaignId: string,
-  volunteerId: string,
-  startAt: string,
-  endAt: string,
-): Promise<string> {
-  const resp = await page.request.post(
-    `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability`,
-    {
-      data: { start_at: startAt, end_at: endAt },
-      headers: { "Content-Type": "application/json" },
-    },
-  )
+async function addAvailabilityViaApi(page: Page, campaignId: string, volunteerId: string, startAt: string, endAt: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/availability`, { start_at: startAt, end_at: endAt })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
 // ── Shift Data Generator (per D-09: 20 shifts) ──────────────────────────────
@@ -349,7 +250,7 @@ test.describe.serial("Shift Lifecycle", () => {
     }
 
     // Get any UI-created shift IDs from the API
-    const listResp = await page.request.get(
+    const listResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/shifts`,
     )
     const listData = await listResp.json()
@@ -367,7 +268,7 @@ test.describe.serial("Shift Lifecycle", () => {
     }
 
     // Get all shift IDs (including UI-created ones)
-    const finalListResp = await page.request.get(
+    const finalListResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/shifts`,
     )
     const finalListData = await finalListResp.json()
@@ -498,7 +399,7 @@ test.describe.serial("Shift Lifecycle", () => {
 
     // Attempt to assign volunteer 0 to the within-availability shift
     // (May already be assigned from SHIFT-02, so handle gracefully)
-    const withinResp = await page.request.post(
+    const withinResp = await apiPost(page,
       `/api/v1/campaigns/${campaignId}/shifts/${withinShiftId}/assign/${volunteerIds[0]}`,
     )
     // Document: assignment within availability should succeed (or already exists)
@@ -506,7 +407,7 @@ test.describe.serial("Shift Lifecycle", () => {
     expect(withinOk).toBeTruthy()
 
     // Attempt to assign volunteer 0 to the outside-availability shift
-    const outsideResp = await page.request.post(
+    const outsideResp = await apiPost(page,
       `/api/v1/campaigns/${campaignId}/shifts/${outsideShiftId}/assign/${volunteerIds[0]}`,
     )
     // Document: the API may either block, warn, or allow assignment outside availability
@@ -710,21 +611,18 @@ test.describe.serial("Shift Lifecycle", () => {
         await page.waitForTimeout(2_000)
       } else {
         // Fallback: adjust via API
-        const resp = await page.request.patch(
+        const resp = await apiPatch(page,
           `/api/v1/campaigns/${campaignId}/shifts/${activeShiftId}/volunteers/${checkedInVolunteerId}/hours`,
           {
-            data: {
-              adjusted_hours: 2.5,
-              adjustment_reason: "E2E test: correcting late check-in",
-            },
-            headers: { "Content-Type": "application/json" },
+            adjusted_hours: 2.5,
+            adjustment_reason: "E2E test: correcting late check-in",
           },
         )
         expect(resp.ok()).toBeTruthy()
       }
     } else {
       // Fallback: adjust via API directly
-      const resp = await page.request.patch(
+      const resp = await apiPatch(page,
         `/api/v1/campaigns/${campaignId}/shifts/${activeShiftId}/volunteers/${checkedInVolunteerId}/hours`,
         {
           data: {
@@ -738,7 +636,7 @@ test.describe.serial("Shift Lifecycle", () => {
     }
 
     // Verify adjusted hours by checking the volunteer's hours via API
-    const hoursResp = await page.request.get(
+    const hoursResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteers/${checkedInVolunteerId}/hours`,
     )
     if (hoursResp.ok()) {
@@ -785,12 +683,9 @@ test.describe.serial("Shift Lifecycle", () => {
       await page.waitForTimeout(2_000)
     } else {
       // If edit button not visible, edit via API
-      const resp = await page.request.patch(
+      const resp = await apiPatch(page,
         `/api/v1/campaigns/${campaignId}/shifts/${editShiftId}`,
-        {
-          data: { name: "E2E Shift EDITED", max_volunteers: 15 },
-          headers: { "Content-Type": "application/json" },
-        },
+        { name: "E2E Shift EDITED", max_volunteers: 15 },
       )
       expect(resp.ok()).toBeTruthy()
     }
@@ -819,7 +714,7 @@ test.describe.serial("Shift Lifecycle", () => {
     await deleteShiftViaApi(page, campaignId, throwawayId)
 
     // Verify deletion: try to fetch the deleted shift
-    const getResp = await page.request.get(
+    const getResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/shifts/${throwawayId}`,
     )
     expect(getResp.status()).toBe(404)
@@ -922,7 +817,7 @@ test.describe.serial("Shift Lifecycle", () => {
     }
 
     // Verify removal: check the shift's volunteer list via API
-    const volListResp = await page.request.get(
+    const volListResp = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/shifts/${unassignShiftId}/volunteers`,
     )
     const volListData = await volListResp.json()

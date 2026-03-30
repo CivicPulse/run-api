@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost } from "./helpers"
 
 /**
  * Voter Filters E2E Spec
@@ -11,22 +12,6 @@ import { test, expect } from "@playwright/test"
  */
 
 // -- Helper Functions ----------------------------------------------------------
-
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
 
 async function navigateToVoters(
   page: import("@playwright/test").Page,
@@ -132,17 +117,10 @@ test.describe.serial("Voter Filters", () => {
 
     // The voters page uses POST /voters/search with a query parameter
     // Search for a known seed voter first name
-    // Seed data has Macon-Bibb County voters; use API to find a known name
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-    // Get a baseline: search for a known voter
-    const searchResp = await page.request.post(
-      `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-      {
-        data: { filters: {}, limit: 5, query: "Washington" },
-        headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-      },
+    const searchResp = await apiPost(
+      page,
+      `/api/v1/campaigns/${campaignId}/voters/search`,
+      { filters: {}, limit: 5, query: "Washington" },
     )
     expect(searchResp.ok()).toBeTruthy()
     const searchBody = await searchResp.json()

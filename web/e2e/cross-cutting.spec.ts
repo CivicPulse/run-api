@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { apiPost, apiDelete, navigateToSeedCampaign } from "./helpers"
 
 /**
  * Cross-Cutting E2E Spec
@@ -13,32 +14,11 @@ import { test, expect, type Page } from "@playwright/test"
 
 // -- Helper Functions ----------------------------------------------------------
 
-async function navigateToSeedCampaign(page: Page): Promise<string> {
-  await page.goto("/")
-  // App may land at / (org dashboard), /campaigns/*, or /org/*
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
 async function createEmptyCampaignViaApi(page: Page): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    "https://localhost:4173/api/v1/campaigns",
-    {
-      data: { name: "E2E Empty State Test", type: "general" },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+  const resp = await apiPost(page, "/api/v1/campaigns", {
+    name: "E2E Empty State Test",
+    type: "local",
+  })
   expect(resp.ok()).toBeTruthy()
   const body = await resp.json()
   return body.id
@@ -48,13 +28,7 @@ async function deleteEmptyCampaignViaApi(
   page: Page,
   campaignId: string,
 ): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
+  await apiDelete(page, `/api/v1/campaigns/${campaignId}`)
 }
 
 // -- CROSS-01: Form Navigation Guard on Dirty Form ----------------------------
@@ -171,11 +145,9 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
     ).not.toBeVisible({ timeout: 15_000 })
 
     // Clean up: delete the test voter via API
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-    await page.request.delete(
-      `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/${createdVoter.id}`,
-      { headers: { Cookie: cookieHeader } },
+    await apiDelete(
+      page,
+      `/api/v1/campaigns/${campaignId}/voters/${createdVoter.id}`,
     )
   })
 })
@@ -195,21 +167,20 @@ test.describe.serial("Cross-Cutting -- Rate Limiting", () => {
     // GET which is too many requests. Let's use the turfs create endpoint
     // which is 30/minute, or just blast the voters search endpoint.
     //
-    // Use page.request to rapidly fire API calls. Forward cookies.
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
+    // Use page.request to rapidly fire API calls with auth token.
+    const { authHeaders } = await import("./helpers")
+    const headers = await authHeaders(page)
 
     const statuses: number[] = []
 
-    // Fire 35 rapid GET requests to voters list (30/min on write, 60/min on read)
-    // Use POST /voters/search with 30/minute write limit for faster 429
+    // Fire 35 rapid POST requests to voters search (30/minute write limit)
     const requests = Array.from({ length: 35 }, () =>
       page.request
         .post(
-          `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
+          `/api/v1/campaigns/${campaignId}/voters/search`,
           {
             data: { filters: {}, page_size: 1 },
-            headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
+            headers,
           },
         )
         .then((r) => statuses.push(r.status()))

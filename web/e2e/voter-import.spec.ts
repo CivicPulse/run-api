@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { authHeaders } from "./helpers"
 
 /**
  * Voter Import E2E Spec
@@ -226,14 +227,11 @@ test.describe.serial("Voter Import Lifecycle", () => {
 
     // While this import is in "uploaded" state, attempt a second import via API
     // This should get a 409 Conflict since an import is already in progress
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
+    const headers = await authHeaders(page)
 
     const resp = await page.request.post(
-      `https://localhost:4173/api/v1/campaigns/${cid}/imports?original_filename=concurrent-test.csv`,
-      {
-        headers: { Cookie: cookieHeader },
-      },
+      `/api/v1/campaigns/${cid}/imports?original_filename=concurrent-test.csv`,
+      { headers },
     )
 
     // The API should return 409 Conflict for concurrent imports
@@ -253,10 +251,8 @@ test.describe.serial("Voter Import Lifecycle", () => {
 
       // Now during active processing, try the API again
       const resp2 = await page.request.post(
-        `https://localhost:4173/api/v1/campaigns/${cid}/imports?original_filename=concurrent-test2.csv`,
-        {
-          headers: { Cookie: cookieHeader },
-        },
+        `/api/v1/campaigns/${cid}/imports?original_filename=concurrent-test2.csv`,
+        { headers },
       )
 
       // During active processing, should be blocked

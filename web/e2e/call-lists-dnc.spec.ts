@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Call Lists & DNC E2E Spec
@@ -11,22 +12,6 @@ import { test, expect } from "@playwright/test"
  */
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
-
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
 
 async function navigateToCallLists(
   page: import("@playwright/test").Page,
@@ -62,24 +47,14 @@ async function createCallListViaApi(
   campaignId: string,
   name: string,
 ): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/call-lists`,
-    {
-      data: {
-        name,
-        max_attempts: 3,
-        claim_timeout_minutes: 30,
-        cooldown_minutes: 60,
-      },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/call-lists`, {
+    name,
+    max_attempts: 3,
+    claim_timeout_minutes: 30,
+    cooldown_minutes: 60,
+  })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
 async function addDncViaApi(
@@ -88,19 +63,12 @@ async function addDncViaApi(
   phoneNumber: string,
   reason: string = "manual",
 ): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/dnc`,
-    {
-      data: { phone_number: phoneNumber, reason },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/dnc`, {
+    phone_number: phoneNumber,
+    reason,
+  })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
 async function deleteDncViaApi(
@@ -108,13 +76,7 @@ async function deleteDncViaApi(
   campaignId: string,
   entryId: string,
 ): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/dnc/${entryId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/dnc/${entryId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
@@ -123,17 +85,10 @@ async function getVoterPhonesViaApi(
   campaignId: string,
   limit: number = 5,
 ): Promise<Array<{ voterId: string; phone: string }>> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  // Use voter search to find voters, then get their contacts
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-    {
-      data: { filters: {}, page_size: 50 },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/voters/search`, {
+    filters: {},
+    page_size: 50,
+  })
   expect(resp.ok()).toBeTruthy()
   const body = await resp.json()
   const voters = body.items ?? []
@@ -143,10 +98,9 @@ async function getVoterPhonesViaApi(
   for (const voter of voters) {
     if (results.length >= limit) break
 
-    // Fetch voter contacts to find phone numbers
-    const contactResp = await page.request.get(
-      `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/${voter.id}/contacts`,
-      { headers: { Cookie: cookieHeader } },
+    const contactResp = await apiGet(
+      page,
+      `/api/v1/campaigns/${campaignId}/voters/${voter.id}/contacts`,
     )
     if (contactResp.ok()) {
       const contacts = await contactResp.json()

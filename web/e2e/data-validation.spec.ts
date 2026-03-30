@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test"
 import { readFileSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
+import { apiPost, authHeaders } from "./helpers"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -169,8 +170,6 @@ test.describe.serial("Data Validation", () => {
 
     // Verify all 55 CSV voters exist by searching for each by last name via API
     // We use the API search endpoint for efficiency
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
 
     // Step 1: Verify all 55 voters exist via API search
     const missingVoters: string[] = []
@@ -178,19 +177,10 @@ test.describe.serial("Data Validation", () => {
       const firstName = row["First Name"]
       const lastName = row["Last Name"]
 
-      const resp = await page.request.post(
-        `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-        {
-          data: {
-            filters: {},
-            query: `${firstName} ${lastName}`,
-            limit: 5,
-          },
-          headers: {
-            Cookie: cookieHeader,
-            "Content-Type": "application/json",
-          },
-        },
+      const resp = await apiPost(
+        page,
+        `/api/v1/campaigns/${campaignId}/voters/search`,
+        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
       )
       expect(resp.ok()).toBeTruthy()
       const body = await resp.json()
@@ -233,19 +223,10 @@ test.describe.serial("Data Validation", () => {
         `Validate details for ${firstName} ${lastName}`,
         async () => {
           // Search for the voter via API and get full details
-          const searchResp = await page.request.post(
-            `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-            {
-              data: {
-                filters: {},
-                query: `${firstName} ${lastName}`,
-                limit: 5,
-              },
-              headers: {
-                Cookie: cookieHeader,
-                "Content-Type": "application/json",
-              },
-            },
+          const searchResp = await apiPost(
+            page,
+            `/api/v1/campaigns/${campaignId}/voters/search`,
+            { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
           )
           expect(searchResp.ok()).toBeTruthy()
           const searchBody = await searchResp.json()
@@ -333,8 +314,6 @@ test.describe.serial("Data Validation", () => {
   })
 
   test("VAL-02: Validate missing data handling", async ({ page }) => {
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
 
     // Select voters with known missing fields from the CSV
     // Voters without phone: indices 3, 6, 9, 13, 16 (Latisha Brown, Chen Liu, Shaniqua Jackson, Keisha Moore, Kevin Clark)
@@ -381,19 +360,10 @@ test.describe.serial("Data Validation", () => {
 
       await test.step(`Validate missing data for ${name}`, async () => {
         // Find voter via API
-        const searchResp = await page.request.post(
-          `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-          {
-            data: {
-              filters: {},
-              query: `${firstName} ${lastName}`,
-              limit: 5,
-            },
-            headers: {
-              Cookie: cookieHeader,
-              "Content-Type": "application/json",
-            },
-          },
+        const searchResp = await apiPost(
+          page,
+          `/api/v1/campaigns/${campaignId}/voters/search`,
+          { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
         )
         expect(searchResp.ok()).toBeTruthy()
         const searchBody = await searchResp.json()
@@ -461,19 +431,10 @@ test.describe.serial("Data Validation", () => {
       const firstName = row["First Name"]
       const lastName = row["Last Name"]
 
-      const searchResp = await page.request.post(
-        `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-        {
-          data: {
-            filters: {},
-            query: `${firstName} ${lastName}`,
-            limit: 5,
-          },
-          headers: {
-            Cookie: cookieHeader,
-            "Content-Type": "application/json",
-          },
-        },
+      const searchResp = await apiPost(
+        page,
+        `/api/v1/campaigns/${campaignId}/voters/search`,
+        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
       )
       expect(searchResp.ok()).toBeTruthy()
       const searchBody = await searchResp.json()
@@ -507,19 +468,10 @@ test.describe.serial("Data Validation", () => {
       const firstName = row["First Name"]
       const lastName = row["Last Name"]
 
-      const searchResp = await page.request.post(
-        `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/search`,
-        {
-          data: {
-            filters: {},
-            query: `${firstName} ${lastName}`,
-            limit: 5,
-          },
-          headers: {
-            Cookie: cookieHeader,
-            "Content-Type": "application/json",
-          },
-        },
+      const searchResp = await apiPost(
+        page,
+        `/api/v1/campaigns/${campaignId}/voters/search`,
+        { filters: {}, query: `${firstName} ${lastName}`, limit: 5 },
       )
       expect(searchResp.ok()).toBeTruthy()
       const searchBody = await searchResp.json()

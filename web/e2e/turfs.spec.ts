@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Turfs E2E Spec
@@ -138,41 +139,15 @@ const MACON_POLYGONS = {
 
 // ── Helper Functions ─────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
 async function createTurfViaApi(
   page: import("@playwright/test").Page,
   campaignId: string,
   name: string,
   boundary: Record<string, unknown>,
 ): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/turfs`,
-    {
-      data: { name, boundary },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/turfs`, { name, boundary })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
 async function deleteTurfViaApi(
@@ -180,13 +155,7 @@ async function deleteTurfViaApi(
   campaignId: string,
   turfId: string,
 ): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/turfs/${turfId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/turfs/${turfId}`)
   expect(resp.ok()).toBeTruthy()
 }
 
@@ -428,19 +397,14 @@ test.describe.serial("Turf Lifecycle", () => {
     await navigateToSeedCampaign(page)
 
     await test.step("Verify overlap detection via API", async () => {
-      const cookies = await page.context().cookies()
-      const cookieHeader = cookies
-        .map((c) => `${c.name}=${c.value}`)
-        .join("; ")
-
       // Query overlaps for the "overlap_center" polygon which overlaps
       // with north/central and others
       const boundary = encodeURIComponent(
         JSON.stringify(MACON_POLYGONS.overlap_center),
       )
-      const resp = await page.request.get(
-        `https://localhost:4173/api/v1/campaigns/${campaignId}/turfs/overlaps?boundary=${boundary}&exclude_turf_id=${turfIds.overlap_center}`,
-        { headers: { Cookie: cookieHeader } },
+      const resp = await apiGet(
+        page,
+        `/api/v1/campaigns/${campaignId}/turfs/overlaps?boundary=${boundary}&exclude_turf_id=${turfIds.overlap_center}`,
       )
       expect(resp.ok()).toBeTruthy()
 

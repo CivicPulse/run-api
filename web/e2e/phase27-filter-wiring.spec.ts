@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { getSeedCampaignId } from "./helpers"
+import { getSeedCampaignId, apiGet } from "./helpers"
 
 let CAMPAIGN_ID: string
 
@@ -308,20 +308,10 @@ test.describe("Phase 27: Filter wiring E2E", () => {
     await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
     await page.waitForTimeout(2000)
 
-    // Extract auth cookies/tokens from the browser context
-    const cookies = await page.context().cookies()
-    const cookieHeader = cookies
-      .map((c) => `${c.name}=${c.value}`)
-      .join("; ")
-
     // Make a direct GET request to the legacy endpoint
-    const response = await page.request.get(
+    const response = await apiGet(
+      page,
       `/api/v1/campaigns/${CAMPAIGN_ID}/voters?party=DEM`,
-      {
-        headers: {
-          Cookie: cookieHeader,
-        },
-      }
     )
 
     // The GET endpoint should still return 200

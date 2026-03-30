@@ -211,25 +211,28 @@ test.describe.serial(
       // Since the invite in CAMP-02 creates a pending invite (not an active member),
       // we need to work with the existing members. The owner can't change their own role.
       // Let's use the API to add a member directly for this test.
+      const token = await getAuthToken(page)
       const addMemberResponse = await page.request.post(
-        `/api/v1/org/campaigns/${campaignId}/members`,
+        `/api/v1/campaigns/${campaignId}/members`,
         {
           data: {
             user_id: await getUserId(page, "viewer2@localhost"),
             role: "volunteer",
           },
+          headers: { Authorization: `Bearer ${token}` },
         }
       )
       // If member already exists (from invite), that's okay
       if (addMemberResponse.status() >= 400 && addMemberResponse.status() !== 409) {
         // Try with admin1@localhost instead
         const altResponse = await page.request.post(
-          `/api/v1/org/campaigns/${campaignId}/members`,
+          `/api/v1/campaigns/${campaignId}/members`,
           {
             data: {
               user_id: await getUserId(page, "admin1@localhost"),
               role: "volunteer",
             },
+            headers: { Authorization: `Bearer ${token}` },
           }
         )
         expect(altResponse.status()).toBeLessThan(400)

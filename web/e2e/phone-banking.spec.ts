@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
 
 /**
  * Phone Banking E2E Spec
@@ -12,156 +13,44 @@ import { test, expect } from "@playwright/test"
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
-async function navigateToSessions(
-  page: import("@playwright/test").Page,
-): Promise<void> {
-  // Navigate to Phone Banking section
-  const phoneBankingNav = page
-    .getByRole("link", { name: /phone bank/i })
-    .first()
+async function navigateToSessions(page: import("@playwright/test").Page): Promise<void> {
+  const phoneBankingNav = page.getByRole("link", { name: /phone bank/i }).first()
   await phoneBankingNav.click()
-
-  // Click Sessions tab
   const sessionsTab = page.getByRole("link", { name: /sessions/i }).first()
   await sessionsTab.click()
-
-  await expect(
-    page.getByText(/sessions/i).first(),
-  ).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/sessions/i).first()).toBeVisible({ timeout: 15_000 })
 }
 
-async function createCallListViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  name: string,
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/call-lists`,
-    {
-      data: {
-        name,
-        max_attempts: 3,
-        claim_timeout_minutes: 30,
-        cooldown_minutes: 60,
-      },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function createCallListViaApi(page: import("@playwright/test").Page, campaignId: string, name: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/call-lists`, { name, max_attempts: 3, claim_timeout_minutes: 30, cooldown_minutes: 60 })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function createSessionViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  name: string,
-  callListId: string,
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/phone-bank-sessions`,
-    {
-      data: {
-        name,
-        call_list_id: callListId,
-      },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function createSessionViaApi(page: import("@playwright/test").Page, campaignId: string, name: string, callListId: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/phone-bank-sessions`, { name, call_list_id: callListId })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function deleteSessionViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  sessionId: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  // Delete session via the phone-bank-sessions endpoint
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
-  // Accept 200 or 204
+async function deleteSessionViaApi(page: import("@playwright/test").Page, campaignId: string, sessionId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}`)
   expect(resp.status()).toBeLessThan(300)
 }
 
-async function assignCallerViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  sessionId: string,
-  userId: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}/callers`,
-    {
-      data: { user_id: userId },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function assignCallerViaApi(page: import("@playwright/test").Page, campaignId: string, sessionId: string, userId: string): Promise<void> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}/callers`, { user_id: userId })
   expect(resp.ok()).toBeTruthy()
 }
 
-async function getCampaignMembers(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-): Promise<Array<{ user_id: string; display_name: string; email: string; role: string }>> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.get(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/members`,
-    { headers: { Cookie: cookieHeader } },
-  )
+async function getCampaignMembers(page: import("@playwright/test").Page, campaignId: string): Promise<Array<{ user_id: string; display_name: string; email: string; role: string }>> {
+  const resp = await apiGet(page, `/api/v1/campaigns/${campaignId}/members`)
   expect(resp.ok()).toBeTruthy()
   return await resp.json()
 }
 
-async function updateSessionStatusViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  sessionId: string,
-  status: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.patch(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}`,
-    {
-      data: { status },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function updateSessionStatusViaApi(page: import("@playwright/test").Page, campaignId: string, sessionId: string, status: string): Promise<void> {
+  const resp = await apiPatch(page, `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}`, { status })
   expect(resp.ok()).toBeTruthy()
 }
 

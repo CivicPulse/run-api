@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiPatch, apiDelete } from "./helpers"
 
 /**
  * Surveys E2E Spec
@@ -12,99 +13,25 @@ import { test, expect } from "@playwright/test"
 
 // -- Helpers ------------------------------------------------------------------
 
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
-async function createSurveyViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  title: string,
-  description?: string,
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/surveys`,
-    {
-      data: { title, description: description ?? undefined },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function createSurveyViaApi(page: import("@playwright/test").Page, campaignId: string, title: string, description?: string): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/surveys`, { title, description: description ?? undefined })
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function addQuestionViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  surveyId: string,
-  questionData: {
-    question_text: string
-    question_type: "multiple_choice" | "scale" | "free_text"
-    options?: Record<string, unknown>
-  },
-): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/surveys/${surveyId}/questions`,
-    {
-      data: questionData,
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function addQuestionViaApi(page: import("@playwright/test").Page, campaignId: string, surveyId: string, questionData: { question_text: string; question_type: string; options?: Record<string, unknown> }): Promise<string> {
+  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/surveys/${surveyId}/questions`, questionData)
   expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  return (await resp.json()).id
 }
 
-async function updateSurveyStatusViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  surveyId: string,
-  newStatus: "draft" | "active" | "archived",
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.patch(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/surveys/${surveyId}`,
-    {
-      data: { status: newStatus },
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
-  )
+async function updateSurveyStatusViaApi(page: import("@playwright/test").Page, campaignId: string, surveyId: string, newStatus: string): Promise<void> {
+  const resp = await apiPatch(page, `/api/v1/campaigns/${campaignId}/surveys/${surveyId}`, { status: newStatus })
   expect(resp.ok()).toBeTruthy()
 }
 
-async function deleteSurveyViaApi(
-  page: import("@playwright/test").Page,
-  campaignId: string,
-  surveyId: string,
-): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/surveys/${surveyId}`,
-    { headers: { Cookie: cookieHeader } },
-  )
+async function deleteSurveyViaApi(page: import("@playwright/test").Page, campaignId: string, surveyId: string): Promise<void> {
+  const resp = await apiDelete(page, `/api/v1/campaigns/${campaignId}/surveys/${surveyId}`)
   expect(resp.ok()).toBeTruthy()
 }
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { navigateToSeedCampaign, apiPost, apiDelete } from "./helpers"
 
 /**
  * Voter CRUD Lifecycle E2E Spec
@@ -12,36 +13,15 @@ import { test, expect } from "@playwright/test"
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
-async function navigateToSeedCampaign(
-  page: import("@playwright/test").Page,
-): Promise<string> {
-  await page.goto("/")
-  await page.waitForURL(
-    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-    { timeout: 15_000 },
-  )
-  const campaignLink = page
-    .getByRole("link", { name: /macon-bibb demo/i })
-    .first()
-  await campaignLink.click()
-  await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-  return page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-}
-
 async function createVoterViaApi(
   page: import("@playwright/test").Page,
   campaignId: string,
   data: Record<string, unknown>,
 ): Promise<string> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.post(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/voters`,
-    {
-      data,
-      headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-    },
+  const resp = await apiPost(
+    page,
+    `/api/v1/campaigns/${campaignId}/voters`,
+    data,
   )
   expect(resp.ok()).toBeTruthy()
   const body = await resp.json()
@@ -53,12 +33,9 @@ async function deleteVoterViaApi(
   campaignId: string,
   voterId: string,
 ): Promise<void> {
-  const cookies = await page.context().cookies()
-  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
-
-  const resp = await page.request.delete(
-    `https://localhost:4173/api/v1/campaigns/${campaignId}/voters/${voterId}`,
-    { headers: { Cookie: cookieHeader } },
+  const resp = await apiDelete(
+    page,
+    `/api/v1/campaigns/${campaignId}/voters/${voterId}`,
   )
   expect(resp.ok()).toBeTruthy()
 }
