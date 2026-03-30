@@ -234,20 +234,21 @@ test.describe.serial(
 
       // Reload the members page to see the new member
       await page.reload()
+      await page.waitForLoadState("domcontentloaded")
       await expect(
         page.getByText(/members/i).first()
       ).toBeVisible({ timeout: 15_000 })
 
-      // Find a non-owner member's actions button
-      // Look for a row with a role that is not "owner"
-      const memberRow = page
+      // Wait for the member table to show the newly added non-owner member
+      // The admin1 member should appear as "volunteer" after the API call above
+      const nonOwnerRow = page
         .getByRole("row")
-        .filter({ hasNot: page.getByText(/owner/i) })
-        .filter({ has: page.getByRole("button") })
+        .filter({ has: page.getByText(/volunteer/i) })
         .first()
+      await expect(nonOwnerRow).toBeVisible({ timeout: 10_000 })
 
-      // Open actions dropdown
-      const actionsButton = memberRow.getByRole("button").first()
+      // Open actions dropdown on the non-owner member
+      const actionsButton = nonOwnerRow.getByRole("button").first()
       await actionsButton.click()
 
       // Click "Change role"
@@ -264,9 +265,12 @@ test.describe.serial(
           (resp.request().method() === "PATCH" || resp.request().method() === "PUT")
       )
 
-      // Click the role select in the dialog
-      await page.getByRole("combobox").last().click()
-      await page.getByRole("option", { name: /manager/i }).click()
+      // Click the role select in the dialog and select Manager
+      const roleCombobox = page.locator("[role='dialog']").getByRole("combobox")
+      await roleCombobox.click()
+      const managerOption = page.getByRole("option", { name: /manager/i })
+      await expect(managerOption).toBeVisible({ timeout: 5_000 })
+      await managerOption.click()
 
       // Click "Save" button
       await page.getByRole("button", { name: /save/i }).click()
