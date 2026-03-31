@@ -135,7 +135,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass (completed 2026-03-29)
 - [x] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite (completed 2026-03-30)
 - [x] **Phase 62: CI Auth Policy Automation** - Automate no-MFA org policy setup for fresh CI ZITADEL instances and verify auth bootstrap deterministically (completed 2026-03-31)
-- [ ] **Phase 63: Phone Banking API + Data Resilience** - Implement missing phone-bank session delete endpoint and stabilize phone banking test data for active calling flows
+- [x] **Phase 63: Phone Banking API + Data Resilience** - Implement missing phone-bank session delete endpoint and stabilize phone banking test data for active calling flows (completed 2026-03-31)
 - [ ] **Phase 64: Field Flow Test Isolation** - Eliminate test-order side effects in canvassing inline survey flow via isolated fixtures and deterministic setup
 
 ## Phase Details
@@ -256,9 +256,11 @@ Plans:
   1. DELETE /phone-bank-sessions/{id} endpoint exists and passes backend/API tests
   2. Phone banking E2E fixtures always provide claimable entries for active calling scenarios
   3. PB-10 and FIELD-08/09/10 execute without permanent bug-tracker skips tied to seed exhaustion
-**Plans:** 0 plans
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] TBD
+- [x] 63-01-PLAN.md — Add guarded hard-delete phone-bank session endpoint with service + API/unit tests
+- [x] 63-02-PLAN.md — Replace PB/FIELD seed-dependent flows with deterministic per-spec disposable fixtures
+- [x] 63-03-PLAN.md — Enforce strict no-skip verification bar for PB-10 and FIELD-08/09/10 in local + CI
 
 ### Phase 64: Field Flow Test Isolation
 **Goal**: Field canvassing inline survey tests are isolated from cross-spec data exhaustion and pass consistently regardless of execution order
@@ -269,9 +271,10 @@ Plans:
   1. FIELD-07 has deterministic setup and no dependence on prior spec consumption
   2. Walk list/canvassing fixtures used by field specs are isolated per test or per spec as appropriate
   3. Reordered and isolated field-mode test runs preserve pass behavior for inline survey coverage
-**Plans:** 0 plans
+**Plans:** 2 plans
 Plans:
-- [ ] TBD
+- [ ] 64-01-PLAN.md — Isolate FIELD-07 with disposable canvassing+survey fixture and strict survey-present assertions
+- [ ] 64-02-PLAN.md — Add strict FIELD-07 order-matrix verification mode and update E2E-20 traceability
 
 ## Progress
 
@@ -294,7 +297,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
 | 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete    | 2026-03-30 |
 | 62. CI Auth Policy Automation | v1.7 | 2/2 | Complete   | 2026-03-31 |
-| 63. Phone Banking API + Data Resilience | v1.7 | 0/0 | Planned     | - |
+| 63. Phone Banking API + Data Resilience | v1.7 | 3/3 | Complete    | 2026-03-31 |
 | 64. Field Flow Test Isolation | v1.7 | 0/0 | Planned     | - |
 
 ## Backlog
