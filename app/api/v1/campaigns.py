@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -148,11 +148,17 @@ async def update_campaign(
         if field in data:
             update_kwargs[field] = data[field]
 
-    campaign = await _service.update_campaign(
-        db=db,
-        campaign_id=campaign_id,
-        **update_kwargs,
-    )
+    try:
+        campaign = await _service.update_campaign(
+            db=db,
+            campaign_id=campaign_id,
+            **update_kwargs,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     return CampaignResponse.model_validate(campaign)
 
 

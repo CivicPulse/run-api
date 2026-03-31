@@ -56,6 +56,14 @@ async function importFixtureCSV(
   // Navigate to Imports page
   await page.getByRole("link", { name: /imports/i }).first().click()
   await page.waitForURL(/imports/, { timeout: 10_000 })
+  // Wait for imports page content to load before looking for the button
+  await page.waitForLoadState("domcontentloaded")
+  await expect(
+    page
+      .getByRole("button", { name: /new import/i })
+      .or(page.getByRole("link", { name: /new import|start your first import/i }))
+      .first(),
+  ).toBeVisible({ timeout: 30_000 })
 
   // Click "New Import" button
   const newImportBtn = page
@@ -85,6 +93,13 @@ async function importFixtureCSV(
         // Navigate back to imports/new to reset wizard state
         await page.getByRole("link", { name: /imports/i }).first().click()
         await page.waitForURL(/imports/, { timeout: 10_000 })
+        await page.waitForLoadState("domcontentloaded")
+        await expect(
+          page
+            .getByRole("button", { name: /new import/i })
+            .or(page.getByRole("link", { name: /new import|start your first import/i }))
+            .first(),
+        ).toBeVisible({ timeout: 30_000 })
         const newImportBtn = page
           .getByRole("button", { name: /new import/i })
           .or(page.getByRole("link", { name: /new import|start your first import/i }))

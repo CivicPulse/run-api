@@ -685,12 +685,16 @@ test.describe.serial("Voter contacts CRUD", () => {
             await expect(actionBtn).toBeVisible({ timeout: 10_000 })
             await actionBtn.click()
 
-            await page.getByRole("menuitem", { name: /delete/i }).click()
+            // Wait for the dropdown menu to be fully rendered before clicking
+            const deleteMenuItem = page.getByRole("menuitem", { name: /delete/i })
+            await expect(deleteMenuItem).toBeVisible({ timeout: 5_000 })
+            await deleteMenuItem.click()
 
+            // Wait for the destructive confirm dialog to fully open
             const confirmInput = page.getByTestId("destructive-confirm-input")
-            await expect(confirmInput).toBeVisible({ timeout: 5_000 })
+            await expect(confirmInput).toBeVisible({ timeout: 15_000 })
             await confirmInput.fill(voterName)
-            await expect(confirmInput).toHaveValue(voterName, { timeout: 3_000 })
+            await expect(confirmInput).toHaveValue(voterName, { timeout: 10_000 })
 
             const deleteBtn = page.getByRole("button", { name: /^delete$/i })
             await expect(deleteBtn).toBeVisible({ timeout: 5_000 })

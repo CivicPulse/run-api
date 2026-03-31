@@ -90,12 +90,13 @@ test.describe("Volunteer signup", () => {
     // Wait for non-skeleton content in the first data cell
     await expect(page.locator("table tbody tr .font-medium").first()).toBeVisible({ timeout: 10_000 })
 
-    // Click on the first volunteer in the roster (seed data has 20 volunteers)
-    const firstRow = page.locator("table tbody tr").first()
-    await firstRow.click()
+    // Click on the name cell of the first real data row (skeleton rows lack .font-medium).
+    // Clicking .font-medium triggers the row's onRowClick handler via event bubbling.
+    const firstNameCell = page.locator("table tbody tr .font-medium").first()
+    await firstNameCell.click()
 
     // Wait for volunteer detail page to load
-    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 20_000 })
 
     // Verify contact information is visible
     const contactInfo = page

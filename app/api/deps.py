@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -140,26 +141,24 @@ async def ensure_user_synced(
 
     # Ensure OrganizationMember records exist
     for org in orgs:
-        existing_member = await db.scalar(
-            select(OrganizationMember).where(
-                OrganizationMember.user_id == user.id,
-                OrganizationMember.organization_id == org.id,
-            )
-        )
-        if existing_member is None and org_role:
-            db.add(
-                OrganizationMember(
+        if org_role:
+            stmt = (
+                pg_insert(OrganizationMember)
+                .values(
                     user_id=user.id,
                     organization_id=org.id,
                     role=org_role,
                 )
+                .on_conflict_do_nothing(index_elements=["user_id", "organization_id"])
             )
-            logger.info(
-                "Created organization_member for user {} in org {} (role={})",
-                user.id,
-                org.id,
-                org_role,
-            )
+            result = await db.execute(stmt)
+            if result.rowcount:
+                logger.info(
+                    "Created organization_member for user {} in org {} (role={})",
+                    user.id,
+                    org.id,
+                    org_role,
+                )
 
     # Ensure CampaignMember records exist for all org campaigns
     campaigns: list[Campaign] = []
@@ -177,35 +176,43 @@ async def ensure_user_synced(
         campaigns = list(campaign_result.scalars().all())
 
     for campaign in campaigns:
-        member_result = await db.execute(
-            select(CampaignMember).where(
-                CampaignMember.user_id == user.id,
-                CampaignMember.campaign_id == campaign.id,
-            )
-        )
-        existing_campaign_member = member_result.scalar_one_or_none()
-        if existing_campaign_member is None:
-            member = CampaignMember(
+        stmt = (
+            pg_insert(CampaignMember)
+            .values(
                 user_id=user.id,
                 campaign_id=campaign.id,
                 role=jwt_role_name,
             )
-            db.add(member)
+            .on_conflict_do_nothing(index_elements=["user_id", "campaign_id"])
+        )
+        result = await db.execute(stmt)
+        if result.rowcount:
             logger.info(
                 "Created campaign_member for user {} in campaign {} (role={})",
                 user.id,
                 campaign.id,
                 jwt_role_name,
             )
-        elif existing_campaign_member.role is None:
-            # Backfill: existing members without a role get the JWT claim role
-            existing_campaign_member.role = jwt_role_name
-            logger.info(
-                "Backfilled campaign_member role for user {} in campaign {} (role={})",
-                user.id,
-                campaign.id,
-                jwt_role_name,
+        else:
+            # Row already exists — backfill role if it is NULL
+            existing_campaign_member = await db.scalar(
+                select(CampaignMember).where(
+                    CampaignMember.user_id == user.id,
+                    CampaignMember.campaign_id == campaign.id,
+                )
             )
+            if (
+                existing_campaign_member is not None
+                and existing_campaign_member.role is None
+            ):
+                existing_campaign_member.role = jwt_role_name
+                logger.info(
+                    "Backfilled campaign_member role for user {}"
+                    " in campaign {} (role={})",
+                    user.id,
+                    campaign.id,
+                    jwt_role_name,
+                )
 
     if orgs or campaigns:
         try:

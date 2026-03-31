@@ -246,7 +246,8 @@ test.describe.serial("Navigation", () => {
 
     await test.step("Navigate to voters list", async () => {
       await page.getByRole("link", { name: /voters/i }).first().click()
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await page.waitForURL(/voters/, { timeout: 15_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     await test.step("Click a voter to open detail", async () => {
@@ -277,7 +278,7 @@ test.describe.serial("Navigation", () => {
       await page.waitForURL(/\/voters(?!.*[a-f0-9-]{36})/, { timeout: 10_000 })
 
       // Verify voters table is visible
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
 
     await test.step("Direct URL entry works for deep route", async () => {
@@ -301,7 +302,7 @@ test.describe.serial("Navigation", () => {
       await page.goBack()
 
       // Should return to voters table
-      await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
     })
   })
 })

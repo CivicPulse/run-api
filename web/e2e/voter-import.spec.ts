@@ -26,6 +26,14 @@ async function navigateToImportsPage(
   // Click "Imports" tab within the voters module
   await page.getByRole("link", { name: /imports/i }).first().click()
   await page.waitForURL(/imports/, { timeout: 10_000 })
+  // Wait for imports page content to render before callers interact with it
+  await page.waitForLoadState("domcontentloaded")
+  await expect(
+    page
+      .getByRole("button", { name: /new import/i })
+      .or(page.getByRole("link", { name: /new import|start your first import/i }))
+      .first(),
+  ).toBeVisible({ timeout: 30_000 })
 }
 
 async function startNewImport(
