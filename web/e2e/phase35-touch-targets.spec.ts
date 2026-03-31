@@ -441,9 +441,10 @@ test.describe("WCAG 2.5.5 Touch Targets", () => {
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
 
     // Wait for voter card to render (indicates session loaded)
+    // Use 30s to allow auth initialization + session setup under parallel load
     await expect(
       page.getByText("Alice Smith", { exact: true }),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     await assertTouchTargets(page, "phone-banking")
   })

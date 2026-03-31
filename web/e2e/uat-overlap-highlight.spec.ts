@@ -1,25 +1,14 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 
 test.describe("UAT: Overlap highlight visual (Phase 42 MAP-10)", () => {
   test("drawing overlapping boundary shows red highlight and warning text", async ({
     page,
+    campaignId,
   }) => {
-    // Navigate to a campaign's new turf page
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-
-    const campaignLink = page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-    const campaignId = page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
-
+    // Navigate directly to new turf page using the seed campaignId fixture
+    // (avoids slow org dashboard campaign-link lookup under parallel load)
     await page.goto(`/campaigns/${campaignId}/canvassing/turfs/new`)
-    await expect(page.getByLabel(/name/i).first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByLabel(/name/i).first()).toBeVisible({ timeout: 15_000 })
 
     // Open GeoJSON editor panel
     await page.getByRole("button", { name: /edit as geojson/i }).click()

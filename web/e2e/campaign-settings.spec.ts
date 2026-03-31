@@ -275,10 +275,11 @@ test.describe.serial(
       // Click "Save" button
       await page.getByRole("button", { name: /save/i }).click()
 
-      await roleResponsePromise
+      const roleResponse = await roleResponsePromise
+      expect(roleResponse.status()).toBeLessThan(400)
 
-      // Verify toast
-      await expect(page.getByText(/role updated/i)).toBeVisible({
+      // Verify toast (use first() to avoid strict mode violation if multiple toasts)
+      await expect(page.getByText(/role updated/i).first()).toBeVisible({
         timeout: 10_000,
       })
     })
@@ -428,9 +429,9 @@ test.describe.serial("Campaign settings: ownership transfer", () => {
       .last()
       .click()
 
-    // Verify success toast
-    await expect(page.getByText(/ownership transferred/i)).toBeVisible({
-      timeout: 10_000,
+    // Verify success toast (use first() to avoid strict mode violation if multiple toasts)
+    await expect(page.getByText(/ownership transferred/i).first()).toBeVisible({
+      timeout: 15_000,
     })
 
     // After transfer, the current user (owner1@localhost) is no longer owner.

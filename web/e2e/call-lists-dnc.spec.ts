@@ -265,8 +265,8 @@ test.describe.serial("Call Lists & DNC", () => {
 
       await page.getByRole("menuitem", { name: /delete/i }).click()
 
-      // Confirm deletion in the dialog
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 })
+      // Confirm deletion in the dialog (ConfirmDialog uses AlertDialog → role="alertdialog")
+      await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 5_000 })
       await page.getByRole("button", { name: /^delete$/i }).click()
 
       await expect(

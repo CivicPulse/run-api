@@ -115,7 +115,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       const nameInput = page.getByRole("dialog").locator("#volunteer-tag-name")
       await nameInput.fill(tagName)
       await page.getByRole("dialog").getByRole("button", { name: /save/i }).click()
-      await expect(page.getByText("Tag created")).toBeVisible({
+      await expect(page.getByText("Tag created").first()).toBeVisible({
         timeout: 10_000,
       })
       await expect(page.getByText(tagName).first()).toBeVisible({ timeout: 10_000 })
@@ -186,7 +186,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
         // Select the tag from dropdown
         await page.getByRole("menuitem", { name: tagName }).click()
         // Wait for success toast
-        await expect(page.getByText("Tag added")).toBeVisible({
+        await expect(page.getByText("Tag added").first()).toBeVisible({
           timeout: 10_000,
         })
         // Verify tag badge appears on the volunteer
@@ -254,7 +254,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       // Add the new tag via "Add Tag" dropdown
       await page.getByRole("button", { name: /add tag/i }).click()
       await page.getByRole("menuitem", { name: addTagName }).click()
-      await expect(page.getByText("Tag added")).toBeVisible({
+      await expect(page.getByText("Tag added").first()).toBeVisible({
         timeout: 10_000,
       })
 
@@ -303,7 +303,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       let removeBtn = page.getByRole("button", { name: /^Remove tag /i }).first()
       while (await removeBtn.isVisible().catch(() => false)) {
         await removeBtn.click()
-        await expect(page.getByText("Tag removed")).toBeVisible({
+        await expect(page.getByText("Tag removed").first()).toBeVisible({
           timeout: 10_000,
         })
         // Wait for toast to clear before next click
