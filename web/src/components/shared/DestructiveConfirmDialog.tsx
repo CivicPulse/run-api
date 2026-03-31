@@ -75,7 +75,7 @@ export function DestructiveConfirmDialog({
           <AlertDialogCancel disabled={isPending}>{cancelLabel}</AlertDialogCancel>
           <Button
             onClick={onConfirm}
-            disabled={!isMatch || isPending}
+            disabled={!isMatch || isPending || !confirmText}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isPending ? "..." : confirmLabel}
