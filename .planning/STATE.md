@@ -57,6 +57,12 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 - [Phase 64]: 4-permutation matrix gate for FIELD-07 order independence verification
 
+### Pending Todos
+
+| # | Title | Area | Date |
+|---|-------|------|------|
+| 1 | Add voter data isolation test between campaigns | testing | 2026-03-31 |
+
 ### Blockers/Concerns
 
 (None — milestone archived)
