@@ -1,4 +1,8 @@
-import { test, expect, type Page, type BrowserContext } from "@playwright/test"
+import { test, expect, type Page, type BrowserContext, type Browser } from "@playwright/test"
+import {
+  createDisposableCanvassingSurveyFixture,
+  createDisposablePhoneBankFixture,
+} from "./helpers"
 
 /**
  * Field Mode E2E Spec
@@ -183,23 +187,6 @@ async function getWalkLists(
   }
 }
 
-interface PhoneBankSession {
-  id: string
-  name: string
-  status: string
-}
-
-async function getPhoneBankSessions(
-  page: Page,
-  campaignId: string,
-): Promise<PhoneBankSession[]> {
-  try {
-    const data = await apiGet(page, `/api/v1/campaigns/${campaignId}/phone-bank-sessions`) as { items: PhoneBankSession[] } | PhoneBankSession[]
-    return Array.isArray(data) ? data : (data as { items: PhoneBankSession[] }).items ?? []
-  } catch {
-    return []
-  }
-}
 
 async function assignCanvasser(
   page: Page,
@@ -218,21 +205,125 @@ async function assignCanvasser(
   }
 }
 
-async function assignCaller(
+
+async function createPhoneBankFixtureForVolunteer(
+  browser: Browser,
+  campaignId: string,
+  callerUserId: string,
+  labelPrefix: string,
+): Promise<{ sessionId: string; sessionName: string }> {
+  const ownerContext = await browser.newContext({
+    storageState: "playwright/.auth/owner.json",
+    ignoreHTTPSErrors: true,
+    baseURL: BASE_URL,
+  })
+  const ownerPage = await ownerContext.newPage()
+  await ownerPage.goto("/")
+  await ownerPage.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
+  await waitForAuth(ownerPage)
+  const fixture = await createDisposablePhoneBankFixture(
+    ownerPage,
+    campaignId,
+    callerUserId,
+    labelPrefix,
+  )
+  await ownerPage.close()
+  await ownerContext.close()
+  return { sessionId: fixture.sessionId, sessionName: fixture.sessionName }
+}
+
+async function createCanvassingSurveyFixtureForVolunteer(
+  browser: Browser,
+  campaignId: string,
+  volunteerUserId: string,
+  labelPrefix: string,
+): Promise<{ walkListId: string; walkListName: string; scriptTitle: string; entryCount: number }> {
+  const ownerContext = await browser.newContext({
+    storageState: "playwright/.auth/owner.json",
+    ignoreHTTPSErrors: true,
+    baseURL: BASE_URL,
+  })
+  const ownerPage = await ownerContext.newPage()
+  await ownerPage.goto("/")
+  await ownerPage.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
+  await waitForAuth(ownerPage)
+
+  const fixture = await createDisposableCanvassingSurveyFixture(
+    ownerPage,
+    campaignId,
+    volunteerUserId,
+    labelPrefix,
+  )
+
+  await ownerPage.close()
+  await ownerContext.close()
+
+  return {
+    walkListId: fixture.walkListId,
+    walkListName: fixture.walkListName,
+    scriptTitle: fixture.scriptTitle,
+    entryCount: fixture.entryCount,
+  }
+}
+
+async function waitForPhoneBankAssignment(
   page: Page,
   campaignId: string,
-  sessionId: string,
-  userId: string,
+  expectedSessionName: string,
 ): Promise<void> {
-  const result = (await apiPost(
-    page,
-    `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${sessionId}/callers`,
-    { user_id: userId },
-  )) as { status: number }
-  // Accept 201 (created) and 409 (already assigned)
-  if (result.status !== 201 && result.status !== 200 && result.status !== 409) {
-    throw new Error(`Failed to assign caller: ${result.status}`)
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      const fieldMe = (await apiGet(
+        page,
+        `/api/v1/campaigns/${campaignId}/field/me`,
+      )) as {
+        phone_banking?: { name?: string } | null
+      }
+      if (fieldMe.phone_banking?.name === expectedSessionName) {
+        return
+      }
+    } catch {
+      // Retry on transient API failures
+    }
+    await page.waitForTimeout(1_000)
   }
+
+  throw new Error(
+    `Timed out waiting for field/me assignment to session '${expectedSessionName}'`,
+  )
+}
+
+async function waitForCanvassingAssignment(
+  page: Page,
+  campaignId: string,
+  expectedWalkListName: string,
+): Promise<void> {
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      const fieldMe = (await apiGet(
+        page,
+        `/api/v1/campaigns/${campaignId}/field/me`,
+      )) as {
+        canvassing?: { name?: string } | null
+      }
+      if (fieldMe.canvassing?.name === expectedWalkListName) {
+        return
+      }
+    } catch {
+      // Retry on transient API failures
+    }
+    await page.waitForTimeout(1_000)
+  }
+
+  throw new Error(
+    `Timed out waiting for field/me assignment to walk list '${expectedWalkListName}'`,
+  )
 }
 
 async function suppressTour(page: Page, cId: string): Promise<void> {
@@ -294,7 +385,10 @@ async function waitForAuth(page: Page): Promise<void> {
 
 let campaignId: string
 let walkListId: string
-let sessionId: string
+let volunteerUserId: string
+let field08SessionName = ""
+let field09SessionName = ""
+let field10SessionName = ""
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -315,8 +409,8 @@ test.beforeAll(async ({ browser }) => {
   expect(campaignId).toBeTruthy()
 
   // Get volunteer's user ID
-  const userId = await getMyUserId(page)
-  expect(userId).toBeTruthy()
+  volunteerUserId = await getMyUserId(page)
+  expect(volunteerUserId).toBeTruthy()
 
   // Use owner context for management operations (assigning canvassers/callers
   // requires manager+ role, which volunteers don't have)
@@ -344,18 +438,7 @@ test.beforeAll(async ({ browser }) => {
   expect(walkListId).toBeTruthy()
 
   // Assign volunteer to walk list (accept 409 if already assigned)
-  await assignCanvasser(ownerPage, campaignId, walkListId, userId)
-
-  // Find an active phone bank session
-  const sessions = await getPhoneBankSessions(ownerPage, campaignId)
-  const activeSession = sessions.find(
-    (s) => s.status === "active" || s.status === "scheduled",
-  ) ?? sessions[0]
-  sessionId = activeSession?.id ?? ""
-  expect(sessionId).toBeTruthy()
-
-  // Assign volunteer to phone bank session (accept 409 if already assigned)
-  await assignCaller(ownerPage, campaignId, sessionId, userId)
+  await assignCanvasser(ownerPage, campaignId, walkListId, volunteerUserId)
 
   await ownerPage.close()
   await ownerContext.close()
@@ -715,25 +798,75 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     expect(progressAfter).toBeTruthy()
   })
 
-  test("FIELD-07: canvassing with inline survey (or survey-absent verification)", async () => {
-    // Navigate fresh to canvassing to ensure clean state
-    await page.goto(`/field/${campaignId}/canvassing`)
+  test("FIELD-07: canvassing with inline survey deterministic fixture", async ({ browser }) => {
+    const fixture = await createCanvassingSurveyFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-07",
+    )
+    expect(fixture.walkListId).toBeTruthy()
+    expect(fixture.entryCount).toBeGreaterThan(0)
+    await waitForCanvassingAssignment(page, campaignId, fixture.walkListName)
+
+    // Reset client persistence boundary before entering assertion flow
+    await page.goto(`/field/${campaignId}`)
+    await waitForAuth(page)
+    await page.evaluate(() => {
+      localStorage.removeItem("canvassing-store")
+      localStorage.removeItem("tour-state")
+    })
+
+    // Enter canvassing via the hub assignment card to match user flow
+    await page.goto(`/field/${campaignId}`)
+    await waitForAuth(page)
+    await suppressTour(page, campaignId)
+    await dismissTourIfVisible(page)
+    await page.locator("[data-tour='assignment-card']").first().waitFor({
+      state: "visible",
+      timeout: 15_000,
+    })
+
+    const fixtureAssignmentCard = page
+      .locator("[data-tour='assignment-card']")
+      .filter({ hasText: new RegExp(fixture.walkListName, "i") })
+      .first()
+
+    if (await fixtureAssignmentCard.isVisible().catch(() => false)) {
+      await fixtureAssignmentCard.click()
+    } else {
+      const canvassingCard = page
+        .locator("[data-tour='assignment-card']")
+        .filter({ hasText: /door/i })
+        .first()
+      await expect(canvassingCard).toBeVisible({ timeout: 10_000 })
+      await canvassingCard.click()
+    }
+
     await page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
 
-    // Wait for household card to load
+    // Wait for household card to load (retry once if canvassing route is still cold-loading)
     const householdCard = page.locator("[data-tour='household-card']")
-    const isLoaded = await householdCard
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false)
+    let isLoaded = false
+    for (let attempt = 0; attempt < 2; attempt++) {
+      isLoaded = await householdCard.isVisible({ timeout: 15_000 }).catch(() => false)
+      if (isLoaded) break
 
-    if (!isLoaded) {
-      // Walk list may be fully completed -- this is an expected state
-      test.skip(
-        true,
-        "Walk list appears completed -- no more doors to visit for survey test",
-      )
-      return
+      const noAssignment = await page
+        .getByText(/no canvassing assignment/i)
+        .first()
+        .isVisible({ timeout: 1_000 })
+        .catch(() => false)
+
+      if (noAssignment) {
+        await waitForCanvassingAssignment(page, campaignId, fixture.walkListName)
+      }
+
+      await page.goto(`/field/${campaignId}/canvassing`)
+      await page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
     }
+
+    expect(isLoaded).toBeTruthy()
 
     // Dismiss tour if visible
     const tourPopover = page.locator(".driver-popover")
@@ -746,55 +879,34 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       }
     }
 
-    // Try to record a "Supporter" outcome -- this triggers survey if script attached
+    // Record "Supporter" outcome -- must trigger survey for FIELD-07 fixture
     const outcomeGrid = page.locator("[data-tour='outcome-grid']")
     await expect(outcomeGrid).toBeVisible({ timeout: 10_000 })
 
     const supporterBtn = outcomeGrid.getByRole("button", {
       name: /supporter/i,
     })
-    if (await supporterBtn.isVisible().catch(() => false)) {
-      await supporterBtn.click()
+    await expect(supporterBtn).toBeVisible({ timeout: 10_000 })
+    await supporterBtn.click()
 
-      // Check if inline survey sheet appears
-      const surveySheet = page.getByText(/survey|question/i)
-      const hasSurvey = await surveySheet
-        .isVisible({ timeout: 3_000 })
-        .catch(() => false)
+    // Survey-present assertion path only; fail if survey does not appear
+    const surveySheet = page.getByText(/survey|question/i)
+    await expect(surveySheet.first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(new RegExp(fixture.scriptTitle, "i")).first()).toBeVisible({ timeout: 10_000 })
 
-      if (hasSurvey) {
-        // Survey is present -- interact with it
-        // Look for survey question text and answer options
-        const surveyQuestion = page.locator(
-          '[role="radiogroup"], [role="group"], form',
-        )
-        if (await surveyQuestion.isVisible({ timeout: 3_000 }).catch(() => false)) {
-          // Click first option or answer
-          const firstOption = surveyQuestion
-            .getByRole("button")
-            .or(surveyQuestion.getByRole("radio"))
-            .first()
-          if (await firstOption.isVisible().catch(() => false)) {
-            await firstOption.click()
-          }
-        }
+    // Select at least one answer and submit
+    const answerOption = page
+      .getByRole("radio")
+      .first()
+      .or(page.getByRole("button", { name: /yes|no|undecided/i }).first())
+    await expect(answerOption).toBeVisible({ timeout: 10_000 })
+    await answerOption.click()
 
-        // Look for submit or skip button
-        const submitBtn = page.getByRole("button", { name: /submit|done|skip/i })
-        if (await submitBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-          await submitBtn.click()
-        }
-      }
-      // If no survey, the wizard should have auto-advanced -- this is the negative test case
-      // (seed walk lists may not have a survey script attached)
-    } else {
-      // No supporter button visible -- use whatever is available
-      const anyOutcome = outcomeGrid.getByRole("button").first()
-      await anyOutcome.click()
-    }
+    const submitBtn = page.getByRole("button", { name: /submit|done|save/i }).first()
+    await expect(submitBtn).toBeVisible({ timeout: 10_000 })
+    await submitBtn.click()
 
-    // Either way, verify the wizard is still functional
-    // Should either show next door or completion summary
+    // Verify wizard progressed after required survey submission
     const hasHousehold = await householdCard.isVisible().catch(() => false)
     const hasCompletion = await page
       .getByText(/complete|all done|great work/i)
@@ -829,7 +941,17 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await page.close()
   })
 
-  test("FIELD-08: start phone banking from hub", async () => {
+  test("FIELD-08: start phone banking from hub", async ({ browser }) => {
+    const fixture = await createPhoneBankFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-08",
+    )
+    field08SessionName = fixture.sessionName
+
+    await waitForPhoneBankAssignment(page, campaignId, field08SessionName)
+
     // Navigate to field hub
     await page.goto(`/field/${campaignId}`)
     await waitForAuth(page)
@@ -859,6 +981,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
 
     // Wait for phone banking page to load
     await page.waitForURL(/\/field\/.*\/phone-banking/, { timeout: 15_000 })
+    await expect(page.getByText(field08SessionName).first()).toBeVisible({ timeout: 10_000 })
 
     // Dismiss any tour popover
     const tourPopover = page.locator(".driver-popover")
@@ -891,14 +1014,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     const hasEmpty = await emptyState.isVisible().catch(() => false)
     const hasEndSession = await endSessionBtn.isVisible().catch(() => false)
 
-    if (!hasVoter) {
-      // No voter card visible -- either empty state or claim failed
-      test.skip(
-        true,
-        "BUG-01: Phone bank session call list is completed/empty -- no voters available for claiming",
-      )
-      return
-    }
+    expect(hasVoter).toBeTruthy()
 
     // Assert phone number list visible with Call button
     const phoneList = page.locator("[data-tour='phone-number-list']")
@@ -913,7 +1029,20 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await expect(progressBar).toBeVisible()
   })
 
-  test("FIELD-09: tap-to-call link with tel: href", async () => {
+  test("FIELD-09: tap-to-call link with tel: href", async ({ browser }) => {
+    const fixture = await createPhoneBankFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-09",
+    )
+    field09SessionName = fixture.sessionName
+
+    await waitForPhoneBankAssignment(page, campaignId, field09SessionName)
+
+    await page.goto(`/field/${campaignId}/phone-banking`)
+    await page.waitForURL(/\/field\/.*\/phone-banking/, { timeout: 15_000 })
+
     // Should still be on phone banking page from FIELD-08
     const phoneList = page.locator("[data-tour='phone-number-list']")
 
@@ -939,13 +1068,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await page.waitForTimeout(2_000)
     const voterCard = page.locator("p.text-xl.font-bold").first()
     const hasVoter = await voterCard.isVisible().catch(() => false)
-    if (!hasVoter) {
-      test.skip(
-        true,
-        "BUG-01: Phone bank session has no available voters for assigned caller",
-      )
-      return
-    }
+    expect(hasVoter).toBeTruthy()
 
     // Find Call button which should be an anchor with tel: href
     const callLink = page.locator("a[href^='tel:']")
@@ -964,7 +1087,20 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     expect(text).toMatch(/\(\d{3}\)\s?\d{3}[-.]\d{4}|\+?\d/)
   })
 
-  test("FIELD-10: record phone call outcomes with auto-advance", async () => {
+  test("FIELD-10: record phone call outcomes with auto-advance", async ({ browser }) => {
+    const fixture = await createPhoneBankFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-10",
+    )
+    field10SessionName = fixture.sessionName
+
+    await waitForPhoneBankAssignment(page, campaignId, field10SessionName)
+
+    await page.goto(`/field/${campaignId}/phone-banking`)
+    await page.waitForURL(/\/field\/.*\/phone-banking/, { timeout: 15_000 })
+
     // Should be on phone banking page
     const outcomeGrid = page.locator("[data-tour='outcome-grid']")
 
@@ -988,13 +1124,7 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
     await waitForAuth(page)
     await page.waitForTimeout(2_000)
     const voterCardCheck = page.locator("p.text-xl.font-bold").first()
-    if (!(await voterCardCheck.isVisible().catch(() => false))) {
-      test.skip(
-        true,
-        "BUG-01: Phone bank session has no available voters for assigned caller",
-      )
-      return
-    }
+    expect(await voterCardCheck.isVisible().catch(() => false)).toBeTruthy()
 
     // Get the initial voter name
     const initialVoterName = await page
