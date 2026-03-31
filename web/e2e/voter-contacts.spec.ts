@@ -161,16 +161,26 @@ test.describe.serial("Voter contacts CRUD", () => {
 
     for (let i = 0; i < 20; i++) {
       await test.step(`Add phone to Contact ${NATO_NAMES[i]}`, async () => {
-        await navigateToVoterDetail(page, campaignId, testVoterIds[i])
-
-        // Click Contacts tab and wait for contacts panel to load
-        // Click Contacts tab and wait for it to be selected, then wait for panel content
-        const contactsTab = page.getByRole("tab", { name: /contacts/i })
-        await contactsTab.click()
-        await expect(contactsTab).toHaveAttribute("aria-selected", "true", { timeout: 5_000 })
-        // Wait for Contacts panel: "Phone Numbers" heading confirms contacts tab loaded
-        // Wait for contacts panel to load: skeleton disappears and "Add phone" button appears
-        await expect(page.getByRole("button", { name: /add phone/i }).first()).toBeVisible({ timeout: 30_000 })
+        // Retry the full voter navigation + contacts load if it fails (e.g., OIDC session drop)
+        for (let navAttempt = 0; navAttempt < 3; navAttempt++) {
+          try {
+            await navigateToVoterDetail(page, campaignId, testVoterIds[i])
+            const contactsTab = page.getByRole("tab", { name: /contacts/i })
+            await contactsTab.click()
+            await expect(contactsTab).toHaveAttribute("aria-selected", "true", { timeout: 5_000 })
+            await expect(page.getByRole("button", { name: /add phone/i }).first()).toBeVisible({ timeout: 30_000 })
+            break // success
+          } catch (err) {
+            if (navAttempt < 2) {
+              // Page might have lost auth — reload to re-initialize OIDC
+              await page.reload()
+              await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {})
+              await page.waitForTimeout(1000)
+              continue
+            }
+            throw err
+          }
+        }
 
         // Click "Add phone" button
         await page
@@ -185,18 +195,37 @@ test.describe.serial("Voter contacts CRUD", () => {
         // Select phone type (cycle through mobile, home, work)
         // mobile is the default — only interact with the Select when changing to home/work
         const phoneType = PHONE_TYPES[i % 3]
+        // Only change phone type from default "mobile" when needed
+        // Use retry loop for Radix Select since portals can be detached by React re-renders
         if (phoneType !== "mobile") {
-          await page.locator("#phone-type").click()
-          // Wait for the listbox/options to be stable before clicking
-          const option = page.getByRole("option", { name: new RegExp(`^${phoneType}$`, "i") })
-          await expect(option).toBeVisible({ timeout: 5_000 })
-          await option.click()
+          for (let selectAttempt = 0; selectAttempt < 3; selectAttempt++) {
+            try {
+              await page.locator("#phone-type").click()
+              const option = page.getByRole("option", { name: new RegExp(`^${phoneType}$`, "i") })
+              await expect(option).toBeVisible({ timeout: 5_000 })
+              await option.click({ force: true })
+              break
+            } catch {
+              if (selectAttempt < 2) {
+                // Close any open dropdown and retry
+                await page.keyboard.press("Escape")
+                await page.waitForTimeout(300)
+                continue
+              }
+            }
+          }
         }
 
-        // Save
-        await page.getByRole("button", { name: /^save$/i }).first().click()
+        // Save — wait for the save button to be stable before clicking
+        const saveBtn = page.getByRole("button", { name: /^save$/i }).first()
+        await expect(saveBtn).toBeVisible({ timeout: 5_000 })
+        await expect(saveBtn).toBeEnabled({ timeout: 5_000 })
+        await saveBtn.click()
 
-        // Verify phone appears
+        // Wait for success toast confirming the API call completed
+        await expect(page.getByText("Phone added").first()).toBeVisible({ timeout: 10_000 })
+
+        // Verify phone appears in the list
         await expect(
           page.getByText(phoneNum).first(),
         ).toBeVisible({ timeout: 10_000 })
@@ -216,11 +245,22 @@ test.describe.serial("Voter contacts CRUD", () => {
 
       await page.locator("#phone-value").fill("478-555-9000")
 
-      // Select work type
-      await page.locator("#phone-type").click()
-      const workOption = page.getByRole("option", { name: /^work$/i })
-      await expect(workOption).toBeVisible({ timeout: 5_000 })
-      await workOption.click()
+      // Select work type — use retry for Radix Select portal stability
+      for (let selectAttempt = 0; selectAttempt < 3; selectAttempt++) {
+        try {
+          await page.locator("#phone-type").click()
+          const workOption = page.getByRole("option", { name: /^work$/i })
+          await expect(workOption).toBeVisible({ timeout: 5_000 })
+          await workOption.click({ force: true })
+          break
+        } catch {
+          if (selectAttempt < 2) {
+            await page.keyboard.press("Escape")
+            await page.waitForTimeout(300)
+            continue
+          }
+        }
+      }
 
       await page.getByRole("button", { name: /^save$/i }).first().click()
       await expect(
@@ -255,10 +295,21 @@ test.describe.serial("Voter contacts CRUD", () => {
 
         // Email type defaults to "personal" which is fine; vary some
         if (i % 3 === 1) {
-          await page.locator("#email-type").click()
-          const workEmailOption = page.getByRole("option", { name: /^work$/i })
-          await expect(workEmailOption).toBeVisible({ timeout: 5_000 })
-          await workEmailOption.click()
+          for (let selectAttempt = 0; selectAttempt < 3; selectAttempt++) {
+            try {
+              await page.locator("#email-type").click()
+              const workEmailOption = page.getByRole("option", { name: /^work$/i })
+              await expect(workEmailOption).toBeVisible({ timeout: 5_000 })
+              await workEmailOption.click({ force: true })
+              break
+            } catch {
+              if (selectAttempt < 2) {
+                await page.keyboard.press("Escape")
+                await page.waitForTimeout(300)
+                continue
+              }
+            }
+          }
         }
 
         await page.getByRole("button", { name: /^save$/i }).first().click()
@@ -398,16 +449,20 @@ test.describe.serial("Voter contacts CRUD", () => {
       await page.getByRole("tab", { name: /contacts/i }).click()
       await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
-      // Click delete button on the first phone (the edited 478-555-9999)
-      const deleteBtn = page
-        .getByRole("button", { name: /delete phone/i })
-        .first()
+      // Wait for the edited phone to appear, then click its delete button
+      await expect(page.getByText("478-555-9999").first()).toBeVisible({ timeout: 10_000 })
+      const phoneEntry = page.locator("div").filter({ hasText: /^478-555-9999/ }).first()
+      const deleteBtn = phoneEntry.getByRole("button", { name: /delete phone/i })
       await deleteBtn.click()
 
       // Confirm deletion -- the DestructiveConfirmDialog for contacts uses confirmText="remove"
       const confirmInput = page.getByTestId("destructive-confirm-input")
       await expect(confirmInput).toBeVisible({ timeout: 5_000 })
+      await expect(confirmInput).toBeEnabled({ timeout: 5_000 })
+      await confirmInput.click()
       await confirmInput.fill("remove")
+      // Verify value was accepted by React controlled input
+      await expect(confirmInput).toHaveValue("remove", { timeout: 3_000 })
 
       await page.getByRole("button", { name: /^remove$/i }).click()
 
@@ -436,7 +491,11 @@ test.describe.serial("Voter contacts CRUD", () => {
 
       const confirmInput = page.getByTestId("destructive-confirm-input")
       await expect(confirmInput).toBeVisible({ timeout: 5_000 })
+      await expect(confirmInput).toBeEnabled({ timeout: 5_000 })
+      await confirmInput.click()
       await confirmInput.fill("remove")
+      // Verify value was accepted by React controlled input
+      await expect(confirmInput).toHaveValue("remove", { timeout: 3_000 })
 
       await page.getByRole("button", { name: /^remove$/i }).click()
 

@@ -183,8 +183,11 @@ test.describe.serial("Volunteer Tags & Availability", () => {
         const tagName = TAG_NAMES[tagIdx]
         // Click "Add Tag" dropdown trigger button
         await page.getByRole("button", { name: /add tag/i }).click()
-        // Select the tag from dropdown
-        await page.getByRole("menuitem", { name: tagName }).click()
+        // Wait for the dropdown menu to appear
+        const dropdownMenu = page.getByRole("menu")
+        await expect(dropdownMenu).toBeVisible({ timeout: 5_000 })
+        // Select the tag from the open dropdown menu (scoped to menu to avoid strict violation)
+        await dropdownMenu.getByRole("menuitem", { name: tagName }).first().click()
         // Wait for success toast
         await expect(page.getByText("Tag added").first()).toBeVisible({
           timeout: 10_000,

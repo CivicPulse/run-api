@@ -3,10 +3,27 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+from pydantic import field_validator
 
 from app.models.shift import ShiftType
 from app.schemas.common import BaseSchema
+
+
+def _to_naive_utc(value: datetime) -> datetime:
+    """Strip timezone info from a datetime, converting to UTC first if needed.
+
+    The database uses TIMESTAMP WITHOUT TIME ZONE columns.  asyncpg requires
+    naive datetimes for those columns.  The frontend sends ISO 8601 strings
+    with a UTC 'Z' suffix which Pydantic parses as timezone-aware.  This
+    validator strips the tzinfo after converting to UTC so the value stored
+    is the UTC instant without tzinfo metadata.
+    """
+    if value.tzinfo is not None:
+        # Convert to UTC then strip tzinfo
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
 
 
 class ShiftCreate(BaseSchema):
@@ -18,6 +35,11 @@ class ShiftCreate(BaseSchema):
     start_at: datetime
     end_at: datetime
     max_volunteers: int
+
+    @field_validator("start_at", "end_at", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime) -> datetime:
+        return _to_naive_utc(v)
     location_name: str | None = None
     street: str | None = None
     city: str | None = None
@@ -48,6 +70,13 @@ class ShiftUpdate(BaseSchema):
     turf_id: uuid.UUID | None = None
     phone_bank_session_id: uuid.UUID | None = None
     status: str | None = None
+
+    @field_validator("start_at", "end_at", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return v
+        return _to_naive_utc(v)
 
 
 class ShiftResponse(BaseSchema):

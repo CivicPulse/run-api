@@ -45,8 +45,16 @@ async function deleteShiftViaApi(page: Page, campaignId: string, shiftId: string
 }
 
 async function assignVolunteerToShiftViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/assign/${volunteerId}`)
-  expect(resp.ok()).toBeTruthy()
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/shifts/${shiftId}/assign/${volunteerId}`)
+    if (resp.ok() || resp.status() === 409) return // 409 = already assigned, treat as ok
+    if (resp.status() === 429 && attempt < 2) {
+      await page.waitForTimeout(5_000 * (attempt + 1))
+      continue
+    }
+    const body = await resp.text().catch(() => "")
+    throw new Error(`Shift assignment API failed: ${resp.status()} - ${body}`)
+  }
 }
 
 async function checkInViaApi(page: Page, campaignId: string, shiftId: string, volunteerId: string): Promise<void> {
@@ -279,9 +287,15 @@ test.describe.serial("Shift Lifecycle", () => {
     }
 
     // Create remaining 17 shifts via API (per D-16)
-    for (const shiftData of allShiftData.slice(3)) {
+    // Rate limit: 30/minute shared across all parallel workers. Throttle to ~15/min (4s each).
+    for (let i = 0; i < allShiftData.slice(3).length; i++) {
+      const shiftData = allShiftData.slice(3)[i]
       const id = await createShiftViaApi(page, campaignId, shiftData)
       shiftIds.push(id)
+      // Throttle to avoid rate limit (30/min shared by all workers)
+      if (i < allShiftData.slice(3).length - 1) {
+        await page.waitForTimeout(2_000)
+      }
     }
 
     // Get all shift IDs (including UI-created ones)

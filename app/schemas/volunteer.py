@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+from pydantic import field_validator
 
 from app.schemas.common import BaseSchema
 
@@ -72,6 +74,13 @@ class AvailabilityCreate(BaseSchema):
 
     start_at: datetime
     end_at: datetime
+
+    @field_validator("start_at", "end_at", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime) -> datetime:
+        if v.tzinfo is not None:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
 
 
 class AvailabilityResponse(BaseSchema):
