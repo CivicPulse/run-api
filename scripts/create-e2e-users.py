@@ -40,8 +40,11 @@ _VERIFY_TLS = False
 
 PROJECT_NAME = "CivicPulse"
 
-LOGIN_POLICY_SEARCH_PATH = "/management/v1/policies/login/_search"
 LOGIN_POLICY_PATH = "/management/v1/policies/login"
+LOGIN_POLICY_SEARCH_PATHS = (
+    "/management/v1/policies/login/_search",
+    "/v2beta/policies/login/_search",
+)
 
 NO_MFA_LOGIN_POLICY = {
     "allowUsernamePassword": True,
@@ -50,6 +53,14 @@ NO_MFA_LOGIN_POLICY = {
     "forceMfa": False,
     "secondFactors": [],
     "multiFactors": [],
+    # Lifetime fields must be set explicitly — omitting them causes ZITADEL
+    # to default to "0s", which makes password checks expire instantly and
+    # creates an infinite login loop.
+    "passwordCheckLifetime": "864000s",  # 10 days
+    "externalLoginCheckLifetime": "864000s",  # 10 days
+    "mfaInitSkipLifetime": "2592000s",  # 30 days
+    "secondFactorCheckLifetime": "64800s",  # 18 hours
+    "multiFactorCheckLifetime": "43200s",  # 12 hours
 }
 
 # ---------------------------------------------------------------------------
@@ -302,6 +313,31 @@ def _strict_policy_exit(
     )
 
 
+def _policy_request(
+    client: httpx.Client,
+    method: str,
+    path: str,
+    pat: str,
+    *,
+    json: dict | None = None,
+    params: dict | None = None,
+) -> dict | None:
+    resp = client.request(
+        method,
+        f"{ZITADEL_URL}{path}",
+        headers={
+            "Authorization": f"Bearer {pat}",
+            "Host": _host_header(),
+        },
+        json=json,
+        params=params,
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        resp.raise_for_status()
+    return resp.json() if resp.content else {}
+
+
 def _policy_search_payload(org_id: str) -> dict:
     return {
         "query": {
@@ -322,6 +358,18 @@ def _extract_policies(data: dict) -> list[dict]:
         return data["result"]
     if isinstance(data.get("policies"), list):
         return data["policies"]
+    if isinstance(data.get("policy"), dict):
+        return [data["policy"]]
+    if any(
+        field in data
+        for field in (
+            "secondFactors",
+            "multiFactors",
+            "forceMfa",
+            "allowUsernamePassword",
+        )
+    ):
+        return [data]
     return []
 
 
@@ -330,6 +378,10 @@ def _is_compliant_no_mfa_policy(policy: dict) -> bool:
     multi_factors = policy.get("multiFactors", [])
     force_mfa = policy.get("forceMfa", False)
     allow_username_password = policy.get("allowUsernamePassword", True)
+    # passwordCheckLifetime of "0s" causes an infinite login loop because
+    # ZITADEL considers the password check expired immediately after it
+    # succeeds. Any positive value is acceptable.
+    pwd_check_lifetime = policy.get("passwordCheckLifetime", "0s")
     return (
         isinstance(second_factors, list)
         and len(second_factors) == 0
@@ -337,18 +389,49 @@ def _is_compliant_no_mfa_policy(policy: dict) -> bool:
         and len(multi_factors) == 0
         and force_mfa is False
         and allow_username_password is True
+        and pwd_check_lifetime != "0s"
     )
 
 
 def fetch_org_login_policies(client: httpx.Client, pat: str, org_id: str) -> list[dict]:
-    data = api_call(
-        client,
-        "POST",
-        LOGIN_POLICY_SEARCH_PATH,
-        pat,
-        json=_policy_search_payload(org_id),
-    )
-    return _extract_policies(data or {})
+    search_errors: list[httpx.HTTPStatusError] = []
+
+    for search_path in LOGIN_POLICY_SEARCH_PATHS:
+        try:
+            data = _policy_request(
+                client,
+                "POST",
+                search_path,
+                pat,
+                json=_policy_search_payload(org_id),
+            )
+            return _extract_policies(data or {})
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code in (404, 405):
+                search_errors.append(exc)
+                continue
+            raise
+
+    for params in ({"orgId": org_id}, None):
+        try:
+            data = _policy_request(
+                client,
+                "GET",
+                LOGIN_POLICY_PATH,
+                pat,
+                params=params,
+            )
+            return _extract_policies(data or {})
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code in (404, 405):
+                search_errors.append(exc)
+                continue
+            raise
+
+    if search_errors:
+        raise search_errors[-1]
+
+    return []
 
 
 def verify_org_login_policy(
@@ -362,10 +445,11 @@ def verify_org_login_policy(
         policies = fetch_org_login_policies(client, pat, org_id)
     except httpx.HTTPStatusError as exc:
         if strict:
-            _strict_policy_exit("POST", LOGIN_POLICY_SEARCH_PATH, exc)
+            _strict_policy_exit(exc.request.method, exc.request.url.path, exc)
         print(
             "WARNING: Could not verify org login policy "
-            f"(POST {LOGIN_POLICY_SEARCH_PATH}): {exc}",
+            "(tried login policy search/get endpoints): "
+            f"{exc}",
             file=sys.stderr,
         )
         return False
@@ -376,7 +460,7 @@ def verify_org_login_policy(
 
     message = (
         "Org login policy is not compliant with no-MFA requirements "
-        f"(searched {LOGIN_POLICY_SEARCH_PATH} for orgId={org_id})."
+        f"(searched login policy endpoints for orgId={org_id})."
     )
     if strict:
         raise SystemExit(message)
@@ -395,7 +479,7 @@ def ensure_org_login_policy(
     try:
         policies = fetch_org_login_policies(client, pat, org_id)
     except httpx.HTTPStatusError as exc:
-        _strict_policy_exit("POST", LOGIN_POLICY_SEARCH_PATH, exc)
+        _strict_policy_exit(exc.request.method, exc.request.url.path, exc)
 
     compliant = next((p for p in policies if _is_compliant_no_mfa_policy(p)), None)
     if compliant:
@@ -411,17 +495,20 @@ def ensure_org_login_policy(
         else:
             policy_id = policies[0].get("id", "")
             if not policy_id:
-                raise SystemExit(
-                    "Cannot update org login policy: missing id in search result"
+                api_call(client, "POST", LOGIN_POLICY_PATH, pat, json=payload)
+                print(
+                    "  Created org login policy with no-MFA settings "
+                    "(search result had no policy id)"
                 )
-            api_call(
-                client,
-                "PUT",
-                f"{LOGIN_POLICY_PATH}/{policy_id}",
-                pat,
-                json=payload,
-            )
-            print(f"  Updated org login policy {policy_id} to no-MFA settings")
+            else:
+                api_call(
+                    client,
+                    "PUT",
+                    f"{LOGIN_POLICY_PATH}/{policy_id}",
+                    pat,
+                    json=payload,
+                )
+                print(f"  Updated org login policy {policy_id} to no-MFA settings")
     except httpx.HTTPStatusError as exc:
         _strict_policy_exit(exc.request.method, exc.request.url.path, exc)
 
@@ -568,6 +655,33 @@ def grant_project_role(
         allow_conflict=True,
     )
     print(f"  Granted project role '{role}' to user {user_id}")
+
+
+def ensure_user_password(
+    client: httpx.Client,
+    pat: str,
+    user_id: str,
+    password: str,
+) -> None:
+    """Set (or reset) human user password to deterministic test value.
+
+    Uses the v2 API because the management v1 SetHumanPassword endpoint
+    ignores ``changeRequired: false`` in some ZITADEL versions, leaving
+    the user stuck on a "Change Password" screen at login.
+    """
+    api_call(
+        client,
+        "POST",
+        f"/v2/users/{user_id}/password",
+        pat,
+        json={
+            "newPassword": {
+                "password": password,
+                "changeRequired": False,
+            },
+        },
+    )
+    print(f"  Ensured password for user {user_id}")
 
 
 # ---------------------------------------------------------------------------
@@ -826,6 +940,9 @@ def main() -> None:
             username = user_def["userName"]
             print(f"\nUser {i}/{len(E2E_USERS)}: Creating '{username}'...")
             user_id = create_human_user(client, pat, user_def)
+
+            print("  Ensuring deterministic password...")
+            ensure_user_password(client, pat, user_id, user_def["password"])
 
             print(f"  Granting project role '{user_def['projectRole']}'...")
             grant_project_role(
