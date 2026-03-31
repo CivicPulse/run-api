@@ -384,6 +384,8 @@ Five of the 11 failures are caused by DB pool exhaustion ("sorry, too many clien
 
 **Estimate:** Small change, 1 file, low risk.
 
+**Resolution (2026-03-31):** ALREADY FIXED in commit b691627. The fix adds `|| !confirmText` to the `disabled` prop on the confirm button in `web/src/components/shared/DestructiveConfirmDialog.tsx` (line 78). Current state: `disabled={!isMatch || isPending || !confirmText}`. When `confirmText=""` (campaign data not yet loaded), the button is disabled regardless of `inputValue`. No additional changes needed for CAMP-02.
+
 ---
 
 ### Agent B — Test Timing Fixes (4 fixes, independent of Agent A)
@@ -397,6 +399,12 @@ Five of the 11 failures are caused by DB pool exhaustion ("sorry, too many clien
 **Tests affected:** phase21:76, navigation:236, surveys:333 + SRV-05..08, voter-lists:290 + Final
 
 **Estimate:** Timeout/wait adjustments in 4 spec files. No app-code changes.
+
+**Resolution (2026-03-31):** All 4 files audited. 3 of 4 fixes were already present from a prior commit:
+- `phase21-integration-polish.spec.ts:79-83` — `waitForLoadState("networkidle", {timeout:20_000})` + `toBeVisible({timeout:30_000})` already applied.
+- `surveys.spec.ts:370` — `waitForTimeout(4_000)` (was 2_000) + per-move `toBeEnabled({timeout:8_000})` guards already applied.
+- `voter-lists.spec.ts:339-342` — `table tbody tr` guard with `timeout:20_000` + `"List Alpha"` check with `timeout:20_000` already applied.
+- `navigation.spec.ts:252-257` — Applied in this session: added `await expect(page.locator("table tbody tr").first()).toBeVisible({timeout:20_000})` before the voter link check, and increased voter link timeout from `10_000` to `30_000`.
 
 ---
 

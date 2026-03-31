@@ -250,9 +250,11 @@ test.describe.serial("Navigation", () => {
     })
 
     await test.step("Click a voter to open detail", async () => {
+      // Wait for table rows to be present before looking for the link
+      await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 20_000 })
       // Click the first voter link in the table
       const voterLink = page.locator("table tbody tr a").first()
-      await expect(voterLink).toBeVisible({ timeout: 10_000 })
+      await expect(voterLink).toBeVisible({ timeout: 30_000 })
       const voterName = await voterLink.textContent()
       await voterLink.click()
 

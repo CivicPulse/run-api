@@ -18,6 +18,14 @@
 #
 # Output: streams live to terminal AND saves full output to e2e-logs/<timestamp>.log
 # Log file: web/e2e-runs.jsonl
+#
+# Troubleshooting:
+#   Mass 401 "Invalid or expired token" failures after docker compose restart:
+#     ZITADEL rotates signing keys on each container recreation, invalidating
+#     cached OIDC tokens in playwright/.auth/*.json. The auth freshness check
+#     uses file mtime, not token validity, so stale tokens may slip through.
+#     Fix: rm web/playwright/.auth/*.json && ./scripts/run-e2e.sh
+#     This forces auth-setup to re-authenticate against the current ZITADEL instance.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,6 +35,37 @@ LOG_DIR="$WEB_DIR/e2e-logs"
 
 cd "$WEB_DIR"
 mkdir -p "$LOG_DIR"
+
+# ── Ensure E2E users exist in ZITADEL ──────────────────────────────────────
+# After `docker compose up` recreates containers, the E2E human users
+# (owner1@localhost, admin1@localhost, etc.) may not exist yet because
+# zitadel-bootstrap only creates the machine user, project, and SPA app.
+# This check queries ZITADEL for owner1 and runs create-e2e-users.py if missing.
+ensure_e2e_users() {
+  local pat
+  pat=$(docker compose -f "$WEB_DIR/../docker-compose.yml" exec -T api \
+    cat /home/app/zitadel-data/pat.txt 2>/dev/null | tr -d '[:space:]') || return 0
+  [ -z "$pat" ] && return 0
+
+  local resp
+  resp=$(curl -s --max-time 5 \
+    -H "Authorization: Bearer $pat" \
+    -H "Content-Type: application/json" \
+    -d '{"queries":[{"loginNameQuery":{"loginName":"owner1@localhost"}}]}' \
+    "http://localhost:8080/v2/users" 2>/dev/null) || return 0
+
+  if echo "$resp" | grep -qE '"totalResult"\s*:\s*"[1-9]'; then
+    return 0
+  fi
+
+  echo "▸ E2E users not found in ZITADEL — running create-e2e-users.py..."
+  docker compose -f "$WEB_DIR/../docker-compose.yml" exec -T api \
+    bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py" || {
+    echo "⚠ Failed to create E2E users. Run manually:"
+    echo "  docker compose exec api bash -c 'PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py'"
+  }
+}
+ensure_e2e_users
 
 # ── Dev server auto-detection ───────────────────────────────────────────────
 # If E2E_USE_DEV_SERVER is not explicitly set, check if :5173 is responding
