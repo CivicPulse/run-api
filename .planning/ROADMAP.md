@@ -271,9 +271,9 @@ Plans:
   1. FIELD-07 has deterministic setup and no dependence on prior spec consumption
   2. Walk list/canvassing fixtures used by field specs are isolated per test or per spec as appropriate
   3. Reordered and isolated field-mode test runs preserve pass behavior for inline survey coverage
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 64-01-PLAN.md — Isolate FIELD-07 with disposable canvassing+survey fixture and strict survey-present assertions
+- [x] 64-01-PLAN.md — Isolate FIELD-07 with disposable canvassing+survey fixture and strict survey-present assertions
 - [ ] 64-02-PLAN.md — Add strict FIELD-07 order-matrix verification mode and update E2E-20 traceability
 
 ## Progress
@@ -298,7 +298,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 | 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete    | 2026-03-30 |
 | 62. CI Auth Policy Automation | v1.7 | 2/2 | Complete   | 2026-03-31 |
 | 63. Phone Banking API + Data Resilience | v1.7 | 3/3 | Complete    | 2026-03-31 |
-| 64. Field Flow Test Isolation | v1.7 | 0/0 | Planned     | - |
+| 64. Field Flow Test Isolation | v1.7 | 1/2 | In Progress|  |
 
 ## Backlog
 
