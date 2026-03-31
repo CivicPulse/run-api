@@ -36,7 +36,11 @@ const proxyConfig = {
   },
   "/voter-imports": {
     target: minioTarget,
-    changeOrigin: true,
+    // changeOrigin must be false so the Host header matches the presigned URL
+    // signature. When S3_PRESIGN_ENDPOINT_URL points at the Vite proxy, the
+    // presigned URL is signed for host:localhost:5173 — forwarding with that
+    // Host lets MinIO validate the signature correctly.
+    changeOrigin: false,
   },
 } as const
 

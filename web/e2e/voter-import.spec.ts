@@ -106,11 +106,14 @@ test.describe.serial("Voter Import Lifecycle", () => {
         await page.waitForTimeout(3_000)
         await uploadFixtureCsv(page)
       }
-      columnMappingVisible = await page
-        .getByText(/column mapping/i)
-        .first()
-        .isVisible({ timeout: 60_000 })
-        .catch(() => false)
+      // Use expect().toBeVisible() which retries until timeout, unlike
+      // locator.isVisible() which only checks once.
+      try {
+        await expect(page.getByText(/column mapping/i).first()).toBeVisible({ timeout: 60_000 })
+        columnMappingVisible = true
+      } catch {
+        columnMappingVisible = false
+      }
     }
     expect(columnMappingVisible).toBeTruthy()
 

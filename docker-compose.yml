@@ -20,7 +20,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/run_api
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/run_api
       S3_ENDPOINT_URL: http://minio:9000
-      S3_PRESIGN_ENDPOINT_URL: http://localhost:9000
+      S3_PRESIGN_ENDPOINT_URL: http://localhost:5173
       DISABLE_TLS: ${DISABLE_TLS:-false}
       DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-true}
       UVICORN_WORKERS: ${UVICORN_WORKERS:-4}

@@ -113,12 +113,15 @@ async function importFixtureCSV(
       await page.waitForTimeout(5_000)
     }
     await fileInput.setInputFiles("e2e/fixtures/l2-test-voters.csv")
-    // Wait for upload + detect to complete (upload to MinIO can be slow under load)
-    columnMappingVisible = await page
-      .getByText(/column mapping/i)
-      .first()
-      .isVisible({ timeout: 60_000 })
-      .catch(() => false)
+    // Wait for upload + detect to complete (upload to MinIO can be slow under load).
+    // Use expect().toBeVisible() which retries until timeout, unlike
+    // locator.isVisible() which only checks once.
+    try {
+      await expect(page.getByText(/column mapping/i).first()).toBeVisible({ timeout: 60_000 })
+      columnMappingVisible = true
+    } catch {
+      columnMappingVisible = false
+    }
   }
   if (!columnMappingVisible) {
     throw new Error("Import /detect endpoint failed after 3 attempts")

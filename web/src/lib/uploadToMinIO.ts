@@ -9,9 +9,11 @@ export function uploadToMinIO(
   file: File,
   onProgress: (percent: number) => void,
 ): Promise<void> {
-  // Rewrite HTTP presigned URLs to relative paths when on HTTPS to avoid
-  // mixed-content blocking.  In dev the Vite proxy routes /voter-imports/*
-  // to MinIO; in production presigned URLs are already HTTPS (R2/S3).
+  // Rewrite presigned URLs to relative paths so the request goes through
+  // the Vite dev/preview proxy instead of directly to MinIO.  This avoids:
+  //  - Mixed-content blocking (HTTPS page → HTTP MinIO)
+  //  - Cross-origin XHR issues in headless Chromium (different port on localhost)
+  // In production presigned URLs target the same origin (R2/S3) so no rewrite needed.
   let url = uploadUrl
   try {
     const parsed = new URL(uploadUrl)
