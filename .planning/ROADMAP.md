@@ -242,9 +242,10 @@ Plans:
   1. User/bootstrap tooling applies org-level no-MFA login policy without manual console steps
   2. CI provisioning path verifies policy presence and fails fast with a clear error if not applied
   3. Auth setup scripts run successfully on a fresh ZITADEL instance with no manual MFA-policy intervention
-**Plans:** 0 plans
+**Plans:** 2 plans
 Plans:
-- [ ] TBD
+- [ ] 62-01-PLAN.md — Add deterministic no-MFA org login policy automation + unit coverage in provisioning script
+- [ ] 62-02-PLAN.md — Add CI/local strict policy verification and auth-setup smoke gating before shard execution
 
 ### Phase 63: Phone Banking API + Data Resilience
 **Goal**: Phone banking session lifecycle is API-complete and active-calling tests run against deterministic, non-exhausted data
