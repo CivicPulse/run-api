@@ -249,6 +249,17 @@ E2E-*.md
 MOBILE-E2E-*.md
 *-test-journal.md
 
+# Tooling / Runtime Artifacts
+.bg-shell/
+web/.bg-shell/
+.firecrawl/
+.playwright-cli/
+.claude/scheduled_tasks.lock
+
+# Playwright test artifacts (named variants)
+web/playwright-report/
+web/test-results-*/
+
 # ── GSD baseline (auto-generated) ──
 .gsd
 .DS_Store
