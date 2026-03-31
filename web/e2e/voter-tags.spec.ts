@@ -290,15 +290,15 @@ test.describe.serial("Voter tags lifecycle", () => {
         })
         await removeButton.click()
 
-        // Wait for success toast
-        await expect(page.getByText("Tag removed").first()).toBeVisible({
-          timeout: 10_000,
-        })
+        // Wait for the Remove button to disappear — this confirms the invalidateQueries
+        // refetch completed and the tag is no longer in voterTags. Do NOT rely on the
+        // "Tag removed" toast alone, as it fires before the refetch completes.
+        await expect(removeButton).not.toBeVisible({ timeout: 20_000 })
       }
 
-      // Verify "No tags assigned" empty state (wait for refetch to complete)
+      // Verify "No tags assigned" empty state
       await expect(page.getByText("No tags assigned")).toBeVisible({
-        timeout: 15_000,
+        timeout: 10_000,
       })
     }
   })
