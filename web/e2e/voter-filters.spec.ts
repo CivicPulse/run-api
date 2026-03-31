@@ -843,17 +843,15 @@ test.describe.serial("Voter Filters", () => {
         await votedIn2024.click()
 
         await openFilterSection(page, "Scoring")
-        const generalLabel = page.getByText(/General Propensity/i).first()
-        const generalSlider = page
-          .locator("div")
-          .filter({ has: generalLabel })
-          .first()
-        const minThumb = generalSlider.locator('[role="slider"]').first()
+        // Use click() + keyboard to avoid accordion animation stability wait issues
+        // openFilterSection("Scoring") already waits for General Propensity to be visible + 600ms
+        const minThumb = page.locator('[role="slider"]').nth(0) // General min
         await minThumb.scrollIntoViewIfNeeded()
         await page.waitForTimeout(200)
-        // Use End key to jump to max in one keystroke (avoids 50x ArrowRight loop)
-        await minThumb.press("End")
-        await minThumb.press("Tab")
+        await minThumb.click() // Click to focus (no stability wait per key press)
+        for (let i = 0; i < 50; i++) {
+          await page.keyboard.press("ArrowRight")
+        }
         await waitForVoterResults(page).catch(() => {})
 
         // Verify at least the voted-in chip appears
@@ -990,16 +988,15 @@ test.describe.serial("Voter Filters", () => {
       "Combo 8: Primary Propensity >= 40 + Ethnicity + City",
       async () => {
         await openFilterSection(page, "Scoring")
-        const primaryLabel = page.getByText(/Primary Propensity/i).first()
-        const primarySlider = page
-          .locator("div")
-          .filter({ has: primaryLabel })
-          .first()
-        const minThumb = primarySlider.locator('[role="slider"]').first()
+        // Use click() + keyboard to avoid accordion animation stability wait issues
+        const minThumb = page.locator('[role="slider"]').nth(2) // Primary min
         await minThumb.scrollIntoViewIfNeeded()
         await page.waitForTimeout(200)
-        await minThumb.press("End")
-        await minThumb.press("Tab")
+        await minThumb.click()
+        for (let i = 0; i < 40; i++) {
+          await page.keyboard.press("ArrowRight")
+        }
+        await page.keyboard.press("Tab")
 
         await openFilterSection(page, "Demographics")
         const ethnicityCheckbox = page
