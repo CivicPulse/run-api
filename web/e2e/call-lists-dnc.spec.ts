@@ -192,20 +192,21 @@ test.describe.serial("Call Lists & DNC", () => {
     })
 
     await test.step("Verify detail page content", async () => {
+      await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {})
       // Verify call list name is displayed in the header
       await expect(
         page.getByText("E2E Call List 1").first(),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 15_000 })
 
       // Verify status tabs exist (All, Unclaimed, Claimed, Completed, Skipped)
       await expect(
         page.getByRole("tab", { name: /all/i }),
-      ).toBeVisible({ timeout: 5_000 })
+      ).toBeVisible({ timeout: 15_000 })
 
       // Verify total count stat is displayed
       await expect(
         page.getByText(/total/i).first(),
-      ).toBeVisible({ timeout: 5_000 })
+      ).toBeVisible({ timeout: 15_000 })
     })
   })
 

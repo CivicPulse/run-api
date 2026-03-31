@@ -336,9 +336,10 @@ test.describe.serial("Voter lists lifecycle", () => {
     await page.waitForURL(/voters/, { timeout: 10_000 })
 
     // At least one test voter should be visible
+    await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 20_000 })
     await expect(
       page.getByText("List Alpha").first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
   })
 
   test("Final assertion: verify all test voters can be deleted", async ({

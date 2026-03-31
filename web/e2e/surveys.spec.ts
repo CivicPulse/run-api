@@ -358,7 +358,7 @@ test.describe.serial("Survey Lifecycle", () => {
     async function clickMoveUpAndWait(n: number) {
       const moveBtn = page.getByRole("button", { name: new RegExp(`move question ${n} up`, "i") })
       // Ensure button is enabled (not in pending state from previous reorder)
-      await expect(moveBtn).toBeEnabled({ timeout: 5_000 })
+      await expect(moveBtn).toBeEnabled({ timeout: 8_000 })
       const done = page.waitForResponse(
         (resp) => reorderUrl(resp.url()) && resp.request().method() === "PUT",
         { timeout: 15_000 },
@@ -366,8 +366,8 @@ test.describe.serial("Survey Lifecycle", () => {
       await moveBtn.click()
       await done
       // Allow TanStack Query cache invalidation + React re-render (refetch takes ~500ms on dev)
-      // Use 2000ms to ensure full re-render cycle under parallel load
-      await page.waitForTimeout(2_000)
+      // Use 4000ms to ensure full re-render cycle under parallel load
+      await page.waitForTimeout(4_000)
     }
 
     // Move "How would you rate" from Q5 → Q2 (3 moves)

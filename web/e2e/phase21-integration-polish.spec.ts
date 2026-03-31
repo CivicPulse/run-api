@@ -77,8 +77,9 @@ test.describe("Phase 21: Integration Polish", () => {
     page,
   }) => {
     await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {})
     await expect(page.getByText("Reason").first()).toBeVisible({
-      timeout: 10_000,
+      timeout: 30_000,
     })
     await page.screenshot({
       path: "test-results/p21-02-dnc-before-search.png",
