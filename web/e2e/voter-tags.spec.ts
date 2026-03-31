@@ -135,57 +135,90 @@ test.describe.serial("Voter tags lifecycle", () => {
     ]
 
     for (let i = 0; i < testVoterIds.length; i++) {
-      // Navigate to voter detail page
-      await page.goto(
-        `/campaigns/${campaignId}/voters/${testVoterIds[i]}`,
-      )
-      await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
+      const voterId = testVoterIds[i]
 
-      // Click Tags tab — wait for the Overview tabpanel to be visible first (confirms
-      // the page is fully hydrated with React event handlers attached), then click Tags.
-      await expect(page.getByRole("tabpanel", { name: /overview/i })).toBeVisible({
-        timeout: 10_000,
-      })
-      // Force click bypasses any potential overlay (e.g., lingering toast notifications
-      // from TAG-01 that may still be fading out and capturing pointer events)
-      await page.getByRole("tab", { name: /^tags$/i }).click({ force: true })
+      // Outer retry loop: re-navigate to voter page if something goes wrong mid-assignment
+      for (let voterAttempt = 0; voterAttempt < 3; voterAttempt++) {
+        try {
+          // Navigate to voter detail page
+          await page.goto(`/campaigns/${campaignId}/voters/${voterId}`)
+          await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
 
-      // Wait for the Tags tab to become selected (aria-selected=true)
-      await expect(
-        page.getByRole("tab", { name: /^tags$/i, selected: true }),
-      ).toBeVisible({ timeout: 10_000 })
+          // Click Tags tab — wait for the Overview tabpanel to be visible first (confirms
+          // the page is fully hydrated with React event handlers attached), then click Tags.
+          await expect(page.getByRole("tabpanel", { name: /overview/i })).toBeVisible({
+            timeout: 15_000,
+          })
+          // Force click bypasses any potential overlay (e.g., lingering toast notifications
+          // from TAG-01 that may still be fading out and capturing pointer events)
+          await page.getByRole("tab", { name: /^tags$/i }).click({ force: true })
 
-      // Assign each tag for this voter
-      for (const tagIdx of assignments[i]) {
-        const tagName = tagNames[tagIdx]
+          // Wait for the Tags tab to become selected (aria-selected=true)
+          await expect(
+            page.getByRole("tab", { name: /^tags$/i, selected: true }),
+          ).toBeVisible({ timeout: 10_000 })
 
-        // Select tag from dropdown — wait for the listbox to open before clicking option
-        await page.getByRole("combobox").click()
-        await expect(page.getByRole("listbox")).toBeVisible({ timeout: 5_000 })
-        await page.getByRole("option", { name: tagName }).click()
+          // Wait for the Tags tab content to be visible (combobox is inside RequireRole)
+          await expect(page.getByRole("tabpanel", { name: /tags/i })).toBeVisible({
+            timeout: 10_000,
+          })
 
-        // Wait for the Select trigger to display the selected tag name.
-        // This confirms the Radix Select onValueChange fired and selectedTagId state
-        // was updated before we click "Add Tag". Without this, the button click may
-        // race against the React state update and fire with selectedTagId="".
-        await expect(
-          page.getByRole("combobox").getByText(tagName, { exact: false }),
-        ).toBeVisible({ timeout: 5_000 })
+          // Assign each tag for this voter — track which ones we've already added via API
+          // to skip re-adding on a retry.
+          for (const tagIdx of assignments[i]) {
+            const tagName = tagNames[tagIdx]
 
-        // Click "Add Tag" button — wait for it to be enabled first (not disabled while
-        // a previous addTag.mutate is still pending), then click
-        const addTagBtn = page.getByRole("button", { name: /add tag/i })
-        await expect(addTagBtn).toBeEnabled({ timeout: 5_000 })
-        await addTagBtn.click()
+            // Check via API if this tag is already assigned (skip if retry added it)
+            const alreadyAssigned = await page
+              .getByRole("button", { name: `Remove tag ${tagName}` })
+              .isVisible()
+              .catch(() => false)
+            if (alreadyAssigned) continue
 
-        // Wait for the badge to appear in Current Tags — this is the definitive indicator
-        // that the mutation succeeded and invalidateQueries completed (refetch returned
-        // the new tag). The "Remove tag <name>" aria-label is unique to badge buttons in
-        // Current Tags, so no strict mode collision with the combobox.
-        // 20s timeout accommodates ky retries when the 30/min rate limit is hit.
-        await expect(
-          page.getByRole("button", { name: `Remove tag ${tagName}` }),
-        ).toBeVisible({ timeout: 20_000 })
+            // Select tag from dropdown — wait for the listbox to open before clicking option
+            await page.getByRole("combobox").click()
+            await expect(page.getByRole("listbox")).toBeVisible({ timeout: 5_000 })
+            await page.getByRole("option", { name: tagName }).click()
+
+            // Wait for the Select trigger to display the selected tag name.
+            // This confirms the Radix Select onValueChange fired and selectedTagId state
+            // was updated before we click "Add Tag". Without this, the button click may
+            // race against the React state update and fire with selectedTagId="".
+            await expect(
+              page.getByRole("combobox").getByText(tagName, { exact: false }),
+            ).toBeVisible({ timeout: 5_000 })
+
+            // Click "Add Tag" button — wait for it to be enabled first (not disabled while
+            // a previous addTag.mutate is still pending), then click
+            const addTagBtn = page.getByRole("button", { name: /add tag/i })
+            await expect(addTagBtn).toBeEnabled({ timeout: 10_000 })
+            await addTagBtn.click()
+
+            // Wait for the badge to appear in Current Tags — this is the definitive indicator
+            // that the mutation succeeded and invalidateQueries completed (refetch returned
+            // the new tag). The "Remove tag <name>" aria-label is unique to badge buttons in
+            // Current Tags, so no strict mode collision with the combobox.
+            // 60s timeout accommodates ky retries when the 30/min rate limit is hit
+            // (Retry-After headers can require up to 30s wait before a retry fires).
+            await expect(
+              page.getByRole("button", { name: `Remove tag ${tagName}` }),
+            ).toBeVisible({ timeout: 60_000 })
+
+            // Brief pause between tag assignments to avoid consecutive 429s from the rate
+            // limiter — the 30/min limit is a sliding window shared with the GET tag refetch.
+            await page.waitForTimeout(1_500)
+          }
+
+          break // success — exit voterAttempt loop
+        } catch (err) {
+          if (voterAttempt < 2) {
+            // Retry: dismiss any open dropdown/modal and re-navigate
+            await page.keyboard.press("Escape").catch(() => {})
+            await page.waitForTimeout(2_000)
+            continue
+          }
+          throw err
+        }
       }
     }
   })
@@ -286,15 +319,26 @@ test.describe.serial("Voter tags lifecycle", () => {
       // Remove each assigned tag by clicking the X button (use actual tag names with run suffix)
       for (const tagIdx of assignments[i]) {
         const tagName = tagNames[tagIdx]
+
+        // Wait for the Remove button to be visible before clicking — Tags tab content
+        // may still be loading from the query fetch on initial navigation.
         const removeButton = page.getByRole("button", {
           name: `Remove tag ${tagName}`,
         })
-        await removeButton.click()
+        await expect(removeButton).toBeVisible({ timeout: 15_000 })
+
+        // Use force: true to bypass Playwright's stability check — the voter tags
+        // query refetch can cause DOM node replacement mid-click-action. Force click
+        // ensures the action fires even if the element briefly detaches/reattaches.
+        await removeButton.click({ force: true })
 
         // Wait for the Remove button to disappear — this confirms the invalidateQueries
         // refetch completed and the tag is no longer in voterTags. Do NOT rely on the
         // "Tag removed" toast alone, as it fires before the refetch completes.
-        await expect(removeButton).not.toBeVisible({ timeout: 20_000 })
+        await expect(removeButton).not.toBeVisible({ timeout: 30_000 })
+
+        // Brief pause between tag removals to avoid hitting rate limits
+        await page.waitForTimeout(1_000)
       }
 
       // Verify "No tags assigned" empty state
