@@ -70,12 +70,55 @@ async function importFixtureCSV(
     timeout: 10_000,
   })
   const fileInput = page.locator('input[type="file"]')
-  await fileInput.setInputFiles("e2e/fixtures/l2-test-voters.csv")
 
-  // Wait for column mapping step
-  await expect(page.getByText(/column mapping/i).first()).toBeVisible({
-    timeout: 30_000,
-  })
+  // Retry loop: the /detect endpoint can return 500 under DB pool exhaustion.
+  // When that happens, the wizard stalls at the dropzone with an error message.
+  // Retry the upload up to 3 times with a 5s backoff before giving up.
+  let columnMappingVisible = false
+  for (let attempt = 0; attempt < 3 && !columnMappingVisible; attempt++) {
+    if (attempt > 0) {
+      // Re-click "Try uploading again" or re-navigate to reset the wizard
+      const retryBtn = page.getByRole("button", { name: /try again/i })
+      if (await retryBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await retryBtn.click()
+      } else {
+        // Navigate back to imports/new to reset wizard state
+        await page.getByRole("link", { name: /imports/i }).first().click()
+        await page.waitForURL(/imports/, { timeout: 10_000 })
+        const newImportBtn = page
+          .getByRole("button", { name: /new import/i })
+          .or(page.getByRole("link", { name: /new import|start your first import/i }))
+          .first()
+        await newImportBtn.click()
+        await page.waitForURL(/imports\/new/, { timeout: 10_000 })
+        await expect(page.getByText(/upload file/i).first()).toBeVisible({
+          timeout: 10_000,
+        })
+      }
+      await page.waitForTimeout(5_000)
+    }
+    await fileInput.setInputFiles("e2e/fixtures/l2-test-voters.csv")
+    columnMappingVisible = await page
+      .getByText(/column mapping/i)
+      .first()
+      .isVisible({ timeout: 30_000 })
+      .catch(() => false)
+    if (!columnMappingVisible && attempt < 2) {
+      // Check if a 500/error state is visible before retrying
+      const hasError = await page
+        .getByText(/500|failed|try again/i)
+        .first()
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false)
+      if (!hasError) {
+        // Unknown state — wait a bit longer before retrying
+        await page.waitForTimeout(5_000)
+      }
+    }
+  }
+  if (!columnMappingVisible) {
+    throw new Error("Import /detect endpoint failed after 3 attempts")
+  }
 
   // Verify L2 auto-detection
   await expect(

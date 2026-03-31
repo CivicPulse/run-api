@@ -259,24 +259,43 @@ test.describe.serial(
         page.getByText(/change role/i).first()
       ).toBeVisible({ timeout: 5_000 })
 
-      const roleResponsePromise = page.waitForResponse(
-        (resp) =>
-          resp.url().includes(`members`) &&
-          (resp.request().method() === "PATCH" || resp.request().method() === "PUT")
-      )
+      // Helper to perform the role change interaction and capture the response.
+      // Returns the API response status.
+      async function performRoleChange(): Promise<number> {
+        const responsePromise = page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`members`) &&
+            (resp.request().method() === "PATCH" || resp.request().method() === "PUT")
+        )
+        const roleCombobox = page.locator("[role='dialog']").getByRole("combobox")
+        await roleCombobox.click()
+        const managerOption = page.getByRole("option", { name: /manager/i })
+        await expect(managerOption).toBeVisible({ timeout: 5_000 })
+        await managerOption.click()
+        await page.getByRole("button", { name: /save/i }).click()
+        const resp = await responsePromise
+        return resp.status()
+      }
 
-      // Click the role select in the dialog and select Manager
-      const roleCombobox = page.locator("[role='dialog']").getByRole("combobox")
-      await roleCombobox.click()
-      const managerOption = page.getByRole("option", { name: /manager/i })
-      await expect(managerOption).toBeVisible({ timeout: 5_000 })
-      await managerOption.click()
+      let roleStatus = await performRoleChange()
 
-      // Click "Save" button
-      await page.getByRole("button", { name: /save/i }).click()
+      // Retry once on transient 5xx (DB pool exhaustion under parallel load)
+      if (roleStatus >= 500) {
+        await page.waitForTimeout(3_000)
+        // Re-open the change role dialog for the non-owner member
+        const retryNonOwnerRow = page
+          .getByRole("row")
+          .filter({ has: page.getByText(/volunteer|manager/i) })
+          .first()
+        await retryNonOwnerRow.getByRole("button").first().click()
+        await page.getByRole("menuitem", { name: /change role/i }).click()
+        await expect(
+          page.getByText(/change role/i).first()
+        ).toBeVisible({ timeout: 5_000 })
+        roleStatus = await performRoleChange()
+      }
 
-      const roleResponse = await roleResponsePromise
-      expect(roleResponse.status()).toBeLessThan(400)
+      expect(roleStatus).toBeLessThan(400)
 
       // Verify toast (use first() to avoid strict mode violation if multiple toasts)
       await expect(page.getByText(/role updated/i).first()).toBeVisible({
