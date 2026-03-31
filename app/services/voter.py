@@ -545,6 +545,48 @@ class VoterService:
         )
         return list(result.scalars().all())
 
+    async def update_tag(
+        self,
+        db: AsyncSession,
+        tag_id: uuid.UUID,
+        name: str,
+    ) -> VoterTag:
+        """Update a campaign-scoped voter tag name.
+
+        Args:
+            db: Async database session.
+            tag_id: The tag UUID.
+            name: New tag name.
+
+        Returns:
+            The updated VoterTag.
+        """
+        result = await db.execute(select(VoterTag).where(VoterTag.id == tag_id))
+        tag = result.scalar_one_or_none()
+        if tag is None:
+            raise ValueError(f"Tag {tag_id} not found")
+        tag.name = name
+        await db.commit()
+        await db.refresh(tag)
+        return tag
+
+    async def delete_tag(
+        self,
+        db: AsyncSession,
+        tag_id: uuid.UUID,
+    ) -> None:
+        """Delete a campaign-scoped voter tag and remove all voter associations.
+
+        Args:
+            db: Async database session.
+            tag_id: The tag UUID.
+        """
+        await db.execute(
+            delete(VoterTagMember).where(VoterTagMember.tag_id == tag_id)
+        )
+        await db.execute(delete(VoterTag).where(VoterTag.id == tag_id))
+        await db.commit()
+
     async def add_tag_to_voter(
         self,
         db: AsyncSession,

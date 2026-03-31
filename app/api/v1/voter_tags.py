@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_user_synced, get_campaign_db
 from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
-from app.schemas.voter_tag import VoterTagAssign, VoterTagCreate, VoterTagResponse
+from app.schemas.voter_tag import (
+    VoterTagAssign,
+    VoterTagCreate,
+    VoterTagResponse,
+    VoterTagUpdate,
+)
 from app.services.voter import VoterService
 
 router = APIRouter()
@@ -58,6 +63,49 @@ async def list_tags(
     await ensure_user_synced(user, db)
     tags = await _service.list_tags(db, campaign_id)
     return [VoterTagResponse.model_validate(t) for t in tags]
+
+
+@router.patch(
+    "/campaigns/{campaign_id}/tags/{tag_id}",
+    response_model=VoterTagResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+async def update_tag(
+    request: Request,
+    campaign_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    body: VoterTagUpdate,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Update a campaign-scoped voter tag name.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    tag = await _service.update_tag(db, tag_id, body.name)
+    return VoterTagResponse.model_validate(tag)
+
+
+@router.delete(
+    "/campaigns/{campaign_id}/tags/{tag_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+async def delete_tag(
+    request: Request,
+    campaign_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Delete a campaign-scoped voter tag and all voter associations.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    await _service.delete_tag(db, tag_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

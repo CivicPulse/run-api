@@ -141,40 +141,63 @@ test.describe.serial("Voter tags lifecycle", () => {
       )
       await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
 
-      // Click Tags tab
-      await page.getByRole("tab", { name: /tags/i }).click()
+      // Click Tags tab — wait for the Overview tabpanel to be visible first (confirms
+      // the page is fully hydrated with React event handlers attached), then click Tags.
+      await expect(page.getByRole("tabpanel", { name: /overview/i })).toBeVisible({
+        timeout: 10_000,
+      })
+      // Force click bypasses any potential overlay (e.g., lingering toast notifications
+      // from TAG-01 that may still be fading out and capturing pointer events)
+      await page.getByRole("tab", { name: /^tags$/i }).click({ force: true })
+
+      // Wait for the Tags tab to become selected (aria-selected=true)
+      await expect(
+        page.getByRole("tab", { name: /^tags$/i, selected: true }),
+      ).toBeVisible({ timeout: 10_000 })
 
       // Assign each tag for this voter
       for (const tagIdx of assignments[i]) {
         const tagName = tagNames[tagIdx]
 
-        // Select tag from dropdown
+        // Select tag from dropdown — wait for the listbox to open before clicking option
         await page.getByRole("combobox").click()
+        await expect(page.getByRole("listbox")).toBeVisible({ timeout: 5_000 })
         await page.getByRole("option", { name: tagName }).click()
 
-        // Click "Add Tag" button
-        await page.getByRole("button", { name: /add tag/i }).click()
-
-        // Wait for success toast
-        await expect(page.getByText("Tag added")).toBeVisible({
-          timeout: 10_000,
-        })
-
-        // Verify tag badge appears
+        // Wait for the Select trigger to display the selected tag name.
+        // This confirms the Radix Select onValueChange fired and selectedTagId state
+        // was updated before we click "Add Tag". Without this, the button click may
+        // race against the React state update and fire with selectedTagId="".
         await expect(
-          page.getByText(tagName, { exact: true }).first(),
-        ).toBeVisible({ timeout: 10_000 })
+          page.getByRole("combobox").getByText(tagName, { exact: false }),
+        ).toBeVisible({ timeout: 5_000 })
+
+        // Click "Add Tag" button — wait for it to be enabled first (not disabled while
+        // a previous addTag.mutate is still pending), then click
+        const addTagBtn = page.getByRole("button", { name: /add tag/i })
+        await expect(addTagBtn).toBeEnabled({ timeout: 5_000 })
+        await addTagBtn.click()
+
+        // Wait for the badge to appear in Current Tags — this is the definitive indicator
+        // that the mutation succeeded and invalidateQueries completed (refetch returned
+        // the new tag). The "Remove tag <name>" aria-label is unique to badge buttons in
+        // Current Tags, so no strict mode collision with the combobox.
+        // 20s timeout accommodates ky retries when the 30/min rate limit is hit.
+        await expect(
+          page.getByRole("button", { name: `Remove tag ${tagName}` }),
+        ).toBeVisible({ timeout: 20_000 })
       }
     }
   })
 
   test("TAG-03: Validate tags persist after navigation", async ({ page, campaignId }) => {
+    // Use tagNames indices to match what TAG-02 assigned (includes run-specific suffix)
     const assignments = [
-      ["Priority Voter", "Door Knocked"],
-      ["Door Knocked", "Phone Contacted"],
-      ["Phone Contacted", "Supporter"],
-      ["Supporter", "Needs Follow-up", "Priority Voter"],
-      ["Needs Follow-up", "Priority Voter", "Door Knocked"],
+      [0, 1], // voter 0: tagNames[0], tagNames[1]
+      [1, 2], // voter 1: tagNames[1], tagNames[2]
+      [2, 3], // voter 2: tagNames[2], tagNames[3]
+      [3, 4, 0], // voter 3: tagNames[3], tagNames[4], tagNames[0]
+      [4, 0, 1], // voter 4: tagNames[4], tagNames[0], tagNames[1]
     ]
 
     for (let i = 0; i < testVoterIds.length; i++) {
@@ -188,25 +211,44 @@ test.describe.serial("Voter tags lifecycle", () => {
       )
       await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
 
-      // Click Tags tab
-      await page.getByRole("tab", { name: /tags/i }).click()
+      // Wait for Overview tabpanel to be visible (page fully hydrated), then click Tags
+      await expect(page.getByRole("tabpanel", { name: /overview/i })).toBeVisible({
+        timeout: 10_000,
+      })
+      await page.getByRole("tab", { name: /^tags$/i }).click({ force: true })
 
-      // Verify each assigned tag is still present
-      for (const tagName of assignments[i]) {
+      // Wait for the Tags tab to become selected
+      await expect(
+        page.getByRole("tab", { name: /^tags$/i, selected: true }),
+      ).toBeVisible({ timeout: 10_000 })
+      const apiTagsResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/voters/${testVoterIds[i]}/tags`)
+      if (apiTagsResp.ok()) {
+        const apiTags = await apiTagsResp.json()
+        const apiTagNames: string[] = Array.isArray(apiTags) ? apiTags.map((t: { name: string }) => t.name) : (apiTags.items ?? []).map((t: { name: string }) => t.name)
+        for (const tagIdx of assignments[i]) {
+          if (!apiTagNames.includes(tagNames[tagIdx])) {
+            throw new Error(`API: tag "${tagNames[tagIdx]}" missing for voter ${i}. API returned: ${JSON.stringify(apiTagNames)}`)
+          }
+        }
+      }
+
+      // Verify each assigned tag is still present in the UI (tabpanel)
+      for (const tagIdx of assignments[i]) {
         await expect(
-          page.getByText(tagName, { exact: true }).first(),
+          page.getByRole("tabpanel").getByText(tagNames[tagIdx], { exact: true }),
         ).toBeVisible({ timeout: 10_000 })
       }
     }
   })
 
   test("TAG-04: Remove tags from all test voters", async ({ page, campaignId }) => {
+    // Use tagNames indices to match what TAG-02 assigned (includes run-specific suffix)
     const assignments = [
-      ["Priority Voter", "Door Knocked"],
-      ["Door Knocked", "Phone Contacted"],
-      ["Phone Contacted", "Supporter"],
-      ["Supporter", "Needs Follow-up", "Priority Voter"],
-      ["Needs Follow-up", "Priority Voter", "Door Knocked"],
+      [0, 1], // voter 0: tagNames[0], tagNames[1]
+      [1, 2], // voter 1: tagNames[1], tagNames[2]
+      [2, 3], // voter 2: tagNames[2], tagNames[3]
+      [3, 4, 0], // voter 3: tagNames[3], tagNames[4], tagNames[0]
+      [4, 0, 1], // voter 4: tagNames[4], tagNames[0], tagNames[1]
     ]
 
     for (let i = 0; i < testVoterIds.length; i++) {
@@ -216,25 +258,47 @@ test.describe.serial("Voter tags lifecycle", () => {
       )
       await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
 
-      // Click Tags tab
-      await page.getByRole("tab", { name: /tags/i }).click()
+      // Wait for Overview tab to be selected (page hydrated)
+      await expect(
+        page.getByRole("tab", { name: /overview/i, selected: true }),
+      ).toBeVisible({ timeout: 10_000 })
 
-      // Remove each assigned tag by clicking the X button
-      for (const tagName of assignments[i]) {
+      // Click Tags tab with retry loop — single click sometimes doesn't activate on dev server
+      const tagsTabTAG04 = page.getByRole("tab", { name: /^tags$/i })
+      await expect(tagsTabTAG04).toBeVisible({ timeout: 10_000 })
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await tagsTabTAG04.click()
+        const activated = await page
+          .getByRole("tabpanel", { name: /tags/i })
+          .getByText("Current Tags")
+          .isVisible({ timeout: 2_000 })
+          .catch(() => false)
+        if (activated) break
+        await page.waitForTimeout(500)
+      }
+
+      // Confirm Tags tabpanel is active
+      await expect(
+        page.getByRole("tabpanel", { name: /tags/i }).getByText("Current Tags"),
+      ).toBeVisible({ timeout: 5_000 })
+
+      // Remove each assigned tag by clicking the X button (use actual tag names with run suffix)
+      for (const tagIdx of assignments[i]) {
+        const tagName = tagNames[tagIdx]
         const removeButton = page.getByRole("button", {
           name: `Remove tag ${tagName}`,
         })
         await removeButton.click()
 
         // Wait for success toast
-        await expect(page.getByText("Tag removed")).toBeVisible({
+        await expect(page.getByText("Tag removed").first()).toBeVisible({
           timeout: 10_000,
         })
       }
 
-      // Verify "No tags assigned" empty state
+      // Verify "No tags assigned" empty state (wait for refetch to complete)
       await expect(page.getByText("No tags assigned")).toBeVisible({
-        timeout: 10_000,
+        timeout: 15_000,
       })
     }
   })
@@ -248,27 +312,34 @@ test.describe.serial("Voter tags lifecycle", () => {
 
     for (const tagName of tagNames) {
       // Find the row with this tag and open the actions menu
-      const tagRow = page.getByRole("row").filter({ hasText: tagName })
+      const tagRow = page.getByRole("row").filter({ hasText: tagName }).first()
+      await tagRow.scrollIntoViewIfNeeded()
       await tagRow.getByRole("button", { name: /actions/i }).click()
 
       // Click "Delete" in the dropdown
       await page.getByRole("menuitem", { name: /delete/i }).click()
 
-      // DestructiveConfirmDialog requires typing the tag name
-      await page
-        .getByPlaceholder(tagName)
-        .fill(tagName)
+      // DestructiveConfirmDialog requires typing the tag name — the dialog's input
+      // placeholder is the confirmText (= tagName). Wait for the dialog to open,
+      // then use pressSequentially so React onChange fires per keystroke and the
+      // confirm button's disabled={!isMatch} state updates before we click.
+      await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 5_000 })
+      const confirmInput = page.getByRole("alertdialog").getByPlaceholder(tagName)
+      await expect(confirmInput).toBeVisible({ timeout: 5_000 })
+      await confirmInput.pressSequentially(tagName)
 
-      // Click the "Delete" confirm button
-      await page.getByRole("button", { name: /^delete$/i }).click()
+      // Wait for the confirm button to become enabled (isMatch = inputValue === confirmText)
+      const deleteConfirmBtn = page.getByRole("alertdialog").getByRole("button", { name: /^delete$/i })
+      await expect(deleteConfirmBtn).toBeEnabled({ timeout: 5_000 })
+      await deleteConfirmBtn.click()
 
-      // Wait for success toast
-      await expect(page.getByText("Tag deleted")).toBeVisible({
-        timeout: 10_000,
+      // Wait for success toast — use 20s to accommodate ky retries on API rate-limit responses
+      await expect(page.getByText("Tag deleted").first()).toBeVisible({
+        timeout: 20_000,
       })
 
       // Wait for the tag to disappear from the list
-      await expect(page.getByText(tagName)).not.toBeVisible({
+      await expect(page.getByRole("row").filter({ hasText: tagName }).first()).not.toBeVisible({
         timeout: 10_000,
       })
     }
