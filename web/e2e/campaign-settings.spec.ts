@@ -303,18 +303,20 @@ test.describe.serial(
       const actionsButton = memberRow.getByRole("button").first()
       await actionsButton.click()
 
+      // Set up response promise BEFORE clicking to avoid race condition
+      const removeResponsePromise = page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`members`) &&
+          resp.request().method() === "DELETE",
+        { timeout: 30_000 },
+      )
+
       // Click "Remove member"
       await page
         .getByRole("menuitem", { name: /remove member/i })
         .click()
 
       // Confirm the removal dialog
-      const removeResponsePromise = page.waitForResponse(
-        (resp) =>
-          resp.url().includes(`members`) &&
-          resp.request().method() === "DELETE"
-      )
-
       await page.getByRole("button", { name: /^remove$/i }).click()
 
       await removeResponsePromise

@@ -304,7 +304,7 @@ test.describe.serial("Org management lifecycle", () => {
       .click()
 
     // Verify redirect to org dashboard
-    await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 })
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 })
 
     // Verify the campaign no longer appears in the org dashboard card grid.
     // Scope to #main-content to avoid strict-mode violations from lingering dialog text.

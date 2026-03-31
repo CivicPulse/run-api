@@ -331,15 +331,21 @@ test.describe.serial("Survey Lifecycle", () => {
   })
 
   test("SRV-04: Reorder questions", async ({ page, campaignId }) => {
-    // Navigate to survey detail page
-    // campaignId resolved via fixture — navigate to dashboard
+    // Pre-warm OIDC session before navigating to survey detail (avoids auth spinner stall)
+    await page.goto("/")
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 30_000 },
+    )
     await page.goto(`/campaigns/${campaignId}/dashboard`)
     await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
     )
+    // Wait for auth to finish and data to load
+    await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {})
     await expect(page.getByText("Questions (5)")).toBeVisible({
-      timeout: 10_000,
+      timeout: 30_000,
     })
 
     // Move Q5 up to position 2 by clicking "Move up" 3 times

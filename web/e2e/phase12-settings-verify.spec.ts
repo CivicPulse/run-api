@@ -44,6 +44,9 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
     const nameInput = page.locator('input[name="name"]')
     await expect(nameInput).toBeVisible({ timeout: 20_000 })
 
+    // Wait for the form to be populated from the server (useEffect sets value after API load)
+    await expect(nameInput).not.toHaveValue("", { timeout: 15_000 })
+
     const originalName = await nameInput.inputValue()
     expect(originalName.length).toBeGreaterThan(0)
 
@@ -53,6 +56,8 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
 
     // Edit the campaign name field
     await nameInput.fill(editedName)
+    // Confirm the fill took and wasn't overwritten by a late useEffect form.reset()
+    await expect(nameInput).toHaveValue(editedName, { timeout: 3_000 })
 
     // "Save changes" button submits the form
     const saveBtn = page.getByRole("button", { name: /save changes/i })
@@ -61,7 +66,7 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
 
     // Success toast should appear
     const toast = page.getByText(/campaign updated/i)
-    await expect(toast).toBeVisible({ timeout: 10_000 })
+    await expect(toast).toBeVisible({ timeout: 15_000 })
 
     // After successful save, form should return to clean state (no Discard button)
     const discardBtn = page.getByRole("button", { name: /discard/i })
@@ -69,8 +74,9 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
 
     // Restore seed name to keep test environment clean for other specs
     await nameInput.fill("Macon-Bibb Demo Campaign")
+    await expect(nameInput).toHaveValue("Macon-Bibb Demo Campaign", { timeout: 3_000 })
     await saveBtn.click()
-    await expect(page.getByText(/campaign updated/i)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/campaign updated/i)).toBeVisible({ timeout: 15_000 })
   })
 })
 

@@ -13,9 +13,13 @@ async function openVoterFilters(page: import("@playwright/test").Page, campaignI
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await waitForAppReady(page)
   await page.waitForLoadState("networkidle")
-  // Wait for the "All Voters" heading to confirm the page is ready
-  await expect(page.getByRole("heading", { name: /all voters/i }).first()).toBeVisible({ timeout: 15_000 })
-  await page.getByRole("button", { name: /filters/i }).click()
+  // Wait for the "All Voters" heading to confirm the page is ready.
+  // Use getByText as a fallback since the h2 may not match role="heading" in all Playwright versions.
+  await expect(
+    page.getByRole("heading", { name: /all voters/i }).or(page.getByText("All Voters")).first()
+  ).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole("button", { name: /filters/i }).first()).toBeVisible({ timeout: 10_000 })
+  await page.getByRole("button", { name: /filters/i }).first().click()
 }
 
 test.setTimeout(90_000)

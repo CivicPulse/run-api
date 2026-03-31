@@ -20,6 +20,7 @@ async function navigateToCallLists(
   const phoneBankingNav = page
     .getByRole("link", { name: /phone bank/i })
     .first()
+  await expect(phoneBankingNav).toBeVisible({ timeout: 30_000 })
   await phoneBankingNav.click()
 
   // Click Call Lists tab if not already there
@@ -141,6 +142,15 @@ test.describe.serial("Call Lists & DNC", () => {
   // ── Call List CRUD ────────────────────────────────────────────────────────
 
   test("CL-01: Create a call list via UI", async ({ page, campaignId }) => {
+    // Navigate to app root first to warm up OIDC session before navigating to campaign.
+    // Under parallel load, ZITADEL's userManager.getUser() can take 30+ seconds when
+    // this is the first navigation for this page context and multiple workers hit
+    // ZITADEL simultaneously. Pre-warming avoids the "Loading..." spinner stalling.
+    await page.goto("/")
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 30_000 },
+    )
     await page.goto(`/campaigns/${campaignId}/dashboard`)
     await page.waitForURL(/campaigns\//, { timeout: 10_000 })
     await navigateToCallLists(page)

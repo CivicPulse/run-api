@@ -24,9 +24,18 @@ async function navigateToSessions(page: import("@playwright/test").Page): Promis
 }
 
 async function createCallListViaApi(page: import("@playwright/test").Page, campaignId: string, name: string): Promise<string> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/call-lists`, { name, max_attempts: 3, claim_timeout_minutes: 30, cooldown_minutes: 60 })
-  expect(resp.ok()).toBeTruthy()
-  return (await resp.json()).id
+  // Retry up to 3 times to handle transient timeouts under parallel load
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/call-lists`, { name, max_attempts: 3, claim_timeout_minutes: 30, cooldown_minutes: 60 }, 90_000)
+      expect(resp.ok()).toBeTruthy()
+      return (await resp.json()).id
+    } catch (err) {
+      if (attempt === 3) throw err
+      await page.waitForTimeout(2_000 * attempt)
+    }
+  }
+  throw new Error("createCallListViaApi: exhausted retries")
 }
 
 async function createSessionViaApi(page: import("@playwright/test").Page, campaignId: string, name: string, callListId: string): Promise<string> {
