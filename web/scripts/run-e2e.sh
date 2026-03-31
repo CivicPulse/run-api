@@ -55,14 +55,23 @@ ensure_e2e_users() {
     "http://localhost:8080/v2/users" 2>/dev/null) || return 0
 
   if echo "$resp" | grep -qE '"totalResult"\s*:\s*"[1-9]'; then
-    return 0
+    :
+  else
+    echo "▸ E2E users not found in ZITADEL — running create-e2e-users.py..."
+    docker compose -f "$WEB_DIR/../docker-compose.yml" exec -T api \
+      bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py" || {
+      echo "⚠ Failed to create E2E users. Run manually:"
+      echo "  docker compose exec api bash -c 'PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py'"
+    }
   fi
 
-  echo "▸ E2E users not found in ZITADEL — running create-e2e-users.py..."
+  echo "▸ Verifying no-MFA org policy (strict mode)..."
   docker compose -f "$WEB_DIR/../docker-compose.yml" exec -T api \
-    bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py" || {
-    echo "⚠ Failed to create E2E users. Run manually:"
-    echo "  docker compose exec api bash -c 'PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py'"
+    bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py --verify-policy-only --strict-policy" || {
+    echo "✖ Strict policy verification failed: org login policy drift detected."
+    echo "  Fix by re-running:"
+    echo "  docker compose exec api bash -c 'PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py --verify-policy-only --strict-policy'"
+    exit 1
   }
 }
 ensure_e2e_users
