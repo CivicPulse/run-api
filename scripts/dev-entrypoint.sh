@@ -33,7 +33,6 @@ except ClientError:
     print(f'Created bucket {bucket}')
 "
 
-echo "==> Starting uvicorn with hot-reload..."
 SSL_ARGS=""
 if [ "${DISABLE_TLS}" = "true" ]; then
   echo "    (TLS disabled via DISABLE_TLS env var)"
@@ -41,4 +40,12 @@ elif [ -f /home/app/certs/dev.tailb56d83.ts.net.crt ]; then
   echo "    (TLS enabled via Tailscale certs)"
   SSL_ARGS="--ssl-certfile /home/app/certs/dev.tailb56d83.ts.net.crt --ssl-keyfile /home/app/certs/dev.tailb56d83.ts.net.key"
 fi
-exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level info $SSL_ARGS
+
+UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
+if [ "$UVICORN_WORKERS" -gt 1 ]; then
+  echo "==> Starting uvicorn with $UVICORN_WORKERS workers (no hot-reload)..."
+  exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --workers "$UVICORN_WORKERS" --log-level info $SSL_ARGS
+else
+  echo "==> Starting uvicorn with hot-reload..."
+  exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level info $SSL_ARGS
+fi

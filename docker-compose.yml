@@ -23,6 +23,7 @@ services:
       S3_PRESIGN_ENDPOINT_URL: http://localhost:9000
       DISABLE_TLS: ${DISABLE_TLS:-false}
       DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-true}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-4}
     volumes:
       - ./app:/home/app/app
       - ./main.py:/home/app/main.py
