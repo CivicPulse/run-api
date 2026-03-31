@@ -27,7 +27,7 @@ _service = VoterListService()
     response_model=VoterListResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -48,7 +48,7 @@ async def create_list(
     "/campaigns/{campaign_id}/lists",
     response_model=PaginatedResponse[VoterListResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_lists(
     request: Request,
     campaign_id: uuid.UUID,
@@ -73,7 +73,7 @@ async def list_lists(
     "/campaigns/{campaign_id}/lists/{list_id}",
     response_model=VoterListResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -97,7 +97,7 @@ async def get_list(
     "/campaigns/{campaign_id}/lists/{list_id}",
     response_model=VoterListResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -122,7 +122,7 @@ async def update_list(
     "/campaigns/{campaign_id}/lists/{list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -146,7 +146,7 @@ async def delete_list(
     "/campaigns/{campaign_id}/lists/{list_id}/voters",
     response_model=PaginatedResponse[VoterResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_list_voters(
     request: Request,
     campaign_id: uuid.UUID,
@@ -173,7 +173,7 @@ async def get_list_voters(
     "/campaigns/{campaign_id}/lists/{list_id}/members",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_members(
     request: Request,
     campaign_id: uuid.UUID,
@@ -198,7 +198,7 @@ async def add_members(
     "/campaigns/{campaign_id}/lists/{list_id}/members",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_members(
     request: Request,
     campaign_id: uuid.UUID,

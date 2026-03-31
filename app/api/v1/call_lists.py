@@ -34,7 +34,7 @@ _call_list_service = CallListService()
     response_model=CallListResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def generate_call_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -66,7 +66,7 @@ async def generate_call_list(
     "/campaigns/{campaign_id}/call-lists",
     response_model=PaginatedResponse[CallListSummaryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_call_lists(
     request: Request,
     campaign_id: uuid.UUID,
@@ -89,7 +89,7 @@ async def list_call_lists(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     response_model=CallListResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_call_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -117,7 +117,7 @@ async def get_call_list(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     response_model=CallListResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_call_list_status(
     request: Request,
     campaign_id: uuid.UUID,
@@ -151,7 +151,7 @@ async def update_call_list_status(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}/entries",
     response_model=PaginatedResponse[CallListEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_call_list_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -210,7 +210,7 @@ async def list_call_list_entries(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_call_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -240,7 +240,7 @@ async def delete_call_list(
     "/campaigns/{campaign_id}/call-lists/{call_list_id}/claim",
     response_model=list[CallListEntryResponse],
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def claim_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -309,7 +309,7 @@ async def claim_entries(
     response_model=AppendFromListResponse,
     status_code=status.HTTP_200_OK,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def append_from_list(
     request: Request,
     campaign_id: uuid.UUID,

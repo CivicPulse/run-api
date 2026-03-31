@@ -65,7 +65,7 @@ def _paginate(items: list, limit: int, id_field: str) -> PaginatedResponse:
     "/campaigns/{campaign_id}/dashboard/overview",
     response_model=OverviewResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_overview(
     request: Request,
     campaign_id: uuid.UUID,
@@ -105,7 +105,7 @@ async def get_overview(
     "/campaigns/{campaign_id}/dashboard/my-stats",
     response_model=MyStatsResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_my_stats(
     request: Request,
     campaign_id: uuid.UUID,
@@ -187,7 +187,7 @@ async def get_my_stats(
     "/campaigns/{campaign_id}/dashboard/canvassing",
     response_model=CanvassingSummary,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_canvassing_summary(
     request: Request,
     campaign_id: uuid.UUID,
@@ -208,7 +208,7 @@ async def get_canvassing_summary(
     "/campaigns/{campaign_id}/dashboard/canvassing/canvassers",
     response_model=list[CanvasserBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_canvassing_canvassers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -236,7 +236,7 @@ async def get_canvassing_canvassers(
     "/campaigns/{campaign_id}/dashboard/canvassing/turfs",
     response_model=list[TurfBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_canvassing_turfs(
     request: Request,
     campaign_id: uuid.UUID,
@@ -265,7 +265,7 @@ async def get_canvassing_turfs(
     "/campaigns/{campaign_id}/dashboard/canvassing/by-turf",
     response_model=PaginatedResponse[TurfBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_canvassing_by_turf(
     request: Request,
     campaign_id: uuid.UUID,
@@ -298,7 +298,7 @@ async def get_canvassing_by_turf(
     "/campaigns/{campaign_id}/dashboard/canvassing/by-canvasser",
     response_model=PaginatedResponse[CanvasserBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_canvassing_by_canvasser(
     request: Request,
     campaign_id: uuid.UUID,
@@ -334,7 +334,7 @@ async def get_canvassing_by_canvasser(
     "/campaigns/{campaign_id}/dashboard/phone-banking",
     response_model=PhoneBankingSummary,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_summary(
     request: Request,
     campaign_id: uuid.UUID,
@@ -355,7 +355,7 @@ async def get_phone_banking_summary(
     "/campaigns/{campaign_id}/dashboard/phone-banking/sessions",
     response_model=list[SessionBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_sessions(
     request: Request,
     campaign_id: uuid.UUID,
@@ -384,7 +384,7 @@ async def get_phone_banking_sessions(
     "/campaigns/{campaign_id}/dashboard/phone-banking/callers",
     response_model=list[CallerBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_callers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -412,7 +412,7 @@ async def get_phone_banking_callers(
     "/campaigns/{campaign_id}/dashboard/phone-banking/by-session",
     response_model=PaginatedResponse[SessionBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_by_session(
     request: Request,
     campaign_id: uuid.UUID,
@@ -445,7 +445,7 @@ async def get_phone_banking_by_session(
     "/campaigns/{campaign_id}/dashboard/phone-banking/by-caller",
     response_model=PaginatedResponse[CallerBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_by_caller(
     request: Request,
     campaign_id: uuid.UUID,
@@ -476,7 +476,7 @@ async def get_phone_banking_by_caller(
     "/campaigns/{campaign_id}/dashboard/phone-banking/by-call-list",
     response_model=PaginatedResponse[CallListBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_phone_banking_by_call_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -512,7 +512,7 @@ async def get_phone_banking_by_call_list(
     "/campaigns/{campaign_id}/dashboard/volunteers",
     response_model=VolunteerSummary,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteer_summary(
     request: Request,
     campaign_id: uuid.UUID,
@@ -533,7 +533,7 @@ async def get_volunteer_summary(
     "/campaigns/{campaign_id}/dashboard/volunteers/volunteers",
     response_model=list[VolunteerBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteers_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -561,7 +561,7 @@ async def get_volunteers_list(
     "/campaigns/{campaign_id}/dashboard/volunteers/shifts",
     response_model=list[ShiftBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteers_shifts(
     request: Request,
     campaign_id: uuid.UUID,
@@ -590,7 +590,7 @@ async def get_volunteers_shifts(
     "/campaigns/{campaign_id}/dashboard/volunteers/by-volunteer",
     response_model=PaginatedResponse[VolunteerBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteers_by_volunteer(
     request: Request,
     campaign_id: uuid.UUID,
@@ -621,7 +621,7 @@ async def get_volunteers_by_volunteer(
     "/campaigns/{campaign_id}/dashboard/volunteers/by-shift",
     response_model=PaginatedResponse[ShiftBreakdown],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteers_by_shift(
     request: Request,
     campaign_id: uuid.UUID,

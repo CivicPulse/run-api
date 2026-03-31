@@ -35,7 +35,7 @@ _service = OrgService()
 
 
 @router.get("", response_model=OrgResponse)
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_org(
     request: Request,
     user: AuthenticatedUser = Depends(
@@ -53,7 +53,7 @@ async def get_org(
 
 
 @router.patch("", response_model=OrgResponse)
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_org(
     request: Request,
     body: OrgUpdate,
@@ -83,7 +83,7 @@ async def update_org(
 @router.get(
     "/campaigns", response_model=list[OrgCampaignResponse]
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_org_campaigns(
     request: Request,
     user: AuthenticatedUser = Depends(
@@ -120,7 +120,7 @@ async def list_org_campaigns(
 @router.get(
     "/members", response_model=list[OrgMemberResponse]
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_org_members(
     request: Request,
     user: AuthenticatedUser = Depends(
@@ -162,7 +162,7 @@ async def list_org_members(
     "/campaigns/{campaign_id}/members",
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_member_to_campaign(
     request: Request,
     campaign_id: uuid.UUID,

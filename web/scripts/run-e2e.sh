@@ -77,7 +77,7 @@ HELP
 }
 
 # ── Parse flags from arguments ────────────────────────────────────────────
-DEFAULT_WORKERS=4
+DEFAULT_WORKERS=16
 WORKERS_FLAG="--workers $DEFAULT_WORKERS"
 LOOP_MODE=0
 LOOP_SLEEP=120

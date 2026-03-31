@@ -79,4 +79,5 @@ def get_user_or_ip_key(request: Request) -> str:
 limiter = Limiter(
     key_func=get_real_ip,
     default_limits=[settings.rate_limit_unauthenticated],
+    enabled=not settings.disable_rate_limit,
 )

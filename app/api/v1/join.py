@@ -39,7 +39,7 @@ join_service = JoinService()
         "Returns campaign details suitable for the volunteer join landing page."
     ),
 )
-@limiter.limit("20/minute")
+@limiter.limit("40/minute")
 async def get_campaign_public_info(
     request: Request,
     slug: SlugParam,
@@ -72,7 +72,7 @@ async def get_campaign_public_info(
         "campaign role — works for brand-new users."
     ),
 )
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def register_volunteer(
     slug: SlugParam,
     request: Request,

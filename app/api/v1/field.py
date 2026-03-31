@@ -22,7 +22,7 @@ _field_service = FieldService()
     "/campaigns/{campaign_id}/field/me",
     response_model=FieldMeResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_field_me(
     request: Request,
     campaign_id: uuid.UUID,

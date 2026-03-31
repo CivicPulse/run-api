@@ -34,7 +34,7 @@ _service = VoterInteractionService()
     "/campaigns/{campaign_id}/voters/{voter_id}/interactions",
     response_model=PaginatedResponse[InteractionResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_voter_interactions(
     request: Request,
     campaign_id: uuid.UUID,
@@ -110,7 +110,7 @@ async def get_voter_interactions(
     response_model=InteractionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_voter_interaction(
     request: Request,
     campaign_id: uuid.UUID,
@@ -162,7 +162,7 @@ async def create_voter_interaction(
     "/campaigns/{campaign_id}/voters/{voter_id}/interactions/{interaction_id}",
     response_model=InteractionResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_voter_interaction(
     request: Request,
     campaign_id: uuid.UUID,
@@ -210,7 +210,7 @@ async def update_voter_interaction(
     "/campaigns/{campaign_id}/voters/{voter_id}/interactions/{interaction_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_voter_interaction(
     request: Request,
     campaign_id: uuid.UUID,

@@ -45,7 +45,7 @@ _phone_bank_service = PhoneBankService()
     response_model=PhoneBankSessionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_session(
     request: Request,
     campaign_id: uuid.UUID,
@@ -69,7 +69,7 @@ async def create_session(
     "/campaigns/{campaign_id}/phone-bank-sessions",
     response_model=PaginatedResponse[PhoneBankSessionResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_sessions(
     request: Request,
     campaign_id: uuid.UUID,
@@ -133,7 +133,7 @@ async def list_sessions(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}",
     response_model=PhoneBankSessionResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_session(
     request: Request,
     campaign_id: uuid.UUID,
@@ -168,7 +168,7 @@ async def get_session(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}",
     response_model=PhoneBankSessionResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_session(
     request: Request,
     campaign_id: uuid.UUID,
@@ -205,7 +205,7 @@ async def update_session(
     response_model=SessionCallerResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def assign_caller(
     request: Request,
     campaign_id: uuid.UUID,
@@ -244,7 +244,7 @@ async def assign_caller(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/callers/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_caller(
     request: Request,
     campaign_id: uuid.UUID,
@@ -275,7 +275,7 @@ async def remove_caller(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/callers",
     response_model=list[SessionCallerResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_callers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -296,7 +296,7 @@ async def list_callers(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/check-in",
     response_model=SessionCallerResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def check_in(
     request: Request,
     campaign_id: uuid.UUID,
@@ -326,7 +326,7 @@ async def check_in(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/check-out",
     response_model=SessionCallerResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def check_out(
     request: Request,
     campaign_id: uuid.UUID,
@@ -362,7 +362,7 @@ async def check_out(
     response_model=CallRecordResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def record_call(
     request: Request,
     campaign_id: uuid.UUID,
@@ -400,7 +400,7 @@ async def record_call(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/progress",
     response_model=SessionProgressResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_progress(
     request: Request,
     campaign_id: uuid.UUID,
@@ -429,7 +429,7 @@ async def get_progress(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/entries/{entry_id}/reassign",
     response_model=CallListEntryResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def reassign_entry(
     request: Request,
     campaign_id: uuid.UUID,
@@ -463,7 +463,7 @@ async def reassign_entry(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/entries/{entry_id}/release",
     response_model=CallListEntryResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def force_release_entry(
     request: Request,
     campaign_id: uuid.UUID,
@@ -494,7 +494,7 @@ async def force_release_entry(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/entries/{entry_id}/self-release",
     response_model=CallListEntryResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def self_release_entry(
     request: Request,
     campaign_id: uuid.UUID,

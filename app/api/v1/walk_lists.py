@@ -41,7 +41,7 @@ _canvass_service = CanvassService()
     response_model=WalkListResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def generate_walk_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -73,7 +73,7 @@ async def generate_walk_list(
     "/campaigns/{campaign_id}/walk-lists",
     response_model=PaginatedResponse[WalkListResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_walk_lists(
     request: Request,
     campaign_id: uuid.UUID,
@@ -101,7 +101,7 @@ async def list_walk_lists(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
     response_model=WalkListResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_walk_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -129,7 +129,7 @@ async def get_walk_list(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
     response_model=WalkListResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_walk_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -169,7 +169,7 @@ async def update_walk_list(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries",
     response_model=PaginatedResponse[WalkListEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -198,7 +198,7 @@ async def list_entries(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries/enriched",
     response_model=list[EnrichedEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_enriched_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -222,7 +222,7 @@ async def list_enriched_entries(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries/{entry_id}",
     response_model=WalkListEntryResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_entry_status(
     request: Request,
     campaign_id: uuid.UUID,
@@ -255,7 +255,7 @@ async def update_entry_status(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers",
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def assign_canvasser(
     request: Request,
     campaign_id: uuid.UUID,
@@ -292,7 +292,7 @@ async def assign_canvasser(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_canvasser(
     request: Request,
     campaign_id: uuid.UUID,
@@ -314,7 +314,7 @@ async def remove_canvasser(
 @router.get(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers",
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_canvassers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -343,7 +343,7 @@ async def list_canvassers(
     response_model=DoorKnockResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def record_door_knock(
     request: Request,
     campaign_id: uuid.UUID,
@@ -376,7 +376,7 @@ async def record_door_knock(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_walk_list(
     request: Request,
     campaign_id: uuid.UUID,

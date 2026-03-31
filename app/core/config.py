@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     ]
 
     # Rate limiting
+    disable_rate_limit: bool = False
     trusted_proxy_cidrs: list[str] = []
     rate_limit_unauthenticated: str = "30/minute"
 
@@ -85,9 +86,9 @@ class Settings(BaseSettings):
         "2a06:98c0::/29",
         "2c0f:f248::/32",
     ]
-    rate_limit_unauthenticated: str = "30/minute"
-    rate_limit_authenticated_per_user: str = "120/minute"
-    rate_limit_authenticated_per_ip: str = "300/minute"
+    rate_limit_unauthenticated: str = "60/minute"
+    rate_limit_authenticated_per_user: str = "300/minute"
+    rate_limit_authenticated_per_ip: str = "600/minute"
 
 
 settings = Settings()

@@ -49,7 +49,7 @@ _service = ImportService()
     response_model=ImportUploadResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("5/minute", key_func=get_user_or_ip_key)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def initiate_import(
     campaign_id: uuid.UUID,
     request: Request,
@@ -108,7 +108,7 @@ async def initiate_import(
     "/campaigns/{campaign_id}/imports/{import_id}/detect",
     response_model=ImportJobResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def detect_columns(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -197,7 +197,7 @@ async def detect_columns(
     response_model=ImportJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-@limiter.limit("5/minute", key_func=get_user_or_ip_key)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def confirm_mapping(
     request: Request,
     campaign_id: uuid.UUID,
@@ -280,7 +280,7 @@ async def confirm_mapping(
     response_model=ImportJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-@limiter.limit("5/minute", key_func=get_user_or_ip_key)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def cancel_import(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -329,7 +329,7 @@ async def cancel_import(
     "/campaigns/{campaign_id}/imports/{import_id}",
     response_model=ImportJobResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_import_status(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -377,7 +377,7 @@ async def get_import_status(
     "/campaigns/{campaign_id}/imports/{import_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_import(
     campaign_id: uuid.UUID,
     import_id: uuid.UUID,
@@ -446,7 +446,7 @@ async def delete_import(
     "/campaigns/{campaign_id}/imports",
     response_model=PaginatedResponse[ImportJobResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_imports(
     request: Request,
     campaign_id: uuid.UUID,
@@ -506,7 +506,7 @@ async def list_imports(
     "/campaigns/{campaign_id}/imports/templates",
     response_model=list[FieldMappingTemplateResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_mapping_templates(
     request: Request,
     campaign_id: uuid.UUID,

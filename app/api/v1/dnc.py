@@ -29,7 +29,7 @@ _dnc_service = DNCService()
     "/campaigns/{campaign_id}/dnc",
     response_model=list[DNCEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_dnc_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -50,7 +50,7 @@ async def list_dnc_entries(
     response_model=DNCEntryResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_dnc_entry(
     request: Request,
     campaign_id: uuid.UUID,
@@ -74,7 +74,7 @@ async def add_dnc_entry(
     "/campaigns/{campaign_id}/dnc/import",
     response_model=DNCImportResponse,
 )
-@limiter.limit("5/minute", key_func=get_user_or_ip_key)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
 async def bulk_import_dnc(
     request: Request,
     campaign_id: uuid.UUID,
@@ -101,7 +101,7 @@ async def bulk_import_dnc(
     "/campaigns/{campaign_id}/dnc/{dnc_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_dnc_entry(
     request: Request,
     campaign_id: uuid.UUID,
@@ -131,7 +131,7 @@ async def delete_dnc_entry(
     "/campaigns/{campaign_id}/dnc/check",
     response_model=DNCCheckResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def check_dnc(
     request: Request,
     campaign_id: uuid.UUID,

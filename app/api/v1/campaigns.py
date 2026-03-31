@@ -26,7 +26,7 @@ _service = CampaignService()
     response_model=CampaignResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_campaign(
     body: CampaignCreate,
     request: Request,
@@ -70,7 +70,7 @@ async def create_campaign(
     "",
     response_model=PaginatedResponse[CampaignResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_campaigns(
     request: Request,
     limit: int = 20,
@@ -94,7 +94,7 @@ async def list_campaigns(
     "/{campaign_id}",
     response_model=CampaignResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_campaign(
     request: Request,
     campaign_id: uuid.UUID,
@@ -114,7 +114,7 @@ async def get_campaign(
     "/{campaign_id}",
     response_model=CampaignResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_campaign(
     request: Request,
     campaign_id: uuid.UUID,
@@ -160,7 +160,7 @@ async def update_campaign(
     "/{campaign_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_campaign(
     campaign_id: uuid.UUID,
     request: Request,

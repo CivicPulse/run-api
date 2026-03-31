@@ -11,7 +11,7 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 
 @router.get("/public")
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_public_config(request: Request):
     """Non-sensitive frontend configuration (no auth required)."""
     return {
