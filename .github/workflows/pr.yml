@@ -169,6 +169,10 @@ jobs:
         run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"
 
+      - name: Verify no-MFA policy is enforced (fail on policy drift)
+        run: |
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py --verify-policy-only --strict-policy"
+
       - name: Install Playwright browsers
         working-directory: web
         run: |
@@ -180,6 +184,10 @@ jobs:
         with:
           name: web-dist
           path: web/dist
+
+      - name: Run auth setup smoke projects (deterministic gate)
+        working-directory: web
+        run: npx playwright test --project=setup-owner --project=setup-admin --project=setup-manager --project=setup-volunteer --project=setup-viewer --workers=1
 
       - name: Run E2E tests
         working-directory: web

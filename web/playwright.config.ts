@@ -54,9 +54,11 @@ export default defineConfig({
     // ── Optimization: Single shared auth setup (#1) ─────────────────────────
     // One setup project authenticates ALL roles in sequence.
     // When auth is cached (#7), this project is skipped entirely.
-    ...(allAuthFresh
-      ? []
-      : [{ name: "auth-setup", testMatch: /auth-.*\.setup\.ts/ }]),
+    { name: "setup-owner", testMatch: /auth-owner\.setup\.ts/ },
+    { name: "setup-admin", testMatch: /auth-admin\.setup\.ts/ },
+    { name: "setup-manager", testMatch: /auth-manager\.setup\.ts/ },
+    { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
+    { name: "setup-viewer", testMatch: /auth-viewer\.setup\.ts/ },
 
     {
       name: "chromium",
@@ -64,7 +66,15 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/owner.json",
       },
-      dependencies: allAuthFresh ? [] : ["auth-setup"],
+      dependencies: allAuthFresh
+        ? []
+        : [
+            "setup-owner",
+            "setup-admin",
+            "setup-manager",
+            "setup-volunteer",
+            "setup-viewer",
+          ],
       testIgnore: /.*\.setup\.ts/,
       testMatch:
         /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
@@ -75,7 +85,15 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/admin.json",
       },
-      dependencies: allAuthFresh ? [] : ["auth-setup"],
+      dependencies: allAuthFresh
+        ? []
+        : [
+            "setup-owner",
+            "setup-admin",
+            "setup-manager",
+            "setup-volunteer",
+            "setup-viewer",
+          ],
       testMatch: /.*\.admin\.spec\.ts/,
     },
     {
@@ -84,7 +102,15 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/manager.json",
       },
-      dependencies: allAuthFresh ? [] : ["auth-setup"],
+      dependencies: allAuthFresh
+        ? []
+        : [
+            "setup-owner",
+            "setup-admin",
+            "setup-manager",
+            "setup-volunteer",
+            "setup-viewer",
+          ],
       testMatch: /.*\.manager\.spec\.ts/,
     },
     {
@@ -93,7 +119,15 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/volunteer.json",
       },
-      dependencies: allAuthFresh ? [] : ["auth-setup"],
+      dependencies: allAuthFresh
+        ? []
+        : [
+            "setup-owner",
+            "setup-admin",
+            "setup-manager",
+            "setup-volunteer",
+            "setup-viewer",
+          ],
       testMatch: /.*\.volunteer\.spec\.ts/,
     },
     {
@@ -102,7 +136,15 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/viewer.json",
       },
-      dependencies: allAuthFresh ? [] : ["auth-setup"],
+      dependencies: allAuthFresh
+        ? []
+        : [
+            "setup-owner",
+            "setup-admin",
+            "setup-manager",
+            "setup-volunteer",
+            "setup-viewer",
+          ],
       testMatch: /.*\.viewer\.spec\.ts/,
     },
   ],
