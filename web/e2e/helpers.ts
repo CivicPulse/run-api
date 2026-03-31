@@ -128,3 +128,26 @@ export async function apiDelete(page: Page, url: string, timeout = 60_000): Prom
     timeout,
   })
 }
+
+/**
+ * Authenticated POST with exponential-backoff retry for transient 5xx errors.
+ *
+ * Under high parallelism (16+ workers), PostgreSQL pool exhaustion can cause
+ * intermittent 500 "too many clients" responses. This wrapper retries up to
+ * `maxRetries` times with increasing delays, returning on the first success or
+ * any non-5xx response.
+ */
+export async function apiPostWithRetry(
+  page: Page,
+  url: string,
+  data?: unknown,
+  maxRetries = 3,
+): Promise<APIResponse> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const resp = await apiPost(page, url, data)
+    if (resp.ok() || resp.status() < 500) return resp
+    if (attempt < maxRetries - 1) await page.waitForTimeout(3_000 * (attempt + 1))
+  }
+  // Final attempt — return regardless of status so the caller can assert
+  return apiPost(page, url, data)
+}

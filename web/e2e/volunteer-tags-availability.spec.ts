@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures"
 import type { Page } from "@playwright/test"
-import { apiPost, apiDelete, apiGet } from "./helpers"
+import { apiPost, apiPostWithRetry, apiDelete, apiGet } from "./helpers"
 
 /**
  * Volunteer Tags & Availability E2E Spec
@@ -15,7 +15,7 @@ import { apiPost, apiDelete, apiGet } from "./helpers"
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function createVolunteerViaApi(page: Page, campaignId: string, data: Record<string, unknown>): Promise<string> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/volunteers`, data)
+  const resp = await apiPostWithRetry(page, `/api/v1/campaigns/${campaignId}/volunteers`, data)
   expect(resp.ok()).toBeTruthy()
   return (await resp.json()).id
 }

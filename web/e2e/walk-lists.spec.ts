@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures"
-import { apiPost, apiDelete, apiGet } from "./helpers"
+import { apiPost, apiPostWithRetry, apiDelete, apiGet } from "./helpers"
 
 /**
  * Walk Lists E2E Spec
@@ -14,7 +14,7 @@ import { apiPost, apiDelete, apiGet } from "./helpers"
 // ── Helper Functions ─────────────────────────────────────────────────────────
 
 async function createTurfViaApi(page: import("@playwright/test").Page, campaignId: string, name: string, boundary: Record<string, unknown>): Promise<string> {
-  const resp = await apiPost(page, `/api/v1/campaigns/${campaignId}/turfs`, { name, boundary })
+  const resp = await apiPostWithRetry(page, `/api/v1/campaigns/${campaignId}/turfs`, { name, boundary })
   expect(resp.ok()).toBeTruthy()
   return (await resp.json()).id
 }
