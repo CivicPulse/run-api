@@ -9,7 +9,7 @@
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
-- 🚧 **v1.7 Testing & Validation** — Phases 56-61 (in progress)
+- 🚧 **v1.7 Testing & Validation** — Phases 56-64 (in progress)
 
 ## Phases
 
@@ -134,6 +134,9 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests (completed 2026-03-29)
 - [x] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass (completed 2026-03-29)
 - [x] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite (completed 2026-03-30)
+- [ ] **Phase 62: CI Auth Policy Automation** - Automate no-MFA org policy setup for fresh CI ZITADEL instances and verify auth bootstrap deterministically
+- [ ] **Phase 63: Phone Banking API + Data Resilience** - Implement missing phone-bank session delete endpoint and stabilize phone banking test data for active calling flows
+- [ ] **Phase 64: Field Flow Test Isolation** - Eliminate test-order side effects in canvassing inline survey flow via isolated fixtures and deterministic setup
 
 ## Phase Details
 
@@ -230,10 +233,49 @@ Plans:
 Plans:
 - [x] 61-01-PLAN.md — Author standalone production testing runbook (health checks, user provisioning, data setup, smoke + extended suites)
 
+### Phase 62: CI Auth Policy Automation
+**Goal**: Fresh CI and local bootstrap runs automatically apply the org-level no-MFA login policy required by Playwright auth setup
+**Depends on**: Phase 61
+**Requirements**: INFRA-01, INFRA-03, VAL-01
+**Gap Closure**: Closes milestone audit integration gap INT-01
+**Success Criteria** (what must be TRUE):
+  1. User/bootstrap tooling applies org-level no-MFA login policy without manual console steps
+  2. CI provisioning path verifies policy presence and fails fast with a clear error if not applied
+  3. Auth setup scripts run successfully on a fresh ZITADEL instance with no manual MFA-policy intervention
+**Plans:** 0 plans
+Plans:
+- [ ] TBD
+
+### Phase 63: Phone Banking API + Data Resilience
+**Goal**: Phone banking session lifecycle is API-complete and active-calling tests run against deterministic, non-exhausted data
+**Depends on**: Phase 62
+**Requirements**: E2E-15
+**Gap Closure**: Closes milestone audit integration gap INT-02 and flow gap BUG-01 (phone banking active calling)
+**Success Criteria** (what must be TRUE):
+  1. DELETE /phone-bank-sessions/{id} endpoint exists and passes backend/API tests
+  2. Phone banking E2E fixtures always provide claimable entries for active calling scenarios
+  3. PB-10 and FIELD-08/09/10 execute without permanent bug-tracker skips tied to seed exhaustion
+**Plans:** 0 plans
+Plans:
+- [ ] TBD
+
+### Phase 64: Field Flow Test Isolation
+**Goal**: Field canvassing inline survey tests are isolated from cross-spec data exhaustion and pass consistently regardless of execution order
+**Depends on**: Phase 63
+**Requirements**: E2E-20
+**Gap Closure**: Closes milestone audit flow gap for FIELD-07 test-order side effects
+**Success Criteria** (what must be TRUE):
+  1. FIELD-07 has deterministic setup and no dependence on prior spec consumption
+  2. Walk list/canvassing fixtures used by field specs are isolated per test or per spec as appropriate
+  3. Reordered and isolated field-mode test runs preserve pass behavior for inline survey coverage
+**Plans:** 0 plans
+Plans:
+- [ ] TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
+Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 -> 64
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -250,6 +292,9 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
 | 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete    | 2026-03-30 |
+| 62. CI Auth Policy Automation | v1.7 | 0/0 | Planned     | - |
+| 63. Phone Banking API + Data Resilience | v1.7 | 0/0 | Planned     | - |
+| 64. Field Flow Test Isolation | v1.7 | 0/0 | Planned     | - |
 
 ## Backlog
 

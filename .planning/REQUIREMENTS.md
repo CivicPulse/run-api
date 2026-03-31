@@ -15,9 +15,9 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [x] **INFRA-01**: Provisioning script creates 15 ZITADEL test users (3 per campaign role: owner, admin, manager, volunteer, viewer) with verified emails and no password change required
+- [ ] **INFRA-01**: Provisioning script creates 15 ZITADEL test users (3 per campaign role: owner, admin, manager, volunteer, viewer) with verified emails and no password change required
 - [x] **INFRA-02**: Playwright config has 5+ auth projects with per-role storageState files (owner, admin, manager, volunteer, viewer)
-- [x] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
+- [ ] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
 
 ### E2E Tests — RBAC & Organization
 
@@ -49,12 +49,12 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### E2E Tests — Field Mode & Cross-Cutting
 
-- [x] **E2E-20**: Automated tests verify field mode hub, canvassing wizard, phone banking, offline queue, and onboarding tour (FIELD-01 through FIELD-10, OFFLINE-01 through OFFLINE-03, TOUR-01 through TOUR-03)
+- [ ] **E2E-20**: Automated tests verify field mode hub, canvassing wizard, phone banking, offline queue, and onboarding tour (FIELD-01 through FIELD-10, OFFLINE-01 through OFFLINE-03, TOUR-01 through TOUR-03)
 - [x] **E2E-21**: Automated tests verify navigation, empty states, loading skeletons, error boundaries, form guards, and toasts (NAV-01 through NAV-03, UI-01 through UI-03, CROSS-01 through CROSS-03)
 
 ### Validation & Production
 
-- [x] **VAL-01**: All E2E tests pass at 100% against local Docker Compose environment
+- [ ] **VAL-01**: All E2E tests pass at 100% against local Docker Compose environment
 - [x] **VAL-02**: All bugs discovered during testing are fixed and verified
 - [x] **PROD-01**: AI-consumable production testing instruction document is created with production-specific URLs, auth, and data considerations
 
@@ -80,9 +80,9 @@ None deferred for this milestone.
 | FEAT-01 | Phase 56 | Complete |
 | FEAT-02 | Phase 56 | Complete |
 | FEAT-03 | Phase 56 | Complete |
-| INFRA-01 | Phase 57 | Complete |
+| INFRA-01 | Phase 62 | Pending |
 | INFRA-02 | Phase 57 | Complete |
-| INFRA-03 | Phase 57 | Complete |
+| INFRA-03 | Phase 62 | Pending |
 | E2E-01 | Phase 58 | Complete |
 | E2E-02 | Phase 58 | Complete |
 | E2E-03 | Phase 58 | Complete |
@@ -97,14 +97,14 @@ None deferred for this milestone.
 | E2E-12 | Phase 59 | Pending |
 | E2E-13 | Phase 59 | Pending |
 | E2E-14 | Phase 59 | Pending |
-| E2E-15 | Phase 59 | Pending |
+| E2E-15 | Phase 63 | Pending |
 | E2E-16 | Phase 59 | Pending |
 | E2E-17 | Phase 59 | Pending |
 | E2E-18 | Phase 59 | Pending |
 | E2E-19 | Phase 59 | Pending |
-| E2E-20 | Phase 60 | Complete |
+| E2E-20 | Phase 64 | Pending |
 | E2E-21 | Phase 60 | Complete |
-| VAL-01 | Phase 60 | Complete |
+| VAL-01 | Phase 62 | Pending |
 | VAL-02 | Phase 60 | Complete |
 | PROD-01 | Phase 61 | Complete |
 
@@ -115,4 +115,4 @@ None deferred for this milestone.
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-29 after 60-05 gap closure (E2E-20, E2E-21 marked Complete)*
+*Last updated: 2026-03-31 after milestone audit gap-phase planning (Phases 62-64)*
