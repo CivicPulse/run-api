@@ -54,17 +54,57 @@ test.describe.serial("Cross-Cutting -- Form Guards", () => {
   }) => {
     test.setTimeout(60_000)
 
+    // Intercept slow campaign data endpoints to bypass rate-limit delays in
+    // parallel test runs. The campaign GET is used by CampaignLayout (header)
+    // and by GeneralSettings (useCampaign hook) to populate the form.
+    // The me/campaigns GET is used by usePermissions to determine role for RequireRole gates.
+    const mockCampaign = {
+      id: campaignId,
+      zitadel_org_id: "mock-org",
+      name: "E2E Test Campaign",
+      type: "local",
+      jurisdiction_fips: null,
+      jurisdiction_name: null,
+      election_date: null,
+      status: "active",
+      candidate_name: null,
+      party_affiliation: null,
+      created_by: "mock-user",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    await page.route(`**/api/v1/campaigns/${campaignId}`, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockCampaign),
+        })
+      } else {
+        await route.continue()
+      }
+    })
+    await page.route("**/api/v1/me/campaigns", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { campaign_id: campaignId, campaign_name: "E2E Test Campaign", role: "owner" },
+        ]),
+      })
+    })
+
     // Go to campaign settings (general tab has useFormGuard with ConfirmDialog)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings\/general/, { timeout: 10_000 })
-    // Wait for the campaign data to load (form shows skeleton while loading)
-    await expect(
-      page.getByLabel("Campaign Name"),
-    ).toBeVisible({ timeout: 20_000 })
+    // Wait for the Campaign Name input to be enabled.
+    // With intercepted APIs, campaign data loads instantly.
+    const nameField = page.getByLabel("Campaign Name")
+    await expect(nameField).toBeVisible({ timeout: 10_000 })
+    await expect(nameField).toBeEnabled({ timeout: 15_000 })
 
     // Make the form dirty by typing in the campaign name field.
     // Use click + type to ensure react-hook-form registers the change.
-    const nameField = page.getByLabel("Campaign Name")
     await nameField.click()
     await nameField.fill("Modified Campaign Name For Guard Test")
     // Blur the field to trigger react-hook-form validation and dirty detection
@@ -105,6 +145,45 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
   }) => {
     test.setTimeout(150_000)
 
+    // Intercept slow campaign data endpoints to bypass rate-limit delays in
+    // parallel test runs. The campaign GET populates CampaignLayout; the
+    // me/campaigns GET resolves role for RequireRole gates (e.g. "+ New Voter" button).
+    const mockCampaign = {
+      id: campaignId,
+      zitadel_org_id: "mock-org",
+      name: "E2E Test Campaign",
+      type: "local",
+      jurisdiction_fips: null,
+      jurisdiction_name: null,
+      election_date: null,
+      status: "active",
+      candidate_name: null,
+      party_affiliation: null,
+      created_by: "mock-user",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    await page.route(`**/api/v1/campaigns/${campaignId}`, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockCampaign),
+        })
+      } else {
+        await route.continue()
+      }
+    })
+    await page.route("**/api/v1/me/campaigns", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { campaign_id: campaignId, campaign_name: "E2E Test Campaign", role: "owner" },
+        ]),
+      })
+    })
+
     // Intercept the voters search API to return fast with a small dataset
     // This prevents CROSS-02 from being blocked by slow voter searches when
     // data-validation (which fires 55 search requests) runs concurrently
@@ -128,12 +207,16 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
     // Navigate to voters page
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/\/voters\/?$/, { timeout: 10_000 })
-    // Wait for the page heading to confirm the page is fully rendered
+    // Wait for the page heading (now renders immediately; CampaignLayout no longer blocks Outlet)
     await expect(
       page.getByRole("heading", { name: /all voters/i }).first(),
-    ).toBeVisible({ timeout: 30_000 })
+    ).toBeVisible({ timeout: 15_000 })
 
-    // Create a voter via UI to trigger a success toast
+    // Create a voter via UI to trigger a success toast.
+    // With intercepted me/campaigns, role resolves instantly and button appears immediately.
+    await expect(
+      page.getByRole("button", { name: /new voter/i }),
+    ).toBeVisible({ timeout: 15_000 })
     await page.getByRole("button", { name: /new voter/i }).click()
     await expect(
       page.getByText(/new voter/i).first(),
@@ -142,13 +225,40 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
     await page.getByLabel("First Name").fill("ToastTest")
     await page.getByLabel("Last Name").fill("Ephemeral")
 
-    // Intercept the create response (long timeout: dev server slow when large voter dataset queried concurrently)
+    // Intercept voter create POST to avoid rate-limit delays under parallel load.
+    // CROSS-02 tests toast notifications, not voter CRUD correctness (tested in voters.spec.ts).
+    // Mocking the create response ensures the success toast appears regardless of API speed.
+    const mockVoterId = `mock-voter-${Date.now()}`
+    const mockVoter = {
+      id: mockVoterId,
+      campaign_id: campaignId,
+      first_name: "ToastTest",
+      last_name: "Ephemeral",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    await page.route(
+      (url) => url.pathname.endsWith(`/campaigns/${campaignId}/voters`),
+      async (route) => {
+        if (route.request().method() === "POST") {
+          await route.fulfill({
+            status: 201,
+            contentType: "application/json",
+            body: JSON.stringify(mockVoter),
+          })
+        } else {
+          await route.continue()
+        }
+      },
+    )
+
+    // Set up response watcher for the (now-intercepted) create POST
     const createPromise = page.waitForResponse(
       (resp) =>
-        resp.url().includes("/voters") &&
+        resp.url().includes(`/campaigns/${campaignId}/voters`) &&
         resp.request().method() === "POST" &&
         !resp.url().includes("/search"),
-      { timeout: 120_000 },
+      { timeout: 15_000 },
     )
 
     await page.getByRole("button", { name: /create voter/i }).click()
@@ -171,16 +281,18 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
       page.locator("[data-sonner-toast]"),
     ).not.toBeVisible({ timeout: 15_000 })
 
-    // Remove route mock before cleanup so delete request goes to real server
+    // Remove route mocks before cleanup so requests go to real server
     await page.unroute("**/voters/search*")
-
-    // Clean up: delete the test voter via API (best-effort — don't fail test on slow cleanup)
-    await apiDelete(
-      page,
-      `/api/v1/campaigns/${campaignId}/voters/${createdVoter.id}`,
-    ).catch(() => {
-      console.warn("[CROSS-02] Cleanup: voter delete timed out — voter may remain in DB")
-    })
+    // (voter create was mocked — no real voter exists to delete, so skip cleanup)
+    // If a real voter was created (e.g. intercept missed), delete it best-effort
+    if (createdVoter.id && !createdVoter.id.startsWith("mock-voter-")) {
+      await apiDelete(
+        page,
+        `/api/v1/campaigns/${campaignId}/voters/${createdVoter.id}`,
+      ).catch(() => {
+        console.warn("[CROSS-02] Cleanup: voter delete timed out — voter may remain in DB")
+      })
+    }
   })
 })
 
@@ -374,15 +486,13 @@ test.describe.serial("Cross-Cutting -- Loading & Errors", () => {
     // Navigate to voters page
     await page.goto(`/campaigns/${campaignId}/voters`)
 
-    // Assert skeleton/loading elements are visible while data loads
-    // DataTable renders Skeleton components with animate-pulse class
-    const skeletonOrLoading = page
-      .locator(".animate-pulse")
-      .first()
-      .or(page.locator('[role="status"]').first())
-      .or(page.locator("table .animate-pulse").first())
-
-    await expect(skeletonOrLoading).toBeVisible({ timeout: 5_000 })
+    // Assert skeleton/loading elements are visible while data loads.
+    // Target table-scoped skeletons specifically to avoid matching campaign header
+    // tab skeletons that also use animate-pulse (since CampaignLayout now renders
+    // skeleton tabs while campaign data loads, without blocking child route rendering).
+    await expect(
+      page.locator("table .animate-pulse").first(),
+    ).toBeVisible({ timeout: 5_000 })
 
     // Wait for data to load (skeletons should disappear)
     await expect(page.getByRole("table")).toBeVisible({ timeout: 15_000 })

@@ -6,7 +6,6 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,18 +79,6 @@ function GeneralSettings() {
     },
   )
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 max-w-2xl">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -106,6 +93,7 @@ function GeneralSettings() {
             id="name"
             {...form.register("name")}
             placeholder="Enter campaign name"
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.name}
             aria-describedby={form.formState.errors.name ? "name-error" : undefined}
           />
@@ -121,6 +109,7 @@ function GeneralSettings() {
             {...form.register("description")}
             placeholder="Brief description of your campaign (optional)"
             rows={3}
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.description}
             aria-describedby={form.formState.errors.description ? "description-error" : undefined}
           />
@@ -135,6 +124,7 @@ function GeneralSettings() {
             id="election_date"
             type="date"
             {...form.register("election_date")}
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.election_date}
             aria-describedby={form.formState.errors.election_date ? "election-date-error" : undefined}
           />
@@ -144,8 +134,8 @@ function GeneralSettings() {
         </div>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={updateCampaign.isPending}>
-            {updateCampaign.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isLoading || updateCampaign.isPending}>
+            {(isLoading || updateCampaign.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save changes
           </Button>
           {form.formState.isDirty && (
