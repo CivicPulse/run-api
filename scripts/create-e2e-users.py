@@ -40,6 +40,18 @@ _VERIFY_TLS = False
 
 PROJECT_NAME = "CivicPulse"
 
+LOGIN_POLICY_SEARCH_PATH = "/management/v1/policies/login/_search"
+LOGIN_POLICY_PATH = "/management/v1/policies/login"
+
+NO_MFA_LOGIN_POLICY = {
+    "allowUsernamePassword": True,
+    "allowRegister": False,
+    "allowExternalIdp": True,
+    "forceMfa": False,
+    "secondFactors": [],
+    "multiFactors": [],
+}
+
 # ---------------------------------------------------------------------------
 # E2E user definitions
 # ---------------------------------------------------------------------------
@@ -275,6 +287,154 @@ def api_call(
     return resp.json() if resp.content else {}
 
 
+def _strict_policy_exit(
+    method: str,
+    path: str,
+    exc: httpx.HTTPStatusError,
+) -> None:
+    status = exc.response.status_code
+    body = exc.response.text
+    raise SystemExit(
+        "Strict policy verification failed for "
+        f"{method} {path}: status={status}, body={body}. "
+        "Remediation: ensure org login policy disables MFA "
+        "(secondFactors/multiFactors empty, forceMfa=false)."
+    )
+
+
+def _policy_search_payload(org_id: str) -> dict:
+    return {
+        "query": {
+            "offset": "0",
+            "limit": 10,
+            "asc": True,
+        },
+        "queries": [{"inherited": False, "isDefault": False, "orgId": org_id}],
+    }
+
+
+def _policy_payload(org_id: str) -> dict:
+    return {"orgId": org_id, **NO_MFA_LOGIN_POLICY}
+
+
+def _extract_policies(data: dict) -> list[dict]:
+    if isinstance(data.get("result"), list):
+        return data["result"]
+    if isinstance(data.get("policies"), list):
+        return data["policies"]
+    return []
+
+
+def _is_compliant_no_mfa_policy(policy: dict) -> bool:
+    second_factors = policy.get("secondFactors", [])
+    multi_factors = policy.get("multiFactors", [])
+    force_mfa = policy.get("forceMfa", False)
+    allow_username_password = policy.get("allowUsernamePassword", True)
+    return (
+        isinstance(second_factors, list)
+        and len(second_factors) == 0
+        and isinstance(multi_factors, list)
+        and len(multi_factors) == 0
+        and force_mfa is False
+        and allow_username_password is True
+    )
+
+
+def fetch_org_login_policies(client: httpx.Client, pat: str, org_id: str) -> list[dict]:
+    data = api_call(
+        client,
+        "POST",
+        LOGIN_POLICY_SEARCH_PATH,
+        pat,
+        json=_policy_search_payload(org_id),
+    )
+    return _extract_policies(data or {})
+
+
+def verify_org_login_policy(
+    client: httpx.Client,
+    pat: str,
+    org_id: str,
+    *,
+    strict: bool,
+) -> bool:
+    try:
+        policies = fetch_org_login_policies(client, pat, org_id)
+    except httpx.HTTPStatusError as exc:
+        if strict:
+            _strict_policy_exit("POST", LOGIN_POLICY_SEARCH_PATH, exc)
+        print(
+            "WARNING: Could not verify org login policy "
+            f"(POST {LOGIN_POLICY_SEARCH_PATH}): {exc}",
+            file=sys.stderr,
+        )
+        return False
+
+    for policy in policies:
+        if _is_compliant_no_mfa_policy(policy):
+            return True
+
+    message = (
+        "Org login policy is not compliant with no-MFA requirements "
+        f"(searched {LOGIN_POLICY_SEARCH_PATH} for orgId={org_id})."
+    )
+    if strict:
+        raise SystemExit(message)
+    print(f"WARNING: {message}", file=sys.stderr)
+    return False
+
+
+def ensure_org_login_policy(
+    client: httpx.Client,
+    pat: str,
+    org_id: str,
+    *,
+    strict: bool,
+) -> None:
+    policies: list[dict] = []
+    try:
+        policies = fetch_org_login_policies(client, pat, org_id)
+    except httpx.HTTPStatusError as exc:
+        _strict_policy_exit("POST", LOGIN_POLICY_SEARCH_PATH, exc)
+
+    compliant = next((p for p in policies if _is_compliant_no_mfa_policy(p)), None)
+    if compliant:
+        print("  Org login policy already compliant (no MFA required)")
+        return
+
+    payload = _policy_payload(org_id)
+
+    try:
+        if not policies:
+            api_call(client, "POST", LOGIN_POLICY_PATH, pat, json=payload)
+            print("  Created org login policy with no-MFA settings")
+        else:
+            policy_id = policies[0].get("id", "")
+            if not policy_id:
+                raise SystemExit(
+                    "Cannot update org login policy: missing id in search result"
+                )
+            api_call(
+                client,
+                "PUT",
+                f"{LOGIN_POLICY_PATH}/{policy_id}",
+                pat,
+                json=payload,
+            )
+            print(f"  Updated org login policy {policy_id} to no-MFA settings")
+    except httpx.HTTPStatusError as exc:
+        _strict_policy_exit(exc.request.method, exc.request.url.path, exc)
+
+    if not verify_org_login_policy(client, pat, org_id, strict=strict):
+        raise SystemExit(1)
+
+
+def _parse_flags(argv: list[str]) -> tuple[bool, bool]:
+    verify_policy_only = "--verify-policy-only" in argv
+    strict_policy = "--strict-policy" in argv
+    return verify_policy_only, strict_policy
+
+
 # ---------------------------------------------------------------------------
 # ZITADEL user management
 # ---------------------------------------------------------------------------
@@ -282,21 +442,24 @@ def api_call(
 
 def find_project_id(client: httpx.Client, pat: str) -> str:
     """Find the CivicPulse project ID."""
-    data = api_call(
-        client,
-        "POST",
-        "/management/v1/projects/_search",
-        pat,
-        json={
-            "queries": [
-                {
-                    "nameQuery": {
-                        "name": PROJECT_NAME,
-                        "method": "TEXT_QUERY_METHOD_EQUALS",
+    data = (
+        api_call(
+            client,
+            "POST",
+            "/management/v1/projects/_search",
+            pat,
+            json={
+                "queries": [
+                    {
+                        "nameQuery": {
+                            "name": PROJECT_NAME,
+                            "method": "TEXT_QUERY_METHOD_EQUALS",
+                        }
                     }
-                }
-            ]
-        },
+                ]
+            },
+        )
+        or {}
     )
     results = data.get("result", [])
     if not results:
@@ -310,21 +473,24 @@ def find_project_id(client: httpx.Client, pat: str) -> str:
 
 def find_user_by_username(client: httpx.Client, pat: str, username: str) -> str | None:
     """Search for a user by username, return userId or None."""
-    data = api_call(
-        client,
-        "POST",
-        "/management/v1/users/_search",
-        pat,
-        json={
-            "queries": [
-                {
-                    "userNameQuery": {
-                        "userName": username,
-                        "method": "TEXT_QUERY_METHOD_EQUALS",
+    data = (
+        api_call(
+            client,
+            "POST",
+            "/management/v1/users/_search",
+            pat,
+            json={
+                "queries": [
+                    {
+                        "userNameQuery": {
+                            "userName": username,
+                            "method": "TEXT_QUERY_METHOD_EQUALS",
+                        }
                     }
-                }
-            ]
-        },
+                ]
+            },
+        )
+        or {}
     )
     users = data.get("result", [])
     return users[0]["id"] if users else None
@@ -561,9 +727,7 @@ def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None
         cur = conn.cursor()
 
         # Find the seed campaign specifically (not just any campaign)
-        cur.execute(
-            "SELECT id FROM campaigns WHERE name LIKE 'Macon-Bibb%%' LIMIT 1"
-        )
+        cur.execute("SELECT id FROM campaigns WHERE name LIKE 'Macon-Bibb%%' LIMIT 1")
         row = cur.fetchone()
         if not row:
             # Fallback to first campaign if seed campaign not found
@@ -607,7 +771,7 @@ def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None
 
 def get_zitadel_org_id(client: httpx.Client, pat: str) -> str:
     """Get the default ZITADEL organization ID."""
-    data = api_call(client, "GET", "/management/v1/orgs/me", pat)
+    data = api_call(client, "GET", "/management/v1/orgs/me", pat) or {}
     org_id = data.get("org", {}).get("id", "")
     if not org_id:
         print("ERROR: Could not determine ZITADEL org ID", file=sys.stderr)
@@ -616,8 +780,13 @@ def get_zitadel_org_id(client: httpx.Client, pat: str) -> str:
 
 
 def main() -> None:
+    verify_policy_only, strict_policy = _parse_flags(sys.argv[1:])
+
     print("=" * 60)
-    print("Create E2E Test Users (15 users across 5 roles)")
+    if verify_policy_only:
+        print("Verify E2E org login policy (no-MFA)")
+    else:
+        print("Create E2E Test Users (15 users across 5 roles)")
     print("=" * 60)
     print(f"  ZITADEL URL: {ZITADEL_URL}")
 
@@ -628,13 +797,29 @@ def main() -> None:
     pat = read_pat()
 
     with httpx.Client(verify=_VERIFY_TLS) as client:
-        print("\nStep 2: Finding project...")
+        print("\nStep 2: Getting ZITADEL org ID...")
+        zitadel_org_id = get_zitadel_org_id(client, pat)
+        print(f"  ZITADEL org ID: {zitadel_org_id}")
+
+        print("\nStep 3: Ensuring org login policy (no-MFA)...")
+        ensure_org_login_policy(
+            client,
+            pat,
+            zitadel_org_id,
+            strict=strict_policy,
+        )
+
+        if verify_policy_only:
+            print("\n" + "=" * 60)
+            print("Org login policy verification passed")
+            print("=" * 60)
+            return
+
+        print("\nStep 4: Finding project...")
         project_id = find_project_id(client, pat)
         print(f"  Project ID: {project_id}")
 
-        print("\nStep 3: Getting ZITADEL org ID and updating seed org...")
-        zitadel_org_id = get_zitadel_org_id(client, pat)
-        print(f"  ZITADEL org ID: {zitadel_org_id}")
+        print("\nStep 5: Updating seed org ID...")
         update_seed_org_zitadel_id(zitadel_org_id)
 
         for i, user_def in enumerate(E2E_USERS, 1):
