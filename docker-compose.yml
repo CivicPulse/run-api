@@ -90,6 +90,7 @@ services:
   postgres:
     image: postgis/postgis:17-3.5
     container_name: run-api-postgres
+    command: postgres -c max_connections=300
     environment:
       POSTGRES_DB: run_api
       POSTGRES_USER: postgres
