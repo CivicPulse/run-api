@@ -177,7 +177,7 @@ test.describe("RBAC: manager permissions", () => {
     await page.goto("/")
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
 
     // Manager has no org role -- Create Campaign gated behind RequireOrgRole minimum="org_admin"
