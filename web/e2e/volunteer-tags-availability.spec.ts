@@ -99,6 +99,23 @@ test.describe.serial("Volunteer Tags & Availability", () => {
   // ── Volunteer Tags ──
 
   test("VTAG-01: Create 10 volunteer tags", async ({ page, campaignId }) => {
+    // Navigate first to establish auth context (needed for apiGet/authHeaders)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
+
+    // Pre-cleanup: delete any duplicate tags from previous test runs to avoid name-lookup collisions
+    // The volunteer detail page resolves tags by name from campaignTags; duplicates cause 404 on remove
+    const existingTagsResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/volunteer-tags`)
+    if (existingTagsResp.ok()) {
+      const existingTags = (await existingTagsResp.json()) as { id: string; name: string }[]
+      for (const tag of existingTags) {
+        if (TAG_NAMES.includes(tag.name)) {
+          // Delete ALL existing tags with our test names — we'll recreate them fresh
+          await deleteVolunteerTagViaApi(page, campaignId, tag.id).catch(() => {})
+        }
+      }
+    }
+
     // Navigate to Volunteers > Tags management page
     await page.goto(`/campaigns/${campaignId}/volunteers/tags`)
     await page.waitForURL(/volunteers\/tags/, { timeout: 10_000 })
@@ -108,7 +125,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       // Wait for any previous dialog to close before opening a new one
       await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
 
-      await page.getByRole("button", { name: /new tag/i }).click()
+      await page.getByRole("button", { name: /new tag/i }).first().click()
       await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 })
 
       // The label is "Tag name" with htmlFor="volunteer-tag-name"
@@ -138,11 +155,14 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     expect(resp.ok()).toBeTruthy()
     const allTags = await resp.json()
     // Rebuild tagIds from API response (ordered by name match)
+    // Use the LAST matching tag by name — ensures we use the one created in THIS run
+    // (multiple test runs can create duplicate tag names)
     tagIds.length = 0
     for (const tagName of TAG_NAMES) {
-      const tag = allTags.find(
-        (t: { name: string; id: string }) => t.name === tagName,
+      const matchingTags = (allTags as { name: string; id: string }[]).filter(
+        (t) => t.name === tagName,
       )
+      const tag = matchingTags[matchingTags.length - 1]
       expect(tag).toBeTruthy()
       tagIds.push(tag.id)
     }
@@ -249,14 +269,29 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       const removeButton = page.getByRole("button", {
         name: `Remove tag ${removeTagName}`,
       })
+      await expect(removeButton).toBeVisible({ timeout: 5_000 })
+      // Set up response watcher before clicking to detect if the API call fires
+      const removeApiPromise = page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/volunteers/${volunteerIds[volIdx]}/tags/`) &&
+          resp.request().method() === "DELETE",
+        { timeout: 10_000 },
+      )
       await removeButton.click()
-      await expect(page.getByText("Tag removed")).toBeVisible({
+      const removeApiResp = await removeApiPromise.catch(() => null)
+      if (removeApiResp && !removeApiResp.ok() && removeApiResp.status() !== 204) {
+        const errBody = await removeApiResp.text().catch(() => "")
+        throw new Error(`Tag removal API failed: ${removeApiResp.status()} ${errBody}`)
+      }
+      await expect(page.getByText(/tag removed/i).first()).toBeVisible({
         timeout: 10_000,
       })
 
-      // Add the new tag via "Add Tag" dropdown
+      // Add the new tag via "Add Tag" dropdown (scoped to menu to avoid strict mode violation)
       await page.getByRole("button", { name: /add tag/i }).click()
-      await page.getByRole("menuitem", { name: addTagName }).click()
+      const dropdownMenu2 = page.getByRole("menu")
+      await expect(dropdownMenu2).toBeVisible({ timeout: 5_000 })
+      await dropdownMenu2.getByRole("menuitem", { name: addTagName }).first().click()
       await expect(page.getByText("Tag added").first()).toBeVisible({
         timeout: 10_000,
       })
@@ -337,8 +372,10 @@ test.describe.serial("Volunteer Tags & Availability", () => {
         .or(tagRow.getByRole("button", { name: /actions/i }))
       await actionsButton.first().click()
 
-      // Click "Delete" in the dropdown
-      await page.getByRole("menuitem", { name: /delete/i }).click()
+      // Click "Delete" in the open dropdown menu
+      const openMenu = page.getByRole("menu")
+      await expect(openMenu).toBeVisible({ timeout: 5_000 })
+      await openMenu.getByRole("menuitem", { name: /delete/i }).click()
 
       // DestructiveConfirmDialog requires typing the tag name
       await page.getByPlaceholder(tagName).fill(tagName)
@@ -399,26 +436,32 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     // Click Availability tab
     await page.getByRole("tab", { name: /availability/i }).click()
 
-    // Click "Add Availability" button
-    await page.getByRole("button", { name: /add availability/i }).click()
+    // Click "Add Availability" button (use first to avoid strict mode violation if multiple exist)
+    await page.getByRole("button", { name: /add availability/i }).first().click()
 
-    // Fill in the date/time in the dialog
-    // The AddAvailabilityDialog should have start_at and end_at inputs
-    const startInput = page.locator('input[name="start_at"], input[type="datetime-local"]').first()
-    const endInput = page.locator('input[name="end_at"], input[type="datetime-local"]').last()
+    // Fill in the date/time in the AddAvailabilityDialog
+    // Dialog uses separate: #avail_date (type="date"), #avail_start (type="time"), #avail_end (type="time")
+    const dialog = page.getByRole("dialog")
+    await expect(dialog).toBeVisible({ timeout: 5_000 })
 
     const startDate = new Date(mon)
     startDate.setHours(9, 0, 0, 0)
     const endDate = new Date(mon)
     endDate.setHours(17, 0, 0, 0)
 
-    await startInput.fill(formatDatetimeLocal(startDate))
-    await endInput.fill(formatDatetimeLocal(endDate))
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`
+    const startTimeStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`
+    const endTimeStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`
 
-    // Submit
-    await page.getByRole("button", { name: /save|add|submit/i }).click()
+    await dialog.locator("#avail_date").fill(dateStr)
+    await dialog.locator("#avail_start").fill(startTimeStr)
+    await dialog.locator("#avail_end").fill(endTimeStr)
+
+    // Submit with the "Add" button
+    await dialog.getByRole("button", { name: /^add$/i }).click()
     await expect(
-      page.getByText(/availability/i).first(),
+      page.getByText(/availability added/i).first(),
     ).toBeVisible({ timeout: 10_000 })
 
     // Store availability for later edit/delete
@@ -439,20 +482,28 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     )
     await page.waitForURL(/volunteers\/[a-f0-9-]+$/, { timeout: 10_000 })
     await page.getByRole("tab", { name: /availability/i }).click()
-    await page.getByRole("button", { name: /add availability/i }).click()
+    await page.getByRole("button", { name: /add availability/i }).first().click()
 
-    const startInput2 = page.locator('input[name="start_at"], input[type="datetime-local"]').first()
-    const endInput2 = page.locator('input[name="end_at"], input[type="datetime-local"]').last()
+    const dialog2 = page.getByRole("dialog")
+    await expect(dialog2).toBeVisible({ timeout: 5_000 })
 
     const satStart = new Date(sat)
     satStart.setHours(10, 0, 0, 0)
     const satEnd = new Date(sat)
     satEnd.setHours(14, 0, 0, 0)
 
-    await startInput2.fill(formatDatetimeLocal(satStart))
-    await endInput2.fill(formatDatetimeLocal(satEnd))
+    const pad2 = (n: number) => String(n).padStart(2, "0")
+    const dateStr2 = `${satStart.getFullYear()}-${pad2(satStart.getMonth() + 1)}-${pad2(satStart.getDate())}`
+    const startTimeStr2 = `${pad2(satStart.getHours())}:${pad2(satStart.getMinutes())}`
+    const endTimeStr2 = `${pad2(satEnd.getHours())}:${pad2(satEnd.getMinutes())}`
 
-    await page.getByRole("button", { name: /save|add|submit/i }).click()
+    await dialog2.locator("#avail_date").fill(dateStr2)
+    await dialog2.locator("#avail_start").fill(startTimeStr2)
+    await dialog2.locator("#avail_end").fill(endTimeStr2)
+
+    await dialog2.getByRole("button", { name: /^add$/i }).click()
+    await expect(page.getByText(/availability added/i).first()).toBeVisible({ timeout: 10_000 })
+
     const avResp2 = await apiGet(page,
       `/api/v1/campaigns/${campaignId}/volunteers/${volunteerIds[1]}/availability`,
     )
@@ -493,6 +544,10 @@ test.describe.serial("Volunteer Tags & Availability", () => {
   })
 
   test("AVAIL-02: Edit availability", async ({ page, campaignId }) => {
+    // Navigate first to establish auth context (needed for API helpers)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
+
     // Edit = delete old slot + add new slot (no inline edit in UI)
     // For volunteers 0 and 1, delete their current availability and set new times
 

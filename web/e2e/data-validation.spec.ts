@@ -100,10 +100,10 @@ async function importFixtureCSV(
     page.getByText(/import complete|import cancelled/i).first(),
   ).toBeVisible({ timeout: 60_000 })
 
-  // Verify the 55 rows were imported
-  await expect(page.getByText(/55/).first()).toBeVisible({
-    timeout: 10_000,
-  })
+  // Verify the import completed (row count visible — may be fewer if some voters already exist)
+  await expect(
+    page.getByText(/rows imported/i).first(),
+  ).toBeVisible({ timeout: 10_000 })
 }
 
 async function navigateToVoters(
@@ -135,7 +135,7 @@ test.describe.serial("Data Validation", () => {
   let campaignId = ""
   const csvData = parseFixtureCSV()
 
-  test.setTimeout(180_000)
+  test.setTimeout(360_000)
 
   test("Setup: import fixture CSV", async ({ page, campaignId: cid }) => {
     campaignId = cid
@@ -155,27 +155,33 @@ test.describe.serial("Data Validation", () => {
     // Verify all 55 CSV voters exist by searching for each by last name via API
     // We use the API search endpoint for efficiency
 
-    // Helper: search with 429 retry to handle the 30/min rate limit
+    // Helper: search with retry for 429 (rate limit) and transient errors (401, 5xx)
     async function searchWithRetry(firstName: string, lastName: string): Promise<boolean> {
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 8; attempt++) {
         const resp = await apiPost(
           page,
           `/api/v1/campaigns/${campaignId}/voters/search`,
           { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
         )
-        if (resp.status() === 429) {
-          // Back off and retry
+        const status = resp.status()
+        if (status === 429) {
+          // Back off exponentially; longer waits on repeated 429s
+          await page.waitForTimeout(4000 * (attempt + 1))
+          continue
+        }
+        if (status === 401 || status >= 500) {
+          // Auth drop or transient server error — wait and retry
           await page.waitForTimeout(3000 * (attempt + 1))
           continue
         }
-        expect(resp.ok()).toBeTruthy()
+        expect(resp.ok(), `Search for ${firstName} ${lastName} returned ${status}`).toBeTruthy()
         const body = await resp.json()
         return body.items?.some(
           (v: { first_name: string; last_name: string }) =>
             v.first_name === firstName && v.last_name === lastName,
         ) ?? false
       }
-      throw new Error(`Search for ${firstName} ${lastName} failed after 5 retries`)
+      throw new Error(`Search for ${firstName} ${lastName} failed after 8 retries`)
     }
 
     // Step 1: Verify all 55 voters exist via API search
@@ -188,13 +194,18 @@ test.describe.serial("Data Validation", () => {
       if (!found) {
         missingVoters.push(`${firstName} ${lastName}`)
       }
-      // Small delay to stay under 30/min rate limit (55 requests over ~2 minutes)
-      await page.waitForTimeout(300)
+      // Delay between searches to stay under 30/min rate limit
+      // 2 requests/sec = 120/min — too fast; use 1s delay = 60/min still > 30/min
+      // Use 2.5s delay = 24/min, safely under the limit
+      await page.waitForTimeout(2500)
     }
     expect(
       missingVoters,
       `Missing voters: ${missingVoters.join(", ")}`,
     ).toHaveLength(0)
+
+    // Pause before Step 2 to let any rate limit window reset
+    await page.waitForTimeout(3000)
 
     // Step 2: Detailed field-by-field validation for 10 representative voters
     // Pick diverse voters covering different parties, ages, phone/no-phone, voting patterns
@@ -219,15 +230,20 @@ test.describe.serial("Data Validation", () => {
       await test.step(
         `Validate details for ${firstName} ${lastName}`,
         async () => {
-          // Search for the voter via API with 429 retry
+          // Search for the voter via API with retry for 429 and transient errors
           let voter: { id: string; first_name: string; last_name: string; [key: string]: unknown } | undefined
-          for (let attempt = 0; attempt < 5; attempt++) {
+          for (let attempt = 0; attempt < 8; attempt++) {
             const searchResp = await apiPost(
               page,
               `/api/v1/campaigns/${campaignId}/voters/search`,
               { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
             )
-            if (searchResp.status() === 429) {
+            const searchStatus = searchResp.status()
+            if (searchStatus === 429) {
+              await page.waitForTimeout(4000 * (attempt + 1))
+              continue
+            }
+            if (searchStatus === 401 || searchStatus >= 500) {
               await page.waitForTimeout(3000 * (attempt + 1))
               continue
             }

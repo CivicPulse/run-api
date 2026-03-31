@@ -233,8 +233,8 @@ test.describe.serial("Voter Import Lifecycle", () => {
         { headers },
       )
 
-      // During active processing, should be blocked
-      expect(resp2.status()).toBeOneOf([409, 200, 201])
+      // During active processing, should be blocked (409) or allowed (200/201)
+      expect([409, 200, 201]).toContain(resp2.status())
     }
 
     // Wait for any in-progress import to complete before next test
