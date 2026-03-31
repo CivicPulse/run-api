@@ -136,7 +136,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite (completed 2026-03-30)
 - [x] **Phase 62: CI Auth Policy Automation** - Automate no-MFA org policy setup for fresh CI ZITADEL instances and verify auth bootstrap deterministically (completed 2026-03-31)
 - [x] **Phase 63: Phone Banking API + Data Resilience** - Implement missing phone-bank session delete endpoint and stabilize phone banking test data for active calling flows (completed 2026-03-31)
-- [ ] **Phase 64: Field Flow Test Isolation** - Eliminate test-order side effects in canvassing inline survey flow via isolated fixtures and deterministic setup
+- [x] **Phase 64: Field Flow Test Isolation** - Eliminate test-order side effects in canvassing inline survey flow via isolated fixtures and deterministic setup (completed 2026-03-31)
 
 ## Phase Details
 
@@ -271,10 +271,10 @@ Plans:
   1. FIELD-07 has deterministic setup and no dependence on prior spec consumption
   2. Walk list/canvassing fixtures used by field specs are isolated per test or per spec as appropriate
   3. Reordered and isolated field-mode test runs preserve pass behavior for inline survey coverage
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 64-01-PLAN.md — Isolate FIELD-07 with disposable canvassing+survey fixture and strict survey-present assertions
-- [ ] 64-02-PLAN.md — Add strict FIELD-07 order-matrix verification mode and update E2E-20 traceability
+- [x] 64-02-PLAN.md — Add strict FIELD-07 order-matrix verification mode and update E2E-20 traceability
 
 ## Progress
 
@@ -298,7 +298,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 | 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete    | 2026-03-30 |
 | 62. CI Auth Policy Automation | v1.7 | 2/2 | Complete   | 2026-03-31 |
 | 63. Phone Banking API + Data Resilience | v1.7 | 3/3 | Complete    | 2026-03-31 |
-| 64. Field Flow Test Isolation | v1.7 | 1/2 | In Progress|  |
+| 64. Field Flow Test Isolation | v1.7 | 2/2 | Complete   | 2026-03-31 |
 
 ## Backlog
 
