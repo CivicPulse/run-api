@@ -83,8 +83,8 @@ export async function authHeaders(page: Page): Promise<Record<string, string>> {
 /**
  * Authenticated GET request via page.request.
  */
-export async function apiGet(page: Page, url: string): Promise<APIResponse> {
-  return page.request.get(url, { headers: await authHeaders(page) })
+export async function apiGet(page: Page, url: string, timeout = 60_000): Promise<APIResponse> {
+  return page.request.get(url, { headers: await authHeaders(page), timeout })
 }
 
 /**
@@ -94,10 +94,12 @@ export async function apiPost(
   page: Page,
   url: string,
   data?: unknown,
+  timeout = 60_000,
 ): Promise<APIResponse> {
   return page.request.post(url, {
     data,
     headers: await authHeaders(page),
+    timeout,
   })
 }
 
@@ -108,16 +110,21 @@ export async function apiPatch(
   page: Page,
   url: string,
   data?: unknown,
+  timeout = 60_000,
 ): Promise<APIResponse> {
   return page.request.patch(url, {
     data,
     headers: await authHeaders(page),
+    timeout,
   })
 }
 
 /**
  * Authenticated DELETE request via page.request.
  */
-export async function apiDelete(page: Page, url: string): Promise<APIResponse> {
-  return page.request.delete(url, { headers: await authHeaders(page) })
+export async function apiDelete(page: Page, url: string, timeout = 60_000): Promise<APIResponse> {
+  return page.request.delete(url, {
+    headers: await authHeaders(page),
+    timeout,
+  })
 }

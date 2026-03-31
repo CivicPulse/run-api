@@ -20,10 +20,10 @@ test.describe("RBAC: viewer permissions", () => {
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/voters/, { timeout: 30_000 })
 
-    // Wait for voter list to load
+    // Wait for voter list to load (longer timeout for large datasets under parallel load)
     await expect(
       page.getByRole("heading", { name: /voters/i }).first(),
-    ).toBeVisible({ timeout: 30_000 })
+    ).toBeVisible({ timeout: 60_000 })
 
     const newVoterButton = page.getByRole("button", { name: /new voter/i })
     await expect(newVoterButton).not.toBeVisible()

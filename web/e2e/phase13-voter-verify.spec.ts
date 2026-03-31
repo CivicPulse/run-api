@@ -26,12 +26,14 @@ async function getFirstVoterId(page: Page): Promise<string | null> {
   await gotoAndWaitForAuth(page, `/campaigns/${CAMPAIGN_ID}/voters`)
 
   // Wait for the "All Voters" heading to confirm the page loaded
+  // Longer timeout since large voter datasets (2400+) take time for initial render
   const heading = page.getByRole("heading", { name: /all voters/i })
-  await heading.waitFor({ state: "visible", timeout: 20_000 })
+  await heading.waitFor({ state: "visible", timeout: 60_000 })
 
   // Click the first voter name link in the table to navigate to their detail page
+  // Longer timeout since large voter datasets (2400+) take time to load
   const firstLink = page.locator('table a[href*="/voters/"]').first()
-  await firstLink.waitFor({ state: "visible", timeout: 20_000 })
+  await firstLink.waitFor({ state: "visible", timeout: 60_000 })
   await firstLink.click()
   await page.waitForURL(/\/voters\/[^/]+$/, { timeout: 10_000 })
   await page.waitForLoadState("domcontentloaded")

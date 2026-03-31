@@ -51,7 +51,7 @@ Usage:
 
 Options:
   -h, --help            Show this help message and exit
-  --workers N           Number of parallel workers (default: 6)
+  --workers N           Number of parallel workers (default: 4)
   --grep PATTERN        Playwright grep filter (passed through)
   --loop                Run tests in a continuous loop with sleep between runs
   --loop-sleep N        Seconds to sleep between loop iterations (default: 120)
@@ -77,7 +77,7 @@ HELP
 }
 
 # ── Parse flags from arguments ────────────────────────────────────────────
-DEFAULT_WORKERS=6
+DEFAULT_WORKERS=4
 WORKERS_FLAG="--workers $DEFAULT_WORKERS"
 LOOP_MODE=0
 LOOP_SLEEP=120

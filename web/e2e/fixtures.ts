@@ -63,8 +63,11 @@ export const test = base.extend<{}, { campaignId: string }>({
           const campaigns = await resp.json()
           if (Array.isArray(campaigns)) {
             const seed = campaigns.find(
-              (c: { campaign_id?: string; campaign_name?: string; name?: string }) =>
-                /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
+              (c: { campaign_id?: string; campaign_name?: string; name?: string }) => {
+                const n = c.campaign_name ?? c.name ?? ""
+                // Match original seed name OR known CAMP-01 rename (transient during tests)
+                return /macon.?bibb/i.test(n) || /E2E Test Campaign \(CAMP-01\)/i.test(n)
+              },
             )
             campaignId = seed?.campaign_id ?? seed?.id
             if (campaignId) break

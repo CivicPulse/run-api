@@ -269,7 +269,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
       const removeButton = page.getByRole("button", {
         name: `Remove tag ${removeTagName}`,
       })
-      await expect(removeButton).toBeVisible({ timeout: 5_000 })
+      await expect(removeButton).toBeVisible({ timeout: 15_000 })
       // Set up response watcher before clicking to detect if the API call fires
       const removeApiPromise = page.waitForResponse(
         (resp) =>
@@ -631,7 +631,7 @@ test.describe.serial("Volunteer Tags & Availability", () => {
     await page.getByRole("tab", { name: /availability/i }).click()
     await expect(
       page.getByText("No availability set"),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
   })
 })
 

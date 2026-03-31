@@ -13,8 +13,10 @@ test.describe("Phase 21: Integration Polish", () => {
       { timeout: 15_000 },
     )
     // Wait for org dashboard to load (campaigns list requires org permissions)
+    // Match original seed name OR known CAMP-01 rename (transient during parallel test runs)
     const campaignLink = page
       .getByRole("link", { name: /macon-bibb demo/i })
+      .or(page.getByRole("link", { name: /E2E Test Campaign.*CAMP-01/i }))
       .first()
     await expect(campaignLink).toBeVisible({ timeout: 30_000 })
     await campaignLink.click()

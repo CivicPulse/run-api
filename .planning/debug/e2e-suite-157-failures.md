@@ -1,16 +1,16 @@
 ---
-status: awaiting_human_verify
+status: investigating
 trigger: "E2E suite has ~157 failures across multiple categories"
 created: 2026-03-29T22:50:00Z
-updated: 2026-03-30T06:30:00Z
+updated: 2026-03-31T05:40:00Z
 ---
 
 ## Current Focus
 
-hypothesis: Remaining 87 failures are primarily: (1) UI element mismatches where test expectations don't match actual UI (52 tests), (2) timing/loading issues under parallel load (9 tests), (3) real a11y violations (7 tests), (4) strict mode violations (3 tests)
-test: Final full suite run after all fixes
-expecting: Baseline established at 87 failures for reporting
-next_action: Report progress and remaining failure categories to user
+hypothesis: Remaining failures are spec-specific bugs. voter-tags (7/7), volunteers (9/9), walk-lists (8/8), voter-filters (6/6) all pass. Running full suite to identify remaining failures.
+test: Full suite run to get final baseline count
+expecting: <10 failures remain
+next_action: Run full suite and address remaining failures individually
 
 ## Symptoms
 

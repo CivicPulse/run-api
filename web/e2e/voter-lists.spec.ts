@@ -123,10 +123,10 @@ test.describe.serial("Voter lists lifecycle", () => {
     for (const lastName of voterLastNames) {
       await page.getByPlaceholder("Search by name...").fill(`List ${lastName}`)
 
-      // Wait for search results to load
+      // Wait for search results to load (slow under parallel load with large voter dataset)
       await expect(
         page.getByText(`List ${lastName}`).first(),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 20_000 })
 
       // Click the voter row to toggle selection (checkbox)
       // Use .first() to handle duplicate voters from prior test runs

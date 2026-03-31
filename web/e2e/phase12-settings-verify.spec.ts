@@ -47,8 +47,12 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
     const originalName = await nameInput.inputValue()
     expect(originalName.length).toBeGreaterThan(0)
 
+    // Use a fixed short edit name (not originalName + " edited") so repeated test
+    // runs don't accumulate length and exceed the 100-char max_length constraint.
+    const editedName = "E2E Test Campaign (CAMP-01)"
+
     // Edit the campaign name field
-    await nameInput.fill(originalName + " edited")
+    await nameInput.fill(editedName)
 
     // "Save changes" button submits the form
     const saveBtn = page.getByRole("button", { name: /save changes/i })
@@ -63,8 +67,8 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
     const discardBtn = page.getByRole("button", { name: /discard/i })
     await expect(discardBtn).not.toBeVisible({ timeout: 3000 })
 
-    // Restore original name to keep test environment clean
-    await nameInput.fill(originalName)
+    // Restore seed name to keep test environment clean for other specs
+    await nameInput.fill("Macon-Bibb Demo Campaign")
     await saveBtn.click()
     await expect(page.getByText(/campaign updated/i)).toBeVisible({ timeout: 10_000 })
   })

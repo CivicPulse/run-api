@@ -19,14 +19,14 @@ async function navigateToVoters(
 ): Promise<void> {
   await page.goto(`/campaigns/${campaignId}/voters`)
   await page.waitForURL(/voters/, { timeout: 10_000 })
-  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 60_000 })
 }
 
 async function openFilterPanel(
   page: import("@playwright/test").Page,
 ): Promise<void> {
   // Ensure the voter table is visible before trying to open filters
-  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 30_000 })
   // Click the "Filters" button to open the filter panel
   // Button text is "Filters ▲" or "Filters ▼" — match by partial text
   const filtersBtn = page.locator("button").filter({ hasText: /^Filters/ }).first()
@@ -777,13 +777,13 @@ test.describe.serial("Voter Filters", () => {
 
       // Verify chips for all 3 filters
       await expect(page.getByText(/Party: DEM/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/Age: 30/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/Has phone: Yes/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
 
       await clearAllFilters(page)
@@ -804,13 +804,13 @@ test.describe.serial("Voter Filters", () => {
       await waitForVoterResults(page)
 
       await expect(page.getByText(/Party: REP/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/Gender: M/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/City: Macon/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
 
       await clearAllFilters(page)
@@ -857,7 +857,7 @@ test.describe.serial("Voter Filters", () => {
         // Verify at least the voted-in chip appears
         await expect(
           page.getByText(/Voted in:.*2024/i).first(),
-        ).toBeVisible({ timeout: 5_000 })
+        ).toBeVisible({ timeout: 10_000 })
 
         await clearAllFilters(page)
       },
@@ -889,10 +889,10 @@ test.describe.serial("Voter Filters", () => {
         await waitForVoterResults(page)
 
         await expect(page.getByText(/Zip: 31201/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
         await expect(page.getByText(/Party: DEM/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
 
         await clearAllFilters(page)
@@ -909,10 +909,10 @@ test.describe.serial("Voter Filters", () => {
       await waitForVoterResults(page)
 
       await expect(page.getByText(/Age: 18/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/State: GA/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
 
       await clearAllFilters(page)
@@ -940,10 +940,10 @@ test.describe.serial("Voter Filters", () => {
       await waitForVoterResults(page)
 
       await expect(page.getByText(/Has phone: Yes/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/Party: NPA/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
 
       await clearAllFilters(page)
@@ -974,10 +974,10 @@ test.describe.serial("Voter Filters", () => {
 
         await expect(
           page.getByText(/Voted in:.*2024/i).first(),
-        ).toBeVisible({ timeout: 5_000 })
+        ).toBeVisible({ timeout: 10_000 })
         await expect(
           page.getByText(/Not voted in:.*2022/i).first(),
-        ).toBeVisible({ timeout: 5_000 })
+        ).toBeVisible({ timeout: 10_000 })
 
         await clearAllFilters(page)
       },
@@ -1016,7 +1016,7 @@ test.describe.serial("Voter Filters", () => {
         await waitForVoterResults(page)
 
         await expect(page.getByText(/City: Macon/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
 
         await clearAllFilters(page)
@@ -1048,13 +1048,13 @@ test.describe.serial("Voter Filters", () => {
         await waitForVoterResults(page)
 
         await expect(page.getByText(/Gender: F/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
         await expect(page.getByText(/Party: DEM/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
         await expect(page.getByText(/Age: 40/i).first()).toBeVisible({
-          timeout: 5_000,
+          timeout: 10_000,
         })
 
         // Dismiss one chip: remove the age filter using its specific aria-label
@@ -1101,10 +1101,10 @@ test.describe.serial("Voter Filters", () => {
       await waitForVoterResults(page)
 
       await expect(page.getByText(/Has phone: Yes/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
       await expect(page.getByText(/Party: DEM/i).first()).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       })
 
       await clearAllFilters(page)
@@ -1193,7 +1193,7 @@ test.describe.serial("Voter Filters", () => {
 
     // Reload the page
     await page.reload()
-    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 30_000 })
 
     // After reload, filters may or may not persist depending on URL sync implementation
     // The important thing is the page loads correctly and filters can be re-applied

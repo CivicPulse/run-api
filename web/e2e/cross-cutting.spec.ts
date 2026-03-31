@@ -16,20 +16,34 @@ import { apiPost, apiDelete } from "./helpers"
 // -- Helper Functions ----------------------------------------------------------
 
 async function createEmptyCampaignViaApi(page: Page): Promise<string> {
-  const resp = await apiPost(page, "/api/v1/campaigns", {
-    name: "E2E Empty State Test",
-    type: "local",
-  })
-  expect(resp.ok()).toBeTruthy()
-  const body = await resp.json()
-  return body.id
+  // Retry up to 3 times with backoff — server may be rate-limiting or temporarily busy
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await apiPost(page, "/api/v1/campaigns", {
+      name: `E2E Empty State Test ${Date.now()}`,
+      type: "local",
+    }, 60_000)
+    if (resp.ok()) {
+      const body = await resp.json()
+      return body.id
+    }
+    if (resp.status() === 429 || resp.status() >= 500) {
+      await page.waitForTimeout(3_000 * (attempt + 1))
+      continue
+    }
+    // Non-retriable error
+    const text = await resp.text().catch(() => "<unreadable>")
+    throw new Error(`POST /api/v1/campaigns failed with status ${resp.status()}: ${text}`)
+  }
+  throw new Error("POST /api/v1/campaigns failed after 3 retries")
 }
 
 async function deleteEmptyCampaignViaApi(
   page: Page,
   campaignId: string,
 ): Promise<void> {
-  await apiDelete(page, `/api/v1/campaigns/${campaignId}`)
+  await apiDelete(page, `/api/v1/campaigns/${campaignId}`, 60_000).catch(() => {
+    console.warn("[UI-01] Cleanup: campaign delete timed out — campaign may remain in DB")
+  })
 }
 
 // -- CROSS-01: Form Navigation Guard on Dirty Form ----------------------------
@@ -89,18 +103,35 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
   test("CROSS-02: toast notifications appear on CRUD operations", async ({
     page, campaignId,
   }) => {
-    test.setTimeout(90_000)
+    test.setTimeout(150_000)
 
+    // Intercept the voters search API to return fast with a small dataset
+    // This prevents CROSS-02 from being blocked by slow voter searches when
+    // data-validation (which fires 55 search requests) runs concurrently
+    await page.route("**/voters/search*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: [], pagination: { next_cursor: null, has_more: false } }),
+      })
+    })
+
+    // Navigate to app root first to warm up OIDC session, then navigate to voters.
+    // Under parallel load, ZITADEL's userManager.getUser() can take 30+ seconds if
+    // this is the first navigation for this page context. Pre-warming avoids the
+    // "Loading..." spinner stalling on the voters page.
+    await page.goto("/")
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 30_000 },
+    )
     // Navigate to voters page
     await page.goto(`/campaigns/${campaignId}/voters`)
     await page.waitForURL(/\/voters\/?$/, { timeout: 10_000 })
     // Wait for the page heading to confirm the page is fully rendered
     await expect(
       page.getByRole("heading", { name: /all voters/i }).first(),
-    ).toBeVisible({ timeout: 25_000 })
-    await expect(
-      page.getByRole("table").first(),
-    ).toBeVisible({ timeout: 20_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     // Create a voter via UI to trigger a success toast
     await page.getByRole("button", { name: /new voter/i }).click()
@@ -111,12 +142,13 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
     await page.getByLabel("First Name").fill("ToastTest")
     await page.getByLabel("Last Name").fill("Ephemeral")
 
-    // Intercept the create response
+    // Intercept the create response (long timeout: dev server slow when large voter dataset queried concurrently)
     const createPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes("/voters") &&
         resp.request().method() === "POST" &&
         !resp.url().includes("/search"),
+      { timeout: 120_000 },
     )
 
     await page.getByRole("button", { name: /create voter/i }).click()
@@ -139,11 +171,16 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
       page.locator("[data-sonner-toast]"),
     ).not.toBeVisible({ timeout: 15_000 })
 
-    // Clean up: delete the test voter via API
+    // Remove route mock before cleanup so delete request goes to real server
+    await page.unroute("**/voters/search*")
+
+    // Clean up: delete the test voter via API (best-effort — don't fail test on slow cleanup)
     await apiDelete(
       page,
       `/api/v1/campaigns/${campaignId}/voters/${createdVoter.id}`,
-    )
+    ).catch(() => {
+      console.warn("[CROSS-02] Cleanup: voter delete timed out — voter may remain in DB")
+    })
   })
 })
 

@@ -42,7 +42,7 @@ test.describe("RBAC: owner permissions", () => {
     await page.waitForURL(/voters/, { timeout: 30_000 })
 
     const voterLink = page.locator('table').getByRole('link').first()
-    await expect(voterLink).toBeVisible({ timeout: 30_000 })
+    await expect(voterLink).toBeVisible({ timeout: 60_000 })
     await voterLink.click()
     await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 30_000 })
 

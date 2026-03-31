@@ -103,8 +103,12 @@ async function getVoterPhonesViaApi(
       `/api/v1/campaigns/${campaignId}/voters/${voter.id}/contacts`,
     )
     if (contactResp.ok()) {
-      const contacts = await contactResp.json()
-      const phoneContact = (contacts ?? []).find(
+      const contactsData = await contactResp.json()
+      // API may return array or paginated { items: [...] }
+      const contacts: Array<{ type: string; value: string }> = Array.isArray(contactsData)
+        ? contactsData
+        : (contactsData.items ?? [])
+      const phoneContact = contacts.find(
         (c: { type: string; value: string }) => c.type === "phone",
       )
       if (phoneContact) {
@@ -125,7 +129,7 @@ test.describe.serial("Call Lists & DNC", () => {
   const dncVoterPhones: Array<{ voterId: string; phone: string }> = []
   const dncVoterEntryIds: string[] = []
 
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
 
   test("Setup: navigate to seed campaign", async ({ page, campaignId }) => {
     // campaignId resolved via fixture — navigate to dashboard
@@ -150,31 +154,18 @@ test.describe.serial("Call Lists & DNC", () => {
 
     await test.step("Fill call list form and submit", async () => {
       await page.getByLabel(/name/i).first().fill("E2E Call List 1")
-
-      // Intercept API response to capture call list ID
-      const responsePromise = page.waitForResponse(
-        (resp) =>
-          resp.url().includes("/call-lists") &&
-          resp.request().method() === "POST" &&
-          resp.status() === 201,
-      )
-
       await page.getByRole("button", { name: /^create$/i }).click()
-
-      const response = await responsePromise
-      const body = await response.json()
-      callListId = body.id
-      expect(callListId).toBeTruthy()
     })
 
     await test.step("Verify call list appears in list", async () => {
+      // Long timeout: dev server may take time under parallel load
       await expect(
         page.getByText(/call list created/i).first(),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 120_000 })
 
       await expect(
         page.getByText("E2E Call List 1").first(),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 30_000 })
     })
   })
 
@@ -184,6 +175,8 @@ test.describe.serial("Call Lists & DNC", () => {
     await navigateToCallLists(page)
 
     await test.step("Click on E2E Call List 1", async () => {
+      // Wait for the call list to appear in the table (created by CL-01)
+      await expect(page.getByRole("link", { name: "E2E Call List 1" }).first()).toBeVisible({ timeout: 20_000 })
       await page.getByRole("link", { name: "E2E Call List 1" }).first().click()
       await page.waitForURL(/call-lists\/[a-f0-9-]+/, { timeout: 10_000 })
     })

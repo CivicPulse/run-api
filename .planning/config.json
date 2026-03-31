@@ -3,7 +3,7 @@
   "granularity": "standard",
   "parallelization": true,
   "commit_docs": true,
-  "model_profile": "quality",
+  "model_profile": "balanced",
   "workflow": {
     "research": true,
     "plan_check": true,
@@ -15,7 +15,7 @@
     "text_mode": false,
     "research_before_questions": true,
     "skip_discuss": false,
-    "_auto_chain_active": false
+    "_auto_chain_active": true
   },
   "git": {
     "branching_strategy": "milestone",

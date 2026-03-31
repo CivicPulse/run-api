@@ -51,7 +51,7 @@ async function importFixtureCSV(
   await page.waitForURL(/voters/, { timeout: 10_000 })
   await expect(
     page.locator('table[data-slot="table"]').or(page.getByText(/no voters/i).first()),
-  ).toBeVisible({ timeout: 15_000 })
+  ).toBeVisible({ timeout: 30_000 })
 
   // Navigate to Imports page
   await page.getByRole("link", { name: /imports/i }).first().click()
@@ -335,6 +335,9 @@ test.describe.serial("Data Validation", () => {
   })
 
   test("VAL-02: Validate missing data handling", async ({ page, campaignId }) => {
+    // Navigate to establish auth context before making API calls
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Select voters with known missing fields from the CSV
     // Voters without phone: indices 3, 6, 9, 13, 16 (Latisha Brown, Chen Liu, Shaniqua Jackson, Keisha Moore, Kevin Clark)
@@ -381,11 +384,20 @@ test.describe.serial("Data Validation", () => {
 
       await test.step(`Validate missing data for ${name}`, async () => {
         // Find voter via API
-        const searchResp = await apiPost(
+        // If rate-limited (429 from VAL-01's bulk searches), wait and retry once
+        let searchResp = await apiPost(
           page,
           `/api/v1/campaigns/${campaignId}/voters/search`,
           { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
         )
+        if (searchResp.status() === 429) {
+          await page.waitForTimeout(5_000)
+          searchResp = await apiPost(
+            page,
+            `/api/v1/campaigns/${campaignId}/voters/search`,
+            { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
+          )
+        }
         expect(searchResp.ok()).toBeTruthy()
         const searchBody = await searchResp.json()
         const voter = searchBody.items?.find(

@@ -359,16 +359,19 @@ test.describe.serial("Survey Lifecycle", () => {
       )
       await moveBtn.click()
       await done
-      // Allow TanStack Query cache invalidation + React re-render
-      await page.waitForTimeout(800)
+      // Allow TanStack Query cache invalidation + React re-render (refetch takes ~500ms on dev)
+      // Use 2000ms to ensure full re-render cycle under parallel load
+      await page.waitForTimeout(2_000)
     }
 
     // Move "How would you rate" from Q5 → Q2 (3 moves)
     await clickMoveUpAndWait(5)
-    await expect(page.getByRole("button", { name: /move question 4 up/i })).toBeVisible({ timeout: 8_000 })
+    // After moving Q5 up: admin rating is at Q4. Wait for all move buttons to be re-enabled.
+    await expect(page.getByRole("button", { name: /move question 4 up/i })).toBeEnabled({ timeout: 8_000 })
 
     await clickMoveUpAndWait(4)
-    await expect(page.getByRole("button", { name: /move question 3 up/i })).toBeVisible({ timeout: 8_000 })
+    // After 2 moves: admin rating is at Q3. Wait for buttons to be re-enabled.
+    await expect(page.getByRole("button", { name: /move question 3 up/i })).toBeEnabled({ timeout: 8_000 })
 
     await clickMoveUpAndWait(3)
 

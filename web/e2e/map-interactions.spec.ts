@@ -11,9 +11,12 @@ test.describe("Map interactions", () => {
     )
 
     // Click into the seed campaign
+    // Match original seed name OR known CAMP-01 rename (transient during parallel test runs)
     const campaignLink = page
       .getByRole("link", { name: /macon-bibb demo/i })
+      .or(page.getByRole("link", { name: /E2E Test Campaign.*CAMP-01/i }))
       .first()
+    await expect(campaignLink).toBeVisible({ timeout: 15_000 })
     await campaignLink.click()
 
     // Navigate to canvassing section

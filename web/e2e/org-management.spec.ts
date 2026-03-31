@@ -31,9 +31,10 @@ test.describe.serial("Org management lifecycle", () => {
       { timeout: 15_000 },
     )
 
-    // Verify campaign card grid is visible with seed campaign (Macon-Bibb)
+    // Verify campaign card grid is visible with seed campaign (Macon-Bibb or CAMP-01 rename)
+    const seedCampaignText = page.getByText(/Macon-Bibb/i).or(page.getByText(/E2E Test Campaign.*CAMP-01/i)).first()
     await expect(
-      page.getByText(/Macon-Bibb/i).first()
+      seedCampaignText
     ).toBeVisible({ timeout: 15_000 })
 
     // Verify stats bar or campaign count is visible

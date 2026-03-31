@@ -54,6 +54,7 @@ ZITADEL_DOMAIN=dev.tailb56d83.ts.net
 - **Ruff rules:** E, F, I, N, UP, B, SIM, ASYNC (ignore B008 for FastAPI Depends)
 - **Line length:** 88 chars
 - **Tests:** `uv run pytest` (asyncio_mode=auto, markers: integration, e2e)
+- **E2E tests:** Always use `web/scripts/run-e2e.sh` to run Playwright E2E tests. This wrapper logs every run to `web/e2e-runs.jsonl` with timestamp, pass/fail/skip counts, duration, and command. Use this to track test health over time. Example: `cd web && ./scripts/run-e2e.sh` (full suite) or `./scripts/run-e2e.sh voter-crud.spec.ts` (single spec).
 
 ## Project Structure
 

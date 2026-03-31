@@ -469,7 +469,7 @@ test.describe.serial("Shift Lifecycle", () => {
       // Wait for success toast
       await expect(
         page.getByText(/checked in/i),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 20_000 })
     } else {
       // Fallback: check in via API
       await checkInViaApi(page, campaignId, activeShiftId, checkedInVolunteerId)
@@ -482,7 +482,7 @@ test.describe.serial("Shift Lifecycle", () => {
     // The roster should show "Checked in" status or a check-in timestamp
     await expect(
       page.getByText(/checked.?in/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
   })
 
   // ── SHIFT-05: Check out a volunteer ──

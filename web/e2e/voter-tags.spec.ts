@@ -259,9 +259,10 @@ test.describe.serial("Voter tags lifecycle", () => {
       await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
 
       // Wait for Overview tab to be selected (page hydrated)
+      // Longer timeout for large voter datasets (2400+) under parallel load
       await expect(
         page.getByRole("tab", { name: /overview/i, selected: true }),
-      ).toBeVisible({ timeout: 10_000 })
+      ).toBeVisible({ timeout: 60_000 })
 
       // Click Tags tab with retry loop — single click sometimes doesn't activate on dev server
       const tagsTabTAG04 = page.getByRole("tab", { name: /^tags$/i })

@@ -471,7 +471,7 @@ test.describe.serial("Volunteer Lifecycle", () => {
     // Verify success toast
     await expect(
       page.getByText(/updated/i).first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // Reload and verify changes persist
     await page.reload()
