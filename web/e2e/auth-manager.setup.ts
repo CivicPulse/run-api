@@ -14,24 +14,29 @@ setup("authenticate as manager", async ({ page }) => {
   )
 
   // Fill login name
-  const loginInput = page.getByLabel(/login ?name/i).or(page.locator("#loginName"))
+  const loginInput = page.locator("#loginName").or(page.getByLabel(/login ?name/i)).first()
   await loginInput.fill(
     process.env.E2E_MANAGER_USERNAME ?? "manager1@localhost",
   )
 
   // Click Next to proceed to password step
-  await page.getByRole("button", { name: /next/i }).click()
+  const nextButton = page.getByRole("button", { name: /next/i })
+  await expect(nextButton).toBeEnabled({ timeout: 10_000 })
+  await nextButton.click()
 
   // Fill password
-  const passwordInput = page
-    .getByLabel(/password/i)
-    .or(page.locator("#password"))
+  const passwordInput = page.locator("#password").or(page.locator("input[type='password']")).first()
   await passwordInput.fill(
     process.env.E2E_MANAGER_PASSWORD ?? "Manager1234!",
   )
+  await passwordInput.press("Tab").catch(() => {})
 
   // Click Next to submit login
-  await page.getByRole("button", { name: /next/i }).click()
+  if (await nextButton.isEnabled().catch(() => false)) {
+    await nextButton.click()
+  } else {
+    await passwordInput.press("Enter")
+  }
 
   // Handle MFA setup screen if it appears (click "skip" to bypass)
   const mfaHeading = page.getByText(/2-Factor Setup|MFA Setup/i)

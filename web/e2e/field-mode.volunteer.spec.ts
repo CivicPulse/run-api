@@ -799,6 +799,8 @@ test.describe.serial("Field Mode -- Canvassing", () => {
   })
 
   test("FIELD-07: canvassing with inline survey deterministic fixture", async ({ browser }) => {
+    test.setTimeout(120_000)
+
     const fixture = await createCanvassingSurveyFixtureForVolunteer(
       browser,
       campaignId,
@@ -807,112 +809,146 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     )
     expect(fixture.walkListId).toBeTruthy()
     expect(fixture.entryCount).toBeGreaterThan(0)
-    await waitForCanvassingAssignment(page, campaignId, fixture.walkListName)
 
-    // Reset client persistence boundary before entering assertion flow
-    await page.goto(`/field/${campaignId}`)
-    await waitForAuth(page)
-    await page.evaluate(() => {
-      localStorage.removeItem("canvassing-store")
-      localStorage.removeItem("tour-state")
+    // Use a fresh volunteer context to avoid stale query/cache state from FIELD-03..06.
+    const field07Context = await browser.newContext({
+      storageState: "playwright/.auth/volunteer.json",
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+      ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
     })
+    const field07Page = await field07Context.newPage()
 
-    // Enter canvassing via the hub assignment card to match user flow
-    await page.goto(`/field/${campaignId}`)
-    await waitForAuth(page)
-    await suppressTour(page, campaignId)
-    await dismissTourIfVisible(page)
-    await page.locator("[data-tour='assignment-card']").first().waitFor({
-      state: "visible",
-      timeout: 15_000,
-    })
+    try {
+      await field07Page.goto(`/field/${campaignId}`)
+      await waitForAuth(field07Page)
 
-    const fixtureAssignmentCard = page
-      .locator("[data-tour='assignment-card']")
-      .filter({ hasText: new RegExp(fixture.walkListName, "i") })
-      .first()
+      await waitForCanvassingAssignment(field07Page, campaignId, fixture.walkListName)
 
-    if (await fixtureAssignmentCard.isVisible().catch(() => false)) {
-      await fixtureAssignmentCard.click()
-    } else {
-      const canvassingCard = page
-        .locator("[data-tour='assignment-card']")
-        .filter({ hasText: /door/i })
+      // Reset only local wizard/tour persistence before assertion flow.
+      await field07Page.evaluate(() => {
+        localStorage.removeItem("canvassing-store")
+        localStorage.removeItem("tour-state")
+      })
+
+      const fieldMe = (await apiGet(
+        field07Page,
+        `/api/v1/campaigns/${campaignId}/field/me`,
+      )) as {
+        canvassing?: { walk_list_id?: string; name?: string } | null
+      }
+      expect(fieldMe.canvassing?.walk_list_id).toBe(fixture.walkListId)
+
+      const householdCard = field07Page.locator("[data-tour='household-card']")
+      const outcomeGridReady = field07Page.locator("[data-tour='outcome-grid']")
+
+      let isLoaded = false
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await field07Page.goto(`/field/${campaignId}`)
+        await waitForAuth(field07Page)
+        await suppressTour(field07Page, campaignId)
+        await dismissTourIfVisible(field07Page)
+
+        const hubError = field07Page.getByText(/couldn't load your assignments/i)
+        if (await hubError.isVisible({ timeout: 1_500 }).catch(() => false)) {
+          const retryBtn = field07Page.getByRole("button", { name: /retry/i })
+          if (await retryBtn.isVisible({ timeout: 1_500 }).catch(() => false)) {
+            await retryBtn.click()
+            await field07Page.waitForTimeout(1_000)
+          }
+        }
+
+        await field07Page
+          .locator("[data-tour='hub-greeting']")
+          .waitFor({ state: "visible", timeout: 15_000 })
+          .catch(() => {})
+
+        const assignmentCard = field07Page
+          .locator("[data-tour='assignment-card']")
+          .filter({ hasText: fixture.walkListName })
+          .first()
+        await field07Page
+          .locator("[data-tour='assignment-card']")
+          .first()
+          .waitFor({ state: "visible", timeout: 10_000 })
+          .catch(() => {})
+
+        if (await assignmentCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          await assignmentCard.click()
+        } else {
+          // If exact card text is not present yet, still attempt direct entry route.
+          await field07Page.goto(`/field/${campaignId}/canvassing`)
+        }
+
+        await field07Page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+
+        const hasHousehold = await householdCard
+          .isVisible({ timeout: 8_000 })
+          .catch(() => false)
+        const hasOutcomeGrid = await outcomeGridReady
+          .isVisible({ timeout: 3_000 })
+          .catch(() => false)
+        isLoaded = hasHousehold || hasOutcomeGrid
+        if (isLoaded) break
+
+        const noAssignment = await field07Page
+          .getByText(/no canvassing assignment/i)
+          .first()
+          .isVisible({ timeout: 1_000 })
+          .catch(() => false)
+        if (noAssignment) {
+          await waitForCanvassingAssignment(field07Page, campaignId, fixture.walkListName)
+        }
+
+        await field07Page.waitForTimeout(1_000)
+      }
+
+      expect(isLoaded).toBeTruthy()
+
+      // Record "Supporter" outcome -- must trigger survey for FIELD-07 fixture
+      const outcomeGrid = field07Page.locator("[data-tour='outcome-grid']")
+      await expect(outcomeGrid).toBeVisible({ timeout: 10_000 })
+
+      const supporterBtn = outcomeGrid.getByRole("button", {
+        name: /supporter/i,
+      })
+      await expect(supporterBtn).toBeVisible({ timeout: 10_000 })
+      await supporterBtn.click()
+
+      // Survey-present assertion path only; fail if survey does not appear
+      const surveySheet = field07Page.getByText(/survey|question/i)
+      await expect(surveySheet.first()).toBeVisible({ timeout: 10_000 })
+      await expect(
+        field07Page.getByText(new RegExp(fixture.scriptTitle, "i")).first(),
+      ).toBeVisible({ timeout: 10_000 })
+
+      // Select at least one answer and submit
+      const answerOption = field07Page
+        .getByRole("radio")
         .first()
-      await expect(canvassingCard).toBeVisible({ timeout: 10_000 })
-      await canvassingCard.click()
-    }
+        .or(field07Page.getByRole("button", { name: /yes|no|undecided/i }).first())
+      await expect(answerOption).toBeVisible({ timeout: 10_000 })
+      await answerOption.click()
 
-    await page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
-
-    // Wait for household card to load (retry once if canvassing route is still cold-loading)
-    const householdCard = page.locator("[data-tour='household-card']")
-    let isLoaded = false
-    for (let attempt = 0; attempt < 2; attempt++) {
-      isLoaded = await householdCard.isVisible({ timeout: 15_000 }).catch(() => false)
-      if (isLoaded) break
-
-      const noAssignment = await page
-        .getByText(/no canvassing assignment/i)
+      const submitBtn = field07Page
+        .getByRole("button", { name: /submit|done|save/i })
         .first()
-        .isVisible({ timeout: 1_000 })
+      await expect(submitBtn).toBeVisible({ timeout: 10_000 })
+      await submitBtn.click()
+
+      // Verify wizard progressed after required survey submission
+      const hasHousehold = await householdCard.isVisible().catch(() => false)
+      const hasCompletion = await field07Page
+        .getByText(/complete|all done|great work/i)
+        .isVisible()
         .catch(() => false)
-
-      if (noAssignment) {
-        await waitForCanvassingAssignment(page, campaignId, fixture.walkListName)
-      }
-
-      await page.goto(`/field/${campaignId}/canvassing`)
-      await page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+      expect(hasHousehold || hasCompletion).toBeTruthy()
+    } finally {
+      await field07Page.close()
+      await field07Context.close()
     }
-
-    expect(isLoaded).toBeTruthy()
-
-    // Dismiss tour if visible
-    const tourPopover = page.locator(".driver-popover")
-    if (await tourPopover.isVisible({ timeout: 1_000 }).catch(() => false)) {
-      const closeBtn = tourPopover.locator(
-        "button:has-text('Close'), button:has-text('Done'), .driver-popover-close-btn",
-      )
-      if (await closeBtn.isVisible().catch(() => false)) {
-        await closeBtn.click()
-      }
-    }
-
-    // Record "Supporter" outcome -- must trigger survey for FIELD-07 fixture
-    const outcomeGrid = page.locator("[data-tour='outcome-grid']")
-    await expect(outcomeGrid).toBeVisible({ timeout: 10_000 })
-
-    const supporterBtn = outcomeGrid.getByRole("button", {
-      name: /supporter/i,
-    })
-    await expect(supporterBtn).toBeVisible({ timeout: 10_000 })
-    await supporterBtn.click()
-
-    // Survey-present assertion path only; fail if survey does not appear
-    const surveySheet = page.getByText(/survey|question/i)
-    await expect(surveySheet.first()).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(new RegExp(fixture.scriptTitle, "i")).first()).toBeVisible({ timeout: 10_000 })
-
-    // Select at least one answer and submit
-    const answerOption = page
-      .getByRole("radio")
-      .first()
-      .or(page.getByRole("button", { name: /yes|no|undecided/i }).first())
-    await expect(answerOption).toBeVisible({ timeout: 10_000 })
-    await answerOption.click()
-
-    const submitBtn = page.getByRole("button", { name: /submit|done|save/i }).first()
-    await expect(submitBtn).toBeVisible({ timeout: 10_000 })
-    await submitBtn.click()
-
-    // Verify wizard progressed after required survey submission
-    const hasHousehold = await householdCard.isVisible().catch(() => false)
-    const hasCompletion = await page
-      .getByText(/complete|all done|great work/i)
-      .isVisible()
-      .catch(() => false)
-    expect(hasHousehold || hasCompletion).toBeTruthy()
   })
 })
 

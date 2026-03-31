@@ -69,7 +69,11 @@ class FieldService:
                 PhoneBankSession.campaign_id == campaign_id,
                 PhoneBankSession.status == "active",
             )
-            .order_by(SessionCaller.created_at.desc())
+            .order_by(
+                SessionCaller.created_at.desc(),
+                PhoneBankSession.created_at.desc(),
+                PhoneBankSession.id.desc(),
+            )
             .limit(1)
         )
         phone_session = phone_result.scalar_one_or_none()

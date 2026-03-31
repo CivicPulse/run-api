@@ -195,6 +195,44 @@ async def update_session(
     return PhoneBankSessionResponse.model_validate(pb_session)
 
 
+@router.delete(
+    "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
+async def delete_session(
+    request: Request,
+    campaign_id: uuid.UUID,
+    session_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Delete a phone bank session if it is not active.
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    try:
+        await _phone_bank_service.delete_session(db, session_id)
+    except ValueError as exc:
+        error_text = str(exc)
+        if "not found" in error_text.lower():
+            return problem.ProblemResponse(
+                status=status.HTTP_404_NOT_FOUND,
+                title="Session Not Found",
+                detail=error_text,
+                type="session-not-found",
+            )
+        return problem.ProblemResponse(
+            status=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            title="Session Delete Failed",
+            detail=error_text,
+            type="session-delete-failed",
+        )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 # ---------------------------------------------------------------------------
 # Caller management
 # ---------------------------------------------------------------------------

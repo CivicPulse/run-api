@@ -189,6 +189,11 @@ jobs:
         working-directory: web
         run: npx playwright test --project=setup-owner --project=setup-admin --project=setup-manager --project=setup-volunteer --project=setup-viewer --workers=1
 
+      - name: Run Phase 63 strict no-skip gate (PB-10 + FIELD-08/09/10)
+        if: matrix.shardIndex == 1
+        working-directory: web
+        run: ./scripts/run-e2e.sh --strict-phase63-no-skip
+
       - name: Run E2E tests
         working-directory: web
         run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}

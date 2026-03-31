@@ -57,18 +57,48 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
  * `oidc.user:{authority}:{client_id}`.
  */
 export async function getAuthToken(page: Page): Promise<string> {
-  return page.evaluate(() => {
+  const fromLocalStorage = await page.evaluate(() => {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)!
-      if (key.startsWith("oidc.user:")) {
+      if (
+        key.startsWith("oidc.user:") ||
+        key.startsWith("oidc.") ||
+        key.includes("oidc")
+      ) {
         try {
           const user = JSON.parse(localStorage.getItem(key)!)
           if (user?.access_token) return user.access_token as string
         } catch { /* skip */ }
       }
     }
-    throw new Error("No OIDC access token found in localStorage")
+    return ""
   })
+
+  if (fromLocalStorage) {
+    return fromLocalStorage
+  }
+
+  const storageState = await page.context().storageState()
+  for (const origin of storageState.origins) {
+    for (const ls of origin.localStorage) {
+      if (
+        ls.name.startsWith("oidc.user:") ||
+        ls.name.startsWith("oidc.") ||
+        ls.name.includes("oidc")
+      ) {
+        try {
+          const parsed = JSON.parse(ls.value)
+          if (parsed?.access_token) {
+            return parsed.access_token as string
+          }
+        } catch {
+          // Not JSON auth data, continue searching
+        }
+      }
+    }
+  }
+
+  throw new Error("No OIDC access token found in localStorage or storageState")
 }
 
 /**
@@ -286,6 +316,32 @@ export async function createDisposableCanvassingSurveyFixture(
   labelPrefix = "E2E FIELD-07 Fixture",
 ): Promise<DisposableCanvassingSurveyFixture> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+  // Reset backend assignment ownership for deterministic FIELD-07 selection.
+  // Remove this volunteer from all existing walk lists before assigning the
+  // disposable fixture walk list.
+  const existingWalkListsResp = await apiGet(
+    page,
+    `/api/v1/campaigns/${campaignId}/walk-lists?limit=200`,
+  )
+  if (existingWalkListsResp.ok()) {
+    const payload = (await existingWalkListsResp.json()) as {
+      items?: Array<{ id: string }>
+    } | Array<{ id: string }>
+    const walkLists = Array.isArray(payload) ? payload : (payload.items ?? [])
+
+    for (const wl of walkLists) {
+      const removeResp = await apiDelete(
+        page,
+        `/api/v1/campaigns/${campaignId}/walk-lists/${wl.id}/canvassers/${volunteerUserId}`,
+      )
+      if (!removeResp.ok() && removeResp.status() !== 404) {
+        throw new Error(
+          `Fixture canvasser reset failed: ${removeResp.status()} ${await removeResp.text()}`,
+        )
+      }
+    }
+  }
 
   const surveyResp = await apiPostWithRetry(
     page,

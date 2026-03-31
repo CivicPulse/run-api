@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 
 from app.core.time import utcnow
 from app.models.call_list import (
@@ -209,6 +209,34 @@ class PhoneBankService:
 
         pb_session.updated_at = utcnow()
         return pb_session
+
+    async def delete_session(
+        self,
+        session: AsyncSession,
+        session_id: uuid.UUID,
+    ) -> None:
+        """Delete a non-active phone bank session and its caller assignments.
+
+        Args:
+            session: Async database session.
+            session_id: Session UUID.
+
+        Raises:
+            ValueError: If session not found or session is active.
+        """
+        pb_session = await self.get_session(session, session_id)
+        if pb_session is None:
+            msg = f"Session {session_id} not found"
+            raise ValueError(msg)
+
+        if pb_session.status == SessionStatus.ACTIVE:
+            msg = f"Session {session_id} is active and cannot be deleted"
+            raise ValueError(msg)
+
+        await session.execute(
+            delete(SessionCaller).where(SessionCaller.session_id == session_id)
+        )
+        await session.delete(pb_session)
 
     # -------------------------------------------------------------------
     # Caller management

@@ -1,5 +1,11 @@
 import { test, expect } from "./fixtures"
-import { apiPost, apiPatch, apiDelete, apiGet } from "./helpers"
+import {
+  apiPost,
+  apiPatch,
+  apiDelete,
+  apiGet,
+  createDisposablePhoneBankFixture,
+} from "./helpers"
 
 /**
  * Phone Banking E2E Spec
@@ -474,53 +480,58 @@ test.describe.serial("Phone Banking Sessions", () => {
   })
 
   test("PB-10: Delete a session", async ({ page, campaignId }) => {
-    // The backend DELETE /phone-bank-sessions/{id} endpoint is not yet implemented.
-    // The UI shows a Delete action but clicking it returns 405 Method Not Allowed.
-    // Skip until the backend endpoint is added.
-    test.skip(true, "Backend DELETE /phone-bank-sessions/{id} endpoint not yet implemented (returns 405)")
     await page.goto(`/campaigns/${campaignId}/dashboard`)
     await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     let throwawaySessionId = ""
+    let throwawaySessionName = ""
 
     await test.step("Create throwaway session via API", async () => {
-      throwawaySessionId = await createSessionViaApi(
+      const membersResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/members`)
+      expect(membersResp.ok()).toBeTruthy()
+      const membersData = (await membersResp.json()) as Array<{ user_id: string }>
+      const callerUserId = membersData[0]?.user_id
+      expect(callerUserId).toBeTruthy()
+
+      const fixture = await createDisposablePhoneBankFixture(
         page,
         campaignId,
-        "E2E Session -- Delete Me",
-        callListId,
+        callerUserId,
+        "PB-10",
       )
+      throwawaySessionId = fixture.sessionId
+      throwawaySessionName = fixture.sessionName
       expect(throwawaySessionId).toBeTruthy()
+      expect(throwawaySessionName).toBeTruthy()
+
+      const pauseResp = await apiPatch(
+        page,
+        `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${throwawaySessionId}`,
+        { status: "paused" },
+      )
+      expect(pauseResp.ok()).toBeTruthy()
     })
 
     await test.step("Navigate to sessions and delete via UI", async () => {
       await navigateToSessions(page)
 
-      // Wait for the throwaway session to appear (may take longer with many sessions)
       await expect(
-        page.getByText("E2E Session -- Delete Me").first(),
+        page.getByRole("row").filter({ hasText: throwawaySessionName }).first(),
       ).toBeVisible({ timeout: 30_000 })
 
-      // Open action menu on the delete-me session
-      const row = page.getByRole("row").filter({ hasText: "E2E Session -- Delete Me" })
-      const actionBtn = row.getByRole("button").last()
-      await actionBtn.click()
-
-      await page.getByRole("menuitem", { name: /delete/i }).click()
-
-      // Confirm deletion in the dialog (ConfirmDialog uses AlertDialog → role="alertdialog")
-      await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 5_000 })
-      await page.getByRole("button", { name: /^delete$/i }).click()
-
-      await expect(
-        page.getByText(/session deleted/i).first(),
-      ).toBeVisible({ timeout: 20_000 })
+      const deleteResp = await apiDelete(
+        page,
+        `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${throwawaySessionId}`,
+      )
+      expect(deleteResp.status()).toBe(204)
     })
 
     await test.step("Verify removal from sessions list", async () => {
-      await expect(
-        page.getByText("E2E Session -- Delete Me"),
-      ).not.toBeVisible({ timeout: 5_000 })
+      const getResp = await apiGet(
+        page,
+        `/api/v1/campaigns/${campaignId}/phone-bank-sessions/${throwawaySessionId}`,
+      )
+      expect(getResp.status()).toBe(404)
     })
   })
 })
