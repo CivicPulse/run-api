@@ -1353,25 +1353,29 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
 
   test("TOUR-03: tour completion persists across page reload", async () => {
     // Verify completion state was persisted in localStorage before reloading.
-    // The zustand persist middleware may have an async rehydration race that
-    // causes the tour to auto-trigger before the persisted state loads, so we
-    // check localStorage directly as the source of truth.
-    const completionPersisted = await page.evaluate((cId) => {
-      const raw = localStorage.getItem("tour-state")
-      if (!raw) return false
-      try {
-        const parsed = JSON.parse(raw)
-        const completions = parsed?.state?.completions ?? {}
-        // Check all keys for a welcome: true completion matching this campaign
-        return Object.entries(completions).some(
-          ([key, val]: [string, unknown]) =>
-            key.includes(cId) &&
-            (val as Record<string, boolean>)?.welcome === true,
-        )
-      } catch {
-        return false
-      }
-    }, campaignId)
+    // Zustand persist middleware may have a short debounce before writing to localStorage,
+    // so we poll briefly to allow persistence to flush.
+    let completionPersisted = false
+    for (let attempt = 0; attempt < 10; attempt++) {
+      completionPersisted = await page.evaluate((cId) => {
+        const raw = localStorage.getItem("tour-state")
+        if (!raw) return false
+        try {
+          const parsed = JSON.parse(raw)
+          const completions = parsed?.state?.completions ?? {}
+          // Check all keys for a welcome: true completion matching this campaign
+          return Object.entries(completions).some(
+            ([key, val]: [string, unknown]) =>
+              key.includes(cId) &&
+              (val as Record<string, boolean>)?.welcome === true,
+          )
+        } catch {
+          return false
+        }
+      }, campaignId)
+      if (completionPersisted) break
+      await page.waitForTimeout(200)
+    }
     expect(completionPersisted).toBeTruthy()
 
     // Reload the page

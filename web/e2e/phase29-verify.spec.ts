@@ -12,7 +12,9 @@ async function openVoterFilters(page: import("@playwright/test").Page, campaignI
   CAMPAIGN_ID = campaignId
   await page.goto(`/campaigns/${CAMPAIGN_ID}/voters`)
   await waitForAppReady(page)
-  await page.waitForLoadState("domcontentloaded")
+  await page.waitForLoadState("networkidle")
+  // Wait for the "All Voters" heading to confirm the page is ready
+  await expect(page.getByRole("heading", { name: /all voters/i }).first()).toBeVisible({ timeout: 15_000 })
   await page.getByRole("button", { name: /filters/i }).click()
 }
 

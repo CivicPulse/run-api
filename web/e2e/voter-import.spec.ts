@@ -183,18 +183,11 @@ test.describe.serial("Voter Import Lifecycle", () => {
   })
 
   test("IMP-03: Concurrent import prevention", async ({ page, campaignId }) => {
-    // Navigate to campaign
-    await page.goto("/")
-    await page.waitForURL(
-      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
-      { timeout: 15_000 },
-    )
-    await page
-      .getByRole("link", { name: /macon-bibb demo/i })
-      .first()
-      .click()
-    await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 10_000 })
-    const cid = page.url().match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? campaignId
+    // Navigate directly to the campaign dashboard using the fixture campaignId
+    // (avoids waitForURL issues when "/" redirects through login)
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\/([a-f0-9-]+)/, { timeout: 15_000 })
+    const cid = campaignId
 
     await navigateToImportsPage(page)
 

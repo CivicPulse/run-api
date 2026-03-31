@@ -47,7 +47,9 @@ test.describe.serial("Voter notes lifecycle", () => {
 
   test.setTimeout(120_000)
 
-  test("Setup: create test voters", async ({ page, campaignId }) => {
+  test("Setup: create test voters", async ({ page, campaignId: cid }) => {
+    // Assign to outer variable so all serial tests can access it
+    campaignId = cid
     // campaignId resolved via fixture — navigate to dashboard
     await page.goto(`/campaigns/${campaignId}/dashboard`)
     await page.waitForURL(/campaigns\//, { timeout: 10_000 })
@@ -74,26 +76,34 @@ test.describe.serial("Voter notes lifecycle", () => {
         `/campaigns/${campaignId}/voters/${testVoterIds[i]}`,
       )
       await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
+      // Wait for voter detail to load: skeleton disappears and tabs appear
+      await expect(page.getByRole("tab").first()).toBeVisible({ timeout: 20_000 })
 
-      // Click History tab
+      // Click History tab and wait for tab panel to load
       await page.getByRole("tab", { name: /history/i }).click()
+      await expect(page.getByPlaceholder("Add a note...")).toBeVisible({ timeout: 10_000 })
 
       for (const noteText of noteTexts) {
-        // Fill the note textarea
-        await page.getByPlaceholder("Add a note...").fill(noteText)
+        // Fill the note textarea (wait for it to be editable/enabled)
+        const noteInput = page.getByPlaceholder("Add a note...")
+        await expect(noteInput).toBeEnabled({ timeout: 5_000 })
+        await noteInput.fill(noteText)
 
         // Click "Add Note" button
         await page.getByRole("button", { name: /add note/i }).click()
 
         // Wait for success toast
-        await expect(page.getByText("Note added")).toBeVisible({
+        await expect(page.getByText("Note added").first()).toBeVisible({
           timeout: 10_000,
         })
 
-        // Verify the note text appears in the History tab
-        await expect(page.getByText(noteText).first()).toBeVisible({
-          timeout: 10_000,
-        })
+        // Wait for textarea to be cleared (confirms the note was submitted)
+        await expect(noteInput).toHaveValue("", { timeout: 10_000 })
+
+        // Verify the note text appears in the history list (not just the textarea)
+        await expect(
+          page.locator("div.border.rounded-lg").filter({ hasText: noteText }).first()
+        ).toBeVisible({ timeout: 10_000 })
       }
 
       // Verify both notes are visible
@@ -105,20 +115,28 @@ test.describe.serial("Voter notes lifecycle", () => {
 
   test("NOTE-02: Edit notes on two voters (Phase 56 feature)", async ({
     page,
+    campaignId: fixtureCid,
   }) => {
+    // Use fixture campaignId as fallback if outer variable is empty
+    const activeCampaignId = campaignId || fixtureCid
     // Edit Note Alpha's first note
     await page.goto(
-      `/campaigns/${campaignId}/voters/${testVoterIds[0]}`,
+      `/campaigns/${activeCampaignId}/voters/${testVoterIds[0]}`,
     )
     await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
+    // Wait for voter detail to load: wait for network idle then verify tabs
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {})
+    await expect(page.getByRole("tab").first()).toBeVisible({ timeout: 20_000 })
     await page.getByRole("tab", { name: /history/i }).click()
+    // Wait for history entries to load
+    await expect(page.locator("div.border.rounded-lg").first()).toBeVisible({ timeout: 10_000 })
 
-    // Find the note entry containing the target text and open its action menu
-    // The note entries have a MoreVertical button with sr-only "Note actions"
+    // Find the note entry and wait for it to appear (interactions API must respond)
     const noteAlphaEntry = page
       .locator("div.border.rounded-lg")
       .filter({ hasText: "Initial contact - friendly" })
       .first()
+    await expect(noteAlphaEntry).toBeVisible({ timeout: 15_000 })
     await noteAlphaEntry
       .getByRole("button", { name: /note actions/i })
       .click()
@@ -146,15 +164,20 @@ test.describe.serial("Voter notes lifecycle", () => {
 
     // Edit Note Bravo's second note
     await page.goto(
-      `/campaigns/${campaignId}/voters/${testVoterIds[1]}`,
+      `/campaigns/${activeCampaignId}/voters/${testVoterIds[1]}`,
     )
     await page.waitForURL(/voters\/[a-f0-9-]+$/, { timeout: 10_000 })
+    // Wait for voter detail to load: wait for network idle then verify tabs
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {})
+    await expect(page.getByRole("tab").first()).toBeVisible({ timeout: 20_000 })
     await page.getByRole("tab", { name: /history/i }).click()
 
     const noteBravoEntry = page
       .locator("div.border.rounded-lg")
       .filter({ hasText: "Called back, left voicemail" })
       .first()
+    // Wait for the specific note to appear in history (interactions API must respond)
+    await expect(noteBravoEntry).toBeVisible({ timeout: 15_000 })
     await noteBravoEntry
       .getByRole("button", { name: /note actions/i })
       .click()

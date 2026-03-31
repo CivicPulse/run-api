@@ -42,9 +42,11 @@ test.describe.serial("Cross-Cutting -- Form Guards", () => {
 
     // Go to campaign settings (general tab has useFormGuard with ConfirmDialog)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await page.waitForURL(/settings\/general/, { timeout: 10_000 })
+    // Wait for the campaign data to load (form shows skeleton while loading)
     await expect(
       page.getByLabel("Campaign Name"),
-    ).toBeVisible({ timeout: 15_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // Make the form dirty by typing in the campaign name field.
     // Use click + type to ensure react-hook-form registers the change.
@@ -91,9 +93,14 @@ test.describe.serial("Cross-Cutting -- Toasts", () => {
 
     // Navigate to voters page
     await page.goto(`/campaigns/${campaignId}/voters`)
+    await page.waitForURL(/\/voters\/?$/, { timeout: 10_000 })
+    // Wait for the page heading to confirm the page is fully rendered
+    await expect(
+      page.getByRole("heading", { name: /all voters/i }).first(),
+    ).toBeVisible({ timeout: 25_000 })
     await expect(
       page.getByRole("table").first(),
-    ).toBeVisible({ timeout: 15_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // Create a voter via UI to trigger a success toast
     await page.getByRole("button", { name: /new voter/i }).click()
@@ -279,10 +286,12 @@ test.describe.serial("Cross-Cutting -- Empty States", () => {
     ).toBeVisible({ timeout: 15_000 })
 
     // 8. Voter Lists: "No voter lists yet"
-    await page.goto(`/campaigns/${emptyCampaignId}/voters/lists`)
+    await page.goto(`/campaigns/${emptyCampaignId}/voters/lists/`)
+    await page.waitForURL(/voters\/lists/, { timeout: 10_000 }).catch(() => {})
+    await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {})
     await expect(
-      page.getByText(/no.*lists/i).first(),
-    ).toBeVisible({ timeout: 15_000 })
+      page.getByText(/no voter lists/i).first(),
+    ).toBeVisible({ timeout: 25_000 })
 
     // Clean up: delete the test campaign
     await deleteEmptyCampaignViaApi(page, emptyCampaignId)

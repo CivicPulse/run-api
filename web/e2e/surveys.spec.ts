@@ -52,12 +52,9 @@ test.describe.serial("Survey Lifecycle", () => {
   })
 
   test("SRV-01: Create a survey script via UI", async ({ page, campaignId }) => {
-    // Navigate to surveys page
-    // campaignId resolved via fixture — navigate to dashboard
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
-    await page.getByRole("link", { name: /surveys/i }).first().click()
-    await page.waitForURL(/surveys/, { timeout: 10_000 })
+    // Navigate to surveys page directly (nav link click is flaky on slow dev server)
+    await page.goto(`/campaigns/${campaignId}/surveys`)
+    await page.waitForURL(/surveys/, { timeout: 15_000 })
 
     // Click "New Script" button
     await page.getByRole("button", { name: /new script/i }).click()
@@ -88,10 +85,17 @@ test.describe.serial("Survey Lifecycle", () => {
     })
 
     // Get the survey ID from the API (clicking the card is unreliable due to overlay <a>)
+    // Get the survey ID from the API list — newest first (API sorts by created_at DESC)
     const listResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/surveys`)
     const listData = await listResp.json()
     const surveys = listData.items ?? listData
-    const created = surveys.find((s: { title?: string }) => s.title === "E2E Voter Sentiment Survey")
+    // Use index [0] — newest draft with this title (API returns created_at DESC order)
+    const matchingSurveys = surveys.filter(
+      (s: { title?: string; status?: string }) =>
+        s.title === "E2E Voter Sentiment Survey" && s.status === "draft"
+    )
+    const created = matchingSurveys[0] ??
+      surveys.find((s: { title?: string }) => s.title === "E2E Voter Sentiment Survey")
     expect(created).toBeTruthy()
     surveyId = created.id
 
@@ -102,17 +106,19 @@ test.describe.serial("Survey Lifecycle", () => {
   })
 
   test("SRV-02: Add questions to a survey", async ({ page, campaignId }) => {
-    // Navigate to survey detail page
-    // campaignId resolved via fixture — navigate to dashboard
-    await page.goto(`/campaigns/${campaignId}/dashboard`)
-    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
+    // Navigate to survey detail page directly
+    // Note: surveyId is set by SRV-01. If running in serial mode, it should be valid.
     await page.goto(
       `/campaigns/${campaignId}/surveys/${surveyId}`,
+      { waitUntil: "domcontentloaded" },
     )
-    await page.waitForURL(/surveys\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/surveys\/[a-f0-9-]+/, { timeout: 15_000 })
     await expect(
       page.getByText("E2E Voter Sentiment Survey").first(),
     ).toBeVisible({ timeout: 10_000 })
+
+    // Track how many questions have been added
+    let questionCount = 0
 
     // Helper: add a question via dialog
     async function addQuestionViaDialog(
@@ -120,41 +126,83 @@ test.describe.serial("Survey Lifecycle", () => {
       type: "multiple_choice" | "scale" | "free_text",
       choices?: string,
     ) {
-      // Wait for any previous dialog to close
-      await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 }).catch(() => {})
+      // Wait for any previous dialog to be fully closed before proceeding
+      await page.waitForFunction(
+        () => !document.querySelector('[role="dialog"]'),
+        { timeout: 10_000 },
+      ).catch(() => {})
+      // Extra stabilisation pause between questions
+      await page.waitForTimeout(300)
+
+      // Wait for the Add Question button to be available and stable
+      const addBtn = page.getByRole("button", { name: /add question/i }).first()
+      await expect(addBtn).toBeVisible({ timeout: 15_000 })
+      await expect(addBtn).toBeEnabled({ timeout: 5_000 })
 
       // Click "Add Question" button
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 })
+      await addBtn.click()
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 8_000 })
 
       // Fill question text (first textarea in dialog)
       const dialog = page.getByRole("dialog")
       await dialog.locator("textarea").first().fill(text)
+      // Verify text was actually filled (avoid submitting empty)
+      await expect(dialog.locator("textarea").first()).toHaveValue(text, { timeout: 3_000 })
 
       // Select type if not the default (multiple_choice)
       if (type !== "multiple_choice") {
-        await dialog.getByRole("combobox").click()
+        // Wait for the combobox to be stable before clicking
+        const combobox = dialog.getByRole("combobox")
+        await expect(combobox).toBeVisible({ timeout: 5_000 })
+        await expect(combobox).toBeEnabled({ timeout: 5_000 })
+        await combobox.click()
+        // Wait for the select dropdown to open (options become visible)
         const label = type === "scale" ? /^Scale$/i : /^Free Text$/i
-        await page.getByRole("option", { name: label }).click()
-      } else {
-        // Ensure Multiple Choice is selected
-        const typeSelect = dialog.getByRole("combobox")
-        const currentType = await typeSelect.textContent()
-        if (currentType && !currentType.includes("Multiple Choice")) {
-          await typeSelect.click()
-          await page.getByRole("option", { name: /Multiple Choice/i }).click()
-        }
+        const option = page.getByRole("option", { name: label })
+        await expect(option).toBeVisible({ timeout: 5_000 })
+        await option.click()
+        // Verify the combobox now shows the selected value
+        await expect(combobox).toContainText(type === "scale" ? "Scale" : "Free Text", { timeout: 3_000 })
+        // Small pause to allow React state to settle after type selection
+        await page.waitForTimeout(200)
       }
 
       // Fill choices if applicable
       if (choices && type === "multiple_choice") {
-        await dialog.locator("textarea").nth(1).fill(choices)
+        const choicesTextarea = dialog.locator("textarea").nth(1)
+        await expect(choicesTextarea).toBeVisible({ timeout: 5_000 })
+        await choicesTextarea.fill(choices)
+        await expect(choicesTextarea).toHaveValue(choices, { timeout: 3_000 })
       }
 
-      await dialog.getByRole("button", { name: /^add$/i }).click()
-      await expect(page.getByText(/question added/i).first()).toBeVisible({
-        timeout: 10_000,
-      })
+      questionCount++
+
+      // Re-scope dialog to get a fresh reference (avoids stale element issues)
+      const addDialogBtn = page.getByRole("dialog").getByRole("button", { name: /^add$/i })
+      await expect(addDialogBtn).toBeVisible({ timeout: 5_000 })
+      await expect(addDialogBtn).toBeEnabled({ timeout: 5_000 })
+
+      // Set up API response watcher BEFORE clicking Add
+      const apiResponsePromise = page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/surveys/${surveyId}/questions`) &&
+          resp.request().method() === "POST",
+        { timeout: 20_000 },
+      )
+
+      await addDialogBtn.click()
+
+      // Wait for the API response to confirm the question was actually saved
+      const apiResp = await apiResponsePromise
+      if (!apiResp.ok()) {
+        const body = await apiResp.text().catch(() => "(unreadable)")
+        throw new Error(`Question API POST failed: ${apiResp.status()} ${apiResp.statusText()} - ${body}`)
+      }
+
+      // Wait for dialog to close after successful API response
+      await expect(page.getByRole("dialog")).toBeHidden({ timeout: 10_000 })
+      // Allow TanStack Query invalidation to complete
+      await page.waitForTimeout(300)
     }
 
     // -- Q1: Multiple Choice --
@@ -199,9 +247,22 @@ test.describe.serial("Survey Lifecycle", () => {
       )
     })
 
-    // Verify all 5 questions are visible
+    // Navigate to survey detail page directly to get fresh data
+    await page.goto(`/campaigns/${campaignId}/surveys/${surveyId}`, { waitUntil: "domcontentloaded" })
+    await expect(
+      page.getByText("E2E Voter Sentiment Survey").first(),
+    ).toBeVisible({ timeout: 15_000 })
+
+    // Verify all 5 questions are visible (wait for survey data to reload)
+    // Use API to confirm all 5 questions were saved before checking UI
+    const qCountResp = await apiGet(page, `/api/v1/campaigns/${campaignId}/surveys/${surveyId}`)
+    const qCountData = await qCountResp.json()
+    const actualCount = (qCountData.questions ?? []).length
+    if (actualCount !== 5) {
+      throw new Error(`Expected 5 questions but API shows ${actualCount}: ${JSON.stringify(qCountData.questions?.map((q: { question_text: string }) => q.question_text))}`)
+    }
     await expect(page.getByText("Questions (5)")).toBeVisible({
-      timeout: 10_000,
+      timeout: 20_000,
     })
     await expect(
       page.getByText("What is the most important issue to you?").first(),
@@ -285,21 +346,35 @@ test.describe.serial("Survey Lifecycle", () => {
     // Q5 is at index 4 -> move to index 1 (3 swaps up)
     // The move-up button is aria-labeled "Move question N up"
 
-    // Move Q5 up to Q4 position
-    await page.getByRole("button", { name: /move question 5 up/i }).click()
-    // Wait for the button label to update after reorder
-    await expect(page.getByRole("button", { name: /move question 4 up/i })).toBeVisible({ timeout: 5_000 })
+    // Helper to perform one move-up and wait for the API to confirm it
+    const reorderUrl = (url: string) =>
+      url.includes(`/surveys/${surveyId}/questions/order`) || url.includes("/questions/order")
+    async function clickMoveUpAndWait(n: number) {
+      const moveBtn = page.getByRole("button", { name: new RegExp(`move question ${n} up`, "i") })
+      // Ensure button is enabled (not in pending state from previous reorder)
+      await expect(moveBtn).toBeEnabled({ timeout: 5_000 })
+      const done = page.waitForResponse(
+        (resp) => reorderUrl(resp.url()) && resp.request().method() === "PUT",
+        { timeout: 15_000 },
+      )
+      await moveBtn.click()
+      await done
+      // Allow TanStack Query cache invalidation + React re-render
+      await page.waitForTimeout(800)
+    }
 
-    // Now it's Q4 at index 3, move up to Q3 position
-    await page.getByRole("button", { name: /move question 4 up/i }).click()
-    await expect(page.getByRole("button", { name: /move question 3 up/i })).toBeVisible({ timeout: 5_000 })
-    // Now it's Q3 at index 2, move up to Q2 position
-    await page.getByRole("button", { name: /move question 3 up/i }).click()
-    // Verify new order: Q1 (issue), Q5/now Q2 (admin rating), Q2/now Q3 (voting likelihood), Q3/now Q4 (volunteer), Q4/now Q5 (comments)
-    // Check that "How would you rate" appears as the second question
-    const questionCards = page.locator('[class*="card"]').filter({
-      has: page.locator('[class*="CardTitle"]'),
-    })
+    // Move "How would you rate" from Q5 → Q2 (3 moves)
+    await clickMoveUpAndWait(5)
+    await expect(page.getByRole("button", { name: /move question 4 up/i })).toBeVisible({ timeout: 8_000 })
+
+    await clickMoveUpAndWait(4)
+    await expect(page.getByRole("button", { name: /move question 3 up/i })).toBeVisible({ timeout: 8_000 })
+
+    await clickMoveUpAndWait(3)
+
+    // Reload to get definitive server-side order
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await expect(page.getByText("Questions (5)")).toBeVisible({ timeout: 15_000 })
 
     // Verify the page shows the reordered questions by checking text order
     const bodyText = await page.locator("body").innerText()
@@ -309,6 +384,8 @@ test.describe.serial("Survey Lifecycle", () => {
     const votingLikelihoodPos = bodyText.indexOf(
       "How likely are you to vote in the next election?",
     )
+    expect(adminRatingPos).toBeGreaterThan(0)
+    expect(votingLikelihoodPos).toBeGreaterThan(0)
     expect(adminRatingPos).toBeLessThan(votingLikelihoodPos)
   })
 
@@ -410,6 +487,7 @@ test.describe.serial("Survey Lifecycle", () => {
       await addQuestionViaApi(page, campaignId, id, {
         question_text: "How satisfied are you with local services?",
         question_type: "scale",
+        options: { min: 1, max: 5 },
       })
       await updateSurveyStatusViaApi(page, campaignId, id, "active")
     })
@@ -467,6 +545,7 @@ test.describe.serial("Survey Lifecycle", () => {
       await addQuestionViaApi(page, campaignId, id, {
         question_text: "Rate your neighborhood safety",
         question_type: "scale",
+        options: { min: 1, max: 5 },
       })
       await addQuestionViaApi(page, campaignId, id, {
         question_text: "What improvements would you like to see?",

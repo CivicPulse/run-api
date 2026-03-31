@@ -22,13 +22,22 @@ async function createVoterViaApi(
 ): Promise<string> {
   const url = `/api/v1/campaigns/${campaignId}/voters`
   for (let attempt = 0; attempt < 8; attempt++) {
-    const resp = await apiPost(page, url, data)
-    if (resp.ok()) return (await resp.json()).id
-    if (resp.status() === 429 && attempt < 7) {
-      await page.waitForTimeout(2000 * (attempt + 1))
-      continue
+    try {
+      const resp = await apiPost(page, url, data)
+      if (resp.ok()) return (await resp.json()).id
+      if ((resp.status() === 429 || resp.status() >= 500) && attempt < 7) {
+        await page.waitForTimeout(2000 * (attempt + 1))
+        continue
+      }
+      throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
+    } catch (err) {
+      // Retry on network timeouts and transient errors
+      if (attempt < 7 && err instanceof Error && (err.message.includes("Timeout") || err.message.includes("ERR_"))) {
+        await page.waitForTimeout(3000 * (attempt + 1))
+        continue
+      }
+      throw err
     }
-    throw new Error(`POST ${url} failed: ${resp.status()} — ${await resp.text()}`)
   }
   throw new Error(`POST ${url} failed after 8 retries`)
 }
@@ -50,12 +59,24 @@ async function navigateToVoterDetail(
   campaignId: string,
   voterId: string,
 ): Promise<void> {
-  await page.goto(`/campaigns/${campaignId}/voters/${voterId}`)
-  await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
-  // Wait for the voter detail to load
-  await expect(
-    page.getByRole("tab", { name: /overview/i }),
-  ).toBeVisible({ timeout: 10_000 })
+  // Retry navigation up to 3 times to handle transient ERR_ABORTED from the dev server
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(`/campaigns/${campaignId}/voters/${voterId}`)
+      await page.waitForURL(/voters\/[a-f0-9-]+/, { timeout: 10_000 })
+      // Wait for the voter detail to load — tabs only appear after skeleton clears
+      await expect(
+        page.getByRole("tab", { name: /overview/i }),
+      ).toBeVisible({ timeout: 20_000 })
+      return
+    } catch (err) {
+      if (attempt < 2) {
+        await page.waitForTimeout(1000 * (attempt + 1))
+        continue
+      }
+      throw err
+    }
+  }
 }
 
 // ── NATO Alphabet Voter Names ─────────────────────────────────────────────────
@@ -142,9 +163,14 @@ test.describe.serial("Voter contacts CRUD", () => {
       await test.step(`Add phone to Contact ${NATO_NAMES[i]}`, async () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
-        // Click Contacts tab and wait for panel
-        await page.getByRole("tab", { name: /contacts/i }).click()
-        await expect(page.getByRole("tabpanel")).toBeVisible()
+        // Click Contacts tab and wait for contacts panel to load
+        // Click Contacts tab and wait for it to be selected, then wait for panel content
+        const contactsTab = page.getByRole("tab", { name: /contacts/i })
+        await contactsTab.click()
+        await expect(contactsTab).toHaveAttribute("aria-selected", "true", { timeout: 5_000 })
+        // Wait for Contacts panel: "Phone Numbers" heading confirms contacts tab loaded
+        // Wait for contacts panel to load: skeleton disappears and "Add phone" button appears
+        await expect(page.getByRole("button", { name: /add phone/i }).first()).toBeVisible({ timeout: 30_000 })
 
         // Click "Add phone" button
         await page
@@ -157,9 +183,15 @@ test.describe.serial("Voter contacts CRUD", () => {
         await page.locator("#phone-value").fill(phoneNum)
 
         // Select phone type (cycle through mobile, home, work)
+        // mobile is the default — only interact with the Select when changing to home/work
         const phoneType = PHONE_TYPES[i % 3]
-        await page.locator("#phone-type").click()
-        await page.getByRole("option", { name: new RegExp(`^${phoneType}$`, "i") }).click()
+        if (phoneType !== "mobile") {
+          await page.locator("#phone-type").click()
+          // Wait for the listbox/options to be stable before clicking
+          const option = page.getByRole("option", { name: new RegExp(`^${phoneType}$`, "i") })
+          await expect(option).toBeVisible({ timeout: 5_000 })
+          await option.click()
+        }
 
         // Save
         await page.getByRole("button", { name: /^save$/i }).first().click()
@@ -175,7 +207,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Add second phone to Contact Alpha", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await expect(page.getByRole("tabpanel")).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
       await page
         .getByRole("button", { name: /add phone/i })
@@ -186,7 +218,9 @@ test.describe.serial("Voter contacts CRUD", () => {
 
       // Select work type
       await page.locator("#phone-type").click()
-      await page.getByRole("option", { name: /^work$/i }).click()
+      const workOption = page.getByRole("option", { name: /^work$/i })
+      await expect(workOption).toBeVisible({ timeout: 5_000 })
+      await workOption.click()
 
       await page.getByRole("button", { name: /^save$/i }).first().click()
       await expect(
@@ -208,7 +242,7 @@ test.describe.serial("Voter contacts CRUD", () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
         await page.getByRole("tab", { name: /contacts/i }).click()
-        await expect(page.getByRole("tabpanel")).toBeVisible()
+        await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
         // Click "Add email" button
         await page
@@ -222,7 +256,9 @@ test.describe.serial("Voter contacts CRUD", () => {
         // Email type defaults to "personal" which is fine; vary some
         if (i % 3 === 1) {
           await page.locator("#email-type").click()
-          await page.getByRole("option", { name: /^work$/i }).click()
+          const workEmailOption = page.getByRole("option", { name: /^work$/i })
+          await expect(workEmailOption).toBeVisible({ timeout: 5_000 })
+          await workEmailOption.click()
         }
 
         await page.getByRole("button", { name: /^save$/i }).first().click()
@@ -278,7 +314,7 @@ test.describe.serial("Voter contacts CRUD", () => {
         await navigateToVoterDetail(page, campaignId, testVoterIds[i])
 
         await page.getByRole("tab", { name: /contacts/i }).click()
-        await expect(page.getByRole("tabpanel")).toBeVisible()
+        await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
         // Click "Add address" button
         await page
@@ -310,7 +346,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Edit Contact Alpha phone: change to 478-555-9999", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await expect(page.getByRole("tabpanel")).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 15_000 })
 
       // Click edit (pencil) button on the first phone
       const editBtn = page
@@ -333,7 +369,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Edit Contact Bravo email: change to bravo-updated@test.com", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[1])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await expect(page.getByRole("tabpanel")).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 15_000 })
 
       // Click edit button on the email
       const editBtn = page
@@ -360,7 +396,7 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Delete Contact Alpha phone", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[0])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await expect(page.getByRole("tabpanel")).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
       // Click delete button on the first phone (the edited 478-555-9999)
       const deleteBtn = page
@@ -380,17 +416,17 @@ test.describe.serial("Voter contacts CRUD", () => {
         page.getByText(/phone removed|removed/i).first(),
       ).toBeVisible({ timeout: 10_000 })
 
-      // Verify the phone number no longer shows
+      // Verify the phone number no longer shows (give it time after toast)
       await expect(
         page.getByText("478-555-9999"),
-      ).not.toBeVisible({ timeout: 3_000 })
+      ).not.toBeVisible({ timeout: 10_000 })
     })
 
     // Delete Contact Bravo's email
     await test.step("Delete Contact Bravo email", async () => {
       await navigateToVoterDetail(page, campaignId, testVoterIds[1])
       await page.getByRole("tab", { name: /contacts/i }).click()
-      await expect(page.getByRole("tabpanel")).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Phone Numbers", exact: true })).toBeVisible({ timeout: 10_000 })
 
       // Click delete button on the email
       const deleteBtn = page
@@ -410,7 +446,7 @@ test.describe.serial("Voter contacts CRUD", () => {
 
       await expect(
         page.getByText("bravo-updated@test.com"),
-      ).not.toBeVisible({ timeout: 3_000 })
+      ).not.toBeVisible({ timeout: 10_000 })
     })
   })
 
@@ -427,7 +463,8 @@ test.describe.serial("Voter contacts CRUD", () => {
     await test.step("Delete 2 test voters via UI", async () => {
       for (let i = 0; i < 2; i++) {
         const voterName = testVoterNames[i] // "Contact Alpha", "Contact Bravo"
-        const voterRow = page.getByRole("row").filter({ hasText: voterName })
+        // Use .first() to handle leftover voters from prior failed runs
+        const voterRow = page.getByRole("row").filter({ hasText: voterName }).first()
         const actionBtn = voterRow.getByRole("button", {
           name: /open voter actions/i,
         })

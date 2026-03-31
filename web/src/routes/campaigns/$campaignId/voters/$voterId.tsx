@@ -17,6 +17,17 @@ import { HistoryTab } from "@/components/voters/HistoryTab"
 import { VoterEditSheet } from "@/components/voters/VoterEditSheet"
 
 function formatDate(dateStr: string): string {
+  // Parse "YYYY-MM-DD" date strings as local dates to prevent UTC-to-local
+  // timezone conversion from shifting the displayed day by -1.
+  const parts = dateStr.split("-")
+  if (parts.length === 3) {
+    const [year, month, day] = parts.map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",

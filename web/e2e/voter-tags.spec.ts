@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures"
 import type { Page } from "@playwright/test"
-import { apiPost, apiDelete } from "./helpers"
+import { apiPost, apiDelete, apiGet } from "./helpers"
 
 /**
  * Voter Tags E2E Lifecycle Spec
@@ -47,12 +47,14 @@ async function deleteVoterViaApi(
 test.describe.serial("Voter tags lifecycle", () => {
   let campaignId = ""
   let testVoterIds: string[] = []
+  // Use a run-specific suffix to avoid conflicts with leftover tags from previous test runs
+  const runSuffix = `e2e-${Date.now().toString(36).slice(-5)}`
   const tagNames = [
-    "Priority Voter",
-    "Door Knocked",
-    "Phone Contacted",
-    "Supporter",
-    "Needs Follow-up",
+    `Priority Voter ${runSuffix}`,
+    `Door Knocked ${runSuffix}`,
+    `Phone Contacted ${runSuffix}`,
+    `Supporter ${runSuffix}`,
+    `Needs Follow-up ${runSuffix}`,
   ]
 
   test.setTimeout(120_000)
@@ -106,8 +108,9 @@ test.describe.serial("Voter tags lifecycle", () => {
       // Click "Save" button
       await page.getByRole("button", { name: /save/i }).click()
 
-      // Wait for success toast
-      await expect(page.getByText("Tag created")).toBeVisible({ timeout: 10_000 })
+      // Wait for success toast — use .first() to avoid strict mode failure when
+      // a previous iteration's toast is still visible alongside the new one
+      await expect(page.getByText("Tag created").first()).toBeVisible({ timeout: 10_000 })
 
       // Verify tag appears in the list
       await expect(page.getByText(tagName)).toBeVisible({ timeout: 10_000 })

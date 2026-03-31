@@ -25,12 +25,16 @@ async function navigateToVoters(
 async function openFilterPanel(
   page: import("@playwright/test").Page,
 ): Promise<void> {
+  // Ensure the voter table is visible before trying to open filters
+  await expect(page.locator('table[data-slot="table"]')).toBeVisible({ timeout: 15_000 })
   // Click the "Filters" button to open the filter panel
-  const filtersBtn = page.getByRole("button", { name: /filters/i })
+  // Button text is "Filters ▲" or "Filters ▼" — match by partial text
+  const filtersBtn = page.locator("button").filter({ hasText: /^Filters/ }).first()
+  await expect(filtersBtn).toBeVisible({ timeout: 10_000 })
   await filtersBtn.click()
   // Wait for the filter builder to be visible
   await expect(page.getByText(/demographics/i).first()).toBeVisible({
-    timeout: 5_000,
+    timeout: 10_000,
   })
 }
 

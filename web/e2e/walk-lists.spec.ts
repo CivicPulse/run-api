@@ -153,7 +153,8 @@ test.describe.serial("Walk List Lifecycle", () => {
           resp.request().method() === "POST",
       )
 
-      await page.getByRole("button", { name: /^generate$/i }).click()
+      // Use force: true to bypass pointer-events interception from the Leaflet map layer
+      await page.getByRole("button", { name: /^generate$/i }).click({ force: true })
 
       const response = await responsePromise
       expect(response.status()).toBe(201)

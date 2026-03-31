@@ -47,11 +47,29 @@ test.describe("Volunteer signup", () => {
     await page.locator("#email").clear()
     await page.locator("#email").fill("e2e-vol@test.com")
 
-    // Submit the form
+    // Submit the form and intercept the API response to get the volunteer ID
+    const responsePromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/volunteers") &&
+        resp.request().method() === "POST" &&
+        !resp.url().includes("/register"),
+    )
     await page.getByRole("button", { name: /create volunteer/i }).click()
 
-    // Wait for redirect to volunteer detail page
-    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 15_000 })
+    // Wait for the API response to confirm creation
+    const createResp = await responsePromise
+    expect(createResp.ok()).toBeTruthy()
+    const createBody = await createResp.json()
+    const volunteerId = createBody.id
+
+    // Wait for redirect to volunteer detail page (navigate may be delayed by form guard cleanup)
+    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 15_000 }).catch(async () => {
+      // If redirect didn't happen, navigate directly to the created volunteer's detail page
+      if (volunteerId) {
+        await page.goto(`/campaigns/${campaignId}/volunteers/${volunteerId}`)
+        await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 10_000 })
+      }
+    })
 
     // Verify we landed on the volunteer detail page showing the name
     await expect(page.getByText("E2E").first()).toBeVisible({

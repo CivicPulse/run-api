@@ -155,28 +155,41 @@ test.describe.serial("Data Validation", () => {
     // Verify all 55 CSV voters exist by searching for each by last name via API
     // We use the API search endpoint for efficiency
 
+    // Helper: search with 429 retry to handle the 30/min rate limit
+    async function searchWithRetry(firstName: string, lastName: string): Promise<boolean> {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const resp = await apiPost(
+          page,
+          `/api/v1/campaigns/${campaignId}/voters/search`,
+          { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
+        )
+        if (resp.status() === 429) {
+          // Back off and retry
+          await page.waitForTimeout(3000 * (attempt + 1))
+          continue
+        }
+        expect(resp.ok()).toBeTruthy()
+        const body = await resp.json()
+        return body.items?.some(
+          (v: { first_name: string; last_name: string }) =>
+            v.first_name === firstName && v.last_name === lastName,
+        ) ?? false
+      }
+      throw new Error(`Search for ${firstName} ${lastName} failed after 5 retries`)
+    }
+
     // Step 1: Verify all 55 voters exist via API search
     const missingVoters: string[] = []
     for (const row of csvData) {
       const firstName = row["First Name"]
       const lastName = row["Last Name"]
 
-      const resp = await apiPost(
-        page,
-        `/api/v1/campaigns/${campaignId}/voters/search`,
-        { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
-      )
-      expect(resp.ok()).toBeTruthy()
-      const body = await resp.json()
-
-      // Find the exact match in results
-      const found = body.items?.some(
-        (v: { first_name: string; last_name: string }) =>
-          v.first_name === firstName && v.last_name === lastName,
-      )
+      const found = await searchWithRetry(firstName, lastName)
       if (!found) {
         missingVoters.push(`${firstName} ${lastName}`)
       }
+      // Small delay to stay under 30/min rate limit (55 requests over ~2 minutes)
+      await page.waitForTimeout(300)
     }
     expect(
       missingVoters,
@@ -206,18 +219,26 @@ test.describe.serial("Data Validation", () => {
       await test.step(
         `Validate details for ${firstName} ${lastName}`,
         async () => {
-          // Search for the voter via API and get full details
-          const searchResp = await apiPost(
-            page,
-            `/api/v1/campaigns/${campaignId}/voters/search`,
-            { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
-          )
-          expect(searchResp.ok()).toBeTruthy()
-          const searchBody = await searchResp.json()
-          const voter = searchBody.items?.find(
-            (v: { first_name: string; last_name: string }) =>
-              v.first_name === firstName && v.last_name === lastName,
-          )
+          // Search for the voter via API with 429 retry
+          let voter: { id: string; first_name: string; last_name: string; [key: string]: unknown } | undefined
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const searchResp = await apiPost(
+              page,
+              `/api/v1/campaigns/${campaignId}/voters/search`,
+              { filters: { search: `${firstName} ${lastName}` }, limit: 5 },
+            )
+            if (searchResp.status() === 429) {
+              await page.waitForTimeout(3000 * (attempt + 1))
+              continue
+            }
+            expect(searchResp.ok()).toBeTruthy()
+            const searchBody = await searchResp.json()
+            voter = searchBody.items?.find(
+              (v: { first_name: string; last_name: string }) =>
+                v.first_name === firstName && v.last_name === lastName,
+            )
+            break
+          }
           expect(voter, `Voter ${firstName} ${lastName} not found`).toBeTruthy()
 
           // Navigate to voter detail page in the UI

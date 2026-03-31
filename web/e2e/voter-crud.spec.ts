@@ -496,6 +496,7 @@ test.describe.serial("Voter CRUD lifecycle", () => {
       })
 
       // Verify DOB changed - the detail page shows formatted date
+      // formatDate parses YYYY-MM-DD as local date to avoid UTC offset day shift
       await expect(page.getByText(/Sep 5, 1960/).first()).toBeVisible({ timeout: 5_000 })
 
       await page.getByRole("link", { name: /voters/i }).first().click()
