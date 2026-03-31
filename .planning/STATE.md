@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Testing & Validation
-status: executing
-stopped_at: Completed 64-01-PLAN.md
-last_updated: "2026-03-31T22:55:00.000Z"
-last_activity: 2026-03-31
+status: Defining requirements
+stopped_at: Completed 64-02-PLAN.md
+last_updated: "2026-03-31T22:59:10.943Z"
+last_activity: 2026-03-27 — Milestone v1.6 started
 progress:
   total_phases: 10
-  completed_phases: 7
-  total_plans: 25
-  completed_plans: 25
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 64 - field-flow-test-isolation
+**Current focus:** Defining requirements for v1.6
 
 ## Current Position
 
-Phase: 64
-Plan: 01 complete, 02 pending
-Status: Executing
-Last activity: 2026-03-31
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-27 — Milestone v1.6 started
 
 ## Performance Metrics
 
@@ -47,12 +47,7 @@ Last activity: 2026-03-31
 | v1.3 | 7 | 18 | 3 days |
 | v1.4 | 9 | 26 | 3 days |
 | v1.5 | 10 | 36 | 2 days |
-| Phase 59 P03 | 4min | 2 tasks | 2 files |
-| Phase 60 P03 | 30min | 3 tasks | 21 files |
-| Phase 60 P04 | 4min | 2 tasks | 35 files |
-| Phase 60 P05 | 2min | 2 tasks | 12 files |
-| Phase 61-ai-production-testing-instructions P01 | 8min | 1 tasks | 1 files |
-| Phase 62 P01-02 | 40min | 4 tasks | 7 files |
+| Phase 64 P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -60,19 +55,7 @@ Last activity: 2026-03-31
 
 Decisions logged in PROJECT.md Key Decisions table.
 
-- [Phase 59]: Turfs created via API with GeoJSON polygons per D-01; GeoJSON import tested via setInputFiles per D-02; turf verification is list-based per D-03
-- 60-02: Used settings/general page for form guard test (has full ConfirmDialog vs /campaigns/new which lacks dialog rendering)
-- 60-02: Rate limiting test gracefully skips if 429 not triggered locally
-- [Phase 60]: Switched create-e2e-users.py to v2beta API for proper user activation without forced password change
-- [Phase 60]: Created org-level ZITADEL login policy without MFA for E2E testing; added MFA skip handling to auth setup scripts
-- [Phase 60]: Used exclusion-based waitForURL pattern for all 35 pre-existing specs to match Phase 60 new spec convention
-- [Phase 60]: Phone banking skip traced to seed data exhaustion (BUG-01), not app logic; E2E-20/E2E-21 marked Complete based on spec existence evidence
-- [Phase quick]: 260330-ipp: Worker-scoped campaignId fixture, 73 waitForTimeout + 54 networkidle eliminated, CI npm cache + build artifact sharing
-- [Phase 61-01]: Standalone production testing runbook at docs/production-testing-runbook.md — 18 smoke tests + 68 extended tests, fully self-contained
-- [Phase 62]: Added strict policy verification messages including endpoint/status/body for no-MFA drift diagnostics
-- [Phase 62]: Reused create-e2e-users.py for both provisioning and verify-only strict enforcement via CLI flags
-- [Phase 62]: Added explicit Playwright setup-owner/admin/manager/volunteer/viewer projects for deterministic pre-shard auth smoke
-- [Phase 64]: FIELD-07 uses per-test disposable canvassing+survey fixture; survey-present is the only assertion path; client reset clears canvassing-store and tour-state
+- [Phase 64]: 4-permutation matrix gate for FIELD-07 order independence verification
 
 ### Blockers/Concerns
 
@@ -90,11 +73,9 @@ Decisions logged in PROJECT.md Key Decisions table.
 | 260325-u3q | Fix docker compose re-bootstrap PAT failure | 2026-03-26 | 78cb0b1 | [260325-u3q](./quick/260325-u3q-diagnose-and-fix-docker-compose-up-build/) |
 | 260325-vh6 | Add Field Operations link to sidebar menu | 2026-03-26 | bd554f8 | [260325-vh6](./quick/260325-vh6-add-field-operations-link-to-main-sideba/) |
 | 260327-o38 | Fix sort buttons on all DataTable columns | 2026-03-27 | 48e0c3e | [260327-o38](./quick/260327-o38-fix-sort-buttons-on-all-datatables-colum/) |
-| 260330-ipp | Tier 1+2 Playwright speed improvements | 2026-03-30 | 3e152ed | [260330-ipp](./quick/260330-ipp-implement-tier-1-and-tier-2-playwright-s/) |
-| 260330-kfq | Add --loop flag to run-e2e.sh | 2026-03-30 | 5043743 | [260330-kfq](./quick/260330-kfq-add-loop-flag-to-run-e2e-sh-for-continuo/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-31 - Completed 64-01 (disposable canvassing fixture + FIELD-07 deterministic refactor)
-Stopped at: Completed 64-01-PLAN.md
-Resume file: .planning/phases/64-field-flow-test-isolation/64-02-PLAN.md
+Last activity: 2026-03-27 - Completed quick task 260327-o38: fix sort buttons on all DataTable columns
+Stopped at: Completed 64-02-PLAN.md
+Resume file: None

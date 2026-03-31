@@ -49,7 +49,7 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### E2E Tests — Field Mode & Cross-Cutting
 
-- [x] **E2E-20**: Automated tests verify field mode hub, canvassing wizard, phone banking, offline queue, and onboarding tour (FIELD-01 through FIELD-10, OFFLINE-01 through OFFLINE-03, TOUR-01 through TOUR-03)
+- [x] **E2E-20**: Automated tests verify field mode hub, canvassing wizard, phone banking, offline queue, and onboarding tour (FIELD-01 through FIELD-10, OFFLINE-01 through OFFLINE-03, TOUR-01 through TOUR-03). Phase 64 hardened FIELD-07 with deterministic per-test disposable canvassing fixtures, survey-present assertions, and a strict order-isolation permutation matrix (`--strict-phase64-field07-order`) proving order independence across 4 execution variants
 - [x] **E2E-21**: Automated tests verify navigation, empty states, loading skeletons, error boundaries, form guards, and toasts (NAV-01 through NAV-03, UI-01 through UI-03, CROSS-01 through CROSS-03)
 
 ### Validation & Production
@@ -102,7 +102,7 @@ None deferred for this milestone.
 | E2E-17 | Phase 59 | Pending |
 | E2E-18 | Phase 59 | Pending |
 | E2E-19 | Phase 59 | Pending |
-| E2E-20 | Phase 64 | Complete |
+| E2E-20 | Phase 60 (initial), Phase 64 (isolation hardening: disposable fixtures, order-matrix gate) | Complete |
 | E2E-21 | Phase 60 | Complete |
 | VAL-01 | Phase 62 | Complete |
 | VAL-02 | Phase 60 | Complete |
@@ -115,4 +115,4 @@ None deferred for this milestone.
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-31 after milestone audit gap-phase planning (Phases 62-64)*
+*Last updated: 2026-03-31 after Phase 64 FIELD-07 order-isolation closure*

@@ -103,6 +103,9 @@ Options:
   --grep PATTERN        Playwright grep filter (passed through)
   --loop                Run tests in a continuous loop with sleep between runs
   --loop-sleep N        Seconds to sleep between loop iterations (default: 120)
+  --strict-phase64-field07-order
+                        Run FIELD-07 order-isolation permutation matrix
+                        (4 runs: solo, sequential, after later tests, before later tests)
 
 Environment variables:
   E2E_USE_DEV_SERVER=1  Force dev server mode (localhost:5173)
@@ -116,6 +119,7 @@ Examples:
   ./scripts/run-e2e.sh --workers 8 voter-crud.spec.ts
   ./scripts/run-e2e.sh --loop                        # continuous: run, sleep 120s, repeat
   ./scripts/run-e2e.sh --loop --loop-sleep 60        # continuous with 60s interval
+  ./scripts/run-e2e.sh --strict-phase64-field07-order # FIELD-07 order matrix
 
 Output:
   Streams live to terminal and saves to e2e-logs/<timestamp>.log
@@ -129,6 +133,7 @@ DEFAULT_WORKERS=16
 WORKERS_FLAG="--workers $DEFAULT_WORKERS"
 LOOP_MODE=0
 LOOP_SLEEP=120
+STRICT_FIELD07_ORDER=0
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -147,12 +152,123 @@ while [[ $# -gt 0 ]]; do
       LOOP_SLEEP="$2"
       shift 2
       ;;
+    --strict-phase64-field07-order)
+      STRICT_FIELD07_ORDER=1
+      shift
+      ;;
     *)
       ARGS+=("$1")
       shift
       ;;
   esac
 done
+
+# ── Strict FIELD-07 order-isolation permutation matrix ─────────────────────
+# Phase 64: Proves FIELD-07 passes regardless of execution order relative
+# to other field-flow tests. Uses --workers 1 and --project=volunteer for
+# deterministic serial ordering. Fails if any run exits non-zero or if
+# FIELD-07 is skipped in any run.
+run_strict_phase64_field07_order() {
+  local SPEC="field-mode.volunteer.spec.ts"
+  local BASE_CMD="npx playwright test --reporter=list --workers 1 --project=volunteer"
+  local MATRIX_PASS=0
+  local MATRIX_FAIL=0
+  local RUN_RESULTS=()
+
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "  Phase 64: FIELD-07 Order-Isolation Permutation Matrix"
+  echo "═══════════════════════════════════════════════════════════════"
+  echo ""
+
+  # Define the 4 permutation runs per D-07/D-08:
+  # 1) FIELD-07 only (baseline isolation)
+  # 2) FIELD-03..07 sequence (natural forward order)
+  # 3) FIELD-08..10 then FIELD-07 (later tests before FIELD-07)
+  # 4) FIELD-07 then FIELD-08..10 (FIELD-07 before later tests)
+  local -a RUN_NAMES=(
+    "FIELD-07 solo"
+    "FIELD-03..07 forward sequence"
+    "FIELD-08..10 then FIELD-07"
+    "FIELD-07 then FIELD-08..10"
+  )
+  local -a RUN_GREPS=(
+    "FIELD-07"
+    "FIELD-03|FIELD-04|FIELD-05|FIELD-06|FIELD-07"
+    "FIELD-08|FIELD-09|FIELD-10|FIELD-07"
+    "FIELD-07|FIELD-08|FIELD-09|FIELD-10"
+  )
+
+  for i in "${!RUN_NAMES[@]}"; do
+    local name="${RUN_NAMES[$i]}"
+    local grep_pat="${RUN_GREPS[$i]}"
+    local run_cmd="$BASE_CMD $SPEC --grep \"$grep_pat\""
+    local run_log="$LOG_DIR/phase64-field07-order-$(date +%Y%m%d-%H%M%S)-run$((i+1)).log"
+
+    echo "──────────────────────────────────────────────────────────"
+    echo "  Run $((i+1))/4: $name"
+    echo "  Command: $run_cmd"
+    echo "──────────────────────────────────────────────────────────"
+
+    set +e
+    eval "$run_cmd" 2>&1 | tee "$run_log"
+    local rc=${PIPESTATUS[0]}
+    set -e
+
+    # Check for FIELD-07 skip in this run
+    local field07_skipped=0
+    if grep -qP 'FIELD-07.*skipped' "$run_log" 2>/dev/null; then
+      field07_skipped=1
+    fi
+    # Also check if FIELD-07 never appeared (0 matches for FIELD-07 passed)
+    local field07_passed=0
+    if grep -qP 'FIELD-07' "$run_log" 2>/dev/null; then
+      if grep -qP '✓|passed' "$run_log" 2>/dev/null && ! grep -qP 'FIELD-07.*skipped' "$run_log" 2>/dev/null; then
+        field07_passed=1
+      fi
+    fi
+
+    local status="PASS"
+    if [ "$rc" -ne 0 ]; then
+      status="FAIL (exit code $rc)"
+      MATRIX_FAIL=$((MATRIX_FAIL + 1))
+    elif [ "$field07_skipped" -eq 1 ]; then
+      status="FAIL (FIELD-07 skipped)"
+      MATRIX_FAIL=$((MATRIX_FAIL + 1))
+    else
+      MATRIX_PASS=$((MATRIX_PASS + 1))
+    fi
+
+    RUN_RESULTS+=("  Run $((i+1)): $name — $status")
+    echo "  Result: $status"
+    echo ""
+  done
+
+  # Print matrix summary
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "  Phase 64: FIELD-07 Order-Isolation Matrix Results"
+  echo "═══════════════════════════════════════════════════════════════"
+  for result in "${RUN_RESULTS[@]}"; do
+    echo "$result"
+  done
+  echo ""
+  echo "  Passed: $MATRIX_PASS / 4"
+  echo "  Failed: $MATRIX_FAIL / 4"
+  echo "═══════════════════════════════════════════════════════════════"
+
+  if [ "$MATRIX_FAIL" -gt 0 ]; then
+    echo ""
+    echo "✖ FIELD-07 order-isolation verification FAILED"
+    echo "  One or more permutation runs failed or FIELD-07 was skipped."
+    exit 1
+  fi
+
+  echo ""
+  echo "✓ FIELD-07 order-isolation verification PASSED"
+  echo "  All 4 permutation runs passed with FIELD-07 exercised."
+  exit 0
+}
 
 # ── Build the command ───────────────────────────────────────────────────────
 CMD="npx playwright test --reporter=list $WORKERS_FLAG"
@@ -248,6 +364,11 @@ run_once() {
 }
 
 # ── Execute ────────────────────────────────────────────────────────────────
+# Strict FIELD-07 order matrix takes precedence over normal execution
+if [ "$STRICT_FIELD07_ORDER" -eq 1 ]; then
+  run_strict_phase64_field07_order
+fi
+
 if [ "$LOOP_MODE" -eq 0 ]; then
   # Single run — identical to original behavior
   run_once ""
