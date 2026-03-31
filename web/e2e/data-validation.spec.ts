@@ -113,23 +113,12 @@ async function importFixtureCSV(
       await page.waitForTimeout(5_000)
     }
     await fileInput.setInputFiles("e2e/fixtures/l2-test-voters.csv")
+    // Wait for upload + detect to complete (upload to MinIO can be slow under load)
     columnMappingVisible = await page
       .getByText(/column mapping/i)
       .first()
-      .isVisible({ timeout: 30_000 })
+      .isVisible({ timeout: 60_000 })
       .catch(() => false)
-    if (!columnMappingVisible && attempt < 2) {
-      // Check if a 500/error state is visible before retrying
-      const hasError = await page
-        .getByText(/500|failed|try again/i)
-        .first()
-        .isVisible({ timeout: 3_000 })
-        .catch(() => false)
-      if (!hasError) {
-        // Unknown state — wait a bit longer before retrying
-        await page.waitForTimeout(5_000)
-      }
-    }
   }
   if (!columnMappingVisible) {
     throw new Error("Import /detect endpoint failed after 3 attempts")

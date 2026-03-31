@@ -91,13 +91,17 @@ test.describe.serial("Voter Import Lifecycle", () => {
     let columnMappingVisible = false
     for (let attempt = 0; attempt < 3 && !columnMappingVisible; attempt++) {
       if (attempt > 0) {
-        // Attempt to recover from error state: click "Try again" or reload the wizard
+        // Attempt to recover from error state: click "Try again" or navigate fresh
         const retryBtn = page.getByRole("button", { name: /try again/i })
         if (await retryBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
           await retryBtn.click()
         } else {
-          await page.reload()
+          // Navigate back to imports list, then re-enter wizard
+          await page.goto(`/campaigns/${campaignId}/voters/imports`)
+          await page.waitForURL(/imports/, { timeout: 10_000 })
+          await page.waitForLoadState("domcontentloaded")
           await startNewImport(page)
+          await expect(page.getByText(/upload file/i).first()).toBeVisible({ timeout: 10_000 })
         }
         await page.waitForTimeout(3_000)
         await uploadFixtureCsv(page)
@@ -105,7 +109,7 @@ test.describe.serial("Voter Import Lifecycle", () => {
       columnMappingVisible = await page
         .getByText(/column mapping/i)
         .first()
-        .isVisible({ timeout: 30_000 })
+        .isVisible({ timeout: 60_000 })
         .catch(() => false)
     }
     expect(columnMappingVisible).toBeTruthy()

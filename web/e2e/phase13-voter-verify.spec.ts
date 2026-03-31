@@ -98,8 +98,13 @@ test.describe("VOTR-02: Set primary contact — star icon visible on contact row
     const starButtons = page.locator('button[aria-label*="primary"], button[aria-label*="Primary"]')
     const emptyStates = page.getByText(/no phone numbers|no email addresses|no mailing addresses/i)
 
-    // Wait until at least one star button or one empty state message appears
-    await expect(starButtons.first().or(emptyStates.first())).toBeVisible({ timeout: 10_000 })
+    // Wait until at least one star button or one empty state message appears.
+    // Check them independently to avoid strict mode violations when both
+    // a star button and an empty state heading are visible simultaneously
+    // (e.g., voter has phone contacts but no email contacts).
+    const starVisible = await starButtons.first().isVisible({ timeout: 10_000 }).catch(() => false)
+    const emptyVisible = await emptyStates.first().isVisible({ timeout: 5_000 }).catch(() => false)
+    expect(starVisible || emptyVisible, "Either star buttons or empty state messages must appear").toBe(true)
 
     const starCount = await starButtons.count()
     const emptyCount = await emptyStates.count()
