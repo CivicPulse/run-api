@@ -7,12 +7,13 @@ test.describe("Role-gated UI: volunteer user", () => {
   }) => {
     await page.goto(`/campaigns/${campaignId}/volunteers/register`)
 
-    // Wait for the register page to load
+    // Wait for the register page to load (increase timeout for parallel load)
+    await page.waitForURL(/volunteers\/register/, { timeout: 15_000 })
     await expect(
       page
         .getByRole("heading", { name: /volunteer registration|create volunteer/i })
         .first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // The "Volunteer Type" label and RadioGroup should NOT be visible
     // (gated behind RequireRole minimum="manager")
