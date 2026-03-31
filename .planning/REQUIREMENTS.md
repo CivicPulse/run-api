@@ -15,9 +15,9 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: Provisioning script creates 15 ZITADEL test users (3 per campaign role: owner, admin, manager, volunteer, viewer) with verified emails and no password change required
+- [x] **INFRA-01**: Provisioning script creates 15 ZITADEL test users (3 per campaign role: owner, admin, manager, volunteer, viewer) with verified emails and no password change required
 - [x] **INFRA-02**: Playwright config has 5+ auth projects with per-role storageState files (owner, admin, manager, volunteer, viewer)
-- [ ] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
+- [x] **INFRA-03**: CI workflow runs the expanded E2E test suite with appropriate sharding
 
 ### E2E Tests — RBAC & Organization
 
@@ -54,7 +54,7 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### Validation & Production
 
-- [ ] **VAL-01**: All E2E tests pass at 100% against local Docker Compose environment
+- [x] **VAL-01**: All E2E tests pass at 100% against local Docker Compose environment
 - [x] **VAL-02**: All bugs discovered during testing are fixed and verified
 - [x] **PROD-01**: AI-consumable production testing instruction document is created with production-specific URLs, auth, and data considerations
 
@@ -80,9 +80,9 @@ None deferred for this milestone.
 | FEAT-01 | Phase 56 | Complete |
 | FEAT-02 | Phase 56 | Complete |
 | FEAT-03 | Phase 56 | Complete |
-| INFRA-01 | Phase 62 | Pending |
+| INFRA-01 | Phase 62 | Complete |
 | INFRA-02 | Phase 57 | Complete |
-| INFRA-03 | Phase 62 | Pending |
+| INFRA-03 | Phase 62 | Complete |
 | E2E-01 | Phase 58 | Complete |
 | E2E-02 | Phase 58 | Complete |
 | E2E-03 | Phase 58 | Complete |
@@ -104,7 +104,7 @@ None deferred for this milestone.
 | E2E-19 | Phase 59 | Pending |
 | E2E-20 | Phase 64 | Pending |
 | E2E-21 | Phase 60 | Complete |
-| VAL-01 | Phase 62 | Pending |
+| VAL-01 | Phase 62 | Complete |
 | VAL-02 | Phase 60 | Complete |
 | PROD-01 | Phase 61 | Complete |
 

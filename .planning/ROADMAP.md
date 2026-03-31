@@ -134,7 +134,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] **Phase 59: E2E Advanced Tests** - Voter import, data validation, filter dimensions, and all operational domain tests (completed 2026-03-29)
 - [x] **Phase 60: E2E Field Mode, Cross-Cutting & Validation** - Field mode, UI polish tests, plus test-fix-retest cycle to 100% pass (completed 2026-03-29)
 - [x] **Phase 61: AI Production Testing Instructions** - Production-specific testing document reflecting validated local suite (completed 2026-03-30)
-- [ ] **Phase 62: CI Auth Policy Automation** - Automate no-MFA org policy setup for fresh CI ZITADEL instances and verify auth bootstrap deterministically
+- [x] **Phase 62: CI Auth Policy Automation** - Automate no-MFA org policy setup for fresh CI ZITADEL instances and verify auth bootstrap deterministically (completed 2026-03-31)
 - [ ] **Phase 63: Phone Banking API + Data Resilience** - Implement missing phone-bank session delete endpoint and stabilize phone banking test data for active calling flows
 - [ ] **Phase 64: Field Flow Test Isolation** - Eliminate test-order side effects in canvassing inline survey flow via isolated fixtures and deterministic setup
 
@@ -242,10 +242,10 @@ Plans:
   1. User/bootstrap tooling applies org-level no-MFA login policy without manual console steps
   2. CI provisioning path verifies policy presence and fails fast with a clear error if not applied
   3. Auth setup scripts run successfully on a fresh ZITADEL instance with no manual MFA-policy intervention
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 62-01-PLAN.md — Add deterministic no-MFA org login policy automation + unit coverage in provisioning script
-- [ ] 62-02-PLAN.md — Add CI/local strict policy verification and auth-setup smoke gating before shard execution
+- [x] 62-01-PLAN.md — Add deterministic no-MFA org login policy automation + unit coverage in provisioning script
+- [x] 62-02-PLAN.md — Add CI/local strict policy verification and auth-setup smoke gating before shard execution
 
 ### Phase 63: Phone Banking API + Data Resilience
 **Goal**: Phone banking session lifecycle is API-complete and active-calling tests run against deterministic, non-exhausted data
@@ -293,7 +293,7 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 | 59. E2E Advanced Tests | v1.7 | 5/6 | Complete    | 2026-03-29 |
 | 60. E2E Field Mode, Cross-Cutting & Validation | v1.7 | 5/5 | Complete   | 2026-03-29 |
 | 61. AI Production Testing Instructions | v1.7 | 1/1 | Complete    | 2026-03-30 |
-| 62. CI Auth Policy Automation | v1.7 | 0/0 | Planned     | - |
+| 62. CI Auth Policy Automation | v1.7 | 2/2 | Complete   | 2026-03-31 |
 | 63. Phone Banking API + Data Resilience | v1.7 | 0/0 | Planned     | - |
 | 64. Field Flow Test Isolation | v1.7 | 0/0 | Planned     | - |
 
