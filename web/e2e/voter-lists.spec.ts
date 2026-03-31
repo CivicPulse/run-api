@@ -40,7 +40,9 @@ test.describe.serial("Voter lists lifecycle", () => {
   let campaignId = ""
   let testVoterIds: string[] = []
   const voterLastNames = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]
-  let staticListName = "E2E Static Test List"
+  // Use a run-specific suffix to avoid strict mode violations from previous test runs
+  const runSuffix = Date.now().toString(36).slice(-5)
+  let staticListName = `E2E Static Test List ${runSuffix}`
   const dynamicListName = "E2E Dynamic Test List"
 
   test.setTimeout(120_000)
@@ -57,9 +59,13 @@ test.describe.serial("Voter lists lifecycle", () => {
       party: "Democrat",
     }))
 
-    for (const voter of voters) {
-      const id = await createVoterViaApi(page, campaignId, voter)
+    for (let i = 0; i < voters.length; i++) {
+      const id = await createVoterViaApi(page, campaignId, voters[i])
       testVoterIds.push(id)
+      // Small delay to stay well under the 30/min rate limit
+      if (i < voters.length - 1) {
+        await page.waitForTimeout(500)
+      }
     }
 
     expect(testVoterIds).toHaveLength(5)
@@ -88,7 +94,7 @@ test.describe.serial("Voter lists lifecycle", () => {
     })
 
     // Verify the list appears in the lists page
-    await expect(page.getByText(staticListName)).toBeVisible({
+    await expect(page.getByText(staticListName).first()).toBeVisible({
       timeout: 10_000,
     })
   })
