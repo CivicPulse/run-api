@@ -223,9 +223,12 @@ test.describe.serial("Org management lifecycle", () => {
     const originalName = await orgNameInput.inputValue()
     expect(originalName).toBeTruthy()
 
+    // Use a unique timestamped name to ensure it always differs from the current name
+    const renamedName = `E2E Org Renamed ${Date.now()}`
+
     // Clear and type new name
     await orgNameInput.clear()
-    await orgNameInput.fill("E2E Test Org (Renamed)")
+    await orgNameInput.fill(renamedName)
 
     // Click "Save Changes"
     await page.getByRole("button", { name: /save changes/i }).click()
@@ -236,7 +239,7 @@ test.describe.serial("Org management lifecycle", () => {
     })
 
     // Verify the input reflects the new name
-    await expect(orgNameInput).toHaveValue("E2E Test Org (Renamed)")
+    await expect(orgNameInput).toHaveValue(renamedName)
 
     // Revert: clear and type original name back
     await orgNameInput.clear()
@@ -300,11 +303,12 @@ test.describe.serial("Org management lifecycle", () => {
       .click()
 
     // Verify redirect to org dashboard
-    await page.waitForURL(/^\/$/, { timeout: 15_000 })
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 })
 
-    // Verify the campaign no longer appears
-    await expect(page.getByText(campaignName)).not.toBeVisible({
-      timeout: 10_000,
-    })
+    // Verify the campaign no longer appears in the org dashboard card grid.
+    // Scope to #main-content to avoid strict-mode violations from lingering dialog text.
+    await expect(
+      page.locator("#main-content").getByText(campaignName)
+    ).not.toBeVisible({ timeout: 10_000 })
   })
 })

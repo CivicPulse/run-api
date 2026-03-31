@@ -351,12 +351,13 @@ test.describe.serial(
         .click()
 
       // Verify redirect to org dashboard
-      await page.waitForURL(/^\/$/, { timeout: 15_000 })
+      await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 })
 
-      // Verify the campaign no longer appears
-      await expect(page.getByText(campaignName)).not.toBeVisible({
-        timeout: 10_000,
-      })
+      // Verify the campaign no longer appears in the org dashboard card grid.
+      // Use #main-content scope to avoid matching text in any lingering dialogs.
+      await expect(
+        page.locator("#main-content").getByText(campaignName)
+      ).not.toBeVisible({ timeout: 10_000 })
     })
   }
 )

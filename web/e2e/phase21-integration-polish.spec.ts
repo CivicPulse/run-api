@@ -206,6 +206,20 @@ test.describe("Phase 21: Integration Polish", () => {
     await expect(page.getByText("Call List").first()).toBeVisible({
       timeout: 10_000,
     })
+
+    // Wait for actual session data rows to load (not skeleton rows).
+    // The DataTable shows skeleton rows while loading, so we wait until
+    // at least one real cell with non-empty text content is present.
+    await page.waitForFunction(
+      () => {
+        const cells = document.querySelectorAll("table tbody tr td")
+        return Array.from(cells).some(
+          (cell) => cell.textContent && cell.textContent.trim().length > 0,
+        )
+      },
+      { timeout: 10_000 },
+    )
+
     await page.screenshot({
       path: "test-results/p21-07-sessions-index.png",
     })

@@ -293,11 +293,14 @@ class ZitadelService:
             if org_id:
                 headers["x-zitadel-orgid"] = org_id
             async with httpx.AsyncClient(verify=self._verify_tls) as client:
-                # List grants to find the one to remove
-                response = await client.post(
-                    f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
+                # Search user grants via the project grants endpoint.
+                # The per-user /users/{id}/grants/_search and global
+                # /usergrants/_search endpoints are not supported in
+                # all Zitadel versions. Use the project-scoped endpoint instead.
+                response = await client.get(
+                    f"{self.base_url}/management/v1/projects/{project_id}/grants/_search",
                     headers=headers,
-                    json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
+                    params={"userId": user_id},
                 )
                 response.raise_for_status()
                 grants = response.json().get("result", [])
@@ -370,10 +373,11 @@ class ZitadelService:
             if org_id:
                 headers["x-zitadel-orgid"] = org_id
             async with httpx.AsyncClient(verify=self._verify_tls) as client:
-                response = await client.post(
-                    f"{self.base_url}/management/v1/users/{user_id}/grants/_search",
+                # Search user grants via the project grants endpoint.
+                response = await client.get(
+                    f"{self.base_url}/management/v1/projects/{project_id}/grants/_search",
                     headers=headers,
-                    json={"queries": [{"projectIdQuery": {"projectId": project_id}}]},
+                    params={"userId": user_id},
                 )
                 response.raise_for_status()
                 grants = response.json().get("result", [])

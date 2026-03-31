@@ -100,9 +100,13 @@ test.describe.serial("Phone Banking Sessions", () => {
       const callListTrigger = page.locator("#session-call-list")
       await callListTrigger.click()
 
-      // Select "E2E PB Call List" from the dropdown
-      const callListOption = page.getByRole("option", { name: /e2e pb call list/i }).first()
-        .or(page.getByRole("option").first())
+      // Select "E2E PB Call List" from the dropdown.
+      // Prefer the named option; fall back to the first option if exact name not found.
+      // Use .first() on the combined locator to avoid strict-mode violations when
+      // multiple options are present (e.g. from parallel test data).
+      const namedOption = page.getByRole("option", { name: /e2e pb call list/i })
+      const firstOption = page.getByRole("option")
+      const callListOption = namedOption.or(firstOption).first()
       await callListOption.click()
 
       // Intercept API response to capture session ID

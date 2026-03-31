@@ -16,23 +16,27 @@ test.describe("Org switcher", () => {
     const header = page.getByRole("banner")
     await expect(header).toBeVisible({ timeout: 10_000 })
 
-    // The org name should be visible in the header, either as a plain span
-    // (single org) or as a dropdown button (multiple orgs)
+    // The org name is rendered by OrgSwitcher in the header:
+    // - Single org: <span className="text-sm font-medium">{orgName}</span>
+    // - Multiple orgs: <Button variant="ghost" className="gap-1 text-sm font-medium">
+    //     {orgName} <ChevronDown />
+    //   </Button>
+    //
+    // The multi-org button uses className="gap-1 text-sm font-medium". The "gap-1"
+    // class is specific to the OrgSwitcher trigger button (not used on other header btns).
     const orgNameSpan = header.locator("span.text-sm.font-medium").first()
-    const orgNameButton = header.getByRole("button").filter({
-      hasText: /organization|demo/i,
-    }).first()
+    const orgNameButton = header.locator("button.gap-1").first()
 
-    // Either the plain text or the dropdown button should be visible
+    // Either the plain text span or the dropdown button should be visible
     await expect(
       orgNameSpan.or(orgNameButton)
     ).toBeVisible({ timeout: 10_000 })
 
     // Verify the displayed text contains an actual org name (not empty)
-    const orgElement = await orgNameSpan.isVisible()
-      ? orgNameSpan
-      : orgNameButton
+    const isSpanVisible = await orgNameSpan.isVisible()
+    const orgElement = isSpanVisible ? orgNameSpan : orgNameButton
     const orgText = await orgElement.textContent()
+    // Remove the chevron icon text content (empty) to get just the org name
     expect(orgText?.trim().length).toBeGreaterThan(0)
   })
 })
