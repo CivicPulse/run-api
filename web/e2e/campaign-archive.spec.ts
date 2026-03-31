@@ -54,8 +54,9 @@ test.describe("Campaign archive flow", () => {
     await confirmButton.click()
 
     // Verify toast notification appears confirming the archive
+    // Longer timeout: archive API call can be slow under parallel load
     await expect(page.getByText(/archived\./i)).toBeVisible({
-      timeout: 10_000,
+      timeout: 20_000,
     })
 
     // The campaign should no longer appear in the active grid

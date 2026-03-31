@@ -31,9 +31,10 @@ async function getFirstVoterId(page: Page): Promise<string | null> {
   await heading.waitFor({ state: "visible", timeout: 60_000 })
 
   // Click the first voter name link in the table to navigate to their detail page
-  // Longer timeout since large voter datasets (2400+) take time to load
+  // Longer timeout since large voter datasets (2400+) take time to load;
+  // voter-contacts spec can run concurrently and overwhelm the API for 2-3 min
   const firstLink = page.locator('table a[href*="/voters/"]').first()
-  await firstLink.waitFor({ state: "visible", timeout: 60_000 })
+  await firstLink.waitFor({ state: "visible", timeout: 120_000 })
   await firstLink.click()
   await page.waitForURL(/\/voters\/[^/]+$/, { timeout: 10_000 })
   await page.waitForLoadState("domcontentloaded")
@@ -415,6 +416,9 @@ test.describe("VOTR-11: History tab — textarea and Add Note button for interac
   test("History tab renders Add a Note textarea and Add Note button", async ({
     page,
   }) => {
+    // voter-contacts spec may run concurrently and overwhelm API for 2-3 min;
+    // increase timeout to accommodate the extended voter table load time
+    test.setTimeout(180_000)
     await getFirstVoterId(page)
 
     // Switch to History tab

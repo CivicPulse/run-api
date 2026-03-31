@@ -19,6 +19,7 @@ test.describe("Volunteer signup", () => {
   })
 
   test("create volunteer record via registration form", async ({ page, campaignId }) => {
+    test.setTimeout(120_000)
     // Navigate to the register page via nav tab
     const registerLink = page
       .getByRole("link", { name: /register/i })
@@ -48,11 +49,14 @@ test.describe("Volunteer signup", () => {
     await page.locator("#email").fill("e2e-vol@test.com")
 
     // Submit the form and intercept the API response to get the volunteer ID
+    // Long timeout: dev server may be slow under parallel load when voter-contacts
+    // spec runs concurrently (CON-01 alone takes 2-3 minutes)
     const responsePromise = page.waitForResponse(
       (resp) =>
         resp.url().includes("/volunteers") &&
         resp.request().method() === "POST" &&
         !resp.url().includes("/register"),
+      { timeout: 60_000 },
     )
     await page.getByRole("button", { name: /create volunteer/i }).click()
 

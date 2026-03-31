@@ -579,7 +579,9 @@ test.describe.serial("Voter contacts CRUD", () => {
           // Wait for the edited phone to appear, then click its delete button
           await expect(page.getByText("478-555-9999").first()).toBeVisible({ timeout: 10_000 })
           const phoneEntry = page.locator("div").filter({ hasText: /^478-555-9999/ }).first()
-          const deleteBtn = phoneEntry.getByRole("button", { name: /delete phone/i })
+          // Use .first() to avoid strict mode violation when UI renders mobile+desktop
+          // versions of the delete button simultaneously in different display states
+          const deleteBtn = phoneEntry.getByRole("button", { name: /delete phone/i }).first()
           await deleteBtn.click()
 
           // Confirm deletion
