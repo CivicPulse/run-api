@@ -79,7 +79,7 @@ def decode_cursor(cursor: str, sort_by: str | None) -> tuple:
     return cursor_val, cursor_id
 
 
-def build_voter_query(filters: VoterFilter) -> Select:
+def build_voter_query(campaign_id: uuid.UUID, filters: VoterFilter) -> Select:
     """Build a composable SQLAlchemy query from structured voter filters.
 
     Each non-None filter field appends a condition. Conditions are combined
@@ -91,7 +91,7 @@ def build_voter_query(filters: VoterFilter) -> Select:
     Returns:
         A SQLAlchemy Select statement (caller adds pagination/ordering).
     """
-    query = select(Voter)
+    query = select(Voter).where(Voter.campaign_id == campaign_id)
     conditions: list = []
 
     # Exact match fields
@@ -279,6 +279,7 @@ class VoterService:
     async def search_voters(
         self,
         db: AsyncSession,
+        campaign_id: uuid.UUID,
         filters: VoterFilter,
         cursor: str | None = None,
         limit: int = 50,
@@ -298,7 +299,7 @@ class VoterService:
         Returns:
             PaginatedResponse with VoterResponse items.
         """
-        query = build_voter_query(filters)
+        query = build_voter_query(campaign_id, filters)
 
         # Dynamic sort column with tiebreaker on id
         sort_col = getattr(Voter, sort_by) if sort_by else Voter.created_at
@@ -357,6 +358,7 @@ class VoterService:
     async def distinct_values(
         self,
         db: AsyncSession,
+        campaign_id: uuid.UUID,
         fields: set[str],
     ) -> dict[str, list[dict[str, str | int]]]:
         """Return distinct values with counts for the requested fields.
@@ -376,7 +378,10 @@ class VoterService:
             col = getattr(Voter, field)
             stmt = (
                 select(col, func.count().label("cnt"))
-                .where(col.is_not(None))
+                .where(
+                    Voter.campaign_id == campaign_id,
+                    col.is_not(None),
+                )
                 .group_by(col)
                 .order_by(func.count().desc())
             )
@@ -384,7 +389,12 @@ class VoterService:
             result[field] = [{"value": str(row[0]), "count": row[1]} for row in rows]
         return result
 
-    async def get_voter(self, db: AsyncSession, voter_id: uuid.UUID) -> Voter:
+    async def get_voter(
+        self,
+        db: AsyncSession,
+        campaign_id: uuid.UUID,
+        voter_id: uuid.UUID,
+    ) -> Voter:
         """Get a single voter by ID.
 
         Args:
@@ -397,7 +407,12 @@ class VoterService:
         Raises:
             ValueError: If voter not found.
         """
-        result = await db.execute(select(Voter).where(Voter.id == voter_id))
+        result = await db.execute(
+            select(Voter).where(
+                Voter.id == voter_id,
+                Voter.campaign_id == campaign_id,
+            )
+        )
         voter = result.scalar_one_or_none()
         if voter is None:
             msg = f"Voter {voter_id} not found"
@@ -435,6 +450,7 @@ class VoterService:
     async def update_voter(
         self,
         db: AsyncSession,
+        campaign_id: uuid.UUID,
         voter_id: uuid.UUID,
         data: object,
     ) -> Voter:
@@ -451,7 +467,7 @@ class VoterService:
         Raises:
             ValueError: If voter not found.
         """
-        voter = await self.get_voter(db, voter_id)
+        voter = await self.get_voter(db, campaign_id, voter_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(voter, field, value)
@@ -463,6 +479,7 @@ class VoterService:
     async def delete_voter(
         self,
         db: AsyncSession,
+        campaign_id: uuid.UUID,
         voter_id: uuid.UUID,
     ) -> None:
         """Delete a voter and all child records in dependency order.
@@ -477,7 +494,7 @@ class VoterService:
         Raises:
             ValueError: If voter not found.
         """
-        voter = await self.get_voter(db, voter_id)
+        voter = await self.get_voter(db, campaign_id, voter_id)
 
         # Delete child records in dependency order (leaves first)
         for child_model in (

@@ -400,6 +400,53 @@ class TestRLSAPISmokeTests:
         # RLS hides the row → VoterNotFoundError → 404
         assert resp.status_code == 404
 
+    async def test_voter_patch_cross_campaign_not_found(
+        self, two_campaigns_with_api_data, app_user_engine
+    ):
+        """PATCH /voters/{B's voter} via campaign A returns 404."""
+        data = two_campaigns_with_api_data
+        cid = data["campaign_a_id"]
+
+        app, _ = _make_app_for_campaign(
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
+            role=CampaignRole.MANAGER,
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.patch(
+                f"/api/v1/campaigns/{cid}/voters/{data['voter_b_id']}",
+                json={"first_name": "ShouldNotPatch"},
+            )
+
+        assert resp.status_code == 404
+
+    async def test_voter_delete_cross_campaign_not_found(
+        self, two_campaigns_with_api_data, app_user_engine
+    ):
+        """DELETE /voters/{B's voter} via campaign A returns 404."""
+        data = two_campaigns_with_api_data
+        cid = data["campaign_a_id"]
+
+        app, _ = _make_app_for_campaign(
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
+            role=CampaignRole.MANAGER,
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete(
+                f"/api/v1/campaigns/{cid}/voters/{data['voter_b_id']}",
+            )
+
+        assert resp.status_code == 404
+
     async def test_voter_create_scoped_to_campaign(
         self,
         two_campaigns_with_api_data,

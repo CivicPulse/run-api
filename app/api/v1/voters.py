@@ -58,7 +58,13 @@ async def list_voters(
         registration_county=county,
         has_phone=has_phone,
     )
-    return await _service.search_voters(db, filters, cursor=cursor, limit=limit)
+    return await _service.search_voters(
+        db,
+        campaign_id,
+        filters,
+        cursor=cursor,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -82,6 +88,7 @@ async def search_voters(
     await ensure_user_synced(user, db)
     return await _service.search_voters(
         db,
+        campaign_id,
         body.filters,
         cursor=body.cursor,
         limit=body.limit,
@@ -119,7 +126,7 @@ async def distinct_values(
             status_code=400,
             detail=f"Fields not allowed: {', '.join(sorted(invalid))}",
         )
-    result = await _service.distinct_values(db, requested)
+    result = await _service.distinct_values(db, campaign_id, requested)
     return result
 
 
@@ -141,7 +148,7 @@ async def get_voter(
     """
     await ensure_user_synced(user, db)
     try:
-        voter = await _service.get_voter(db, voter_id)
+        voter = await _service.get_voter(db, campaign_id, voter_id)
     except ValueError as exc:
         raise VoterNotFoundError(voter_id) from exc
     return VoterResponse.model_validate(voter)
@@ -188,7 +195,7 @@ async def update_voter(
     """
     await ensure_user_synced(user, db)
     try:
-        voter = await _service.update_voter(db, voter_id, body)
+        voter = await _service.update_voter(db, campaign_id, voter_id, body)
     except ValueError as exc:
         raise VoterNotFoundError(voter_id) from exc
     return VoterResponse.model_validate(voter)
@@ -212,7 +219,7 @@ async def delete_voter(
     """
     await ensure_user_synced(user, db)
     try:
-        await _service.delete_voter(db, voter_id)
+        await _service.delete_voter(db, campaign_id, voter_id)
     except ValueError as exc:
         raise VoterNotFoundError(voter_id) from exc
     except IntegrityError as exc:

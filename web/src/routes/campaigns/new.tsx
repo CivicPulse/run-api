@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowLeft, Check, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -226,11 +227,23 @@ function NewCampaignPage() {
   const handleSubmit = async (skipInvites: boolean = false) => {
     setSubmitError(null)
     const data = getValues()
-    try {
-      const campaign = await createCampaignMutation.mutateAsync(data)
+    let campaign: Campaign
 
-      // Add selected team members if not skipping
-      if (!skipInvites && selectedMembers.size > 0) {
+    try {
+      campaign = await createCampaignMutation.mutateAsync(data)
+    } catch {
+      setSubmitError(
+        "Failed to create campaign. Check your connection and try again.",
+      )
+      return
+    }
+
+    // Creation already succeeded. From here on, do not convert follow-up
+    // problems into a create failure.
+    submittedRef.current = true
+
+    if (!skipInvites && selectedMembers.size > 0) {
+      try {
         const memberEntries = Array.from(selectedMembers.entries())
         for (const [userId, role] of memberEntries) {
           await addMemberToCampaign.mutateAsync({
@@ -239,22 +252,25 @@ function NewCampaignPage() {
             role,
           })
         }
+      } catch {
+        toast.error(
+          "Campaign created, but some team members could not be added.",
+        )
       }
+    }
 
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] })
-      queryClient.invalidateQueries({ queryKey: ["org", "campaigns"] })
+    void queryClient.invalidateQueries({ queryKey: ["campaigns"] })
+    void queryClient.invalidateQueries({ queryKey: ["org", "campaigns"] })
 
-      // Bypass the navigation blocker before redirecting
-      submittedRef.current = true
-
-      navigate({
-        to: "/campaigns/$campaignId/dashboard",
-        params: { campaignId: campaign.id },
-      })
-    } catch {
-      setSubmitError(
-        "Failed to create campaign. Check your connection and try again.",
+    try {
+      await Promise.resolve(
+        navigate({
+          to: "/campaigns/$campaignId/dashboard",
+          params: { campaignId: campaign.id },
+        }),
       )
+    } catch {
+      globalThis.location.assign(`/campaigns/${campaign.id}/dashboard`)
     }
   }
 
