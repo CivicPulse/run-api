@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.10
-milestone_name: Import Recovery
-status: ready_to_plan
-stopped_at: Roadmap created, ready to plan Phase 56
-last_updated: "2026-03-31T00:00:00.000Z"
-last_activity: 2026-03-31
+milestone: v1.11
+milestone_name: Faster Imports
+status: defining_requirements
+stopped_at: Defining requirements for v1.11
+last_updated: "2026-04-01T00:00:00.000Z"
+last_activity: 2026-04-01
 progress:
-  total_phases: 3
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,19 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-31)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.10 Import Recovery — Phase 56: Schema & Orphan Detection
+**Current focus:** v1.11 Faster Imports — Defining requirements
 
 ## Current Position
 
-Phase: 56 (1 of 3 in v1.10) — Schema & Orphan Detection
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-31 — Roadmap created for v1.10 Import Recovery
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-01 — Milestone v1.11 started
 
 ## Performance Metrics
 
@@ -58,13 +56,15 @@ Progress: [░░░░░░░░░░] 0%
 
 - Application-level orphan detection (last_progress_at on import_jobs) over Procrastinate internal table queries — decoupled, version-safe, simpler
 - pg_try_advisory_lock for concurrent execution guard — cheap, auto-released on disconnect, prevents double-execution on large imports
+- Chunked child jobs (Option 2) chosen over staging tables or producer-consumer for import parallelization — best balance of speedup and complexity
+- Secondary work (VoterPhone, derived fields) offloaded to separate tasks — reduces main import batch latency
 
 ### Blockers/Concerns
 
-- Production import 9237f09a stuck in PROCESSING — this milestone's primary motivation
+- Production import 9237f09a stuck in PROCESSING — v1.10 motivation (import recovery)
 
 ## Session Continuity
 
-Last activity: 2026-03-31 — Roadmap created for v1.10 Import Recovery
-Stopped at: Roadmap created, ready to plan Phase 56
+Last activity: 2026-04-01 — Milestone v1.11 started
+Stopped at: Defining requirements for v1.11
 Resume file: None

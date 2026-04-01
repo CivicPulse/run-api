@@ -99,18 +99,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-## Current Milestone: v1.10 Import Recovery
+## Current Milestone: v1.11 Faster Imports
 
-**Goal:** Make import processing crash-safe across worker restarts, deploy rollouts, and pod evictions — orphaned imports self-heal without manual intervention.
+**Goal:** Parallelize the import pipeline so a single large CSV (millions of rows) completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
 **Target features:**
-- Orphan detection via application-level `last_progress_at` staleness check
-- Worker startup recovery scan that re-queues stuck imports
-- `pg_try_advisory_lock` guard preventing concurrent execution of the same import
-- Hardened completion path with distinct error states for finalization failures
-- Periodic reconciliation loop (worker startup + optional interval)
-- Recovery logging and metrics
-- Unit + integration tests for crash-resume scenarios
+- Parent/child job model — split one CSV into chunk ranges, enqueue one task per chunk, aggregate progress into parent job
+- Parallel chunk processing — multiple workers process chunks concurrently with per-chunk commit, retry, and failure isolation
+- Secondary work offloading — VoterPhone creation, geometry updates, and derived-field computation run as separate post-batch tasks
+- Progress aggregation — parent job tracks overall completion from child chunks, frontend polling shows unified progress
+- Chunk failure handling — individual chunk failures don't block other chunks; partial results are preserved
+- Existing behavior preservation — cancel, crash-resume, per-campaign queueing lock, L2 auto-mapping all continue to work
 
 ### Out of Scope
 
@@ -203,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after v1.10 milestone start*
+*Last updated: 2026-04-01 after v1.11 milestone start*
