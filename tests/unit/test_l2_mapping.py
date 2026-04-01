@@ -2,23 +2,10 @@
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
-
 from app.services.import_service import (
     _VOTER_COLUMNS,
     suggest_field_mapping,
 )
-
-# Read actual L2 header row from sample file
-_SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
-
-
-def _get_l2_headers() -> list[str]:
-    with open(_SAMPLE_PATH) as f:
-        reader = csv.reader(f)
-        return next(reader)
-
 
 # Expected mapping for all 47 data columns (non-voting-history).
 # Per D-13: "Mailing Household Size" -> household_size (existing)
@@ -74,7 +61,7 @@ _EXPECTED_DATA_MAPPING: dict[str, str] = {
 }
 
 # Voting history columns (should NOT be in data mapping)
-_VOTING_HISTORY_COLS = {
+_VOTING_HISTORY_COLS = [
     "General_2024",
     "Primary_2024",
     "Voted in 2022",
@@ -83,7 +70,11 @@ _VOTING_HISTORY_COLS = {
     "Voted in 2022 Primary",
     "Voter in 2020 Primary",
     "Voted in 2018 Primary",
-}
+]
+
+
+def _get_l2_headers() -> list[str]:
+    return [*_EXPECTED_DATA_MAPPING.keys(), *_VOTING_HISTORY_COLS]
 
 
 class TestL2DataColumnMapping:
