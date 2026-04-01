@@ -1217,6 +1217,18 @@ class ImportService:
         rows_to_skip = job.last_committed_row or 0
         is_resume = rows_to_skip > 0
 
+        # Dynamic batch size: asyncpg enforces a 32,767 bind-parameter
+        # limit per query.  The bulk INSERT uses ~N columns per row, so
+        # we cap the batch to stay safely under the limit.
+        max_params = 32_767  # asyncpg per-query bind-parameter ceiling
+        num_mapped = sum(1 for v in (job.field_mapping or {}).values() if v)
+        # Voter model adds campaign_id, source_type, created_at, updated_at
+        cols_per_row = max(num_mapped + 4, 1)
+        effective_batch_size = min(
+            settings.import_batch_size,
+            max_params // cols_per_row,
+        )
+
         if not is_resume:
             # Fresh start -- reset counters
             job.status = ImportStatus.PROCESSING
@@ -1272,7 +1284,7 @@ class ImportService:
                 batch.append(row)
                 counters["total_rows"] += 1
 
-                if len(batch) >= settings.import_batch_size:
+                if len(batch) >= effective_batch_size:
                     batch_num += 1
                     await self._process_single_batch(
                         batch,
