@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import field_validator
 
@@ -14,7 +14,7 @@ def _to_naive_utc(value: datetime | None) -> datetime | None:
     """Strip timezone from a datetime, converting to UTC first if needed."""
     if value is None or value.tzinfo is None:
         return value
-    return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 class PhoneBankSessionCreate(BaseSchema):

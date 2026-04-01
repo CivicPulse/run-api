@@ -143,7 +143,6 @@ async def update_member_role(
     # role search is unavailable (e.g. version mismatch), we log a warning
     # and proceed to persist the role change in the DB, which is the
     # authoritative source for application-level access control.
-    old_role = member.role or "viewer"
     try:
         await zitadel.remove_all_project_roles(
             settings.zitadel_project_id,

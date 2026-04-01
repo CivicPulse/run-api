@@ -18,9 +18,7 @@ from app.core.observability import (
 )
 
 # Campaign UUID extraction from URL path
-_CAMPAIGN_PATH_RE = re.compile(
-    r"/api/v1/campaigns/([0-9a-f-]{36})"
-)
+_CAMPAIGN_PATH_RE = re.compile(r"/api/v1/campaigns/([0-9a-f-]{36})")
 
 structlog.configure(
     processors=[
@@ -36,9 +34,7 @@ structlog.configure(
 _logger = structlog.get_logger()
 
 
-def _get_header(
-    headers: list[tuple[bytes, bytes]], name: bytes
-) -> str | None:
+def _get_header(headers: list[tuple[bytes, bytes]], name: bytes) -> str | None:
     """Extract a header value from raw ASGI headers."""
     for key, value in headers:
         if key.lower() == name:
@@ -72,10 +68,7 @@ class StructlogMiddleware:
         headers = scope.get("headers", [])
 
         # Request ID: honor incoming or generate
-        request_id = (
-            _get_header(headers, b"x-request-id")
-            or uuid.uuid4().hex
-        )
+        request_id = _get_header(headers, b"x-request-id") or uuid.uuid4().hex
         request_id_var.set(request_id)
 
         # Extract campaign_id from URL path
@@ -101,16 +94,12 @@ class StructlogMiddleware:
                 status_code = message.get("status", 500)
                 # Inject X-Request-ID response header
                 resp_headers = list(message.get("headers", []))
-                resp_headers.append(
-                    (b"x-request-id", request_id.encode())
-                )
+                resp_headers.append((b"x-request-id", request_id.encode()))
                 message = {**message, "headers": resp_headers}
                 # Extract content-length if present
                 for k, v in resp_headers:
                     if k.lower() == b"content-length":
-                        with contextlib.suppress(
-                            ValueError, TypeError
-                        ):
+                        with contextlib.suppress(ValueError, TypeError):
                             content_length = int(v)
                         break
             await send(message)
@@ -118,12 +107,8 @@ class StructlogMiddleware:
         try:
             await self.app(scope, receive, send_wrapper)
         finally:
-            duration_ms = round(
-                (time.perf_counter() - start) * 1000, 2
-            )
-            query_params = scope.get(
-                "query_string", b""
-            ).decode("latin-1")
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            query_params = scope.get("query_string", b"").decode("latin-1")
 
             # Set Sentry tags
             sentry_sdk.set_tag("request_id", request_id)

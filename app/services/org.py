@@ -21,16 +21,10 @@ class OrgService:
     (D-17: no RLS on org data).
     """
 
-    async def get_org(
-        self, db: AsyncSession, org_id: uuid.UUID
-    ) -> Organization | None:
-        return await db.scalar(
-            select(Organization).where(Organization.id == org_id)
-        )
+    async def get_org(self, db: AsyncSession, org_id: uuid.UUID) -> Organization | None:
+        return await db.scalar(select(Organization).where(Organization.id == org_id))
 
-    async def list_campaigns(
-        self, db: AsyncSession, org_id: uuid.UUID
-    ) -> list[dict]:
+    async def list_campaigns(self, db: AsyncSession, org_id: uuid.UUID) -> list[dict]:
         """List campaigns with member counts for an org."""
         member_count_sq = (
             select(
@@ -43,9 +37,7 @@ class OrgService:
         stmt = (
             select(
                 Campaign,
-                func.coalesce(
-                    member_count_sq.c.member_count, 0
-                ).label("member_count"),
+                func.coalesce(member_count_sq.c.member_count, 0).label("member_count"),
             )
             .outerjoin(
                 member_count_sq,
@@ -55,14 +47,9 @@ class OrgService:
             .order_by(Campaign.created_at.desc())
         )
         results = await db.execute(stmt)
-        return [
-            {"campaign": row[0], "member_count": row[1]}
-            for row in results.all()
-        ]
+        return [{"campaign": row[0], "member_count": row[1]} for row in results.all()]
 
-    async def list_members(
-        self, db: AsyncSession, org_id: uuid.UUID
-    ) -> list[dict]:
+    async def list_members(self, db: AsyncSession, org_id: uuid.UUID) -> list[dict]:
         """List org-level members with user details."""
         stmt = (
             select(OrganizationMember, User)
@@ -71,10 +58,7 @@ class OrgService:
             .order_by(OrganizationMember.created_at.desc())
         )
         results = await db.execute(stmt)
-        return [
-            {"member": row[0], "user": row[1]}
-            for row in results.all()
-        ]
+        return [{"member": row[0], "user": row[1]} for row in results.all()]
 
     async def list_members_with_campaign_roles(
         self, db: AsyncSession, org_id: uuid.UUID
@@ -84,31 +68,21 @@ class OrgService:
         members = await self.list_members(db, org_id)
         # Get all campaigns in this org
         campaigns = await db.execute(
-            select(Campaign.id, Campaign.name).where(
-                Campaign.organization_id == org_id
-            )
+            select(Campaign.id, Campaign.name).where(Campaign.organization_id == org_id)
         )
         campaign_list = campaigns.all()
         # For each member, find their campaign memberships
         for member_dict in members:
             user_id = member_dict["member"].user_id
-            cm_stmt = select(
-                CampaignMember.campaign_id, CampaignMember.role
-            ).where(
+            cm_stmt = select(CampaignMember.campaign_id, CampaignMember.role).where(
                 CampaignMember.user_id == user_id,
-                CampaignMember.campaign_id.in_(
-                    [c.id for c in campaign_list]
-                ),
+                CampaignMember.campaign_id.in_([c.id for c in campaign_list]),
             )
             cm_results = await db.execute(cm_stmt)
             campaign_roles = []
             for cm in cm_results.all():
                 campaign_name = next(
-                    (
-                        c.name
-                        for c in campaign_list
-                        if c.id == cm.campaign_id
-                    ),
+                    (c.name for c in campaign_list if c.id == cm.campaign_id),
                     "",
                 )
                 campaign_roles.append(
@@ -138,9 +112,7 @@ class OrgService:
             )
         )
         if not campaign:
-            raise ValueError(
-                "Campaign not found in this organization"
-            )
+            raise ValueError("Campaign not found in this organization")
         # Verify user is an org member
         org_member = await db.scalar(
             select(OrganizationMember).where(
@@ -149,9 +121,7 @@ class OrgService:
             )
         )
         if not org_member:
-            raise ValueError(
-                "User is not a member of this organization"
-            )
+            raise ValueError("User is not a member of this organization")
         # Check for existing campaign membership
         existing = await db.scalar(
             select(CampaignMember).where(
@@ -160,9 +130,7 @@ class OrgService:
             )
         )
         if existing:
-            raise ValueError(
-                "User is already a member of this campaign"
-            )
+            raise ValueError("User is already a member of this campaign")
         cm = CampaignMember(
             user_id=user_id,
             campaign_id=campaign_id,

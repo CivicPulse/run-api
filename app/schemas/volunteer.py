@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import field_validator
 
@@ -79,7 +79,7 @@ class AvailabilityCreate(BaseSchema):
     @classmethod
     def normalize_datetime(cls, v: datetime) -> datetime:
         if v.tzinfo is not None:
-            return v.astimezone(timezone.utc).replace(tzinfo=None)
+            return v.astimezone(UTC).replace(tzinfo=None)
         return v
 
 

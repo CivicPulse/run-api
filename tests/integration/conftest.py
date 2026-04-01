@@ -22,12 +22,9 @@ from app.core.time import utcnow
 
 # Database URLs for integration tests (port from env, default 5432)
 _DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
-SUPERUSER_URL = (
-    f"postgresql+asyncpg://postgres:postgres@localhost:{_DB_PORT}/run_api"
-)
+SUPERUSER_URL = f"postgresql+asyncpg://postgres:postgres@localhost:{_DB_PORT}/run_api"
 APP_USER_URL = (
-    f"postgresql+asyncpg://app_user:app_password"
-    f"@localhost:{_DB_PORT}/run_api"
+    f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"
 )
 
 

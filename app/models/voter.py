@@ -127,9 +127,7 @@ class Voter(Base):
     household_party_registration: Mapped[str | None] = mapped_column(String(50))
     household_size: Mapped[int | None] = mapped_column(SmallInteger)
     family_id: Mapped[str | None] = mapped_column(String(255))
-    mailing_household_party_registration: Mapped[str | None] = mapped_column(
-        String(50)
-    )
+    mailing_household_party_registration: Mapped[str | None] = mapped_column(String(50))
     mailing_household_size: Mapped[int | None] = mapped_column(SmallInteger)
 
     # Extras

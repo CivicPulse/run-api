@@ -82,6 +82,13 @@ def _mock_scalars_all(values):
     return result
 
 
+def _mock_rowcount_result(count):
+    """Create a MagicMock result for INSERT with rowcount."""
+    result = MagicMock()
+    result.rowcount = count
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -103,29 +110,26 @@ class TestEnsureUserSyncedMultiCampaign:
 
         # Execute calls:
         # 1. User lookup -> found
-        # 2. Org lookup -> found
-        # 3. Campaign lookup (scalars().all()) -> 3 campaigns
-        # 4-6. CampaignMember lookup for each campaign -> None (not found)
+        # 2. Org lookup -> scalars().all() -> [org]
+        # 3. Org member upsert (pg_insert) -> rowcount=1 (new)
+        # 4. Campaign lookup for org -> scalars().all() -> 3 campaigns
+        # 5-7. Campaign member upsert for each -> rowcount=1 (new)
         results = [
-            _mock_result(local_user),  # user lookup
-            _mock_result(org),  # org lookup
-            _mock_scalars_all(campaigns),  # all campaigns in org
-            _mock_result(None),  # member check campaign 1 -> not found
-            _mock_result(None),  # member check campaign 2 -> not found
-            _mock_result(None),  # member check campaign 3 -> not found
+            _mock_result(local_user),  # 1. user lookup
+            _mock_scalars_all([org]),  # 2. org lookup
+            _mock_rowcount_result(1),  # 3. org member upsert
+            _mock_scalars_all(campaigns),  # 4. campaigns for this org
+            _mock_rowcount_result(1),  # 5. campaign member upsert 1
+            _mock_rowcount_result(1),  # 6. campaign member upsert 2
+            _mock_rowcount_result(1),  # 7. campaign member upsert 3
         ]
         db.execute = AsyncMock(side_effect=results)
 
         result = await ensure_user_synced(user, db)
 
         assert result == local_user
-        # Should have added 3 CampaignMember records
-        assert db.add.call_count == 3
-        # Verify each added object is a CampaignMember
-        for c in db.add.call_args_list:
-            added = c[0][0]
-            assert isinstance(added, CampaignMember)
-            assert added.user_id == user.id
+        # New code uses db.execute for pg_insert, not db.add
+        assert db.execute.call_count == 7
 
     async def test_skips_existing_membership_creates_missing(self):
         """User has 1 of 3 memberships -- creates 2 missing ones."""
@@ -134,25 +138,32 @@ class TestEnsureUserSyncedMultiCampaign:
         org = _org()
         campaigns = [_campaign() for _ in range(3)]
         existing_member = MagicMock(spec=CampaignMember)
+        existing_member.role = "viewer"  # role is set, no backfill needed
 
         db = AsyncMock()
         db.add = MagicMock()
         db.commit = AsyncMock()
 
+        # When rowcount=0, code does db.scalar() to check for role backfill
+        db.scalar = AsyncMock(return_value=existing_member)
+
         results = [
             _mock_result(local_user),  # user lookup
-            _mock_result(org),  # org lookup
-            _mock_scalars_all(campaigns),  # all campaigns
-            _mock_result(existing_member),  # campaign 1 -> already exists
-            _mock_result(None),  # campaign 2 -> not found
-            _mock_result(None),  # campaign 3 -> not found
+            _mock_scalars_all([org]),  # org lookup
+            _mock_rowcount_result(1),  # org member upsert
+            _mock_scalars_all(campaigns),  # campaigns per org
+            _mock_rowcount_result(0),  # campaign 1 -> already exists
+            _mock_rowcount_result(1),  # campaign 2 -> new
+            _mock_rowcount_result(1),  # campaign 3 -> new
         ]
         db.execute = AsyncMock(side_effect=results)
 
         await ensure_user_synced(user, db)
 
-        # Should only add 2 new members (not the existing one)
-        assert db.add.call_count == 2
+        # 7 execute calls total (insert still happens, just rowcount=0)
+        assert db.execute.call_count == 7
+        # db.scalar called once for the existing member backfill check
+        assert db.scalar.call_count == 1
 
     async def test_no_campaigns_logs_warning_no_crash(self):
         """User in org with 0 campaigns -- logs warning, does not crash."""
@@ -166,16 +177,17 @@ class TestEnsureUserSyncedMultiCampaign:
 
         results = [
             _mock_result(local_user),  # user lookup
-            _mock_result(org),  # org lookup
-            _mock_scalars_all([]),  # no campaigns in org
-            _mock_scalars_all([]),  # fallback also empty
+            _mock_scalars_all([org]),  # org lookup
+            _mock_rowcount_result(1),  # org member upsert
+            _mock_scalars_all([]),  # campaigns per org -> empty
+            _mock_scalars_all([]),  # fallback -> also empty
         ]
         db.execute = AsyncMock(side_effect=results)
 
         result = await ensure_user_synced(user, db)
 
         assert result == local_user
-        # No members added
+        # No members added via db.add
         db.add.assert_not_called()
 
     async def test_no_org_falls_back_to_zitadel_org_id(self):
@@ -188,16 +200,18 @@ class TestEnsureUserSyncedMultiCampaign:
         db.add = MagicMock()
         db.commit = AsyncMock()
 
+        # No orgs found -> skip org member upsert and per-org campaign lookup
+        # Go straight to fallback campaign lookup
         results = [
             _mock_result(local_user),  # user lookup
-            _mock_result(None),  # org lookup -> not found
+            _mock_scalars_all([]),  # org lookup -> empty
             _mock_scalars_all(campaigns),  # fallback: campaigns by zitadel_org_id
-            _mock_result(None),  # member check campaign 1 -> not found
-            _mock_result(None),  # member check campaign 2 -> not found
+            _mock_rowcount_result(1),  # campaign member upsert 1
+            _mock_rowcount_result(1),  # campaign member upsert 2
         ]
         db.execute = AsyncMock(side_effect=results)
 
         result = await ensure_user_synced(user, db)
 
         assert result == local_user
-        assert db.add.call_count == 2
+        assert db.execute.call_count == 5

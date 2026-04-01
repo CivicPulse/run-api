@@ -1,5 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -50,34 +50,27 @@ function GeneralSettings() {
   const { isBlocked, proceed, reset: resetGuard } = useFormGuard({ form })
   const formRef = useRef<HTMLFormElement>(null)
 
-  // D-10: Focus first invalid field after validation failure
-  const focusFirstError = useCallback(() => {
-    if (formRef.current) {
-      const firstInvalid = formRef.current.querySelector<HTMLElement>('[aria-invalid="true"]')
-      firstInvalid?.focus()
+  const onSubmit = form.handleSubmit(async (data) => {
+    try {
+      await updateCampaign.mutateAsync({
+        name: data.name,
+        description: data.description || undefined,
+        election_date: data.election_date || null,
+      })
+      form.reset(data) // Reset dirty state after successful save
+      toast.success("Campaign updated")
+    } catch {
+      toast.error("Failed to update campaign")
     }
-  }, [])
+  })
 
-  const onSubmit = form.handleSubmit(
-    async (data) => {
-      try {
-        await updateCampaign.mutateAsync({
-          name: data.name,
-          description: data.description || undefined,
-          election_date: data.election_date || null,
-        })
-        form.reset(data) // Reset dirty state after successful save
-        toast.success("Campaign updated")
-      } catch {
-        toast.error("Failed to update campaign")
-      }
-    },
-    // D-10: Focus first error on validation failure
-    () => {
-      // react-hook-form sets aria-invalid after validation; wait a tick for DOM update
-      requestAnimationFrame(focusFirstError)
-    },
-  )
+  // D-10: Focus first invalid field after validation failure
+  const handleInvalid = () => {
+    requestAnimationFrame(() => {
+      const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      firstInvalid?.focus()
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +79,7 @@ function GeneralSettings() {
         <p className="text-sm text-muted-foreground">Update your campaign details.</p>
       </div>
 
-      <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-lg">
+      <form ref={formRef} onSubmit={onSubmit} onInvalid={handleInvalid} className="space-y-4 max-w-lg">
         <div className="space-y-2">
           <Label htmlFor="name">Campaign Name</Label>
           <Input

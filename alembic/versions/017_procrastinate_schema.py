@@ -9,6 +9,7 @@ full schema SQL (tables, functions, triggers, types).
 Per D-01: Alembic owns all schema changes.
 Per D-02: Procrastinate tables live in separate schema.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence

@@ -174,10 +174,7 @@ async def two_campaigns_with_api_data(superuser_session):
     # Cleanup in reverse dependency order
     for table in ["turfs", "voters", "campaign_members"]:
         await session.execute(
-            text(
-                f"DELETE FROM {table}"
-                " WHERE campaign_id IN (:a, :b)"
-            ),
+            text(f"DELETE FROM {table} WHERE campaign_id IN (:a, :b)"),
             {"a": campaign_a_id, "b": campaign_b_id},
         )
     await session.execute(
@@ -265,23 +262,21 @@ class TestRLSAPISmokeTests:
         cid = data["campaign_a_id"]
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            cid, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 f"/api/v1/campaigns/{cid}/voters/search",
                 json={},
             )
 
         assert resp.status_code == 200
-        voter_ids = [
-            v["id"] for v in resp.json().get("items", [])
-        ]
+        voter_ids = [v["id"] for v in resp.json().get("items", [])]
         assert str(data["voter_a_id"]) in voter_ids
         assert str(data["voter_b_id"]) not in voter_ids
 
@@ -293,22 +288,20 @@ class TestRLSAPISmokeTests:
         cid = data["campaign_a_id"]
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            cid, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 f"/api/v1/campaigns/{cid}/turfs",
             )
 
         assert resp.status_code == 200
-        turf_ids = [
-            t["id"] for t in resp.json().get("items", [])
-        ]
+        turf_ids = [t["id"] for t in resp.json().get("items", [])]
         assert str(data["turf_a_id"]) in turf_ids
         assert str(data["turf_b_id"]) not in turf_ids
 
@@ -327,12 +320,9 @@ class TestRLSAPISmokeTests:
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
-                f"/api/v1/campaigns/"
-                f"{data['campaign_b_id']}/voters/search",
+                f"/api/v1/campaigns/{data['campaign_b_id']}/voters/search",
                 json={},
             )
 
@@ -346,14 +336,14 @@ class TestRLSAPISmokeTests:
         fake_cid = uuid.uuid4()
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            fake_cid, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            fake_cid,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 f"/api/v1/campaigns/{fake_cid}/voters/search",
                 json={},
@@ -370,22 +360,20 @@ class TestRLSAPISmokeTests:
         cid = data["campaign_a_id"]
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            cid, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 f"/api/v1/campaigns/{cid}/voters",
             )
 
         assert resp.status_code == 200
-        voter_ids = [
-            v["id"] for v in resp.json().get("items", [])
-        ]
+        voter_ids = [v["id"] for v in resp.json().get("items", [])]
         assert str(data["voter_a_id"]) in voter_ids
         assert str(data["voter_b_id"]) not in voter_ids
 
@@ -397,17 +385,16 @@ class TestRLSAPISmokeTests:
         cid = data["campaign_a_id"]
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            cid, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            cid,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
-                f"/api/v1/campaigns/{cid}"
-                f"/voters/{data['voter_b_id']}",
+                f"/api/v1/campaigns/{cid}/voters/{data['voter_b_id']}",
             )
 
         # RLS hides the row → VoterNotFoundError → 404
@@ -424,14 +411,14 @@ class TestRLSAPISmokeTests:
         cid_b = data["campaign_b_id"]
 
         app, _ = _make_app_for_campaign(
-            data["user_a_id"], data["org_a_id"],
-            cid_a, app_user_engine,
+            data["user_a_id"],
+            data["org_a_id"],
+            cid_a,
+            app_user_engine,
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 f"/api/v1/campaigns/{cid_a}/voters",
                 json={

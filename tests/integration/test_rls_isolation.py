@@ -23,8 +23,7 @@ from app.db.rls import set_campaign_context
 # app_user connection — RLS enforced
 _DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
 APP_USER_URL = (
-    f"postgresql+asyncpg://app_user:app_password"
-    f"@localhost:{_DB_PORT}/run_api"
+    f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"
 )
 
 

@@ -31,11 +31,12 @@ def _response(
 
 def test_policy_helper_noop_when_compliant():
     module = _load_module()
+    search_path = module.LOGIN_POLICY_SEARCH_PATHS[0]
     client = MagicMock(spec=httpx.Client)
     client.request.side_effect = [
         _response(
             "POST",
-            module.LOGIN_POLICY_SEARCH_PATH,
+            search_path,
             200,
             {
                 "result": [
@@ -45,6 +46,7 @@ def test_policy_helper_noop_when_compliant():
                         "forceMfa": False,
                         "secondFactors": [],
                         "multiFactors": [],
+                        "passwordCheckLifetime": "864000s",
                     }
                 ]
             },
@@ -54,19 +56,23 @@ def test_policy_helper_noop_when_compliant():
     module.ensure_org_login_policy(client, "pat-token", "org-1", strict=True)
 
     assert client.request.call_count == 1
-    sent_path = client.request.call_args.kwargs["json"]["queries"][0]["orgId"]
-    assert sent_path == "org-1"
+    sent_payload = client.request.call_args.kwargs["json"]
+    assert sent_payload["queries"][0]["orgId"] == "org-1"
 
 
 def test_policy_helper_creates_policy_when_missing_and_verifies():
     module = _load_module()
+    search_path = module.LOGIN_POLICY_SEARCH_PATHS[0]
     client = MagicMock(spec=httpx.Client)
     client.request.side_effect = [
-        _response("POST", module.LOGIN_POLICY_SEARCH_PATH, 200, {"result": []}),
+        # 1. fetch_org_login_policies in ensure -> search -> empty result
+        _response("POST", search_path, 200, {"result": []}),
+        # 2. api_call to create policy
         _response("POST", module.LOGIN_POLICY_PATH, 200, {"id": "policy-new"}),
+        # 3. verify_org_login_policy -> fetch_org_login_policies -> search -> compliant
         _response(
             "POST",
-            module.LOGIN_POLICY_SEARCH_PATH,
+            search_path,
             200,
             {
                 "result": [
@@ -76,6 +82,7 @@ def test_policy_helper_creates_policy_when_missing_and_verifies():
                         "forceMfa": False,
                         "secondFactors": [],
                         "multiFactors": [],
+                        "passwordCheckLifetime": "864000s",
                     }
                 ]
             },
@@ -97,14 +104,15 @@ def test_policy_helper_creates_policy_when_missing_and_verifies():
 
 def test_strict_verify_failure_includes_endpoint_and_status():
     module = _load_module()
+    search_path = module.LOGIN_POLICY_SEARCH_PATHS[0]
     client = MagicMock(spec=httpx.Client)
     client.request.side_effect = [
-        _response("POST", module.LOGIN_POLICY_SEARCH_PATH, 500, {"message": "boom"})
+        _response("POST", search_path, 500, {"message": "boom"})
     ]
 
     with pytest.raises(SystemExit) as exc_info:
         module.verify_org_login_policy(client, "pat-token", "org-1", strict=True)
 
     message = str(exc_info.value)
-    assert module.LOGIN_POLICY_SEARCH_PATH in message
+    assert search_path in message
     assert "status=500" in message

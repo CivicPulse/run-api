@@ -71,36 +71,49 @@ def _mock_result_with(value, method="scalar_one_or_none"):
     return result
 
 
+def _make_scalars_result(items):
+    """Create a mock result for queries using result.scalars().all()."""
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = items
+    return result
+
+
+def _one_sync_pass(local_user=None):
+    """Return mock execute results for a single ensure_user_synced call.
+
+    ensure_user_synced makes 3 execute calls:
+    1. User lookup → result.scalar_one_or_none()
+    2. Org lookup → result.scalars().all() (returns [] so fallback runs)
+    3. Campaign fallback → result.scalars().all() (returns [] so no member upserts)
+    """
+    if local_user is None:
+        local_user = _make_local_user()
+    return [
+        _mock_result_with(local_user),  # user lookup
+        _make_scalars_result([]),  # org lookup → empty
+        _make_scalars_result([]),  # campaign fallback → empty
+    ]
+
+
 def _setup_user_sync_on_db(mock_db, local_user=None, campaign=None):
-    """Set up mock_db.execute to handle ensure_user_synced calls.
+    """Set up mock execute results for the two ensure_user_synced calls.
 
-    ensure_user_synced makes up to 4 execute calls (Phase 2):
-    1. User lookup (scalar_one_or_none)
-    2. Org lookup by zitadel_org_id (scalar_one_or_none) -- new in Phase 2
-    3. Campaign lookup by org_id (scalar_one_or_none) -- fallback path when org is None
-    4. CampaignMember lookup (scalar_one_or_none) -- only if campaign found
+    require_role calls ensure_user_synced once, then the route handler
+    calls it again.  Each pass makes 3 execute calls (user lookup,
+    org lookup, campaign fallback).
 
-    In tests the org lookup returns None, so the fallback campaign lookup runs.
-
-    Returns a list that can be extended with more execute results.
+    Returns a list (6 items) that can be extended with endpoint-specific
+    execute results before assigning to mock_db.execute.side_effect.
     """
     if local_user is None:
         local_user = _make_local_user()
 
-    results = [
-        _mock_result_with(local_user),  # user lookup
-        _mock_result_with(None),  # org lookup (None = no Organization record yet)
-        _mock_result_with(campaign),  # campaign lookup fallback (None = no campaign)
-    ]
-    if campaign is not None:
-        results.append(_mock_result_with(MagicMock()))  # member lookup (exists)
-
+    # Two passes: one from require_role, one from the route handler
+    results = _one_sync_pass(local_user) + _one_sync_pass(local_user)
     return results
 
 
-def _setup_role_resolution(
-    mock_db, campaign=None, extra_scalars=None, role="viewer"
-):
+def _setup_role_resolution(mock_db, campaign=None, extra_scalars=None, role="viewer"):
     """Set up mock_db.scalar for resolve_campaign_role.
 
     resolve_campaign_role calls db.scalar() for:
@@ -241,13 +254,8 @@ class TestCampaignList:
 
         campaigns = [_make_campaign()]
 
-        # ensure_user_synced (2 calls) + list_campaigns (1 call)
         sync_results = _setup_user_sync_on_db(mock_db)
-
-        list_result = MagicMock()
-        list_result.scalars.return_value.all.return_value = campaigns
-        sync_results.append(list_result)
-
+        sync_results.append(_make_scalars_result(campaigns))
         mock_db.execute = AsyncMock(side_effect=sync_results)
 
         transport = ASGITransport(app=app)
@@ -269,9 +277,7 @@ class TestCampaignGet:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar()
         _setup_role_resolution(mock_db, campaign=campaign)
-        # ensure_user_synced (2 calls) + get_campaign (1 call)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
         mock_db.execute = AsyncMock(side_effect=sync_results)
@@ -293,9 +299,7 @@ class TestCampaignUpdate:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar()
         _setup_role_resolution(mock_db, campaign=campaign, role="admin")
-        # ensure_user_synced (2 calls) + update_campaign select (1) + refresh
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
         mock_db.execute = AsyncMock(side_effect=sync_results)
@@ -317,8 +321,9 @@ class TestCampaignUpdate:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar()
         _setup_role_resolution(mock_db, campaign=campaign)
+        sync_results = _setup_user_sync_on_db(mock_db)
+        mock_db.execute = AsyncMock(side_effect=sync_results)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -339,12 +344,9 @@ class TestCampaignDelete:
         campaign = _make_campaign(created_by="user-test-1")
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar(); delete_campaign also
-        # calls db.scalar() for sibling count check (returns 0)
         _setup_role_resolution(
             mock_db, campaign=campaign, extra_scalars=[0], role="owner"
         )
-        # ensure_user_synced (2 calls) + delete_campaign select (1)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(campaign))
         mock_db.execute = AsyncMock(side_effect=sync_results)
@@ -361,9 +363,9 @@ class TestCampaignDelete:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar()
         _setup_role_resolution(mock_db, campaign=campaign, role="admin")
-        # role check at route level will reject admin (needs owner)
+        sync_results = _setup_user_sync_on_db(mock_db)
+        mock_db.execute = AsyncMock(side_effect=sync_results)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.delete(f"/api/v1/campaigns/{CAMPAIGN_ID}")
@@ -395,9 +397,7 @@ class TestErrorFormat:
         campaign = _make_campaign()
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
 
-        # resolve_campaign_role uses db.scalar()
         _setup_role_resolution(mock_db, campaign=campaign)
-        # ensure_user_synced (2 calls) + get_campaign (1 call returns None)
         sync_results = _setup_user_sync_on_db(mock_db)
         sync_results.append(_mock_result_with(None))
         mock_db.execute = AsyncMock(side_effect=sync_results)

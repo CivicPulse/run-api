@@ -23,12 +23,12 @@ def _make_request(
 
 def _make_jwt(payload: dict) -> str:
     """Create a minimal JWT token (header.payload.signature) for testing."""
-    header = base64.urlsafe_b64encode(
-        json.dumps({"alg": "none"}).encode()
-    ).rstrip(b"=").decode()
-    body = base64.urlsafe_b64encode(
-        json.dumps(payload).encode()
-    ).rstrip(b"=").decode()
+    header = (
+        base64.urlsafe_b64encode(json.dumps({"alg": "none"}).encode())
+        .rstrip(b"=")
+        .decode()
+    )
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
     return f"{header}.{body}.fake-sig"
 
 

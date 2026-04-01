@@ -581,9 +581,7 @@ class VoterService:
             db: Async database session.
             tag_id: The tag UUID.
         """
-        await db.execute(
-            delete(VoterTagMember).where(VoterTagMember.tag_id == tag_id)
-        )
+        await db.execute(delete(VoterTagMember).where(VoterTagMember.tag_id == tag_id))
         await db.execute(delete(VoterTag).where(VoterTag.id == tag_id))
         await db.commit()
 

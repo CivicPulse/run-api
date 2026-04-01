@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import field_validator
 
@@ -22,7 +22,7 @@ def _to_naive_utc(value: datetime) -> datetime:
     """
     if value.tzinfo is not None:
         # Convert to UTC then strip tzinfo
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 
@@ -40,6 +40,7 @@ class ShiftCreate(BaseSchema):
     @classmethod
     def normalize_datetime(cls, v: datetime) -> datetime:
         return _to_naive_utc(v)
+
     location_name: str | None = None
     street: str | None = None
     city: str | None = None

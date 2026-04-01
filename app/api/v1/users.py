@@ -83,8 +83,7 @@ async def list_my_orgs(
         select(Organization, OrganizationMember.role)
         .join(
             OrganizationMember,
-            Organization.id
-            == OrganizationMember.organization_id,
+            Organization.id == OrganizationMember.organization_id,
         )
         .where(OrganizationMember.user_id == user.id)
         .order_by(Organization.name)

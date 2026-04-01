@@ -25,17 +25,13 @@ class TestGetCampaignDb:
         mock_session = AsyncMock()
 
         with (
-            patch(
-                "app.api.deps.async_session_factory"
-            ) as mock_factory,
+            patch("app.api.deps.async_session_factory") as mock_factory,
             patch(
                 "app.api.deps.set_campaign_context", new_callable=AsyncMock
             ) as mock_set_ctx,
         ):
             # async context manager returns mock_session
-            mock_factory.return_value.__aenter__ = AsyncMock(
-                return_value=mock_session
-            )
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
             gen = get_campaign_db(campaign_id)
@@ -58,12 +54,8 @@ class TestGetCampaignDb:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch(
-                "app.api.deps.async_session_factory", return_value=mock_cm
-            ),
-            patch(
-                "app.api.deps.set_campaign_context", new_callable=AsyncMock
-            ),
+            patch("app.api.deps.async_session_factory", return_value=mock_cm),
+            patch("app.api.deps.set_campaign_context", new_callable=AsyncMock),
         ):
             gen = get_campaign_db(campaign_id)
             session = await gen.__anext__()
@@ -85,9 +77,7 @@ class TestGetCampaignDb:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch(
-                "app.api.deps.async_session_factory", return_value=mock_cm
-            ),
+            patch("app.api.deps.async_session_factory", return_value=mock_cm),
             patch(
                 "app.api.deps.set_campaign_context",
                 new_callable=AsyncMock,
