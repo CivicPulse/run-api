@@ -5,12 +5,15 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pytest
+
 from app.services.import_service import (
     detect_l2_format,
     suggest_field_mapping,
 )
 
 _SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
+_SAMPLE_EXISTS = _SAMPLE_PATH.exists()
 
 
 def _get_l2_headers() -> list[str]:
@@ -20,6 +23,7 @@ def _get_l2_headers() -> list[str]:
 
 
 class TestDetectL2Format:
+    @pytest.mark.skipif(not _SAMPLE_EXISTS, reason="L2 sample CSV not present")
     def test_l2_detected_with_full_header(self):
         headers = _get_l2_headers()
         mapping = suggest_field_mapping(headers)

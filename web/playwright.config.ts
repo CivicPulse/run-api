@@ -47,7 +47,8 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     actionTimeout: 30_000,
-    reducedMotion: "reduce",
+    // Valid Playwright option; type defs lag behind runtime API
+    ...({ reducedMotion: "reduce" } as Record<string, unknown>),
   },
 
   projects: [
