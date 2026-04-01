@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Testing & Validation
-status: Defining requirements
-stopped_at: Completed 64-02-PLAN.md
-last_updated: "2026-03-31T23:03:35.339Z"
-last_activity: 2026-03-31
+status: complete
+stopped_at: v1.7 milestone archived
+last_updated: "2026-04-01"
+last_activity: 2026-04-01
 progress:
-  total_phases: 10
+  total_phases: 9
   completed_phases: 9
   total_plans: 28
   completed_plans: 28
@@ -17,25 +17,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-31)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.7 milestone complete — all active phases done
+**Current focus:** v1.7 shipped — planning next milestone
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Defining requirements
-Last activity: 2026-03-31
+Phase: None (between milestones)
+Plan: N/A
+Status: Complete
+Last activity: 2026-04-01
 
 ## Performance Metrics
 
-**Velocity (v1.0-v1.5):**
+**Velocity (v1.0-v1.7):**
 
-- Total plans completed: 149
-- Milestones shipped: 6 in 17 days
-- Average: ~8.8 plans/day
+- Total plans completed: 193
+- Milestones shipped: 8 in 24 days
+- Average: ~8.0 plans/day
 
 **By Milestone:**
 
@@ -47,19 +47,18 @@ Last activity: 2026-03-31
 | v1.3 | 7 | 18 | 3 days |
 | v1.4 | 9 | 26 | 3 days |
 | v1.5 | 10 | 36 | 2 days |
-| Phase 64 P02 | 5min | 2 tasks | 2 files |
+| v1.6 | 7 | 16 | 2 days |
+| v1.7 | 9 | 28 | 3 days |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Phase 65 added: Fix RLS smoke test reliability — remove get_campaign_db override and superuser_session bypass (source: Codex adversarial review 2026-03-31)
+- Phase 65 (RLS smoke test reliability) moved to backlog as 999.2 during v1.7 completion (source: Codex adversarial review, deferred by user)
 
 ### Decisions
 
 Decisions logged in PROJECT.md Key Decisions table.
-
-- [Phase 64]: 4-permutation matrix gate for FIELD-07 order independence verification
 
 ### Pending Todos
 
@@ -69,7 +68,7 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-(None — milestone archived)
+(None)
 
 ### Quick Tasks Completed
 
@@ -86,6 +85,6 @@ Decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last activity: 2026-03-31 - Phase 64 complete, v1.7 milestone all active phases done
-Stopped at: Phase 64 complete, ready for milestone completion
+Last activity: 2026-04-01 - v1.7 milestone archived, Phase 65 moved to backlog
+Stopped at: Milestone v1.7 complete
 Resume file: None

@@ -1,5 +1,40 @@
 # Milestones
 
+## v1.7 Testing & Validation (Shipped: 2026-04-01)
+
+**Phases completed:** 9 phases (56-64), 28 plans
+**Timeline:** 3 days (2026-03-29 → 2026-04-01)
+**Commits:** ~108
+
+**Key accomplishments:**
+
+- PATCH/DELETE endpoints for voter interaction notes with type=NOTE enforcement, walk list rename with manager role, and 8 new unit tests via TDD
+- 3 mutation hooks (useUpdateInteraction, useDeleteInteraction, useRenameWalkList) with note-gated DropdownMenu in HistoryTab and rename Dialogs on canvassing index and walk list detail pages
+- Playwright-automated visual verification of all 3 features (note edit, note delete, walk list rename) across 5 test scenarios with 15 screenshots confirming full-stack functionality
+- 15-user ZITADEL provisioning with campaign membership and 5 role-based Playwright auth projects with blob reporter for CI sharding
+- 5 role-based Playwright auth setup files with 4-shard CI parallelism and merged HTML reports
+- 5 Playwright E2E spec files covering RBAC-03 through RBAC-09 with 45 tests across viewer, volunteer, manager, admin, and owner roles including org-level cross-campaign access
+- Org lifecycle (dashboard, create, archive, unarchive, delete) and campaign settings (CRUD, member management, ownership transfer, deletion) E2E specs with unarchive UI feature addition
+- Serial E2E specs for voter create/edit/delete lifecycle (20+ voters via UI+API) and phone/email/address contact CRUD across 20 test voters with cookie-forwarding API helpers
+- 3 self-contained Playwright specs covering voter tag CRUD, note add/edit/delete (Phase 56 features), and static/dynamic voter list lifecycle with 14 test cases total
+- L2 CSV fixture (55 voters, 55 columns with preserved typos), GeoJSON turf polygon, 10 old specs deleted, and comprehensive voter import E2E spec covering upload, auto-mapping, progress, concurrent prevention, and cancellation
+- Data validation spec verifying all 55 imported voters against L2 fixture CSV, and voter filters spec exercising all 23 filter dimensions individually plus 10 multi-filter combinations
+- Turfs E2E spec with 10 GeoJSON polygon constants, API-based creation, file import via setInputFiles, overlap detection, and walk lists spec with UI dialog generation, canvasser assignment/unassignment, rename, and deletion
+- 23 Playwright tests covering call list CRUD, DNC management with enforcement verification, and phone banking session lifecycle with active calling flow
+- Playwright E2E specs for survey script lifecycle (CRUD, question management, status transitions) and volunteer management (registration modes, roster, detail, edit, deactivate) with API bulk creation helpers
+- Playwright E2E specs for volunteer tag CRUD with cascade deletion, availability add/edit/delete, and 20-shift lifecycle with check-in/out and hours tracking
+- 9 Playwright E2E tests covering form guards, toasts, rate limiting, empty states, loading skeletons, error boundary, and sidebar/org/breadcrumb navigation
+- E2E infrastructure fixes enabling suite execution against local ZITADEL, no app bugs found, 9 old specs cleaned up
+- Replaced 53 broken waitForURL(/(campaigns|org)/) regex calls with exclusion-based function checks across all 35 pre-existing E2E spec files, eliminating the primary 209-test-failure blocker
+- Fixed E2E auth pipeline (Bearer tokens, CORS proxy, role sync, duplicate assignment handling), tracked phone banking data gap as BUG-01, and marked E2E-20/E2E-21 Complete in REQUIREMENTS.md
+- One-liner:
+- Org-level no-MFA login policy is now programmatically enforced and strictly verifiable in the E2E user provisioning script with dedicated unit regression tests.
+- CI and local E2E runners now enforce strict no-MFA policy verification and run deterministic auth-setup smoke checks before sharded Playwright execution.
+- Disposable canvassing+survey fixture and deterministic FIELD-07 refactor eliminating test-order side effects
+- Strict `--strict-phase64-field07-order` command in run-e2e.sh proving FIELD-07 order independence via 4-run permutation matrix, with E2E-20 traceability updated for Phase 64 isolation closure
+
+---
+
 ## v1.6 Imports (Shipped: 2026-03-29)
 
 **Phases completed:** 7 phases, 16 plans, 31 tasks

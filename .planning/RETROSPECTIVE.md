@@ -347,6 +347,61 @@
 
 ---
 
+## Milestone: v1.7 — Testing & Validation
+
+**Shipped:** 2026-04-01
+**Phases:** 9 | **Plans:** 28
+**Timeline:** 3 days (2026-03-29 → 2026-04-01)
+**Commits:** ~227
+
+### What Was Built
+- Feature gap builds: voter interaction note edit/delete API+UI, walk list rename, and visual verification via 15 Playwright screenshots
+- Test infrastructure: 15-user ZITADEL provisioning with campaign membership, 5 role-based Playwright auth projects (owner/admin/manager/volunteer/viewer), blob reporter for CI shard merging, 4-shard parallel CI workflow
+- Core E2E tests: RBAC permission matrix across 5 roles (45 tests), org lifecycle + campaign settings, voter CRUD with 20+ voters via UI+API, phone/email/address contact CRUD
+- Advanced E2E tests: voter tags/notes/lists, L2 import with auto-mapping verification, voter filters (23 individual + 10 multi-filter combos), turfs with GeoJSON import + overlap detection, walk lists with generation/assignment/rename/deletion
+- Operational domain E2E: call list CRUD + DNC enforcement, phone banking session lifecycle with active calling flow, survey scripts with status transitions, volunteer management with registration modes, shift lifecycle with hours tracking
+- Cross-cutting E2E: form guards, toast notifications, rate limiting, empty states, loading skeletons, error boundaries, sidebar/org/breadcrumb navigation
+- CI auth automation: programmatic no-MFA org login policy enforcement with strict pre-shard verification gate and regression unit tests
+- Phone banking data resilience: hard-delete endpoint for deterministic test fixtures, active-calling fixture isolation
+- Field flow test isolation: disposable canvassing+survey fixtures, deterministic FIELD-07 refactor, 4-run permutation matrix proving order independence
+
+### What Worked
+- Role-based Playwright auth projects with filename suffix routing (.admin.spec.ts, .viewer.spec.ts) cleanly mapped test files to auth contexts without conditional logic
+- 4-shard CI parallelism with blob reporter merge kept E2E suite runtime reasonable despite 340+ tests
+- waitForURL exclusion-based checks (replacing 53 broken regex calls) eliminated the 209-test-failure blocker — a single root cause fix unblocked the entire suite
+- Disposable fixture pattern with per-test data creation provided true isolation without shared state leakage
+- Milestone audit (before testing phases) identified real feature gaps (note edit/delete, walk list rename) that Phase 56 built before writing E2E tests against them
+- Strict phase ordering: gaps → infrastructure → core tests → advanced tests → cross-cutting → CI hardening → isolation — each layer built on the previous
+
+### What Was Inefficient
+- 53 broken waitForURL regex calls accumulated across 35 spec files before being caught — earlier regex validation or a shared navigation helper would have prevented this
+- E2E auth pipeline debugging (Bearer tokens, CORS proxy, role sync, duplicate assignment handling) consumed significant time in Phase 63 — auth complexity compounds across environments
+- Phone banking data gap (BUG-01) tracked but not fully resolved — hard-delete endpoint was a workaround, not a root cause fix
+- Phase 64 needed a 4-run permutation matrix to prove FIELD-07 order independence — suggests test isolation should have been designed in from the start rather than retrofitted
+
+### Patterns Established
+- Role-based Playwright auth projects: filename suffix routing maps spec files to auth contexts without conditional setup logic
+- Blob reporter + merge-reports for CI shard parallelism with unified HTML reporting
+- waitForURL with exclusion-based URL checks (reject known wrong pages) instead of positive regex matching
+- Disposable fixture pattern: per-test data creation via API helpers, cleanup after test, no shared state
+- Strict no-MFA policy verification gate: CI pre-shard check ensures ZITADEL auth policy is deterministic before any test execution
+- Cookie-forwarding API helpers: reuse authenticated browser context for API calls within tests
+- 4-run permutation matrix for proving test order independence
+
+### Key Lessons
+1. Fix root causes first — the waitForURL regex fix unblocked 209 tests with a single pattern change; debugging individual failures would have taken 10x longer
+2. Auth pipeline complexity compounds — each layer (OIDC, Bearer tokens, CORS, role sync, duplicate handling) interacts with the others; test auth setup needs dedicated debugging time
+3. Test isolation should be designed in, not retrofitted — disposable fixtures and order-independence proofs are cheaper when planned from Phase 57 than bolted on in Phase 64
+4. Feature gap discovery before E2E testing is critical — Phase 56's note edit/delete and walk list rename filled holes that would have forced E2E spec rewrites mid-milestone
+5. Strict CI gates (MFA policy verification, auth smoke checks) prevent flaky failures in sharded execution — non-deterministic auth state is the #1 E2E test killer
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 3 days from Phase 56 start to milestone completion (2026-03-29 → 2026-04-01)
+- Notable: 227 commits across 9 phases with 28 plans; 340+ Playwright tests across 34 spec files; zero app bugs found during E2E testing
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -360,6 +415,7 @@
 | v1.4 | 9 | 26 | Mobile-first field mode, offline queue + sync, driver.js tours, WCAG AA, shared component reuse across domains |
 | v1.5 | 10 | 36 | Production hardening (RLS fix, Sentry, rate limiting), org management, map editor, WCAG compliance scan, E2E test coverage |
 | v1.6 | 7 | 16 | Durable background imports (Procrastinate), per-batch crash resilience, streaming CSV, L2 auto-mapping, cancellation |
+| v1.7 | 9 | 28 | Comprehensive E2E testing (340+ Playwright tests), role-based auth projects, CI shard parallelism, auth policy automation, test isolation hardening |
 
 ### Cumulative Quality
 
@@ -372,6 +428,7 @@
 | v1.4 | 300+ (frontend) | 284+ (backend) | ~34K Python + ~58K TS | +23,659 lines (304 files) |
 | v1.5 | 300+ (frontend) | 300+ (backend) | ~22K Python + ~43K TS | +37,350 lines (348 files) |
 | v1.6 | 300+ (frontend) | 350+ (backend) | ~22K Python + ~43K TS | +5,214 lines (44 files) |
+| v1.7 | 300+ (frontend) | 350+ (backend) | ~22K Python + ~43K TS | 340+ Playwright E2E tests (34 spec files) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -389,3 +446,6 @@
 12. AST-based guard tests catch infrastructure compliance gaps (rate limiting, decorators) at CI time without import side effects
 13. RLS context resets on COMMIT in PostgreSQL — any per-batch commit pattern must re-set campaign context (v1.6 critical lesson)
 14. Use timestamps (cancelled_at) over status enums for cancellation signals to avoid lost-update races between concurrent actors
+15. Fix root causes before debugging individual symptoms — a single waitForURL regex fix unblocked 209 tests (v1.7)
+16. Auth pipeline complexity compounds across environments — dedicated debugging time for test auth setup is always needed
+17. Test isolation should be designed in from the start, not retrofitted — disposable fixtures and order-independence proofs are cheaper when planned early
