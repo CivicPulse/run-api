@@ -79,20 +79,14 @@ jobs:
           IMAGE="ghcr.io/civicpulse/run-api:sha-${SHORT_SHA}"
           sed -i "s|image: ghcr.io/civicpulse/run-api:.*|image: ${IMAGE}|g" \
             k8s/apps/run-api-dev/deployment.yaml \
-            k8s/apps/run-api-prod/deployment.yaml \
-            k8s/apps/run-api-dev/worker-deployment.yaml \
-            k8s/apps/run-api-prod/worker-deployment.yaml
+            k8s/apps/run-api-prod/deployment.yaml
 
       - name: Commit and push
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add \
-            k8s/apps/run-api-dev/deployment.yaml \
-            k8s/apps/run-api-prod/deployment.yaml \
-            k8s/apps/run-api-dev/worker-deployment.yaml \
-            k8s/apps/run-api-prod/worker-deployment.yaml
+          git add k8s/apps/run-api-dev/deployment.yaml k8s/apps/run-api-prod/deployment.yaml
           git diff --staged --quiet || git commit -m "chore: update run-api image to sha-${SHORT_SHA} [skip ci]"
           git pull --rebase origin main
           git push
