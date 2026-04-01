@@ -56,27 +56,27 @@ Requirements for Import Recovery milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ORPH-01 | — | Pending |
-| ORPH-02 | — | Pending |
-| ORPH-03 | — | Pending |
-| RECV-01 | — | Pending |
-| RECV-02 | — | Pending |
-| RECV-03 | — | Pending |
-| RECV-04 | — | Pending |
-| HARD-01 | — | Pending |
-| HARD-02 | — | Pending |
-| OBSV-01 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
+| ORPH-01 | Phase 56 | Pending |
+| ORPH-02 | Phase 56 | Pending |
+| ORPH-03 | Phase 56 | Pending |
+| RECV-01 | Phase 57 | Pending |
+| RECV-02 | Phase 57 | Pending |
+| RECV-03 | Phase 57 | Pending |
+| RECV-04 | Phase 57 | Pending |
+| HARD-01 | Phase 57 | Pending |
+| HARD-02 | Phase 57 | Pending |
+| OBSV-01 | Phase 56 | Pending |
+| TEST-01 | Phase 58 | Pending |
+| TEST-02 | Phase 58 | Pending |
+| TEST-03 | Phase 58 | Pending |
+| TEST-04 | Phase 58 | Pending |
+| TEST-05 | Phase 58 | Pending |
 
 **Coverage:**
 - v1.10 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation*

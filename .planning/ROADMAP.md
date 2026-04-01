@@ -9,6 +9,7 @@
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
+- 🚧 **v1.10 Import Recovery** — Phases 56-58 (in progress)
 
 ## Phases
 
@@ -123,6 +124,16 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v1.10 Import Recovery (In Progress)
+
+**Milestone Goal:** Make import processing crash-safe across worker restarts, deploy rollouts, and pod evictions — orphaned imports self-heal without manual intervention.
+
+- [ ] **Phase 56: Schema & Orphan Detection** - Migration for last_progress_at, configurable staleness threshold, detection query, and structured logging
+- [ ] **Phase 57: Recovery Engine & Completion Hardening** - Worker startup recovery scan, advisory lock guard, crash-resume from last_committed_row, and hardened finalization
+- [ ] **Phase 58: Test Coverage** - Unit tests for detection/requeue logic, integration test for crash-resume, and duplicate voter regression assertions
+
+See: `.planning/milestones/v1.10-ROADMAP.md` for full phase details.
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -134,3 +145,6 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 | 30-38 | v1.4 | 26/26 | Complete | 2026-03-17 |
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
+| 56 | v1.10 | 0/0 | Not started | - |
+| 57 | v1.10 | 0/0 | Not started | - |
+| 58 | v1.10 | 0/0 | Not started | - |
