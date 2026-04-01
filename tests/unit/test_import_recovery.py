@@ -167,8 +167,14 @@ async def test_worker_main_queues_recovery_for_detected_orphans(
 
     with (
         patch("scripts.worker.init_sentry"),
-        patch("scripts.worker._start_health_server", AsyncMock(return_value=health_server)),
-        patch("scripts.worker.scan_for_orphaned_imports", AsyncMock(return_value=[candidate])),
+        patch(
+            "scripts.worker._start_health_server",
+            AsyncMock(return_value=health_server),
+        ),
+        patch(
+            "scripts.worker.scan_for_orphaned_imports",
+            AsyncMock(return_value=[candidate]),
+        ),
         patch("app.tasks.import_task.recover_import", recover_import),
         patch("app.tasks.procrastinate_app.procrastinate_app", procrastinate_app),
     ):
