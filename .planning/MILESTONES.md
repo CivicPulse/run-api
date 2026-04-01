@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.10 Import Recovery (Shipped: 2026-04-01)
+
+**Phases completed:** 3 phases, 3 plans, 9 tasks
+**Timeline:** 1 day (2026-04-01 → 2026-04-01)
+**Files modified:** 29 | **Lines added:** 1,511 | **Commits:** 1
+**Git range:** `feat: ship v1.10 import recovery`
+
+**Key accomplishments:**
+
+1. Added application-owned import recovery metadata with durable `last_progress_at` updates, orphan diagnostics, and configurable staleness thresholding
+2. Implemented worker-startup recovery scanning that queues fresh recovery work instead of mutating stale queue rows
+3. Guarded import processing, recovery, and finalization with per-import PostgreSQL advisory locks
+4. Hardened exhausted-import finalization so fully consumed files no longer stay stuck in `PROCESSING`
+5. Added unit coverage for stale detection, startup recovery queueing, terminal/fresh-job skips, and integration-marked crash-resume verification
+
+**Audit:** .planning/v1.10-MILESTONE-AUDIT.md (status: passed, 15/15 requirements satisfied, 38 audited tests passing)
+
+---
+
 ## v1.6 Imports (Shipped: 2026-03-29)
 
 **Phases completed:** 7 phases, 16 plans, 31 tasks

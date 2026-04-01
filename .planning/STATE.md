@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.10
-milestone_name: Import Recovery
-status: milestone_complete
-stopped_at: v1.10 complete; next up is v1.11 Phase 59 planning
-last_updated: "2026-04-01T18:10:00.000Z"
+milestone: v1.11
+milestone_name: Faster Imports
+status: ready_to_plan
+stopped_at: v1.10 archived; Phase 59 ready for planning
+last_updated: "2026-04-01T20:45:00.000Z"
 last_activity: 2026-04-01
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,33 +21,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.10 Import Recovery — Complete, ready to advance to v1.11 Faster Imports
+**Current focus:** v1.11 Faster Imports — Ready to plan Phase 59
 
 ## Current Position
 
-Phase: 58 of 58 (Test Coverage)
-Plan: 01
-Status: Milestone complete
-Last activity: 2026-04-01 — v1.10 import recovery implementation and verification completed
+Phase: 59 of 64 (Chunk Schema & Configuration)
+Plan: —
+Status: Ready to plan
+Last activity: 2026-04-01 — v1.10 archived and v1.11 handoff restored
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
 ### Decisions
 
-- Application-level orphan detection via `last_progress_at` over direct dependence on Procrastinate heartbeat tables
-- Requeue orphaned imports as fresh recovery tasks instead of mutating stale queue rows in place
-- `pg_try_advisory_lock` for recovery/finalization concurrency control
-- Finalization failure should move to an explicit error path, not remain stuck in `PROCESSING`
-- Recovery coverage includes unit scan/skip tests plus an integration-marked crash-resume flow
+- Chunked child jobs chosen over staging tables or producer-consumer pipelines for import parallelization
+- Secondary import work should be offloaded from the critical voter upsert path where possible
+- Application-level orphan detection (`last_progress_at`) is the durable recovery signal
+- Fresh task requeue plus `pg_try_advisory_lock` is the recovery concurrency model
 
 ### Blockers/Concerns
 
-- None for v1.10
+- None currently
 
 ## Session Continuity
 
-Last activity: 2026-04-01 — v1.10 complete, roadmap and requirements updated
-Stopped at: Ready for v1.11 Phase 59 planning
+Last activity: 2026-04-01 — v1.10 archived, ready for v1.11 Phase 59 planning
+Stopped at: Roadmap exists, requirements archived, waiting for Phase 59 planning
 Resume file: None
