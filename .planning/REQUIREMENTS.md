@@ -27,7 +27,7 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### E2E Tests — Voter Workflows
 
-- [ ] **E2E-04**: Automated tests verify L2 voter import with auto-mapping, progress tracking, cancellation, and concurrent import prevention (IMP-01 through IMP-04)
+- [x] **E2E-04**: Automated tests verify L2 voter import with auto-mapping, progress tracking, cancellation, and concurrent import prevention (IMP-01 through IMP-04)
 - [x] **E2E-05**: Automated tests verify imported voter data accuracy against the source CSV for 40+ voters (VAL-01, VAL-02)
 - [x] **E2E-06**: Automated tests verify all 23 voter filter dimensions individually and in combination (FLT-01 through FLT-05)
 - [x] **E2E-07**: Automated tests verify voter create, edit, delete lifecycle for 20+ voters (VCRUD-01 through VCRUD-04)
@@ -38,14 +38,14 @@ Requirements for Testing & Validation milestone. Each maps to roadmap phases.
 
 ### E2E Tests — Operations
 
-- [ ] **E2E-12**: Automated tests verify turf CRUD with overlap detection, GeoJSON import/export, and boundary editing (TURF-01 through TURF-07)
-- [ ] **E2E-13**: Automated tests verify walk list generation, canvasser assignment, rename, and deletion (WL-01 through WL-07)
-- [ ] **E2E-14**: Automated tests verify call list CRUD and DNC list management including enforcement (CL-01 through CL-05, DNC-01 through DNC-06)
-- [ ] **E2E-15**: Automated tests verify phone banking session CRUD, caller assignment, active calling, and progress tracking (PB-01 through PB-10)
-- [ ] **E2E-16**: Automated tests verify survey script CRUD, question management, reordering, and status lifecycle (SRV-01 through SRV-08)
-- [ ] **E2E-17**: Automated tests verify volunteer registration (user and non-user), roster, detail, edit, and delete (VOL-01 through VOL-08)
-- [ ] **E2E-18**: Automated tests verify volunteer tag and availability CRUD (VTAG-01 through VTAG-05, AVAIL-01 through AVAIL-03)
-- [ ] **E2E-19**: Automated tests verify shift CRUD, volunteer assignment, availability enforcement, check-in/out, and hours tracking (SHIFT-01 through SHIFT-10)
+- [x] **E2E-12**: Automated tests verify turf CRUD with overlap detection, GeoJSON import/export, and boundary editing (TURF-01 through TURF-07)
+- [x] **E2E-13**: Automated tests verify walk list generation, canvasser assignment, rename, and deletion (WL-01 through WL-07)
+- [x] **E2E-14**: Automated tests verify call list CRUD and DNC list management including enforcement (CL-01 through CL-05, DNC-01 through DNC-06)
+- [x] **E2E-15**: Automated tests verify phone banking session CRUD, caller assignment, active calling, and progress tracking (PB-01 through PB-10)
+- [x] **E2E-16**: Automated tests verify survey script CRUD, question management, reordering, and status lifecycle (SRV-01 through SRV-08)
+- [x] **E2E-17**: Automated tests verify volunteer registration (user and non-user), roster, detail, edit, and delete (VOL-01 through VOL-08)
+- [x] **E2E-18**: Automated tests verify volunteer tag and availability CRUD (VTAG-01 through VTAG-05, AVAIL-01 through AVAIL-03)
+- [x] **E2E-19**: Automated tests verify shift CRUD, volunteer assignment, availability enforcement, check-in/out, and hours tracking (SHIFT-01 through SHIFT-10)
 
 ### E2E Tests — Field Mode & Cross-Cutting
 
@@ -86,7 +86,7 @@ None deferred for this milestone.
 | E2E-01 | Phase 58 | Complete |
 | E2E-02 | Phase 58 | Complete |
 | E2E-03 | Phase 58 | Complete |
-| E2E-04 | Phase 59 | Pending |
+| E2E-04 | Phase 59 | Complete |
 | E2E-05 | Phase 59 | Complete |
 | E2E-06 | Phase 59 | Complete |
 | E2E-07 | Phase 58 | Complete |
@@ -94,14 +94,14 @@ None deferred for this milestone.
 | E2E-09 | Phase 58 | Complete |
 | E2E-10 | Phase 58 | Complete |
 | E2E-11 | Phase 58 | Complete |
-| E2E-12 | Phase 59 | Pending |
-| E2E-13 | Phase 59 | Pending |
-| E2E-14 | Phase 59 | Pending |
-| E2E-15 | Phase 63 | Pending |
-| E2E-16 | Phase 59 | Pending |
-| E2E-17 | Phase 59 | Pending |
-| E2E-18 | Phase 59 | Pending |
-| E2E-19 | Phase 59 | Pending |
+| E2E-12 | Phase 59 | Complete |
+| E2E-13 | Phase 59 | Complete |
+| E2E-14 | Phase 59 | Complete |
+| E2E-15 | Phase 63 | Complete |
+| E2E-16 | Phase 59 | Complete |
+| E2E-17 | Phase 59 | Complete |
+| E2E-18 | Phase 59 | Complete |
+| E2E-19 | Phase 59 | Complete |
 | E2E-20 | Phase 60 (initial), Phase 64 (isolation hardening: disposable fixtures, order-matrix gate) | Complete |
 | E2E-21 | Phase 60 | Complete |
 | VAL-01 | Phase 62 | Complete |

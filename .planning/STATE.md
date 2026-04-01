@@ -51,6 +51,10 @@ Last activity: 2026-03-31
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 65 added: Fix RLS smoke test reliability — remove get_campaign_db override and superuser_session bypass (source: Codex adversarial review 2026-03-31)
+
 ### Decisions
 
 Decisions logged in PROJECT.md Key Decisions table.

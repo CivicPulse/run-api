@@ -9,7 +9,7 @@
 - ✅ **v1.4 Volunteer Field Mode** — Phases 30-38 (shipped 2026-03-17)
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
-- 🚧 **v1.7 Testing & Validation** — Phases 56-64 (in progress)
+- 🚧 **v1.7 Testing & Validation** — Phases 56-64 (in progress, completing)
 
 ## Phases
 
@@ -302,6 +302,16 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 
 ## Backlog
 
+### Phase 999.2: Fix RLS Smoke Test Reliability (BACKLOG)
+
+**Goal:** Make RLS smoke tests trustworthy by removing dependency overrides that bypass the production campaign-scoping path. Tests must exercise the real `get_campaign_db` dependency and use RLS-enforced sessions for cross-campaign isolation assertions.
+**Source**: Codex adversarial review (2026-03-31) — flagged two [high] findings
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
 ### Phase 999.1: Update ZITADEL to v3 or v4 (BACKLOG)
 
 **Goal:** Upgrade ZITADEL from v2.71.6 to v3.x or v4.x to unlock modern APIs (v2beta OIDC authorize, password grant for E2E, improved session management). Current version blocks API-based auth setup for Playwright tests and lacks newer security features.
@@ -310,3 +320,4 @@ Phases execute in numeric order: 56 -> 57 -> 58 -> 59 -> 60 -> 61 -> 62 -> 63 ->
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
