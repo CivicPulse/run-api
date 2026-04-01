@@ -55,6 +55,7 @@ class Settings(BaseSettings):
 
     # Import processing
     import_batch_size: int = 1000
+    import_orphan_threshold_minutes: int = 30
 
     # Observability
     sentry_dsn: str = ""

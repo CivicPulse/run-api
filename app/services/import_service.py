@@ -22,6 +22,7 @@ from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
+from app.core.time import utcnow
 from app.db.rls import commit_and_restore_rls, set_campaign_context
 from app.models.import_job import ImportJob, ImportStatus
 from app.models.voter import Voter
@@ -737,6 +738,11 @@ class ImportService:
     to the voters table, and full import file orchestration.
     """
 
+    @staticmethod
+    def _mark_progress(job: ImportJob) -> None:
+        """Persist the latest durable progress timestamp on the import job."""
+        job.last_progress_at = utcnow()
+
     def detect_columns(self, file_content: bytes) -> list[str]:
         """Detect CSV column headers from file content.
 
@@ -1141,6 +1147,7 @@ class ImportService:
             job.skipped_rows = counters["total_skipped"]
             job.phones_created = counters["total_phones_created"]
             job.last_committed_row = counters["total_rows"]
+            self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
 
             logger.debug(
@@ -1182,6 +1189,7 @@ class ImportService:
             job.total_rows = counters["total_rows"]
             job.skipped_rows = counters["total_skipped"]
             job.last_committed_row = counters["total_rows"]
+            self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
 
     async def process_import_file(
@@ -1236,6 +1244,11 @@ class ImportService:
             job.skipped_rows = 0
             job.total_rows = 0
             job.last_committed_row = 0
+            job.error_message = None
+            job.orphaned_at = None
+            job.orphaned_reason = None
+            job.source_exhausted_at = None
+            self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
         else:
             logger.info(
@@ -1311,6 +1324,7 @@ class ImportService:
         except UnicodeDecodeError:
             job.status = ImportStatus.FAILED
             job.error_message = "Unable to decode file content"
+            self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
             return
 
@@ -1333,6 +1347,10 @@ class ImportService:
         if batch_error_keys:
             await self._merge_error_files(storage, batch_error_keys, job, import_job_id)
 
+        job.source_exhausted_at = utcnow()
+        self._mark_progress(job)
+        await commit_and_restore_rls(session, campaign_id)
+
         # Finalize: re-read cancelled_at to handle race with cancel
         # endpoint (Pitfall 2 from research). cancelled_at is the
         # authoritative signal for cancellation.
@@ -1341,6 +1359,7 @@ class ImportService:
             job.status = ImportStatus.CANCELLED
         else:
             job.status = ImportStatus.COMPLETED
+        self._mark_progress(job)
         await commit_and_restore_rls(session, campaign_id)
 
         logger.info(

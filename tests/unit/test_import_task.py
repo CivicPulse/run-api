@@ -147,6 +147,7 @@ async def test_status_transitions_on_success(import_job_id: str, campaign_id: st
 
     class MockJob:
         def __init__(self):
+            self.id = uuid.UUID(import_job_id)
             self.campaign_id = uuid.UUID(campaign_id)
             self._status = ImportStatus.QUEUED
             self.imported_rows = 10
@@ -252,3 +253,242 @@ async def test_status_set_to_failed_on_error(import_job_id: str, campaign_id: st
 
     assert mock_job.status == ImportStatus.FAILED
     assert mock_job.error_message is not None
+
+
+@pytest.mark.asyncio
+async def test_recover_import_finalizes_exhausted_job(
+    import_job_id: str, campaign_id: str
+):
+    """Recovery finalizes a stale source-exhausted import without replaying rows."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.PROCESSING
+    mock_job.last_progress_at = None
+    mock_job.source_exhausted_at = object()
+    mock_job.cancelled_at = None
+    mock_job.imported_rows = 10
+    mock_job.skipped_rows = 1
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch("app.tasks.import_task.is_import_stale", return_value=True),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import recover_import
+
+        await recover_import(import_job_id, campaign_id)
+
+    assert mock_job.status == ImportStatus.COMPLETED
+    mock_service.process_import_file.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_recover_import_skips_terminal_jobs(
+    import_job_id: str, campaign_id: str
+):
+    """Recovery does not reclaim jobs already in a terminal status."""
+    from app.models.import_job import ImportStatus
+
+    for terminal_status in (
+        ImportStatus.COMPLETED,
+        ImportStatus.CANCELLED,
+        ImportStatus.FAILED,
+    ):
+        mock_job = MagicMock()
+        mock_job.id = uuid.UUID(import_job_id)
+        mock_job.campaign_id = uuid.UUID(campaign_id)
+        mock_job.status = terminal_status
+        mock_job.source_exhausted_at = None
+        mock_job.cancelled_at = None
+
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(return_value=mock_job)
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.rollback = AsyncMock()
+
+        mock_session_factory = AsyncMock()
+        mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+        mock_service = MagicMock()
+        mock_service.process_import_file = AsyncMock()
+
+        with (
+            patch(
+                "app.tasks.import_task.async_session_factory",
+                return_value=mock_session_factory,
+            ),
+            patch(
+                "app.tasks.import_task.set_campaign_context",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.tasks.import_task.try_claim_import_lock",
+                new_callable=AsyncMock,
+            ) as claim_lock,
+            patch(
+                "app.tasks.import_task.release_import_lock",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.tasks.import_task.ImportService",
+                return_value=mock_service,
+            ),
+            patch("app.tasks.import_task.StorageService"),
+        ):
+            from app.tasks.import_task import recover_import
+
+            await recover_import(import_job_id, campaign_id)
+
+        claim_lock.assert_not_awaited()
+        mock_service.process_import_file.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_recover_import_skips_fresh_processing_job(
+    import_job_id: str, campaign_id: str
+):
+    """Recovery leaves active non-stale jobs alone."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.PROCESSING
+    mock_job.source_exhausted_at = None
+    mock_job.cancelled_at = None
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ) as release_lock,
+        patch("app.tasks.import_task.is_import_stale", return_value=False),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import recover_import
+
+        await recover_import(import_job_id, campaign_id)
+
+    mock_service.process_import_file.assert_not_awaited()
+    mock_session.commit.assert_not_awaited()
+    release_lock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_import_skips_when_lock_unavailable(
+    import_job_id: str, campaign_id: str
+):
+    """Fresh processing exits cleanly when another worker owns the import lock."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=False,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    mock_service.process_import_file.assert_not_awaited()

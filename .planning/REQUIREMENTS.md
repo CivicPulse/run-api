@@ -9,30 +9,30 @@ Requirements for Import Recovery milestone. Each maps to roadmap phases.
 
 ### Orphan Detection
 
-- [ ] **ORPH-01**: Import jobs record `last_progress_at` and update it after each committed batch
-- [ ] **ORPH-02**: Recovery logic can identify imports stuck in `PROCESSING` whose progress timestamp is older than a configurable staleness threshold
-- [ ] **ORPH-03**: Staleness threshold is configurable in application settings with a safe default
-- [ ] **ORPH-04**: Structured logs are emitted when orphaned imports are detected
+- [x] **ORPH-01**: Import jobs record `last_progress_at` and update it after each committed batch
+- [x] **ORPH-02**: Recovery logic can identify imports stuck in `PROCESSING` whose progress timestamp is older than a configurable staleness threshold
+- [x] **ORPH-03**: Staleness threshold is configurable in application settings with a safe default
+- [x] **ORPH-04**: Structured logs are emitted when orphaned imports are detected
 
 ### Recovery
 
-- [ ] **RECV-01**: Worker startup recovery scan detects orphaned imports and queues a fresh recovery task
-- [ ] **RECV-02**: Recovered imports resume from `last_committed_row` without duplicating voters
-- [ ] **RECV-03**: Recovery never reclaims imports already marked `COMPLETED`, `FAILED`, or `CANCELLED`
-- [ ] **RECV-04**: Advisory locking prevents two workers from reclaiming or finalizing the same import concurrently
+- [x] **RECV-01**: Worker startup recovery scan detects orphaned imports and queues a fresh recovery task
+- [x] **RECV-02**: Recovered imports resume from `last_committed_row` without duplicating voters
+- [x] **RECV-03**: Recovery never reclaims imports already marked `COMPLETED`, `FAILED`, or `CANCELLED`
+- [x] **RECV-04**: Advisory locking prevents two workers from reclaiming or finalizing the same import concurrently
 
 ### Completion Hardening
 
-- [ ] **HARD-01**: Finalization failures produce a distinct error path instead of leaving the import forever in `PROCESSING`
-- [ ] **HARD-02**: Recovery can finalize an import that fully consumed the source file but lost its final status transition
+- [x] **HARD-01**: Finalization failures produce a distinct error path instead of leaving the import forever in `PROCESSING`
+- [x] **HARD-02**: Recovery can finalize an import that fully consumed the source file but lost its final status transition
 
 ### Test Coverage
 
-- [ ] **TEST-01**: Unit tests verify stale `PROCESSING` imports are detected and queued for recovery
-- [ ] **TEST-02**: Unit tests verify completed, cancelled, and failed imports are never reclaimed
-- [ ] **TEST-03**: Unit tests verify fresh-progress imports are not reclaimed
-- [ ] **TEST-04**: Integration coverage simulates crash-resume from partial commit through successful completion
-- [ ] **TEST-05**: Regression assertions verify final row counts are correct and no duplicate voters are created after resume
+- [x] **TEST-01**: Unit tests verify stale `PROCESSING` imports are detected and queued for recovery
+- [x] **TEST-02**: Unit tests verify completed, cancelled, and failed imports are never reclaimed
+- [x] **TEST-03**: Unit tests verify fresh-progress imports are not reclaimed
+- [x] **TEST-04**: Integration coverage simulates crash-resume from partial commit through successful completion
+- [x] **TEST-05**: Regression assertions verify final row counts are correct and no duplicate voters are created after resume
 
 ## Future Requirements
 
@@ -54,21 +54,21 @@ Requirements for Import Recovery milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ORPH-01 | Phase 56 | Pending |
-| ORPH-02 | Phase 56 | Pending |
-| ORPH-03 | Phase 56 | Pending |
-| ORPH-04 | Phase 56 | Pending |
-| RECV-01 | Phase 57 | Pending |
-| RECV-02 | Phase 57 | Pending |
-| RECV-03 | Phase 57 | Pending |
-| RECV-04 | Phase 57 | Pending |
-| HARD-01 | Phase 57 | Pending |
-| HARD-02 | Phase 57 | Pending |
-| TEST-01 | Phase 58 | Pending |
-| TEST-02 | Phase 58 | Pending |
-| TEST-03 | Phase 58 | Pending |
-| TEST-04 | Phase 58 | Pending |
-| TEST-05 | Phase 58 | Pending |
+| ORPH-01 | Phase 56 | Complete |
+| ORPH-02 | Phase 56 | Complete |
+| ORPH-03 | Phase 56 | Complete |
+| ORPH-04 | Phase 56 | Complete |
+| RECV-01 | Phase 57 | Complete |
+| RECV-02 | Phase 57 | Complete |
+| RECV-03 | Phase 57 | Complete |
+| RECV-04 | Phase 57 | Complete |
+| HARD-01 | Phase 57 | Complete |
+| HARD-02 | Phase 57 | Complete |
+| TEST-01 | Phase 58 | Complete |
+| TEST-02 | Phase 58 | Complete |
+| TEST-03 | Phase 58 | Complete |
+| TEST-04 | Phase 58 | Complete |
+| TEST-05 | Phase 58 | Complete |
 
 **Coverage:**
 - v1.10 requirements: 15 total
