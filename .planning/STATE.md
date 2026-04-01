@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Faster Imports
-status: defining_requirements
-stopped_at: Defining requirements for v1.11
+status: ready_to_plan
+stopped_at: Roadmap created for v1.11 (6 phases, 18 requirements)
 last_updated: "2026-04-01T00:00:00.000Z"
 last_activity: 2026-04-01
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.11 Faster Imports — Defining requirements
+**Current focus:** v1.11 Faster Imports — Ready to plan Phase 59
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 59 of 64 (Chunk Schema & Configuration)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-01 — Milestone v1.11 started
+Status: Ready to plan
+Last activity: 2026-04-01 — Roadmap created for v1.11
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -54,17 +56,17 @@ Last activity: 2026-04-01 — Milestone v1.11 started
 
 ### Decisions
 
-- Application-level orphan detection (last_progress_at on import_jobs) over Procrastinate internal table queries — decoupled, version-safe, simpler
-- pg_try_advisory_lock for concurrent execution guard — cheap, auto-released on disconnect, prevents double-execution on large imports
-- Chunked child jobs (Option 2) chosen over staging tables or producer-consumer for import parallelization — best balance of speedup and complexity
-- Secondary work (VoterPhone, derived fields) offloaded to separate tasks — reduces main import batch latency
+- Chunked child jobs (Option 2) chosen over staging tables or producer-consumer for import parallelization
+- Secondary work (VoterPhone, derived fields) offloaded to separate tasks
+- Application-level orphan detection (last_progress_at) over Procrastinate internal table queries
+- pg_try_advisory_lock for concurrent execution guard
 
 ### Blockers/Concerns
 
-- Production import 9237f09a stuck in PROCESSING — v1.10 motivation (import recovery)
+- v1.10 (Import Recovery) must ship before v1.11 work begins — Phase 59 depends on recovery infrastructure
 
 ## Session Continuity
 
-Last activity: 2026-04-01 — Milestone v1.11 started
-Stopped at: Defining requirements for v1.11
+Last activity: 2026-04-01 — Roadmap created for v1.11
+Stopped at: Roadmap created, ready for Phase 59 planning
 Resume file: None

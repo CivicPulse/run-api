@@ -66,30 +66,30 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHUNK-01 | TBD | Pending |
-| CHUNK-02 | TBD | Pending |
-| CHUNK-03 | TBD | Pending |
-| CHUNK-04 | TBD | Pending |
-| CHUNK-05 | TBD | Pending |
-| CHUNK-06 | TBD | Pending |
-| CHUNK-07 | TBD | Pending |
-| PROG-01 | TBD | Pending |
-| PROG-02 | TBD | Pending |
-| PROG-03 | TBD | Pending |
-| PROG-04 | TBD | Pending |
-| PROG-05 | TBD | Pending |
-| RESL-01 | TBD | Pending |
-| RESL-02 | TBD | Pending |
-| RESL-03 | TBD | Pending |
-| RESL-04 | TBD | Pending |
-| SECW-01 | TBD | Pending |
-| SECW-02 | TBD | Pending |
+| CHUNK-01 | Phase 59 | Pending |
+| CHUNK-02 | Phase 60 | Pending |
+| CHUNK-03 | Phase 60 | Pending |
+| CHUNK-04 | Phase 60 | Pending |
+| CHUNK-05 | Phase 59 | Pending |
+| CHUNK-06 | Phase 59 | Pending |
+| CHUNK-07 | Phase 59 | Pending |
+| PROG-01 | Phase 61 | Pending |
+| PROG-02 | Phase 61 | Pending |
+| PROG-03 | Phase 61 | Pending |
+| PROG-04 | Phase 64 | Pending |
+| PROG-05 | Phase 61 | Pending |
+| RESL-01 | Phase 62 | Pending |
+| RESL-02 | Phase 62 | Pending |
+| RESL-03 | Phase 62 | Pending |
+| RESL-04 | Phase 62 | Pending |
+| SECW-01 | Phase 63 | Pending |
+| SECW-02 | Phase 63 | Pending |
 
 **Coverage:**
 - v1.11 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after initial definition*
+*Last updated: 2026-04-01 after roadmap creation*

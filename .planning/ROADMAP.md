@@ -10,6 +10,7 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - 🚧 **v1.10 Import Recovery** — Phases 56-58 (in progress)
+- 📋 **v1.11 Faster Imports** — Phases 59-64 (planned)
 
 ## Phases
 
@@ -134,6 +135,19 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 See: `.planning/milestones/v1.10-ROADMAP.md` for full phase details.
 
+### 📋 v1.11 Faster Imports (Planned)
+
+**Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
+
+- [ ] **Phase 59: Chunk Schema & Configuration** - ImportChunk model, settings, serial-bypass threshold, adaptive chunk sizing
+- [ ] **Phase 60: Parent Split & Parallel Processing** - CSV pre-scan, parent split task, child chunk workers with per-batch commits
+- [ ] **Phase 61: Completion Aggregation & Error Merging** - Progress aggregation via SQL SUM, finalization with advisory lock, error report merge, COMPLETED_WITH_ERRORS status
+- [ ] **Phase 62: Resilience & Cancellation** - Chunk failure isolation, cancellation propagation, per-chunk crash resume, deadlock prevention
+- [ ] **Phase 63: Secondary Work Offloading** - VoterPhone creation and geometry updates as separate post-chunk tasks
+- [ ] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment
+
+See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -148,3 +162,9 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for full phase details.
 | 56 | v1.10 | 0/0 | Not started | - |
 | 57 | v1.10 | 0/0 | Not started | - |
 | 58 | v1.10 | 0/0 | Not started | - |
+| 59 | v1.11 | 0/0 | Not started | - |
+| 60 | v1.11 | 0/0 | Not started | - |
+| 61 | v1.11 | 0/0 | Not started | - |
+| 62 | v1.11 | 0/0 | Not started | - |
+| 63 | v1.11 | 0/0 | Not started | - |
+| 64 | v1.11 | 0/0 | Not started | - |
