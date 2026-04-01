@@ -57,22 +57,31 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
  * `oidc.user:{authority}:{client_id}`.
  */
 export async function getAuthToken(page: Page): Promise<string> {
-  const fromLocalStorage = await page.evaluate(() => {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)!
-      if (
-        key.startsWith("oidc.user:") ||
-        key.startsWith("oidc.") ||
-        key.includes("oidc")
-      ) {
-        try {
-          const user = JSON.parse(localStorage.getItem(key)!)
-          if (user?.access_token) return user.access_token as string
-        } catch { /* skip */ }
+  // page.evaluate() throws SecurityError when the page is on about:blank or a
+  // cross-origin document (e.g. when tests call API helpers before navigating).
+  // Fall through to the storageState() path in that case.
+  let fromLocalStorage = ""
+  try {
+    fromLocalStorage = await page.evaluate(() => {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)!
+        if (
+          key.startsWith("oidc.user:") ||
+          key.startsWith("oidc.") ||
+          key.includes("oidc")
+        ) {
+          try {
+            const user = JSON.parse(localStorage.getItem(key)!)
+            if (user?.access_token) return user.access_token as string
+          } catch { /* skip */ }
+        }
       }
-    }
-    return ""
-  })
+      return ""
+    })
+  } catch {
+    // SecurityError: localStorage inaccessible (about:blank or cross-origin).
+    // The storageState() fallback below will supply the token.
+  }
 
   if (fromLocalStorage) {
     return fromLocalStorage

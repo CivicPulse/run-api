@@ -884,11 +884,13 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
         await field07Page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
 
+        // Use longer timeouts: under 12-worker parallel execution the walk-list
+        // entry query (PostGIS spatial join) can take >8 s to hydrate.
         const hasHousehold = await householdCard
-          .isVisible({ timeout: 8_000 })
+          .isVisible({ timeout: 20_000 })
           .catch(() => false)
         const hasOutcomeGrid = await outcomeGridReady
-          .isVisible({ timeout: 3_000 })
+          .isVisible({ timeout: 8_000 })
           .catch(() => false)
         isLoaded = hasHousehold || hasOutcomeGrid
         if (isLoaded) break

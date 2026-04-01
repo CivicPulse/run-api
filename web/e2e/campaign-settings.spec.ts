@@ -363,13 +363,18 @@ test.describe.serial(
       // Type campaign name in the DestructiveConfirmDialog
       const confirmInput = page.getByTestId("destructive-confirm-input")
       await expect(confirmInput).toBeVisible({ timeout: 5_000 })
-      await confirmInput.fill(campaignName)
+      // Use pressSequentially (fires per-character key events) instead of fill()
+      // to reliably trigger React's synthetic onChange on the controlled input.
+      await confirmInput.pressSequentially(campaignName)
+
+      // Wait for the confirm button to become enabled before clicking.
+      // The button is gated on inputValue === confirmText; this assertion
+      // gives a clear failure message if the typed value doesn't match.
+      const deleteConfirmBtn = page.getByRole("button", { name: /delete campaign/i }).last()
+      await expect(deleteConfirmBtn).toBeEnabled({ timeout: 5_000 })
 
       // Click the delete confirmation button
-      await page
-        .getByRole("button", { name: /delete campaign/i })
-        .last()
-        .click()
+      await deleteConfirmBtn.click()
 
       // Verify redirect to org dashboard
       await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 })
