@@ -14,6 +14,7 @@ from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign
+from app.models.organization import Organization
 from app.models.user import User
 
 
@@ -190,6 +191,16 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
         created_at=utcnow(),
         updated_at=utcnow(),
     )
+    organization_id = uuid.uuid4()
+    organization = Organization(
+        id=organization_id,
+        zitadel_org_id=ORG_ID,
+        zitadel_project_grant_id=None,
+        name="E2E Org",
+        created_by=user.id,
+        created_at=utcnow(),
+        updated_at=utcnow(),
+    )
 
     mock_db = AsyncMock()
     mock_db.add = MagicMock()
@@ -202,15 +213,31 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
                 scalar_one_or_none=MagicMock(return_value=local_user)
             ),  # user lookup
             MagicMock(
-                scalar_one_or_none=MagicMock(return_value=None)
-            ),  # org lookup (None = no Organization record yet)
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[organization]))
+                )
+            ),  # org membership lookup
             MagicMock(
-                scalar_one_or_none=MagicMock(return_value=None)
-            ),  # campaign lookup fallback (None)
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                )
+            ),  # campaigns in org
+            MagicMock(
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                )
+            ),  # fallback campaigns by org id
+            MagicMock(
+                scalar_one_or_none=MagicMock(return_value=organization)
+            ),  # service org lookup
         ]
     )
-    # _generate_unique_slug uses db.scalar() to check for slug existence
-    mock_db.scalar = AsyncMock(return_value=None)
+    mock_db.scalar = AsyncMock(
+        side_effect=[
+            organization,  # route org lookup
+            None,  # _generate_unique_slug slug existence check
+        ]
+    )
 
     async def fake_refresh(obj):
         if isinstance(obj, Campaign):
@@ -223,12 +250,6 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     with (
         patch.object(
             ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"
-        ),
-        patch.object(
-            ZitadelService,
-            "create_organization",
-            new_callable=AsyncMock,
-            return_value={"id": ORG_ID},
         ),
         patch.object(
             ZitadelService,
@@ -257,11 +278,16 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
         ):
             resp = await client.post(
                 "/api/v1/campaigns",
-                json={"name": "E2E Campaign", "type": "federal"},
+                json={
+                    "name": "E2E Campaign",
+                    "type": "federal",
+                    "organization_id": str(organization_id),
+                },
             )
 
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "E2E Campaign"
         # Prove ZitadelService was accessible from the route handler
-        ZitadelService.create_organization.assert_called_once()
+        ZitadelService.ensure_project_grant.assert_awaited_once()
+        ZitadelService.assign_project_role.assert_awaited_once()

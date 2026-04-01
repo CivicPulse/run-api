@@ -130,6 +130,7 @@ class TestCampaignService:
         z.delete_organization = AsyncMock()
         z.assign_project_role = AsyncMock()
         z.ensure_project_grant = AsyncMock(return_value="grant-123")
+        z.remove_project_role = AsyncMock()
         return z
 
     @pytest.fixture
@@ -158,13 +159,26 @@ class TestCampaignService:
         )
         return campaign
 
-    async def test_create_campaign_creates_zitadel_org_then_local(
+    async def test_create_campaign_uses_existing_org_then_local(
         self, mock_db, mock_zitadel, mock_user
     ):
-        """create_campaign creates ZITADEL org, then local record."""
+        """create_campaign reuses an existing org and creates local records."""
+        from app.models.organization import Organization
         from app.services.campaign import CampaignService
 
         service = CampaignService()
+        org = Organization(
+            id=uuid.uuid4(),
+            zitadel_org_id="zitadel-org-123",
+            zitadel_project_grant_id="grant-123",
+            name="Existing Org",
+            created_by="user-abc",
+            created_at=utcnow(),
+            updated_at=utcnow(),
+        )
+        org_result = MagicMock()
+        org_result.scalar_one_or_none.return_value = org
+        mock_db.execute = AsyncMock(return_value=org_result)
 
         # Make refresh populate the campaign id
         async def fake_refresh(obj):
@@ -181,10 +195,11 @@ class TestCampaignService:
             campaign_type=CampaignType.FEDERAL,
             user=mock_user,
             zitadel=mock_zitadel,
+            organization_id=org.id,
         )
 
-        mock_zitadel.create_organization.assert_awaited_once_with("New Campaign")
-        mock_zitadel.ensure_project_grant.assert_awaited_once()
+        mock_zitadel.create_organization.assert_not_called()
+        mock_zitadel.ensure_project_grant.assert_not_called()
         mock_zitadel.assign_project_role.assert_awaited_once()
         mock_db.add.assert_called()
         mock_db.commit.assert_awaited()
@@ -198,13 +213,26 @@ class TestCampaignService:
         assert len(member_adds) == 1
         assert member_adds[0].role == "owner"
 
-    async def test_create_campaign_compensating_transaction(
+    async def test_create_campaign_revokes_role_on_db_failure(
         self, mock_db, mock_zitadel, mock_user
     ):
-        """If local DB commit fails, ZITADEL org is deleted (compensating)."""
+        """If local DB commit fails, the owner grant is revoked."""
+        from app.models.organization import Organization
         from app.services.campaign import CampaignService
 
         service = CampaignService()
+        org = Organization(
+            id=uuid.uuid4(),
+            zitadel_org_id="zitadel-org-123",
+            zitadel_project_grant_id="grant-123",
+            name="Existing Org",
+            created_by="user-abc",
+            created_at=utcnow(),
+            updated_at=utcnow(),
+        )
+        org_result = MagicMock()
+        org_result.scalar_one_or_none.return_value = org
+        mock_db.execute = AsyncMock(return_value=org_result)
         mock_db.commit = AsyncMock(side_effect=Exception("DB write failed"))
 
         with pytest.raises(Exception, match="DB write failed"):
@@ -214,9 +242,11 @@ class TestCampaignService:
                 campaign_type=CampaignType.STATE,
                 user=mock_user,
                 zitadel=mock_zitadel,
+                organization_id=org.id,
             )
 
-        mock_zitadel.delete_organization.assert_awaited_once_with("zitadel-org-123")
+        mock_zitadel.delete_organization.assert_not_called()
+        mock_zitadel.remove_project_role.assert_awaited_once()
 
     async def test_update_campaign(self, mock_db, sample_campaign):
         """update_campaign updates local fields."""

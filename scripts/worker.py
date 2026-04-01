@@ -22,6 +22,7 @@ if _project_root not in sys.path:
 from loguru import logger  # noqa: E402
 
 from app.core.sentry import init_sentry  # noqa: E402
+from app.services.import_recovery import scan_for_orphaned_imports  # noqa: E402
 
 # ---------------------------------------------------------------
 # Minimal HTTP health endpoint (D-04)
@@ -59,7 +60,9 @@ async def _handle_health(
 async def _start_health_server() -> asyncio.Server:
     """Start the TCP health server on HEALTH_PORT."""
     server = await asyncio.start_server(
-        _handle_health, "0.0.0.0", HEALTH_PORT  # noqa: S104
+        _handle_health,
+        "0.0.0.0",
+        HEALTH_PORT,  # noqa: S104
     )
     logger.info("Health endpoint listening on :{}", HEALTH_PORT)
     return server
@@ -76,12 +79,25 @@ async def main() -> None:
     logger.info("Starting Procrastinate import worker")
 
     # Import here (after sys.path is set) to avoid import errors
+    from app.tasks.import_task import recover_import
     from app.tasks.procrastinate_app import procrastinate_app
 
     health_server = await _start_health_server()
 
     try:
         async with procrastinate_app.open_async():
+            stale_imports = await scan_for_orphaned_imports()
+            for candidate in stale_imports:
+                logger.warning(
+                    "Detected orphaned import {} for campaign {} ({})",
+                    candidate.import_job_id,
+                    candidate.campaign_id,
+                    candidate.orphaned_reason,
+                )
+                await recover_import.defer_async(
+                    import_job_id=candidate.import_job_id,
+                    campaign_id=candidate.campaign_id,
+                )
             logger.info("Procrastinate connected, waiting for jobs")
             await procrastinate_app.run_worker_async(
                 queues=["imports"],

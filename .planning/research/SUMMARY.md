@@ -1,207 +1,173 @@
 # Project Research Summary
 
-**Project:** CivicPulse Run API — v1.6 Large-File Voter Import & L2 Auto-Mapping
-**Domain:** Background task processing, resumable batch imports, voter data pipeline
-**Researched:** 2026-03-28
-**Confidence:** HIGH (based on direct codebase analysis; Procrastinate API details MEDIUM pending version verification)
+**Project:** CivicPulse Run API — v1.11 Chunked Parallel Import Pipeline
+**Domain:** Parallel CSV import processing with fan-out/fan-in job orchestration
+**Researched:** 2026-04-01
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The v1.6 milestone targets two independently valuable but architecturally connected improvements: (1) replacing the non-production TaskIQ InMemoryBroker with Procrastinate, a PostgreSQL-native task queue, and (2) expanding the L2 voter file column alias dictionary to achieve zero-manual-mapping for the industry's dominant voter data format. These two goals are connected because a durable task queue is a prerequisite for the per-batch commit strategy that makes large imports crash-safe and provides real-time progress visibility — and L2 auto-mapping is only valuable if the imports that use it can actually complete reliably on large files.
+V1.11 upgrades the existing v1.6 serial CSV import pipeline into a parallel, chunked system without introducing any new library dependencies. The existing stack — Procrastinate for job orchestration, SQLAlchemy async for session management, PostgreSQL for upserts and advisory locks, and MinIO for CSV storage — is fully capable of supporting the parent/child job fan-out pattern. The primary architectural addition is a new `ImportChunk` model and table that tracks per-chunk state (row range, status, progress counters, crash-resume row), enabling N chunk tasks to run independently and concurrently while the parent `ImportJob` aggregates their results via SQL SUM queries.
 
-The recommended approach is a phased migration: establish durable background processing first (Procrastinate integration + per-batch commits), then harden the import pipeline against the documented OOM crash (temp-file or streaming download), then complete L2 column coverage. The Procrastinate swap is the foundational change — everything else depends on it. The existing codebase is well-structured for this migration: the import service is already modular, the session factory is already async, and the voter upsert is already idempotent (ON CONFLICT DO UPDATE), which is the key property that makes per-batch commits safe.
+The recommended approach is a phased build: (A) schema and model foundation with no behavior change, (B) core parallel processing with split task, chunk tasks, and progress aggregation, (C) cancellation propagation and crash-resume integration, and (D) test coverage. Each phase builds on the previous, and the system can be deployed behind a feature flag (`import_parallel_enabled`) so existing serial imports continue to work throughout development. Files below a configurable threshold (e.g., 10,000 rows) bypass chunking entirely, preserving simplicity for small imports.
 
-The single largest risk is the RLS context lifecycle interaction with per-batch commits. The current system uses transaction-scoped RLS (`set_config(..., true)`), which deliberately resets on every COMMIT. Moving to per-batch commits means RLS context must be re-set after every batch commit — failure to do this causes silent data invisibility (batches 2-N produce zero rows) without errors, making the bug extremely hard to diagnose. A secondary risk is the documented OOM crash on 30MB+ files (pod killed at 512MB, exit code 3) that must be addressed alongside per-batch commits to prevent re-triggering the same crash with the new pipeline.
+The key risks are all well-understood concurrent-systems problems with known solutions already present in the codebase or in PostgreSQL. Deadlocks from parallel upserts are prevented by sorting rows by `source_id` before INSERT. RLS context isolation between chunk sessions is preserved by the existing `reset_rls_context` pool checkout handler and the established `set_campaign_context` / `commit_and_restore_rls` pattern. Progress aggregation races are prevented by storing counters per chunk and computing parent totals via SQL SUM rather than distributed increment. Every critical pitfall resolves to "follow the existing pattern, but per-chunk."
 
 ## Key Findings
 
 ### Recommended Stack
 
-Procrastinate replaces TaskIQ entirely. It stores jobs in the existing PostgreSQL 17 database as rows in `procrastinate_jobs`, uses `LISTEN/NOTIFY` for instant job pickup (no polling), and provides a native async API. The project adds one new Python package (`procrastinate`) and one new driver (`psycopg[binary]` — psycopg 3, distinct from the existing `psycopg2-binary` used by Alembic). These three PostgreSQL drivers (`asyncpg` for SQLAlchemy, `psycopg2-binary` for Alembic, `psycopg[binary]` for Procrastinate) coexist without conflict as separate packages with separate namespaces. No new infrastructure is required.
+No new libraries are needed. Procrastinate's `defer_async` can be called from within a running task to fan out child chunk tasks — the project already uses this mechanism from the API layer. SQLAlchemy async session isolation (one session per task, `async_session_factory()`) handles concurrent worker coordination. PostgreSQL advisory locks (`pg_try_advisory_xact_lock`) serialize the race-prone finalization step where multiple chunks may complete simultaneously.
 
 **Core technologies:**
-- `procrastinate >=2.0.0`: PostgreSQL-native async task queue — replaces TaskIQ InMemoryBroker; zero new infrastructure; jobs durable across pod restarts
-- `psycopg[binary] >=3.1.0`: psycopg 3 async driver — required by Procrastinate; coexists with existing asyncpg and psycopg2-binary
-- `asyncpg`, `rapidfuzz`, `aioboto3`, `sqlalchemy`, `geoalchemy2`: all unchanged — used by the import pipeline as-is
+- **Procrastinate** (>=3.7.3, installed): Parent/child job fan-out via `defer_async` from within a running task — no new primitives needed
+- **SQLAlchemy async** (installed): Per-chunk independent sessions; existing `async_session_factory()` pattern is correct
+- **PostgreSQL** (16+, deployed): Advisory locks for finalization races, `INSERT ON CONFLICT` for idempotent upserts, RLS for tenant isolation
+- **Python `csv` stdlib**: Row-count pre-scan and chunk row-range seeking; no byte-offset complexity needed
+- **MinIO/S3** (deployed): Unchanged; each chunk streams the full file and skips to its start row
 
-**What to remove:**
-- `taskiq` and `taskiq-fastapi` — fully replaced by Procrastinate; remove from `pyproject.toml`
-
-**Version verification required at install time:** exact Procrastinate connector class name (`PsycopgConnector`), `open_async()` method, and schema CLI syntax must be verified against the installed version, as training data may be stale.
+**New application code (not libraries):** `ImportChunk` model, `split_import` task, `process_chunk` task, Alembic migration, and three new config settings (`import_chunk_size`, `import_chunk_threshold`, `import_parallel_enabled`).
 
 ### Expected Features
 
 **Must have (table stakes):**
-- Background import processing (non-blocking, 202 Accepted response) — a 200K-row file takes 2-10 minutes; blocking HTTP requests causes timeouts and lost imports
-- Per-batch commits (partial progress survives crashes) — current single-transaction design loses all progress on pod crash
-- Resume from last committed batch — re-importing from scratch after crash is unacceptable for large files; existing upsert idempotency makes replay safe
-- Real-time progress reporting — frontend already built (ImportProgress.tsx polls every 3s); per-batch commits make it live automatically at no extra cost
-- Error report download — already fully implemented; no changes needed
-- L2 column auto-mapping (complete coverage) — campaigns buy L2 files and expect zero-manual-mapping; current alias dictionary covers ~30 L2 column patterns but has documented gaps
+- **Parent/child job model** — users see one import job; chunks are an implementation detail invisible to the UI
+- **Unified progress reporting** — parent `ImportJob.imported_rows` = SUM of chunk counters; existing frontend poll endpoint needs no changes
+- **Chunk failure isolation** — one bad chunk does not kill the import; other chunks proceed independently
+- **Merged error reports** — per-chunk error CSVs merged into a single downloadable report at finalization
+- **Cancellation propagation** — cancel sets `cancelled_at` on parent; chunk tasks poll it between batches (same cooperative mechanism as today)
+- **Per-campaign concurrency lock preserved** — `queueing_lock=campaign_id` on parent split task only; chunk tasks have no lock
+- **Crash resume per chunk** — `last_committed_row` per chunk; v1.10 orphan detection applies at chunk granularity
+- **Deterministic chunk boundaries** — row-range splitting (not byte-offset) guarantees no gaps or overlaps
+- **Small file fast path** — files below threshold skip chunking and use existing serial path unchanged
 
-**Should have (differentiators):**
-- Zero-touch L2 import (skip mapping step when 100% of columns auto-map) — low complexity, high UX value for the most common file format
-- Format auto-detection confidence display ("45 of 47 columns mapped") — pure frontend calculation from existing data; no backend changes
-- Per-batch error isolation (SAVEPOINT per batch so one bad row does not cascade to invalidate the whole batch)
-- Import cancellation (add CANCELLED to ImportStatus; check status between batches in worker loop)
-- Voting history format expansion (Gen_YYYY, Prim_YYYY, GeneralElection_YYYY, Voted_in_YYYY_General, and space-separated variants)
+**Should have (competitive differentiators):**
+- **Secondary work offloading** — PostGIS geometry updates as post-chunk tasks (reduces chunk critical-path latency ~20-40%); VoterPhone stays inline
+- **`COMPLETED_WITH_ERRORS` status** — semantically clearer when some chunks fail but others succeed
+- **Throughput metrics** — rows/second and ETA for large imports (pure frontend calculation from timestamps)
 
-**Defer (v2+):**
-- WebSocket/SSE progress (polling at 3s is sufficient for 5-20 minute imports; push-based adds infrastructure)
-- Parallel batch processing (single-worker sequential is fast enough; parallelism adds lock contention complexity)
-- Import scheduling for off-hours runs
-- ZIP file or Shapefile/GDB import
-- Import rollback (cascading data dependencies make this destructive and hard to reason about)
-- AI/LLM column mapping (deterministic dictionary + fuzzy match solves this without external dependencies or latency)
-- Stale import cleanup, duplicate detection, file size estimation (good hygiene, low priority)
+**Defer to later milestones:**
+- Adaptive chunk sizing based on column count and file size (start with fixed 25K rows; optimize with real data)
+- Configurable parallelism per campaign (hardcode cap initially; make configurable when multi-tenant contention is observed)
+- Byte-offset S3 range seeking for very large files (skip overhead is negligible vs DB I/O time for realistic file sizes)
+- Per-chunk retry UI, import rollback, WebSocket/SSE progress, chunk-level UI visibility
 
 ### Architecture Approach
 
-The integration modifies four existing files and adds two new ones. `app/tasks/broker.py` is deleted and replaced by `app/tasks/procrastinate_app.py`. `app/tasks/import_task.py` is rewritten with the Procrastinate task decorator. `app/services/import_service.py` gains a new `process_import_file_resumable()` method that commits per-batch and re-sets RLS context after each commit. `app/main.py` replaces broker startup/shutdown with `procrastinate_app.open_async()`/`close_async()`. The endpoint dispatch changes from `process_import.kiq(str(id))` to `import_voter_file.defer_async(import_job_id=str(id), campaign_id=str(campaign_id))`. A new docker-compose worker service and Kubernetes worker Deployment reuse the same image with a different command.
+The architecture replaces the single `process_import` task with a two-level task hierarchy: a `split_import` task that counts rows, creates `ImportChunk` records, and fans out to N `process_chunk` tasks; and N `process_chunk` tasks that each independently stream the CSV (seeking to their row range), execute the existing batch upsert loop, and trigger finalization when they are the last chunk to complete. The parent `ImportJob` is updated at each batch commit via SQL SUM aggregation over chunk counters, keeping the polling endpoint compatible with the existing frontend. Finalization races (multiple chunks completing simultaneously) are serialized with `pg_try_advisory_xact_lock`.
 
 **Major components:**
-1. `app/tasks/procrastinate_app.py` — Procrastinate App instance; derives PostgreSQL connection string from existing `settings.database_url` by stripping `+asyncpg`; owns Procrastinate's separate psycopg 3 connection pool
-2. `app/tasks/import_task.py` (rewritten) — Procrastinate task definition using `@procrastinate_app.task`; receives `campaign_id` as keyword argument to resolve the RLS chicken-and-egg bootstrap problem; delegates to `process_import_file_resumable()`
-3. `app/services/import_service.py` (new method `process_import_file_resumable`) — per-batch commit loop with `set_campaign_context()` called after every `session.commit()`; reads `last_completed_batch` to skip already-committed batches on crash resume
-4. `app/models/import_job.py` (modified) — adds `last_completed_batch` (int, default 0) and `batch_size` (int, default 1000) columns; requires new Alembic migration
-5. Worker process — runs `procrastinate worker --queue=imports` CLI; docker-compose dev service + separate K8s Deployment with higher memory limit (1GB vs API's 512MB)
-6. Procrastinate schema — `procrastinate_jobs`, `procrastinate_events`, `procrastinate_periodic_defers` tables created via `procrastinate schema --apply` in init container alongside `alembic upgrade head`, or embedded in an Alembic migration via `op.execute()`
+1. **`ImportChunk` model** — per-chunk state: row range, status, counters, `last_committed_row`, error file key; one row per chunk; separate table (not JSONB on parent) to allow concurrent independent updates
+2. **`split_import` task** — streams CSV to count rows, creates `ImportChunk` rows, defers N `process_chunk` tasks, holds `queueing_lock=campaign_id`; small-file fast path falls through to existing serial task
+3. **`process_chunk` task** — own session, RLS context, batch loop identical to today, polls parent `cancelled_at`, updates chunk counters, triggers finalization on last completion
+4. **`maybe_finalize_parent` function** — SQL SUM aggregation over chunk table, `pg_try_advisory_xact_lock` for race safety, error CSV merge, parent status derivation
+5. **Modified `ImportService`** — extracts `process_chunk_range(start_row, end_row)` entry point while keeping existing batch logic unchanged; batch size calculation extracted to shared utility
+
+**Files inventory:** 5 new files, 6 modified files, 4 unchanged files. See ARCHITECTURE.md for full list.
 
 ### Critical Pitfalls
 
-1. **RLS context lost after per-batch commit** — Transaction-scoped `set_config('app.current_campaign_id', :id, true)` resets on every COMMIT. Must re-call `set_campaign_context(session, campaign_id)` immediately after every `session.commit()` in the batch loop. Silent failure mode: import reports success but only the first 1,000 rows (one batch) are actually imported. This is the highest-priority pitfall in the entire migration.
+1. **Deadlock from parallel upserts on overlapping keys** — sort `valid_voters` by `(source_type, source_id)` before every batch INSERT to guarantee consistent lock acquisition order; also sort `VoterPhone` records by `(voter_id, value)` for the same reason; add catch for psycopg `DeadlockDetected` (`40P01`) with retry + jitter as defense-in-depth
 
-2. **Worker cannot read ImportJob before setting RLS (chicken-and-egg)** — `import_jobs` has RLS enabled. The worker needs `campaign_id` to set RLS context before reading ImportJob, but ImportJob stores `campaign_id`. Solution: pass `campaign_id` as a Procrastinate task keyword argument at dispatch time. Cannot be deferred — must be built into Phase 1.
+2. **RLS context isolation between concurrent chunk sessions** — each chunk task must create its own `async_session_factory()` session and call `set_campaign_context` before any query; never pass a session from parent to child; existing `reset_rls_context` pool checkout handler is the primary defense against connection pool reuse with stale context
 
-3. **Full file loaded into memory before parsing (OOM)** — Current code joins all S3 download chunks into a single bytestring (~90MB memory for a 30MB CSV). This caused the documented pod OOM crash (113K rows, 30MB file, 512MB limit, exit code 3 after ~30s). Fix: download to a temp file on disk (worker pod has `readOnlyRootFilesystem: false`), or implement line-buffered streaming from S3.
+3. **Progress aggregation lost updates** — never update `ImportJob.imported_rows` directly from chunk tasks (read-modify-write races cause lost updates); each chunk updates only its own `ImportChunk` row; parent totals derived exclusively via `SELECT SUM(...) FROM import_chunks WHERE import_job_id = :id`
 
-4. **Single transaction means all-or-nothing — no resumability** — Current code calls `session.commit()` once after the entire file. A pod crash loses all progress. Fix: per-batch commits with `last_completed_batch` tracking; replay from beginning on resume (idempotent upsert makes re-processing rows safe).
+4. **Cancellation not propagated to chunk jobs** — chunk tasks poll `SELECT cancelled_at FROM import_jobs WHERE id = :parent_id` between batches and at startup; cooperative check is sufficient and matches the existing proven pattern; no need to delete Procrastinate jobs from the queue
 
-5. **Procrastinate schema not tracked by Alembic** — Procrastinate creates its own tables outside Alembic's migration history, meaning fresh database setups and CI environments require a separate schema setup step. Embed Procrastinate's schema SQL in an Alembic migration via `op.execute()` (using `procrastinate schema --sql` to dump the SQL), or add `procrastinate schema --apply` as an explicit init container step.
-
-**Additional moderate pitfalls to address during implementation:**
-- Double RLS context set in both `import_task.py` and `import_service.py` — consolidate ownership to the batch loop
-- Dual connection pool (Procrastinate's psycopg 3 pool + SQLAlchemy's asyncpg pool) — size PostgreSQL `max_connections` to accommodate both
-- TaskIQ to Procrastinate is not a find-and-replace — different decorator, keyword-only task args, different dispatch method; existing TaskIQ mocks need rewriting
-- Error list accumulates unbounded in memory — cap at 1,000 or stream errors to S3 per-batch
-- Concurrent imports for the same campaign can deadlock on voter upsert — use Procrastinate `queueing_lock=f"import:{campaign_id}"`
+5. **queueing_lock accidentally blocks all chunks** — apply `queueing_lock=str(campaign_id)` to `split_import` task only; chunk tasks use NO queueing lock; if chunks share the campaign lock, Procrastinate's `AlreadyEnqueued` behavior serializes them instead of running in parallel
 
 ## Implications for Roadmap
 
-Based on research, the dependency graph dictates phase order: Procrastinate integration is a prerequisite for per-batch commits, which are a prerequisite for crash resilience. L2 mapping is independent but sequenced after reliability work to avoid mixing concerns.
+Based on combined research, the natural build order follows data-model-first then behavior, exactly matching the existing codebase's layer conventions. The dependency graph is strict: schema must precede all behavior; core processing must precede correctness features (cancel/resume); tests require the full implementation.
 
-### Phase 1: Procrastinate Integration and Infrastructure
+### Phase A: Schema and Model Foundation
 
-**Rationale:** Foundation phase. Without a durable job queue, per-batch commits cannot be wired up, the worker cannot run separately, and all reliability improvements are impossible. This phase also resolves the RLS chicken-and-egg bootstrap problem (Pitfall 2) and the full TaskIQ API migration (Pitfall 7). Must complete before any other import reliability work.
+**Rationale:** Every other component depends on the `ImportChunk` table existing. Schema changes first means all subsequent phases develop against real models with no behavior change to existing imports — zero regression risk.
+**Delivers:** `ImportChunk` model + `ChunkStatus` enum, `ImportJob` additions (`total_chunks`, `completed_chunks`, `is_chunked`), Alembic migration, config settings (`import_chunk_size=25000`, `import_chunk_threshold=10000`, `import_parallel_enabled=False`), Pydantic schema additions
+**Addresses:** Foundational table stakes — parent/child job model structure, crash resume per chunk (data design)
+**Avoids:** Progress aggregation race (Pitfall 4) and crash resume breakage (Pitfall 7) — both prevented structurally by the schema design before any behavior is written
 
-**Delivers:** Durable background processing (jobs survive pod restarts); Procrastinate schema in the database; worker service in docker-compose; `last_completed_batch` and `batch_size` columns on ImportJob via Alembic migration; endpoint returns 202 Accepted.
+### Phase B: Core Parallel Processing
 
-**Addresses:** Background import processing (table stakes), non-blocking confirm endpoint.
+**Rationale:** The split task and chunk task are tightly coupled and must be built together. Progress aggregation is inseparable from chunk processing — without it, the frontend immediately regresses. This is the highest-complexity phase and the core value delivery of the milestone.
+**Delivers:** `split_import` task (row count, chunk creation, fan-out, small-file fast path), `process_chunk` task (own session, RLS, batch loop, chunk status), SQL SUM progress aggregation per batch commit, finalization with advisory lock, `confirm_mapping` wired to `split_import`, `import_parallel_enabled` feature flag for gradual rollout
+**Uses:** `defer_async` from within Procrastinate task (verified from installed source), `pg_try_advisory_xact_lock`, `async_session_factory()` per chunk
+**Implements:** Full parent/child architecture; existing frontend zero-change for progress polling
+**Avoids:** Deadlock (Pitfall 1) via sort-before-upsert, RLS leak (Pitfall 2) via per-chunk sessions, queueing lock paralysis (Pitfall 6), naming collision (Pitfall 11), shared session anti-pattern, JSONB chunk state anti-pattern
 
-**Avoids:** Pitfall 2 (pass `campaign_id` as task arg at dispatch time), Pitfall 7 (replace TaskIQ API correctly — not a find-and-replace), Pitfall 8 (Procrastinate schema in init container or Alembic migration).
+### Phase C: Cancellation and Crash Resume Integration
 
-### Phase 2: Per-Batch Commits and Crash Resumability
+**Rationale:** Correctness-critical but builds on the operational pipeline from Phase B. Cannot be meaningfully tested until the full pipeline exists. Integrates with v1.10 recovery engine for chunk-level orphan detection.
+**Delivers:** Chunk-level cancellation (polls parent `cancelled_at`, marks chunk CANCELLED), split task crash-resume (re-defer only PENDING chunks on re-execution), chunk-level crash-resume (skip to `last_committed_row` within chunk range), per-chunk error CSV writing + merge on finalization, parent status derivation rules (all complete, any failed, all failed, cancelled)
+**Avoids:** Cancel propagation failure (Pitfall 3), parent status non-triviality (Pitfall 9), error merge ordering (Pitfall 12)
 
-**Rationale:** The highest-value reliability improvement and the core goal of v1.6. Requires Phase 1 (Procrastinate must be in place). Implementing per-batch commits also automatically fixes real-time progress visibility (Pitfall 9) — no separate work needed. The RLS-after-commit pattern (Pitfall 1) is the critical implementation detail here.
+### Phase D: Tests
 
-**Delivers:** Per-batch commits with RLS context restoration after each commit; `last_completed_batch` tracking in the batch loop; crash-safe imports where pod restart preserves committed batches; real-time progress updates visible via the existing polling endpoint (no frontend changes required); crash resume that skips already-committed batches using idempotent upsert.
+**Rationale:** Tests require the full implementation to exercise meaningful concurrent scenarios. Each earlier phase includes smoke tests during development; comprehensive coverage finalizes here including race condition scenarios that require the full system.
+**Delivers:** Unit tests for chunk boundary calculation and progress SQL, integration tests for full chunked import end-to-end, cancel mid-import with active chunks, crash-resume within a chunk, regression for no duplicate voters, race condition test for advisory lock finalization
 
-**Addresses:** Per-batch commits (table stakes), resume from crash (table stakes), real-time progress (frontend already built — now works correctly).
+### Phase E: Secondary Work Offloading (differentiator)
 
-**Avoids:** Pitfall 1 (re-set RLS after every commit — critical, silent failure mode), Pitfall 4 (per-batch instead of single transaction), Pitfall 5 (consolidate RLS context ownership to batch loop only).
-
-### Phase 3: Memory Safety and Production Hardening
-
-**Rationale:** Directly addresses the documented production OOM crash. Per-batch commits from Phase 2 reduce the in-flight data window per batch, but the full file download into memory before parsing remains a distinct problem for large files.
-
-**Delivers:** Temp-file download strategy (or line-buffered streaming) eliminating OOM for files up to practical limits; bounded error accumulation (stream errors to S3 per-batch or cap at a fixed limit); separate K8s Deployment for worker with higher memory limits (1GB); connection pool sizing guidance to prevent pool exhaustion; worker observability (Sentry SDK, structlog) initialized in worker entrypoint.
-
-**Addresses:** Import reliability for files above the 30MB crash threshold.
-
-**Avoids:** Pitfall 3 (full file in memory), Pitfall 10 (unbounded error accumulation), Pitfall 6 (dual connection pool sizing), Pitfall 11 (worker observability), Pitfall 16 (separate K8s Deployment).
-
-### Phase 4: L2 Auto-Mapping Completion
-
-**Rationale:** The L2 mapping improvements are fully independent of the reliability infrastructure. They are sequenced here to keep the critical path unambiguous. They deliver the second major user-facing goal of v1.6.
-
-**Delivers:** Complete alias dictionary for all documented L2 column name patterns (including gaps: `Voters_StateVoterID`, `Voters_RegistrationDate`, `Voters_OfficialRegParty`, component address fields, district columns); extended voting history regex (Gen_YYYY, Prim_YYYY, GeneralElection_YYYY, PrimaryElection_YYYY, Voted_in_YYYY_General, space-separated variants); component address concatenation strategy for split-address L2 exports; date field normalization (MM/DD/YYYY, YYYYMMDD, M/D/YYYY); improved encoding detection (try cp1252 before latin-1 for Windows-exported voter files).
-
-**Addresses:** L2 column auto-mapping (table stakes), voting history format flexibility (table stakes).
-
-**Avoids:** Pitfall 13 (voting history regex gaps documented in PROJECT.md), Pitfall 14 (state variation — exact-match-first before fuzzy matching), Pitfall 15 (date parse failures on non-ISO formats), Pitfall 18 (cp1252 vs latin-1 encoding corruption of voter names).
-
-### Phase 5: Differentiators and Concurrent Safety
-
-**Rationale:** Once the core pipeline is reliable and L2 coverage is complete, the differentiator features add UX value at low implementation cost. Concurrent import safety belongs here since it depends on Procrastinate's `queueing_lock` feature being available.
-
-**Delivers:** Import cancellation (CANCELLED status + cancel endpoint + worker batch-loop status check); concurrent import guard (campaign-level lock via Procrastinate `queueing_lock`); zero-touch L2 detection (skip mapping wizard step when all columns auto-map); format auto-detection confidence display (frontend only, no backend changes); per-batch error isolation (SAVEPOINT per batch).
-
-**Addresses:** Differentiator features from FEATURES.md; Pitfall 12 (concurrent import deadlock).
+**Rationale:** Independent track; does not block Phases A-D. PostGIS geometry offloading reduces chunk critical-path latency but imports are functionally correct without it. `COMPLETED_WITH_ERRORS` is a pure additive status change.
+**Delivers:** `update_voter_geometry` post-chunk Procrastinate task, `COMPLETED_WITH_ERRORS` ImportStatus enum value, frontend badge update for new status, VoterPhone phone creation kept inline (fast, users expect immediate availability)
+**Avoids:** VoterPhone positional-index conflict under concurrent conditions (Pitfall 8) — geometry offloading isolates the heaviest per-row secondary work onto a separate task
 
 ### Phase Ordering Rationale
 
-- Procrastinate must come first because `defer_async()` replaces `kiq()`, and the worker process must exist before per-batch commits can run persistently
-- Per-batch commits must come before memory optimization because the commit structure must be correct before optimizing what happens inside each batch
-- L2 mapping is decoupled but sequenced after reliability to avoid touching `import_service.py` while the per-batch commit refactor is also in progress
-- Differentiators are last because they depend on the foundation being stable and tested end-to-end
+- Schema must precede all behavior because models are imported everywhere; no task or service can reference `ImportChunk` until the table and model exist
+- Core processing (Phase B) must precede correctness features (Phase C) because cancellation and crash-resume testing require an operational parallel pipeline
+- Tests (Phase D) finalize after Phase C because edge cases like finalization races require the complete implementation; each phase includes smoke tests during development
+- Secondary offloading (Phase E) is decoupled and can run concurrently with Phase D or be deferred to a follow-on milestone without blocking the core feature
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 1:** Procrastinate exact API (connector class name, `open_async()` vs `open()`, schema CLI syntax, `defer_async()` method signature) must be verified at install time via `uv add procrastinate` and reading installed docs
+Phases with well-documented patterns (standard — skip additional research):
+- **Phase A (Schema):** Alembic migrations and SQLAlchemy model additions are standard patterns with no novel territory
+- **Phase B (Core processing):** Procrastinate `defer_async` from within a task verified from installed source code; RLS per-session pattern verified from `app/db/rls.py`; advisory lock pattern is documented PostgreSQL behavior and used in v1.10
 
-Phases with standard patterns (can skip research-phase):
-- **Phase 2:** Per-batch commit + RLS re-set is established SQLAlchemy pattern; all code is internal to this codebase
-- **Phase 3:** Temp-file pattern with aioboto3 is straightforward; no external library research needed beyond reading aioboto3's existing usage in the codebase
-- **Phase 4:** L2 alias expansion is dictionary and regex work; deterministic; no library research needed
-- **Phase 5:** All features use existing patterns (status enum, endpoint structure, Procrastinate `queueing_lock` documented in Procrastinate docs)
+Phases that may benefit from targeted research during planning:
+- **Phase B (Finalization advisory lock):** The exact interaction between `pg_try_advisory_xact_lock` and SQLAlchemy's transaction commit lifecycle should be verified against the installed Procrastinate connector before writing the finalization function
+- **Phase C (v1.10 crash resume integration):** Depends on v1.10 recovery engine design in `IMPORT-RECOVERY-PLAN.md`; implementation details of how orphan detection surfaces chunk-level staleness require coordination with the v1.10 design decisions
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Procrastinate is the right tool (HIGH — confirmed by PROJECT.md); exact version numbers and API method names require verification at install time (LOW on specifics) |
-| Features | HIGH | Import pipeline and L2 mapping are well-understood from codebase analysis; frontend polling infrastructure already built; upsert idempotency confirmed from models |
-| Architecture | HIGH | All modified files identified; per-batch commit pattern is standard SQLAlchemy; RLS lifecycle confirmed by direct reading of `rls.py` (line 28) and `session.py` (lines 23-38) |
-| Pitfalls | HIGH | Critical pitfalls confirmed by codebase analysis and existing issue documentation; RLS behavior is fundamental PostgreSQL semantics; OOM crash documented in `docs/issues/` |
+| Stack | HIGH | No new dependencies; existing Procrastinate, SQLAlchemy, and PostgreSQL patterns verified from installed source code and direct codebase analysis |
+| Features | MEDIUM-HIGH | Table stakes patterns well-established in distributed systems; Procrastinate-specific fan-out validated from source; Procrastinate docs were inaccessible during research (Cloudflare block) but installed source covered the gaps |
+| Architecture | HIGH | Derived from direct codebase analysis + PostgreSQL concurrency semantics + verified RLS behavior; all component boundaries confirmed against actual file line numbers |
+| Pitfalls | HIGH | Most pitfalls verified against specific line numbers in the existing codebase; PostgreSQL concurrency behavior is well-documented with multiple cited sources |
 
-**Overall confidence:** HIGH for what to build and why; MEDIUM for exact Procrastinate API syntax (must verify at install time before writing Phase 1 code).
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Procrastinate exact API surface:** `PsycopgConnector` class name, `open_async()` vs alternatives, `schema --apply` CLI syntax — verify with `uv add procrastinate` and check installed version docs before writing any Phase 1 code
-- **psycopg 3 + asyncpg coexistence in practice:** Run `uv run python -c "import psycopg; import asyncpg; import psycopg2; print('OK')"` to confirm no import conflicts in the actual environment
-- **L2 component address handling strategy:** The concatenation logic for split address columns (`Residence_Addresses_HouseNumber` + direction + `Residence_Addresses_StreetName` + etc.) requires a concrete implementation decision before Phase 4 — direct alias mapping (to separate model fields) or concatenation in `apply_field_mapping()`
-- **Procrastinate schema management approach:** Decide between (a) embedding schema SQL in Alembic migration or (b) `procrastinate schema --apply` as a separate init container step before Phase 1 implementation
-- **Worker memory ceiling:** Verify whether the temp-file approach (Phase 3) eliminates the OOM condition entirely or merely raises the threshold for very large files (>100MB)
-- **pgBouncer compatibility:** If connection pooling is added to the stack later, verify that Procrastinate's `LISTEN/NOTIFY` mechanism works through pgBouncer (statement mode blocks LISTEN; session mode required)
+- **Procrastinate docs inaccessibility:** Research was partially blocked by Cloudflare. The installed source at `.venv/lib/python3.13/site-packages/procrastinate/` fills this gap for implementation details, but edge cases in `defer_async` behavior under worker restart should be verified during Phase B implementation by reading the installed source directly.
+- **S3 skip overhead at scale:** The estimate that skipping 90K rows takes ~0.2 seconds is based on I/O characteristics, not benchmarked against actual MinIO. Accept the row-range approach now; add profiling instrumentation in Phase D tests to validate.
+- **Worker concurrency under load:** Procrastinate's per-worker `concurrency` parameter behavior with heavy I/O (DB sessions + S3 streams) is estimated but not load-tested. Start conservatively at 1-2 concurrent tasks per worker; tune with production data after initial rollout.
 
 ## Sources
 
-### Primary (HIGH confidence — direct codebase analysis)
-- `app/tasks/broker.py` — TaskIQ InMemoryBroker (confirms non-durable baseline)
-- `app/tasks/import_task.py` — current task structure, RLS setup, single-session pattern
-- `app/services/import_service.py` — full-file memory download (lines 872-876), flush-only progress, error accumulation
-- `app/db/rls.py` — transaction-scoped `set_config(..., true)` confirming RLS reset on commit
-- `app/db/session.py` — pool checkout RLS reset handler (confirms defense-in-depth design)
-- `app/api/v1/imports.py` — `process_import.kiq()` dispatch at line 248
-- `app/models/import_job.py` — existing ImportJob columns and status enum
-- `docs/issues/large-voter-import-crash.md` — documented OOM crash (113K rows, 30MB file, 512MB limit, exit code 3)
-- `alembic/versions/002_voter_data_models.py` — `import_jobs` in `_CAMPAIGN_TABLES` list (line 41), confirming RLS is enabled on import_jobs
-- `k8s/apps/run-api-dev/deployment.yaml` — 512MB memory limit, `readOnlyRootFilesystem: false`
-- `.planning/PROJECT.md` — v1.6 scope confirming Procrastinate choice and L2 column mapping targets
-- `pyproject.toml` — current dependencies (taskiq 0.12.1, taskiq-fastapi 0.4.0)
+### Primary (HIGH confidence)
+- Existing codebase: `app/services/import_service.py` (upsert lines 962-988, batch loop, cancellation check line 1304), `app/tasks/import_task.py` (RLS setup line 34, cancel pre-check line 55), `app/db/rls.py` (transaction-scoped `set_config` line 28, `commit_and_restore_rls` line 33), `app/models/import_job.py` (status enum lines 16-25), `app/api/v1/imports.py` (queueing_lock line 264)
+- Procrastinate v3.7.3 installed source: `.venv/lib/python3.13/site-packages/procrastinate/` — `defer_async`, queueing_lock behavior, worker configuration
+- [PostgreSQL explicit locking documentation](https://www.postgresql.org/docs/current/explicit-locking.html) — advisory locks, deadlock prevention via consistent lock ordering
+- [PostgreSQL INSERT ON CONFLICT documentation](https://www.postgresql.org/docs/current/sql-insert.html) — ON CONFLICT atomicity guarantees
+- `docs/import-parallelization-options.md` — user's options analysis (recommends Options 1+2: chunked parallel + secondary offloading)
+- `IMPORT-RECOVERY-PLAN.md` — v1.10 recovery engine design (sibling milestone, crash-resume integration)
 
-### Secondary (MEDIUM confidence — training data, recommend verification)
-- Procrastinate documentation (procrastinate.readthedocs.io) — async API, FastAPI integration, psycopg 3 requirement, worker CLI, schema management, `queueing_lock` feature
-- psycopg 3 documentation (psycopg.org) — async connector, binary package, coexistence with psycopg2
-- L2 voter file format patterns — training data knowledge of L2 column naming conventions, supplemented by the existing alias dictionary entries in `import_service.py`
+### Secondary (MEDIUM confidence)
+- [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) — INSERT deadlock mechanics with concurrent upserts
+- [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02) — lock acquisition order in bulk INSERT
+- [Fan-out/Fan-in Pattern (Microsoft Durable Functions)](https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-cloud-backup) — canonical pattern applicable to any task queue
+- [Procrastinate documentation](https://procrastinate.readthedocs.io/) — queueing_lock behavior, API reference (partially accessible during research)
+- [Parallel CSV ingestion to CloudSQL (Google Cloud)](https://medium.com/google-cloud/parallel-serverless-csv-ingestion-to-cloudsql-using-cloud-dataflow-6c5899cf8d58) — chunk-based parallel CSV import architecture
 
-### Tertiary (LOW confidence — needs validation)
-- Exact latest Procrastinate version on PyPI at time of implementation
-- Exact API method names in the installed Procrastinate release (connector class, open/close methods, defer method signatures)
-- L2 column name patterns for states not yet represented in the existing alias dictionary
+### Tertiary (LOW confidence — validate during implementation)
+- S3 skip overhead estimates (~0.2s per 90K rows) — based on I/O characteristics, not measured against this environment
+- Worker concurrency recommendations (1-2 concurrent tasks per worker) — based on resource model analysis, not load-tested
 
 ---
-*Research completed: 2026-03-28*
+*Research completed: 2026-04-01*
 *Ready for roadmap: yes*

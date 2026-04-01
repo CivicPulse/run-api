@@ -536,6 +536,7 @@ async def test_cancel_queued_job_skips_processing():
 
     class MockJob:
         def __init__(self):
+            self.id = IMPORT_ID
             self.campaign_id = uuid.UUID(str(CAMPAIGN_ID))
             self.status = ImportStatus.CANCELLING
             self.cancelled_at = cancel_ts

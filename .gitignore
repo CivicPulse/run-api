@@ -255,6 +255,9 @@ web/.bg-shell/
 .firecrawl/
 .playwright-cli/
 .claude/scheduled_tasks.lock
+.codex
+/package.json
+/package-lock.json
 
 # Playwright test artifacts (named variants)
 web/playwright-report/

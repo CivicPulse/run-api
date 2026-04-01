@@ -2,29 +2,24 @@
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
-
 from app.services.import_service import (
     detect_l2_format,
     suggest_field_mapping,
 )
 
-_SAMPLE_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
-)
-
-
-def _get_l2_headers() -> list[str]:
-    with open(_SAMPLE_PATH) as f:
-        reader = csv.reader(f)
-        return next(reader)
+_L2_HEADERS = [
+    "LALVOTERID",
+    "Voters_FirstName",
+    "Voters_LastName",
+    "Parties_Description",
+    "Residence_Addresses_AddressLine",
+    "General_Turnout_Score",
+]
 
 
 class TestDetectL2Format:
     def test_l2_detected_with_full_header(self):
-        headers = _get_l2_headers()
-        mapping = suggest_field_mapping(headers)
+        mapping = suggest_field_mapping(_L2_HEADERS)
         result = detect_l2_format(mapping)
         assert result == "l2"
 

@@ -43,6 +43,7 @@ const campaignRoles = [
 const wizardSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(100),
   type: z.enum(["federal", "state", "local", "ballot"]),
+  organization_id: z.string().uuid("Select an organization before creating a campaign"),
   candidate_name: z.string().optional().or(z.literal("")),
   party_affiliation: z.string().optional().or(z.literal("")),
   jurisdiction_name: z.string().optional().or(z.literal("")),
@@ -136,6 +137,7 @@ function NewCampaignPage() {
     defaultValues: {
       name: "",
       type: "" as FormValues["type"],
+      organization_id: currentOrg?.id ?? "",
       candidate_name: "",
       party_affiliation: "",
       jurisdiction_name: "",
@@ -149,7 +151,14 @@ function NewCampaignPage() {
     formState: { errors },
     trigger,
     getValues,
+    setValue,
   } = form
+
+  useEffect(() => {
+    setValue("organization_id", currentOrg?.id ?? "", {
+      shouldValidate: true,
+    })
+  }, [currentOrg?.id, setValue])
 
   // Custom form guard that can be bypassed after successful submit.
   // We don't use useFormGuard because its shouldBlockFn closure
@@ -177,6 +186,7 @@ function NewCampaignPage() {
       const body: Record<string, unknown> = {
         name: data.name,
         type: data.type,
+        organization_id: data.organization_id,
       }
       if (data.candidate_name) body.candidate_name = data.candidate_name
       if (data.party_affiliation)
@@ -190,7 +200,7 @@ function NewCampaignPage() {
 
   const handleNext = async () => {
     if (step === 0) {
-      const valid = await trigger(["name", "type"])
+      const valid = await trigger(["name", "type", "organization_id"])
       if (!valid) return
     }
     setStep((s) => Math.min(s + 1, WIZARD_STEPS.length - 1))
@@ -226,6 +236,12 @@ function NewCampaignPage() {
 
   const handleSubmit = async (skipInvites: boolean = false) => {
     setSubmitError(null)
+    if (!currentOrg?.id) {
+      setSubmitError(
+        "Switch into an organization before creating a campaign.",
+      )
+      return
+    }
     const data = getValues()
     let campaign: Campaign
 
@@ -298,6 +314,32 @@ function NewCampaignPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organization *</Label>
+                <Input
+                  id="organization"
+                  value={currentOrg?.name ?? ""}
+                  readOnly
+                  disabled
+                  aria-invalid={!!errors.organization_id}
+                />
+                {currentOrg ? (
+                  <p className="text-sm text-muted-foreground">
+                    Campaigns are created in the current org. Use the org
+                    switcher first if you need a different org.
+                  </p>
+                ) : (
+                  <p className="text-sm text-destructive">
+                    Switch into an organization before creating a campaign.
+                  </p>
+                )}
+                {errors.organization_id && (
+                  <p className="text-sm text-destructive">
+                    {errors.organization_id.message}
+                  </p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="name">Campaign Name *</Label>
                 <Input

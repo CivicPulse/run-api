@@ -33,21 +33,28 @@ async def create_campaign(
     user: AuthenticatedUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new campaign with ZITADEL org provisioning.
+    """Create a new campaign in an existing organization.
 
-    Any authenticated user can create a campaign (they become owner).
-    Reuses the user's existing organization when one exists.
+    Any authenticated user can create a campaign in their current organization
+    (they become owner). Campaign creation must use an existing org and never
+    provisions a new organization.
     """
     await ensure_user_synced(user, db)
 
-    # Reuse the user's existing organization if they have one,
-    # instead of creating a new ZITADEL org for every campaign.
     from app.models.organization import Organization
 
     user_org_ids = user.org_ids if user.org_ids else [user.org_id]
-    existing_org = await db.scalar(
-        select(Organization).where(Organization.zitadel_org_id.in_(user_org_ids))
+    organization = await db.scalar(
+        select(Organization).where(
+            Organization.id == body.organization_id,
+            Organization.zitadel_org_id.in_(user_org_ids),
+        )
     )
+    if organization is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Selected organization is not available",
+        )
 
     zitadel = request.app.state.zitadel_service
     campaign = await _service.create_campaign(
@@ -61,7 +68,7 @@ async def create_campaign(
         election_date=body.election_date,
         candidate_name=body.candidate_name,
         party_affiliation=body.party_affiliation,
-        organization_id=existing_org.id if existing_org else None,
+        organization_id=organization.id,
     )
     return CampaignResponse.model_validate(campaign)
 

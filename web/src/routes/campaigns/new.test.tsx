@@ -11,6 +11,10 @@ const mockInvalidateQueries = vi.hoisted(() => vi.fn())
 const mockCreateCampaignMutateAsync = vi.hoisted(() => vi.fn())
 const mockAddMemberToCampaignMutateAsync = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
+const mockCurrentOrg = vi.hoisted(() => ({
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "Test Org",
+}))
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => {
@@ -186,7 +190,7 @@ vi.mock("@/hooks/useOrg", () => ({
 
 vi.mock("@/hooks/useOrgPermissions", () => ({
   useOrgPermissions: () => ({
-    currentOrg: { name: "Test Org" },
+    currentOrg: mockCurrentOrg,
   }),
 }))
 
@@ -244,6 +248,7 @@ describe("New Campaign Page", () => {
         expect.objectContaining({
           name: "Regression Test Campaign",
           type: "local",
+          organization_id: mockCurrentOrg.id,
         }),
       )
     })

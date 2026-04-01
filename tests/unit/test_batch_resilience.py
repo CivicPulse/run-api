@@ -71,6 +71,11 @@ def _make_mock_job(
     job.error_report_key = None
     job.error_message = None
     job.cancelled_at = None
+    job.last_progress_at = None
+    job.orphaned_at = None
+    job.orphaned_reason = None
+    job.source_exhausted_at = None
+    job.recovery_started_at = None
     return job
 
 
@@ -587,11 +592,47 @@ def test_settings_has_batch_size():
     assert s.import_batch_size == 1000
 
 
+def test_settings_has_orphan_threshold():
+    """Settings has import_orphan_threshold_minutes with default 30."""
+    from app.core.config import Settings
+
+    s = Settings()
+    assert s.import_orphan_threshold_minutes == 30
+
+
 def test_response_schema_has_last_committed_row():
     """ImportJobResponse schema includes last_committed_row field."""
     from app.schemas.import_job import ImportJobResponse
 
     assert "last_committed_row" in ImportJobResponse.model_fields
+
+
+def test_model_has_recovery_metadata_fields():
+    """ImportJob model exposes recovery metadata fields."""
+    from app.models.import_job import ImportJob
+
+    for field in (
+        "last_progress_at",
+        "orphaned_at",
+        "orphaned_reason",
+        "source_exhausted_at",
+        "recovery_started_at",
+    ):
+        assert hasattr(ImportJob, field)
+
+
+def test_response_schema_has_recovery_metadata_fields():
+    """ImportJobResponse schema exposes recovery metadata fields."""
+    from app.schemas.import_job import ImportJobResponse
+
+    for field in (
+        "last_progress_at",
+        "orphaned_at",
+        "orphaned_reason",
+        "source_exhausted_at",
+        "recovery_started_at",
+    ):
+        assert field in ImportJobResponse.model_fields
 
 
 @pytest.mark.asyncio
@@ -657,15 +698,15 @@ async def test_task_resume_detection(campaign_id: str, import_job_id: str):
 
 @pytest.mark.asyncio
 async def test_task_does_not_set_completed(campaign_id: str, import_job_id: str):
-    """import_task.py does NOT set status=COMPLETED (service handles it)."""
+    """process_import itself does not finalize imports to COMPLETED."""
     import inspect
 
-    source = inspect.getsource(
-        __import__("app.tasks.import_task", fromlist=["import_task"])
-    )
+    from app.tasks.import_task import process_import
 
-    # Check that the task does NOT assign ImportStatus.COMPLETED
+    source = inspect.getsource(process_import)
+
+    # Fresh import execution still delegates COMPLETED finalization to the service.
     assert "ImportStatus.COMPLETED" not in source, (
-        "import_task.py should NOT set ImportStatus.COMPLETED -- "
-        "that responsibility moved to import_service.py"
+        "process_import should not set ImportStatus.COMPLETED -- "
+        "that responsibility remains in import_service.py"
     )

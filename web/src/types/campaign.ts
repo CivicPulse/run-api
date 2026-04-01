@@ -20,6 +20,7 @@ export interface Campaign {
 export interface CampaignCreate {
   name: string
   type: CampaignType
+  organization_id: string
   jurisdiction_fips?: string | null
   jurisdiction_name?: string | null
   election_date?: string | null

@@ -96,10 +96,21 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Import cancellation with cooperative batch-loop detection, CANCELLING/CANCELLED status lifecycle, cancel endpoint (202 Accepted), and frontend cancel UI with ConfirmDialog — v1.6
 - ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
 - ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
+- ✓ Import recovery with orphan detection, startup reclaim, advisory-lock protection, and crash-resume verification — v1.10
 
 ### Active
 
-(No active milestone — ready for `/gsd:new-milestone`)
+## Current Milestone: v1.11 Faster Imports
+
+**Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work from the critical path.
+
+**Target features:**
+- Chunk schema and configuration for `ImportChunk` records, adaptive chunk sizing, and serial-path bypass
+- Parent split plus parallel child processing with per-batch commits and RLS restoration
+- Completion aggregation, merged error reporting, and `COMPLETED_WITH_ERRORS` status
+- Chunk resilience and cancellation propagation without losing partial completed work
+- Post-chunk secondary work offloading for phone creation and derived updates
+- Throughput and ETA UI for long-running imports
 
 ### Out of Scope
 
@@ -127,7 +138,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days.
+v1.10 Import Recovery shipped on 2026-04-01. The platform now self-heals orphaned import jobs across worker restarts and deploy interruptions, with durable progress timestamps, startup recovery scans, advisory-lock protection, and automated crash-resume coverage. v1.11 Faster Imports is the active next milestone.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
@@ -192,4 +203,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after v1.6 milestone completion*
+*Last updated: 2026-04-01 after v1.10 milestone completion*
