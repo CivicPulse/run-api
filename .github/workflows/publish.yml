@@ -1,11 +1,13 @@
 name: Build & Publish
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths-ignore:
-      - 'k8s/**'
+  # push trigger temporarily disabled for manual deploy — re-enable when resuming CI-driven deploys
+  # push:
+  #   branches: [main]
+  #   tags: ["v*"]
+  #   paths-ignore:
+  #     - 'k8s/**'
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
