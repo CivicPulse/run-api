@@ -60,7 +60,9 @@ async def _handle_health(
 async def _start_health_server() -> asyncio.Server:
     """Start the TCP health server on HEALTH_PORT."""
     server = await asyncio.start_server(
-        _handle_health, "0.0.0.0", HEALTH_PORT  # noqa: S104
+        _handle_health,
+        "0.0.0.0",
+        HEALTH_PORT,  # noqa: S104
     )
     logger.info("Health endpoint listening on :{}", HEALTH_PORT)
     return server

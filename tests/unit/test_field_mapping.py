@@ -32,8 +32,7 @@ class TestSuggestFieldMapping:
         )
         assert result["Parties_Description"]["field"] == "party"
         assert (
-            result["Residence_Addresses_AddressLine"]["field"]
-            == "registration_line1"
+            result["Residence_Addresses_AddressLine"]["field"] == "registration_line1"
         )
 
     def test_unknown_column_returns_none(self):
@@ -74,9 +73,7 @@ class TestSuggestFieldMapping:
             ["first_name", "last_name", "city", "state", "zip_code"]
         )
         # All should map to distinct fields
-        mapped = [
-            v["field"] for v in result.values() if v["field"] is not None
-        ]
+        mapped = [v["field"] for v in result.values() if v["field"] is not None]
         assert len(mapped) == len(set(mapped)), "Duplicate field mappings found"
 
     def test_empty_columns_list(self):
@@ -92,15 +89,10 @@ class TestSuggestFieldMapping:
 
     def test_political_fields(self):
         """Political/district columns map correctly."""
-        result = suggest_field_mapping(
-            ["party", "precinct", "congressional_district"]
-        )
+        result = suggest_field_mapping(["party", "precinct", "congressional_district"])
         assert result["party"]["field"] == "party"
         assert result["precinct"]["field"] == "precinct"
-        assert (
-            result["congressional_district"]["field"]
-            == "congressional_district"
-        )
+        assert result["congressional_district"]["field"] == "congressional_district"
 
     def test_address_fields(self):
         """Address columns map correctly to registration_ canonical names."""
@@ -128,9 +120,7 @@ class TestSuggestFieldMapping:
         assert result["General_Turnout_Score"]["field"] == "propensity_general"
 
         result = suggest_field_mapping(["Primary_Turnout_Score"])
-        assert (
-            result["Primary_Turnout_Score"]["field"] == "propensity_primary"
-        )
+        assert result["Primary_Turnout_Score"]["field"] == "propensity_primary"
 
         # Test L2 mailing aliases
         result = suggest_field_mapping(["Mail_VAddressLine1"])
@@ -154,9 +144,7 @@ class TestSuggestFieldMapping:
 
         # Test L2 demographic aliases
         result = suggest_field_mapping(["CommercialData_MaritalStatus"])
-        assert (
-            result["CommercialData_MaritalStatus"]["field"] == "marital_status"
-        )
+        assert result["CommercialData_MaritalStatus"]["field"] == "marital_status"
 
     def test_cell_phone_maps_to_special_field(self):
         """Voters_CellPhoneFull maps to __cell_phone special field."""
@@ -171,12 +159,8 @@ class TestSuggestFieldMapping:
 
     def test_unmapped_l2_commercial_field(self):
         """Unmapped L2 commercial fields return None."""
-        result = suggest_field_mapping(
-            ["CommercialData_EstimatedHHIncomeAmount"]
-        )
-        assert (
-            result["CommercialData_EstimatedHHIncomeAmount"]["field"] is None
-        )
+        result = suggest_field_mapping(["CommercialData_EstimatedHHIncomeAmount"])
+        assert result["CommercialData_EstimatedHHIncomeAmount"]["field"] is None
 
     def test_match_type_exact_for_known_alias(self):
         """Known aliases return match_type='exact'."""

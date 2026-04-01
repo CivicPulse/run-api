@@ -70,9 +70,7 @@ class TestBuildVoterQuery:
 
     def test_tags_any_filter(self):
         """build_voter_query with tags_any produces EXISTS subquery."""
-        q = self._build_query(
-            VoterFilter(tags_any=["yard-sign", "strong-supporter"])
-        )
+        q = self._build_query(VoterFilter(tags_any=["yard-sign", "strong-supporter"]))
         sql = self._compiled_sql(q)
         assert "voter_tag" in sql.lower()
 

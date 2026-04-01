@@ -128,10 +128,7 @@ async def test_scan_for_orphaned_imports_updates_metadata_and_returns_candidates
     assert update_calls[0].args[1]["import_job_id"] == stale_id
     assert update_calls[0].args[1]["reason"] == "progress_stale_timeout"
     assert update_calls[1].args[1]["import_job_id"] == exhausted_id
-    assert (
-        update_calls[1].args[1]["reason"]
-        == "source_exhausted_finalization_stalled"
-    )
+    assert update_calls[1].args[1]["reason"] == "source_exhausted_finalization_stalled"
 
 
 @pytest.mark.asyncio

@@ -10,9 +10,7 @@ from app.services.import_service import (
     suggest_field_mapping,
 )
 
-_SAMPLE_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
-)
+_SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
 
 
 def _get_l2_headers() -> list[str]:

@@ -218,10 +218,14 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
                 )
             ),  # org membership lookup
             MagicMock(
-                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                )
             ),  # campaigns in org
             MagicMock(
-                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                )
             ),  # fallback campaigns by org id
             MagicMock(
                 scalar_one_or_none=MagicMock(return_value=organization)

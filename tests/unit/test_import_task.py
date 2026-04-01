@@ -319,9 +319,7 @@ async def test_recover_import_finalizes_exhausted_job(
 
 
 @pytest.mark.asyncio
-async def test_recover_import_skips_terminal_jobs(
-    import_job_id: str, campaign_id: str
-):
+async def test_recover_import_skips_terminal_jobs(import_job_id: str, campaign_id: str):
     """Recovery does not reclaim jobs already in a terminal status."""
     from app.models.import_job import ImportStatus
 

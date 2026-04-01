@@ -11,9 +11,7 @@ from app.services.import_service import (
 )
 
 # Read actual L2 header row from sample file
-_SAMPLE_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
-)
+_SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
 
 
 def _get_l2_headers() -> list[str]:
@@ -112,8 +110,7 @@ class TestL2DataColumnMapping:
         result = suggest_field_mapping(headers)
         for col in _VOTING_HISTORY_COLS:
             assert result[col]["field"] is None, (
-                f"Voting history column '{col}' should not be "
-                f"mapped to a field"
+                f"Voting history column '{col}' should not be mapped to a field"
             )
 
     def test_mailing_families_hhcount_maps_correctly(self):
@@ -163,20 +160,14 @@ class TestL2DataColumnMapping:
         headers = _get_l2_headers()
         assert len(headers) == 55, f"Expected 55 L2 columns, got {len(headers)}"
         data_cols = [h for h in headers if h not in _VOTING_HISTORY_COLS]
-        assert len(data_cols) == 47, (
-            f"Expected 47 data columns, got {len(data_cols)}"
-        )
+        assert len(data_cols) == 47, f"Expected 47 data columns, got {len(data_cols)}"
 
     def test_mapped_data_column_count(self):
         """All 47 data columns map to a non-None field."""
         headers = _get_l2_headers()
         result = suggest_field_mapping(headers)
-        data_cols = [
-            h for h in headers if h not in _VOTING_HISTORY_COLS
-        ]
-        mapped_count = sum(
-            1 for c in data_cols if result[c]["field"] is not None
-        )
+        data_cols = [h for h in headers if h not in _VOTING_HISTORY_COLS]
+        mapped_count = sum(1 for c in data_cols if result[c]["field"] is not None)
         assert mapped_count == 47, (
             f"Expected 47 mapped data columns, got {mapped_count}"
         )
