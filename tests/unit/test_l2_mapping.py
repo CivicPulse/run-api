@@ -5,6 +5,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pytest
+
 from app.services.import_service import (
     _VOTER_COLUMNS,
     suggest_field_mapping,
@@ -12,6 +14,7 @@ from app.services.import_service import (
 
 # Read actual L2 header row from sample file
 _SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
+_SAMPLE_EXISTS = _SAMPLE_PATH.exists()
 
 
 def _get_l2_headers() -> list[str]:
@@ -86,7 +89,13 @@ _VOTING_HISTORY_COLS = {
 }
 
 
+_skip_no_csv = pytest.mark.skipif(
+    not _SAMPLE_EXISTS, reason="L2 sample CSV not present"
+)
+
+
 class TestL2DataColumnMapping:
+    @_skip_no_csv
     def test_all_l2_data_columns_map(self):
         headers = _get_l2_headers()
         result = suggest_field_mapping(headers)
@@ -96,6 +105,7 @@ class TestL2DataColumnMapping:
                 f"expected {expected_field}"
             )
 
+    @_skip_no_csv
     def test_all_data_columns_are_exact_match(self):
         headers = _get_l2_headers()
         result = suggest_field_mapping(headers)
@@ -105,6 +115,7 @@ class TestL2DataColumnMapping:
                 f"{result[col]['match_type']}, expected 'exact'"
             )
 
+    @_skip_no_csv
     def test_voting_history_columns_not_mapped(self):
         headers = _get_l2_headers()
         result = suggest_field_mapping(headers)
@@ -113,6 +124,7 @@ class TestL2DataColumnMapping:
                 f"Voting history column '{col}' should not be mapped to a field"
             )
 
+    @_skip_no_csv
     def test_mailing_families_hhcount_maps_correctly(self):
         """Mailing_Families_HHCount maps to mailing_household_size
         per D-13 (not blocked by duplicate guard)."""
@@ -156,12 +168,14 @@ class TestL2DataColumnMapping:
                 f"got {result[col]['match_type']}"
             )
 
+    @_skip_no_csv
     def test_header_count_matches_expected(self):
         headers = _get_l2_headers()
         assert len(headers) == 55, f"Expected 55 L2 columns, got {len(headers)}"
         data_cols = [h for h in headers if h not in _VOTING_HISTORY_COLS]
         assert len(data_cols) == 47, f"Expected 47 data columns, got {len(data_cols)}"
 
+    @_skip_no_csv
     def test_mapped_data_column_count(self):
         """All 47 data columns map to a non-None field."""
         headers = _get_l2_headers()
