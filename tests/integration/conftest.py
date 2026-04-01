@@ -6,11 +6,12 @@ and verify RLS enforcement using the app_user role.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -19,11 +20,15 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.time import utcnow
 
-# Database URLs for integration tests
-# Superuser connection for setup/teardown
-SUPERUSER_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/run_api"
-# app_user connection for RLS verification
-APP_USER_URL = "postgresql+asyncpg://app_user:app_password@localhost:5432/run_api"
+# Database URLs for integration tests (port from env, default 5432)
+_DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
+SUPERUSER_URL = (
+    f"postgresql+asyncpg://postgres:postgres@localhost:{_DB_PORT}/run_api"
+)
+APP_USER_URL = (
+    f"postgresql+asyncpg://app_user:app_password"
+    f"@localhost:{_DB_PORT}/run_api"
+)
 
 
 @pytest.fixture(scope="session")
@@ -35,8 +40,24 @@ def superuser_engine():
 
 @pytest.fixture(scope="session")
 def app_user_engine():
-    """App user engine for RLS testing."""
+    """App user engine for RLS testing.
+
+    Registers a checkout listener that resets RLS context to a safe
+    null-UUID, matching the app's production behavior. Without this,
+    the config defaults to empty string which fails ``::uuid`` casts
+    in RLS policies.
+    """
     engine = create_async_engine(APP_USER_URL, echo=False)
+
+    @event.listens_for(engine.sync_engine, "checkout")
+    def _reset_rls(dbapi_conn, rec, proxy):
+        cur = dbapi_conn.cursor()
+        cur.execute(
+            "SELECT set_config('app.current_campaign_id',"
+            " '00000000-0000-0000-0000-000000000000', false)"
+        )
+        cur.close()
+
     yield engine
 
 
@@ -111,8 +132,8 @@ async def two_campaigns(superuser_session):
             "id": campaign_a_id,
             "org_id": f"org-a-{campaign_a_id.hex[:8]}",
             "name": "Campaign A",
-            "type": "state",
-            "status": "active",
+            "type": "STATE",
+            "status": "ACTIVE",
             "created_by": user_a_id,
             "now": utcnow(),
         },
@@ -128,8 +149,8 @@ async def two_campaigns(superuser_session):
             "id": campaign_b_id,
             "org_id": f"org-b-{campaign_b_id.hex[:8]}",
             "name": "Campaign B",
-            "type": "federal",
-            "status": "active",
+            "type": "FEDERAL",
+            "status": "ACTIVE",
             "created_by": user_b_id,
             "now": utcnow(),
         },

@@ -63,14 +63,14 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
             campaign_a_id,
             f"org-pa-{campaign_a_id.hex[:8]}",
             "Phone Campaign A",
-            "state",
+            "STATE",
             user_a_id,
         ),
         (
             campaign_b_id,
             f"org-pb-{campaign_b_id.hex[:8]}",
             "Phone Campaign B",
-            "federal",
+            "FEDERAL",
             user_b_id,
         ),
     ]:
@@ -80,7 +80,7 @@ async def two_campaigns_with_phone_banking_data(superuser_session):
                 " type, status, created_by, created_at,"
                 " updated_at) "
                 "VALUES (:id, :org_id, :name, :type,"
-                " 'active', :created_by, :now, :now)"
+                " 'ACTIVE', :created_by, :now, :now)"
             ),
             {
                 "id": cid,
