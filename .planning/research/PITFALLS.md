@@ -1,416 +1,292 @@
-# Domain Pitfalls
+# Domain Pitfalls: Chunked Parallel Import Pipeline
 
-**Domain:** Background task processing, resumable imports, L2 voter file parsing
-**Project:** CivicPulse Run API v1.6 Imports
-**Researched:** 2026-03-28
-**Overall confidence:** HIGH (based on direct codebase analysis of existing import pipeline, RLS architecture, transaction scoping, and documented crash behavior)
+**Domain:** Adding parallel chunk processing to an existing serial CSV import pipeline
+**System:** CivicPulse Run API (FastAPI, SQLAlchemy async, PostgreSQL + RLS, Procrastinate job queue)
+**Researched:** 2026-04-01
+**Overall confidence:** HIGH (based on direct codebase analysis + PostgreSQL concurrency documentation)
+
+**Context:** The v1.6 serial pipeline already works: Procrastinate job queue with per-campaign queueing lock, per-batch commits with `commit_and_restore_rls`, crash resume from `last_committed_row`, streaming CSV from MinIO, cooperative cancellation via `cancelled_at`, and upsert on `(campaign_id, source_type, source_id)`. This document covers pitfalls specific to adding parallel chunk processing on top of that working system.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause data corruption, security breaches, or require rewrites.
+Mistakes that cause deadlocks, data corruption, silent data loss, or require rewrites.
 
-### Pitfall 1: RLS Context Lost After Per-Batch Commit
+### Pitfall 1: Deadlock from Parallel Upserts on Overlapping Keys
 
-**What goes wrong:** The current `set_campaign_context()` uses `set_config('app.current_campaign_id', :campaign_id, true)` where the third parameter `true` means transaction-scoped. When the import commits after each batch (required for resumability), the RLS context is cleared. The next batch's INSERT hits RLS policies that compare `campaign_id = current_setting('app.current_campaign_id', true)::uuid` against the reset zero-UUID from the `reset_rls_context` checkout handler, causing either silent data invisibility or INSERT failures.
+**What goes wrong:** Two chunk jobs process batches containing the same `source_id` (same voter appearing in different chunks -- duplicate rows in the CSV, or overlapping chunk boundaries). Both execute `INSERT ... ON CONFLICT DO UPDATE` targeting the `(campaign_id, source_type, source_id)` unique index. PostgreSQL acquires row-level locks sequentially during a bulk INSERT. If chunk A locks voter X then tries to lock voter Y, while chunk B already holds Y and tries X, a classic deadlock occurs.
 
-**Why it happens:** This is a deliberate security design in the current system (see `app/db/rls.py` line 28 and `app/db/session.py` lines 23-38). Transaction-scoped RLS prevents cross-campaign leaks when connections return to the pool. But this same protection breaks when you need multiple commits in one logical operation.
+**Why it happens:** The current upsert in `process_csv_batch` (import_service.py lines 962-988) does not sort rows before inserting. With a single serial task, lock ordering is irrelevant because no other transaction competes for the same rows. The moment two chunk tasks run concurrently against the same campaign, non-deterministic lock acquisition order creates deadlock potential.
 
-**Consequences:**
-- First batch imports successfully, all subsequent batches fail with RLS violations or silently produce zero rows
-- Import appears to complete but only imported the first 1000 rows (one batch)
-- Or: the defense-in-depth checkout handler does not fire between commits on the same connection (since no pool checkout occurs), leaving the context cleared by the transaction commit with no new context set
+**Consequences:** PostgreSQL detects the deadlock and kills one transaction with `ERROR: deadlock detected`. The killed chunk fails. If retry logic is naive, the same deadlock repeats. Even if transient, it causes batch-level retries that slow the import and produce confusing error reports.
 
 **Prevention:**
-- Re-call `set_campaign_context(session, campaign_id)` immediately after every `session.commit()` inside the batch loop -- this is the simplest and most reliable fix
-- For the worker process specifically, consider using session-scoped RLS (`false` as the third parameter to `set_config`) since worker connections are not shared with HTTP request handlers and do not return to a shared pool
-- Add an assertion check after each commit: `SELECT current_setting('app.current_campaign_id', true)` must return the expected value before proceeding with the next batch
-- Create a helper `commit_and_restore_rls(session, campaign_id)` that wraps both operations atomically
+1. **Ensure chunks contain disjoint key sets.** This is the primary defense. During chunk splitting, if the CSV is pre-sorted by `source_id` (L2 files typically are, sorted by `lalvoterid`), splitting by row ranges naturally produces disjoint sets. If not pre-sorted, use hash-partitioning: `hash(source_id) % num_chunks` assigns each voter to exactly one chunk.
+2. **Sort rows by `source_id` within each batch before upserting.** Sort the `valid_voters` list by `(source_type, source_id)` before building the INSERT statement. This guarantees all concurrent transactions acquire locks in the same order -- the canonical PostgreSQL deadlock prevention strategy.
+3. **Add retry with backoff for deadlock errors.** Even with sorting, edge cases exist (duplicate `source_id` values across chunk boundaries in unsorted files). Catch `DeadlockDetected` (psycopg error code `40P01`) and retry the batch up to 3 times with jittered backoff.
 
-**Detection:** Import job shows `imported_rows = 1000` (exactly one batch size) with status COMPLETED but actual voter count in the database is only 1000 out of 113K. No errors reported because the RLS violation silently filters results or the upsert returns zero affected rows.
+**Detection:** Monitor PostgreSQL logs for `deadlock detected` errors. Add structured log fields for `chunk_id` and `batch_number` so deadlocks can be correlated to specific chunk pairs.
 
-**Phase:** Must be addressed in the very first implementation phase when converting to per-batch commits. This is the single most dangerous pitfall in the entire migration.
+**Phase assignment:** Phase 1 (chunk splitting design). The partitioning strategy determines whether this pitfall is structurally possible.
+
+**Confidence:** HIGH -- PostgreSQL deadlock behavior with concurrent INSERT ON CONFLICT is extensively documented. See [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) and [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02).
 
 ---
 
-### Pitfall 2: Worker Cannot Read ImportJob Due to RLS Chicken-and-Egg
+### Pitfall 2: RLS Context Isolation Between Concurrent Chunk Jobs
 
-**What goes wrong:** The `import_jobs` table has RLS enabled (it is listed in `_CAMPAIGN_TABLES` in migration 002, line 41). The background worker needs to read the ImportJob to discover `campaign_id` so it can set RLS context -- but it cannot read the ImportJob without RLS context already being set. The current `process_import` task (line 37 in `import_task.py`) does `session.get(ImportJob, uuid)` before `set_campaign_context()`, which works only because TaskIQ's InMemoryBroker runs in the same process as the API where the connection may still have residual context.
+**What goes wrong:** Chunk jobs run as separate Procrastinate tasks, each creating their own session via `async_session_factory()`. If two chunk tasks happen to acquire the same physical connection from the asyncpg pool (one finishes and returns it, the other picks it up), and the sequence is: chunk A commits (clearing transaction-scoped `set_config`), returns connection to pool, chunk B acquires that connection and issues a query before calling `set_campaign_context` -- chunk B operates with no RLS context.
 
-**Why it happens:** The current system uses an `InMemoryBroker` (broker.py line 9) that runs tasks in the API process. Connections may retain RLS context from the HTTP request that queued the task. Moving to Procrastinate (a separate worker process with its own connection pool) means fresh connections with the zero-UUID default set by `reset_rls_context` at checkout time.
+**Why it happens:** The current system correctly uses `set_config('app.current_campaign_id', :id, true)` with transaction-scoped lifetime (third param `true`). COMMIT resets the config. `commit_and_restore_rls` immediately restores it. But this safety depends on each task managing its own session lifecycle. The risk is in error paths: if a chunk task crashes after COMMIT but before `set_campaign_context` restores context, and the pool recycles that connection.
 
-**Consequences:**
-- Worker starts, tries to load ImportJob, gets `None` (RLS filters it out), raises `ValueError("ImportJob not found")`
-- Job permanently stuck in QUEUED status
-- User sees "processing" forever with no progress and no error
+**Consequences:** Silent data isolation failure. Voters could be inserted without proper `campaign_id` filtering, or queries return zero rows. This is a security-critical bug.
 
 **Prevention:**
-- Pass `campaign_id` as a task argument alongside `import_job_id` so the worker can set RLS context before reading anything. The campaign_id is already available at dispatch time in `imports.py` line 248 where `process_import.kiq(str(import_id))` is called
-- Alternative: query `import_jobs` with a raw SQL query that bypasses RLS (e.g., `text("SELECT campaign_id FROM import_jobs WHERE id = :id")` executed before enabling RLS), but this is fragile and defeats the purpose of RLS
-- Recommended approach: pass `campaign_id` as a Procrastinate task keyword argument. Change dispatch from `process_import.kiq(str(import_id))` to `process_import.defer_async(import_job_id=str(import_id), campaign_id=str(campaign_id))`
+1. **The existing pool checkout event listener is the primary defense.** The v1.5 `reset_rls_context` handler on pool `checkout` resets `app.current_campaign_id` on every connection acquisition. Verify this fires for worker sessions too.
+2. **Each chunk task must call `set_campaign_context` before ANY query.** The current `process_import` task already does this (import_task.py line 34). Replicate this pattern exactly in chunk tasks.
+3. **Never share a session between chunk tasks.** Each chunk task must create its own session via `async_session_factory()`. Do not pass a session from the parent coordinator to child chunks.
+4. **Wrap commit-then-restore sequences in try/finally.** If `commit_and_restore_rls` raises during `set_campaign_context` after commit, the session is in an undefined RLS state. The outer error handler must catch this and mark the chunk as failed.
+5. **Add an assertion at batch start:** `SELECT current_setting('app.current_campaign_id', true)` and verify it matches expected `campaign_id`. Log CRITICAL if mismatch.
 
-**Detection:** All background imports fail immediately with "ImportJob not found" in worker logs. Zero rows ever processed. Every import stays in QUEUED status indefinitely.
+**Phase assignment:** Phase 1 (chunk task implementation). This is a copy-paste concern -- the pattern exists, it just must be replicated faithfully.
 
-**Phase:** Must be solved in the first phase alongside Procrastinate integration. Cannot be deferred.
+**Confidence:** HIGH -- verified `set_config(..., true)` is transaction-scoped in `app/db/rls.py` line 28, and `commit_and_restore_rls` exists at line 33.
 
 ---
 
-### Pitfall 3: Entire File Downloaded Into Memory Before Parsing
+### Pitfall 3: Cancellation Not Propagated to Child Chunk Jobs
 
-**What goes wrong:** The current `process_import_file` (import_service.py lines 872-876) downloads the entire CSV into memory: `chunks = []; async for chunk in storage.download_file(job.file_key): chunks.append(chunk); file_content = b"".join(chunks)`. It then decodes into a Python string (line 881) and wraps in `StringIO` (line 892). For a 30MB CSV, this means approximately 30MB raw bytes + 30MB decoded string + 30MB StringIO buffer = ~90MB just for the file content, before any row processing begins. With 113K rows of parsed dicts, error accumulation, and SQLAlchemy object tracking, total memory easily exceeds 512MB.
+**What goes wrong:** User cancels the import via the cancel endpoint, which sets `cancelled_at` on the parent `ImportJob`. Child chunk jobs do not see this because they are separate Procrastinate tasks. Each chunk currently would need to poll a different row (or none at all). Chunks continue processing to completion despite the user requesting cancellation.
 
-**Why it happens:** The S3 download is already chunked (`storage.download_file` yields chunks via `response["Body"].iter_chunks()`), but the code immediately joins all chunks into one bytestring. The `csv.DictReader` API requires a file-like object, which is easy to create from a full string but requires a custom wrapper for streaming.
+**Why it happens:** The current cancellation mechanism is cooperative: the batch loop in `process_import_file` (import_service.py line 1304) refreshes the `ImportJob` row after each batch and checks `cancelled_at`. This works for a single serial task because it is the only task reading that row. With parallel chunks, chunk tasks need to know to check the parent job's `cancelled_at`, not their own chunk record.
 
-**Consequences:**
-- Pod OOM-killed at 512MB limit (the documented crash in `docs/issues/large-voter-import-crash.md`)
-- Exit code 3 after ~30 seconds, 0 rows imported
-- Sentry may not capture the error because OOM kills the process before the error handler runs
+**Consequences:** Wasted compute (chunks run to completion after cancel). User sees "cancelling" status but import keeps running. If the parent marks itself CANCELLED while chunks are still writing, final progress aggregation is inconsistent.
 
 **Prevention:**
-- Download to a temporary file on disk and parse from disk -- this is the simplest fix and avoids memory pressure entirely. The worker pod's filesystem is writable (`readOnlyRootFilesystem: false` in the deployment spec)
-- Alternatively: write a line-buffered wrapper around the S3 chunk stream that yields complete lines, feeding them to `csv.reader` one line at a time
-- Or: increase the worker pod's memory limit (separate from API pods) to accommodate full-file loading for files up to ~100MB, with streaming as a future optimization
-- Track the decoded file size on the ImportJob so the worker can pre-check whether the file fits in available memory
+1. **Chunk tasks must poll the parent job's `cancelled_at` after each batch.** Add a lightweight query: `SELECT cancelled_at FROM import_jobs WHERE id = :parent_id`. Single-row primary key lookup, negligible cost.
+2. **Do NOT rely on Procrastinate's built-in job cancellation** for this. The `cancelled_at` timestamp on `ImportJob` is the authoritative signal, and this must remain true for consistency with the existing cancel endpoint.
+3. **Parent coordinator should not enqueue new chunks after cancel.** If using a two-phase approach (count/split then enqueue), check `cancelled_at` before each `defer_async`.
+4. **On cancellation, mark chunk status** so the parent aggregator knows which chunks were cancelled vs completed vs failed.
+5. **For chunks already queued in Procrastinate but not yet started,** the chunk task should check `cancelled_at` at startup (matching the existing pre-check in import_task.py line 55) and exit immediately.
 
-**Detection:** Pod exit code 3 (OOM) or exit code 137 (SIGKILL from K8s OOM killer). The `docs/issues/large-voter-import-crash.md` documents exactly this: 113K rows, 30MB file, 512MB limit, exit code 3 after ~30s.
+**Detection:** After cancellation, query all child chunk records. If any are still PROCESSING more than a batch-timeout interval after `cancelled_at` was set, log a warning.
 
-**Phase:** Address in the streaming/memory optimization phase. Can be partially mitigated by just moving processing to a separate worker pod with higher memory limits, but proper streaming or temp-file approach is needed for production reliability.
+**Phase assignment:** Phase 2 (cancellation integration). Can be deferred past basic chunk processing but must be addressed before the feature ships.
+
+**Confidence:** HIGH -- the current cancellation mechanism is verified in `import_service.py` line 1304 and `import_task.py` line 55.
 
 ---
 
-### Pitfall 4: Single Transaction Means All-or-Nothing (No Resumability)
+### Pitfall 4: Progress Aggregation Race Conditions (Lost Updates)
 
-**What goes wrong:** The current `process_import` task (import_task.py line 50) calls `session.commit()` only once after the entire `process_import_file()` completes. If the pod crashes at row 80,000, all 80,000 rows of work are rolled back. The job stays in PROCESSING status with no way to resume.
+**What goes wrong:** Multiple chunk tasks update progress concurrently. If the parent job's `imported_rows`, `skipped_rows`, and `total_rows` are updated by each chunk directly (read-modify-write on the ORM object), concurrent updates cause lost writes. Chunk A reads `imported_rows=1000`, chunk B reads `imported_rows=1000`, both add their batch count, both write -- one chunk's progress is lost.
 
-**Why it happens:** The service uses `session.flush()` (not `commit()`) after each batch to write progress counters to the database, but all changes remain within one transaction. This is correct for data integrity in the single-request model but prevents any form of resumability.
+**Why it happens:** The current code updates `job.imported_rows` directly on the SQLAlchemy ORM object within the same session (import_service.py lines 1140-1143). This works for serial processing. With parallel chunks, each chunk has its own session and its own stale copy of the parent job row.
 
-**Consequences:**
-- 30+ minutes of processing lost on any failure (pod crash, network error, database timeout)
-- User must re-upload and re-import the entire file
-- No partial data available for verification
-- Creates anxiety about importing large files, pushing users toward the workaround of splitting files manually
+**Consequences:** Progress bar jumps backward, shows incorrect totals, or exceeds 100%. Final `imported_rows` count is wrong (less than actual). The `last_committed_row` value becomes meaningless (see Pitfall 7).
 
 **Prevention:**
-- Commit after each batch (typically 1000 rows) with proper RLS re-establishment (see Pitfall 1)
-- Track `last_committed_batch` or `rows_committed` on the ImportJob model so the worker knows where to resume after a crash
-- On resume, the simplest correct approach is to replay the entire file from the beginning. The upsert `ON CONFLICT DO UPDATE` on `(campaign_id, source_type, source_id)` is already idempotent, so re-processing committed rows is a no-op (they just get updated to the same values)
-- The ImportJob model needs a new status value (e.g., `RESUMING`) or the worker should detect `PROCESSING` status as "needs resume" on startup
-- Ensure each batch's upsert is truly idempotent, including the VoterPhone upsert and PostGIS geom update
+1. **Use per-chunk counters, not shared parent counters.** Each chunk should have its own row (in an `import_chunks` table) with `chunk_imported_rows`, `chunk_skipped_rows`, `chunk_total_rows`. Chunks only update their own row -- no contention.
+2. **Aggregate progress via SQL SUM.** The progress polling endpoint computes parent totals as: `SELECT SUM(chunk_imported_rows), SUM(chunk_skipped_rows) FROM import_chunks WHERE parent_job_id = :id`. Always consistent regardless of concurrent updates.
+3. **Do NOT use `UPDATE import_jobs SET imported_rows = imported_rows + :delta`** (atomic increment) as the sole mechanism. While it avoids lost updates for a single counter, it makes crash recovery harder (you cannot re-derive the correct total from chunk state if increments were partially applied).
+4. **The parent job's counters should be denormalized snapshots** updated periodically or at chunk completion, derived from the chunk table SUM.
 
-**Detection:** Import job stuck in PROCESSING status after pod restart. `imported_rows` shows 0 in the database because the flush was never committed. Database shows 0 new voters despite minutes of processing.
+**Detection:** Compare `SUM(chunk counters)` against `parent counters` in a health check. Divergence indicates an aggregation bug.
 
-**Phase:** Core resumability phase -- must be designed alongside the per-batch commit strategy (Pitfall 1).
+**Phase assignment:** Phase 1 (data model design). The chunk state table design determines whether this pitfall is structurally possible.
+
+**Confidence:** HIGH -- classic concurrent counter problem, no PostgreSQL-specific nuance.
 
 ---
-
-### Pitfall 5: Import Task Double-Sets RLS Context, Masking the Real Problem
-
-**What goes wrong:** The background task in `import_task.py` (line 42) calls `set_campaign_context(session, str(job.campaign_id))`, then `process_import_file` in `import_service.py` (line 863) calls it AGAIN. This double-call currently works because everything stays in one transaction. But when migrating to per-batch commits, the second call in `process_import_file` will be the only effective one for the first batch, and then neither call will fire for subsequent batches after commits clear the context.
-
-**Why it happens:** The import pipeline was built in phases. The task wrapper added its own RLS setup, and the service method has its own setup because it was originally designed to run independently. The redundancy masks the real lifecycle requirement.
-
-**Consequences:**
-- During migration, developers may fix the context in the task wrapper but miss that `process_import_file` also sets it (or vice versa), leading to the Pitfall 1 scenario
-- The double-call creates confusion about which layer "owns" the RLS context lifecycle
-
-**Prevention:**
-- Consolidate RLS context ownership to ONE layer. Recommended: the batch processing loop should own it, re-setting after each commit
-- Remove the redundant `set_campaign_context` call in `process_import_file` -- the task/worker is responsible for session lifecycle
-- Or refactor `process_import_file` to accept `campaign_id` as a parameter and call `set_campaign_context` explicitly in its batch loop after each commit
-
-**Detection:** Code review -- search for all `set_campaign_context` calls in the import code path and verify there is exactly one canonical location that fires at the right time.
-
-**Phase:** Must be resolved as part of the Procrastinate migration, before implementing per-batch commits.
 
 ## Moderate Pitfalls
 
-### Pitfall 6: Procrastinate Uses Its Own Connection Pool, Not SQLAlchemy's
+### Pitfall 5: CSV Chunk Boundaries Split Mid-Row (Quoted Newlines)
 
-**What goes wrong:** Procrastinate manages PostgreSQL connections through its own async connector (`PsycopgConnector` for psycopg3 or `AiopgConnector` for aiopg). The task function still needs SQLAlchemy sessions for business logic (voter upserts, RLS context). This creates two separate connection pools competing for PostgreSQL connections. The `reset_rls_context` checkout handler on the SQLAlchemy engine (session.py lines 23-38) fires for SQLAlchemy connections but has no effect on Procrastinate's connections.
+**What goes wrong:** If splitting a CSV file into byte-offset ranges for parallel processing, a naive split (every N MB) can land in the middle of a quoted field containing a newline. The chunk starting at the split point sees a partial row and either fails to parse or silently drops/corrupts data.
 
-**Why it happens:** Procrastinate was designed as a standalone job queue that owns its database connections. It does not integrate with SQLAlchemy's session or engine. The task code already creates its own SQLAlchemy session (import_task.py line 34: `async with async_session_factory() as session`), which is correct, but this means both pools exist simultaneously.
-
-**Consequences:**
-- Connection pool exhaustion if both pools are sized independently without accounting for each other. Default PostgreSQL `max_connections` is 100; if the API pool uses 20 and Procrastinate uses 10 and the worker's SQLAlchemy pool uses another 20, that is 50 connections consumed
-- Procrastinate's internal tables (`procrastinate_jobs`, `procrastinate_events`) require their own schema setup alongside Alembic migrations
-- Potential deadlocks if Procrastinate's connection and SQLAlchemy's connection contend for the same rows during job state transitions
+**Why it happens:** CSV fields can contain literal newlines inside double quotes (RFC 4180). A byte-offset split cannot distinguish row-separating newlines from in-field newlines without parsing context.
 
 **Prevention:**
-- Size PostgreSQL `max_connections` to accommodate all pools: API SQLAlchemy pool + Procrastinate worker connectors + worker SQLAlchemy pool
-- Keep pool sizes small: API pool 5-10, worker pool 2-3 (imports are sequential within a campaign)
-- Use the same async driver family: if Procrastinate uses psycopg3, consider whether to align the API's asyncpg usage or accept the dual-driver situation
-- Monitor `pg_stat_activity` during imports to verify connection usage
+1. **Split by row count, not byte offset.** The current system uses `stream_csv_lines()` which handles CSV parsing correctly. The coordinator task should stream and count rows, then assign row ranges to chunks (rows 1-10000, 10001-20000, etc.). This is the recommended approach.
+2. **Pre-count rows during the upload/mapping phase.** When the user uploads and columns are detected, also count total rows. Store in `ImportJob.total_rows` before processing begins. This enables row-range chunking without a separate counting pass at processing time.
+3. **Each chunk task receives a row range (start_row, end_row)** and uses `stream_csv_lines()` to stream the file, skipping rows before `start_row` and stopping after `end_row`. This reuses the existing streaming infrastructure.
+4. **If byte-offset splitting is necessary for S3 range-request parallelism,** use a two-pass approach: first pass scans for valid row boundaries (tracking quote state), second pass assigns chunks at verified boundaries. But this adds complexity for marginal gain.
 
-**Phase:** Procrastinate integration/setup phase.
+**Phase assignment:** Phase 1 (chunk splitting strategy). This is a design-time decision.
+
+**Confidence:** HIGH -- CSV quoted newline behavior is defined in RFC 4180 and is a well-known parsing pitfall.
 
 ---
 
-### Pitfall 7: TaskIQ to Procrastinate API Migration Is Not a Find-and-Replace
+### Pitfall 6: Procrastinate Queueing Lock Blocks All Chunks
 
-**What goes wrong:** The current code uses `@broker.task` decorator and `process_import.kiq(str(import_id))` for task dispatch (imports.py line 248). Procrastinate has a completely different API: `@app.task` decorator and `await task.defer_async(import_job_id=str(import_id))`. Key differences: Procrastinate uses keyword-only arguments, has different retry/queue configuration, and requires an `App` object instead of a `Broker`.
+**What goes wrong:** The current import uses `queueing_lock=str(campaign_id)` to prevent concurrent imports for the same campaign (imports.py line 264). If child chunk tasks are deferred with the same queueing lock value, only one chunk can be queued at a time -- the second chunk's `defer_async` raises `AlreadyEnqueued`. Parallelism is accidentally serialized.
 
-**Why it happens:** TaskIQ and Procrastinate have fundamentally different design philosophies. TaskIQ is broker-agnostic (Redis, RabbitMQ, in-memory); Procrastinate is PostgreSQL-native. Their APIs reflect these different architectures.
-
-**Consequences:**
-- Import confirmation endpoint breaks silently if dispatch method is wrong (returns 200 but task never queues)
-- Or raises `AttributeError` at runtime when calling `.kiq()` on a Procrastinate task object
-- Tests that mock the TaskIQ broker need complete rewriting
+**Why it happens:** Procrastinate's queueing lock enforces a unique constraint on the lock value in `procrastinate_jobs` for jobs in `todo` status. All chunk tasks sharing the campaign_id as their queueing lock conflict with each other.
 
 **Prevention:**
-- Replace the entire `app/tasks/broker.py` module with Procrastinate app configuration
-- Update `import_task.py` to use `@app.task(name="process_import")` decorator
-- Update `imports.py` dispatch from `.kiq(str(import_id))` to `.defer_async(import_job_id=str(import_id), campaign_id=str(campaign_id))`
-- Procrastinate tasks must accept keyword arguments only (no positional args)
-- Remove `taskiq` and `taskiq-fastapi` from `pyproject.toml` dependencies and add `procrastinate`
-- Add an integration test that verifies task dispatch and pickup work end-to-end
+1. **Use chunk-specific queueing locks.** Each chunk task should use `queueing_lock=f"{import_job_id}:chunk:{chunk_index}"`.
+2. **Keep the campaign-level queueing lock on the parent/coordinator task only.** The parent task that splits chunks uses `queueing_lock=str(campaign_id)` to prevent a second import from starting. Child chunk tasks use different locks.
+3. **Alternatively, use no queueing lock on chunk tasks at all.** Since the parent task already prevents concurrent imports per campaign, chunk tasks do not need their own deduplication. They are idempotent by chunk range.
 
-**Phase:** First implementation phase (Procrastinate integration).
+**Phase assignment:** Phase 1 (task registration and deferral).
+
+**Confidence:** HIGH -- verified queueing lock usage in `imports.py` line 264. Procrastinate docs confirm [queueing lock behavior](https://procrastinate.readthedocs.io/en/stable/howto/advanced/queueing_locks.html).
 
 ---
 
-### Pitfall 8: Procrastinate Schema Not Managed by Alembic
+### Pitfall 7: Crash Resume Logic Breaks with Parallel Chunks
 
-**What goes wrong:** Procrastinate requires its own database tables (`procrastinate_jobs`, `procrastinate_events`, `procrastinate_periodic_defers`, etc.) and provides a CLI command `procrastinate schema --apply` to create them. Running this separately from Alembic means the migration history does not track Procrastinate's schema, making it impossible to reproduce the database state from Alembic migrations alone. The init container currently runs only `alembic upgrade head` (deployment.yaml line 28).
+**What goes wrong:** The current crash-resume logic uses `last_committed_row` on the parent `ImportJob` to skip rows on restart (import_service.py line 1217). With parallel chunks, each chunk processes a different row range. If the system crashes and restarts, `last_committed_row` is meaningless -- it was a serial-processing concept. Row 50000 might be committed while row 30000 is still in-flight.
 
-**Why it happens:** Procrastinate was designed for Django (which has its own migration system) and standalone scripts. It does not natively integrate with Alembic.
-
-**Consequences:**
-- Fresh database setups require running both Alembic AND Procrastinate schema setup
-- Init container must run two commands instead of one, or one must be embedded in the other
-- Schema drift if Procrastinate version upgrade changes table structure without a corresponding Alembic migration
-- CI test databases missing Procrastinate tables
+**Why it happens:** `last_committed_row` assumes linear sequential processing. It is a single integer representing "everything before this row is done." Parallel chunks break this assumption.
 
 **Prevention:**
-- Create an Alembic migration that executes Procrastinate's schema SQL via `op.execute()`. Procrastinate provides `procrastinate schema --sql` to dump the raw SQL without applying it -- capture this output and embed it in a migration
-- Pin the Procrastinate version in `pyproject.toml` and regenerate the schema migration when upgrading
-- Alternatively, call `App.admin.setup_schema()` programmatically during application startup (idempotent, runs every startup but only creates tables if missing)
-- For CI: include Procrastinate schema setup in the test database fixture
+1. **Track completion per chunk, not per row on the parent.** Each chunk record should have its own status (pending, processing, completed, failed) and its own `last_committed_row` within its range.
+2. **On crash resume, query the chunk table.** Find chunks not in COMPLETED status. Re-enqueue only those chunks. Completed chunks are skipped entirely.
+3. **Each chunk's `last_committed_row` is relative to its range.** A chunk covering rows 10001-20000 with `last_committed_row=15000` resumes from row 15001 within its range.
+4. **The parent job's `last_committed_row` becomes a derived value** (or simply unused in favor of chunk-level tracking).
 
-**Phase:** Procrastinate integration phase -- must be part of the initial setup before any tasks can be deferred.
+**Phase assignment:** Phase 1 (data model). The chunk state table must be designed with resume in mind from the start.
+
+**Confidence:** HIGH -- verified that `last_committed_row` drives resume in `import_service.py` line 1217.
 
 ---
 
-### Pitfall 9: Progress Polling Returns Stale Data Until Final Commit
+### Pitfall 8: VoterPhone Upsert Conflicts Between Chunks
 
-**What goes wrong:** The current code uses `session.flush()` to update `job.imported_rows` and `job.total_rows` after each batch (import_service.py line 923). A `flush()` writes to the database within the current transaction but is not visible to other sessions (the polling endpoint's `GET /imports/{id}` creates its own session via `get_campaign_db`). PostgreSQL's MVCC isolation means uncommitted changes are invisible. So the progress endpoint returns 0/0/0 for the entire import duration, then jumps to the final counts after the single commit.
+**What goes wrong:** If the same voter appears in multiple chunks (duplicate rows in the CSV), both chunks create VoterPhone records. The `uq_voter_phone_campaign_voter_value` constraint handles this via ON CONFLICT DO UPDATE (import_service.py lines 1024-1033), but the phone_records list correlates `voter_ids[i]` with `phone_values[i]` by position (line 1015). If RETURNING order does not match input order under concurrent upsert conditions, phone records could be associated with wrong voters.
 
-**Why it happens:** The entire import runs in one transaction with only flushes, not commits. The progress polling endpoint runs in a separate transaction that cannot see in-flight data.
-
-**Consequences:**
-- User sees 0% progress for the entire import duration (potentially 30+ minutes for large files), then instantly 100%
-- No way to distinguish "stuck/crashed" from "actively working" during long imports
-- User may cancel and re-import, creating wasted processing or duplicate data
+**Why it happens:** The current code relies on positional indexing between the voter INSERT's RETURNING clause and the `phone_values` list built from mapped results. PostgreSQL's RETURNING order for INSERT ON CONFLICT is not contractually guaranteed to match input order in all cases under concurrent modification.
 
 **Prevention:**
-- Per-batch commits (for resumability) automatically solve this -- each committed batch's progress becomes visible to the polling endpoint immediately
-- This is a "two birds, one stone" situation: implementing per-batch commits for resumability also gives real-time progress visibility at no additional cost
-- After implementing per-batch commits, verify the polling endpoint returns incrementally updating counts
+1. **Ensure chunk partitioning produces disjoint voter sets** (see Pitfall 1). This eliminates cross-chunk duplicate voter problems entirely, making this pitfall impossible.
+2. **Defer phone creation to a post-import task.** After all chunks complete, run a single task that creates VoterPhone records for all newly imported voters. This eliminates cross-chunk phone conflicts entirely and aligns with the "parallelize secondary work" strategy from the options doc.
+3. **If phones must be created per-chunk,** use a subquery-based approach instead of positional correlation: join the voter upsert result with the phone data by `source_id` rather than by array index.
 
-**Detection:** Import polling returns `imported_rows: 0, total_rows: 0` for the entire import duration, then jumps to final values.
+**Phase assignment:** Phase 1 if using disjoint partitioning (eliminates the issue), or Phase 2 if deferring phone creation to post-import.
 
-**Phase:** Resolved automatically when per-batch commits are implemented for resumability. No separate work needed.
+**Confidence:** MEDIUM -- the ON CONFLICT on the phone table handles duplicates correctly, but the positional `voter_ids[i]` / `phone_values[i]` correlation (line 1015) is fragile under concurrent conditions. Disjoint partitioning sidesteps this entirely.
 
 ---
 
-### Pitfall 10: Error List Grows Unbounded in Memory
+### Pitfall 9: Parent Job Status Lifecycle Becomes Non-Trivial
 
-**What goes wrong:** The current code accumulates `all_errors` as a list of dicts (import_service.py line 894), each containing the full original CSV row (up to 55 column key-value pairs) plus the error reason. For a file with 10% error rate on 113K rows, that is ~11,300 error dicts with ~55 string values each. Combined with the full file in memory, this contributes to the OOM condition.
+**What goes wrong:** The current status lifecycle is: PENDING -> UPLOADED -> QUEUED -> PROCESSING -> COMPLETED/FAILED/CANCELLED. With chunks, the parent must derive its status from children's aggregate state. If 3 of 4 chunks complete and 1 fails, is the parent COMPLETED or FAILED? The existing `ImportStatus` enum (import_job.py lines 16-25) has no PARTIAL state.
 
-**Why it happens:** The error report CSV is generated at the end of processing from the accumulated list. This requires all errors to be held in memory simultaneously.
-
-**Consequences:**
-- Memory pressure scales linearly with error count, unbounded
-- Files with many invalid rows (common with dirty voter data) amplify the OOM risk
-- The error report generation itself creates another in-memory CSV string via `StringIO`
+**Why it happens:** The serial model has exactly one processing entity that IS the parent job. With chunks, the parent becomes a coordinator whose status is derived.
 
 **Prevention:**
-- Stream errors to S3 as they occur: open a streaming upload and write error rows as each batch completes
-- Or write error batches to temporary files on disk
-- Or cap error collection at a reasonable limit (e.g., first 1000 errors) and add a summary note: "X additional errors omitted"
-- Track total error count on the job model but limit detailed error retention
+1. **Define clear aggregation rules:**
+   - All chunks COMPLETED -> parent COMPLETED
+   - Any chunk FAILED + others COMPLETED -> parent COMPLETED (matching existing behavior where per-row errors do not fail the import; chunk failures are reported in error files)
+   - All chunks FAILED -> parent FAILED
+   - `cancelled_at` set -> parent CANCELLED (regardless of chunk states)
+2. **Consider adding `COMPLETED_WITH_ERRORS` status** if distinguishing clean completion from partial failure matters for the frontend. Alternatively, keep using COMPLETED and let `skipped_rows > 0` or `error_report_key IS NOT NULL` signal partial success (matching current behavior).
+3. **A dedicated aggregation step runs after all chunks finish** (or fail). This step computes final totals, merges error reports, and sets the parent status.
 
-**Phase:** Address alongside the streaming/memory optimization phase.
+**Phase assignment:** Phase 1 (status lifecycle design).
+
+**Confidence:** HIGH -- the current enum is visible in `import_job.py` lines 16-25.
 
 ---
 
-### Pitfall 11: Worker Process Lacks Application State and Observability
+### Pitfall 10: Procrastinate Has No Built-In Fan-Out/Fan-In
 
-**What goes wrong:** The current import task creates `StorageService()` and `ImportService()` inline (import_task.py lines 27-28). This works because `StorageService.__init__` reads from `app.core.config.settings` which loads from environment variables. In a separate Procrastinate worker process, these environment variables must be present, and observability infrastructure (Sentry, structlog) must be separately initialized since the worker does not run through FastAPI's lifespan startup.
+**What goes wrong:** Developers assume Procrastinate has a "job group" or "wait for all children" primitive (like Celery's `chord` or `group`). It does not. Without built-in fan-in, the parent coordinator has no native way to know when all chunks are done. Polling the database for chunk completion status must be implemented manually.
 
-**Why it happens:** Background workers run outside the FastAPI request lifecycle. There is no `Request` object, no `app.state`, no dependency injection, no middleware chain, no lifespan startup hooks.
-
-**Consequences:**
-- `StorageService()` fails silently if S3 credentials are not in the worker's environment
-- Worker errors not captured by Sentry (SDK not initialized)
-- No structured logging (structlog not configured)
-- Difficult to debug production worker issues without observability
+**Why it happens:** Procrastinate is deliberately simple. It provides task deferral, queueing locks, retries, and periodic tasks. It does not provide workflow orchestration primitives.
 
 **Prevention:**
-- Ensure the Procrastinate worker's K8s Deployment references the same ConfigMap and Secret as the API deployment (same env vars)
-- Initialize Sentry SDK in the worker entrypoint separately from FastAPI's lifespan
-- Configure structlog in the worker entrypoint
-- The current task code already avoids `request.app.state` by creating services directly -- maintain this pattern
-- Add a worker startup smoke test that verifies S3 connectivity and database access before accepting jobs
+1. **Implement fan-in via database polling.** After deferring all chunk tasks, the coordinator polls the `import_chunks` table periodically (e.g., every 5 seconds) for all chunks reaching a terminal state (COMPLETED or FAILED).
+2. **Alternative: last-chunk-triggers-aggregation.** Each chunk task, after completing, checks if it is the last chunk to finish (`SELECT COUNT(*) FROM import_chunks WHERE parent_id = :id AND status NOT IN ('completed', 'failed')`). If count is 0, it triggers the aggregation step. Race-safe if the check + aggregation trigger is in a single transaction with a row-level lock on the parent.
+3. **Alternative: defer a separate `aggregate_import` task** with a scheduled delay. It checks if all chunks are done; if not, it re-defers itself with another delay. Simple but adds latency.
+4. **Avoid complex Procrastinate workarounds.** Do not try to simulate Celery's chord. The polling or last-chunk-triggers approach is simpler and fits Procrastinate's design.
 
-**Phase:** Worker deployment/infrastructure phase.
+**Phase assignment:** Phase 1 (coordinator design).
+
+**Confidence:** HIGH -- Procrastinate's feature set is documented. No fan-in/fan-out primitives found in the [API reference](https://procrastinate.readthedocs.io/en/stable/reference.html) or [discussions](https://procrastinate.readthedocs.io/en/stable/discussions.html).
 
 ---
-
-### Pitfall 12: Concurrent Imports for Same Campaign Can Deadlock
-
-**What goes wrong:** If a user starts a second import for the same campaign while the first is still processing, both workers may try to upsert the same voter (matching on the unique index `ix_voters_campaign_source` on `campaign_id, source_type, source_id`). PostgreSQL's `ON CONFLICT DO UPDATE` takes row-level locks. If batch A from import 1 locks rows 1-1000 and batch A from import 2 locks rows 500-1500 in a different order, a deadlock occurs.
-
-**Why it happens:** The current `confirm_mapping` endpoint (imports.py line 222) checks the individual job's status but does not check whether another import for the same campaign is already running.
-
-**Consequences:**
-- PostgreSQL detects deadlock and aborts one transaction
-- Worker retry (if configured) may succeed, but the race persists
-- Partial data from both imports in unpredictable state
-
-**Prevention:**
-- Enforce one active import per campaign: before dispatching a new import task, check for any existing job with status QUEUED or PROCESSING for the same campaign_id, and return 409 Conflict
-- Use Procrastinate's `queueing_lock` feature: set `queueing_lock=f"import:{campaign_id}"` to ensure only one import task per campaign can be queued at a time
-- Additionally, sort voter dicts by `source_id` before upserting to ensure consistent lock ordering across concurrent batches (defense in depth)
-
-**Phase:** Background processing phase -- add campaign-level import locking alongside Procrastinate integration.
 
 ## Minor Pitfalls
 
-### Pitfall 13: L2 Voting History Column Patterns Not Exhaustive
+### Pitfall 11: Chunk Task Registration Naming Collision
 
-**What goes wrong:** The current regex `^(General|Primary)_(\d{4})$` (import_service.py line 414) only matches `General_YYYY` and `Primary_YYYY` patterns. The PROJECT.md (line 103) explicitly lists additional target patterns for v1.6: `"Voted in YYYY"` and `"Voted in YYYY Primary"`. These will not match the current regex.
+**What goes wrong:** If chunk tasks reuse the `process_import` task name, Procrastinate cannot distinguish between the coordinator task and chunk tasks in its job tables. Monitoring, retries, and queueing locks become confused.
 
-**Prevention:**
-- Add support for the documented patterns: `"Voted in YYYY"` (maps to General), `"Voted in YYYY Primary"` (maps to Primary)
-- Consider a secondary detection pass after the regex: scan for columns containing 4-digit years with Y/A/E values
-- Test against actual L2 sample files from multiple states since column naming varies by state
+**Prevention:** Register chunk tasks with a distinct name: `process_import_chunk`. Keep `process_import` as the coordinator/parent task (or rename it to `coordinate_import`).
 
-**Phase:** L2 auto-mapping enhancement phase.
+**Phase assignment:** Phase 1.
 
 ---
 
-### Pitfall 14: L2 Column Headers Vary by State and Export Format
+### Pitfall 12: Error Report Merging Order
 
-**What goes wrong:** L2 data is delivered in different formats depending on the state, subscription tier, and export method. Column headers may use different casing (`Voters_FirstName` vs `voters_firstname`), different prefixes, or entirely different naming conventions. The current fuzzy matching with RapidFuzz at 75% threshold may mismap columns when L2 uses an unexpected alias, or fail to map columns that should match.
+**What goes wrong:** Each chunk writes per-batch error files to MinIO. The current `_merge_error_files` method assumes error files are ordered by batch number within a single serial process. With parallel chunks, error files from different chunks interleave. The merged error report has rows out of CSV order.
 
-**Why it happens:** L2 Political is a data aggregator normalizing voter files from 50+ states. Their export format has evolved over time. The PROJECT.md specifies "all 55 columns from L2 CSV files auto-map without manual intervention" as a target.
+**Prevention:** Include chunk index in the error file key (e.g., `{job_id}/errors/chunk_{idx}_batch_{num}.csv`). Merge errors in chunk order, then batch order within each chunk. Or include the original CSV row number in each error record so users can correlate regardless of file order.
 
-**Prevention:**
-- Build L2 mapping as an exact-match lookup table first (all known L2 column names lowercased), falling through to fuzzy matching only for unknown columns
-- The current alias lists in `CANONICAL_FIELDS` are a good start but need expansion to cover all 55 L2 columns
-- Include case-insensitive exact matching before fuzzy matching. The current code does `normalized = col.strip().lower().replace(" ", "_")` before fuzzy matching, which helps, but exact match should be checked first
-- Log unmatched columns at WARNING level so operators can identify and add missing aliases
-
-**Phase:** L2 auto-mapping enhancement phase.
+**Phase assignment:** Phase 2 (error report consolidation).
 
 ---
 
-### Pitfall 15: Date Fields Not Parsed, May Fail on Non-ISO Formats
+### Pitfall 13: Dynamic Batch Size Calculation Duplicated
 
-**What goes wrong:** The `date_of_birth` and `registration_date` fields are mapped to SQLAlchemy `Date` columns. The current `apply_field_mapping` code handles propensity, phone, age, lat/lon, and party normalization but does not include date parsing logic. SQLAlchemy/asyncpg may auto-coerce `YYYY-MM-DD` format but will raise `DataError` on `MM/DD/YYYY`, `M/D/YYYY`, or `YYYYMMDD` formats that appear in some L2 exports.
+**What goes wrong:** The current batch size calculation in `process_import_file` accounts for asyncpg's 32,767 bind-parameter limit: `batch_size = floor(32767 / num_columns)`. If each chunk task independently calculates this, it works. But if someone changes the batch size in one place and not the other, chunks use different sizes.
 
-**Consequences:**
-- Database error on INSERT causes the entire batch to fail, losing up to 1000 good rows alongside one bad date
-- Without per-row error handling for dates, one malformed date sinks the batch
+**Prevention:** Extract batch size calculation into a shared utility function. Both the coordinator and chunk tasks import the same function.
 
-**Prevention:**
-- Add explicit date parsing in `apply_field_mapping` with a set of known format strings: `YYYY-MM-DD`, `MM/DD/YYYY`, `YYYYMMDD`, `M/D/YYYY`
-- On parse failure, set to `None` and log a warning rather than failing the batch
-- Use `dateutil.parser.parse()` as a fallback, with `dayfirst=False` for US date conventions
-
-**Phase:** L2 parsing robustness phase.
+**Phase assignment:** Phase 1 (refactoring before parallelization).
 
 ---
 
-### Pitfall 16: Procrastinate Worker Needs Separate K8s Deployment
+### Pitfall 14: Row-Range Chunks Require Each Chunk to Re-Stream the File
 
-**What goes wrong:** Procrastinate workers run as a long-lived process (`procrastinate worker` command) separate from the API server (`uvicorn`). If the worker runs inside the API pod (as a background thread or subprocess), a worker crash takes down the API, and import memory pressure affects API responsiveness.
+**What goes wrong:** If chunks are defined as row ranges (e.g., rows 1-10000, 10001-20000), each chunk task must stream the CSV from MinIO, parse the header, and skip rows until it reaches its start row. For the last chunk of a 100K-row file, this means streaming and discarding 90K rows before processing 10K.
 
-**Why it happens:** The current TaskIQ InMemoryBroker runs in-process with the API. Moving to Procrastinate is an architectural change from "in-process task execution" to "separate worker process."
-
-**Prevention:**
-- Create a separate K8s Deployment for the Procrastinate worker using the same container image but a different entrypoint command
-- Worker Deployment should have different resource limits: higher memory (e.g., 1GB) for import processing, lower CPU since imports are I/O-bound
-- Share the same ConfigMap and Secret for database and S3 credentials
-- For local development, add a `worker` service to `docker-compose.yml` running the same image with `procrastinate worker` command
-- Worker pods need health monitoring -- Procrastinate supports heartbeat-based health checks
-
-**Phase:** Infrastructure/deployment phase.
-
----
-
-### Pitfall 17: Resume from Crash Requires Re-Parsing Skipped Rows
-
-**What goes wrong:** If the import crashes at batch 80 (row 80,000) and the ImportJob records `rows_committed = 79000`, resuming requires re-reading the CSV from the beginning and skipping the first 79,000 rows. For a 30MB file, this means re-downloading from S3 and re-parsing 79K rows of CSV just to find the resume point.
-
-**Why it happens:** CSV is a sequential format with no random access. You cannot seek to "row 80,000" without counting newlines from the start (and even that breaks with multiline quoted fields).
+**Why it happens:** CSV is sequential. There is no random access without byte-offset tracking. The current `stream_csv_lines()` streams efficiently but starts from the beginning.
 
 **Prevention:**
-- Simplest correct approach: replay the entire file from the beginning. Since the upsert is idempotent (`ON CONFLICT DO UPDATE`), re-processing already-committed rows is safe -- they just get updated to the same values. The overhead is re-parsing and re-upserting 79K rows, but this is much simpler than byte-offset tracking
-- Optimization (if resume time matters): store a byte offset in the ImportJob and use S3 Range requests (`bytes=N-`) to skip ahead. But this requires careful handling of CSV line boundaries and encoding
-- Recommended: start with the simple "replay from start" approach. Only optimize if users report that resume is too slow
+1. **Accept the skip overhead for now.** CSV parsing is fast (Python can parse ~500K rows/sec). Skipping 90K rows takes ~0.2 seconds. The actual upsert work (database I/O) dominates processing time by orders of magnitude. The skip overhead is negligible.
+2. **If skip overhead matters at scale,** have the coordinator task record byte offsets of chunk boundaries during the initial row-count pass. Chunks use S3 range requests to start at their byte offset. But this adds complexity and the quoted-newline problem from Pitfall 5.
+3. **Recommended: start with simple row-range skipping.** Optimize only if profiling shows file streaming is a bottleneck (it will not be -- the database is the bottleneck).
 
-**Phase:** Resumability implementation phase.
-
----
-
-### Pitfall 18: CSV Encoding Detection Picks Latin-1 for Windows-1252 Files
-
-**What goes wrong:** The current code tries `utf-8-sig` then falls back to `latin-1` (import_service.py lines 879-889). Latin-1 never fails (it maps every byte 0-255 to a character), so the fallback always "succeeds." But if the file is Windows-1252 (common for files exported from Excel), characters like smart quotes, em dashes, and accented characters (common in voter names) map to different Unicode code points under Latin-1 vs Windows-1252. Names with accented characters get silently corrupted.
-
-**Prevention:**
-- Use `charset-normalizer` library for automatic encoding detection on the first chunk
-- Or try `utf-8-sig` -> `cp1252` -> `latin-1` (Windows-1252 is more common than raw Latin-1 for US voter files from Excel/Access exports)
-- Store detected encoding on the ImportJob so resume uses the same encoding
-
-**Phase:** Robustness improvement -- can be addressed alongside L2 parsing enhancements.
+**Phase assignment:** Phase 1, but accept the simple approach initially.
 
 ---
-
-## Architecture-Specific Risks
-
-### Transaction-Scoped vs Session-Scoped RLS in Workers
-
-The entire RLS system was hardened in v1.5 with the explicit design decision to use transaction-scoped (`true`) context. The per-batch commit approach directly conflicts with this design. The migration path should be:
-
-1. **Worker sessions use session-scoped RLS** (`false` parameter to `set_config`), since worker connections are not shared with HTTP requests and the security rationale for transaction-scoped context (preventing cross-request leaks in a shared pool) does not apply to a dedicated worker process
-2. **The defense-in-depth `reset_rls_context` checkout handler must still fire for API connections** -- this handler is on the shared SQLAlchemy engine, so if the worker uses the same engine, it will also fire for worker connections
-3. **Worker connections should ideally use a separate SQLAlchemy engine/pool** to avoid the API's checkout handler resetting context at inconvenient times (e.g., if the worker's pool recycles a connection mid-import)
-
-This is not a bug to fix -- it is a deliberate architectural tension between "secure by default for HTTP" and "practical for long-running batch operations." The solution is connection pool isolation between API and worker processes.
-
-### Procrastinate's PostgreSQL-Native Advantage and Risk
-
-Procrastinate stores jobs in PostgreSQL itself (unlike Redis-backed queues like Celery/ARQ/TaskIQ-Redis). This is an advantage for this project:
-
-- No Redis in the stack (one fewer infrastructure dependency)
-- ACID guarantees for job state transitions
-- Import job count is low (a few per day, not thousands per minute)
-- Job metadata is queryable with standard SQL
-
-But the risk: if PostgreSQL is under heavy load from a large voter upsert (113K rows with ON CONFLICT), Procrastinate's job polling queries may experience increased latency. This is unlikely to be a problem at current scale but should be monitored.
 
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Procrastinate Integration | P2 (RLS chicken-and-egg), P7 (API migration), P8 (schema migration) | Pass campaign_id as task arg; replace TaskIQ entirely; embed Procrastinate schema in Alembic migration |
-| Per-Batch Commits | P1 (RLS lost on commit), P5 (double RLS set), P9 (progress visibility) | Re-set RLS after each commit; consolidate RLS ownership; progress auto-visible with commits |
-| Resumability | P4 (all-or-nothing), P17 (resume re-parsing) | Track batch cursor on ImportJob; replay from start using upsert idempotency |
-| Streaming/Memory | P3 (full file in memory), P10 (error accumulation) | Temp file or streaming parser; cap or stream errors |
-| L2 Auto-Mapping | P13 (voting history patterns), P14 (state variation), P15 (date parsing) | Extend regex for documented patterns; exact-match-first; add date normalization |
-| Worker Deployment | P11 (application state/observability), P16 (separate K8s deployment), P6 (dual connection pools) | Shared ConfigMap/Secret; separate Deployment with higher memory; size pools appropriately |
-| Concurrent Safety | P12 (upsert deadlocks) | Campaign-level import lock via Procrastinate queueing_lock |
+|---|---|---|
+| Data model & chunk splitting design | P1 (deadlocks), P4 (progress races), P5 (CSV boundaries), P7 (crash resume) | Design `import_chunks` table with per-chunk status, counters, row ranges. Use row-range splitting. Ensure disjoint key sets or sort before upsert. |
+| Chunk task implementation | P2 (RLS context), P6 (queueing lock), P10 (no fan-in), P11 (naming) | Each chunk gets own session + RLS setup. Chunk-specific queueing lock. Implement manual fan-in via DB polling or last-chunk trigger. |
+| Cancellation & error handling | P3 (cancel propagation), P9 (status lifecycle), P12 (error merge) | Chunk tasks poll parent `cancelled_at`. Define aggregation rules for parent status. Merge errors in chunk-then-batch order. |
+| Progress & frontend integration | P4 (progress aggregation) | Frontend polls parent endpoint. Backend derives totals via SQL SUM over chunk table. |
+| Secondary work (phones, geometry) | P8 (phone conflicts) | Defer phone/geometry creation to post-import task, or ensure disjoint partitioning. |
 
----
+## Summary of Prevention Priorities
+
+**Decision 1: How chunks are partitioned.** If chunks contain disjoint voter key sets (guaranteed by row-range splitting on a pre-sorted file, or by hash-partitioning on `source_id`), Pitfalls 1 and 8 are structurally eliminated. This should be the first design decision.
+
+**Decision 2: Per-chunk state tracking.** A dedicated `import_chunks` table with per-chunk status, counters, and `last_committed_row` structurally prevents Pitfalls 4 and 7, and simplifies Pitfalls 3 and 9.
+
+**Decision 3: Fan-in mechanism.** Since Procrastinate has no built-in fan-out/fan-in (Pitfall 10), the coordinator pattern must be explicitly designed. The "last chunk triggers aggregation" approach is simplest.
 
 ## Sources
 
-- Direct codebase analysis: `app/db/rls.py` (transaction-scoped `set_config` with `true`), `app/db/session.py` (pool checkout RLS reset handler), `app/tasks/import_task.py` (TaskIQ task, RLS context flow), `app/services/import_service.py` (full memory download, flush-only progress, error accumulation), `app/api/v1/imports.py` (dispatch via `.kiq()`)
-- Issue documentation: `docs/issues/large-voter-import-crash.md` (113K row OOM crash, 512MB limit, exit code 3)
-- RLS policy definitions: `alembic/versions/001_initial_schema.py`, `002_voter_data_models.py` (import_jobs in `_CAMPAIGN_TABLES` list, line 41)
-- K8s resource configuration: `k8s/apps/run-api-dev/deployment.yaml` (512MB memory limit, `readOnlyRootFilesystem: false`)
-- TaskIQ broker configuration: `app/tasks/broker.py` (`InMemoryBroker`)
-- PostgreSQL `set_config()` transaction scoping behavior (HIGH confidence -- fundamental PostgreSQL behavior documented in official docs)
-- Procrastinate architecture: task registration, `defer_async`, `queueing_lock`, schema management, connector model (MEDIUM confidence -- based on training data, verify connector API and schema management against current Procrastinate docs during implementation)
+- [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) -- detailed analysis of INSERT deadlock mechanics with concurrent upserts
+- [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02) -- lock acquisition order in bulk INSERT
+- [Deadlocks while bulk updating in PostgreSQL](https://medium.com/@harshiljani2002/deadlocks-while-bulk-updating-in-postgresql-4af4161b7ff8) -- row ordering as deadlock prevention
+- [incident.io: Debugging deadlocks in Postgres](https://incident.io/blog/debugging-deadlocks-in-postgres) -- practical deadlock debugging
+- [PostgreSQL explicit locking documentation](https://www.postgresql.org/docs/current/explicit-locking.html) -- lock ordering best practices: "The best defense against deadlocks is generally to avoid them by being certain that all applications using a database acquire locks on multiple objects in a consistent order"
+- [PostgreSQL INSERT ON CONFLICT documentation](https://www.postgresql.org/docs/current/sql-insert.html) -- ON CONFLICT atomicity guarantees
+- [Why tenant context must be scoped per transaction](https://dev.to/m_zinger_2fc60eb3f3897908/why-tenant-context-must-be-scoped-per-transaction-3aop) -- RLS set_config scoping
+- [Procrastinate queueing locks](https://procrastinate.readthedocs.io/en/stable/howto/advanced/queueing_locks.html) -- queueing lock behavior
+- [Procrastinate API reference](https://procrastinate.readthedocs.io/en/stable/reference.html) -- configure/defer API, no fan-in primitives
+- [Tinybird: Splitting CSV files at 3GB/s](https://www.tinybird.co/blog/simd) -- CSV boundary challenges
+- [Microsoft Research: Speculative distributed CSV parsing](https://microsoft.com/en-us/research/uploads/prod/2019/04/chunker-sigmod19.pdf) -- chunk boundary misprediction
+- Verified against codebase: `app/services/import_service.py` (upsert logic lines 962-988, batch loop, cancellation check line 1304), `app/tasks/import_task.py` (RLS setup line 34, cancel pre-check line 55), `app/db/rls.py` (transaction-scoped set_config line 28, commit_and_restore_rls line 33), `app/models/import_job.py` (status enum lines 16-25, last_committed_row line 54), `app/api/v1/imports.py` (queueing_lock line 264)
