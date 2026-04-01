@@ -99,17 +99,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-## Current Milestone: v1.11 Faster Imports
+## Current Milestone: v1.10 Import Recovery
 
-**Goal:** Parallelize the import pipeline so a single large CSV (millions of rows) completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
+**Goal:** Make import processing crash-safe across worker restarts, deploy rollouts, and pod evictions so orphaned imports self-heal without manual intervention.
 
 **Target features:**
-- Parent/child job model — split one CSV into chunk ranges, enqueue one task per chunk, aggregate progress into parent job
-- Parallel chunk processing — multiple workers process chunks concurrently with per-chunk commit, retry, and failure isolation
-- Secondary work offloading — VoterPhone creation, geometry updates, and derived-field computation run as separate post-batch tasks
-- Progress aggregation — parent job tracks overall completion from child chunks, frontend polling shows unified progress
-- Chunk failure handling — individual chunk failures don't block other chunks; partial results are preserved
-- Existing behavior preservation — cancel, crash-resume, per-campaign queueing lock, L2 auto-mapping all continue to work
+- Orphan detection — identify imports stuck in `PROCESSING` using application-owned progress timestamps and a configurable staleness threshold
+- Recovery engine — requeue or reclaim orphaned imports safely from worker startup without duplicate execution
+- Resume correctness — continue from `last_committed_row` and preserve idempotent voter upserts
+- Finalization hardening — ensure imports that reached EOF do not stay stuck in `PROCESSING`
+- Recovery observability — structured logs for orphan detection, reclaim actions, and recovery outcomes
+- Validation coverage — unit and integration tests for crash-resume, stale-worker detection, and duplicate-prevention
 
 ### Out of Scope
 
@@ -137,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.6 shipped 2026-03-29. 55 phases, 165 plans delivered across 7 milestones in 21 days.
+v1.6 shipped 2026-03-29. v1.10 Import Recovery is the active milestone. 55 product phases shipped across 7 milestones before recovery work began.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
@@ -202,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v1.11 milestone start*
+*Last updated: 2026-04-01 during v1.10 planning-state cleanup*

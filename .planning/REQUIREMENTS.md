@@ -3,93 +3,78 @@
 **Defined:** 2026-04-01
 **Core Value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
 
-## v1.11 Requirements
+## v1.10 Requirements
 
-Requirements for Faster Imports milestone. Each maps to roadmap phases.
+Requirements for Import Recovery milestone. Each maps to roadmap phases.
 
-### Chunk Infrastructure
+### Orphan Detection
 
-- [ ] **CHUNK-01**: System splits a CSV import into ImportChunk records with row ranges and tracks per-chunk status
-- [ ] **CHUNK-02**: System pre-scans CSV to count total rows for deterministic chunk boundary calculation
-- [ ] **CHUNK-03**: Parent split task creates chunk records and defers one Procrastinate child task per chunk
-- [ ] **CHUNK-04**: Chunk workers process their row range with per-batch commits, RLS restore, and independent sessions
-- [ ] **CHUNK-05**: Files under a configurable row threshold bypass chunking and run the existing serial path
-- [ ] **CHUNK-06**: Chunk size adapts based on column count (asyncpg bind-parameter limit) and file size
-- [ ] **CHUNK-07**: Max concurrent chunks per import is configurable (default capped to prevent worker starvation)
+- [ ] **ORPH-01**: Import jobs record `last_progress_at` and update it after each committed batch
+- [ ] **ORPH-02**: Recovery logic can identify imports stuck in `PROCESSING` whose progress timestamp is older than a configurable staleness threshold
+- [ ] **ORPH-03**: Staleness threshold is configurable in application settings with a safe default
+- [ ] **ORPH-04**: Structured logs are emitted when orphaned imports are detected
 
-### Progress & Completion
+### Recovery
 
-- [ ] **PROG-01**: Parent job's imported_rows, skipped_rows, and phones_created are aggregated from chunk records via SQL SUM
-- [ ] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
-- [ ] **PROG-03**: Error reports from individual chunks are merged into a single downloadable file on finalization
-- [ ] **PROG-04**: Import progress UI shows rows/second throughput and estimated time remaining
-- [ ] **PROG-05**: COMPLETED_WITH_ERRORS status distinguishes partial chunk failures from full success or full failure
+- [ ] **RECV-01**: Worker startup recovery scan detects orphaned imports and queues a fresh recovery task
+- [ ] **RECV-02**: Recovered imports resume from `last_committed_row` without duplicating voters
+- [ ] **RECV-03**: Recovery never reclaims imports already marked `COMPLETED`, `FAILED`, or `CANCELLED`
+- [ ] **RECV-04**: Advisory locking prevents two workers from reclaiming or finalizing the same import concurrently
 
-### Resilience
+### Completion Hardening
 
-- [ ] **RESL-01**: Individual chunk failure does not block other chunks; partial results are preserved
-- [ ] **RESL-02**: Cancellation propagates to all in-flight and queued chunks via parent's cancelled_at check
-- [ ] **RESL-03**: Each chunk resumes from its own last_committed_row after worker crash
-- [ ] **RESL-04**: Batch upserts sort rows by conflict key before INSERT to prevent cross-chunk deadlocks
+- [ ] **HARD-01**: Finalization failures produce a distinct error path instead of leaving the import forever in `PROCESSING`
+- [ ] **HARD-02**: Recovery can finalize an import that fully consumed the source file but lost its final status transition
 
-### Secondary Work
+### Test Coverage
 
-- [ ] **SECW-01**: VoterPhone creation runs as a separate post-chunk task instead of inline with voter upsert
-- [ ] **SECW-02**: Geometry and derived-field updates run as separate post-chunk tasks
+- [ ] **TEST-01**: Unit tests verify stale `PROCESSING` imports are detected and queued for recovery
+- [ ] **TEST-02**: Unit tests verify completed, cancelled, and failed imports are never reclaimed
+- [ ] **TEST-03**: Unit tests verify fresh-progress imports are not reclaimed
+- [ ] **TEST-04**: Integration coverage simulates crash-resume from partial commit through successful completion
+- [ ] **TEST-05**: Regression assertions verify final row counts are correct and no duplicate voters are created after resume
 
-## v2 Requirements
+## Future Requirements
 
-### Periodic Recovery (from v1.10)
+### Periodic Recovery
 
 - **PREC-01**: Periodic reconciliation loop running every N minutes in the worker
 - **PREC-02**: Configurable reconciliation interval via settings
-
-### Import Optimization
-
-- **IOPT-01**: Byte-offset recording during pre-scan for S3 Range requests (skip overhead elimination)
-- **IOPT-02**: K8s HPA auto-scaling workers based on queue depth
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Database COPY / staging table approach | Shifts validation to SQL, breaks per-row error reporting, architectural overhaul |
-| Producer-consumer with intermediate queue | Adds durable intermediate state, complicates resume, overkill for current scale |
-| Generic workflow/DAG engine | One use case doesn't justify a framework; manual fan-out/fan-in is sufficient |
-| WebSocket/SSE for real-time progress | 3-second polling is adequate for batch operations taking minutes |
-| Chunk-level UI visibility | Chunks are implementation detail; users see one import, one progress bar |
-| Per-chunk retry from UI | Automatic retry + re-import (upsert is idempotent) covers this |
-| Cross-chunk transaction coordination (2PC) | Massive complexity, no user benefit; partial results are acceptable |
-| Import rollback | Voters may have interactions/tags; re-import with corrected file instead |
+| Direct mutation of stale Procrastinate queue rows as the primary recovery path | Fresh task requeue is simpler and less coupled to Procrastinate internals |
+| Full import rollback on failure | Imports are idempotent and may already have downstream references; resume/retry is safer |
+| Worker-to-worker leader election system | PostgreSQL advisory locks are sufficient for recovery coordination |
+| Generic background-job recovery framework | This milestone is focused on import recovery only |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHUNK-01 | Phase 59 | Pending |
-| CHUNK-02 | Phase 60 | Pending |
-| CHUNK-03 | Phase 60 | Pending |
-| CHUNK-04 | Phase 60 | Pending |
-| CHUNK-05 | Phase 59 | Pending |
-| CHUNK-06 | Phase 59 | Pending |
-| CHUNK-07 | Phase 59 | Pending |
-| PROG-01 | Phase 61 | Pending |
-| PROG-02 | Phase 61 | Pending |
-| PROG-03 | Phase 61 | Pending |
-| PROG-04 | Phase 64 | Pending |
-| PROG-05 | Phase 61 | Pending |
-| RESL-01 | Phase 62 | Pending |
-| RESL-02 | Phase 62 | Pending |
-| RESL-03 | Phase 62 | Pending |
-| RESL-04 | Phase 62 | Pending |
-| SECW-01 | Phase 63 | Pending |
-| SECW-02 | Phase 63 | Pending |
+| ORPH-01 | Phase 56 | Pending |
+| ORPH-02 | Phase 56 | Pending |
+| ORPH-03 | Phase 56 | Pending |
+| ORPH-04 | Phase 56 | Pending |
+| RECV-01 | Phase 57 | Pending |
+| RECV-02 | Phase 57 | Pending |
+| RECV-03 | Phase 57 | Pending |
+| RECV-04 | Phase 57 | Pending |
+| HARD-01 | Phase 57 | Pending |
+| HARD-02 | Phase 57 | Pending |
+| TEST-01 | Phase 58 | Pending |
+| TEST-02 | Phase 58 | Pending |
+| TEST-03 | Phase 58 | Pending |
+| TEST-04 | Phase 58 | Pending |
+| TEST-05 | Phase 58 | Pending |
 
 **Coverage:**
-- v1.11 requirements: 18 total
-- Mapped to phases: 18
+- v1.10 requirements: 15 total
+- Mapped to phases: 15
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after roadmap creation*
+*Last updated: 2026-04-01 during planning-state cleanup*

@@ -133,6 +133,24 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [ ] **Phase 57: Recovery Engine & Completion Hardening** - Worker startup recovery scan, advisory lock guard, crash-resume from last_committed_row, and hardened finalization
 - [ ] **Phase 58: Test Coverage** - Unit tests for detection/requeue logic, integration test for crash-resume, and duplicate voter regression assertions
 
+### Phase 56: Schema & Orphan Detection
+**Goal:** Identify imports stuck in `PROCESSING` using application-owned progress timestamps and emit recovery-ready diagnostics.
+**Depends on:** Nothing (first phase of v1.10)
+**Requirements:** ORPH-01, ORPH-02, ORPH-03, ORPH-04
+**Plans:** 0/0 plans complete
+
+### Phase 57: Recovery Engine & Completion Hardening
+**Goal:** Reclaim orphaned imports safely, resume from `last_committed_row`, and harden finalization so completed work cannot stay stuck.
+**Depends on:** Phase 56
+**Requirements:** RECV-01, RECV-02, RECV-03, RECV-04, HARD-01, HARD-02
+**Plans:** 0/0 plans complete
+
+### Phase 58: Test Coverage
+**Goal:** Verify stale-import detection, crash-resume recovery, and duplicate-prevention with automated tests.
+**Depends on:** Phase 57
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Plans:** 0/0 plans complete
+
 See: `.planning/milestones/v1.10-ROADMAP.md` for full phase details.
 
 ### 📋 v1.11 Faster Imports (Planned)

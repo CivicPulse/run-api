@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.11
-milestone_name: Faster Imports
+milestone: v1.10
+milestone_name: Import Recovery
 status: ready_to_plan
-stopped_at: Roadmap created for v1.11 (6 phases, 18 requirements)
+stopped_at: Planning state cleaned up for v1.10; Phase 56 ready
 last_updated: "2026-04-01T00:00:00.000Z"
 last_activity: 2026-04-01
 progress:
-  total_phases: 6
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,52 +21,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.11 Faster Imports — Ready to plan Phase 59
+**Current focus:** v1.10 Import Recovery — Ready to plan Phase 56
 
 ## Current Position
 
-Phase: 59 of 64 (Chunk Schema & Configuration)
+Phase: 56 of 58 (Schema & Orphan Detection)
 Plan: —
 Status: Ready to plan
-Last activity: 2026-04-01 — Roadmap created for v1.11
+Last activity: 2026-04-01 — Planning state repaired for v1.10
 
 Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity (v1.0-v1.6):**
-
-- Total plans completed: 166
-- Milestones shipped: 7 in 21 days
-- Average: ~7.9 plans/day
-
-**By Milestone:**
-
-| Milestone | Phases | Plans | Timeline |
-|-----------|--------|-------|----------|
-| v1.0 | 7 | 20 | 2 days |
-| v1.1 | 4 | 7 | 2 days |
-| v1.2 | 11 | 43 | 4 days |
-| v1.3 | 7 | 18 | 3 days |
-| v1.4 | 9 | 26 | 3 days |
-| v1.5 | 10 | 36 | 2 days |
-| v1.6 | 7 | 16 | 2 days |
 
 ## Accumulated Context
 
 ### Decisions
 
-- Chunked child jobs (Option 2) chosen over staging tables or producer-consumer for import parallelization
-- Secondary work (VoterPhone, derived fields) offloaded to separate tasks
-- Application-level orphan detection (last_progress_at) over Procrastinate internal table queries
-- pg_try_advisory_lock for concurrent execution guard
+- Application-level orphan detection via `last_progress_at` over direct dependence on Procrastinate heartbeat tables
+- Requeue orphaned imports as fresh recovery tasks instead of mutating stale queue rows in place
+- `pg_try_advisory_lock` for recovery/finalization concurrency control
+- Finalization failure should move to an explicit error path, not remain stuck in `PROCESSING`
 
 ### Blockers/Concerns
 
-- v1.10 (Import Recovery) must ship before v1.11 work begins — Phase 59 depends on recovery infrastructure
+- None currently
 
 ## Session Continuity
 
-Last activity: 2026-04-01 — Roadmap created for v1.11
-Stopped at: Roadmap created, ready for Phase 59 planning
+Last activity: 2026-04-01 — Planning state repaired for v1.10
+Stopped at: Cleanup complete, ready for Phase 56 discussion or planning
 Resume file: None
