@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { HTTPError } from "ky"
 import { api } from "@/api/client"
@@ -12,7 +12,6 @@ export function useVoterSearch(campaignId: string, body: VoterSearchBody) {
       api
         .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: body })
         .json<PaginatedResponse<Voter>>(),
-    placeholderData: keepPreviousData,
     enabled: !!campaignId,
   })
 }
@@ -164,4 +163,3 @@ export function useDistinctValues(campaignId: string, fields: string[]) {
     staleTime: 5 * 60 * 1000,
   })
 }
-

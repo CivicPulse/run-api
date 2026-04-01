@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Users } from "lucide-react"
 import { cn, calculateAge } from "@/lib/utils"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   formatPropensityChip,
   formatMultiSelectChip,
@@ -577,11 +578,15 @@ function VotersPage() {
     sort_by: mappedSortBy,
     sort_dir: sortDir,
   }
-  const { data, isLoading } = useVoterSearch(campaignId, searchBody)
+  const { data, isLoading, isError, error } = useVoterSearch(campaignId, searchBody)
 
-  const voters = data?.items ?? []
-  const hasNextPage = data?.pagination.has_more ?? false
+  const voters = isError ? [] : data?.items ?? []
+  const hasNextPage = isError ? false : data?.pagination.has_more ?? false
   const hasPreviousPage = prevCursors.length > 0
+  const errorMessage =
+    error instanceof Error && error.message === "Authentication required"
+      ? "Your session expired while loading voters. Sign in again and retry."
+      : "Failed to load voters for this campaign."
 
   const filterUpdate = (partial: Partial<VoterFilter>) => {
     setFilters((prev) => ({ ...prev, ...partial }))
@@ -685,6 +690,12 @@ function VotersPage() {
             Clear all
           </Button>
         </div>
+      )}
+
+      {isError && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       )}
 
       {/* DataTable */}
