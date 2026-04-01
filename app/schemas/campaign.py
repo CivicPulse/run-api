@@ -16,6 +16,7 @@ class CampaignCreate(BaseSchema):
 
     name: str = Field(min_length=3, max_length=100)
     type: CampaignType
+    organization_id: uuid.UUID
     jurisdiction_fips: str | None = None
     jurisdiction_name: str | None = None
     election_date: date | None = None

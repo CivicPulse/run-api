@@ -13,6 +13,7 @@ from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
+from app.models.organization import Organization
 from app.models.user import User
 
 # ---------------------------------------------------------------------------
@@ -21,6 +22,7 @@ from app.models.user import User
 
 CAMPAIGN_ID = uuid.uuid4()
 ORG_ID = "zitadel-org-test-123"
+ORG_UUID = uuid.uuid4()
 
 
 def _make_user(
@@ -59,6 +61,20 @@ def _make_local_user(user_id: str = "user-test-1") -> User:
         id=user_id,
         display_name=f"Test User {user_id}",
         email=f"{user_id}@test.com",
+        created_at=utcnow(),
+        updated_at=utcnow(),
+    )
+
+
+def _make_org(
+    org_id: uuid.UUID = ORG_UUID,
+    zitadel_org_id: str = ORG_ID,
+) -> Organization:
+    return Organization(
+        id=org_id,
+        zitadel_org_id=zitadel_org_id,
+        name="Test Org",
+        created_by="user-test-1",
         created_at=utcnow(),
         updated_at=utcnow(),
     )
@@ -154,11 +170,11 @@ def mock_db():
 @pytest.fixture
 def mock_zitadel():
     z = AsyncMock()
-    z.create_organization = AsyncMock(return_value={"id": ORG_ID})
     z.deactivate_organization = AsyncMock()
     z.delete_organization = AsyncMock()
     z.assign_project_role = AsyncMock()
     z.ensure_project_grant = AsyncMock(return_value="grant-123")
+    z.remove_project_role = AsyncMock()
     return z
 
 
@@ -198,12 +214,14 @@ class TestCampaignCreate:
         """Any authenticated user can create a campaign."""
         user = _make_user(role=CampaignRole.VIEWER)  # Even viewer can create
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        org = _make_org()
 
         # ensure_user_synced calls (user lookup, org lookup, campaign fallback)
-        sync_results = _setup_user_sync_on_db(mock_db)
+        sync_results = _one_sync_pass()
+        sync_results.append(_mock_result_with(org))
         mock_db.execute = AsyncMock(side_effect=sync_results)
-        # _generate_unique_slug uses db.scalar() to check for slug existence
-        mock_db.scalar = AsyncMock(return_value=None)
+        # route org lookup, then _generate_unique_slug existence check
+        mock_db.scalar = AsyncMock(side_effect=[org, None])
 
         async def fake_refresh(obj):
             if isinstance(obj, Campaign):
@@ -220,6 +238,7 @@ class TestCampaignCreate:
                 json={
                     "name": "New Campaign",
                     "type": "federal",
+                    "organization_id": str(org.id),
                 },
             )
 
@@ -228,6 +247,7 @@ class TestCampaignCreate:
         assert data["name"] == "New Campaign"
         assert data["type"] == "federal"
         mock_zitadel.ensure_project_grant.assert_awaited()
+        mock_zitadel.create_organization.assert_not_called()
 
     async def test_create_campaign_422_missing_name(self, mock_db, mock_zitadel):
         """Missing name returns 422."""
@@ -238,10 +258,33 @@ class TestCampaignCreate:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 "/api/v1/campaigns",
-                json={"type": "federal"},
+                json={"type": "federal", "organization_id": str(ORG_UUID)},
             )
 
         assert resp.status_code == 422
+
+    async def test_create_campaign_403_for_unavailable_org(self, mock_db, mock_zitadel):
+        """Selected org must be available to the current user."""
+        user = _make_user(role=CampaignRole.VIEWER)
+        app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+
+        sync_results = _one_sync_pass()
+        mock_db.execute = AsyncMock(side_effect=sync_results)
+        mock_db.scalar = AsyncMock(return_value=None)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/api/v1/campaigns",
+                json={
+                    "name": "New Campaign",
+                    "type": "federal",
+                    "organization_id": str(ORG_UUID),
+                },
+            )
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Selected organization is not available"
 
 
 class TestCampaignList:

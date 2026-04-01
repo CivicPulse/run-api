@@ -44,91 +44,55 @@ class CampaignService:
         campaign_type: CampaignType,
         user: AuthenticatedUser,
         zitadel: ZitadelService,
+        organization_id: uuid.UUID,
         jurisdiction_fips: str | None = None,
         jurisdiction_name: str | None = None,
         election_date=None,
         candidate_name: str | None = None,
         party_affiliation: str | None = None,
-        organization_id: uuid.UUID | None = None,
     ) -> Campaign:
-        """Create a campaign with ZITADEL org provisioning.
-
-        Implements compensating transaction pattern: if local DB write fails
-        and a new ZITADEL org was created, it is deleted to maintain consistency.
-        When reusing an existing organization, the compensating delete is skipped.
+        """Create a campaign within an existing organization.
 
         Args:
             db: Async database session.
             name: Campaign name.
             campaign_type: Type of campaign (federal, state, local, ballot).
             user: The authenticated user creating the campaign.
-            zitadel: ZITADEL service client for org provisioning.
+            zitadel: ZITADEL service client for grant and role management.
             jurisdiction_fips: Optional FIPS code.
             jurisdiction_name: Optional jurisdiction name.
             election_date: Optional election date.
             candidate_name: Optional candidate name.
             party_affiliation: Optional party affiliation.
-            organization_id: Optional existing Organization UUID to associate.
-                When provided, reuses the existing ZITADEL org instead of
-                creating a new one.
+            organization_id: Existing Organization UUID to associate.
 
         Returns:
             The created Campaign object.
 
         Raises:
-            OrganizationNotFoundError: If organization_id is provided but not found.
+            OrganizationNotFoundError: If organization_id is not found.
             ZitadelUnavailableError: If ZITADEL is unreachable.
-            Exception: If DB write fails (after ZITADEL org cleanup for new orgs).
+            Exception: If DB write fails.
         """
-        # Track whether we provisioned a new ZITADEL org so the compensating
-        # transaction only deletes what we created.
-        created_new_org = organization_id is None
-
-        # Step 1: Resolve ZITADEL org — reuse existing or create new
-        if organization_id:
-            # Reuse an existing Organization record
-            org_result = await db.execute(
-                select(Organization).where(Organization.id == organization_id)
-            )
-            org = org_result.scalar_one_or_none()
-            if org is None:
-                raise OrganizationNotFoundError(organization_id)
-            org_id = org.zitadel_org_id
-            project_grant_id = (
-                org.zitadel_project_grant_id
-                or await zitadel.ensure_project_grant(
-                    settings.zitadel_project_id, org_id, ALL_ROLES
-                )
-            )
-            # Persist the grant ID if it was missing so future lookups are fast
-            if not org.zitadel_project_grant_id:
-                org.zitadel_project_grant_id = project_grant_id
-        else:
-            # Create a new ZITADEL org for this campaign
-            org_data = await zitadel.create_organization(name)
-            org_id = org_data["id"]
-
-            # Ensure a project grant so the new org's users can receive roles
-            # scoped to the shared project. This call is idempotent.
-            project_grant_id = await zitadel.ensure_project_grant(
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == organization_id)
+        )
+        org = org_result.scalar_one_or_none()
+        if org is None:
+            raise OrganizationNotFoundError(organization_id)
+        org_id = org.zitadel_org_id
+        project_grant_id = (
+            org.zitadel_project_grant_id
+            or await zitadel.ensure_project_grant(
                 settings.zitadel_project_id, org_id, ALL_ROLES
             )
+        )
+        # Persist the grant ID if it was missing so future lookups are fast
+        if not org.zitadel_project_grant_id:
+            org.zitadel_project_grant_id = project_grant_id
 
         try:
-            # Step 2: Create the local Organization record when provisioning a new org
-            if not organization_id:
-                org_record = Organization(
-                    id=uuid.uuid4(),
-                    zitadel_org_id=org_id,
-                    zitadel_project_grant_id=project_grant_id,
-                    name=name,
-                    created_by=user.id,
-                )
-                db.add(org_record)
-                await db.flush()
-                organization_id = org_record.id
-
-            # Step 3: Create local campaign record
+            # Step 2: Create local campaign record
             campaign_slug = await self._generate_unique_slug(db, name)
 
             campaign = Campaign(
@@ -148,7 +112,7 @@ class CampaignService:
             )
             db.add(campaign)
 
-            # Step 4: Create campaign_member for the creator with owner role
+            # Step 3: Create campaign_member for the creator with owner role
             member = CampaignMember(
                 user_id=user.id,
                 campaign_id=campaign.id,
@@ -156,7 +120,7 @@ class CampaignService:
             )
             db.add(member)
 
-            # Step 5: Assign owner role in ZITADEL, scoped to the campaign's org
+            # Step 4: Assign owner role in ZITADEL, scoped to the campaign's org
             await zitadel.assign_project_role(
                 settings.zitadel_project_id,
                 user.id,
@@ -197,43 +161,30 @@ class CampaignService:
                 org_id,
             )
             await db.rollback()
-            if created_new_org:
-                # Compensating transaction: remove the ZITADEL org we just created
-                try:
-                    await zitadel.delete_organization(org_id)
-                except Exception:
-                    logger.error(
-                        "Failed to clean up ZITADEL org {} during compensating tx",
-                        org_id,
-                    )
-            else:
-                # Reusing existing org — remove the owner grant we just assigned
-                try:
-                    await zitadel.remove_project_role(
-                        settings.zitadel_project_id,
-                        user.id,
-                        "owner",
-                        org_id=org_id,
-                    )
-                except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code == 404:
-                        logger.debug(
-                            "Grant not found (never created), skipping revocation"
-                        )
-                    else:
-                        logger.error(
-                            "Failed to revoke owner grant for user {} in org {} "
-                            "during compensating tx",
-                            user.id,
-                            org_id,
-                        )
-                except Exception:
+            try:
+                await zitadel.remove_project_role(
+                    settings.zitadel_project_id,
+                    user.id,
+                    "owner",
+                    org_id=org_id,
+                )
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    logger.debug("Grant not found (never created), skipping revocation")
+                else:
                     logger.error(
                         "Failed to revoke owner grant for user {} in org {} "
                         "during compensating tx",
                         user.id,
                         org_id,
                     )
+            except Exception:
+                logger.error(
+                    "Failed to revoke owner grant for user {} in org {} "
+                    "during compensating tx",
+                    user.id,
+                    org_id,
+                )
             raise
 
     @staticmethod
