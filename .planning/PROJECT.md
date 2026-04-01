@@ -99,7 +99,18 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(No active milestone — ready for `/gsd:new-milestone`)
+## Current Milestone: v1.10 Import Recovery
+
+**Goal:** Make import processing crash-safe across worker restarts, deploy rollouts, and pod evictions — orphaned imports self-heal without manual intervention.
+
+**Target features:**
+- Orphan detection via application-level `last_progress_at` staleness check
+- Worker startup recovery scan that re-queues stuck imports
+- `pg_try_advisory_lock` guard preventing concurrent execution of the same import
+- Hardened completion path with distinct error states for finalization failures
+- Periodic reconciliation loop (worker startup + optional interval)
+- Recovery logging and metrics
+- Unit + integration tests for crash-resume scenarios
 
 ### Out of Scope
 
@@ -192,4 +203,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after v1.6 milestone completion*
+*Last updated: 2026-03-31 after v1.10 milestone start*

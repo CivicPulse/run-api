@@ -1,36 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Imports
-status: completed
-stopped_at: Milestone v1.6 archived
-last_updated: "2026-03-29T13:30:00.000Z"
-last_activity: 2026-03-29
+milestone: v1.10
+milestone_name: Import Recovery
+status: defining_requirements
+stopped_at: Defining requirements
+last_updated: "2026-03-31T00:00:00.000Z"
+last_activity: 2026-03-31
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-29)
+See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.10 Import Recovery
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v1.6 complete — ready for next milestone
-Last activity: 2026-03-29
-
-Progress: [██████████] 100%
+Status: Defining requirements
+Last activity: 2026-03-31 — Milestone v1.10 started
 
 ## Performance Metrics
 
@@ -56,14 +54,15 @@ Progress: [██████████] 100%
 
 ### Decisions
 
-Decisions logged in PROJECT.md Key Decisions table.
+- Application-level orphan detection (last_progress_at on import_jobs) over Procrastinate internal table queries — decoupled, version-safe, simpler
+- pg_try_advisory_lock for concurrent execution guard — cheap, auto-released on disconnect, prevents double-execution on large imports
 
 ### Blockers/Concerns
 
-None — milestone complete.
+None.
 
 ## Session Continuity
 
-Last activity: 2026-03-29 - Milestone v1.6 archived
-Stopped at: Milestone v1.6 complete
+Last activity: 2026-03-31 - Milestone v1.10 started
+Stopped at: Defining requirements
 Resume file: None
