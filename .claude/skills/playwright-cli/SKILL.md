@@ -257,6 +257,38 @@ playwright-cli close-all
 playwright-cli kill-all
 ```
 
+## Headed mode
+
+By default, `playwright-cli open` runs headless (no visible browser window).
+Use the `--headed` flag to open a visible browser the user can see on screen.
+
+```bash
+# Open a headed browser (visible window)
+playwright-cli open https://example.com --headed
+playwright-cli open https://example.com --browser=chrome --headed
+
+# Without --headed, the browser runs headless (no visible window)
+playwright-cli open https://example.com
+```
+
+**Always use `--headed` when:**
+- The user asks to "see" the browser or wants visual inspection
+- The user asks to open a browser in headed mode
+- Taking screenshots for the user to review visually
+
+**Alternative: native Playwright CLI (`npx playwright open`)**
+
+For interactive use with the Playwright Inspector/Codegen recorder (not
+CLI-driven automation), use `npx playwright open` instead. This always
+runs headed and includes a sidebar for generating test selectors.
+
+```bash
+npx playwright open https://example.com
+npx playwright open --browser=chromium https://example.com
+```
+
+If Chromium is not installed, run `npx playwright install chromium` first.
+
 ## Installation
 
 If global `playwright-cli` command is not available, try a local version via `npx playwright-cli`:
