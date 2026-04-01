@@ -269,6 +269,48 @@ class TestPhoneBankSession:
         # The service should have called execute to release IN_PROGRESS entries
         assert db.execute.call_count >= 2  # at least: get session + release entries
 
+    @pytest.mark.asyncio
+    async def test_delete_session_non_active_removes_session_and_callers(self) -> None:
+        """Deleting non-active session removes callers and session."""
+        db = _mock_db()
+        svc = PhoneBankService()
+        session_obj = _make_session_obj(status=SessionStatus.DRAFT)
+        db.execute.side_effect = [
+            _mock_scalar_result(session_obj),
+            MagicMock(),
+        ]
+
+        await svc.delete_session(db, session_obj.id)
+
+        assert db.execute.call_count == 2
+        db.delete.assert_awaited_once_with(session_obj)
+
+    @pytest.mark.asyncio
+    async def test_delete_session_active_raises_validation_error(self) -> None:
+        """Deleting active session is rejected (D-02)."""
+        db = _mock_db()
+        svc = PhoneBankService()
+        session_obj = _make_session_obj(status=SessionStatus.ACTIVE)
+        db.execute.return_value = _mock_scalar_result(session_obj)
+
+        with pytest.raises(ValueError, match="active and cannot be deleted"):
+            await svc.delete_session(db, session_obj.id)
+
+        db.delete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_session_not_found_raises(self) -> None:
+        """Deleting unknown session raises not-found error."""
+        db = _mock_db()
+        svc = PhoneBankService()
+        missing_session_id = uuid.uuid4()
+        db.execute.return_value = _mock_scalar_result(None)
+
+        with pytest.raises(ValueError, match="not found"):
+            await svc.delete_session(db, missing_session_id)
+
+        db.delete.assert_not_called()
+
 
 class TestCallerManagement:
     """Tests for caller assignment and check-in/out."""

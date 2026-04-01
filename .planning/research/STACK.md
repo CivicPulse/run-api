@@ -1,260 +1,198 @@
-# Technology Stack: v1.6 Production Ready Polish
+# Technology Stack
 
-**Project:** CivicPulse Run API
-**Researched:** 2026-03-27
-**Overall confidence:** HIGH (npm registry versions verified, codebase patterns analyzed, L2 data dictionary reviewed)
+**Project:** CivicPulse Run v1.7 Testing & Validation
+**Researched:** 2026-03-29
 
----
+## Existing Stack (DO NOT CHANGE)
 
-## Executive Summary
+Already validated and in production. Listed for reference only.
 
-v1.6 requires minimal stack additions. The four target features (zero-touch CSV import, RLS data isolation audit, navigation consolidation, volunteer onboarding guides) are primarily code-level improvements to existing infrastructure. Only two new npm packages are needed for the onboarding guide pages. Everything else is alias expansion, test additions, and sidebar restructuring using tools already in the stack.
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| @playwright/test | ^1.58.2 | E2E test framework |
+| @axe-core/playwright | ^4.11.1 | Accessibility testing |
+| Vitest | ^4.0.18 | Unit/component tests |
+| pytest | ^9.0.2 | Backend unit/integration tests |
+| pytest-asyncio | ^1.3.0 | Async test support |
+| Docker Compose | (system) | Local dev environment |
+| ZITADEL | v2.71.6 | OIDC auth (Docker image) |
+| httpx | ^0.28.1 | ZITADEL API calls from scripts |
+| psycopg2-binary | ^2.9.11 | Sync DB access from scripts |
 
----
+## New Stack Additions
 
-## Feature-by-Feature Stack Analysis
+### Nothing to add. Zero new packages.
 
-### 1. Zero-Touch CSV Import for L2 Voter Files
+The testing plan requires no new libraries. Every capability needed is already present in the codebase. Here is the reasoning for each concern area:
 
-**Stack changes: NONE. Pure code changes to existing `import_service.py`.**
+### ZITADEL Test User Provisioning
 
-The import pipeline already uses RapidFuzz (3.14.3) for fuzzy column matching with a 75% threshold. The "zero-touch" improvement means expanding the `CANONICAL_FIELDS` alias dictionary so that L2 voter files auto-map without user intervention.
+**Recommendation:** Extend existing `scripts/create-e2e-users.py`, do NOT add any new packages.
 
-**What needs to change (code, not stack):**
+**Why:** The script already exists and uses the exact pattern needed:
+- ZITADEL Management API v1 (`POST /management/v1/users/human`) for user creation
+- httpx for HTTP calls (already a project dependency)
+- psycopg2 for direct DB org membership insertion (already a project dependency)
+- Reads PAT from `/zitadel-data/pat.txt` (same as bootstrap script)
+- Handles idempotency via `find_user_by_username` + `allow_conflict=True`
 
-The current `CANONICAL_FIELDS` dict in `app/services/import_service.py` covers ~45 L2 column aliases but is missing several that appear in real L2 exports. Based on the L2 Voter File Available Fields data dictionary, the following alias gaps exist:
+The current script creates 2 users (orgadmin, volunteer). The testing plan needs 15 users across 5 roles. This is purely a data expansion of the existing `E2E_USERS` list -- same API calls, same auth flow, same DB insertion pattern.
 
-| Canonical Field | Missing L2 Aliases | Confidence |
-|----------------|-------------------|------------|
-| `registration_line1` | `residence_addresses_addressline` (has partial), `residence_address_line` | MEDIUM |
-| `registration_county` | `counties` (L2 uses this in Boundaries section) | MEDIUM |
-| `precinct` | `precinct_voting_districts` | LOW |
-| `__cell_phone` | `landline_telephone_number` (different phone type, may need `__landline` field) | MEDIUM |
-| `congressional_district` | `new_congressional_districts`, `old_congressional_districts` | MEDIUM |
-| `state_senate_district` | `new_state_senate_districts`, `old_state_senate_districts` | MEDIUM |
-| `state_house_district` | `new_state_house_districts`, `old_state_house_districts` | MEDIUM |
-| `ethnicity` | `broad_ethnic_groupings` | MEDIUM |
-| `party` | `party_identification` (L2 data dictionary lists this variant) | HIGH |
-| `registration_date` | `official_reg_date`, `calculated_reg_date` | HIGH |
-| (new) `registration_status` | `voters_active`, `registration_status` | MEDIUM |
+**ZITADEL API choice:** Use Management API v1 (`/management/v1/users/human`), NOT the v2 API. Rationale:
+1. The existing bootstrap and user creation scripts already use v1 exclusively
+2. v1's `password` field accepts plaintext; v2's `hashedPassword` requires pre-hashing
+3. v1's `isEmailVerified` + `passwordChangeRequired: false` produces immediately-loginable users
+4. The v2 `POST /v2/users/human` is itself already deprecated in favor of a newer CreateUser endpoint -- no benefit to migrating
+5. ZITADEL v2.71.6 fully supports v1 management APIs
 
-**Voting history format variations:**
+**Confidence:** HIGH -- verified against existing working code in `scripts/create-e2e-users.py` and ZITADEL v1 API documentation.
 
-The current parser (`parse_voting_history`) only handles `General_YYYY` / `Primary_YYYY` column patterns. Based on L2 documentation, alternate formats observed in the wild include:
+### Playwright E2E Test Suite (~130 test cases)
 
-| Pattern | Example | Currently Handled |
-|---------|---------|------------------|
-| `General_YYYY` | `General_2024` | YES |
-| `Primary_YYYY` | `Primary_2022` | YES |
-| `Elections_General_YYYY` | `Elections_General_2024` | NO |
-| `Elections_Primary_YYYY` | `Elections_Primary_2022` | NO |
-| `General_Election_YYYY` | `General_Election_2020` | NO |
-| `Primary_Election_YYYY` | `Primary_Election_2020` | NO |
-| `Special_YYYY` | `Special_2023` | NO |
-| `Local_YYYY` | `Local_2023` | NO |
-| `Runoff_YYYY` | `Runoff_2024` | NO |
+**Recommendation:** Use existing @playwright/test ^1.58.2 and existing project configuration. No new packages.
 
-The regex `_VOTING_HISTORY_RE = re.compile(r"^(General|Primary)_(\d{4})$")` needs broadening to handle these additional patterns. This is a one-line regex change, not a library addition.
+**Why the existing setup covers every testing plan requirement:**
 
-**Recommendation:** Expand the regex to `r"^(?:Elections_)?(?:General|Primary|Special|Local|Runoff)(?:_Election)?_(\d{4})$"` and update the `_VOTED_VALUES` frozenset if needed. No new packages required.
+| Requirement | Already Available |
+|-------------|-------------------|
+| Multi-role auth | 3 setup projects (auth.setup.ts, auth-orgadmin.setup.ts, auth-volunteer.setup.ts) with per-role storageState files |
+| Serial test ordering | `test.describe.serial()` already used in connected-journey.spec.ts |
+| Accessibility testing | @axe-core/playwright already installed, axe-test.ts fixture exists |
+| File upload testing | `page.locator('input[type="file"]').setInputFiles()` used in voter-import.spec.ts |
+| Network condition simulation | Playwright's `page.route()` for offline simulation used in phase33-offline-sync.spec.ts |
+| Screenshot on failure | `screenshot: "only-on-failure"` already configured |
+| Trace collection | `trace: "on-first-retry"` already configured |
+| CI integration | GitHub Actions workflow with Playwright already wired |
+| HTML reporting | `reporter: process.env.CI ? "html" : "list"` already configured |
 
-### 2. Campaign Data Isolation Audit (RLS)
+**New auth setup files needed:** Expand from 3 to 5+ setup projects to cover all 5 roles (owner, admin, manager, volunteer, viewer). This is configuration changes to `playwright.config.ts`, not new packages.
 
-**Stack changes: NONE. Uses existing pytest + SQLAlchemy async test infrastructure.**
+**Confidence:** HIGH -- verified against existing codebase files.
 
-The project already has comprehensive RLS test infrastructure:
-- `tests/integration/conftest.py` provides `superuser_session` (bypasses RLS), `app_user_session` (RLS enforced), and `two_campaigns` fixture
-- 8 RLS test files covering voter, canvassing, phone banking, volunteer, API smoke, and pool isolation
-- Connection patterns: superuser via `postgresql+asyncpg://postgres:postgres@localhost:5432/run_api`, app_user via `postgresql+asyncpg://app_user:app_password@localhost:5432/run_api`
+### Feature Builds (Note CRUD, Walk List Rename)
 
-**What the audit needs (code, not stack):**
+**Recommendation:** No new backend or frontend packages needed.
 
-The existing tests cover the major entities but a comprehensive audit should verify ALL 33+ RLS-enabled tables. The current test files test isolation for:
-- Campaigns, campaign_members, users (test_rls.py)
-- Voters, voter_tags, voter_lists, voter_contacts, voter_interactions, import_jobs (test_voter_rls.py)
-- Turfs, walk_lists, walk_list_entries, walk_list_canvassers, surveys, survey_questions (test_canvassing_rls.py)
-- Phone_banks, call_lists, call_list_entries, session_callers, dnc_entries (test_phone_banking_rls.py)
-- Volunteers, shifts, shift_volunteers, volunteer_tags, volunteer_tag_members, volunteer_availability (test_volunteer_rls.py)
-- API-level smoke tests for voters, turfs (test_rls_api_smoke.py)
-- Pool isolation and transaction scope (test_rls_isolation.py)
+| Feature | Backend | Frontend |
+|---------|---------|----------|
+| Voter note edit | PATCH endpoint using existing SQLAlchemy patterns | Existing react-hook-form + zod + shadcn/ui Sheet pattern |
+| Voter note delete | DELETE endpoint using existing patterns | Existing ConfirmDialog component |
+| Walk list rename | PATCH endpoint already exists | Existing inline-edit or Dialog pattern from survey/campaign edit |
 
-**Potentially untested entities** (need verification during audit):
-- `survey_responses` (if separate table)
-- `voter_list_members` (junction table)
-- `voter_addresses` (if exists)
-- `field_mapping_templates` (partially tested in test_voter_rls.py)
-- `organization_members` (org-level, not campaign-scoped -- different RLS pattern)
+**Confidence:** HIGH -- these are simple CRUD additions following established patterns.
 
-**Testing approach:** Use the existing `two_campaigns` fixture pattern. No new test libraries needed. pytest-asyncio (1.3.0+) and SQLAlchemy async sessions handle everything.
+### AI-Driven Production Testing Instructions
 
-### 3. Navigation Consolidation
+**Recommendation:** Plain markdown documentation, no tooling.
 
-**Stack changes: NONE. Pure frontend restructuring of existing components.**
+The testing plan explicitly describes this as human-readable or AI-agent-readable test instructions. No test runner, no package, no framework. This is a documentation deliverable that describes manual steps an AI agent (or human) follows against the production environment.
 
-The current sidebar in `web/src/routes/__root.tsx` already uses shadcn/ui's Sidebar component system (`SidebarContent`, `SidebarGroup`, `SidebarMenuItem`, etc.) with Lucide React icons. The current campaign nav items are:
-- Dashboard, Voters, Canvassing, Phone Banking, Volunteers, Field Operations
+**Confidence:** HIGH -- explicitly scoped in the testing plan.
 
-**What needs to change:**
-- Add "Surveys" to the campaign sidebar nav (currently only accessible via nested tabs in Canvassing/Phone Banking routes)
-- Remove duplicate inline tab bars from layout routes (`canvassing.tsx`, `phone-banking.tsx`, `voters.tsx`, `volunteers.tsx`) where they duplicate sidebar navigation
-- No new components or libraries needed -- just reorganize existing `navItems` array and conditionally show/hide sub-navigation
+## Alternatives Considered and Rejected
 
-The Lucide icon for Surveys is already imported (`ClipboardList` is in use for Volunteers). The `FileQuestion` or `ListChecks` icon from `lucide-react` (0.563.0, already installed) would work for Surveys.
+| Category | Rejected Option | Why Not |
+|----------|-----------------|---------|
+| Test user provisioning | ZITADEL v2 User Service API | v2 requires password hashing, and the endpoint itself is already deprecated; v1 works, is simpler, and matches existing code |
+| Test user provisioning | Manual ZITADEL Console creation | 15 users with project roles + org membership = tedious, error-prone, not reproducible |
+| Test user provisioning | ZITADEL Terraform provider | Massive new dependency for what's 40 lines of Python API calls |
+| E2E framework | Cypress | Playwright already has 51 spec files, 3 auth projects, CI integration. Migration cost is huge for zero benefit |
+| E2E framework | Playwright Test Agent (AI-driven) | Available in Playwright 1.58 but requires OpenAI/Anthropic API key at runtime. Overkill for deterministic UI tests where we control the selectors |
+| API testing | Postman/Newman | pytest already covers API testing; adding a second API test runner creates maintenance burden |
+| Visual regression | Percy / Chromatic | Not requested in the testing plan. Premature for current phase |
+| Code coverage | Istanbul/c8 for Playwright | @vitest/coverage-v8 already handles unit coverage. E2E coverage tooling adds complexity with marginal signal |
+| Fixture management | playwright-fixtures (npm) | Playwright's built-in `test.extend<T>()` fixture system is sufficient. Already used for axe-test.ts |
+| Test data management | Factory libraries (fishery, etc.) | Test data is deterministic (seed script + E2E users). No need for random generation |
+| bcrypt hashing library | For ZITADEL v2 API | Avoided by using v1 API which accepts plaintext passwords |
 
-### 4. Volunteer Onboarding Guides (Markdown Pages)
+## Configuration Changes (Not New Packages)
 
-**Stack changes: 2 new npm packages needed.**
+These are changes to existing configuration files, not new dependencies:
 
-This is the only feature requiring new dependencies. The goal is to author volunteer guides as markdown files and render them as styled, public-accessible pages within the app.
+### playwright.config.ts
 
-#### Recommended Approach: react-markdown + @tailwindcss/typography
+Expand from 3 auth projects to 5+ to cover the testing plan's role requirements:
 
-**Why react-markdown over build-time alternatives:**
-- Guides may eventually be loaded from API/CMS (future-proof)
-- react-markdown renders to React components (safe by default, no raw innerHTML injection)
-- Integrates naturally with the existing component system (can map markdown elements to shadcn/ui components)
-- The content is static but the rendering context is dynamic (route params, auth state for conditional content)
-
-**Why NOT MDX or vite-plugin-markdown:**
-- MDX (@mdx-js/rollup 3.1.1) adds JSX-in-markdown complexity that volunteer guides don't need
-- vite-plugin-markdown (0.21.5) produces raw HTML strings requiring unsafe innerHTML insertion
-- Both add build-time coupling that makes future CMS integration harder
-
-## Recommended Stack Additions
-
-### New Frontend Dependencies
-
-| Package | Version | Purpose | Why This One |
-|---------|---------|---------|-------------|
-| `react-markdown` | ^10.1.0 | Render markdown as React components | 900K+ weekly downloads, safe rendering via virtual DOM, component customization via `components` prop, GFM support via plugins, peer deps satisfied (React >=18) |
-| `@tailwindcss/typography` | ^0.5.19 | `prose` class for beautiful markdown typography | First-party Tailwind plugin, compatible with Tailwind v4 (peer dep: `>=4.0.0-beta.1`), provides heading hierarchy, list styling, blockquote formatting, table styling, code block formatting -- all matching design system |
-
-### Optional Frontend Dependencies (add only if needed)
-
-| Package | Version | Purpose | When to Add |
-|---------|---------|---------|-------------|
-| `remark-gfm` | ^4.0.1 | GitHub Flavored Markdown (tables, task lists, strikethrough) | Only if guides use GFM tables or task lists; start without it, add when first needed |
-| `rehype-slug` | ^6.0.0 | Add `id` attributes to headings for anchor links | Only if guides need in-page navigation / table of contents |
-| `rehype-autolink-headings` | ^7.1.0 | Add clickable anchor links to headings | Only if guides need shareable heading links; depends on rehype-slug |
-
-### New Backend Dependencies
-
-**NONE.** All four features use existing Python packages:
-- RapidFuzz 3.14.3 (import alias matching)
-- SQLAlchemy 2.0.48 + asyncpg 0.31.0 (RLS testing)
-- pytest 9.0.2 + pytest-asyncio 1.3.0 (integration tests)
-
-### New Dev Dependencies
-
-**NONE.** Existing Playwright (1.58.2), Vitest (4.0.18), and pytest handle all testing needs.
-
-## Integration Points
-
-### react-markdown + @tailwindcss/typography Integration
-
-**Tailwind v4 CSS setup** (add to `web/src/index.css`):
-```css
-@plugin "@tailwindcss/typography";
+```typescript
+// Current: setup, setup-orgadmin, setup-volunteer (3 roles)
+// Needed:  setup-owner, setup-admin, setup-manager, setup-volunteer, setup-viewer (5 roles)
+// The owner setup replaces the current "setup" project (admin@localhost -> owner1)
+// org_owner and org_admin use the same users as owner and admin with added org roles
 ```
 
-**Component pattern** (markdown page rendering):
-```tsx
-import Markdown from "react-markdown"
+### scripts/create-e2e-users.py
 
-function GuidePage({ content }: { content: string }) {
-  return (
-    <article className="prose prose-neutral dark:prose-invert max-w-none">
-      <Markdown>{content}</Markdown>
-    </article>
-  )
+Expand `E2E_USERS` list from 2 entries to 15 entries per the testing plan table (Section 1.2). Same API pattern, same code structure. Each entry needs:
+
+```python
+{
+    "userName": "owner1@test.civicpulse.local",
+    "password": "E2eOwner1!",
+    "firstName": "Test Owner",
+    "lastName": "1",
+    "email": "owner1@test.civicpulse.local",
+    "projectRole": "owner",
+    "orgRole": "org_owner",  # or None for non-org roles
 }
 ```
 
-**Custom component mapping** (to match shadcn/ui design system):
-```tsx
-<Markdown
-  components={{
-    a: ({ href, children }) => (
-      <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-        {children}
-      </a>
-    ),
-    // Map other elements to shadcn components as needed
-  }}
->
-  {content}
-</Markdown>
+### .github/workflows/pr.yml
+
+Add environment variables for new test user credentials:
+
+```yaml
+env:
+  E2E_OWNER_USERNAME: owner1@test.civicpulse.local
+  E2E_OWNER_PASSWORD: "E2eOwner1!"
+  E2E_ADMIN_USERNAME: admin1@test.civicpulse.local
+  E2E_ADMIN_PASSWORD: "E2eAdmin1!"
+  E2E_MANAGER_USERNAME: manager1@test.civicpulse.local
+  E2E_MANAGER_PASSWORD: "E2eManager1!"
+  E2E_VOLUNTEER_USERNAME: volunteer1@test.civicpulse.local
+  E2E_VOLUNTEER_PASSWORD: "E2eVolunteer1!"
+  E2E_VIEWER_USERNAME: viewer1@test.civicpulse.local
+  E2E_VIEWER_PASSWORD: "E2eViewer1!"
 ```
 
-**Markdown file location:** Store guide source files at `web/src/content/guides/` and import as raw strings via Vite's `?raw` import suffix (built into Vite, no plugin needed):
-```tsx
-import canvassingGuide from "@/content/guides/canvassing.md?raw"
-```
+## Installation
 
-This approach avoids adding a Vite markdown plugin while keeping guides as maintainable `.md` files.
-
-### Route structure for guides
-
-Add routes under an unauthed or lightly-authed path (guides are "public pages" per the milestone description):
-```
-web/src/routes/guides/index.tsx          -- guide listing
-web/src/routes/guides/$guideSlug.tsx     -- individual guide page
-```
-
-These routes should use TanStack Router's `createFileRoute` pattern, consistent with the rest of the app. The guide content can be a static map of slug-to-import for v1.6, with API-backed content as a future enhancement.
-
-## What NOT to Add
-
-| Technology | Why Not |
-|-----------|---------|
-| MDX / @mdx-js/rollup | Overkill for static volunteer guides; adds JSX-in-markdown complexity |
-| vite-plugin-markdown | Produces raw HTML strings; less safe than react-markdown's virtual DOM approach |
-| Contentful / Sanity / CMS | Out of scope for v1.6; guides are developer-authored markdown files |
-| Docusaurus / Nextra | Full documentation frameworks; we need a few in-app pages, not a docs site |
-| Any Python markdown library | Guides are frontend-rendered; no need for server-side markdown processing |
-| Additional RLS test framework | Existing pytest + SQLAlchemy async fixtures are sufficient and well-established |
-| react-helmet / react-head | Guides are in-app pages, not SEO-critical public pages needing meta tags |
-| Any CSV parsing library | Python stdlib `csv` module handles all import parsing needs |
-| chardet / charset-normalizer | Current UTF-8-sig + Latin-1 fallback handles all observed L2 file encodings |
-
-## Installation Commands
+No new packages to install. The complete test stack is already present:
 
 ```bash
-# Frontend: only 2 new packages
-cd web && npm install react-markdown @tailwindcss/typography
+# Frontend (already installed)
+cd web && npm ci
+npx playwright install --with-deps chromium
 
-# Backend: nothing to install
-# Dev deps: nothing to install
+# Backend (already installed)
+uv sync --frozen --dev
 ```
 
-## Version Compatibility Matrix
+## Key Integration Points
 
-| New Package | Requires | Project Has | Compatible |
-|------------|----------|-------------|------------|
-| react-markdown 10.1.0 | React >=18 | React 19.2.0 | YES |
-| react-markdown 10.1.0 | @types/react >=18 | @types/react 19.2.7 | YES |
-| @tailwindcss/typography 0.5.19 | tailwindcss >=3.0.0 or >=4.0.0-beta.1 | tailwindcss 4.1.18 | YES |
-| @tailwindcss/typography 0.5.19 | CSS `@plugin` directive (v4) | Tailwind v4 CSS config | YES |
+### Auth Setup <-> User Provisioning
 
-## Confidence Assessment
+The provisioning script creates users in ZITADEL. The auth setup files log in through the OIDC flow and save browser state. These must stay synchronized:
 
-| Area | Confidence | Reason |
-|------|------------|--------|
-| Import alias expansion | HIGH | L2 data dictionary reviewed, existing code patterns well understood, pure dict expansion |
-| Voting history regex | MEDIUM | L2 format variations confirmed from data dictionary but exact CSV headers vary by export; regex broadening is safe (additive, not breaking) |
-| RLS audit scope | HIGH | All migration files reviewed, RLS policies enumerated across 8 migration files, existing test patterns well established |
-| Navigation consolidation | HIGH | Sidebar component fully analyzed, navItems array pattern clear, no new deps needed |
-| react-markdown choice | HIGH | npm registry version verified (10.1.0), peer deps checked (React >=18 satisfied), 900K+ weekly downloads, used by Netlify/Gatsby/Stream |
-| @tailwindcss/typography | HIGH | Version verified (0.5.19), Tailwind v4 peer dep confirmed (>=4.0.0-beta.1), first-party Tailwind plugin, `@plugin` directive documented |
-| Vite ?raw imports | HIGH | Built-in Vite feature (no plugin needed), project already uses Vite 7.3.1 |
+1. `create-e2e-users.py` creates user with username + password + project role
+2. `auth-{role}.setup.ts` reads `E2E_{ROLE}_USERNAME` / `E2E_{ROLE}_PASSWORD` from env
+3. `playwright.config.ts` maps setup projects to storageState files
+4. Test spec files use `testMatch` patterns to route to correct auth project
+
+### Seed Data <-> Test Assertions
+
+The testing plan's data validation tests (VAL-01, VAL-02) assert against the seed CSV (`data/example-2026-02-24.csv`). Tests must NOT rely on hardcoded voter data -- they should read from the CSV or use known seed patterns.
+
+### Serial vs Parallel Execution
+
+Most test sections (AUTH, RBAC, ORG, CAMP, etc.) can run in parallel across Playwright workers. Within a section, some tests are sequential (create then validate then delete). Use `test.describe.serial()` for these sequences. The existing connected-journey.spec.ts already demonstrates this pattern.
 
 ## Sources
 
-- [react-markdown on npm](https://www.npmjs.com/package/react-markdown) -- version 10.1.0
-- [react-markdown on GitHub](https://github.com/remarkjs/react-markdown) -- component API, plugin system
-- [remark-gfm on npm](https://www.npmjs.com/package/remark-gfm) -- version 4.0.1
-- [@tailwindcss/typography on GitHub](https://github.com/tailwindlabs/tailwindcss-typography) -- Tailwind v4 `@plugin` syntax
-- [L2 Voter File Available Fields](https://l2-data.com/wp-content/uploads/2022/01/L2_Voter-Dictionary_r2.pdf) -- data dictionary for alias mapping
-- [L2 National Voter File on Redivis](https://redivis.com/datasets/4r1c-d6j182y87) -- column naming patterns (Voters_*, Residence_Addresses_*)
-- [React Markdown Complete Guide 2025](https://strapi.io/blog/react-markdown-complete-guide-security-styling) -- security and styling best practices
-- [Tailwind Typography Plugin Docs](https://tailwindcss-typography.vercel.app/) -- prose class usage
+- [ZITADEL Management v1 ImportHumanUser](https://zitadel.com/docs/reference/api/management/zitadel.management.v1.ManagementService.ImportHumanUser)
+- [ZITADEL User Service v2 CreateUser](https://zitadel.com/docs/apis/resources/user_service_v2/user-service-create-user) (deprecated, not recommended)
+- [ZITADEL Register and Create User Guide](https://zitadel.com/docs/guides/manage/user/reg-create-user)
+- [Playwright Authentication Docs](https://playwright.dev/docs/auth)
+- [Playwright Release Notes](https://playwright.dev/docs/release-notes)
+- [Playwright Fixtures Docs](https://playwright.dev/docs/test-fixtures)
+- [Playwright Parallelism Docs](https://playwright.dev/docs/test-parallel)
+- Existing codebase: `scripts/create-e2e-users.py`, `web/e2e/auth.setup.ts`, `web/playwright.config.ts`

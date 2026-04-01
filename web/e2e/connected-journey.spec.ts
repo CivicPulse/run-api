@@ -23,20 +23,24 @@ test.describe.serial("Connected user journey", () => {
     // ── Step 1: Navigate to app and verify campaign list loads ──────────
     await test.step("Org dashboard loads with campaign action", async () => {
       await page.goto("/")
-      await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+      await page.waitForURL(
+        (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+        { timeout: 15_000 },
+      )
 
-      // Verify the campaign list page loaded — "New Campaign" button is present
+      // Verify the campaign list page loaded — "Create Campaign" link is present
+      // (gated by RequireOrgRole — org permission resolution can take time)
       await expect(
-        page.getByRole("link", { name: /new campaign/i }).first()
-      ).toBeVisible({ timeout: 15_000 })
+        page.getByRole("link", { name: /create campaign/i }).first()
+      ).toBeVisible({ timeout: 30_000 })
     })
 
     // ── Step 2: Create campaign via form ─────────────────────────────────
     await test.step("Create campaign via form", async () => {
       campaignName = `E2E Journey ${Date.now()}`
 
-      // Click "New Campaign" link
-      await page.getByRole("link", { name: /new campaign/i }).first().click()
+      // Click "Create Campaign" link
+      await page.getByRole("link", { name: /create campaign/i }).first().click()
       await page.waitForURL(/campaigns\/new/)
 
       // Fill campaign name
@@ -46,6 +50,13 @@ test.describe.serial("Connected user journey", () => {
       await page.getByRole("combobox").first().click()
       await page.getByRole("option", { name: "Local" }).click()
 
+      // Step through the wizard: Details -> Review -> Invite Team -> Create
+      await page.getByRole("button", { name: /continue to review/i }).click()
+      await expect(page.getByText(/review your campaign/i)).toBeVisible({ timeout: 5_000 })
+
+      await page.getByRole("button", { name: /continue to invite/i }).click()
+      await expect(page.getByText(/add team members/i)).toBeVisible({ timeout: 5_000 })
+
       // Set up response promise BEFORE clicking submit
       const responsePromise = page.waitForResponse(
         (resp) =>
@@ -53,7 +64,7 @@ test.describe.serial("Connected user journey", () => {
           resp.request().method() === "POST"
       )
 
-      // Submit the form
+      // Submit the form (final step)
       await page.getByRole("button", { name: /create campaign/i }).click()
 
       // Verify API response
@@ -92,9 +103,12 @@ test.describe.serial("Connected user journey", () => {
       // Fill turf name
       await page.getByLabel(/^name$/i).first().fill("Journey Test Turf")
 
-      // Fill boundary GeoJSON directly (TurfForm has a simple textarea, not a toggle panel)
+      // Open the GeoJSON editor panel (boundary textarea is hidden by default)
+      await page.getByRole("button", { name: /edit as geojson/i }).click()
+
+      // Fill boundary GeoJSON in the now-visible textarea
       await page
-        .getByLabel(/boundary/i)
+        .locator("#boundary")
         .fill(
           '{"type":"Polygon","coordinates":[[[-83.65,32.84],[-83.64,32.84],[-83.64,32.85],[-83.65,32.85],[-83.65,32.84]]]}'
         )

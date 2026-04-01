@@ -24,12 +24,20 @@ describe("IMPT-07: deriveStep maps status to wizard step", () => {
     expect(deriveStep("processing")).toBe(3)
   })
 
+  it("deriveStep('cancelling') returns 3", () => {
+    expect(deriveStep("cancelling")).toBe(3)
+  })
+
   it("deriveStep('completed') returns 4", () => {
     expect(deriveStep("completed")).toBe(4)
   })
 
   it("deriveStep('failed') returns 4", () => {
     expect(deriveStep("failed")).toBe(4)
+  })
+
+  it("deriveStep('cancelled') returns 4", () => {
+    expect(deriveStep("cancelled")).toBe(4)
   })
 
   it("deriveStep with unknown status returns 1", () => {
@@ -46,7 +54,7 @@ describe("IMPT-07: deriveStep maps status to wizard step", () => {
 
 /** Mirrors useImportJob's internal refetchInterval decision logic */
 const jobIntervalFn = (status: string | undefined): number | false =>
-  status === "completed" || status === "failed" ? false : 3000
+  status === "completed" || status === "failed" || status === "cancelled" ? false : 3000
 
 describe("IMPT-05: useImportJob polling stops at terminal status", () => {
   it("returns false when status is 'completed'", () => {
@@ -65,6 +73,14 @@ describe("IMPT-05: useImportJob polling stops at terminal status", () => {
     expect(jobIntervalFn("queued")).toBe(3000)
   })
 
+  it("returns 3000 when status is 'cancelling'", () => {
+    expect(jobIntervalFn("cancelling")).toBe(3000)
+  })
+
+  it("returns false when status is 'cancelled'", () => {
+    expect(jobIntervalFn("cancelled")).toBe(false)
+  })
+
   it("returns 3000 when status is undefined (job still loading)", () => {
     expect(jobIntervalFn(undefined)).toBe(3000)
   })
@@ -73,7 +89,10 @@ describe("IMPT-05: useImportJob polling stops at terminal status", () => {
 /** Mirrors useImports (history) internal refetchInterval decision logic */
 const historyIntervalFn = (items: Array<{ status: string }>): number | false => {
   const hasActive = items.some(
-    (j) => j.status === "queued" || j.status === "processing",
+    (j) =>
+      j.status !== "completed" &&
+      j.status !== "failed" &&
+      j.status !== "cancelled",
   )
   return hasActive ? 3000 : false
 }
@@ -99,6 +118,22 @@ describe("IMPT-06: useImports history conditional polling", () => {
         { status: "completed" },
       ]),
     ).toBe(false)
+  })
+
+  it("returns false when all jobs are terminal including cancelled", () => {
+    expect(
+      historyIntervalFn([
+        { status: "completed" },
+        { status: "cancelled" },
+        { status: "failed" },
+      ]),
+    ).toBe(false)
+  })
+
+  it("returns 3000 when a job has status 'cancelling' (still active)", () => {
+    expect(
+      historyIntervalFn([{ status: "completed" }, { status: "cancelling" }]),
+    ).toBe(3000)
   })
 
   it("returns false for empty items list (no active jobs)", () => {

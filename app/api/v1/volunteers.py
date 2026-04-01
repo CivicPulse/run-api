@@ -43,7 +43,7 @@ _volunteer_service = VolunteerService()
     response_model=VolunteerResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_volunteer(
     request: Request,
     campaign_id: uuid.UUID,
@@ -68,7 +68,7 @@ async def create_volunteer(
     response_model=VolunteerResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def self_register(
     request: Request,
     campaign_id: uuid.UUID,
@@ -108,7 +108,7 @@ async def self_register(
     "/campaigns/{campaign_id}/volunteers",
     response_model=PaginatedResponse[VolunteerResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_volunteers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -141,7 +141,7 @@ async def list_volunteers(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}",
     response_model=VolunteerDetailResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteer_detail(
     request: Request,
     campaign_id: uuid.UUID,
@@ -195,7 +195,7 @@ async def get_volunteer_detail(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}",
     response_model=VolunteerResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_volunteer(
     request: Request,
     campaign_id: uuid.UUID,
@@ -226,7 +226,7 @@ async def update_volunteer(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/status",
     response_model=VolunteerResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_volunteer_status(
     request: Request,
     campaign_id: uuid.UUID,
@@ -265,7 +265,7 @@ async def update_volunteer_status(
     response_model=AvailabilityResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_availability(
     request: Request,
     campaign_id: uuid.UUID,
@@ -296,7 +296,7 @@ async def add_availability(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/availability/{availability_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_availability(
     request: Request,
     campaign_id: uuid.UUID,
@@ -327,7 +327,7 @@ async def delete_availability(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/availability",
     response_model=list[AvailabilityResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_availability(
     request: Request,
     campaign_id: uuid.UUID,
@@ -354,7 +354,7 @@ async def list_availability(
     response_model=VolunteerTagResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_tag(
     request: Request,
     campaign_id: uuid.UUID,
@@ -376,7 +376,7 @@ async def create_tag(
     "/campaigns/{campaign_id}/volunteer-tags",
     response_model=list[VolunteerTagResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_tags(
     request: Request,
     campaign_id: uuid.UUID,
@@ -396,7 +396,7 @@ async def list_tags(
     "/campaigns/{campaign_id}/volunteer-tags/{tag_id}",
     response_model=VolunteerTagResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_tag(
     request: Request,
     campaign_id: uuid.UUID,
@@ -427,7 +427,7 @@ async def update_tag(
     "/campaigns/{campaign_id}/volunteer-tags/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_tag(
     request: Request,
     campaign_id: uuid.UUID,
@@ -457,7 +457,7 @@ async def delete_tag(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/tags/{tag_id}",
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_tag_to_volunteer(
     request: Request,
     campaign_id: uuid.UUID,
@@ -480,7 +480,7 @@ async def add_tag_to_volunteer(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/tags/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_tag_from_volunteer(
     request: Request,
     campaign_id: uuid.UUID,
@@ -515,7 +515,7 @@ async def remove_tag_from_volunteer(
 @router.get(
     "/campaigns/{campaign_id}/volunteers/{volunteer_id}/hours",
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_volunteer_hours(
     request: Request,
     campaign_id: uuid.UUID,

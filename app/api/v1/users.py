@@ -24,7 +24,7 @@ router = APIRouter()
     "",
     response_model=UserResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_me(
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
@@ -39,7 +39,7 @@ async def get_me(
     "/campaigns",
     response_model=list[UserCampaignResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def get_my_campaigns(
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
@@ -72,7 +72,7 @@ async def get_my_campaigns(
 
 
 @router.get("/orgs", response_model=list[UserOrgResponse])
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_my_orgs(
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
@@ -83,8 +83,7 @@ async def list_my_orgs(
         select(Organization, OrganizationMember.role)
         .join(
             OrganizationMember,
-            Organization.id
-            == OrganizationMember.organization_id,
+            Organization.id == OrganizationMember.organization_id,
         )
         .where(OrganizationMember.user_id == user.id)
         .order_by(Organization.name)

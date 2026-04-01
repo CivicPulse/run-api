@@ -1,30 +1,19 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 
 test.describe("Role-gated UI: volunteer user", () => {
   test("volunteer type toggle is not visible for non-manager on register page", async ({
     page,
+    campaignId,
   }) => {
-    await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
-
-    // Navigate into the seed campaign
-    const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
-      .first()
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-
-    // Extract campaign ID and navigate to volunteer register page
-    const url = page.url()
-    const campaignId = url.match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
     await page.goto(`/campaigns/${campaignId}/volunteers/register`)
 
-    // Wait for the register page to load
+    // Wait for the register page to load (increase timeout for parallel load)
+    await page.waitForURL(/volunteers\/register/, { timeout: 15_000 })
     await expect(
       page
         .getByRole("heading", { name: /volunteer registration|create volunteer/i })
         .first(),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // The "Volunteer Type" label and RadioGroup should NOT be visible
     // (gated behind RequireRole minimum="manager")
@@ -40,7 +29,10 @@ test.describe("Role-gated UI: volunteer user", () => {
     page,
   }) => {
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // The Create Campaign button is gated behind RequireOrgRole minimum="org_admin"
     // A volunteer user has no org membership, so the button should be hidden

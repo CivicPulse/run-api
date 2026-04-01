@@ -255,7 +255,8 @@ function ShiftDetailPage() {
     return map
   }, [allVolunteers])
 
-  const signups = volunteersData?.items ?? []
+  // volunteersData is a raw array (API returns list[ShiftSignupResponse], not paginated)
+  const signups = volunteersData ?? []
   const existingVolunteerIds = useMemo(
     () => signups.map((s) => s.volunteer_id),
     [signups],

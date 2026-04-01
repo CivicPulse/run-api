@@ -22,7 +22,7 @@ invite_service = InviteService()
     response_model=InviteResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("10/minute", key_func=get_user_or_ip_key)
+@limiter.limit("40/minute", key_func=get_user_or_ip_key)
 async def create_invite(
     request: Request,
     campaign_id: uuid.UUID,
@@ -65,7 +65,7 @@ async def create_invite(
     "/campaigns/{campaign_id}/invites",
     response_model=list[InviteResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_invites(
     request: Request,
     campaign_id: uuid.UUID,
@@ -94,7 +94,7 @@ async def list_invites(
     "/campaigns/{campaign_id}/invites/{invite_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def revoke_invite(
     request: Request,
     campaign_id: uuid.UUID,  # noqa: ARG001
@@ -116,7 +116,7 @@ async def revoke_invite(
     "/invites/{token}/accept",
     response_model=InviteAcceptResponse,
 )
-@limiter.limit("10/minute", key_func=get_user_or_ip_key)
+@limiter.limit("40/minute", key_func=get_user_or_ip_key)
 async def accept_invite(
     token: uuid.UUID,
     request: Request,

@@ -9,8 +9,36 @@ import type { OrgCampaign, OrgMember, UserOrg } from "@/types/org"
 export function useOrgCampaigns() {
   return useQuery({
     queryKey: ["org", "campaigns"],
-    queryFn: () =>
-      api.get("api/v1/org/campaigns").json<OrgCampaign[]>(),
+    queryFn: async (): Promise<OrgCampaign[]> => {
+      try {
+        return await api.get("api/v1/org/campaigns").json<OrgCampaign[]>()
+      } catch {
+        // Non-admin users can't access org endpoint; fall back to
+        // the general campaigns list which works for all roles.
+        const resp = await api
+          .get("api/v1/campaigns")
+          .json<{
+            items: Array<{
+              id: string
+              name: string
+              status: string | null
+              created_at: string
+              type?: string | null
+              election_date?: string | null
+            }>
+          }>()
+        return resp.items.map((c) => ({
+          id: c.id,
+          name: c.name,
+          slug: null,
+          campaign_type: c.type ?? null,
+          election_date: c.election_date ?? null,
+          created_at: c.created_at,
+          member_count: 0,
+          status: c.status,
+        }))
+      }
+    },
   })
 }
 
@@ -36,6 +64,26 @@ export function useArchiveCampaign() {
       api
         .patch(`api/v1/campaigns/${campaignId}`, {
           json: { status: "archived" },
+        })
+        .json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["org", "campaigns"],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["campaigns"],
+      })
+    },
+  })
+}
+
+export function useUnarchiveCampaign() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (campaignId: string) =>
+      api
+        .patch(`api/v1/campaigns/${campaignId}`, {
+          json: { status: "active" },
         })
         .json(),
     onSuccess: () => {

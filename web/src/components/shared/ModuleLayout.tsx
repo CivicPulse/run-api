@@ -45,7 +45,7 @@ export function ModuleLayout({ title, navItems, titleClassName }: ModuleLayoutPr
                         item.variant === "destructive" && isActive && "text-destructive",
                         item.variant === "destructive" &&
                           !isActive &&
-                          "text-destructive/70 hover:text-destructive",
+                          "text-destructive hover:text-destructive",
                       )}
                     >
                       {item.label}

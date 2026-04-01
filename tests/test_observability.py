@@ -12,11 +12,7 @@ from app.core.sentry import scrub_pii
 
 def test_scrub_pii_strips_phone():
     """Phone numbers in exception values are replaced."""
-    event = {
-        "exception": {
-            "values": [{"value": "Error for voter 5551234567"}]
-        }
-    }
+    event = {"exception": {"values": [{"value": "Error for voter 5551234567"}]}}
     result = scrub_pii(event, {})
     assert "[REDACTED_PHONE]" in result["exception"]["values"][0]["value"]
     assert "5551234567" not in result["exception"]["values"][0]["value"]
@@ -24,16 +20,10 @@ def test_scrub_pii_strips_phone():
 
 def test_scrub_pii_strips_email():
     """Email addresses in exception values are replaced."""
-    event = {
-        "exception": {
-            "values": [{"value": "Error for voter@example.com"}]
-        }
-    }
+    event = {"exception": {"values": [{"value": "Error for voter@example.com"}]}}
     result = scrub_pii(event, {})
     assert "[REDACTED_EMAIL]" in result["exception"]["values"][0]["value"]
-    assert "voter@example.com" not in result["exception"]["values"][0][
-        "value"
-    ]
+    assert "voter@example.com" not in result["exception"]["values"][0]["value"]
 
 
 def test_scrub_pii_preserves_tags():

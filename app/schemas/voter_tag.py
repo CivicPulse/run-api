@@ -33,3 +33,9 @@ class VoterListMemberUpdate(BaseModel):
     """Add or remove voters from a static list."""
 
     voter_ids: list[uuid.UUID]
+
+
+class VoterTagUpdate(BaseModel):
+    """Update an existing voter tag."""
+
+    name: str

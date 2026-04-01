@@ -21,30 +21,6 @@ function CampaignLayout() {
     queryFn: () => api.get(`api/v1/campaigns/${campaignId}`).json<Campaign>(),
   })
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-32 rounded-lg" />
-          <Skeleton className="h-32 rounded-lg" />
-          <Skeleton className="h-32 rounded-lg" />
-        </div>
-      </div>
-    )
-  }
-
-  if (isError || !campaign) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 space-y-4">
-        <p className="text-muted-foreground">Campaign not found</p>
-        <Link to="/" className="text-sm text-primary hover:underline">
-          Back to campaigns
-        </Link>
-      </div>
-    )
-  }
-
   const tabs = [
     { to: `/campaigns/${campaignId}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
     { to: `/campaigns/${campaignId}/voters`, label: "Voters", icon: Users },
@@ -54,28 +30,52 @@ function CampaignLayout() {
     { to: `/campaigns/${campaignId}/volunteers`, label: "Volunteers", icon: ClipboardList },
   ]
 
+  // Render Outlet immediately — child routes (voters, settings, etc.) don't need
+  // campaign metadata to function. Show header/tabs as skeleton while loading
+  // rather than blocking the entire subtree. This prevents the 3-card skeleton
+  // from hiding child route content when the campaign API is slow under load.
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">{campaign?.name ?? "Campaign"}</h1>
-        {campaign?.candidate_name && (
-          <p className="text-sm text-muted-foreground">
-            {campaign.candidate_name}{campaign.party_affiliation ? ` (${campaign.party_affiliation})` : ""}
-          </p>
-        )}
-      </div>
-      <nav className="flex gap-1 overflow-x-auto border-b">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.to}
-            to={tab.to}
-            className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground"
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
+      {isError ? (
+        <div className="flex flex-col items-center justify-center py-4 space-y-2">
+          <p className="text-muted-foreground text-sm">Campaign not found</p>
+          <Link to="/" className="text-sm text-primary hover:underline">
+            Back to campaigns
           </Link>
-        ))}
-      </nav>
+        </div>
+      ) : isLoading ? (
+        <div>
+          <Skeleton className="h-8 w-48 mb-1" />
+          <div className="flex gap-1 overflow-x-auto border-b pb-2">
+            {tabs.map((tab) => (
+              <Skeleton key={tab.to} className="h-9 w-24 rounded-md shrink-0" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div>
+            <h1 className="text-2xl font-bold">{campaign?.name ?? "Campaign"}</h1>
+            {campaign?.candidate_name && (
+              <p className="text-sm text-muted-foreground">
+                {campaign.candidate_name}{campaign.party_affiliation ? ` (${campaign.party_affiliation})` : ""}
+              </p>
+            )}
+          </div>
+          <nav className="flex gap-1 overflow-x-auto border-b mt-2">
+            {tabs.map((tab) => (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground"
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
       <Outlet />
     </div>
   )

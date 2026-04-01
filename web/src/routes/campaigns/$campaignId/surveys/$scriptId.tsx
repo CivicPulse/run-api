@@ -90,10 +90,15 @@ function ScriptDetail() {
   }
 
   const handleAddQuestion = () => {
+    let options = parseOptions(newOptions)
+    // Scale questions require min and max — default to 1–5 if not provided
+    if (newType === "scale" && (!options || !("min" in options) || !("max" in options))) {
+      options = { ...options, min: 1, max: 5 }
+    }
     const data: QuestionCreate = {
       question_text: newText,
       question_type: newType,
-      options: parseOptions(newOptions),
+      options,
     }
     addQuestion.mutate(data, {
       onSuccess: () => {
@@ -491,6 +496,14 @@ function EditQuestionDialog({
           .split("\n")
           .map((l) => l.trim())
           .filter(Boolean),
+      }
+    }
+    // Scale questions require min and max — preserve existing or default to 1–5
+    if (type === "scale") {
+      const existingOpts = question.options as Record<string, unknown> | null
+      data.options = {
+        min: existingOpts?.min ?? 1,
+        max: existingOpts?.max ?? 5,
       }
     }
     updateQuestion.mutate(data, { onSuccess: onClose })

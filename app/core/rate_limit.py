@@ -39,9 +39,9 @@ def get_real_ip(request: Request) -> str:
 
     if _is_trusted_proxy(client_host):
         # Trust proxy headers in priority order
-        real_ip = request.headers.get(
-            "cf-connecting-ip"
-        ) or request.headers.get("x-real-ip")
+        real_ip = request.headers.get("cf-connecting-ip") or request.headers.get(
+            "x-real-ip"
+        )
         if real_ip:
             return real_ip
 
@@ -79,4 +79,5 @@ def get_user_or_ip_key(request: Request) -> str:
 limiter = Limiter(
     key_func=get_real_ip,
     default_limits=[settings.rate_limit_unauthenticated],
+    enabled=not settings.disable_rate_limit,
 )

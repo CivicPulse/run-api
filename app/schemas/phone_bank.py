@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
+
+from pydantic import field_validator
 
 from app.schemas.common import BaseSchema
+
+
+def _to_naive_utc(value: datetime | None) -> datetime | None:
+    """Strip timezone from a datetime, converting to UTC first if needed."""
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 class PhoneBankSessionCreate(BaseSchema):
@@ -16,6 +25,11 @@ class PhoneBankSessionCreate(BaseSchema):
     scheduled_start: datetime | None = None
     scheduled_end: datetime | None = None
 
+    @field_validator("scheduled_start", "scheduled_end", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime | None) -> datetime | None:
+        return _to_naive_utc(v)
+
 
 class PhoneBankSessionUpdate(BaseSchema):
     """Schema for updating a phone bank session."""
@@ -24,6 +38,11 @@ class PhoneBankSessionUpdate(BaseSchema):
     status: str | None = None
     scheduled_start: datetime | None = None
     scheduled_end: datetime | None = None
+
+    @field_validator("scheduled_start", "scheduled_end", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime | None) -> datetime | None:
+        return _to_naive_utc(v)
 
 
 class PhoneBankSessionResponse(BaseSchema):

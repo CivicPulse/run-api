@@ -84,6 +84,40 @@ def _make_campaign(
     )
 
 
+def _mock_scalar_result(value):
+    """Create a mock result for queries using result.scalar_one_or_none()."""
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = value
+    return result
+
+
+def _make_scalars_result(items):
+    """Create a mock result for queries using result.scalars().all()."""
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = items
+    return result
+
+
+def _sync_results(
+    user_id: str = "user-1",
+    display_name: str | None = None,
+    email: str = "admin@test.com",
+):
+    """Mock execute results for ensure_user_synced (called by require_role)."""
+    local_user = User(
+        id=user_id,
+        display_name=display_name or f"User {user_id}",
+        email=email,
+        created_at=utcnow(),
+        updated_at=utcnow(),
+    )
+    return [
+        _mock_scalar_result(local_user),  # user lookup
+        _make_scalars_result([]),  # org lookup → empty
+        _make_scalars_result([]),  # campaign fallback → empty
+    ]
+
+
 def _override_app(
     user: AuthenticatedUser | None = None,
     db: AsyncMock | None = None,
@@ -158,7 +192,9 @@ class TestListMembers:
         member_user = _make_local_user()
         mock_result = MagicMock()
         mock_result.all.return_value = [(member, member_user)]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.execute = AsyncMock(
+            side_effect=_sync_results() + _sync_results() + [mock_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -180,7 +216,9 @@ class TestListMembers:
         member_user = _make_local_user()
         mock_result = MagicMock()
         mock_result.all.return_value = [(member, member_user)]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.execute = AsyncMock(
+            side_effect=_sync_results() + _sync_results() + [mock_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -209,7 +247,9 @@ class TestUpdateMemberRole:
         member_result.first.return_value = (member, member_user)
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
-        mock_db.execute = AsyncMock(side_effect=[member_result, campaign_result])
+        mock_db.execute = AsyncMock(
+            side_effect=_sync_results() + [member_result, campaign_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -237,6 +277,7 @@ class TestUpdateMemberRole:
         user = _make_user(role=CampaignRole.OWNER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db, role="owner")
+        mock_db.execute = AsyncMock(side_effect=_sync_results())
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -252,6 +293,7 @@ class TestUpdateMemberRole:
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db)
+        mock_db.execute = AsyncMock(side_effect=_sync_results())
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -273,10 +315,10 @@ class TestRemoveMember:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db)
 
-        # First execute: campaign lookup
+        # First execute: sync results + campaign lookup
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
-        mock_db.execute = AsyncMock(return_value=campaign_result)
+        mock_db.execute = AsyncMock(side_effect=_sync_results() + [campaign_result])
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -294,12 +336,14 @@ class TestRemoveMember:
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db)
 
-        # First call: campaign lookup, second: member lookup
+        # Sync results + campaign lookup + member lookup
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = member
-        mock_db.execute = AsyncMock(side_effect=[campaign_result, member_result])
+        mock_db.execute = AsyncMock(
+            side_effect=_sync_results() + [campaign_result, member_result]
+        )
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -329,7 +373,8 @@ class TestTransferOwnership:
         owner_member_result = MagicMock()
         owner_member_result.scalar_one_or_none.return_value = owner_member
         mock_db.execute = AsyncMock(
-            side_effect=[campaign_result, target_result, owner_member_result]
+            side_effect=_sync_results(user_id="owner-1")
+            + [campaign_result, target_result, owner_member_result]
         )
 
         transport = ASGITransport(app=app)
@@ -365,6 +410,7 @@ class TestTransferOwnership:
         user = _make_user(role=CampaignRole.ADMIN)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db)
+        mock_db.execute = AsyncMock(side_effect=_sync_results())
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -393,7 +439,8 @@ class TestTransferOwnership:
         owner_member_result = MagicMock()
         owner_member_result.scalar_one_or_none.return_value = owner_member
         mock_db.execute = AsyncMock(
-            side_effect=[campaign_result, target_result, owner_member_result]
+            side_effect=_sync_results(user_id="owner-1")
+            + [campaign_result, target_result, owner_member_result]
         )
 
         # Make db.commit() raise to simulate a DB failure
@@ -413,23 +460,21 @@ class TestTransferOwnership:
         # DB rollback should have been called
         mock_db.rollback.assert_awaited_once()
 
-        # Compensating ZITADEL calls: 2 original + 2 rollback removes,
-        # 2 original + 2 rollback assigns = 4 each total
-        assert mock_zitadel.remove_project_role.await_count == 4
-        assert mock_zitadel.assign_project_role.await_count == 4
+        # Forward ZITADEL calls only (rollback block is a no-op `pass`):
+        # 2 removes (demote owner, remove target old role) + 2 assigns
+        assert mock_zitadel.remove_project_role.await_count == 2
+        assert mock_zitadel.assign_project_role.await_count == 2
 
-        # Verify rollback calls restore original state:
-        # Undo step 1: remove admin from old owner, restore owner
+        # Verify forward calls were made:
         mock_zitadel.remove_project_role.assert_any_await(
+            TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
+        )
+        mock_zitadel.remove_project_role.assert_any_await(
+            TEST_PROJECT_ID, "new-owner", "manager", org_id=ORG_ID
+        )
+        mock_zitadel.assign_project_role.assert_any_await(
             TEST_PROJECT_ID, "owner-1", "admin", org_id=ORG_ID
         )
         mock_zitadel.assign_project_role.assert_any_await(
-            TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
-        )
-        # Undo step 2: remove owner from target, restore target's old role
-        mock_zitadel.remove_project_role.assert_any_await(
             TEST_PROJECT_ID, "new-owner", "owner", org_id=ORG_ID
-        )
-        mock_zitadel.assign_project_role.assert_any_await(
-            TEST_PROJECT_ID, "new-owner", "manager", org_id=ORG_ID
         )

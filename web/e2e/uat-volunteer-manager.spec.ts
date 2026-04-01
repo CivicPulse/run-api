@@ -1,22 +1,12 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
+
+// Uses worker-scoped campaignId fixture from ./fixtures for seed campaign navigation
 
 test.describe("UAT: Volunteer toggle — manager view (Phase 44 UX-02)", () => {
   test("manager sees Volunteer Type radio group with record and invite options", async ({
-    page,
+    page, campaignId,
   }) => {
-    // Navigate to org dashboard and find a campaign
-    await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
-
-    const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
-      .first()
-    await campaignLink.click()
-    await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
-
-    // Extract campaign ID and navigate to volunteer register page
-    const url = page.url()
-    const campaignId = url.match(/campaigns\/([a-f0-9-]+)/)?.[1] ?? ""
+    // Navigate to volunteer register page using fixture-provided campaignId
     await page.goto(`/campaigns/${campaignId}/volunteers/register`)
 
     // Wait for page to load

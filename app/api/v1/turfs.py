@@ -50,7 +50,7 @@ def _turf_to_response(turf, voter_count: int | None = None) -> TurfResponse:
     response_model=TurfResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_turf(
     request: Request,
     campaign_id: uuid.UUID,
@@ -80,7 +80,7 @@ async def create_turf(
     "/campaigns/{campaign_id}/turfs",
     response_model=PaginatedResponse[TurfResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_turfs(
     request: Request,
     campaign_id: uuid.UUID,
@@ -113,7 +113,7 @@ async def list_turfs(
     "/campaigns/{campaign_id}/turfs/overlaps",
     response_model=list[OverlappingTurfResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_turf_overlaps(
     request: Request,
     campaign_id: uuid.UUID,
@@ -162,7 +162,7 @@ async def get_turf_overlaps(
     "/campaigns/{campaign_id}/turfs/{turf_id}/voters",
     response_model=list[VoterLocationResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_turf_voters(
     request: Request,
     campaign_id: uuid.UUID,
@@ -210,7 +210,7 @@ async def get_turf_voters(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     response_model=TurfResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_turf(
     request: Request,
     campaign_id: uuid.UUID,
@@ -238,7 +238,7 @@ async def get_turf(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     response_model=TurfResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_turf(
     request: Request,
     campaign_id: uuid.UUID,
@@ -277,7 +277,7 @@ async def update_turf(
     "/campaigns/{campaign_id}/turfs/{turf_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_turf(
     request: Request,
     campaign_id: uuid.UUID,

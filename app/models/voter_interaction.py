@@ -1,4 +1,4 @@
-"""Voter interaction model -- append-only event log."""
+"""Voter interaction model -- event log with mutable notes."""
 
 from __future__ import annotations
 
@@ -31,10 +31,13 @@ class InteractionType(enum.StrEnum):
 
 
 class VoterInteraction(Base):
-    """Append-only interaction event for a voter.
+    """Interaction event for a voter.
 
-    Events are never modified or deleted. Corrections are recorded as new
-    events referencing the original event ID in the payload.
+    System-generated events (tag_added, import, door_knock, etc.) are
+    append-only and never modified or deleted. Note-type interactions
+    are user-created and may be edited or deleted via the API.
+    Corrections for system events are recorded as new events referencing
+    the original event ID in the payload.
     """
 
     __tablename__ = "voter_interactions"

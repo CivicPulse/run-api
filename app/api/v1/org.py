@@ -35,38 +35,30 @@ _service = OrgService()
 
 
 @router.get("", response_model=OrgResponse)
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_org(
     request: Request,
-    user: AuthenticatedUser = Depends(
-        require_org_role("org_admin")
-    ),
+    user: AuthenticatedUser = Depends(require_org_role("org_admin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Get organization details for the authenticated user's org."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
     return OrgResponse.model_validate(org)
 
 
 @router.patch("", response_model=OrgResponse)
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_org(
     request: Request,
     body: OrgUpdate,
-    user: AuthenticatedUser = Depends(
-        require_org_role("org_owner")
-    ),
+    user: AuthenticatedUser = Depends(require_org_role("org_owner")),
     db: AsyncSession = Depends(get_db),
 ):
     """Update organization details. Requires org_owner role."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
     if not org:
         raise HTTPException(
@@ -80,22 +72,16 @@ async def update_org(
     return OrgResponse.model_validate(org)
 
 
-@router.get(
-    "/campaigns", response_model=list[OrgCampaignResponse]
-)
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@router.get("/campaigns", response_model=list[OrgCampaignResponse])
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_org_campaigns(
     request: Request,
-    user: AuthenticatedUser = Depends(
-        require_org_role("org_admin")
-    ),
+    user: AuthenticatedUser = Depends(require_org_role("org_admin")),
     db: AsyncSession = Depends(get_db),
 ):
     """List all campaigns in the user's organization."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
     results = await _service.list_campaigns(db, org.id)
     return [
@@ -103,12 +89,8 @@ async def list_org_campaigns(
             id=r["campaign"].id,
             name=r["campaign"].name,
             slug=getattr(r["campaign"], "slug", None),
-            campaign_type=getattr(
-                r["campaign"], "campaign_type", None
-            ),
-            election_date=getattr(
-                r["campaign"], "election_date", None
-            ),
+            campaign_type=getattr(r["campaign"], "campaign_type", None),
+            election_date=getattr(r["campaign"], "election_date", None),
             created_at=r["campaign"].created_at,
             member_count=r["member_count"],
             status=getattr(r["campaign"], "status", None),
@@ -117,41 +99,28 @@ async def list_org_campaigns(
     ]
 
 
-@router.get(
-    "/members", response_model=list[OrgMemberResponse]
-)
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@router.get("/members", response_model=list[OrgMemberResponse])
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_org_members(
     request: Request,
-    user: AuthenticatedUser = Depends(
-        require_org_role("org_admin")
-    ),
+    user: AuthenticatedUser = Depends(require_org_role("org_admin")),
     db: AsyncSession = Depends(get_db),
 ):
     """List all org-level members with their roles."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
-    results = (
-        await _service.list_members_with_campaign_roles(
-            db, org.id
-        )
-    )
+    results = await _service.list_members_with_campaign_roles(db, org.id)
     return [
         OrgMemberResponse(
             user_id=r["member"].user_id,
-            display_name=getattr(
-                r["user"], "display_name", None
-            ),
+            display_name=getattr(r["user"], "display_name", None),
             email=getattr(r["user"], "email", None),
             role=r["member"].role,
             joined_at=r["member"].joined_at,
             created_at=r["member"].created_at,
             campaign_roles=[
-                CampaignRoleEntry(**cr)
-                for cr in r.get("campaign_roles", [])
+                CampaignRoleEntry(**cr) for cr in r.get("campaign_roles", [])
             ],
         )
         for r in results
@@ -162,21 +131,17 @@ async def list_org_members(
     "/campaigns/{campaign_id}/members",
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def add_member_to_campaign(
     request: Request,
     campaign_id: uuid.UUID,
     body: AddMemberToCampaignRequest,
-    user: AuthenticatedUser = Depends(
-        require_org_role("org_admin")
-    ),
+    user: AuthenticatedUser = Depends(require_org_role("org_admin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Add an existing org member to a campaign."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
     if not org:
         raise HTTPException(

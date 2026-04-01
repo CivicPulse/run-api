@@ -1,6 +1,6 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router"
 import { useTurfs } from "@/hooks/useTurfs"
-import { useWalkLists, useDeleteWalkList } from "@/hooks/useWalkLists"
+import { useWalkLists, useDeleteWalkList, useRenameWalkList } from "@/hooks/useWalkLists"
 import { useDeleteTurf } from "@/hooks/useTurfs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,11 +15,26 @@ import {
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { WalkListGenerateDialog } from "@/components/canvassing/WalkListGenerateDialog"
 import { TurfOverviewMap } from "@/components/canvassing/map/TurfOverviewMap"
-import { Map, Plus, Trash2, List } from "lucide-react"
+import { Map, MoreVertical, Pencil, Plus, Trash2, List } from "lucide-react"
 import { useState } from "react"
 
 function CanvassingIndex() {
@@ -28,6 +43,7 @@ function CanvassingIndex() {
   const { data: walkListsData, isLoading: walkListsLoading } = useWalkLists(campaignId)
   const deleteTurf = useDeleteTurf(campaignId)
   const deleteWalkList = useDeleteWalkList(campaignId)
+  const renameWalkList = useRenameWalkList(campaignId)
 
   const turfs = turfsData?.items ?? []
   const walkLists = walkListsData?.items ?? []
@@ -35,6 +51,8 @@ function CanvassingIndex() {
   const [deleteTurfId, setDeleteTurfId] = useState<string | null>(null)
   const [deleteWalkListId, setDeleteWalkListId] = useState<string | null>(null)
   const [generateOpen, setGenerateOpen] = useState(false)
+  const [renameWalkListId, setRenameWalkListId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
 
   return (
     <div className="space-y-8">
@@ -53,7 +71,7 @@ function CanvassingIndex() {
       {/* Turfs Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-md font-medium">Turfs</h3>
+          <h2 className="text-md font-medium">Turfs</h2>
           <Button size="sm" asChild>
             <Link to={`/campaigns/${campaignId}/canvassing/turfs/new` as string}>
               <Plus className="mr-1 h-4 w-4" /> New Turf
@@ -113,6 +131,7 @@ function CanvassingIndex() {
                       variant="ghost"
                       size="icon"
                       className="relative z-20"
+                      aria-label={`Delete turf ${turf.name}`}
                       onClick={(e) => {
                         e.preventDefault()
                         setDeleteTurfId(turf.id)
@@ -133,7 +152,7 @@ function CanvassingIndex() {
       {/* Walk Lists Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-md font-medium">Walk Lists</h3>
+          <h2 className="text-md font-medium">Walk Lists</h2>
           <Button size="sm" onClick={() => setGenerateOpen(true)}>
             <Plus className="mr-1 h-4 w-4" /> Generate Walk List
           </Button>
@@ -200,13 +219,32 @@ function CanvassingIndex() {
                       {new Date(walkList.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteWalkListId(walkList.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Walk list actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setRenameWalkListId(walkList.id)
+                              setRenameValue(walkList.name)
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteWalkListId(walkList.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 )
@@ -252,6 +290,61 @@ function CanvassingIndex() {
         open={generateOpen}
         onOpenChange={setGenerateOpen}
       />
+
+      <Dialog
+        open={!!renameWalkListId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRenameWalkListId(null)
+            setRenameValue("")
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Walk List</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rename-walk-list-input">Name</Label>
+            <Input
+              id="rename-walk-list-input"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              disabled={renameWalkList.isPending}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renameValue.trim()) {
+                  renameWalkList.mutate(
+                    { walkListId: renameWalkListId!, name: renameValue.trim() },
+                    { onSuccess: () => { setRenameWalkListId(null); setRenameValue("") } },
+                  )
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setRenameWalkListId(null); setRenameValue("") }}
+              disabled={renameWalkList.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (renameWalkListId && renameValue.trim()) {
+                  renameWalkList.mutate(
+                    { walkListId: renameWalkListId, name: renameValue.trim() },
+                    { onSuccess: () => { setRenameWalkListId(null); setRenameValue("") } },
+                  )
+                }
+              }}
+              disabled={!renameValue.trim() || renameWalkList.isPending}
+            >
+              {renameWalkList.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

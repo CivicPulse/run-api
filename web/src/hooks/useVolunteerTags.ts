@@ -86,7 +86,8 @@ export function useRemoveTagFromVolunteer(
         .delete(
           `api/v1/campaigns/${campaignId}/volunteers/${volunteerId}/tags/${tagId}`,
         )
-        .json(),
+        // API returns 204 No Content — do not call .json()
+        .then(() => undefined),
     onSuccess: () =>
       qc.invalidateQueries({
         queryKey: volunteerKeys.detail(campaignId, volunteerId),

@@ -14,6 +14,9 @@ export class PermissionError extends Error {
   }
 }
 
+// Use window.location.origin by default -- API is same-origin in production
+// (Docker serves SPA), dev (vite proxy), and E2E (vite preview proxy).
+// VITE_API_BASE_URL overrides only when explicitly set to a non-empty value.
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || window.location.origin
 

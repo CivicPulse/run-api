@@ -1,11 +1,12 @@
-"""Voter interaction history endpoints -- append-only event log."""
+"""Voter interaction history endpoints -- event log with mutable notes."""
 
 from __future__ import annotations
 
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+import fastapi_problem_details as problem
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,11 @@ from app.core.security import AuthenticatedUser, require_role
 from app.models.user import User
 from app.models.voter_interaction import InteractionType
 from app.schemas.common import PaginatedResponse, PaginationResponse
-from app.schemas.voter_interaction import InteractionCreateRequest, InteractionResponse
+from app.schemas.voter_interaction import (
+    InteractionCreateRequest,
+    InteractionResponse,
+    InteractionUpdateRequest,
+)
 from app.services.voter_interaction import VoterInteractionService
 
 logger = logging.getLogger(__name__)
@@ -29,7 +34,7 @@ _service = VoterInteractionService()
     "/campaigns/{campaign_id}/voters/{voter_id}/interactions",
     response_model=PaginatedResponse[InteractionResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_voter_interactions(
     request: Request,
     campaign_id: uuid.UUID,
@@ -105,7 +110,7 @@ async def get_voter_interactions(
     response_model=InteractionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def create_voter_interaction(
     request: Request,
     campaign_id: uuid.UUID,
@@ -151,3 +156,97 @@ async def create_voter_interaction(
         )
 
     return resp
+
+
+@router.patch(
+    "/campaigns/{campaign_id}/voters/{voter_id}/interactions/{interaction_id}",
+    response_model=InteractionResponse,
+)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
+async def update_voter_interaction(
+    request: Request,
+    campaign_id: uuid.UUID,
+    voter_id: uuid.UUID,
+    interaction_id: uuid.UUID,
+    body: InteractionUpdateRequest,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Update a note interaction's payload.
+
+    Only note-type interactions can be edited. System-generated events
+    (tag_added, import, door_knock, etc.) are immutable.
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    try:
+        interaction = await _service.update_note(
+            session=db,
+            interaction_id=interaction_id,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            payload=body.payload,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail:
+            return problem.ProblemResponse(
+                status=status.HTTP_404_NOT_FOUND,
+                title="Interaction Not Found",
+                detail=detail,
+                type="interaction-not-found",
+            )
+        return problem.ProblemResponse(
+            status=status.HTTP_400_BAD_REQUEST,
+            title="Invalid Operation",
+            detail=detail,
+            type="interaction-not-editable",
+        )
+    await db.commit()
+    return InteractionResponse.model_validate(interaction)
+
+
+@router.delete(
+    "/campaigns/{campaign_id}/voters/{voter_id}/interactions/{interaction_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
+async def delete_voter_interaction(
+    request: Request,
+    campaign_id: uuid.UUID,
+    voter_id: uuid.UUID,
+    interaction_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Delete a note interaction.
+
+    Only note-type interactions can be deleted. System-generated events
+    (tag_added, import, door_knock, etc.) are immutable.
+    Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    try:
+        await _service.delete_note(
+            session=db,
+            interaction_id=interaction_id,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail:
+            return problem.ProblemResponse(
+                status=status.HTTP_404_NOT_FOUND,
+                title="Interaction Not Found",
+                detail=detail,
+                type="interaction-not-found",
+            )
+        return problem.ProblemResponse(
+            status=status.HTTP_400_BAD_REQUEST,
+            title="Invalid Operation",
+            detail=detail,
+            type="interaction-not-deletable",
+        )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

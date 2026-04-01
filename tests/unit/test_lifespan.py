@@ -31,17 +31,24 @@ def _mock_settings():
 
 @pytest.fixture()
 def _mock_infra():
-    """Mock StorageService, broker, and JWKSManager so lifespan can run."""
+    """Mock StorageService, Procrastinate app, and JWKSManager so lifespan can run."""
     storage_mock = MagicMock()
     storage_mock.ensure_bucket = AsyncMock()
 
-    broker_mock = MagicMock()
-    broker_mock.startup = AsyncMock()
-    broker_mock.shutdown = AsyncMock()
+    procrastinate_mock = MagicMock()
+    procrastinate_mock.open_async = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=None),
+            __aexit__=AsyncMock(return_value=None),
+        )
+    )
 
     with (
         patch("app.services.storage.StorageService", return_value=storage_mock),
-        patch("app.tasks.broker.broker", broker_mock),
+        patch(
+            "app.tasks.procrastinate_app.procrastinate_app",
+            procrastinate_mock,
+        ),
         patch("app.core.security.JWKSManager"),
     ):
         yield
@@ -59,6 +66,19 @@ async def test_zitadel_service_initialized(_mock_settings, _mock_infra):
         async with app.router.lifespan_context(app):
             assert hasattr(app.state, "zitadel_service")
             assert isinstance(app.state.zitadel_service, ZitadelService)
+
+
+@pytest.mark.asyncio()
+async def test_procrastinate_app_initialized(_mock_settings, _mock_infra):
+    """Lifespan sets app.state.procrastinate_app."""
+    from app.services.zitadel import ZitadelService
+
+    with patch.object(
+        ZitadelService, "_get_token", new_callable=AsyncMock, return_value="tok"
+    ):
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            assert hasattr(app.state, "procrastinate_app")
 
 
 @pytest.mark.asyncio()

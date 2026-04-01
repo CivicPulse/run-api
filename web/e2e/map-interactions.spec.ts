@@ -5,12 +5,18 @@ test.describe("Map interactions", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to app root and wait for authenticated redirect
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
 
     // Click into the seed campaign
+    // Match original seed name OR known CAMP-01 rename (transient during parallel test runs)
     const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
+      .getByRole("link", { name: /macon-bibb demo/i })
+      .or(page.getByRole("link", { name: /E2E Test Campaign.*CAMP-01/i }))
       .first()
+    await expect(campaignLink).toBeVisible({ timeout: 15_000 })
     await campaignLink.click()
 
     // Navigate to canvassing section

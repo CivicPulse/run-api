@@ -8,6 +8,8 @@ Requires: PostgreSQL running via docker compose, migrations applied.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -19,7 +21,10 @@ from sqlalchemy.ext.asyncio import (
 from app.db.rls import set_campaign_context
 
 # app_user connection — RLS enforced
-APP_USER_URL = "postgresql+asyncpg://app_user:app_password@localhost:5432/run_api"
+_DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
+APP_USER_URL = (
+    f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"
+)
 
 
 @pytest.mark.integration

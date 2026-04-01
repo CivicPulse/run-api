@@ -19,9 +19,10 @@ import type { OrgCampaign } from "@/types/org"
 interface CampaignCardProps {
   campaign: OrgCampaign
   onArchive: (campaign: OrgCampaign) => void
+  onUnarchive?: (campaign: OrgCampaign) => void
 }
 
-export function CampaignCard({ campaign, onArchive }: CampaignCardProps) {
+export function CampaignCard({ campaign, onArchive, onUnarchive }: CampaignCardProps) {
   const isArchived = campaign.status === "archived"
 
   return (
@@ -38,27 +39,27 @@ export function CampaignCard({ campaign, onArchive }: CampaignCardProps) {
               <Badge variant={isArchived ? "secondary" : "default"}>
                 {isArchived ? "Archived" : "Active"}
               </Badge>
-              {!isArchived && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Campaign actions"
-                      className="h-8 w-8 min-h-11 min-w-11"
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Campaign actions"
+                    className="h-8 w-8 min-h-11 min-w-11"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/campaigns/$campaignId/dashboard"
+                      params={{ campaignId: campaign.id }}
                     >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/campaigns/$campaignId/dashboard"
-                        params={{ campaignId: campaign.id }}
-                      >
-                        Open Campaign
-                      </Link>
-                    </DropdownMenuItem>
+                      Open Campaign
+                    </Link>
+                  </DropdownMenuItem>
+                  {!isArchived && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.preventDefault()
@@ -67,9 +68,19 @@ export function CampaignCard({ campaign, onArchive }: CampaignCardProps) {
                     >
                       Archive Campaign
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                  )}
+                  {isArchived && onUnarchive && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.preventDefault()
+                        onUnarchive(campaign)
+                      }}
+                    >
+                      Unarchive Campaign
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>

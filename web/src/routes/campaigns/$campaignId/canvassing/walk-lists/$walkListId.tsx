@@ -1,8 +1,17 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
-import { useWalkList, useWalkListEntries, useListCanvassers, useRemoveCanvasser, useDeleteWalkList } from "@/hooks/useWalkLists"
+import { useWalkList, useWalkListEntries, useListCanvassers, useRemoveCanvasser, useDeleteWalkList, useRenameWalkList } from "@/hooks/useWalkLists"
 import { CanvasserAssignDialog } from "@/components/canvassing/CanvasserAssignDialog"
 import { DoorKnockDialog } from "@/components/canvassing/DoorKnockDialog"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, ClipboardList, ExternalLink, Plus, Trash2, UserMinus, Users } from "lucide-react"
+import { ArrowLeft, ClipboardList, ExternalLink, Pencil, Plus, Trash2, UserMinus, Users } from "lucide-react"
 import { useState } from "react"
 
 function WalkListDetailPage() {
@@ -28,6 +37,7 @@ function WalkListDetailPage() {
   const { data: canvassers } = useListCanvassers(campaignId, walkListId)
   const removeCanvasser = useRemoveCanvasser(campaignId, walkListId)
   const deleteWalkList = useDeleteWalkList(campaignId)
+  const renameWalkList = useRenameWalkList(campaignId)
 
   const entries = entriesData?.items ?? []
 
@@ -36,6 +46,8 @@ function WalkListDetailPage() {
   const [doorKnockVoterId, setDoorKnockVoterId] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [removeUserId, setRemoveUserId] = useState<string | null>(null)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameValue, setRenameValue] = useState("")
 
   if (isLoading) {
     return (
@@ -63,6 +75,18 @@ function WalkListDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-lg font-semibold">{walkList.name}</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            aria-label="Rename walk list"
+            onClick={() => {
+              setRenameValue(walkList.name)
+              setRenameOpen(true)
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
         </div>
         <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
           <Trash2 className="mr-1 h-4 w-4" /> Delete
@@ -218,6 +242,61 @@ function WalkListDetailPage() {
           }
         }}
       />
+
+      <Dialog
+        open={renameOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRenameOpen(false)
+            setRenameValue("")
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Walk List</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rename-detail-input">Name</Label>
+            <Input
+              id="rename-detail-input"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              disabled={renameWalkList.isPending}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renameValue.trim()) {
+                  renameWalkList.mutate(
+                    { walkListId: walkListId, name: renameValue.trim() },
+                    { onSuccess: () => { setRenameOpen(false); setRenameValue("") } },
+                  )
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setRenameOpen(false); setRenameValue("") }}
+              disabled={renameWalkList.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (renameValue.trim()) {
+                  renameWalkList.mutate(
+                    { walkListId: walkListId, name: renameValue.trim() },
+                    { onSuccess: () => { setRenameOpen(false); setRenameValue("") } },
+                  )
+                }
+              }}
+              disabled={!renameValue.trim() || renameWalkList.isPending}
+            >
+              {renameWalkList.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

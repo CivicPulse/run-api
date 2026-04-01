@@ -3,14 +3,22 @@ import { test, expect } from "@playwright/test"
 test.describe("Phase 21: Integration Polish", () => {
   let campaignId: string
 
+  test.setTimeout(90_000)
+
   test.beforeEach(async ({ page }) => {
     // Navigate to app root -- uses baseURL from playwright.config.ts
     await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
-    // Click into the seed campaign
+    await page.waitForURL(
+      (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+      { timeout: 15_000 },
+    )
+    // Wait for org dashboard to load (campaigns list requires org permissions)
+    // Match original seed name OR known CAMP-01 rename (transient during parallel test runs)
     const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
+      .getByRole("link", { name: /macon-bibb demo/i })
+      .or(page.getByRole("link", { name: /E2E Test Campaign.*CAMP-01/i }))
       .first()
+    await expect(campaignLink).toBeVisible({ timeout: 30_000 })
     await campaignLink.click()
     // Extract campaign ID from URL
     await page.waitForURL(/campaigns\/[a-f0-9-]+/, { timeout: 10_000 })
@@ -69,8 +77,9 @@ test.describe("Phase 21: Integration Polish", () => {
     page,
   }) => {
     await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {})
     await expect(page.getByText("Reason").first()).toBeVisible({
-      timeout: 10_000,
+      timeout: 30_000,
     })
     await page.screenshot({
       path: "test-results/p21-02-dnc-before-search.png",
@@ -200,6 +209,20 @@ test.describe("Phase 21: Integration Polish", () => {
     await expect(page.getByText("Call List").first()).toBeVisible({
       timeout: 10_000,
     })
+
+    // Wait for actual session data rows to load (not skeleton rows).
+    // The DataTable shows skeleton rows while loading, so we wait until
+    // at least one real cell with non-empty text content is present.
+    await page.waitForFunction(
+      () => {
+        const cells = document.querySelectorAll("table tbody tr td")
+        return Array.from(cells).some(
+          (cell) => cell.textContent && cell.textContent.trim().length > 0,
+        )
+      },
+      { timeout: 10_000 },
+    )
+
     await page.screenshot({
       path: "test-results/p21-07-sessions-index.png",
     })

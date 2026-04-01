@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 const CAMPAIGN_ID = "test-campaign-123"
 
@@ -169,6 +170,83 @@ async function setupCanvassingMocks(page: Page) {
   })
 }
 
+async function setupShellMocks(page: Page) {
+  await mockConfigEndpoint(page)
+
+  await page.route("**/api/v1/me", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "mock-user-a11y",
+        display_name: "Test Admin",
+        email: "admin@test.com",
+        role: "owner",
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    })
+  })
+
+  await page.route("**/api/v1/me/campaigns", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          campaign_id: CAMPAIGN_ID,
+          campaign_name: "A11Y Test Campaign",
+          role: "owner",
+        },
+      ]),
+    })
+  })
+
+  await page.route("**/api/v1/me/orgs", (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "org-a11y",
+          name: "A11Y Test Org",
+          slug: "a11y-test-org",
+          role: "org_owner",
+          zitadel_org_id: "mock-org",
+        },
+      ]),
+    })
+  })
+
+  await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}`, (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: CAMPAIGN_ID,
+        name: "A11Y Test Campaign",
+        description: "Accessibility test campaign",
+        slug: "a11y-test",
+        status: "active",
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    })
+  })
+
+  await page.route("**/api/v1/campaigns", (route) => {
+    if (route.request().method() !== "GET") {
+      return route.fallback()
+    }
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ id: CAMPAIGN_ID, name: "A11Y Test Campaign", status: "active", role: "owner" }],
+        pagination: { next_cursor: null, has_more: false },
+      }),
+    })
+  })
+}
+
 async function setupPhoneBankingMocks(page: Page) {
   await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}/field/me`, (route) => {
     route.fulfill({
@@ -260,6 +338,11 @@ async function setupPhoneBankingMocks(page: Page) {
 
 test.setTimeout(30_000)
 
+test.beforeEach(async ({ page }) => {
+  await setupMockAuth(page)
+  await setupShellMocks(page)
+})
+
 test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
   test("canvassing route has Field navigation nav landmark", async ({ page }) => {
     await setupCanvassingMocks(page)
@@ -297,9 +380,44 @@ test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
+    // Dismiss driver.js tour overlay if it appears (auto-starts after 200ms).
+    const dismissTourOverlay = async () => {
+      await page.keyboard.press("Escape").catch(() => {})
+
+      const closeButton = page
+        .locator(
+          ".driver-popover button[aria-label='Close'], .driver-popover .driver-popover-close-btn, [role='dialog'] button:has-text('Close')",
+        )
+        .first()
+      if (await closeButton.isVisible().catch(() => false)) {
+        await closeButton.click({ force: true }).catch(() => {})
+      }
+
+      await expect(page.locator("body.driver-active")).toHaveCount(0, {
+        timeout: 5_000,
+      })
+      await expect(page.locator(".driver-overlay")).toHaveCount(0, {
+        timeout: 5_000,
+      })
+    }
+
+    if (
+      (await page.locator("body.driver-active").count()) > 0 ||
+      (await page.locator(".driver-overlay").count()) > 0
+    ) {
+      await dismissTourOverlay()
+    }
+
     // Open the door list via the "All Doors" button
     const listButton = page.getByRole("button", { name: /All Doors/i })
-    await listButton.click()
+    for (let i = 0; i < 3; i++) {
+      try {
+        await listButton.click({ timeout: 2_500 })
+        break
+      } catch {
+        await dismissTourOverlay()
+      }
+    }
 
     // DoorListView renders buttons with aria-label="Jump to door N, address, status"
     const door1Button = page.locator('button[aria-label*="Jump to door 1"]')
@@ -336,51 +454,53 @@ test.describe("A11Y-01: ARIA landmarks and screen reader labels", () => {
 // ── Tests: A11Y-03 — WCAG AA Color Contrast ──────────────────────────────────
 
 test.describe("A11Y-03: WCAG AA contrast — propensity badge text colors", () => {
-  test("high propensity voter badge uses text-green-800 class (not text-green-700)", async ({ page }) => {
+  test("high propensity voter badge uses semantic success token (text-status-success-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Alice Smith has propensity_combined: 85 → should render bg-green-100 text-green-800
-    // VoterCard renders a Badge with the propensity color class
-    const greenBadge = page.locator(".text-green-800").first()
-    await expect(greenBadge).toBeVisible()
+    // Alice Smith has propensity_combined: 85 → getPropensityDisplay returns
+    // bg-status-success text-status-success-foreground (AA-compliant semantic tokens)
+    const successBadge = page.locator(".text-status-success-foreground").first()
+    await expect(successBadge).toBeVisible()
 
-    // Ensure the old non-AA class is NOT present on any propensity badge
+    // Ensure the old non-AA Tailwind color class is NOT present
     const badBadge = page.locator(".text-green-700")
     await expect(badBadge).toHaveCount(0)
   })
 
-  test("medium propensity voter badge uses text-yellow-800 class (not text-yellow-700)", async ({ page }) => {
+  test("medium propensity voter badge uses semantic warning token (text-status-warning-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Bob Johnson (we2) has propensity_combined: 45 → yellow range → text-yellow-800
+    // Bob Johnson (we2) has propensity_combined: 45 → getPropensityDisplay returns
+    // bg-status-warning text-status-warning-foreground (AA-compliant semantic tokens)
     // Both voters at 123 Elm St are rendered in the same household card
-    const yellowBadge = page.locator(".text-yellow-800").first()
-    await expect(yellowBadge).toBeVisible()
+    const warningBadge = page.locator(".text-status-warning-foreground").first()
+    await expect(warningBadge).toBeVisible()
 
-    // Ensure old class is gone
+    // Ensure old Tailwind color class is gone
     const badBadge = page.locator(".text-yellow-700")
     await expect(badBadge).toHaveCount(0)
   })
 
-  test("low propensity voter badge uses text-red-800 class (not text-red-700)", async ({ page }) => {
+  test("low propensity voter badge uses semantic error token (text-status-error-foreground)", async ({ page }) => {
     await setupCanvassingMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/canvassing`)
     await expect(page.getByRole("button", { name: /Record Supporter/i })).toBeVisible({ timeout: 10_000 })
 
-    // Carol Davis (we3) has propensity_combined: 20 → red range → text-red-800
+    // Carol Davis (we3) has propensity_combined: 20 → getPropensityDisplay returns
+    // bg-status-error text-status-error-foreground (AA-compliant semantic tokens)
     // She's the second household; navigate to see her
     const skipButton = page.getByRole("button", { name: /skip/i }).first()
     if (await skipButton.isVisible()) {
       await skipButton.click()
     }
 
-    // After advancing, Carol Davis card should appear with red badge
-    const redBadge = page.locator(".text-red-800").first()
-    await expect(redBadge).toBeVisible({ timeout: 5_000 })
+    // After advancing, Carol Davis card should appear with error badge
+    const errorBadge = page.locator(".text-status-error-foreground").first()
+    await expect(errorBadge).toBeVisible({ timeout: 5_000 })
 
     const badBadge = page.locator(".text-red-700")
     await expect(badBadge).toHaveCount(0)

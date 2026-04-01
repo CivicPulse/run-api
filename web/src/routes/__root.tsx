@@ -245,7 +245,9 @@ function RootLayout() {
   if (!isAuthenticated || isPublicRoute) {
     return (
       <div className="min-h-svh bg-background text-foreground">
-        <Outlet />
+        <main id="main-content" className="flex-1">
+          <Outlet />
+        </main>
         <Toaster />
       </div>
     )
@@ -264,7 +266,7 @@ function RootLayout() {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true}>
       <SkipNav />
       <AppSidebar />
       <SidebarInset>

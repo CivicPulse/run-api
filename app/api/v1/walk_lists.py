@@ -7,6 +7,7 @@ import uuid
 
 import fastapi_problem_details as problem
 from fastapi import APIRouter, Depends, Query, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
@@ -24,6 +25,7 @@ from app.schemas.walk_list import (
     WalkListCreate,
     WalkListEntryResponse,
     WalkListResponse,
+    WalkListUpdate,
 )
 from app.services.canvass import CanvassService
 from app.services.walk_list import WalkListService
@@ -39,7 +41,7 @@ _canvass_service = CanvassService()
     response_model=WalkListResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def generate_walk_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -71,7 +73,7 @@ async def generate_walk_list(
     "/campaigns/{campaign_id}/walk-lists",
     response_model=PaginatedResponse[WalkListResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_walk_lists(
     request: Request,
     campaign_id: uuid.UUID,
@@ -99,7 +101,7 @@ async def list_walk_lists(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
     response_model=WalkListResponse,
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_walk_list(
     request: Request,
     campaign_id: uuid.UUID,
@@ -123,11 +125,51 @@ async def get_walk_list(
     return WalkListResponse.model_validate(walk_list)
 
 
+@router.patch(
+    "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
+    response_model=WalkListResponse,
+)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
+async def update_walk_list(
+    request: Request,
+    campaign_id: uuid.UUID,
+    walk_list_id: uuid.UUID,
+    body: WalkListUpdate,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Update walk list properties (currently: name only).
+
+    Requires manager+ role.
+    """
+    await ensure_user_synced(user, db)
+    if body.name is None:
+        return problem.ProblemResponse(
+            status=status.HTTP_400_BAD_REQUEST,
+            title="No Updates Provided",
+            detail="At least one field must be provided for update",
+            type="no-updates-provided",
+        )
+    try:
+        walk_list = await _walk_list_service.rename_walk_list(
+            db, walk_list_id, campaign_id, body.name
+        )
+    except ValueError:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Walk List Not Found",
+            detail=f"Walk list {walk_list_id} not found",
+            type="walk-list-not-found",
+        )
+    await db.commit()
+    return WalkListResponse.model_validate(walk_list)
+
+
 @router.get(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries",
     response_model=PaginatedResponse[WalkListEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -156,7 +198,7 @@ async def list_entries(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries/enriched",
     response_model=list[EnrichedEntryResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_enriched_entries(
     request: Request,
     campaign_id: uuid.UUID,
@@ -180,7 +222,7 @@ async def list_enriched_entries(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/entries/{entry_id}",
     response_model=WalkListEntryResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_entry_status(
     request: Request,
     campaign_id: uuid.UUID,
@@ -213,7 +255,7 @@ async def update_entry_status(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers",
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def assign_canvasser(
     request: Request,
     campaign_id: uuid.UUID,
@@ -227,10 +269,18 @@ async def assign_canvasser(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    canvasser = await _walk_list_service.assign_canvasser(
-        db, walk_list_id, body.user_id
-    )
-    await db.commit()
+    try:
+        canvasser = await _walk_list_service.assign_canvasser(
+            db, walk_list_id, body.user_id
+        )
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise problem.ProblemException(
+            status=status.HTTP_409_CONFLICT,
+            title="Conflict",
+            detail="Canvasser is already assigned to this walk list",
+        ) from None
     return {
         "walk_list_id": str(canvasser.walk_list_id),
         "user_id": canvasser.user_id,
@@ -242,7 +292,7 @@ async def assign_canvasser(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_canvasser(
     request: Request,
     campaign_id: uuid.UUID,
@@ -264,7 +314,7 @@ async def remove_canvasser(
 @router.get(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}/canvassers",
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_canvassers(
     request: Request,
     campaign_id: uuid.UUID,
@@ -293,7 +343,7 @@ async def list_canvassers(
     response_model=DoorKnockResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def record_door_knock(
     request: Request,
     campaign_id: uuid.UUID,
@@ -326,7 +376,7 @@ async def record_door_knock(
     "/campaigns/{campaign_id}/walk-lists/{walk_list_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def delete_walk_list(
     request: Request,
     campaign_id: uuid.UUID,

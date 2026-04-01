@@ -58,10 +58,11 @@ export function useShiftDetail(campaignId: string, shiftId: string) {
 export function useShiftVolunteers(campaignId: string, shiftId: string) {
   return useQuery({
     queryKey: shiftKeys.volunteers(campaignId, shiftId),
+    // API returns a raw array (not paginated) — response_model=list[ShiftSignupResponse]
     queryFn: () =>
       api
         .get(`api/v1/campaigns/${campaignId}/shifts/${shiftId}/volunteers`)
-        .json<PaginatedResponse<ShiftSignupResponse>>(),
+        .json<ShiftSignupResponse[]>(),
     enabled: !!campaignId && !!shiftId,
   })
 }

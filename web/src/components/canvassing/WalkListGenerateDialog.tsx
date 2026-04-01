@@ -65,7 +65,15 @@ export function WalkListGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onInteractOutside={(e) => {
+          // Prevent Radix Select portal clicks from closing this dialog
+          const target = e.target as Element | null
+          if (target?.closest("[data-radix-select-content]")) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Generate Walk List</DialogTitle>
           <DialogDescription>Create a new walk list from a turf.</DialogDescription>

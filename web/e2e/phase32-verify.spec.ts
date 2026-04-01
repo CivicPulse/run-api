@@ -49,6 +49,27 @@ const MOCK_VOTER_2 = {
   propensity_combined: 60,
 }
 
+/** Dismiss the driver.js onboarding tour and QuickStart card if present. */
+async function dismissTourIfPresent(page: import("@playwright/test").Page) {
+  // Dismiss driver.js tour overlay
+  const tourClose = page.locator(".driver-popover-close-btn")
+  try {
+    await tourClose.waitFor({ state: "visible", timeout: 2_000 })
+    await tourClose.click()
+    await page.locator(".driver-active-element").waitFor({ state: "hidden", timeout: 2_000 }).catch(() => {})
+  } catch {
+    // Tour not present
+  }
+  // Dismiss QuickStart tips card
+  const quickStartClose = page.getByLabel("Dismiss quick start tips")
+  try {
+    await quickStartClose.waitFor({ state: "visible", timeout: 2_000 })
+    await quickStartClose.click()
+  } catch {
+    // QuickStart not present
+  }
+}
+
 async function setupMocks(
   page: import("@playwright/test").Page,
   options?: {
@@ -248,6 +269,7 @@ test.describe("Phone Banking Field Mode", () => {
   test("start and stop session with obvious controls", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
 
     // Verify voter card renders (session started automatically)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
@@ -291,9 +313,11 @@ test.describe("Phone Banking Field Mode", () => {
   test("outcome buttons are large touch targets", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Verify 8 outcome buttons visible
+    // aria-label format: "Record {label} for {voterName}" when voterName is provided
     const outcomeLabels = [
       "Answered",
       "No Answer",
@@ -306,19 +330,19 @@ test.describe("Phone Banking Field Mode", () => {
     ]
     for (const label of outcomeLabels) {
       await expect(
-        page.getByRole("button", { name: `Record outcome: ${label}` }),
+        page.getByRole("button", { name: `Record ${label} for Alice Smith` }),
       ).toBeVisible()
     }
 
     // Verify buttons have min-h-11 (44px minimum) by checking the class
     const answeredBtn = page.getByRole("button", {
-      name: "Record outcome: Answered",
+      name: "Record Answered for Alice Smith",
     })
-    await expect(answeredBtn).toHaveClass(/min-h-11/)
+    await expect(answeredBtn).toHaveClass(/min-h-1[1-9]/)
 
     // Click "No Answer" -> outcome recorded, auto-advance to next voter
     await page
-      .getByRole("button", { name: "Record outcome: No Answer" })
+      .getByRole("button", { name: /Record No Answer for/ })
       .click()
 
     // Should advance to Bob Johnson
@@ -329,11 +353,12 @@ test.describe("Phone Banking Field Mode", () => {
   test("survey opens after Answered outcome", async ({ page }) => {
     await setupMocks(page, { withScript: true })
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Click "Answered" outcome
     await page
-      .getByRole("button", { name: "Record outcome: Answered" })
+      .getByRole("button", { name: /Record Answered for/ })
       .click()
 
     // Verify InlineSurvey sheet opens with "Survey Questions" title
@@ -351,18 +376,19 @@ test.describe("Phone Banking Field Mode", () => {
   test("progress shows calls completed", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
-    // Verify progress text contains "of" and "calls"
-    await expect(page.getByText(/0 of \d+ calls/)).toBeVisible()
+    // Verify progress text — visible format is "0/2 calls"
+    await expect(page.getByText(/0\/\d+ calls/)).toBeVisible()
 
     // Record an outcome (No Answer to auto-advance)
     await page
-      .getByRole("button", { name: "Record outcome: No Answer" })
+      .getByRole("button", { name: /Record No Answer for/ })
       .click()
 
     // Verify progress updates
-    await expect(page.getByText(/1 of \d+ calls/)).toBeVisible({
+    await expect(page.getByText(/1\/\d+ calls/)).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -390,20 +416,21 @@ test.describe("Phone Banking Field Mode", () => {
   test("accessible controls with ARIA labels", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Verify aria-live="polite" region exists (our sr-only announcement region)
     const liveRegion = page.locator('[aria-live="polite"][role="status"]')
     await expect(liveRegion).toBeAttached()
 
-    // Verify outcome buttons have aria-label starting with "Record outcome:"
+    // Verify outcome buttons have aria-label "Record {label} for {voterName}"
     const answeredBtn = page.getByRole("button", {
-      name: "Record outcome: Answered",
+      name: /Record Answered for/,
     })
     await expect(answeredBtn).toBeVisible()
 
     const noAnswerBtn = page.getByRole("button", {
-      name: "Record outcome: No Answer",
+      name: /Record No Answer for/,
     })
     await expect(noAnswerBtn).toBeVisible()
 
@@ -445,6 +472,7 @@ test.describe("Phone Banking Field Mode", () => {
   test("skip releases entry and advances", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Click "Skip" button
@@ -477,11 +505,12 @@ test.describe("Phone Banking Field Mode", () => {
   test("shows completion summary when all entries done", async ({ page }) => {
     await setupMocks(page)
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
     await expect(page.getByText("Alice Smith", { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Record outcome for first entry -- auto-advances to second
     await page
-      .getByRole("button", { name: "Record outcome: No Answer" })
+      .getByRole("button", { name: /Record No Answer for/ })
       .click()
     await expect(page.getByText("Bob Johnson", { exact: true })).toBeVisible({ timeout: 5_000 })
 
@@ -504,16 +533,15 @@ test.describe("Phone Banking Field Mode", () => {
     })
 
     // Small delay for React to pick up the store change
-    await page.waitForTimeout(500)
-
     // Reload to force re-hydration from sessionStorage with completed state
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
+    await dismissTourIfPresent(page)
 
-    // Verify "Great work!" heading
-    await expect(page.getByText("Great work!")).toBeVisible({ timeout: 10_000 })
+    // Verify completion heading — one of "Great work!", "Session complete!", "Nicely done!"
+    await expect(page.getByText(/Great work!|Session complete!|Nicely done!/)).toBeVisible({ timeout: 10_000 })
 
     // Verify stats displayed
-    await expect(page.getByText(/Calls made/)).toBeVisible()
+    await expect(page.getByText("calls completed")).toBeVisible()
 
     // Verify "Back to Hub" button
     await expect(page.getByText("Back to Hub")).toBeVisible()

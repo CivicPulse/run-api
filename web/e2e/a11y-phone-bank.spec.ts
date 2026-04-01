@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import type { Page } from "@playwright/test"
+import { setupMockAuth, mockConfigEndpoint } from "./a11y-helpers"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -7,37 +8,11 @@ const CAMPAIGN_ID = "test-campaign-a11y"
 const SESSION_ID = "session-a11y-001"
 const CALL_LIST_ID = "cl-a11y-001"
 const SCRIPT_ID = "script-a11y-001"
-const OIDC_STORAGE_KEY = "oidc.user:https://auth.civpulse.org:363437283614916644"
 
-// ── Auth & Mock Helpers ──────────────────────────────────────────────────────
-
-function mockOidcUser(): string {
-  return JSON.stringify({
-    id_token: "mock-id-token",
-    session_state: null,
-    access_token: "mock-access-token",
-    refresh_token: "mock-refresh-token",
-    token_type: "Bearer",
-    scope: "openid profile email",
-    profile: {
-      sub: "mock-user-a11y",
-      name: "Test Admin",
-      email: "admin@test.com",
-    },
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-  })
-}
-
-async function setupAuth(page: Page) {
-  await page.addInitScript(
-    ({ key, user }: { key: string; user: string }) => {
-      localStorage.setItem(key, user)
-    },
-    { key: OIDC_STORAGE_KEY, user: mockOidcUser() },
-  )
-}
+// ── API Mock Helpers ────────────────────────────────────────────────────────
 
 async function setupApiMocks(page: Page) {
+  await mockConfigEndpoint(page)
   await page.route("**/api/v1/**", (route) => {
     const url = route.request().url()
     const method = route.request().method()
@@ -163,12 +138,23 @@ async function setupApiMocks(page: Page) {
       })
     }
 
-    // My role
+    // My campaigns (must be checked before /me catch-all)
+    if (url.includes("/me/campaigns")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { campaign_id: CAMPAIGN_ID, campaign_name: "A11Y Test Campaign", role: "owner" },
+        ]),
+      })
+    }
+
+    // My role / profile
     if (url.includes("/me") || url.includes("/my-role")) {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ role: "owner" }),
+        body: JSON.stringify({ id: "mock-user-a11y", display_name: "Test Admin", email: "admin@test.com", role: "owner", created_at: "2026-01-01T00:00:00Z" }),
       })
     }
 
@@ -208,7 +194,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
   test.setTimeout(30_000)
 
   test.beforeEach(async ({ page }) => {
-    await setupAuth(page)
+    await setupMockAuth(page)
     await setupApiMocks(page)
   })
 
@@ -217,9 +203,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
   }) => {
     // 1. Navigate to phone banking sessions page (index redirects to call-lists)
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
-
+    await page.waitForLoadState("domcontentloaded")
     // 2. Verify ARIA landmarks
     const nav = page.getByRole("navigation")
     await expect(nav.first()).toBeVisible()
@@ -273,9 +257,7 @@ test.describe("A11Y Flow: Phone Bank Session", () => {
 
     // 6. Navigate to session detail page
     await page.goto(`/campaigns/${CAMPAIGN_ID}/phone-banking/sessions/${SESSION_ID}`)
-    await page.waitForLoadState("networkidle")
-    await page.waitForTimeout(1000)
-
+    await page.waitForLoadState("domcontentloaded")
     // Verify detail page ARIA landmarks
     await expect(page.getByRole("main")).toBeVisible()
 

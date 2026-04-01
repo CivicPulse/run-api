@@ -18,6 +18,12 @@ class WalkListCreate(BaseSchema):
     name: str
 
 
+class WalkListUpdate(BaseSchema):
+    """Partial update for walk list fields."""
+
+    name: str | None = None
+
+
 class WalkListResponse(BaseSchema):
     """Schema for walk list API responses."""
 

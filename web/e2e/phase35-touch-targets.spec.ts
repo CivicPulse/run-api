@@ -398,6 +398,11 @@ async function assertTouchTargets(page: Page, route: string) {
     if (!box) continue
 
     if (box.width < MIN_TARGET_SIZE || box.height < MIN_TARGET_SIZE) {
+      // Skip sr-only elements (e.g. "Skip to main content" links) that are
+      // intentionally 1x1px and only visible on focus — they expand to full
+      // size via focus:not-sr-only when activated by keyboard.
+      if (box.width <= 1 && box.height <= 1) continue
+
       const label =
         (await el.getAttribute("aria-label")) ||
         (await el.textContent()) ||
@@ -436,9 +441,10 @@ test.describe("WCAG 2.5.5 Touch Targets", () => {
     await page.goto(`/field/${CAMPAIGN_ID}/phone-banking`)
 
     // Wait for voter card to render (indicates session loaded)
+    // Use 30s to allow auth initialization + session setup under parallel load
     await expect(
       page.getByText("Alice Smith", { exact: true }),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
 
     await assertTouchTargets(page, "phone-banking")
   })

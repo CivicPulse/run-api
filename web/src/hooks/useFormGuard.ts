@@ -7,13 +7,15 @@ interface UseFormGuardOptions {
 }
 
 export function useFormGuard({ form }: UseFormGuardOptions) {
-  // Read through the Proxy by accessing formState.isDirty (not destructuring early)
+  // Read through the Proxy so React Hook Form tracks the subscription
   const isDirty = form.formState.isDirty
 
   const { status, proceed, reset } = useBlocker({
-    shouldBlockFn: () => isDirty,
+    // Read through the proxy at navigation time so form.reset() in submit
+    // handlers is reflected immediately, even before re-render.
+    shouldBlockFn: () => form.formState.isDirty,
     withResolver: true,
-    enableBeforeUnload: () => isDirty,
+    enableBeforeUnload: () => form.formState.isDirty,
   })
 
   return {

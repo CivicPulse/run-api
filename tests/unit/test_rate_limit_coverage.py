@@ -28,9 +28,7 @@ USER_KEY_EXCEPTIONS = {
 
 def _get_route_files() -> list[Path]:
     """Return sorted list of route module files."""
-    return sorted(
-        f for f in ROUTE_DIR.glob("*.py") if f.name not in SKIP_FILES
-    )
+    return sorted(f for f in ROUTE_DIR.glob("*.py") if f.name not in SKIP_FILES)
 
 
 def _extract_decorator_name(dec: ast.expr) -> str:
@@ -42,7 +40,7 @@ def _has_router_decorator(decorators: list[ast.expr]) -> bool:
     """Check if any decorator is router.{get,post,put,patch,delete}(...)."""
     http_methods = {"get", "post", "put", "patch", "delete"}
     for dec in decorators:
-        # @router.get(...) parses as Call(func=Attribute(value=Name(id='router'), attr='get'))
+        # @router.get(...) → Call(func=Attribute(value=Name, attr))
         if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute):
             attr = dec.func
             if (
@@ -79,9 +77,12 @@ def _has_user_or_ip_key(decorators: list[ast.expr]) -> bool:
                 and attr.attr == "limit"
             ):
                 for kw in dec.keywords:
-                    if kw.arg == "key_func" and isinstance(kw.value, ast.Name):
-                        if kw.value.id == "get_user_or_ip_key":
-                            return True
+                    if (
+                        kw.arg == "key_func"
+                        and isinstance(kw.value, ast.Name)
+                        and kw.value.id == "get_user_or_ip_key"
+                    ):
+                        return True
     return False
 
 
@@ -142,9 +143,7 @@ class TestRateLimitCoverage:
                     missing.append(f"{filepath.name}::{name}")
 
         assert total_endpoints > 0, "No endpoints found -- AST parsing may be broken"
-        assert not missing, (
-            f"Endpoints missing @limiter.limit decorator: {missing}"
-        )
+        assert not missing, f"Endpoints missing @limiter.limit decorator: {missing}"
 
     def test_authenticated_endpoints_use_user_key(self) -> None:
         """Authenticated endpoints must use get_user_or_ip_key (OBS-04).
@@ -162,17 +161,14 @@ class TestRateLimitCoverage:
                     missing.append(f"{filepath.name}::{name}")
 
         assert not missing, (
-            f"Authenticated endpoints missing key_func=get_user_or_ip_key: "
-            f"{missing}"
+            f"Authenticated endpoints missing key_func=get_user_or_ip_key: {missing}"
         )
 
     @pytest.mark.parametrize("filepath", _get_route_files(), ids=lambda p: p.name)
     def test_per_file_rate_limit_coverage(self, filepath: Path) -> None:
         """Per-file parametrized check for clearer failure messages."""
         endpoints = _parse_endpoints(filepath)
-        missing = [
-            name for name, has_limiter, _, _ in endpoints if not has_limiter
-        ]
+        missing = [name for name, has_limiter, _, _ in endpoints if not has_limiter]
         assert not missing, (
             f"{filepath.name}: endpoints missing @limiter.limit: {missing}"
         )

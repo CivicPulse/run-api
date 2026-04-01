@@ -300,6 +300,53 @@
 
 ---
 
+## Milestone: v1.6 — Imports
+
+**Shipped:** 2026-03-29
+**Phases:** 7 | **Plans:** 16
+
+### What Was Built
+- Procrastinate PostgreSQL job queue replacing TaskIQ — durable background imports with 202 Accepted, per-campaign queueing lock, standalone worker container
+- Per-batch commit pipeline with RLS restoration, crash resume from last_committed_row, real-time polling progress, bounded error storage to MinIO
+- Streaming CSV import from MinIO with async line-by-line iterator — constant memory regardless of file size
+- Complete L2 auto-mapping: 58-field canonical dictionary with 217 aliases, 6-pattern voting history parser, format auto-detection, frontend match-type badges
+- Import cancellation with cooperative batch-loop detection, CANCELLING/CANCELLED lifecycle, concurrent import prevention
+- Gap closure phases fixed error report download link, type alignment, and 6 documentation debt items
+
+### What Worked
+- Milestone audit caught 2 real integration gaps (INT-01 error report download, INT-02 type mismatch) and 6 tech debt items — all resolved via gap closure phases 54-55 before archival
+- Parallel phase dependencies (52 and 53 both depend on 49, not on each other) enabled efficient execution
+- Per-batch RLS restore pattern (commit_and_restore_rls) solved the critical "COMMIT resets session context" issue cleanly and reusably
+- Streaming architecture (async generator → batch loop → per-batch commit) composed cleanly across phases 50-51
+- cancelled_at timestamp design (not status enum) provided race-safe cancellation without lost-update window
+- CANONICAL_FIELDS alias dictionary approach with >80% exact ratio for L2 auto-detection proved reliable and extensible
+
+### What Was Inefficient
+- v1.6 milestone originally planned 5 phases but needed 7 (phases 54-55 for gap closure) — two gap closure phases for a 5-phase milestone is high ratio
+- ROADMAP.md plan checkboxes updated correctly this milestone (improvement over v1.0-v1.5 pain point)
+- Audit status `tech_debt` vs `passed` distinction caused initial confusion during milestone completion — the audit gaps were closed by subsequent phases but the audit file wasn't re-run
+
+### Patterns Established
+- Procrastinate as PostgreSQL-native job queue — no external broker needed, queueing_lock for idempotency
+- commit_and_restore_rls helper for any operation needing mid-transaction commits with RLS context preservation
+- Streaming async generator pattern for processing large files without memory proportional to file size
+- Canonical field alias dictionary with match_type (exact/fuzzy/null) for vendor-format auto-detection
+- cancelled_at timestamp as authoritative cancellation signal (not status enum) for race-safe cooperative cancellation
+
+### Key Lessons
+1. RLS context resets on COMMIT — any per-batch commit pattern must re-set campaign context after each commit (critical silent failure mode)
+2. Procrastinate's AlreadyEnqueued exception is the correct signal for queueing lock conflicts (not UniqueViolation)
+3. cancelled_at timestamp is safer than status-based cancellation — avoids lost-update race between API cancel and worker status finalization
+4. Format auto-detection via alias match ratio (>80% exact = L2) is more reliable than header pattern matching
+5. Gap closure phases at 2/5 ratio suggests the audit found genuine integration gaps, not just documentation debt
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 2 days from milestone start to completion (2026-03-28 → 2026-03-29)
+- Notable: 5,214 lines added across 44 files; 16 plans across 7 phases; 14/14 requirements satisfied
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -312,6 +359,7 @@
 | v1.3 | 7 | 18 | POST body for complex search, Literal-typed sort columns, audit-driven gap closure confirmed as pattern |
 | v1.4 | 9 | 26 | Mobile-first field mode, offline queue + sync, driver.js tours, WCAG AA, shared component reuse across domains |
 | v1.5 | 10 | 36 | Production hardening (RLS fix, Sentry, rate limiting), org management, map editor, WCAG compliance scan, E2E test coverage |
+| v1.6 | 7 | 16 | Durable background imports (Procrastinate), per-batch crash resilience, streaming CSV, L2 auto-mapping, cancellation |
 
 ### Cumulative Quality
 
@@ -323,6 +371,7 @@
 | v1.3 | 252+ (frontend) | 284+ (backend) | ~34K Python + ~34K TS | +6,771 lines (45 files) |
 | v1.4 | 300+ (frontend) | 284+ (backend) | ~34K Python + ~58K TS | +23,659 lines (304 files) |
 | v1.5 | 300+ (frontend) | 300+ (backend) | ~22K Python + ~43K TS | +37,350 lines (348 files) |
+| v1.6 | 300+ (frontend) | 350+ (backend) | ~22K Python + ~43K TS | +5,214 lines (44 files) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -333,8 +382,10 @@
 5. Build shared infrastructure early — Phase 12's 3-plan investment in RequireRole, DataTable, useFormGuard saved massive duplication across 10 subsequent phases
 6. Gap closure phases are healthy — they mean the audit process works, not that planning failed
 7. POST body search is the right pattern once filter dimensions exceed ~20 — GET query params don't scale
-8. Summary files should include a `one_liner` field — verified as pain point across all 6 milestones
+8. Summary files should include a `one_liner` field — verified as pain point across all 7 milestones
 9. Phase ordering for maximum component reuse (canvassing before phone banking) avoids duplication across domains
 10. Offline queue architecture: localStorage for cross-session survival, sessionStorage for per-session state
 11. Transaction-scoped RLS (set_config true) is mandatory for connection-pooled PostgreSQL — session-scoped leaks
 12. AST-based guard tests catch infrastructure compliance gaps (rate limiting, decorators) at CI time without import side effects
+13. RLS context resets on COMMIT in PostgreSQL — any per-batch commit pattern must re-set campaign context (v1.6 critical lesson)
+14. Use timestamps (cancelled_at) over status enums for cancellation signals to avoid lost-update races between concurrent actors

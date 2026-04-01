@@ -168,3 +168,58 @@ class TestWalkListService:
             household_id=None,
         )
         assert household_key(v) == "100 MAIN ST|12345"
+
+    @pytest.mark.asyncio
+    async def test_rename_walk_list(self) -> None:
+        """rename_walk_list updates a walk list's name."""
+        import uuid
+
+        from app.services.walk_list import WalkListService
+
+        service = WalkListService()
+        session = AsyncMock()
+
+        walk_list_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
+
+        walk_list = MagicMock()
+        walk_list.id = walk_list_id
+        walk_list.campaign_id = campaign_id
+        walk_list.name = "Original Name"
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = walk_list
+        session.execute = AsyncMock(return_value=mock_result)
+        session.flush = AsyncMock()
+
+        result = await service.rename_walk_list(
+            session,
+            walk_list_id=walk_list_id,
+            campaign_id=campaign_id,
+            name="New Name",
+        )
+
+        assert result.name == "New Name"
+        session.flush.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_rename_walk_list_not_found(self) -> None:
+        """rename_walk_list raises ValueError when walk list not found."""
+        import uuid
+
+        from app.services.walk_list import WalkListService
+
+        service = WalkListService()
+        session = AsyncMock()
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.rename_walk_list(
+                session,
+                walk_list_id=uuid.uuid4(),
+                campaign_id=uuid.uuid4(),
+                name="New Name",
+            )

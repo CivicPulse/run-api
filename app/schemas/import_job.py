@@ -24,8 +24,11 @@ class ImportJobResponse(BaseSchema):
     imported_rows: int | None = None
     skipped_rows: int | None = None
     phones_created: int | None = None
+    last_committed_row: int | None = None
     error_report_key: str | None = None
     error_message: str | None = None
+    cancelled_at: datetime | None = None
+    format_detected: str | None = None
     created_by: str
     created_at: datetime
     updated_at: datetime

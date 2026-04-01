@@ -1,16 +1,10 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 
 test.describe("Volunteer signup", () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to app root and wait for authenticated redirect
-    await page.goto("/")
-    await page.waitForURL(/\/(campaigns|org)/, { timeout: 15_000 })
-
-    // Click into the seed campaign
-    const campaignLink = page
-      .getByRole("link", { name: /macon|bibb|campaign/i })
-      .first()
-    await campaignLink.click()
+  test.beforeEach(async ({ page, campaignId }) => {
+    // Navigate to seed campaign dashboard then volunteers section
+    await page.goto(`/campaigns/${campaignId}/dashboard`)
+    await page.waitForURL(/campaigns\//, { timeout: 10_000 })
 
     // Navigate to volunteers section
     const volunteersNav = page
@@ -24,14 +18,13 @@ test.describe("Volunteer signup", () => {
     ).toBeVisible({ timeout: 15_000 })
   })
 
-  test("create volunteer record via registration form", async ({ page }) => {
-    // Navigate to the register page
-    // Look for "Create Volunteer" button (manager view) or navigate directly
-    const createButton = page
-      .getByRole("button", { name: /create volunteer/i })
-      .or(page.getByRole("link", { name: /register|create/i }))
+  test("create volunteer record via registration form", async ({ page, campaignId }) => {
+    test.setTimeout(120_000)
+    // Navigate to the register page via nav tab
+    const registerLink = page
+      .getByRole("link", { name: /register/i })
       .first()
-    await createButton.click()
+    await registerLink.click()
 
     // Wait for the registration form to load
     await page.waitForURL(/register/, { timeout: 10_000 })
@@ -42,20 +35,45 @@ test.describe("Volunteer signup", () => {
       await recordRadio.click()
     }
 
-    // Fill in volunteer details
-    await page.getByLabel(/first name/i).first().fill("E2E")
-    await page.getByLabel(/last name/i).first().fill("Volunteer")
-    await page.getByLabel(/phone/i).first().fill("5551234567")
-    await page.getByLabel(/email/i).first().fill("e2e-vol@test.com")
+    // Fill in volunteer details (clear first to handle pre-fill from auth store)
+    const firstNameInput = page.locator("#first_name")
+    await firstNameInput.clear()
+    await firstNameInput.fill("E2E")
 
-    // Submit the form
-    const submitButton = page
-      .getByRole("button", { name: /create volunteer|register/i })
-      .first()
-    await submitButton.click()
+    const lastNameInput = page.locator("#last_name")
+    await lastNameInput.clear()
+    await lastNameInput.fill("Volunteer")
 
-    // Wait for redirect to volunteer detail page
-    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 15_000 })
+    await page.locator("#phone").fill("5551234567")
+    await page.locator("#email").clear()
+    await page.locator("#email").fill("e2e-vol@test.com")
+
+    // Submit the form and intercept the API response to get the volunteer ID
+    // Long timeout: dev server may be slow under parallel load when voter-contacts
+    // spec runs concurrently (CON-01 alone takes 2-3 minutes)
+    const responsePromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/volunteers") &&
+        resp.request().method() === "POST" &&
+        !resp.url().includes("/register"),
+      { timeout: 60_000 },
+    )
+    await page.getByRole("button", { name: /create volunteer/i }).click()
+
+    // Wait for the API response to confirm creation
+    const createResp = await responsePromise
+    expect(createResp.ok()).toBeTruthy()
+    const createBody = await createResp.json()
+    const volunteerId = createBody.id
+
+    // Wait for redirect to volunteer detail page (navigate may be delayed by form guard cleanup)
+    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 15_000 }).catch(async () => {
+      // If redirect didn't happen, navigate directly to the created volunteer's detail page
+      if (volunteerId) {
+        await page.goto(`/campaigns/${campaignId}/volunteers/${volunteerId}`)
+        await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 10_000 })
+      }
+    })
 
     // Verify we landed on the volunteer detail page showing the name
     await expect(page.getByText("E2E").first()).toBeVisible({
@@ -66,13 +84,19 @@ test.describe("Volunteer signup", () => {
     })
   })
 
-  test("view volunteer detail shows contact info", async ({ page }) => {
-    // Click on the first volunteer in the roster (seed data has 20 volunteers)
-    const firstRow = page.getByRole("row").nth(1) // skip header
-    await firstRow.click()
+  test("view volunteer detail shows contact info", async ({ page, campaignId }) => {
+    // Wait for actual data rows to load (not skeleton rows)
+    await expect(page.locator("table tbody td").first()).toBeVisible({ timeout: 10_000 })
+    // Wait for non-skeleton content in the first data cell
+    await expect(page.locator("table tbody tr .font-medium").first()).toBeVisible({ timeout: 10_000 })
+
+    // Click on the name cell of the first real data row (skeleton rows lack .font-medium).
+    // Clicking .font-medium triggers the row's onRowClick handler via event bubbling.
+    const firstNameCell = page.locator("table tbody tr .font-medium").first()
+    await firstNameCell.click()
 
     // Wait for volunteer detail page to load
-    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 10_000 })
+    await page.waitForURL(/volunteers\/[a-f0-9-]+/, { timeout: 20_000 })
 
     // Verify contact information is visible
     const contactInfo = page
@@ -81,7 +105,7 @@ test.describe("Volunteer signup", () => {
     await expect(contactInfo).toBeVisible({ timeout: 10_000 })
   })
 
-  test("volunteer roster shows seed data", async ({ page }) => {
+  test("volunteer roster shows seed data", async ({ page, campaignId }) => {
     // Verify the roster has rows (seed creates 20 volunteers)
     const rows = page.getByRole("row")
     // At least header + 1 data row

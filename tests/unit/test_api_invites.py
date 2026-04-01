@@ -15,6 +15,7 @@ from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
 from app.models.invite import Invite
+from app.models.user import User
 
 CAMPAIGN_ID = uuid.uuid4()
 TEST_PROJECT_ID = "test-project-id"
@@ -59,6 +60,36 @@ def _make_invite(
         created_by="user-1",
         created_at=utcnow(),
     )
+
+
+def _mock_scalar_result(value):
+    """Create a mock result for queries using result.scalar_one_or_none()."""
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = value
+    return result
+
+
+def _make_scalars_result(items):
+    """Create a mock result for queries using result.scalars().all()."""
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = items
+    return result
+
+
+def _sync_results():
+    """Mock execute results for ensure_user_synced (called by require_role)."""
+    local_user = User(
+        id="user-1",
+        display_name="User user-1",
+        email="admin@test.com",
+        created_at=utcnow(),
+        updated_at=utcnow(),
+    )
+    return [
+        _mock_scalar_result(local_user),  # user lookup
+        _make_scalars_result([]),  # org lookup → empty
+        _make_scalars_result([]),  # campaign fallback → empty
+    ]
 
 
 def _override_app(
@@ -118,6 +149,7 @@ class TestCreateInviteEndpoint:
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
         _setup_role_resolution(mock_db, role="viewer")
+        mock_db.execute = AsyncMock(side_effect=_sync_results())
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -134,10 +166,9 @@ class TestCreateInviteEndpoint:
         app = _override_app(user=user, db=mock_db)
         _setup_role_resolution(mock_db)
 
-        # Mock: no existing invite
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        # Mock: sync results + no existing invite
+        no_invite_result = _mock_scalar_result(None)
+        mock_db.execute = AsyncMock(side_effect=_sync_results() + [no_invite_result])
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -217,6 +248,7 @@ class TestRevokeInviteEndpoint:
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db)
         _setup_role_resolution(mock_db, role="viewer")
+        mock_db.execute = AsyncMock(side_effect=_sync_results())
 
         invite_id = uuid.uuid4()
         transport = ASGITransport(app=app)
@@ -234,9 +266,8 @@ class TestRevokeInviteEndpoint:
         app = _override_app(user=user, db=mock_db)
         _setup_role_resolution(mock_db)
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = invite
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        invite_result = _mock_scalar_result(invite)
+        mock_db.execute = AsyncMock(side_effect=_sync_results() + [invite_result])
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

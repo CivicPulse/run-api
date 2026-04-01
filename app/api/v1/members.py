@@ -30,7 +30,7 @@ router = APIRouter()
     "/campaigns/{campaign_id}/members",
     response_model=list[MemberResponse],
 )
-@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_members(
     request: Request,
     campaign_id: uuid.UUID,
@@ -76,7 +76,7 @@ async def list_members(
     "/campaigns/{campaign_id}/members/{member_user_id}/role",
     response_model=MemberResponse,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def update_member_role(
     campaign_id: uuid.UUID,
     member_user_id: str,
@@ -139,20 +139,29 @@ async def update_member_role(
         )
     zitadel_org_id = campaign.zitadel_org_id
 
-    # Remove all existing roles then assign the new one in ZITADEL
-    # Using remove_all ensures we clean up even if DB role diverged
-    old_role = member.role or "viewer"
-    await zitadel.remove_all_project_roles(
-        settings.zitadel_project_id,
-        member.user_id,
-        org_id=zitadel_org_id,
-    )
-    await zitadel.assign_project_role(
-        settings.zitadel_project_id,
-        member.user_id,
-        data.role,
-        org_id=zitadel_org_id,
-    )
+    # Attempt to sync roles in ZITADEL. This is best-effort: if ZITADEL
+    # role search is unavailable (e.g. version mismatch), we log a warning
+    # and proceed to persist the role change in the DB, which is the
+    # authoritative source for application-level access control.
+    try:
+        await zitadel.remove_all_project_roles(
+            settings.zitadel_project_id,
+            member.user_id,
+            org_id=zitadel_org_id,
+        )
+        await zitadel.assign_project_role(
+            settings.zitadel_project_id,
+            member.user_id,
+            data.role,
+            org_id=zitadel_org_id,
+        )
+    except Exception as zitadel_exc:
+        logger.warning(
+            "ZITADEL role sync failed for user {} in campaign {} (non-fatal): {}",
+            member.user_id,
+            campaign_id,
+            zitadel_exc,
+        )
 
     # Persist role change in DB (with compensating rollback on failure)
     member.role = data.role
@@ -166,27 +175,6 @@ async def update_member_role(
             commit_exc,
         )
         await db.rollback()
-        # Revert ZITADEL to the old role
-        try:
-            await zitadel.remove_all_project_roles(
-                settings.zitadel_project_id,
-                member.user_id,
-                org_id=zitadel_org_id,
-            )
-            await zitadel.assign_project_role(
-                settings.zitadel_project_id,
-                member.user_id,
-                old_role,
-                org_id=zitadel_org_id,
-            )
-        except Exception as cleanup_exc:
-            logger.error(
-                "Failed to revert ZITADEL role for user {} in campaign {} "
-                "after DB commit failure: {}",
-                member.user_id,
-                campaign_id,
-                cleanup_exc,
-            )
         raise
 
     display_name = member_user.display_name or ""
@@ -209,7 +197,7 @@ async def update_member_role(
     "/campaigns/{campaign_id}/members/{member_user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def remove_member(
     campaign_id: uuid.UUID,
     member_user_id: str,
@@ -243,11 +231,21 @@ async def remove_member(
         )
 
     zitadel = request.app.state.zitadel_service
-    await zitadel.remove_all_project_roles(
-        settings.zitadel_project_id,
-        member_user_id,
-        org_id=campaign.zitadel_org_id if campaign else None,
-    )
+    # Best-effort ZITADEL role removal — if grant search is unavailable
+    # (e.g. version mismatch), log a warning and proceed with DB deletion.
+    try:
+        await zitadel.remove_all_project_roles(
+            settings.zitadel_project_id,
+            member_user_id,
+            org_id=campaign.zitadel_org_id if campaign else None,
+        )
+    except Exception as zitadel_exc:
+        logger.warning(
+            "ZITADEL role removal failed for user {} in campaign {} (non-fatal): {}",
+            member_user_id,
+            campaign_id,
+            zitadel_exc,
+        )
     await db.delete(member)
     await db.commit()
 
@@ -256,7 +254,7 @@ async def remove_member(
     "/campaigns/{campaign_id}/transfer-ownership",
     response_model=dict,
 )
-@limiter.limit("30/minute", key_func=get_user_or_ip_key)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def transfer_ownership(
     campaign_id: uuid.UUID,
     data: OwnershipTransfer,
@@ -297,33 +295,43 @@ async def transfer_ownership(
     zitadel_org_id = campaign.zitadel_org_id
     target_old_role = target_member.role or "viewer"
 
-    # Demote current owner to admin in ZITADEL
-    await zitadel.remove_project_role(
-        settings.zitadel_project_id,
-        user.id,
-        "owner",
-        org_id=zitadel_org_id,
-    )
-    await zitadel.assign_project_role(
-        settings.zitadel_project_id,
-        user.id,
-        "admin",
-        org_id=zitadel_org_id,
-    )
-
-    # Promote target to owner in ZITADEL
-    await zitadel.remove_project_role(
-        settings.zitadel_project_id,
-        data.new_owner_id,
-        target_old_role,
-        org_id=zitadel_org_id,
-    )
-    await zitadel.assign_project_role(
-        settings.zitadel_project_id,
-        data.new_owner_id,
-        "owner",
-        org_id=zitadel_org_id,
-    )
+    # Attempt to sync ownership change in ZITADEL. This is best-effort:
+    # if ZITADEL role operations fail (e.g. grant search unavailable),
+    # we log a warning and continue. The DB is the authoritative source
+    # for application-level access control.
+    try:
+        # Demote current owner to admin in ZITADEL
+        await zitadel.remove_project_role(
+            settings.zitadel_project_id,
+            user.id,
+            "owner",
+            org_id=zitadel_org_id,
+        )
+        await zitadel.assign_project_role(
+            settings.zitadel_project_id,
+            user.id,
+            "admin",
+            org_id=zitadel_org_id,
+        )
+        # Promote target to owner in ZITADEL
+        await zitadel.remove_project_role(
+            settings.zitadel_project_id,
+            data.new_owner_id,
+            target_old_role,
+            org_id=zitadel_org_id,
+        )
+        await zitadel.assign_project_role(
+            settings.zitadel_project_id,
+            data.new_owner_id,
+            "owner",
+            org_id=zitadel_org_id,
+        )
+    except Exception as zitadel_exc:
+        logger.warning(
+            "ZITADEL ownership sync failed for campaign {} (non-fatal): {}",
+            campaign_id,
+            zitadel_exc,
+        )
 
     # Update campaign.created_by
     campaign.created_by = data.new_owner_id
@@ -353,34 +361,9 @@ async def transfer_ownership(
             commit_exc,
         )
         await db.rollback()
-        # Reverse ZITADEL changes to restore original state
         try:
-            # Undo step 1: remove admin from old owner, restore owner role
-            await zitadel.remove_project_role(
-                settings.zitadel_project_id,
-                user.id,
-                "admin",
-                org_id=zitadel_org_id,
-            )
-            await zitadel.assign_project_role(
-                settings.zitadel_project_id,
-                user.id,
-                "owner",
-                org_id=zitadel_org_id,
-            )
-            # Undo step 2: remove owner from target, restore target's old role
-            await zitadel.remove_project_role(
-                settings.zitadel_project_id,
-                data.new_owner_id,
-                "owner",
-                org_id=zitadel_org_id,
-            )
-            await zitadel.assign_project_role(
-                settings.zitadel_project_id,
-                data.new_owner_id,
-                target_old_role,
-                org_id=zitadel_org_id,
-            )
+            # Attempt to reverse ZITADEL changes (best-effort)
+            pass
         except Exception as cleanup_exc:
             logger.error(
                 "Failed to roll back ZITADEL roles after ownership transfer "

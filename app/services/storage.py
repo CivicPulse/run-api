@@ -96,11 +96,14 @@ class StorageService:
             )
             return url
 
-    async def download_file(self, key: str) -> AsyncIterator[bytes]:
+    async def download_file(
+        self, key: str, chunk_size: int = 65_536
+    ) -> AsyncIterator[bytes]:
         """Stream file content from S3 for background processing.
 
         Args:
             key: S3 object key.
+            chunk_size: Byte size of each streamed chunk (default 64KB).
 
         Yields:
             Chunks of file bytes.
@@ -110,7 +113,7 @@ class StorageService:
                 Bucket=settings.s3_bucket,
                 Key=key,
             )
-            async for chunk in response["Body"].iter_chunks():
+            async for chunk in response["Body"].iter_chunks(chunk_size):
                 yield chunk
 
     async def upload_bytes(
@@ -143,6 +146,26 @@ class StorageService:
                 Bucket=settings.s3_bucket,
                 Key=key,
             )
+
+    async def delete_objects(self, keys: list[str]) -> None:
+        """Delete multiple objects by key.
+
+        Uses S3 delete_objects batch API (up to 1000 keys per call).
+        No-op if keys is empty.
+
+        Args:
+            keys: List of S3 object keys to delete.
+        """
+        if not keys:
+            return
+        async with self.session.client(**self._client_kwargs()) as s3:
+            # S3 delete_objects supports up to 1000 keys per call
+            for i in range(0, len(keys), 1000):
+                batch = keys[i : i + 1000]
+                await s3.delete_objects(
+                    Bucket=settings.s3_bucket,
+                    Delete={"Objects": [{"Key": k} for k in batch]},
+                )
 
     async def ensure_bucket(self) -> None:
         """Create the configured bucket if it does not exist.

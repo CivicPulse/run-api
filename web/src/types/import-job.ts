@@ -3,9 +3,10 @@ export type ImportStatus =
   | "uploaded"
   | "queued"
   | "processing"
+  | "cancelling"
+  | "cancelled"
   | "completed"
   | "failed"
-  | "cancelled" // Defensive: backend enum does not currently include this
 
 export interface ImportJob {
   id: string
@@ -17,6 +18,7 @@ export interface ImportJob {
   skipped_rows: number
   error_report_key: string | null
   error_message: string | null
+  cancelled_at: string | null
   phones_created: number | null
   source_type: string
   field_mapping: Record<string, string> | null
@@ -28,12 +30,18 @@ export interface ImportJob {
 export interface ImportUploadResponse {
   job_id: string
   upload_url: string
-  expires_in: number
+  file_key: string
+}
+
+export interface FieldMapping {
+  field: string | null
+  match_type: "exact" | "fuzzy" | null
 }
 
 export interface ImportDetectResponse {
   detected_columns: string[]
-  suggested_mapping: Record<string, string | null>
+  suggested_mapping: Record<string, FieldMapping>
+  format_detected: "l2" | "generic" | null
 }
 
 export interface ImportConfirmRequest {

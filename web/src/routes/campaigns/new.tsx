@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useState, useEffect, useRef } from "react"
+import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router"
 import { useForm, Controller } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { api } from "@/api/client"
-import { useFormGuard } from "@/hooks/useFormGuard"
+// useFormGuard not used here — custom blocker with submittedRef bypass
 import { useOrgMembers, useAddMemberToCampaign } from "@/hooks/useOrg"
 import { useOrgPermissions } from "@/hooks/useOrgPermissions"
 import { useAuthStore } from "@/stores/authStore"
@@ -116,6 +116,7 @@ function NewCampaignPage() {
     new Map(),
   )
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const submittedRef = useRef(false)
 
   const user = useAuthStore((s) => s.user)
   const currentUserId = user?.profile?.sub as string | undefined
@@ -149,12 +150,20 @@ function NewCampaignPage() {
     getValues,
   } = form
 
-  useFormGuard({ form })
+  // Custom form guard that can be bypassed after successful submit.
+  // We don't use useFormGuard because its shouldBlockFn closure
+  // captures isDirty at render time, which can't be synchronously
+  // overridden before navigate() is called.
+  const isDirty = form.formState.isDirty
+  useBlocker({
+    shouldBlockFn: () => isDirty && !submittedRef.current,
+    enableBeforeUnload: () => isDirty && !submittedRef.current,
+  })
 
   // Prevent accidental navigation via beforeunload when form is dirty
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (form.formState.isDirty) {
+      if (form.formState.isDirty && !submittedRef.current) {
         e.preventDefault()
       }
     }
@@ -234,6 +243,10 @@ function NewCampaignPage() {
 
       queryClient.invalidateQueries({ queryKey: ["campaigns"] })
       queryClient.invalidateQueries({ queryKey: ["org", "campaigns"] })
+
+      // Bypass the navigation blocker before redirecting
+      submittedRef.current = true
+
       navigate({
         to: "/campaigns/$campaignId/dashboard",
         params: { campaignId: campaign.id },

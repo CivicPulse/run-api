@@ -1,12 +1,11 @@
 import { createFileRoute, useParams } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -51,45 +50,26 @@ function GeneralSettings() {
   const { isBlocked, proceed, reset: resetGuard } = useFormGuard({ form })
   const formRef = useRef<HTMLFormElement>(null)
 
-  // D-10: Focus first invalid field after validation failure
-  const focusFirstError = useCallback(() => {
-    if (formRef.current) {
-      const firstInvalid = formRef.current.querySelector<HTMLElement>('[aria-invalid="true"]')
-      firstInvalid?.focus()
+  const onSubmit = form.handleSubmit(async (data) => {
+    try {
+      await updateCampaign.mutateAsync({
+        name: data.name,
+        description: data.description || undefined,
+        election_date: data.election_date || null,
+      })
+      form.reset(data) // Reset dirty state after successful save
+      toast.success("Campaign updated")
+    } catch {
+      toast.error("Failed to update campaign")
     }
-  }, [])
+  })
 
-  const onSubmit = form.handleSubmit(
-    async (data) => {
-      try {
-        await updateCampaign.mutateAsync({
-          name: data.name,
-          description: data.description || undefined,
-          election_date: data.election_date || null,
-        })
-        form.reset(data) // Reset dirty state after successful save
-        toast.success("Campaign updated")
-      } catch {
-        toast.error("Failed to update campaign")
-      }
-    },
-    // D-10: Focus first error on validation failure
-    () => {
-      // react-hook-form sets aria-invalid after validation; wait a tick for DOM update
-      requestAnimationFrame(focusFirstError)
-    },
-  )
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6 max-w-2xl">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-    )
+  // D-10: Focus first invalid field after validation failure
+  const handleInvalid = () => {
+    requestAnimationFrame(() => {
+      const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      firstInvalid?.focus()
+    })
   }
 
   return (
@@ -99,13 +79,14 @@ function GeneralSettings() {
         <p className="text-sm text-muted-foreground">Update your campaign details.</p>
       </div>
 
-      <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-lg">
+      <form ref={formRef} onSubmit={onSubmit} onInvalid={handleInvalid} className="space-y-4 max-w-lg">
         <div className="space-y-2">
           <Label htmlFor="name">Campaign Name</Label>
           <Input
             id="name"
             {...form.register("name")}
             placeholder="Enter campaign name"
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.name}
             aria-describedby={form.formState.errors.name ? "name-error" : undefined}
           />
@@ -121,6 +102,7 @@ function GeneralSettings() {
             {...form.register("description")}
             placeholder="Brief description of your campaign (optional)"
             rows={3}
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.description}
             aria-describedby={form.formState.errors.description ? "description-error" : undefined}
           />
@@ -135,6 +117,7 @@ function GeneralSettings() {
             id="election_date"
             type="date"
             {...form.register("election_date")}
+            disabled={isLoading}
             aria-invalid={!!form.formState.errors.election_date}
             aria-describedby={form.formState.errors.election_date ? "election-date-error" : undefined}
           />
@@ -144,8 +127,8 @@ function GeneralSettings() {
         </div>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={updateCampaign.isPending}>
-            {updateCampaign.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isLoading || updateCampaign.isPending}>
+            {(isLoading || updateCampaign.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save changes
           </Button>
           {form.formState.isDirty && (
