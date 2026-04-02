@@ -50,7 +50,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      API_PROXY_TARGET: http://api:8000
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8000}
       MINIO_PROXY_TARGET: http://minio:9000
     env_file:
       - path: web/.env.local
@@ -163,8 +163,8 @@ services:
       ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-localhost}
       # TLS (only used when ZITADEL_TLS_MODE=enabled)
-      ZITADEL_TLS_CERTPATH: /certs/dev.tailb56d83.ts.net.crt
-      ZITADEL_TLS_KEYPATH: /certs/dev.tailb56d83.ts.net.key
+      ZITADEL_TLS_CERTPATH: /certs/kudzu.tailb56d83.ts.net.crt
+      ZITADEL_TLS_KEYPATH: /certs/kudzu.tailb56d83.ts.net.key
       # First instance: admin user
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin@localhost
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "${ZITADEL_ADMIN_PASSWORD:-Admin1234!}"
