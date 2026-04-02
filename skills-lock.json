@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "mastering-git-cli": {
+      "source": "spillwavesolutions/mastering-git-cli-agent-skill",
+      "sourceType": "github",
+      "computedHash": "47d5291da202096fdc55d1d757bc5b2ecdac316b1c530db00906cdc525e09bb6"
+    }
+  }
+}
