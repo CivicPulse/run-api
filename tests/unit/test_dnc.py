@@ -38,6 +38,7 @@ class TestDNCManagement:
 
         svc = DNCService()
         session = AsyncMock()
+        session.add = MagicMock()
         campaign_id = uuid.uuid4()
 
         # No existing entry
@@ -142,6 +143,7 @@ class TestDNCBulkImport:
 
         svc = DNCService()
         session = AsyncMock()
+        session.add = MagicMock()
         campaign_id = uuid.uuid4()
 
         csv_content = (
@@ -166,6 +168,7 @@ class TestDNCBulkImport:
 
         svc = DNCService()
         session = AsyncMock()
+        session.add = MagicMock()
         campaign_id = uuid.uuid4()
 
         csv_content = "phone_number\n123\n5551234567\nabc\n"
