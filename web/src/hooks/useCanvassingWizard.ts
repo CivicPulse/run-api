@@ -8,6 +8,8 @@ import {
 } from "@/hooks/useCanvassing"
 import {
   groupByHousehold,
+  orderHouseholdsByDistance,
+  orderHouseholdsBySequence,
   SURVEY_TRIGGER_OUTCOMES,
   AUTO_ADVANCE_OUTCOMES,
 } from "@/types/canvassing"
@@ -32,6 +34,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     currentAddressIndex,
     completedEntries,
     skippedEntries,
+    sortMode,
+    locationSnapshot,
+    locationStatus,
     setWalkList,
     advanceAddress,
     jumpToAddress,
@@ -52,11 +57,65 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     return () => clearInterval(interval)
   }, [touch])
 
-  // Derived state
-  const households = useMemo(
+  const sequenceHouseholds = useMemo(
     () => groupByHousehold(entriesQuery.data ?? []),
     [entriesQuery.data],
   )
+
+  const households = useMemo(() => {
+    if (sortMode === "distance") {
+      return orderHouseholdsByDistance(sequenceHouseholds, locationSnapshot)
+    }
+
+    return orderHouseholdsBySequence(sequenceHouseholds)
+  }, [sequenceHouseholds, sortMode, locationSnapshot])
+
+  const activeHouseholdKeyRef = useRef<string | null>(null)
+  const householdOrderKey = useMemo(
+    () => households.map((household) => household.householdKey).join("|"),
+    [households],
+  )
+  const currentHouseholdKey = households[currentAddressIndex]?.householdKey ?? null
+  const previousHouseholdOrderKeyRef = useRef("")
+
+  useLayoutEffect(() => {
+    const previousOrderKey = previousHouseholdOrderKeyRef.current
+    const previousHouseholdKey = activeHouseholdKeyRef.current
+
+    if (
+      previousOrderKey &&
+      previousOrderKey !== householdOrderKey &&
+      previousHouseholdKey
+    ) {
+      const nextIndex = households.findIndex(
+        (household) => household.householdKey === previousHouseholdKey,
+      )
+
+      previousHouseholdOrderKeyRef.current = householdOrderKey
+      activeHouseholdKeyRef.current = previousHouseholdKey
+
+      if (nextIndex >= 0 && nextIndex !== currentAddressIndex) {
+        jumpToAddress(nextIndex)
+        return
+      }
+    }
+
+    if (currentAddressIndex >= households.length && households.length > 0) {
+      previousHouseholdOrderKeyRef.current = householdOrderKey
+      activeHouseholdKeyRef.current = households[households.length - 1].householdKey
+      jumpToAddress(households.length - 1)
+      return
+    }
+
+    previousHouseholdOrderKeyRef.current = householdOrderKey
+    activeHouseholdKeyRef.current = currentHouseholdKey
+  }, [
+    householdOrderKey,
+    households,
+    currentAddressIndex,
+    currentHouseholdKey,
+    jumpToAddress,
+  ])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,
@@ -66,9 +125,10 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const totalAddresses = households.length
 
   const completedAddresses = useMemo(() => {
-    return households.filter((h) =>
-      h.entries.every(
-        (e) => completedEntries[e.id] !== undefined || skippedEntries.includes(e.id),
+    return households.filter((household) =>
+      household.entries.every(
+        (entry) =>
+          completedEntries[entry.id] !== undefined || skippedEntries.includes(entry.id),
       ),
     ).length
   }, [households, completedEntries, skippedEntries])
@@ -78,14 +138,17 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const activeEntryId = useMemo(() => {
     if (!currentHousehold) return null
     const active = currentHousehold.entries.find(
-      (e) => completedEntries[e.id] === undefined && !skippedEntries.includes(e.id),
+      (entry) =>
+        completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id),
     )
     return active?.id ?? null
   }, [currentHousehold, completedEntries, skippedEntries])
 
   // Ref to track advanceAddress for use in timeouts
   const advanceRef = useRef(advanceAddress)
-  useLayoutEffect(() => { advanceRef.current = advanceAddress })
+  useLayoutEffect(() => {
+    advanceRef.current = advanceAddress
+  }, [advanceAddress])
 
   const handleOutcome = useCallback(
     (entryId: string, voterId: string, result: DoorKnockResultCode): OutcomeResult => {
@@ -116,7 +179,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       // Check for bulk Not Home prompt at multi-voter household
       if (result === "not_home" && currentHousehold && currentHousehold.entries.length > 1) {
         const alreadyCompleted = currentHousehold.entries.filter(
-          (e) => completedEntries[e.id] !== undefined,
+          (entry) => completedEntries[entry.id] !== undefined,
         )
         // First outcome at this address (none completed yet before this one)
         if (alreadyCompleted.length === 0) {
@@ -129,12 +192,12 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         setTimeout(() => {
           // Re-read current state from store
           const state = useCanvassingStore.getState()
-          const hh = currentHousehold
-          if (hh) {
-            const allDone = hh.entries.every(
-              (e) =>
-                state.completedEntries[e.id] !== undefined ||
-                state.skippedEntries.includes(e.id),
+          const household = currentHousehold
+          if (household) {
+            const allDone = household.entries.every(
+              (entry) =>
+                state.completedEntries[entry.id] !== undefined ||
+                state.skippedEntries.includes(entry.id),
             )
             if (allDone) {
               advanceRef.current()
@@ -157,9 +220,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     if (currentHousehold) {
       const state = useCanvassingStore.getState()
       const allDone = currentHousehold.entries.every(
-        (e) =>
-          state.completedEntries[e.id] !== undefined ||
-          state.skippedEntries.includes(e.id),
+        (entry) =>
+          state.completedEntries[entry.id] !== undefined ||
+          state.skippedEntries.includes(entry.id),
       )
       if (allDone) {
         advanceAddress()
@@ -224,6 +287,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     activeEntryId,
     completedEntries,
     skippedEntries,
+    sortMode,
+    locationSnapshot,
+    locationStatus,
     isComplete,
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,

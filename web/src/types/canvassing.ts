@@ -47,6 +47,20 @@ export interface CoordinatePoint {
   longitude: number
 }
 
+export function isValidCoordinatePoint(
+  point: CoordinatePoint | null | undefined,
+): point is CoordinatePoint {
+  return Boolean(
+    point &&
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude) &&
+      point.latitude >= -90 &&
+      point.latitude <= 90 &&
+      point.longitude >= -180 &&
+      point.longitude <= 180,
+  )
+}
+
 export interface Household {
   householdKey: string
   address: string
@@ -115,7 +129,10 @@ function getHouseholdSequence(entries: EnrichedWalkListEntry[]): number {
 }
 
 function getEntryCoordinatePoint(entry: EnrichedWalkListEntry): CoordinatePoint | null {
-  if (entry.latitude == null || entry.longitude == null) return null
+  if (!isValidCoordinatePoint({ latitude: entry.latitude ?? Number.NaN, longitude: entry.longitude ?? Number.NaN })) {
+    return null
+  }
+
   return { latitude: entry.latitude, longitude: entry.longitude }
 }
 
@@ -199,12 +216,18 @@ export function getPartyColor(party: string | null): { bg: string; text: string 
 
 /** Returns true when an entry has a complete coordinate pair. */
 export function isMappableEntry(entry: EnrichedWalkListEntry): entry is EnrichedWalkListEntry & CoordinatePoint {
-  return entry.latitude != null && entry.longitude != null
+  return isValidCoordinatePoint({
+    latitude: entry.latitude ?? Number.NaN,
+    longitude: entry.longitude ?? Number.NaN,
+  })
 }
 
 /** Returns true when a household has a usable representative coordinate pair. */
 export function isMappableHousehold(household: Household): household is MappableHousehold {
-  return household.latitude != null && household.longitude != null
+  return isValidCoordinatePoint({
+    latitude: household.latitude ?? Number.NaN,
+    longitude: household.longitude ?? Number.NaN,
+  })
 }
 
 /** Stable sequence ordering used as the canonical fallback when map data is incomplete. */
@@ -236,7 +259,7 @@ export function orderHouseholdsByDistance(
   origin: CoordinatePoint | null,
 ): Household[] {
   const bySequence = orderHouseholdsBySequence(households)
-  if (!origin) return bySequence
+  if (!isValidCoordinatePoint(origin)) return bySequence
 
   return bySequence
     .map((household, index) => ({

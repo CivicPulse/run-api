@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach } from "vitest"
-import { useCanvassingStore } from "@/stores/canvassingStore"
+import { useCanvassingStore, sanitizePersistedCanvassingState } from "@/stores/canvassingStore"
 import { groupByHousehold } from "@/types/canvassing"
-import type { EnrichedWalkListEntry } from "@/types/canvassing"
+import type { CoordinatePoint, EnrichedWalkListEntry } from "@/types/canvassing"
 
 function mockEntry(overrides: Partial<EnrichedWalkListEntry>): EnrichedWalkListEntry {
   return {
@@ -29,9 +29,13 @@ function mockEntry(overrides: Partial<EnrichedWalkListEntry>): EnrichedWalkListE
   }
 }
 
+const snapshot: CoordinatePoint = { latitude: 32.84, longitude: -83.63 }
+
 describe("canvassingStore", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    sessionStorage.clear()
     useCanvassingStore.getState().reset()
+    await useCanvassingStore.persist.rehydrate()
   })
 
   test("initializes with default state", () => {
@@ -40,12 +44,16 @@ describe("canvassingStore", () => {
     expect(state.currentAddressIndex).toBe(0)
     expect(state.completedEntries).toEqual({})
     expect(state.skippedEntries).toEqual([])
+    expect(state.sortMode).toBe("sequence")
+    expect(state.locationStatus).toBe("idle")
+    expect(state.locationSnapshot).toBeNull()
   })
 
-  test("setWalkList resets state and sets walkListId", () => {
-    // Dirty the state first
+  test("setWalkList resets address progress and distance-order state", () => {
     useCanvassingStore.getState().recordOutcome("x", "supporter")
     useCanvassingStore.getState().advanceAddress()
+    useCanvassingStore.getState().setLocationState("ready", snapshot)
+    useCanvassingStore.getState().setSortMode("distance")
 
     useCanvassingStore.getState().setWalkList("abc")
     const state = useCanvassingStore.getState()
@@ -53,6 +61,9 @@ describe("canvassingStore", () => {
     expect(state.currentAddressIndex).toBe(0)
     expect(state.completedEntries).toEqual({})
     expect(state.skippedEntries).toEqual([])
+    expect(state.sortMode).toBe("sequence")
+    expect(state.locationStatus).toBe("idle")
+    expect(state.locationSnapshot).toBeNull()
   })
 
   test("recordOutcome stores entryId -> resultCode mapping", () => {
@@ -86,11 +97,64 @@ describe("canvassingStore", () => {
     expect(state.currentAddressIndex).toBe(5)
   })
 
+  test("setLocationState stores a frozen location snapshot for later sorting", () => {
+    useCanvassingStore.getState().setLocationState("ready", snapshot)
+    useCanvassingStore.getState().setSortMode("distance")
+
+    const state = useCanvassingStore.getState()
+    expect(state.locationStatus).toBe("ready")
+    expect(state.locationSnapshot).toEqual(snapshot)
+    expect(state.sortMode).toBe("distance")
+  })
+
+  test("denied or unavailable geolocation clears distance mode but keeps the route usable", () => {
+    useCanvassingStore.getState().setLocationState("ready", snapshot)
+    useCanvassingStore.getState().setSortMode("distance")
+
+    useCanvassingStore.getState().setLocationState("denied")
+    let state = useCanvassingStore.getState()
+    expect(state.locationStatus).toBe("denied")
+    expect(state.locationSnapshot).toBeNull()
+    expect(state.sortMode).toBe("sequence")
+
+    useCanvassingStore.getState().setLocationState("unavailable")
+    state = useCanvassingStore.getState()
+    expect(state.locationStatus).toBe("unavailable")
+    expect(state.locationSnapshot).toBeNull()
+    expect(state.sortMode).toBe("sequence")
+  })
+
+  test("invalid stored sort and snapshot state is reset before reuse", () => {
+    const sanitized = sanitizePersistedCanvassingState({
+      state: {
+        walkListId: "persisted-list",
+        currentAddressIndex: 2,
+        completedEntries: { ok: "supporter", bad: 42 },
+        skippedEntries: ["skip-1", 9],
+        lastActiveAt: 123,
+        sortMode: "distance",
+        locationStatus: "ready",
+        locationSnapshot: { latitude: 999, longitude: 200 },
+      },
+      version: 1,
+    })
+
+    expect(sanitized.walkListId).toBe("persisted-list")
+    expect(sanitized.currentAddressIndex).toBe(2)
+    expect(sanitized.completedEntries).toEqual({ ok: "supporter" })
+    expect(sanitized.skippedEntries).toEqual(["skip-1"])
+    expect(sanitized.sortMode).toBe("sequence")
+    expect(sanitized.locationStatus).toBe("idle")
+    expect(sanitized.locationSnapshot).toBeNull()
+  })
+
   test("reset clears all state", () => {
     useCanvassingStore.getState().setWalkList("abc")
     useCanvassingStore.getState().recordOutcome("entry1", "supporter")
     useCanvassingStore.getState().skipEntry("entry2")
     useCanvassingStore.getState().advanceAddress()
+    useCanvassingStore.getState().setLocationState("ready", snapshot)
+    useCanvassingStore.getState().setSortMode("distance")
 
     useCanvassingStore.getState().reset()
     const state = useCanvassingStore.getState()
@@ -98,6 +162,9 @@ describe("canvassingStore", () => {
     expect(state.currentAddressIndex).toBe(0)
     expect(state.completedEntries).toEqual({})
     expect(state.skippedEntries).toEqual([])
+    expect(state.sortMode).toBe("sequence")
+    expect(state.locationStatus).toBe("idle")
+    expect(state.locationSnapshot).toBeNull()
   })
 
   test("touch updates lastActiveAt timestamp", () => {
