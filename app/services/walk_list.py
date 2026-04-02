@@ -320,7 +320,9 @@ class WalkListService:
         walk_list_id: uuid.UUID,
         user_id: str,
     ) -> WalkListCanvasser:
-        """Assign a canvasser to a walk list.
+        """Assign a canvasser to a walk list (idempotent).
+
+        If the canvasser is already assigned, returns the existing assignment.
 
         Args:
             session: Async database session.
@@ -328,8 +330,19 @@ class WalkListService:
             user_id: Canvasser user ID.
 
         Returns:
-            The created WalkListCanvasser.
+            The existing or newly created WalkListCanvasser.
         """
+        # Check for existing assignment (idempotency)
+        existing = await session.execute(
+            select(WalkListCanvasser).where(
+                WalkListCanvasser.walk_list_id == walk_list_id,
+                WalkListCanvasser.user_id == user_id,
+            )
+        )
+        existing_canvasser = existing.scalar_one_or_none()
+        if existing_canvasser is not None:
+            return existing_canvasser
+
         now = utcnow()
         canvasser = WalkListCanvasser(
             walk_list_id=walk_list_id,

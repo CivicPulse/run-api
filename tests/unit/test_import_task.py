@@ -490,3 +490,88 @@ async def test_process_import_skips_when_lock_unavailable(
         await process_import(import_job_id, campaign_id)
 
     mock_service.process_import_file.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_import_resumes_without_resetting_status(
+    import_job_id: str, campaign_id: str
+):
+    """R006: When last_committed_row > 0 and status is PROCESSING, process_import
+    skips resetting status/counters (crash-recovery resume path)."""
+    from app.models.import_job import ImportStatus
+
+    status_changes: list[str] = []
+
+    class MockJob:
+        def __init__(self):
+            self.id = uuid.UUID(import_job_id)
+            self.campaign_id = uuid.UUID(campaign_id)
+            self._status = ImportStatus.PROCESSING
+            self.imported_rows = 50
+            self.skipped_rows = 2
+            self.last_committed_row = 50
+            self.cancelled_at = None
+            self.last_progress_at = None
+            self.orphaned_at = "2026-01-01T00:00:00"
+            self.orphaned_reason = "stale"
+            self.source_exhausted_at = None
+
+        @property
+        def status(self):
+            return self._status
+
+        @status.setter
+        def status(self, value):
+            status_changes.append(str(value))
+            self._status = value
+
+    mock_job = MockJob()
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    # Resume path should NOT reset status to PROCESSING again
+    assert "processing" not in status_changes, (
+        "Resume path should not re-set status to PROCESSING"
+    )
+    # Service should still be called to continue processing
+    mock_service.process_import_file.assert_awaited_once()

@@ -117,20 +117,20 @@ async def two_campaigns_with_voter_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO voter_tags (id, campaign_id, name, created_at) "
-                "VALUES (:id, :cid, :name, :now)"
+                "INSERT INTO voter_tags (id, campaign_id, name) "
+                "VALUES (:id, :cid, :name)"
             ),
-            {"id": tid, "cid": cid, "name": name, "now": now},
+            {"id": tid, "cid": cid, "name": name},
         )
 
     # Voter tag members
     for vid, tid in [(voter_a_id, tag_a_id), (voter_b_id, tag_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voter_tag_members (voter_id, tag_id, assigned_at) "
-                "VALUES (:vid, :tid, :now)"
+                "INSERT INTO voter_tag_members (voter_id, tag_id) "
+                "VALUES (:vid, :tid)"
             ),
-            {"vid": vid, "tid": tid, "now": now},
+            {"vid": vid, "tid": tid},
         )
 
     # Voter lists
@@ -141,10 +141,10 @@ async def two_campaigns_with_voter_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO voter_lists (id, campaign_id,"
-                " name, created_by, created_at,"
+                " name, list_type, created_by, created_at,"
                 " updated_at) "
-                "VALUES (:id, :cid, :name, :created_by,"
-                " :now, :now)"
+                "VALUES (:id, :cid, :name, 'manual',"
+                " :created_by, :now, :now)"
             ),
             {
                 "id": lid,
@@ -159,7 +159,7 @@ async def two_campaigns_with_voter_data(superuser_session):
     for vid, lid in [(voter_a_id, list_a_id), (voter_b_id, list_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voter_list_members (voter_id, list_id, added_at) "
+                "INSERT INTO voter_list_members (voter_id, voter_list_id, added_at) "
                 "VALUES (:vid, :lid, :now)"
             ),
             {"vid": vid, "lid": lid, "now": now},
@@ -234,7 +234,7 @@ async def two_campaigns_with_voter_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO import_jobs (id, campaign_id,"
-                " file_name, file_path, status,"
+                " original_filename, file_key, status,"
                 " created_by, created_at, updated_at) "
                 "VALUES (:id, :cid, 'test.csv',"
                 " 's3://test', 'pending', :uid,"
@@ -248,10 +248,12 @@ async def two_campaigns_with_voter_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO field_mapping_templates (id,"
-                " campaign_id, name, mapping,"
-                " created_at, updated_at) "
+                " campaign_id, name, source_type,"
+                " mapping, created_by,"
+                " created_at) "
                 "VALUES (:id, :cid, 'Template',"
-                " '{}'::jsonb, :now, :now)"
+                " 'csv', '{}'::jsonb, NULL,"
+                " :now)"
             ),
             {"id": uuid.uuid4(), "cid": cid, "now": now},
         )
@@ -272,6 +274,15 @@ async def two_campaigns_with_voter_data(superuser_session):
     }
 
     # Cleanup (reverse dependency order)
+    # Delete join tables first (no campaign_id column)
+    await session.execute(
+        text("DELETE FROM voter_tag_members WHERE tag_id IN (:a, :b)"),
+        {"a": tag_a_id, "b": tag_b_id},
+    )
+    await session.execute(
+        text("DELETE FROM voter_list_members WHERE voter_list_id IN (:a, :b)"),
+        {"a": list_a_id, "b": list_b_id},
+    )
     for table in [
         "field_mapping_templates",
         "import_jobs",
@@ -279,29 +290,18 @@ async def two_campaigns_with_voter_data(superuser_session):
         "voter_emails",
         "voter_phones",
         "voter_interactions",
-        "voter_list_members",
         "voter_lists",
-        "voter_tag_members",
         "voter_tags",
         "voters",
         "campaign_members",
-        "campaigns",
     ]:
-        if table in ("voter_tag_members", "voter_list_members"):
-            # These don't have campaign_id directly
-            continue
         await session.execute(
             text(f"DELETE FROM {table} WHERE campaign_id IN (:a, :b)"),
             {"a": campaign_a_id, "b": campaign_b_id},
         )
-    # Clean join tables via parent
     await session.execute(
-        text("DELETE FROM voter_tag_members WHERE tag_id IN (:a, :b)"),
-        {"a": tag_a_id, "b": tag_b_id},
-    )
-    await session.execute(
-        text("DELETE FROM voter_list_members WHERE list_id IN (:a, :b)"),
-        {"a": list_a_id, "b": list_b_id},
+        text("DELETE FROM campaigns WHERE id IN (:a, :b)"),
+        {"a": campaign_a_id, "b": campaign_b_id},
     )
     await session.execute(
         text("DELETE FROM users WHERE id IN (:a, :b)"),

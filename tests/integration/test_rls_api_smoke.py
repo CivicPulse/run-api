@@ -193,6 +193,7 @@ def _make_app_for_campaign(
     org_id: str,
     campaign_id: uuid.UUID,
     app_user_engine,
+    superuser_engine=None,
     role: CampaignRole = CampaignRole.ADMIN,
 ) -> tuple:
     """Create a FastAPI app with auth bypass and RLS-enforced data.
@@ -200,11 +201,12 @@ def _make_app_for_campaign(
     Overrides:
     - get_current_user → test user (JWT bypass)
     - get_campaign_db → app_user connection with RLS
-
-    Leaves get_db using the app's superuser connection so that
-    require_role / ensure_user_synced work correctly.
+    - get_db → superuser connection from test engine (avoids global
+      engine event loop conflicts)
     """
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from app.db.session import get_db
 
     app = create_app()
     user = AuthenticatedUser(
@@ -215,6 +217,19 @@ def _make_app_for_campaign(
         display_name=f"Test {user_id}",
     )
     app.dependency_overrides[get_current_user] = lambda: user
+
+    # Override get_db to use the test superuser engine, avoiding the
+    # module-level engine which is bound to a different event loop.
+    if superuser_engine is not None:
+        su_session_factory = async_sessionmaker(
+            superuser_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async def _test_get_db():
+            async with su_session_factory() as session:
+                yield session
+
+        app.dependency_overrides[get_db] = _test_get_db
 
     # Override get_campaign_db to use app_user (RLS enforced).
     # Wraps commit to restore RLS context afterward, because
@@ -255,7 +270,7 @@ class TestRLSAPISmokeTests:
     """
 
     async def test_voter_search_scoped_to_campaign(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """Voter search via API returns only this campaign's voters."""
         data = two_campaigns_with_api_data
@@ -266,6 +281,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)
@@ -281,7 +297,7 @@ class TestRLSAPISmokeTests:
         assert str(data["voter_b_id"]) not in voter_ids
 
     async def test_turf_list_scoped_to_campaign(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """Turf listing returns only this campaign's turfs."""
         data = two_campaigns_with_api_data
@@ -292,6 +308,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)
@@ -306,7 +323,7 @@ class TestRLSAPISmokeTests:
         assert str(data["turf_b_id"]) not in turf_ids
 
     async def test_wrong_campaign_in_url_returns_403(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """User A cannot access campaign B's endpoints."""
         data = two_campaigns_with_api_data
@@ -316,6 +333,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             data["campaign_b_id"],
             app_user_engine,
+            superuser_engine=superuser_engine,
             role=CampaignRole.ADMIN,
         )
 
@@ -329,7 +347,7 @@ class TestRLSAPISmokeTests:
         assert resp.status_code == 403
 
     async def test_no_campaign_context_returns_empty(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """Nonexistent campaign context returns no data."""
         data = two_campaigns_with_api_data
@@ -340,6 +358,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             fake_cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)
@@ -353,7 +372,7 @@ class TestRLSAPISmokeTests:
         assert resp.status_code == 403
 
     async def test_voter_list_scoped_to_campaign(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """GET /voters only returns voters for the active campaign."""
         data = two_campaigns_with_api_data
@@ -364,6 +383,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)
@@ -378,7 +398,7 @@ class TestRLSAPISmokeTests:
         assert str(data["voter_b_id"]) not in voter_ids
 
     async def test_voter_get_by_id_cross_campaign_not_found(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """GET /voters/{B's voter} via campaign A returns 404."""
         data = two_campaigns_with_api_data
@@ -389,6 +409,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)
@@ -401,7 +422,7 @@ class TestRLSAPISmokeTests:
         assert resp.status_code == 404
 
     async def test_voter_patch_cross_campaign_not_found(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """PATCH /voters/{B's voter} via campaign A returns 404."""
         data = two_campaigns_with_api_data
@@ -412,6 +433,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
             role=CampaignRole.MANAGER,
         )
 
@@ -425,7 +447,7 @@ class TestRLSAPISmokeTests:
         assert resp.status_code == 404
 
     async def test_voter_delete_cross_campaign_not_found(
-        self, two_campaigns_with_api_data, app_user_engine
+        self, two_campaigns_with_api_data, app_user_engine, superuser_engine
     ):
         """DELETE /voters/{B's voter} via campaign A returns 404."""
         data = two_campaigns_with_api_data
@@ -436,6 +458,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid,
             app_user_engine,
+            superuser_engine=superuser_engine,
             role=CampaignRole.MANAGER,
         )
 
@@ -451,6 +474,7 @@ class TestRLSAPISmokeTests:
         self,
         two_campaigns_with_api_data,
         app_user_engine,
+        superuser_engine,
     ):
         """POST /voters creates voter visible only in that campaign."""
         data = two_campaigns_with_api_data
@@ -462,6 +486,7 @@ class TestRLSAPISmokeTests:
             data["org_a_id"],
             cid_a,
             app_user_engine,
+            superuser_engine=superuser_engine,
         )
 
         transport = ASGITransport(app=app)

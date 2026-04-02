@@ -20,22 +20,22 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.time import utcnow
 
-# Database URLs for integration tests (port from env, default 5432)
-_DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
+# Database URLs for integration tests (port from env, default 5433)
+_DB_PORT = os.environ.get("TEST_DB_PORT", "5433")
 SUPERUSER_URL = f"postgresql+asyncpg://postgres:postgres@localhost:{_DB_PORT}/run_api"
 APP_USER_URL = (
     f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def superuser_engine():
     """Superuser engine for test setup/teardown."""
     engine = create_async_engine(SUPERUSER_URL, echo=False)
     yield engine
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def app_user_engine():
     """App user engine for RLS testing.
 

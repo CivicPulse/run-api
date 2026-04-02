@@ -55,7 +55,7 @@ class TestRequestIdHeader:
 
     async def test_health_endpoint_excluded(self, client: AsyncClient):
         """Health check endpoints skip request logging middleware."""
-        resp = await client.get("/health")
+        resp = await client.get("/health/live")
         # Health endpoints may or may not include X-Request-ID
         # The key behavior is that they return 200 and don't log
         assert resp.status_code == 200

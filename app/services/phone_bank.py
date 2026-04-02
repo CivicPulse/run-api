@@ -248,7 +248,9 @@ class PhoneBankService:
         session_id: uuid.UUID,
         user_id: str,
     ) -> SessionCaller:
-        """Assign a caller to a session.
+        """Assign a caller to a session (idempotent).
+
+        If the caller is already assigned, returns the existing assignment.
 
         Args:
             session: Async database session.
@@ -256,7 +258,7 @@ class PhoneBankService:
             user_id: Caller user ID.
 
         Returns:
-            The created SessionCaller.
+            The existing or newly created SessionCaller.
 
         Raises:
             ValueError: If session not found.
@@ -265,6 +267,17 @@ class PhoneBankService:
         if pb_session is None:
             msg = f"Session {session_id} not found"
             raise ValueError(msg)
+
+        # Check for existing assignment (idempotency)
+        existing = await session.execute(
+            select(SessionCaller).where(
+                SessionCaller.session_id == session_id,
+                SessionCaller.user_id == user_id,
+            )
+        )
+        existing_caller = existing.scalar_one_or_none()
+        if existing_caller is not None:
+            return existing_caller
 
         caller = SessionCaller(
             id=uuid.uuid4(),

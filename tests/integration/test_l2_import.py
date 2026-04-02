@@ -21,6 +21,10 @@ from app.services.import_service import (
 
 _SAMPLE_PATH = Path(__file__).resolve().parents[2] / "data" / "example-2026-02-24.csv"
 
+pytestmark = pytest.mark.skipif(
+    not _SAMPLE_PATH.exists(), reason="L2 sample CSV not available"
+)
+
 
 def _read_sample_rows(
     max_rows: int = 5,

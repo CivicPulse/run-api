@@ -152,10 +152,10 @@ async def two_campaigns_with_canvassing_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO walk_lists (id, campaign_id,"
-                " turf_id, name, status, created_by,"
-                " created_at, updated_at) "
+                " turf_id, name, created_by,"
+                " created_at) "
                 "VALUES (:id, :cid, :tid, :name,"
-                " 'pending', :uid, :now, :now)"
+                " :uid, :now)"
             ),
             {
                 "id": wid,
@@ -175,7 +175,7 @@ async def two_campaigns_with_canvassing_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO walk_list_entries (id,"
-                " walk_list_id, voter_id, position,"
+                " walk_list_id, voter_id, sequence,"
                 " status) "
                 "VALUES (:id, :wid, :vid, 1, 'pending')"
             ),
@@ -189,11 +189,11 @@ async def two_campaigns_with_canvassing_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO walk_list_canvassers (id,"
-                " walk_list_id, user_id, assigned_at) "
-                "VALUES (:id, :wid, :uid, :now)"
+                "INSERT INTO walk_list_canvassers"
+                " (walk_list_id, user_id, assigned_at) "
+                "VALUES (:wid, :uid, :now)"
             ),
-            {"id": uuid.uuid4(), "wid": wid, "uid": uid, "now": now},
+            {"wid": wid, "uid": uid, "now": now},
         )
 
     # Survey scripts

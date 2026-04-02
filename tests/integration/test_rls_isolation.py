@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -20,8 +20,26 @@ from sqlalchemy.ext.asyncio import (
 
 from app.db.rls import set_campaign_context
 
+_NULL_UUID = "00000000-0000-0000-0000-000000000000"
+
+
+def _attach_rls_reset(engine):
+    """Register a checkout listener that resets RLS context to a safe
+    null-UUID, matching the conftest's app_user_engine pattern."""
+
+    @event.listens_for(engine.sync_engine, "checkout")
+    def _reset_rls(dbapi_conn, rec, proxy):
+        cur = dbapi_conn.cursor()
+        cur.execute(
+            "SELECT set_config('app.current_campaign_id',"
+            f" '{_NULL_UUID}', false)"
+        )
+        cur.close()
+
+    return engine
+
 # app_user connection — RLS enforced
-_DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
+_DB_PORT = os.environ.get("TEST_DB_PORT", "5433")
 APP_USER_URL = (
     f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"
 )
@@ -38,9 +56,9 @@ class TestRLSPoolIsolation:
         data = two_campaigns
 
         # Create a pool with max 1 connection to force reuse
-        engine = create_async_engine(
+        engine = _attach_rls_reset(create_async_engine(
             APP_USER_URL, echo=False, pool_size=1, max_overflow=0
-        )
+        ))
         factory = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )
@@ -74,7 +92,7 @@ class TestRLSPoolIsolation:
         have stale campaign context."""
         data = two_campaigns
 
-        engine = create_async_engine(APP_USER_URL, echo=False)
+        engine = _attach_rls_reset(create_async_engine(APP_USER_URL, echo=False))
         factory = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )
@@ -110,7 +128,7 @@ class TestRLSPoolIsolation:
         own campaign's data."""
         data = two_campaigns
 
-        engine = create_async_engine(APP_USER_URL, echo=False)
+        engine = _attach_rls_reset(create_async_engine(APP_USER_URL, echo=False))
         factory = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )
@@ -136,7 +154,7 @@ class TestRLSPoolIsolation:
 
     async def test_set_campaign_context_validates_input(self):
         """set_campaign_context raises ValueError for falsy campaign_id."""
-        engine = create_async_engine(APP_USER_URL, echo=False)
+        engine = _attach_rls_reset(create_async_engine(APP_USER_URL, echo=False))
         factory = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )
