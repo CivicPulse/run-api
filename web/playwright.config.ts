@@ -1,36 +1,71 @@
 import { defineConfig, devices } from "@playwright/test"
+import { execSync } from "child_process"
 import fs from "fs"
 import path from "path"
 
-// Allow self-signed certs for local HTTPS preview server
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
-// ── Optimization: Auth state caching (#7) ───────────────────────────────────
-// Skip auth setup when cached tokens are fresh (< 30 min old).
-// Delete playwright/.auth/ to force re-auth.
-const AUTH_DIR = path.join(import.meta.dirname, "playwright/.auth")
-const AUTH_MAX_AGE_MS = 30 * 60 * 1000 // 30 minutes
+const WORKTREE_WEB_DIR = import.meta.dirname
+const LOCAL_AUTH_DIR = path.join(WORKTREE_WEB_DIR, "playwright/.auth")
+const AUTH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
-function isAuthFresh(role: string): boolean {
+function resolveSharedAuthDir(): string | null {
   try {
-    const file = path.join(AUTH_DIR, `${role}.json`)
-    const stat = fs.statSync(file)
-    return Date.now() - stat.mtimeMs < AUTH_MAX_AGE_MS
+    const gitCommonDir = execSync("git rev-parse --git-common-dir", {
+      cwd: WORKTREE_WEB_DIR,
+      encoding: "utf8",
+    }).trim()
+    const repoRoot = path.resolve(gitCommonDir, "..")
+    return path.join(repoRoot, "web/playwright/.auth")
   } catch {
-    return false
+    return null
   }
 }
 
+const SHARED_AUTH_DIR = resolveSharedAuthDir()
+const forceAuthSetup = process.env.PLAYWRIGHT_FORCE_AUTH_SETUP === "1"
+
+function authStatePath(role: string): string {
+  const localFile = path.join(LOCAL_AUTH_DIR, `${role}.json`)
+  if (fs.existsSync(localFile)) return localFile
+
+  if (SHARED_AUTH_DIR) {
+    const sharedFile = path.join(SHARED_AUTH_DIR, `${role}.json`)
+    if (fs.existsSync(sharedFile)) return sharedFile
+  }
+
+  return localFile
+}
+
+function isAuthFresh(role: string): boolean {
+  for (const authDir of [LOCAL_AUTH_DIR, SHARED_AUTH_DIR].filter(
+    (dir): dir is string => Boolean(dir),
+  )) {
+    try {
+      const stat = fs.statSync(path.join(authDir, `${role}.json`))
+      if (Date.now() - stat.mtimeMs < AUTH_MAX_AGE_MS) return true
+    } catch {
+      // Try the next location.
+    }
+  }
+
+  return false
+}
+
 const allAuthFresh =
+  !forceAuthSetup &&
   ["owner", "admin", "manager", "volunteer", "viewer"].every(isAuthFresh)
 
-// ── Optimization: Dev server mode (#3) ──────────────────────────────────────
-// Set E2E_USE_DEV_SERVER=1 to skip build+preview and use the docker-compose
-// web dev server on :5173 (faster iteration, no build step).
-const useDevServer = process.env.E2E_USE_DEV_SERVER === "1"
-const baseURL = useDevServer
-  ? "http://localhost:5173"
-  : "https://localhost:4173"
+const setupProjectNames = [
+  "setup-owner",
+  "setup-admin",
+  "setup-manager",
+  "setup-volunteer",
+  "setup-viewer",
+]
+
+const useDevServer = process.env.E2E_USE_DEV_SERVER !== "0"
+const baseURL = useDevServer ? "https://localhost:5173" : "https://localhost:4173"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -47,120 +82,80 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     actionTimeout: 30_000,
-    // Valid Playwright option; type defs lag behind runtime API
     ...({ reducedMotion: "reduce" } as Record<string, unknown>),
   },
 
   projects: [
-    // ── Optimization: Single shared auth setup (#1) ─────────────────────────
-    // One setup project authenticates ALL roles in sequence.
-    // When auth is cached (#7), this project is skipped entirely.
-    { name: "setup-owner", testMatch: /auth-owner\.setup\.ts/ },
-    { name: "setup-admin", testMatch: /auth-admin\.setup\.ts/ },
-    { name: "setup-manager", testMatch: /auth-manager\.setup\.ts/ },
-    { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
-    { name: "setup-viewer", testMatch: /auth-viewer\.setup\.ts/ },
-
+    ...(!allAuthFresh
+      ? [
+          { name: "setup-owner", testMatch: /auth-owner\.setup\.ts/ },
+          { name: "setup-admin", testMatch: /auth-admin\.setup\.ts/ },
+          { name: "setup-manager", testMatch: /auth-manager\.setup\.ts/ },
+          { name: "setup-volunteer", testMatch: /auth-volunteer\.setup\.ts/ },
+          { name: "setup-viewer", testMatch: /auth-viewer\.setup\.ts/ },
+        ]
+      : []),
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/owner.json",
+        storageState: authStatePath("owner"),
       },
-      dependencies: allAuthFresh
-        ? []
-        : [
-            "setup-owner",
-            "setup-admin",
-            "setup-manager",
-            "setup-volunteer",
-            "setup-viewer",
-          ],
+      dependencies: allAuthFresh ? [] : setupProjectNames,
       testIgnore: /.*\.setup\.ts/,
-      testMatch:
-        /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
+      testMatch: /^(?!.*\.(admin|manager|volunteer|viewer)\.spec\.ts).*\.spec\.ts$/,
     },
     {
       name: "admin",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/admin.json",
+        storageState: authStatePath("admin"),
       },
-      dependencies: allAuthFresh
-        ? []
-        : [
-            "setup-owner",
-            "setup-admin",
-            "setup-manager",
-            "setup-volunteer",
-            "setup-viewer",
-          ],
+      dependencies: allAuthFresh ? [] : setupProjectNames,
       testMatch: /.*\.admin\.spec\.ts/,
     },
     {
       name: "manager",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/manager.json",
+        storageState: authStatePath("manager"),
       },
-      dependencies: allAuthFresh
-        ? []
-        : [
-            "setup-owner",
-            "setup-admin",
-            "setup-manager",
-            "setup-volunteer",
-            "setup-viewer",
-          ],
+      dependencies: allAuthFresh ? [] : setupProjectNames,
       testMatch: /.*\.manager\.spec\.ts/,
     },
     {
       name: "volunteer",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/volunteer.json",
+        storageState: authStatePath("volunteer"),
       },
-      dependencies: allAuthFresh
-        ? []
-        : [
-            "setup-owner",
-            "setup-admin",
-            "setup-manager",
-            "setup-volunteer",
-            "setup-viewer",
-          ],
+      dependencies: allAuthFresh ? [] : setupProjectNames,
       testMatch: /.*\.volunteer\.spec\.ts/,
     },
     {
       name: "viewer",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/viewer.json",
+        storageState: authStatePath("viewer"),
       },
-      dependencies: allAuthFresh
-        ? []
-        : [
-            "setup-owner",
-            "setup-admin",
-            "setup-manager",
-            "setup-volunteer",
-            "setup-viewer",
-          ],
+      dependencies: allAuthFresh ? [] : setupProjectNames,
       testMatch: /.*\.viewer\.spec\.ts/,
     },
   ],
 
-  // Skip webServer entirely when using dev server or when explicitly
-  // started externally (parallel test script).
-  ...(useDevServer
-    ? {}
+  webServer: useDevServer
+    ? {
+        command: "npm run dev -- --host localhost --port 5173 --strictPort",
+        url: "https://localhost:5173",
+        reuseExistingServer: !process.env.CI,
+        ignoreHTTPSErrors: true,
+        timeout: 120_000,
+      }
     : {
-        webServer: {
-          command: "npm run preview",
-          url: "https://localhost:4173",
-          reuseExistingServer: !process.env.CI,
-          ignoreHTTPSErrors: true,
-          timeout: 60_000,
-        },
-      }),
+        command: "npm run preview -- --host localhost --strictPort --port 4173",
+        url: "https://localhost:4173",
+        reuseExistingServer: !process.env.CI,
+        ignoreHTTPSErrors: true,
+        timeout: 120_000,
+      },
 })
