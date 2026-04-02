@@ -1,11 +1,12 @@
-"""Seed a default Organization row for the dev admin user.
+"""Seed a default dev org and smoke campaign rows.
 
 Runs once at API startup (via dev-entrypoint.sh) after Alembic migrations.
 Reads DEV_ORG_ZITADEL_ID and DEV_ADMIN_ZITADEL_ID from the environment
 (written by bootstrap-zitadel.py into .env.zitadel).
 
 Idempotent — all INSERTs use ON CONFLICT DO NOTHING so repeated runs are safe.
-This ensures the admin user can create campaigns without running seed.py first.
+This ensures the dev admin can create and access campaigns without running
+additional seed scripts first.
 """
 
 from __future__ import annotations
@@ -19,6 +20,8 @@ import psycopg2
 
 DEV_ORG_ZITADEL_ID = os.environ.get("DEV_ORG_ZITADEL_ID", "")
 DEV_ADMIN_ZITADEL_ID = os.environ.get("DEV_ADMIN_ZITADEL_ID", "")
+DEV_ORG_NAME = "CivicPulse Dev Org"
+ADMIN_SMOKE_CAMPAIGN_NAME = "Admin Smoke Test Campaign"
 DATABASE_URL_SYNC = os.environ.get(
     "DATABASE_URL_SYNC",
     "postgresql+psycopg2://postgres:postgres@postgres:5432/run_api",
@@ -76,7 +79,7 @@ def main() -> None:
                 (
                     org_id,
                     DEV_ORG_ZITADEL_ID,
-                    "CivicPulse Dev Org",
+                    DEV_ORG_NAME,
                     DEV_ADMIN_ZITADEL_ID,
                     now,
                     now,
@@ -106,6 +109,62 @@ def main() -> None:
             print(f"ensure-dev-org: added admin as org_owner of {org_id}")
         else:
             print("ensure-dev-org: org membership already exists")
+
+        # 4. Ensure the default smoke campaign exists for admin-side dev checks.
+        cur.execute(
+            """
+            SELECT id FROM campaigns
+            WHERE organization_id = %s AND name = %s
+            LIMIT 1
+            """,
+            (org_id, ADMIN_SMOKE_CAMPAIGN_NAME),
+        )
+        campaign_row = cur.fetchone()
+        campaign_id = str(campaign_row[0]) if campaign_row else str(uuid.uuid4())
+        if campaign_row:
+            print(f"ensure-dev-org: smoke campaign already exists ({campaign_id})")
+        else:
+            cur.execute(
+                """
+                INSERT INTO campaigns (
+                    id, zitadel_org_id, organization_id, name, slug, type,
+                    status, created_by, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    campaign_id,
+                    DEV_ORG_ZITADEL_ID,
+                    org_id,
+                    ADMIN_SMOKE_CAMPAIGN_NAME,
+                    "admin-smoke-test-campaign",
+                    "local",
+                    "active",
+                    DEV_ADMIN_ZITADEL_ID,
+                    now,
+                    now,
+                ),
+            )
+            print(f"ensure-dev-org: created smoke campaign {campaign_id}")
+
+        # 5. Ensure the dev admin has owner rights on the smoke campaign.
+        cur.execute(
+            """
+            INSERT INTO campaign_members (id, user_id, campaign_id, synced_at, role)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, campaign_id) DO UPDATE
+            SET role = EXCLUDED.role,
+                synced_at = EXCLUDED.synced_at
+            """,
+            (
+                str(uuid.uuid4()),
+                DEV_ADMIN_ZITADEL_ID,
+                campaign_id,
+                now,
+                "owner",
+            ),
+        )
+        print(f"ensure-dev-org: ensured admin owner membership on {campaign_id}")
 
         conn.commit()
         cur.close()
