@@ -44,8 +44,8 @@ export function VoterCard({
   const voterName =
     `${voter.first_name || ""} ${voter.last_name || ""}`.trim() || "Unknown Voter"
 
-  const partyColor = getPartyColor(voter.party)
-  const propensity = getPropensityDisplay(voter.propensity_combined)
+  const partyColor = getPartyColor(voter.party ?? null)
+  const propensity = getPropensityDisplay(voter.propensity_combined ?? null)
 
   const isSkipped = entry.status === "skipped"
   const isCompleted = !!recordedOutcome
