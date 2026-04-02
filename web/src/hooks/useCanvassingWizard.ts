@@ -8,18 +8,29 @@ import {
 } from "@/hooks/useCanvassing"
 import {
   groupByHousehold,
+  orderHouseholdsByDistance,
+  orderHouseholdsBySequence,
   SURVEY_TRIGGER_OUTCOMES,
   AUTO_ADVANCE_OUTCOMES,
 } from "@/types/canvassing"
 import type {
   DoorKnockResultCode,
   EnrichedWalkListEntry,
+  Household,
 } from "@/types/canvassing"
 import { toast } from "sonner"
 
 interface OutcomeResult {
   bulkPrompt?: boolean
   surveyTrigger?: boolean
+}
+
+function getPinnedCurrentHousehold(
+  sequenceHouseholds: Household[],
+  currentAddressIndex: number,
+): Household | null {
+  if (sequenceHouseholds.length === 0) return null
+  return sequenceHouseholds[currentAddressIndex] ?? sequenceHouseholds[sequenceHouseholds.length - 1]
 }
 
 export function useCanvassingWizard(campaignId: string, walkListId: string) {
@@ -32,6 +43,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     currentAddressIndex,
     completedEntries,
     skippedEntries,
+    sortMode,
+    locationSnapshot,
+    locationStatus,
     setWalkList,
     advanceAddress,
     jumpToAddress,
@@ -39,24 +53,62 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     touch,
   } = useCanvassingStore()
 
-  // Initialize store when walkListId changes
   useEffect(() => {
     if (walkListId && walkListId !== storeWalkListId) {
       setWalkList(walkListId)
     }
   }, [walkListId, storeWalkListId, setWalkList])
 
-  // Touch every 60 seconds for stale detection
   useEffect(() => {
     const interval = setInterval(() => touch(), 60_000)
     return () => clearInterval(interval)
   }, [touch])
 
-  // Derived state
-  const households = useMemo(
+  const sequenceHouseholds = useMemo(
     () => groupByHousehold(entriesQuery.data ?? []),
     [entriesQuery.data],
   )
+
+  const pinnedCurrentHousehold = useMemo(
+    () => getPinnedCurrentHousehold(sequenceHouseholds, currentAddressIndex),
+    [sequenceHouseholds, currentAddressIndex],
+  )
+
+  const households = useMemo(() => {
+    const orderedHouseholds = sortMode === "distance"
+      ? orderHouseholdsByDistance(sequenceHouseholds, locationSnapshot)
+      : orderHouseholdsBySequence(sequenceHouseholds)
+
+    if (!pinnedCurrentHousehold) return orderedHouseholds
+
+    const pinnedIndex = orderedHouseholds.findIndex(
+      (household) => household.householdKey === pinnedCurrentHousehold.householdKey,
+    )
+    if (pinnedIndex < 0 || pinnedIndex === currentAddressIndex) {
+      return orderedHouseholds
+    }
+
+    const reorderedHouseholds = [...orderedHouseholds]
+    const [activeHousehold] = reorderedHouseholds.splice(pinnedIndex, 1)
+    reorderedHouseholds.splice(
+      Math.min(currentAddressIndex, reorderedHouseholds.length),
+      0,
+      activeHousehold,
+    )
+    return reorderedHouseholds
+  }, [
+    currentAddressIndex,
+    locationSnapshot,
+    pinnedCurrentHousehold,
+    sequenceHouseholds,
+    sortMode,
+  ])
+
+  useLayoutEffect(() => {
+    if (currentAddressIndex >= households.length && households.length > 0) {
+      jumpToAddress(households.length - 1)
+    }
+  }, [currentAddressIndex, households.length, jumpToAddress])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,
@@ -66,9 +118,10 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const totalAddresses = households.length
 
   const completedAddresses = useMemo(() => {
-    return households.filter((h) =>
-      h.entries.every(
-        (e) => completedEntries[e.id] !== undefined || skippedEntries.includes(e.id),
+    return households.filter((household) =>
+      household.entries.every(
+        (entry) =>
+          completedEntries[entry.id] !== undefined || skippedEntries.includes(entry.id),
       ),
     ).length
   }, [households, completedEntries, skippedEntries])
@@ -78,14 +131,16 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const activeEntryId = useMemo(() => {
     if (!currentHousehold) return null
     const active = currentHousehold.entries.find(
-      (e) => completedEntries[e.id] === undefined && !skippedEntries.includes(e.id),
+      (entry) =>
+        completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id),
     )
     return active?.id ?? null
   }, [currentHousehold, completedEntries, skippedEntries])
 
-  // Ref to track advanceAddress for use in timeouts
   const advanceRef = useRef(advanceAddress)
-  useLayoutEffect(() => { advanceRef.current = advanceAddress })
+  useLayoutEffect(() => {
+    advanceRef.current = advanceAddress
+  }, [advanceAddress])
 
   const handleOutcome = useCallback(
     (entryId: string, voterId: string, result: DoorKnockResultCode): OutcomeResult => {
@@ -96,7 +151,6 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       }
       doorKnockMutation.mutate(payload, {
         onError: (err) => {
-          // Network error: queue for offline sync instead of reverting
           if (err instanceof TypeError) {
             useOfflineQueueStore.getState().push({
               type: "door_knock",
@@ -104,37 +158,31 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
               campaignId,
               resourceId: walkListId,
             })
-            // Do NOT revert optimistic update -- it stays in canvassingStore
           } else {
-            // Server error: revert as before
             useCanvassingStore.getState().revertOutcome(entryId)
             toast.error("Failed to save outcome. Please try again.")
           }
         },
       })
 
-      // Check for bulk Not Home prompt at multi-voter household
       if (result === "not_home" && currentHousehold && currentHousehold.entries.length > 1) {
         const alreadyCompleted = currentHousehold.entries.filter(
-          (e) => completedEntries[e.id] !== undefined,
+          (entry) => completedEntries[entry.id] !== undefined,
         )
-        // First outcome at this address (none completed yet before this one)
         if (alreadyCompleted.length === 0) {
           return { bulkPrompt: true }
         }
       }
 
       if (AUTO_ADVANCE_OUTCOMES.has(result)) {
-        // After 300ms delay, check if address is complete and auto-advance
         setTimeout(() => {
-          // Re-read current state from store
           const state = useCanvassingStore.getState()
-          const hh = currentHousehold
-          if (hh) {
-            const allDone = hh.entries.every(
-              (e) =>
-                state.completedEntries[e.id] !== undefined ||
-                state.skippedEntries.includes(e.id),
+          const household = currentHousehold
+          if (household) {
+            const allDone = household.entries.every(
+              (entry) =>
+                state.completedEntries[entry.id] !== undefined ||
+                state.skippedEntries.includes(entry.id),
             )
             if (allDone) {
               advanceRef.current()
@@ -157,9 +205,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     if (currentHousehold) {
       const state = useCanvassingStore.getState()
       const allDone = currentHousehold.entries.every(
-        (e) =>
-          state.completedEntries[e.id] !== undefined ||
-          state.skippedEntries.includes(e.id),
+        (entry) =>
+          state.completedEntries[entry.id] !== undefined ||
+          state.skippedEntries.includes(entry.id),
       )
       if (allDone) {
         advanceAddress()
@@ -215,7 +263,6 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   )
 
   return {
-    // Data
     households,
     currentHousehold,
     currentAddressIndex,
@@ -224,11 +271,12 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     activeEntryId,
     completedEntries,
     skippedEntries,
+    sortMode,
+    locationSnapshot,
+    locationStatus,
     isComplete,
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,
-
-    // Actions
     handleOutcome,
     handlePostSurveyAdvance,
     handleSkipAddress,

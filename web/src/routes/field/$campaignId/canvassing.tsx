@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { FieldProgress } from "@/components/field/FieldProgress"
 import { HouseholdCard } from "@/components/field/HouseholdCard"
@@ -6,6 +6,7 @@ import { InlineSurvey } from "@/components/field/InlineSurvey"
 import { useResumePrompt } from "@/components/field/ResumePrompt"
 import { DoorListView } from "@/components/field/DoorListView"
 import { QuickStartCard } from "@/components/field/QuickStartCard"
+import { CanvassingMap } from "@/components/field/CanvassingMap"
 import { checkMilestone } from "@/lib/milestones"
 import { CanvassingCompletionSummary } from "@/components/field/CanvassingCompletionSummary"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
@@ -18,11 +19,11 @@ import { useTourStore, tourKey } from "@/stores/tourStore"
 import { canvassingSteps } from "@/components/field/tour/tourSteps"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Link } from "@tanstack/react-router"
-import { Loader2, AlertCircle, List } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, AlertCircle, List, LocateFixed, ListOrdered } from "lucide-react"
 import { toast } from "sonner"
 import { SURVEY_TRIGGER_OUTCOMES, OUTCOME_LABELS } from "@/types/canvassing"
-import type { DoorKnockResultCode } from "@/types/canvassing"
+import type { CoordinatePoint, DoorKnockResultCode } from "@/types/canvassing"
 
 function Canvassing() {
   const { campaignId } = Route.useParams()
@@ -38,6 +39,9 @@ function Canvassing() {
     activeEntryId,
     completedEntries,
     skippedEntries,
+    sortMode,
+    locationSnapshot,
+    locationStatus,
     isComplete,
     isLoading,
     isError,
@@ -48,7 +52,13 @@ function Canvassing() {
     handleJumpToAddress,
   } = useCanvassingWizard(campaignId, walkListId)
 
-  // Tour auto-trigger
+  const storeWalkListId = useCanvassingStore((s) => s.walkListId)
+  const lastActiveAt = useCanvassingStore((s) => s.lastActiveAt)
+  const setSortMode = useCanvassingStore((s) => s.setSortMode)
+  const setLocationState = useCanvassingStore((s) => s.setLocationState)
+
+  const [isCapturingLocation, setIsCapturingLocation] = useState(false)
+
   const user = useAuthStore((state) => state.user)
   const userId = user?.profile?.sub
   const key = userId ? tourKey(campaignId, userId) : ""
@@ -76,29 +86,19 @@ function Canvassing() {
     incrementSession(key, "canvassing")
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Walk list detail for script_id
   const { data: walkListDetail } = useWalkList(campaignId, walkListId)
   const scriptId = walkListDetail?.script_id
 
-  // Store state for resume prompt
-  const storeWalkListId = useCanvassingStore((s) => s.walkListId)
-  const lastActiveAt = useCanvassingStore((s) => s.lastActiveAt)
-
-  // Survey state
   const [surveyOpen, setSurveyOpen] = useState(false)
   const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
-
-  // Door list view state
   const [listViewOpen, setListViewOpen] = useState(false)
 
   const navigationKey = `${currentAddressIndex}:${activeEntryId ?? ""}:${isComplete ? 1 : 0}`
-  // ARIA: one-shot outcome announcement scoped to a navigation context
   const [outcomeAnnouncement, setOutcomeAnnouncement] = useState<{
     key: string
     message: string
   } | null>(null)
 
-  // Active voter name for ARIA
   const activeVoterName = useMemo(() => {
     if (!currentHousehold || !activeEntryId) return ""
     const entry = currentHousehold.entries.find((e) => e.id === activeEntryId)
@@ -110,7 +110,6 @@ function Canvassing() {
     )
   }, [currentHousehold, activeEntryId])
 
-  // Resume prompt
   useResumePrompt({
     walkListId: walkListId || null,
     storedWalkListId: storeWalkListId,
@@ -128,7 +127,6 @@ function Canvassing() {
     },
   })
 
-  // ARIA: navigation announcement derived from current state
   const navigationAnnouncement = isComplete
     ? `Walk list complete. ${totalAddresses} doors visited.`
     : currentHousehold
@@ -140,14 +138,12 @@ function Canvassing() {
       ? outcomeAnnouncement.message
       : navigationAnnouncement
 
-  // Milestone celebration toasts
   useEffect(() => {
     if (totalAddresses === 0 || !walkListId) return
     const key = `milestones-fired-canvassing-${walkListId}`
     checkMilestone(completedAddresses, totalAddresses, key)
   }, [completedAddresses, totalAddresses, walkListId])
 
-  // Survey handlers
   const handleSurveyComplete = useCallback(() => {
     setSurveyOpen(false)
     setSurveyVoterId(null)
@@ -164,7 +160,6 @@ function Canvassing() {
     (entryId: string, voterId: string, result: string) => {
       handleOutcome(entryId, voterId, result as DoorKnockResultCode)
 
-      // ARIA: announce outcome
       const voterEntry = currentHousehold?.entries.find(
         (e) => e.id === entryId,
       )
@@ -179,7 +174,6 @@ function Canvassing() {
         })
       }
 
-      // Check for bulk Not Home prompt at multi-voter address
       if (
         result === "not_home" &&
         currentHousehold &&
@@ -213,25 +207,74 @@ function Canvassing() {
         return
       }
 
-      // Check for survey trigger
       if (SURVEY_TRIGGER_OUTCOMES.has(result as DoorKnockResultCode) && scriptId) {
         setSurveyVoterId(voterId)
         setSurveyOpen(true)
-        return
       }
     },
     [
-      handleOutcome,
-      currentHousehold,
       completedEntries,
-      skippedEntries,
+      currentHousehold,
       handleBulkNotHome,
-      scriptId,
+      handleOutcome,
       navigationKey,
+      scriptId,
+      skippedEntries,
     ],
   )
 
-  // Loading state
+  const requestDistanceOrder = useCallback(
+    (refreshLocation = false) => {
+      const useSnapshot =
+        !refreshLocation &&
+        locationStatus === "ready" &&
+        locationSnapshot !== null
+
+      if (useSnapshot) {
+        setSortMode("distance")
+        return
+      }
+
+      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+        setLocationState("unavailable")
+        setSortMode("sequence")
+        toast.error("Current location is unavailable on this device.")
+        return
+      }
+
+      setIsCapturingLocation(true)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const snapshot: CoordinatePoint = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }
+          setLocationState("ready", snapshot)
+          setSortMode("distance")
+          setIsCapturingLocation(false)
+          toast.success("Distance order is ready for this route.")
+        },
+        (error) => {
+          const denied = error.code === error.PERMISSION_DENIED
+          setLocationState(denied ? "denied" : "unavailable")
+          setSortMode("sequence")
+          setIsCapturingLocation(false)
+          toast.error(
+            denied
+              ? "Location permission denied. Staying in sequence order."
+              : "Could not capture your location. Staying in sequence order.",
+          )
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10_000,
+          maximumAge: 0,
+        },
+      )
+    },
+    [locationSnapshot, locationStatus, setLocationState, setSortMode],
+  )
+
   if (fieldMeQuery.isLoading || (walkListId && isLoading)) {
     return (
       <div className="flex flex-col h-full">
@@ -242,7 +285,6 @@ function Canvassing() {
     )
   }
 
-  // No assignment state
   if (!walkListId) {
     return (
       <div className="flex flex-col h-full">
@@ -265,7 +307,6 @@ function Canvassing() {
     )
   }
 
-  // Error state
   if (isError) {
     return (
       <div className="flex flex-col h-full">
@@ -282,7 +323,6 @@ function Canvassing() {
     )
   }
 
-  // Completion state
   if (isComplete) {
     const contactOutcomes = new Set(["supporter", "undecided", "opposed", "refused"])
     const entries = Object.values(completedEntries)
@@ -305,11 +345,13 @@ function Canvassing() {
     )
   }
 
-  // Main wizard layout
   return (
     <div className="flex flex-col h-full">
       <FieldProgress current={completedAddresses} total={totalAddresses} />
-      <div className="flex items-center justify-end px-4 py-1 border-b">
+      <div className="flex items-center justify-between px-4 py-1 border-b gap-2">
+        <Badge variant="outline" data-testid="canvassing-route-order-mode">
+          {sortMode === "distance" ? "Distance order" : "Sequence order"}
+        </Badge>
         <Button
           variant="outline"
           size="sm"
@@ -340,20 +382,92 @@ function Canvassing() {
         {ariaAnnouncement}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
         {currentHousehold && (
-          <div
-            key={currentAddressIndex}
-            className="animate-in fade-in slide-in-from-right-4 duration-300"
-          >
-            <HouseholdCard
-              household={currentHousehold}
-              activeEntryId={activeEntryId}
-              completedEntries={completedEntries}
-              onOutcomeSelect={handleOutcomeWithBulk}
-              onSkip={handleSkipAddress}
+          <>
+            <CanvassingMap
+              households={households}
+              activeHouseholdKey={currentHousehold.householdKey}
+              locationStatus={locationStatus}
+              locationSnapshot={locationSnapshot}
             />
-          </div>
+
+            <Card className="p-4 space-y-3" data-testid="canvassing-sort-controls">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <ListOrdered className="h-4 w-4 text-muted-foreground" />
+                    Door order
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground" data-testid="canvassing-sort-status-copy">
+                    {sortMode === "distance"
+                      ? "Distance order is active for the remaining route using your saved location snapshot."
+                      : "Sequence order is active until you capture your current location."}
+                  </p>
+                </div>
+                <Badge variant="secondary" data-testid="canvassing-current-door-copy">
+                  Door {currentAddressIndex + 1} of {totalAddresses}
+                </Badge>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant={sortMode === "sequence" ? "default" : "outline"}
+                  className="min-h-11 flex-1"
+                  onClick={() => setSortMode("sequence")}
+                >
+                  Sequence order
+                </Button>
+                <Button
+                  type="button"
+                  variant={sortMode === "distance" ? "default" : "outline"}
+                  className="min-h-11 flex-1"
+                  onClick={() => requestDistanceOrder(false)}
+                  disabled={isCapturingLocation}
+                >
+                  {isCapturingLocation && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {locationStatus === "ready" ? "Distance order" : "Use my location"}
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <LocateFixed className="h-4 w-4" />
+                  <span>
+                    {locationStatus === "ready"
+                      ? "Saved location is available for map markers and distance ordering."
+                      : "Google Maps links stay available even if location is missing or denied."}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-11 justify-start sm:justify-center"
+                  onClick={() => requestDistanceOrder(true)}
+                  disabled={isCapturingLocation}
+                >
+                  Refresh location
+                </Button>
+              </div>
+            </Card>
+
+            <div
+              key={currentHousehold.householdKey}
+              className="animate-in fade-in slide-in-from-right-4 duration-300"
+            >
+              <HouseholdCard
+                household={currentHousehold}
+                activeEntryId={activeEntryId}
+                completedEntries={completedEntries}
+                currentDoorNumber={currentAddressIndex + 1}
+                totalDoors={totalAddresses}
+                sortMode={sortMode}
+                onOutcomeSelect={handleOutcomeWithBulk}
+                onSkip={handleSkipAddress}
+              />
+            </div>
+          </>
         )}
       </div>
 
@@ -374,6 +488,7 @@ function Canvassing() {
         currentAddressIndex={currentAddressIndex}
         completedEntries={completedEntries}
         skippedEntries={skippedEntries}
+        sortMode={sortMode}
         open={listViewOpen}
         onOpenChange={setListViewOpen}
         onJump={handleJumpToAddress}

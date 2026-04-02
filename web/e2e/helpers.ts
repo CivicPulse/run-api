@@ -37,7 +37,6 @@ export function resolveAuthStatePath(role: string): string {
  * Uses the /me/campaigns API to find the seed campaign by name.
  */
 export async function getSeedCampaignId(page: Page): Promise<string> {
-  // First, ensure we're authenticated by navigating to the app
   await page.goto("/")
   await page.waitForURL(
     (url) =>
@@ -47,9 +46,6 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
   )
   await page.waitForLoadState("domcontentloaded")
 
-  // Try to find the campaign ID via API (retries for parallel resilience).
-  // Use /me/campaigns (flat list of user's memberships) instead of /campaigns
-  // (paginated, newest first) to avoid E2E test campaigns pushing seed off page 1.
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const token = await getAuthToken(page)
@@ -64,15 +60,12 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
         )
         if (seed?.campaign_id ?? seed?.id) return seed.campaign_id ?? seed.id
       }
-      // Rate-limited or transient error — back off before retrying
       if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     } catch {
-      // Retry after a short delay on failure
       if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     }
   }
 
-  // Fallback: try to find the campaign link on the page
   const campaignLink = page
     .getByRole("link", { name: /macon-bibb/i })
     .first()
@@ -83,15 +76,7 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
   return match[1]
 }
 
-/**
- * Extract the OIDC access token from localStorage.
- * The frontend stores auth via oidc-client-ts in a key like
- * `oidc.user:{authority}:{client_id}`.
- */
 export async function getAuthToken(page: Page): Promise<string> {
-  // page.evaluate() throws SecurityError when the page is on about:blank or a
-  // cross-origin document (e.g. when tests call API helpers before navigating).
-  // Fall through to the storageState() path in that case.
   let fromLocalStorage = ""
   try {
     fromLocalStorage = await page.evaluate(() => {
@@ -105,14 +90,15 @@ export async function getAuthToken(page: Page): Promise<string> {
           try {
             const user = JSON.parse(localStorage.getItem(key)!)
             if (user?.access_token) return user.access_token as string
-          } catch { /* skip */ }
+          } catch {
+            // skip malformed values
+          }
         }
       }
       return ""
     })
   } catch {
-    // SecurityError: localStorage inaccessible (about:blank or cross-origin).
-    // The storageState() fallback below will supply the token.
+    // about:blank or cross-origin; fall through to storageState lookup
   }
 
   if (fromLocalStorage) {
@@ -133,7 +119,7 @@ export async function getAuthToken(page: Page): Promise<string> {
             return parsed.access_token as string
           }
         } catch {
-          // Not JSON auth data, continue searching
+          // continue searching
         }
       }
     }
@@ -142,25 +128,15 @@ export async function getAuthToken(page: Page): Promise<string> {
   throw new Error("No OIDC access token found in localStorage or storageState")
 }
 
-/**
- * Get Authorization headers for page.request calls.
- * Usage: `page.request.get(url, { headers: await authHeaders(page) })`
- */
 export async function authHeaders(page: Page): Promise<Record<string, string>> {
   const token = await getAuthToken(page)
   return { Authorization: `Bearer ${token}` }
 }
 
-/**
- * Authenticated GET request via page.request.
- */
 export async function apiGet(page: Page, url: string, timeout = 60_000): Promise<APIResponse> {
   return page.request.get(url, { headers: await authHeaders(page), timeout })
 }
 
-/**
- * Authenticated POST request via page.request.
- */
 export async function apiPost(
   page: Page,
   url: string,
@@ -174,9 +150,6 @@ export async function apiPost(
   })
 }
 
-/**
- * Authenticated PATCH request via page.request.
- */
 export async function apiPatch(
   page: Page,
   url: string,
@@ -190,9 +163,6 @@ export async function apiPatch(
   })
 }
 
-/**
- * Authenticated DELETE request via page.request.
- */
 export async function apiDelete(page: Page, url: string, timeout = 60_000): Promise<APIResponse> {
   return page.request.delete(url, {
     headers: await authHeaders(page),
@@ -200,14 +170,6 @@ export async function apiDelete(page: Page, url: string, timeout = 60_000): Prom
   })
 }
 
-/**
- * Authenticated POST with exponential-backoff retry for transient 5xx errors.
- *
- * Under high parallelism (16+ workers), PostgreSQL pool exhaustion can cause
- * intermittent 500 "too many clients" responses. This wrapper retries up to
- * `maxRetries` times with increasing delays, returning on the first success or
- * any non-5xx response.
- */
 export async function apiPostWithRetry(
   page: Page,
   url: string,
@@ -219,7 +181,6 @@ export async function apiPostWithRetry(
     if (resp.ok() || resp.status() < 500) return resp
     if (attempt < maxRetries - 1) await page.waitForTimeout(3_000 * (attempt + 1))
   }
-  // Final attempt — return regardless of status so the caller can assert
   return apiPost(page, url, data)
 }
 
@@ -238,6 +199,18 @@ export interface DisposableCanvassingSurveyFixture {
   scriptId: string
   scriptTitle: string
   entryCount: number
+}
+
+export interface DisposableMappedCanvassingFixture {
+  turfId: string
+  walkListId: string
+  walkListName: string
+  orderedAddresses: string[]
+  partiallyMappedAddress: string
+  volunteerLocation: {
+    latitude: number
+    longitude: number
+  }
 }
 
 export async function createDisposablePhoneBankFixture(
@@ -358,9 +331,6 @@ export async function createDisposableCanvassingSurveyFixture(
 ): Promise<DisposableCanvassingSurveyFixture> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-  // Reset backend assignment ownership for deterministic FIELD-07 selection.
-  // Remove this volunteer from all existing walk lists before assigning the
-  // disposable fixture walk list.
   const existingWalkListsResp = await apiGet(
     page,
     `/api/v1/campaigns/${campaignId}/walk-lists?limit=200`,
@@ -507,5 +477,178 @@ export async function createDisposableCanvassingSurveyFixture(
     scriptId,
     scriptTitle,
     entryCount,
+  }
+}
+
+export async function createDisposableMappedCanvassingFixture(
+  page: Page,
+  campaignId: string,
+  volunteerUserId: string,
+  labelPrefix = "E2E FIELD-11 Fixture",
+): Promise<DisposableMappedCanvassingFixture> {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+  const existingWalkListsResp = await apiGet(
+    page,
+    `/api/v1/campaigns/${campaignId}/walk-lists?limit=200`,
+  )
+  if (existingWalkListsResp.ok()) {
+    const payload = (await existingWalkListsResp.json()) as {
+      items?: Array<{ id: string }>
+    } | Array<{ id: string }>
+    const walkLists = Array.isArray(payload) ? payload : (payload.items ?? [])
+
+    for (const wl of walkLists) {
+      const removeResp = await apiDelete(
+        page,
+        `/api/v1/campaigns/${campaignId}/walk-lists/${wl.id}/canvassers/${volunteerUserId}`,
+      )
+      if (!removeResp.ok() && removeResp.status() !== 404) {
+        throw new Error(
+          `Mapped fixture canvasser reset failed: ${removeResp.status()} ${await removeResp.text()}`,
+        )
+      }
+    }
+  }
+
+  const voterConfigs = [
+    { address: "100 Alpha St", latitude: 0.0005, longitude: 0.0005 },
+    { address: "200 Bravo St", latitude: 0.006, longitude: 0.006 },
+    { address: "300 Charlie St", latitude: 0.0105, longitude: 0.0105 },
+  ]
+
+  const createdVoters: Array<{ id: string; address: string }> = []
+
+  for (const [index, voter] of voterConfigs.entries()) {
+    const voterResp = await apiPostWithRetry(
+      page,
+      `/api/v1/campaigns/${campaignId}/voters`,
+      {
+        first_name: "Fixture",
+        last_name: `${labelPrefix.replace(/\s+/g, "")}${suffix}${index}`,
+        party: "IND",
+        registration_line1: voter.address,
+        registration_city: "Testville",
+        registration_state: "GA",
+        registration_zip: "30000",
+        latitude: voter.latitude,
+        longitude: voter.longitude,
+      },
+    )
+    if (!voterResp.ok()) {
+      throw new Error(
+        `Mapped fixture voter create failed: ${voterResp.status()} ${await voterResp.text()}`,
+      )
+    }
+    createdVoters.push({ id: (await voterResp.json()).id as string, address: voter.address })
+  }
+
+  const turfResp = await apiPostWithRetry(
+    page,
+    `/api/v1/campaigns/${campaignId}/turfs`,
+    {
+      name: `${labelPrefix} Turf ${suffix}`,
+      boundary: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.01, -0.01],
+            [0.02, -0.01],
+            [0.02, 0.02],
+            [-0.01, 0.02],
+            [-0.01, -0.01],
+          ],
+        ],
+      },
+    },
+  )
+  if (!turfResp.ok()) {
+    throw new Error(
+      `Mapped fixture turf create failed: ${turfResp.status()} ${await turfResp.text()}`,
+    )
+  }
+  const turfId = (await turfResp.json()).id as string
+
+  const walkListName = `${labelPrefix} Walk List ${suffix}`
+  const walkListResp = await apiPostWithRetry(
+    page,
+    `/api/v1/campaigns/${campaignId}/walk-lists`,
+    {
+      turf_id: turfId,
+      name: walkListName,
+    },
+  )
+  if (!walkListResp.ok()) {
+    throw new Error(
+      `Mapped fixture walk list create failed: ${walkListResp.status()} ${await walkListResp.text()}`,
+    )
+  }
+  const walkListId = (await walkListResp.json()).id as string
+
+  const partialVoter = createdVoters.find((voter) => voter.address === "200 Bravo St")
+  if (!partialVoter) {
+    throw new Error("Mapped fixture partial voter was not created.")
+  }
+
+  const partialPatchResp = await apiPatch(
+    page,
+    `/api/v1/campaigns/${campaignId}/voters/${partialVoter.id}`,
+    { longitude: null },
+  )
+  if (!partialPatchResp.ok()) {
+    throw new Error(
+      `Mapped fixture voter patch failed: ${partialPatchResp.status()} ${await partialPatchResp.text()}`,
+    )
+  }
+
+  const assignResp = await apiPost(
+    page,
+    `/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/canvassers`,
+    { user_id: volunteerUserId },
+  )
+  if (!assignResp.ok() && assignResp.status() !== 409) {
+    throw new Error(
+      `Mapped fixture canvasser assignment failed: ${assignResp.status()} ${await assignResp.text()}`,
+    )
+  }
+
+  const entriesResp = await apiGet(
+    page,
+    `/api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/entries/enriched`,
+  )
+  if (!entriesResp.ok()) {
+    throw new Error(
+      `Mapped fixture entries check failed: ${entriesResp.status()} ${await entriesResp.text()}`,
+    )
+  }
+
+  const entries = (await entriesResp.json()) as Array<{
+    latitude: number | null
+    longitude: number | null
+    voter: { registration_line1?: string | null }
+  }>
+  const orderedAddresses = entries.map((entry) => entry.voter.registration_line1 ?? "")
+
+  if (orderedAddresses.join("|") !== voterConfigs.map((voter) => voter.address).join("|")) {
+    throw new Error(`Mapped fixture address order mismatch: ${orderedAddresses.join(", ")}`)
+  }
+
+  const partialEntry = entries.find(
+    (entry) => entry.voter.registration_line1 === "200 Bravo St",
+  )
+  if (!partialEntry || partialEntry.latitude !== null || partialEntry.longitude !== null) {
+    throw new Error("Mapped fixture partial-coordinate entry did not normalize to null/null.")
+  }
+
+  return {
+    turfId,
+    walkListId,
+    walkListName,
+    orderedAddresses,
+    partiallyMappedAddress: "200 Bravo St",
+    volunteerLocation: {
+      latitude: 0.011,
+      longitude: 0.011,
+    },
   }
 }

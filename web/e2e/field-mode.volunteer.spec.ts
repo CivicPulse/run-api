@@ -1,6 +1,7 @@
 import { test, expect, type Page, type BrowserContext, type Browser } from "@playwright/test"
 import {
   createDisposableCanvassingSurveyFixture,
+  createDisposableMappedCanvassingFixture,
   createDisposablePhoneBankFixture,
   resolveAuthStatePath,
 } from "./helpers"
@@ -216,7 +217,7 @@ async function createPhoneBankFixtureForVolunteer(
   labelPrefix: string,
 ): Promise<{ sessionId: string; sessionName: string }> {
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -245,7 +246,7 @@ async function createCanvassingSurveyFixtureForVolunteer(
   labelPrefix: string,
 ): Promise<{ walkListId: string; walkListName: string; scriptTitle: string; entryCount: number }> {
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -272,6 +273,50 @@ async function createCanvassingSurveyFixtureForVolunteer(
     walkListName: fixture.walkListName,
     scriptTitle: fixture.scriptTitle,
     entryCount: fixture.entryCount,
+  }
+}
+
+async function createMappedCanvassingFixtureForVolunteer(
+  browser: Browser,
+  campaignId: string,
+  volunteerUserId: string,
+  labelPrefix: string,
+): Promise<{
+  walkListId: string
+  walkListName: string
+  orderedAddresses: string[]
+  partiallyMappedAddress: string
+  volunteerLocation: { latitude: number; longitude: number }
+}> {
+  const ownerContext = await browser.newContext({
+    storageState: OWNER_AUTH_STATE,
+    ignoreHTTPSErrors: true,
+    baseURL: BASE_URL,
+  })
+  const ownerPage = await ownerContext.newPage()
+  await ownerPage.goto("/")
+  await ownerPage.waitForURL(
+    (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
+    { timeout: 15_000 },
+  )
+  await waitForAuth(ownerPage)
+
+  const fixture = await createDisposableMappedCanvassingFixture(
+    ownerPage,
+    campaignId,
+    volunteerUserId,
+    labelPrefix,
+  )
+
+  await ownerPage.close()
+  await ownerContext.close()
+
+  return {
+    walkListId: fixture.walkListId,
+    walkListName: fixture.walkListName,
+    orderedAddresses: fixture.orderedAddresses,
+    partiallyMappedAddress: fixture.partiallyMappedAddress,
+    volunteerLocation: fixture.volunteerLocation,
   }
 }
 
@@ -398,7 +443,7 @@ let field10SessionName = ""
 test.beforeAll(async ({ browser }) => {
   // Create a context with volunteer auth and mobile viewport
   const context = await browser.newContext({
-    storageState: "playwright/.auth/volunteer.json",
+    storageState: VOLUNTEER_AUTH_STATE,
     viewport: { width: 390, height: 844 },
     hasTouch: true,
     isMobile: true,
@@ -418,7 +463,7 @@ test.beforeAll(async ({ browser }) => {
   // Use owner context for management operations (assigning canvassers/callers
   // requires manager+ role, which volunteers don't have)
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -457,7 +502,7 @@ test.describe.serial("Field Mode -- Volunteer Hub", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -605,7 +650,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -814,9 +859,8 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     expect(fixture.walkListId).toBeTruthy()
     expect(fixture.entryCount).toBeGreaterThan(0)
 
-    // Use a fresh volunteer context to avoid stale query/cache state from FIELD-03..06.
     const field07Context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -831,7 +875,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
       await waitForCanvassingAssignment(field07Page, campaignId, fixture.walkListName)
 
-      // Reset only local wizard/tour persistence before assertion flow.
       await field07Page.evaluate(() => {
         localStorage.removeItem("canvassing-store")
         localStorage.removeItem("tour-state")
@@ -882,14 +925,11 @@ test.describe.serial("Field Mode -- Canvassing", () => {
         if (await assignmentCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
           await assignmentCard.click()
         } else {
-          // If exact card text is not present yet, still attempt direct entry route.
           await field07Page.goto(`/field/${campaignId}/canvassing`)
         }
 
         await field07Page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
 
-        // Use longer timeouts: under 12-worker parallel execution the walk-list
-        // entry query (PostGIS spatial join) can take >8 s to hydrate.
         const hasHousehold = await householdCard
           .isVisible({ timeout: 20_000 })
           .catch(() => false)
@@ -913,7 +953,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
       expect(isLoaded).toBeTruthy()
 
-      // Record "Supporter" outcome -- must trigger survey for FIELD-07 fixture
       const outcomeGrid = field07Page.locator("[data-tour='outcome-grid']")
       await expect(outcomeGrid).toBeVisible({ timeout: 10_000 })
 
@@ -923,14 +962,12 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       await expect(supporterBtn).toBeVisible({ timeout: 10_000 })
       await supporterBtn.click()
 
-      // Survey-present assertion path only; fail if survey does not appear
       const surveySheet = field07Page.getByText(/survey|question/i)
       await expect(surveySheet.first()).toBeVisible({ timeout: 10_000 })
       await expect(
         field07Page.getByText(new RegExp(fixture.scriptTitle, "i")).first(),
       ).toBeVisible({ timeout: 10_000 })
 
-      // Select at least one answer and submit
       const answerOption = field07Page
         .getByRole("radio")
         .first()
@@ -944,7 +981,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       await expect(submitBtn).toBeVisible({ timeout: 10_000 })
       await submitBtn.click()
 
-      // Verify wizard progressed after required survey submission
       const hasHousehold = await householdCard.isVisible().catch(() => false)
       const hasCompletion = await field07Page
         .getByText(/complete|all done|great work/i)
@@ -954,6 +990,136 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     } finally {
       await field07Page.close()
       await field07Context.close()
+    }
+  })
+
+  test("FIELD-11: granted geolocation keeps the current door pinned and reorders remaining mapped doors", async ({ browser }) => {
+    test.setTimeout(120_000)
+
+    const fixture = await createMappedCanvassingFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-11",
+    )
+
+    const context = await browser.newContext({
+      storageState: VOLUNTEER_AUTH_STATE,
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+      ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
+      geolocation: fixture.volunteerLocation,
+      permissions: ["geolocation"],
+    })
+    const volunteerPage = await context.newPage()
+
+    try {
+      await volunteerPage.goto(`/field/${campaignId}`)
+      await waitForAuth(volunteerPage)
+      await waitForCanvassingAssignment(volunteerPage, campaignId, fixture.walkListName)
+      await volunteerPage.evaluate(() => {
+        localStorage.removeItem("canvassing-store")
+        localStorage.removeItem("tour-state")
+      })
+      await suppressTour(volunteerPage, campaignId)
+      await volunteerPage.goto(`/field/${campaignId}/canvassing`)
+      await volunteerPage.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+      await dismissTourIfVisible(volunteerPage)
+
+      await expect(volunteerPage.locator("[data-tour='household-card']")).toBeVisible({ timeout: 20_000 })
+      await expect(volunteerPage.getByText("Route map")).toBeVisible({ timeout: 20_000 })
+      await expect(volunteerPage.getByTestId("household-door-position")).toContainText("Door 1 of 3")
+      await expect(volunteerPage.getByText(fixture.orderedAddresses[0]).first()).toBeVisible()
+
+      await volunteerPage.getByRole("button", { name: /use my location/i }).click()
+
+      await expect(volunteerPage.getByTestId("canvassing-route-order-mode")).toContainText("Distance order")
+      await expect(volunteerPage.getByTestId("canvassing-sort-status-copy")).toContainText(/distance order is active/i)
+      await expect(volunteerPage.getByTestId("household-door-position")).toContainText("Door 1 of 3")
+      await expect(volunteerPage.getByText(/1 household is missing coordinates/i)).toBeVisible()
+      await expect(volunteerPage.locator("[data-testid='canvassing-map-container']")).toContainText("Current door: 100 Alpha St")
+
+      await volunteerPage.getByRole("button", { name: /all doors/i }).click()
+      await expect(volunteerPage.getByTestId("door-list-order-mode")).toContainText("Distance order")
+      await expect(volunteerPage.getByTestId("door-list-item-1")).toContainText("100 Alpha St")
+      await expect(volunteerPage.getByTestId("door-list-item-2")).toContainText("300 Charlie St")
+      await expect(volunteerPage.getByTestId("door-list-item-3")).toContainText(fixture.partiallyMappedAddress)
+    } finally {
+      await volunteerPage.close()
+      await context.close()
+    }
+  })
+
+  test("FIELD-12: denied geolocation keeps sequence order and shows explicit fallback copy", async ({ browser }) => {
+    test.setTimeout(120_000)
+
+    const fixture = await createMappedCanvassingFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-12",
+    )
+
+    const context = await browser.newContext({
+      storageState: VOLUNTEER_AUTH_STATE,
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+      ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
+    })
+    await context.addInitScript(() => {
+      const deniedError = {
+        code: 1,
+        message: "User denied Geolocation",
+        PERMISSION_DENIED: 1,
+        POSITION_UNAVAILABLE: 2,
+        TIMEOUT: 3,
+      }
+      const geolocation = {
+        getCurrentPosition: (_success: unknown, error?: (err: typeof deniedError) => void) => {
+          error?.(deniedError)
+        },
+        watchPosition: () => 1,
+        clearWatch: () => undefined,
+      }
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: geolocation,
+      })
+    })
+    const volunteerPage = await context.newPage()
+
+    try {
+      await volunteerPage.goto(`/field/${campaignId}`)
+      await waitForAuth(volunteerPage)
+      await waitForCanvassingAssignment(volunteerPage, campaignId, fixture.walkListName)
+      await volunteerPage.evaluate(() => {
+        localStorage.removeItem("canvassing-store")
+        localStorage.removeItem("tour-state")
+      })
+      await suppressTour(volunteerPage, campaignId)
+      await volunteerPage.goto(`/field/${campaignId}/canvassing`)
+      await volunteerPage.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+      await dismissTourIfVisible(volunteerPage)
+
+      await expect(volunteerPage.locator("[data-tour='household-card']")).toBeVisible({ timeout: 20_000 })
+      await volunteerPage.getByRole("button", { name: /use my location/i }).click()
+
+      await expect(volunteerPage.getByTestId("canvassing-route-order-mode")).toContainText("Sequence order")
+      await expect(volunteerPage.getByText(/location permission was denied/i)).toBeVisible()
+      await expect(volunteerPage.getByText(/sequence order and keep using door cards or google maps links/i)).toBeVisible()
+      await expect(volunteerPage.getByRole("link", { name: /navigate to 100 alpha st/i })).toBeVisible()
+
+      await volunteerPage.getByRole("button", { name: /all doors/i }).click()
+      await expect(volunteerPage.getByTestId("door-list-item-1")).toContainText("100 Alpha St")
+      await expect(volunteerPage.getByTestId("door-list-item-2")).toContainText("200 Bravo St")
+      await expect(volunteerPage.getByTestId("door-list-item-3")).toContainText("300 Charlie St")
+    } finally {
+      await volunteerPage.close()
+      await context.close()
     }
   })
 })
@@ -1230,7 +1396,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
 
   test.beforeAll(async ({ browser }) => {
     context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -1427,7 +1593,7 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
