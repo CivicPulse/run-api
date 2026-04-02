@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy import text as _text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +97,17 @@ async def ensure_user_synced(
     Returns:
         The local User record.
     """
+    # Capture RLS context before any commit clears it.
+    # set_config(..., true) is transaction-scoped in PostgreSQL: db.commit()
+    # resets app.current_campaign_id to the pool-checkout default (nil UUID).
+    # We restore it at the end so campaign-scoped callers are unaffected.
+    _nil_uuid = "00000000-0000-0000-0000-000000000000"
+    _rls_ctx = (
+        await db.scalar(
+            _text("SELECT current_setting('app.current_campaign_id', true)")
+        )
+    ) or ""
+
     result = await db.execute(select(User).where(User.id == user.id))
     local_user = result.scalar_one_or_none()
 
@@ -226,6 +238,12 @@ async def ensure_user_synced(
                 "(concurrent insert race condition, safe to ignore)",
                 user.id,
             )
+
+    # Restore RLS context if it was a real campaign ID before we started.
+    # Non-campaign endpoints (campaigns.py, users.py) use get_db() which
+    # sets the nil UUID; we leave those sessions unchanged.
+    if _rls_ctx and _rls_ctx != _nil_uuid:
+        await set_campaign_context(db, _rls_ctx)
 
     return local_user
 
