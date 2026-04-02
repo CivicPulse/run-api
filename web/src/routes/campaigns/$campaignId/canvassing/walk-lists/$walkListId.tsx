@@ -1,5 +1,6 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
-import { useWalkList, useWalkListEntries, useListCanvassers, useRemoveCanvasser, useDeleteWalkList, useRenameWalkList } from "@/hooks/useWalkLists"
+import { useWalkList, useWalkListEntries, useListCanvassers, useAssignCanvasser, useRemoveCanvasser, useDeleteWalkList, useRenameWalkList } from "@/hooks/useWalkLists"
+import { useCurrentUser } from "@/hooks/useUsers"
 import { CanvasserAssignDialog } from "@/components/canvassing/CanvasserAssignDialog"
 import { DoorKnockDialog } from "@/components/canvassing/DoorKnockDialog"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
@@ -35,6 +36,8 @@ function WalkListDetailPage() {
   const { data: walkList, isLoading } = useWalkList(campaignId, walkListId)
   const { data: entriesData, isLoading: entriesLoading } = useWalkListEntries(campaignId, walkListId)
   const { data: canvassers } = useListCanvassers(campaignId, walkListId)
+  const { data: currentUser } = useCurrentUser()
+  const assignCanvasser = useAssignCanvasser(campaignId, walkListId)
   const removeCanvasser = useRemoveCanvasser(campaignId, walkListId)
   const deleteWalkList = useDeleteWalkList(campaignId)
   const renameWalkList = useRenameWalkList(campaignId)
@@ -106,9 +109,23 @@ function WalkListDetailPage() {
           <h3 className="text-md font-medium flex items-center gap-2">
             <Users className="h-4 w-4" /> Canvassers
           </h3>
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Assign
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!currentUser || assignCanvasser.isPending}
+              onClick={() => {
+                if (currentUser) {
+                  assignCanvasser.mutate({ user_id: currentUser.id })
+                }
+              }}
+            >
+              Assign Me
+            </Button>
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Assign
+            </Button>
+          </div>
         </div>
         {canvassers && canvassers.length > 0 ? (
           <div className="flex flex-wrap gap-2">

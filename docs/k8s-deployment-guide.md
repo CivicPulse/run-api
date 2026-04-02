@@ -546,7 +546,62 @@ All pods in the cluster follow these hardening rules:
 
 ---
 
-## 10. Existing Apps as Reference
+## 10. ZITADEL Service Accounts (run-api only)
+
+run-api authenticates to ZITADEL at startup using the `client_credentials` grant. Each environment has its own machine user:
+
+| Environment | Machine user | Namespace secret |
+|---|---|---|
+| Dev | `run-api-service-dev` | `civpulse-dev/run-api-secret` |
+| Prod | `run-api-service-prod` | `civpulse-prod/run-api-secret` |
+
+Both machine users hold the `IAM_OWNER` role on the ZITADEL instance and belong to the `CivicPulse Run` project (`364255076543365156`).
+
+### Rotating credentials
+
+ZITADEL only returns the `clientSecret` once — at generation time. It is never retrievable again. If you lose a secret or need to rotate it:
+
+1. Generate a new secret via the ZITADEL management API (uses the `iam-admin-pat` secret in `civpulse-infra`):
+
+```bash
+IAM_PAT=$(kubectl get secret iam-admin-pat -n civpulse-infra -o jsonpath='{.data.pat}' | base64 -d | tr -d '\n')
+
+# Dev user ID: 366755312297836613
+# Prod user ID: 364259141243371556
+curl -s -X PUT "https://auth.civpulse.org/management/v1/users/<USER_ID>/secret" \
+  -H "Authorization: Bearer $IAM_PAT"
+```
+
+2. Immediately patch the k8s secret with the returned `clientSecret`:
+
+```bash
+kubectl patch secret run-api-secret -n <NAMESPACE> \
+  --type='json' \
+  -p="[{\"op\": \"replace\", \"path\": \"/data/ZITADEL_SERVICE_CLIENT_SECRET\", \"value\": \"$(echo -n '<NEW_SECRET>' | base64 -w 0)\"}]"
+```
+
+3. Restart the deployment to pick up the new secret:
+
+```bash
+kubectl rollout restart deployment/run-api -n <NAMESPACE>
+```
+
+> **Warning:** Calling `PUT .../secret` immediately invalidates the previous secret. The API will crash-loop until the k8s secret is updated and the pod is restarted.
+
+### SPA applications
+
+The web frontend uses a separate OIDC SPA application per environment:
+
+| Environment | App name | Client ID |
+|---|---|---|
+| Dev | `run-web-dev` | `366755391033376837` |
+| Prod | `run-web` | `364255312682745892` |
+
+These are stored in `ZITADEL_SPA_CLIENT_ID` in each environment's `run-api-secret`.
+
+---
+
+## 12. Existing Apps as Reference
 
 | App | Status | Location | Notes |
 |---|---|---|---|
@@ -557,7 +612,7 @@ Both use the same patterns documented in this guide. voter-api is the most compl
 
 ---
 
-## 11. Deployment Checklist
+## 13. Deployment Checklist
 
 Follow these steps in order when deploying a new app.
 

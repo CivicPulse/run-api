@@ -172,8 +172,8 @@ function CallListDialog({
           <div className="space-y-2">
             <Label htmlFor="call-list-voter-list">Voter List</Label>
             <Select
-              value={form.watch("voter_list_id") || "__none__"}
-              onValueChange={(val) => form.setValue("voter_list_id", val === "__none__" ? "" : val, { shouldDirty: true })}
+              value={form.watch("voter_list_id") === ALL_VALUE ? "__none__" : (form.watch("voter_list_id") || "__none__")}
+              onValueChange={(val) => form.setValue("voter_list_id", val === "__none__" ? ALL_VALUE : val, { shouldDirty: true })}
             >
               <SelectTrigger id="call-list-voter-list">
                 <SelectValue placeholder="All voters" />
