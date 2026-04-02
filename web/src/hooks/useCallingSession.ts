@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useCallingStore } from "@/stores/callingStore"
+import { canResumeCallingSession, useCallingStore } from "@/stores/callingStore"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
   useCheckIn,
@@ -38,6 +38,7 @@ interface OutcomeResult {
 export function useCallingSession(campaignId: string, sessionId: string) {
   const sessionQuery = usePhoneBankSession(campaignId, sessionId)
   const callListId = sessionQuery.data?.call_list_id ?? ""
+  const sessionDetailMalformed = Boolean(sessionId) && sessionQuery.isSuccess && !callListId
 
   // Call list detail for script_id
   const { data: callListDetail } = useCallList(campaignId, callListId)
@@ -63,6 +64,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     entries,
     currentEntryIndex,
     completedCalls,
+    skippedEntries,
     callStartedAt,
     phoneNumberUsed,
     startSession,
@@ -75,14 +77,41 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     touch,
   } = useCallingStore()
 
+  const canResumePersistedSession = canResumeCallingSession(
+    {
+      sessionId: storeSessionId,
+      entries,
+      currentEntryIndex,
+      completedCalls,
+      skippedEntries,
+    },
+    sessionId,
+  )
+
+  const activeEntries = canResumePersistedSession ? entries : []
+  const activeCurrentEntryIndex = canResumePersistedSession ? currentEntryIndex : 0
+  const activeCompletedCalls = canResumePersistedSession ? completedCalls : {}
+
   // Refs for guards
   const initRef = useRef(false)
   const prefetchRef = useRef(false)
   const noEntriesRef = useRef(false)
+  const sessionRef = useRef<string | null>(null)
   const [noEntries, setNoEntries] = useState(false)
   const [claimError, setClaimError] = useState(false)
   const advanceRef = useRef(advanceEntry)
   useLayoutEffect(() => { advanceRef.current = advanceEntry })
+
+  useEffect(() => {
+    if (sessionRef.current === sessionId) return
+
+    sessionRef.current = sessionId
+    initRef.current = false
+    prefetchRef.current = false
+    noEntriesRef.current = false
+    setNoEntries(false)
+    setClaimError(false)
+  }, [sessionId])
 
   // Touch every 60 seconds for stale detection
   useEffect(() => {
@@ -90,11 +119,19 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     return () => clearInterval(interval)
   }, [touch])
 
+  // Reset malformed or mismatched persisted state once assignment authority is known.
+  useEffect(() => {
+    if (!storeSessionId) return
+    if (!sessionId || sessionDetailMalformed || !canResumePersistedSession) {
+      reset()
+    }
+  }, [storeSessionId, sessionId, sessionDetailMalformed, canResumePersistedSession, reset])
+
   // Initialization: check-in + claim first batch
   useEffect(() => {
-    if (!sessionId || !callListId || initRef.current) return
-    if (storeSessionId === sessionId) {
-      // Already initialized from sessionStorage
+    if (!sessionId || !callListId || initRef.current || sessionDetailMalformed) return
+    if (canResumePersistedSession) {
+      // Already initialized from a valid sessionStorage snapshot for this assignment.
       initRef.current = true
       return
     }
@@ -126,31 +163,34 @@ export function useCallingSession(campaignId: string, sessionId: string) {
       onSuccess: () => { doClaim() },
       onError: () => { doClaim() },
     })
-  }, [sessionId, callListId, storeSessionId, campaignId, checkIn, startSession])
+  }, [sessionId, callListId, sessionDetailMalformed, canResumePersistedSession, campaignId, checkIn, startSession])
 
   // Derived state
   const currentEntry = useMemo(
-    () => entries[currentEntryIndex] ?? null,
-    [entries, currentEntryIndex],
+    () => activeEntries[activeCurrentEntryIndex] ?? null,
+    [activeEntries, activeCurrentEntryIndex],
   )
 
   const completedCount = useMemo(
-    () => Object.keys(completedCalls).length,
-    [completedCalls],
+    () => Object.keys(activeCompletedCalls).length,
+    [activeCompletedCalls],
   )
 
   const remainingEntries = useMemo(
-    () => entries.length - currentEntryIndex,
-    [entries.length, currentEntryIndex],
+    () => activeEntries.length - activeCurrentEntryIndex,
+    [activeEntries.length, activeCurrentEntryIndex],
   )
 
-  const isComplete = currentEntryIndex >= entries.length && entries.length > 0
+  const isComplete =
+    canResumePersistedSession
+    && activeCurrentEntryIndex >= activeEntries.length
+    && activeEntries.length > 0
 
   const noEntriesAvailable =
-    noEntries && entries.length === 0
+    noEntries && activeEntries.length === 0
 
   const sessionStats: SessionStats = useMemo(() => {
-    const values = Object.values(completedCalls)
+    const values = Object.values(activeCompletedCalls)
     return {
       totalCalls: values.length,
       answered: values.filter((r) => r === "answered").length,
@@ -160,12 +200,12 @@ export function useCallingSession(campaignId: string, sessionId: string) {
         (r) => r !== "answered" && r !== "no_answer" && r !== "voicemail",
       ).length,
     }
-  }, [completedCalls])
+  }, [activeCompletedCalls])
 
   // Pre-fetch next batch when running low
   useEffect(() => {
     // Don't prefetch until init has loaded the first batch (entries.length > 0 or noEntries)
-    if (!callListId || entries.length === 0 || remainingEntries > PREFETCH_THRESHOLD || prefetchRef.current) return
+    if (!callListId || activeEntries.length === 0 || remainingEntries > PREFETCH_THRESHOLD || prefetchRef.current) return
     if (isComplete) return
 
     prefetchRef.current = true
@@ -180,7 +220,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
         prefetchRef.current = false
       },
     })
-  }, [callListId, remainingEntries, isComplete, claimBatch, addEntries])
+  }, [callListId, activeEntries.length, remainingEntries, isComplete, claimBatch, addEntries])
 
   const handleOutcome = useCallback(
     (resultCode: string): OutcomeResult => {
@@ -252,11 +292,19 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   return {
     currentEntry,
     completedCount,
-    totalEntries: entries.length,
+    totalEntries: activeEntries.length,
     isComplete,
     sessionStats,
-    isLoading: sessionQuery.isLoading || (!storeSessionId && !noEntries && !claimError),
-    isError: sessionQuery.isError || claimError,
+    isLoading:
+      sessionQuery.isLoading
+      || (
+        Boolean(sessionId)
+        && !sessionDetailMalformed
+        && !canResumePersistedSession
+        && !noEntries
+        && !claimError
+      ),
+    isError: sessionQuery.isError || sessionDetailMalformed || claimError,
     error: sessionQuery.error,
     scriptId,
     handleOutcome,
