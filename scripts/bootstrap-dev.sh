@@ -46,7 +46,7 @@ echo "==> Tailscale FQDN: $FQDN"
 # ---------------------------------------------------------------------------
 mkdir -p certs
 echo "==> Generating Tailscale cert for $FQDN..."
-tailscale cert \
+sudo tailscale cert \
   --cert-file "certs/${FQDN}.crt" \
   --key-file  "certs/${FQDN}.key" \
   "$FQDN"
@@ -100,14 +100,45 @@ fi
 echo "==> Starting services..."
 docker compose up -d
 
+# ---------------------------------------------------------------------------
+# 7. Wait for API readiness, then seed
+# ---------------------------------------------------------------------------
+API_PORT=$(grep -E '^API_HOST_PORT=' .env | cut -d= -f2 || echo "37821")
+HEALTH_URL="http://localhost:${API_PORT}/health/ready"
+MAX_ATTEMPTS=60
+ATTEMPT=0
+
+echo "==> Waiting for API to be ready (polling ${HEALTH_URL})..."
+until curl -sf "${HEALTH_URL}" >/dev/null 2>&1; do
+  ATTEMPT=$((ATTEMPT + 1))
+  if [[ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]]; then
+    echo "ERROR: API did not become ready after ${MAX_ATTEMPTS} attempts." >&2
+    echo "       Check logs with: docker compose logs api --tail=50" >&2
+    exit 1
+  fi
+  printf "    Attempt %d/%d — not ready yet, retrying in 3s...\n" "$ATTEMPT" "$MAX_ATTEMPTS"
+  sleep 3
+done
+echo "    API is ready!"
+
+echo "==> Loading seed data..."
+docker compose exec api bash -c "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
+
+# ---------------------------------------------------------------------------
+# 8. Summary
+# ---------------------------------------------------------------------------
+ADMIN_PASSWORD=$(grep -E '^ZITADEL_ADMIN_PASSWORD=' .env | cut -d= -f2 || echo "Admin1234!")
+ZITADEL_PORT=$(grep -E '^ZITADEL_EXTERNAL_PORT=' .env | cut -d= -f2 || echo "37823")
+
 echo ""
 echo "============================================================"
 echo "Bootstrap complete!"
-echo "  Frontend: https://${FQDN}:${WEB_PORT}"
-echo "  ZITADEL:  http://${FQDN}:$(grep -E '^ZITADEL_EXTERNAL_PORT=' .env | cut -d= -f2 || echo '37823')"
-echo "  API:      http://localhost:$(grep -E '^API_HOST_PORT=' .env | cut -d= -f2 || echo '37821')"
 echo ""
-echo "Next steps:"
-echo "  Wait ~60s for ZITADEL bootstrap to complete, then seed:"
-echo "  docker compose exec api bash -c 'PYTHONPATH=/home/app python /home/app/scripts/seed.py'"
+echo "  Frontend: https://${FQDN}:${WEB_PORT}"
+echo "  ZITADEL:  http://${FQDN}:${ZITADEL_PORT}"
+echo "  API:      http://localhost:${API_PORT}"
+echo ""
+echo "  Admin login:"
+echo "    Username: admin@localhost"
+echo "    Password: ${ADMIN_PASSWORD}"
 echo "============================================================"
