@@ -496,6 +496,8 @@ class WalkListService:
                 Voter.registration_city,
                 Voter.registration_state,
                 Voter.registration_zip,
+                Voter.latitude,
+                Voter.longitude,
                 attempt_count_sq,
                 last_result_sq,
                 last_date_sq,
@@ -511,6 +513,12 @@ class WalkListService:
 
         enriched = []
         for row in rows:
+            latitude = row.latitude if row.latitude is not None else None
+            longitude = row.longitude if row.longitude is not None else None
+            if latitude is None or longitude is None:
+                latitude = None
+                longitude = None
+
             enriched.append(
                 {
                     "id": row.id,
@@ -518,6 +526,8 @@ class WalkListService:
                     "household_key": row.household_key,
                     "sequence": row.sequence,
                     "status": row.status,
+                    "latitude": latitude,
+                    "longitude": longitude,
                     "voter": {
                         "first_name": row.first_name,
                         "last_name": row.last_name,

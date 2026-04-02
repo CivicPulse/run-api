@@ -40,6 +40,8 @@ class EnrichedEntryResponse(BaseSchema):
     household_key: str | None = None
     sequence: int
     status: WalkListEntryStatus
+    latitude: float | None = None
+    longitude: float | None = None
     voter: VoterDetail
     prior_interactions: PriorInteractions
 

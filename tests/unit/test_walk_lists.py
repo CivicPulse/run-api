@@ -3,6 +3,8 @@ and assignment -- CANV-02, CANV-03, CANV-06."""
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -168,6 +170,92 @@ class TestWalkListService:
             household_id=None,
         )
         assert household_key(v) == "100 MAIN ST|12345"
+
+    @pytest.mark.asyncio
+    async def test_get_enriched_entries_includes_and_normalizes_coordinates(
+        self,
+    ) -> None:
+        """Enriched entries expose full coordinates and normalize partial pairs."""
+        from app.services.walk_list import WalkListService
+
+        service = WalkListService()
+        session = AsyncMock()
+
+        full_row = SimpleNamespace(
+            id=uuid.uuid4(),
+            voter_id=uuid.uuid4(),
+            household_key="hh-1",
+            sequence=1,
+            status=WalkListEntryStatus.PENDING,
+            first_name="Ada",
+            last_name="Lovelace",
+            party="Independent",
+            age=36,
+            propensity_combined=72,
+            registration_line1="10 Main St",
+            registration_line2=None,
+            registration_city="Boston",
+            registration_state="MA",
+            registration_zip="02108",
+            latitude=42.3601,
+            longitude=-71.0589,
+            attempt_count=2,
+            last_result="supporter",
+            last_date=datetime(2026, 1, 2, 3, 4, tzinfo=UTC),
+        )
+        partial_row = SimpleNamespace(
+            id=uuid.uuid4(),
+            voter_id=uuid.uuid4(),
+            household_key="hh-2",
+            sequence=2,
+            status=WalkListEntryStatus.PENDING,
+            first_name="Grace",
+            last_name="Hopper",
+            party=None,
+            age=None,
+            propensity_combined=None,
+            registration_line1="20 Main St",
+            registration_line2=None,
+            registration_city="Boston",
+            registration_state="MA",
+            registration_zip="02108",
+            latitude=42.361,
+            longitude=None,
+            attempt_count=0,
+            last_result=None,
+            last_date=None,
+        )
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [full_row, partial_row]
+        session.execute = AsyncMock(return_value=mock_result)
+
+        enriched = await service.get_enriched_entries(session, uuid.uuid4())
+
+        assert enriched[0]["latitude"] == pytest.approx(42.3601)
+        assert enriched[0]["longitude"] == pytest.approx(-71.0589)
+        assert enriched[0]["prior_interactions"][
+            "last_date"
+        ] == "2026-01-02T03:04:00+00:00"
+        assert enriched[1]["latitude"] is None
+        assert enriched[1]["longitude"] is None
+        assert enriched[1]["prior_interactions"]["attempt_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_enriched_entries_handles_empty_result(self) -> None:
+        """Empty enriched queries stay empty instead of returning malformed payloads."""
+        from app.services.walk_list import WalkListService
+
+        service = WalkListService()
+        session = AsyncMock()
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        session.execute = AsyncMock(return_value=mock_result)
+
+        enriched = await service.get_enriched_entries(session, uuid.uuid4())
+
+        assert enriched == []
 
     @pytest.mark.asyncio
     async def test_rename_walk_list(self) -> None:

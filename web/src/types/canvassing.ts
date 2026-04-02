@@ -36,14 +36,29 @@ export interface EnrichedWalkListEntry {
   household_key: string | null
   sequence: number
   status: "pending" | "visited" | "skipped"
+  latitude: number | null
+  longitude: number | null
   voter: VoterDetail
   prior_interactions: PriorInteractions
+}
+
+export interface CoordinatePoint {
+  latitude: number
+  longitude: number
 }
 
 export interface Household {
   householdKey: string
   address: string
   entries: EnrichedWalkListEntry[]
+  sequence: number
+  latitude: number | null
+  longitude: number | null
+}
+
+export interface MappableHousehold extends Household {
+  latitude: number
+  longitude: number
 }
 
 /** Contact outcomes that trigger survey panel */
@@ -95,6 +110,23 @@ export const CANVASSING_OUTCOMES: OutcomeConfig[] = [
   { code: "inaccessible",    label: "Inaccessible", color: OUTCOME_COLORS.inaccessible },
 ]
 
+function getHouseholdSequence(entries: EnrichedWalkListEntry[]): number {
+  return entries.reduce((lowest, entry) => Math.min(lowest, entry.sequence), Number.POSITIVE_INFINITY)
+}
+
+function getEntryCoordinatePoint(entry: EnrichedWalkListEntry): CoordinatePoint | null {
+  if (entry.latitude == null || entry.longitude == null) return null
+  return { latitude: entry.latitude, longitude: entry.longitude }
+}
+
+function getRepresentativeCoordinate(entries: EnrichedWalkListEntry[]): CoordinatePoint | null {
+  for (const entry of entries) {
+    const point = getEntryCoordinatePoint(entry)
+    if (point) return point
+  }
+  return null
+}
+
 /** Group flat entries list by household_key into address-based Household objects */
 export function groupByHousehold(entries: EnrichedWalkListEntry[]): Household[] {
   const map = new Map<string, EnrichedWalkListEntry[]>()
@@ -105,24 +137,30 @@ export function groupByHousehold(entries: EnrichedWalkListEntry[]): Household[] 
     map.set(key, group)
   }
   return Array.from(map.entries())
-    .sort((a, b) => a[1][0].sequence - b[1][0].sequence)
-    .map(([key, entries]) => ({
-      householdKey: key,
-      address: formatAddress(entries[0].voter),
-      entries,
-    }))
+    .map(([key, groupedEntries]) => {
+      const coordinates = getRepresentativeCoordinate(groupedEntries)
+      return {
+        householdKey: key,
+        address: formatAddress(groupedEntries[0].voter),
+        entries: groupedEntries,
+        sequence: getHouseholdSequence(groupedEntries),
+        latitude: coordinates?.latitude ?? null,
+        longitude: coordinates?.longitude ?? null,
+      }
+    })
+    .sort((a, b) => a.sequence - b.sequence)
 }
 
 /** Any object with registration address fields — works with both VoterDetail and Voter types */
 export type HasRegistrationAddress = Pick<VoterDetail,
-  'registration_line1' | 'registration_city' | 'registration_state' | 'registration_zip'
+  "registration_line1" | "registration_city" | "registration_state" | "registration_zip"
 >
 
 /** Returns true if voter has at least one address component */
 export function hasAddress(voter: HasRegistrationAddress): boolean {
   return Boolean(
     voter.registration_line1 || voter.registration_city ||
-    voter.registration_state || voter.registration_zip
+    voter.registration_state || voter.registration_zip,
   )
 }
 
@@ -157,4 +195,63 @@ export function getPartyColor(party: string | null): { bg: string; text: string 
   if (lower.includes("democrat")) return { bg: "bg-status-info", text: "text-status-info-foreground" }
   if (lower.includes("republican")) return { bg: "bg-status-error", text: "text-status-error-foreground" }
   return { bg: "bg-status-neutral", text: "text-status-neutral-foreground" }
+}
+
+/** Returns true when an entry has a complete coordinate pair. */
+export function isMappableEntry(entry: EnrichedWalkListEntry): entry is EnrichedWalkListEntry & CoordinatePoint {
+  return entry.latitude != null && entry.longitude != null
+}
+
+/** Returns true when a household has a usable representative coordinate pair. */
+export function isMappableHousehold(household: Household): household is MappableHousehold {
+  return household.latitude != null && household.longitude != null
+}
+
+/** Stable sequence ordering used as the canonical fallback when map data is incomplete. */
+export function orderHouseholdsBySequence(households: Household[]): Household[] {
+  return [...households].sort((a, b) => a.sequence - b.sequence)
+}
+
+function calculateDistanceMeters(a: CoordinatePoint, b: CoordinatePoint): number {
+  const toRadians = (value: number) => value * (Math.PI / 180)
+  const earthRadiusMeters = 6_371_000
+  const deltaLatitude = toRadians(b.latitude - a.latitude)
+  const deltaLongitude = toRadians(b.longitude - a.longitude)
+  const latitude1 = toRadians(a.latitude)
+  const latitude2 = toRadians(b.latitude)
+
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(latitude1) * Math.cos(latitude2) * Math.sin(deltaLongitude / 2) ** 2
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+}
+
+/**
+ * Sort households by distance from a frozen origin while preserving sequence order
+ * as the fallback for equal-distance or unmappable households.
+ */
+export function orderHouseholdsByDistance(
+  households: Household[],
+  origin: CoordinatePoint | null,
+): Household[] {
+  const bySequence = orderHouseholdsBySequence(households)
+  if (!origin) return bySequence
+
+  return bySequence
+    .map((household, index) => ({
+      household,
+      index,
+      distance: isMappableHousehold(household)
+        ? calculateDistanceMeters(origin, household)
+        : Number.POSITIVE_INFINITY,
+    }))
+    .sort((a, b) => {
+      if (a.distance !== b.distance) return a.distance - b.distance
+      if (a.household.sequence !== b.household.sequence) {
+        return a.household.sequence - b.household.sequence
+      }
+      return a.index - b.index
+    })
+    .map(({ household }) => household)
 }

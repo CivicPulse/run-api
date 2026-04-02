@@ -216,7 +216,7 @@ async function createPhoneBankFixtureForVolunteer(
   labelPrefix: string,
 ): Promise<{ sessionId: string; sessionName: string }> {
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -245,7 +245,7 @@ async function createCanvassingSurveyFixtureForVolunteer(
   labelPrefix: string,
 ): Promise<{ walkListId: string; walkListName: string; scriptTitle: string; entryCount: number }> {
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -398,7 +398,7 @@ let field10SessionName = ""
 test.beforeAll(async ({ browser }) => {
   // Create a context with volunteer auth and mobile viewport
   const context = await browser.newContext({
-    storageState: "playwright/.auth/volunteer.json",
+    storageState: VOLUNTEER_AUTH_STATE,
     viewport: { width: 390, height: 844 },
     hasTouch: true,
     isMobile: true,
@@ -418,7 +418,7 @@ test.beforeAll(async ({ browser }) => {
   // Use owner context for management operations (assigning canvassers/callers
   // requires manager+ role, which volunteers don't have)
   const ownerContext = await browser.newContext({
-    storageState: "playwright/.auth/owner.json",
+    storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
     baseURL: BASE_URL,
   })
@@ -457,7 +457,7 @@ test.describe.serial("Field Mode -- Volunteer Hub", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -605,7 +605,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -816,7 +816,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
     // Use a fresh volunteer context to avoid stale query/cache state from FIELD-03..06.
     const field07Context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -1230,7 +1230,7 @@ test.describe.serial("Field Mode -- Offline Support", () => {
 
   test.beforeAll(async ({ browser }) => {
     context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -1427,7 +1427,7 @@ test.describe.serial("Field Mode -- Onboarding Tour", () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,

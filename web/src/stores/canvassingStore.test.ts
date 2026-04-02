@@ -10,6 +10,8 @@ function mockEntry(overrides: Partial<EnrichedWalkListEntry>): EnrichedWalkListE
     household_key: null,
     sequence: 0,
     status: "pending",
+    latitude: null,
+    longitude: null,
     voter: {
       first_name: "Test",
       last_name: "Voter",
