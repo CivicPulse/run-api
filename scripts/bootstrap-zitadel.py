@@ -233,30 +233,49 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
         },
     )
     existing = search.get("result", [])
+    # Build redirect URIs for both localhost and optional Tailscale domain.
+    # Include both dev-server and preview-server HTTPS origins because the
+    # frontend derives redirect_uri from window.location.origin at runtime.
+    redirect_uris = [
+        "http://localhost:5173/callback",
+        "https://localhost:5173/callback",
+        "http://localhost:8000/callback",
+        "https://localhost:4173/callback",
+    ]
+    post_logout_uris = [
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://localhost:8000",
+        "https://localhost:4173",
+    ]
+
     if existing:
         app_id = existing[0]["id"]
         oidc_config = existing[0].get("oidcConfig", {})
         client_id = oidc_config.get("clientId", "")
         current_type = oidc_config.get("accessTokenType", "")
+        current_redirects = set(oidc_config.get("redirectUris", []))
+        current_post_logout = set(oidc_config.get("postLogoutRedirectUris", []))
+        needs_redirect_update = not set(redirect_uris).issubset(current_redirects)
+        needs_logout_update = not set(post_logout_uris).issubset(current_post_logout)
+        needs_token_update = current_type != "OIDC_TOKEN_TYPE_JWT"
         print(f"  SPA app already exists, clientId: {client_id}")
 
-        # Ensure the existing app issues JWT access tokens (not opaque).
-        # The API backend (security.py) calls jwt.decode() which only works
-        # with JWT tokens. If the app was created with the default opaque
-        # token type, update it via the ZITADEL Management API.
-        if current_type != "OIDC_TOKEN_TYPE_JWT":
-            print(f"  Updating SPA app token type to JWT (was {current_type!r})...")
-            # PUT requires the full OIDC config body — start from existing
-            # config and override the token type.
+        # Ensure the existing app keeps the full redirect URI set required by
+        # worktree E2E/dev-server flows and issues JWT access tokens.
+        if needs_redirect_update or needs_logout_update or needs_token_update:
+            print("  Updating existing SPA app OIDC config...")
             update_body = {
-                "redirectUris": oidc_config.get("redirectUris", []),
+                "redirectUris": sorted(current_redirects.union(redirect_uris)),
                 "responseTypes": oidc_config.get("responseTypes", []),
                 "grantTypes": oidc_config.get("grantTypes", []),
                 "appType": oidc_config.get("appType", "OIDC_APP_TYPE_USER_AGENT"),
                 "authMethodType": oidc_config.get(
                     "authMethodType", "OIDC_AUTH_METHOD_TYPE_NONE"
                 ),
-                "postLogoutRedirectUris": oidc_config.get("postLogoutRedirectUris", []),
+                "postLogoutRedirectUris": sorted(
+                    current_post_logout.union(post_logout_uris)
+                ),
                 "devMode": oidc_config.get("devMode", True),
                 "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
                 "accessTokenRoleAssertion": True,
@@ -270,21 +289,9 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
                 pat,
                 json=update_body,
             )
-            print(f"  Updated SPA app token type to JWT (was {current_type!r})")
+            print("  Updated existing SPA app OIDC config")
 
         return client_id
-
-    # Build redirect URIs for both localhost and optional Tailscale domain
-    redirect_uris = [
-        "http://localhost:5173/callback",
-        "http://localhost:8000/callback",
-        "https://localhost:4173/callback",
-    ]
-    post_logout_uris = [
-        "http://localhost:5173",
-        "http://localhost:8000",
-        "https://localhost:4173",
-    ]
     if ZITADEL_DOMAIN != "localhost":
         redirect_uris.extend(
             [
@@ -343,6 +350,82 @@ def generate_machine_secret(
     return client_id, client_secret
 
 
+INSTANCE_LOGIN_POLICY = {
+    "allowUsernamePassword": True,
+    "allowRegister": False,
+    "allowExternalIdp": True,
+    "forceMfa": False,
+    "secondFactors": [],
+    "multiFactors": [],
+    # Lifetime fields MUST be set explicitly — omitting them causes ZITADEL
+    # to default to "0s", which makes every successful password check expire
+    # instantly and produces an infinite login redirect loop.
+    "passwordCheckLifetime": "864000s",
+    "externalLoginCheckLifetime": "864000s",
+    "mfaInitSkipLifetime": "2592000s",
+    "secondFactorCheckLifetime": "64800s",
+    "multiFactorCheckLifetime": "43200s",
+}
+
+
+def set_instance_login_policy(client: httpx.Client, pat: str) -> None:
+    """Set the instance-level login policy with explicit session lifetimes.
+
+    Omitting lifetime fields causes ZITADEL to use "0s" defaults, which
+    makes sessions expire immediately after login — creating an infinite
+    redirect loop. This sets sane defaults on the instance policy so all
+    orgs (including the default org) inherit them.
+
+    ZITADEL returns 400 "not changed" when the submitted values are identical
+    to the current policy — treat that as idempotent success.
+    """
+    print("  Setting instance login policy...")
+    resp = client.request(
+        "PUT",
+        f"{ZITADEL_URL}/admin/v1/policies/login",
+        headers={
+            "Authorization": f"Bearer {pat}",
+            "Host": _host_header(),
+        },
+        json=INSTANCE_LOGIN_POLICY,
+        timeout=30,
+    )
+    if resp.status_code == 400 and "not been changed" in resp.text:
+        print("  Instance login policy already up to date")
+        return
+    if resp.status_code >= 400:
+        print(
+            f"ERROR: PUT /admin/v1/policies/login -> {resp.status_code}: {resp.text}",
+        )
+        resp.raise_for_status()
+    print("  Instance login policy set")
+
+
+def reset_admin_password(client: httpx.Client, pat: str, user_id: str) -> None:
+    """Reset the admin user password via the v2 API with changeRequired=false.
+
+    The v1 Management SetHumanPassword endpoint ignores changeRequired=false
+    in ZITADEL v2.71.x, always marking the password as requiring a change.
+    The v2 API correctly respects the flag.
+    """
+    if not user_id:
+        return
+    password = os.environ.get("ZITADEL_ADMIN_PASSWORD", "Admin1234!")
+    api_call(
+        client,
+        "POST",
+        f"/v2/users/{user_id}/password",
+        pat,
+        json={
+            "newPassword": {
+                "password": password,
+                "changeRequired": False,
+            },
+        },
+    )
+    print("  Reset admin password via v2 API (changeRequired=false)")
+
+
 def get_admin_user_id(client: httpx.Client, pat: str) -> str:
     """Find the admin human user ID."""
     data = api_call(
@@ -366,6 +449,26 @@ def get_admin_user_id(client: httpx.Client, pat: str) -> str:
         print("  Warning: admin user not found, skipping grant")
         return ""
     return users[0]["id"]
+
+
+def get_admin_resource_owner_org(client: httpx.Client, pat: str, user_id: str) -> str:
+    """Return the ZITADEL org ID that owns the admin user (their home org).
+
+    The admin user's home org is the ZITADEL default/first-instance org.
+    Its ID ends up in the JWT role claim keys and in `resourceowner:id`,
+    so it is the org_id the app sees when the admin logs in.  We need a
+    matching row in the DB `organizations` table so the admin can create
+    campaigns.
+    """
+    if not user_id:
+        return ""
+    data = api_call(client, "GET", f"/management/v1/users/{user_id}", pat)
+    org_id = (data or {}).get("user", {}).get("details", {}).get("resourceOwner", "")
+    if not org_id:
+        # Fallback: top-level resourceOwner (older API shape)
+        org_id = (data or {}).get("resourceOwner", "")
+    print(f"  Admin user resource owner org: {org_id}")
+    return org_id
 
 
 def grant_user_role(
@@ -393,6 +496,8 @@ def write_env_file(
     spa_client_id: str,
     api_client_id: str,
     api_client_secret: str,
+    admin_user_id: str = "",
+    dev_org_zitadel_id: str = "",
 ) -> None:
     """Write .env.zitadel with the generated credentials."""
     # ZITADEL_BASE_URL is the internal Docker URL for container-to-container calls
@@ -409,6 +514,11 @@ ZITADEL_SPA_CLIENT_ID={spa_client_id}
 VITE_ZITADEL_ISSUER={EXTERNAL_ISSUER}
 VITE_ZITADEL_CLIENT_ID={spa_client_id}
 VITE_ZITADEL_PROJECT_ID={project_id}
+# Dev org — used by ensure-dev-org.py to seed the DB organizations table
+DEV_ADMIN_ZITADEL_ID={admin_user_id}
+DEV_ORG_ZITADEL_ID={dev_org_zitadel_id}
+# Also exposed as SEED_ZITADEL_ORG_ID so seed.py uses the real org
+SEED_ZITADEL_ORG_ID={dev_org_zitadel_id}
 """
     with open(OUTPUT_PATH, "w") as f:
         f.write(content)
@@ -596,7 +706,10 @@ def main() -> None:
                 client, pat, user_id
             )
 
-        print("\nStep 8: Granting admin user role on project...")
+        print("\nStep 8: Setting instance login policy...")
+        set_instance_login_policy(client, pat)
+
+        print("\nStep 9: Granting admin user role on project...")
         admin_id = get_admin_user_id(client, pat)
         # Grant the admin user an "owner" project role. Note: admin@localhost
         # belongs to the ZITADEL default org, not a CivicPulse org.  At
@@ -611,8 +724,21 @@ def main() -> None:
                 f"  Admin user {admin_id} granted 'owner' role on project {project_id}"
             )
 
-    print("\nStep 9: Writing .env.zitadel...")
-    write_env_file(project_id, spa_client_id, api_client_id, api_client_secret)
+        print("\nStep 10: Resetting admin password (v2 API, changeRequired=false)...")
+        reset_admin_password(client, pat, admin_id)
+
+        print("\nStep 11: Fetching admin user's home org (for dev DB seed)...")
+        dev_org_zitadel_id = get_admin_resource_owner_org(client, pat, admin_id)
+
+    print("\nStep 12: Writing .env.zitadel...")
+    write_env_file(
+        project_id,
+        spa_client_id,
+        api_client_id,
+        api_client_secret,
+        admin_user_id=admin_id,
+        dev_org_zitadel_id=dev_org_zitadel_id,
+    )
 
     print("\n" + "=" * 60)
     print("Bootstrap complete!")

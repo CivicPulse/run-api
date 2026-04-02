@@ -6,8 +6,20 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import basicSsl from "@vitejs/plugin-basic-ssl"
 import { defineConfig } from "vite"
 
-const hasTailscaleCerts = fs.existsSync(
-  path.resolve(__dirname, "../certs/dev.tailb56d83.ts.net.crt"),
+// Auto-detect Tailscale cert by scanning ../certs/ for any *.crt file.
+// Supports any machine hostname (kudzu, dev, etc.) without hardcoding.
+const certsDir = path.resolve(__dirname, "../certs")
+const certFiles = fs.existsSync(certsDir)
+  ? fs.readdirSync(certsDir).filter((f) => f.endsWith(".crt"))
+  : []
+const tailscaleHost = certFiles.length > 0 ? certFiles[0].replace(".crt", "") : null
+const certPath = tailscaleHost ? path.join(certsDir, `${tailscaleHost}.crt`) : null
+const keyPath = tailscaleHost ? path.join(certsDir, `${tailscaleHost}.key`) : null
+const hasTailscaleCerts = !!(
+  certPath &&
+  keyPath &&
+  fs.existsSync(certPath) &&
+  fs.existsSync(keyPath)
 )
 
 const isDocker = !!process.env.API_PROXY_TARGET
@@ -15,7 +27,9 @@ const apiTarget =
   process.env.API_PROXY_TARGET ||
   (hasTailscaleCerts ? "https://localhost:8000" : "http://localhost:8000")
 const minioTarget = process.env.MINIO_PROXY_TARGET || "http://localhost:9000"
-const useHttps = hasTailscaleCerts && !isDocker
+// Enable HTTPS whenever Tailscale certs are present — including Docker mode —
+// so that crypto.subtle (required for PKCE) works on non-localhost hostnames.
+const useHttps = hasTailscaleCerts
 
 // Shared proxy configuration for both dev and preview servers
 const proxyConfig = {
@@ -47,24 +61,26 @@ const proxyConfig = {
 // https://vite.dev/config/
 export default defineConfig({
   preview: {
+    host: "127.0.0.1",
+    port: 4173,
+    strictPort: true,
+    https: useHttps || !isDocker,
     proxy: proxyConfig,
   },
   server: {
     host: "0.0.0.0",
-    https: useHttps
-      ? {
-          cert: fs.readFileSync(
-            path.resolve(__dirname, "../certs/dev.tailb56d83.ts.net.crt"),
-          ),
-          key: fs.readFileSync(
-            path.resolve(__dirname, "../certs/dev.tailb56d83.ts.net.key"),
-          ),
-        }
-      : undefined,
-    hmr: useHttps
+    allowedHosts: ["kudzu.tailb56d83.ts.net", "dev.tailb56d83.ts.net"],
+    https:
+      useHttps && certPath && keyPath
+        ? {
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath),
+          }
+        : undefined,
+    hmr: useHttps && tailscaleHost
       ? {
           protocol: "wss",
-          host: "dev.tailb56d83.ts.net",
+          host: tailscaleHost,
           clientPort: 5173,
         }
       : {
@@ -78,7 +94,7 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
-      routeFileIgnorePattern: "_components",
+      routeFileIgnorePattern: "(_components|\\.test\\.tsx$)",
     }),
     react(),
     tailwindcss(),

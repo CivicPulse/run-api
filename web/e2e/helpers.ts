@@ -1,4 +1,36 @@
+import { execSync } from "child_process"
+import fs from "fs"
+import path from "path"
 import type { Page, APIResponse } from "@playwright/test"
+
+const LOCAL_AUTH_DIR = path.join(import.meta.dirname, "../playwright/.auth")
+
+function resolveSharedAuthDir(): string | null {
+  try {
+    const gitCommonDir = execSync("git rev-parse --git-common-dir", {
+      cwd: import.meta.dirname,
+      encoding: "utf8",
+    }).trim()
+    const repoRoot = path.resolve(gitCommonDir, "..")
+    return path.join(repoRoot, "web/playwright/.auth")
+  } catch {
+    return null
+  }
+}
+
+const SHARED_AUTH_DIR = resolveSharedAuthDir()
+
+export function resolveAuthStatePath(role: string): string {
+  const localFile = path.join(LOCAL_AUTH_DIR, `${role}.json`)
+  if (fs.existsSync(localFile)) return localFile
+
+  if (SHARED_AUTH_DIR) {
+    const sharedFile = path.join(SHARED_AUTH_DIR, `${role}.json`)
+    if (fs.existsSync(sharedFile)) return sharedFile
+  }
+
+  return localFile
+}
 
 /**
  * Get the seed campaign ID without navigating into it.

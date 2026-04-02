@@ -15,6 +15,9 @@ fi
 echo "==> Running Alembic migrations..."
 python -m alembic upgrade head
 
+echo "==> Ensuring dev org exists in DB..."
+python /home/app/scripts/ensure-dev-org.py
+
 echo "==> Ensuring MinIO bucket exists..."
 python -c "
 import boto3, os
@@ -36,9 +39,14 @@ except ClientError:
 SSL_ARGS=""
 if [ "${DISABLE_TLS}" = "true" ]; then
   echo "    (TLS disabled via DISABLE_TLS env var)"
-elif [ -f /home/app/certs/dev.tailb56d83.ts.net.crt ]; then
-  echo "    (TLS enabled via Tailscale certs)"
-  SSL_ARGS="--ssl-certfile /home/app/certs/dev.tailb56d83.ts.net.crt --ssl-keyfile /home/app/certs/dev.tailb56d83.ts.net.key"
+else
+  # Pick up whichever Tailscale cert is present (domain-agnostic)
+  CERT_FILE=$(ls /home/app/certs/*.crt 2>/dev/null | head -1)
+  KEY_FILE=$(ls /home/app/certs/*.key 2>/dev/null | head -1)
+  if [ -n "$CERT_FILE" ] && [ -n "$KEY_FILE" ]; then
+    echo "    (TLS enabled via Tailscale certs: $CERT_FILE)"
+    SSL_ARGS="--ssl-certfile $CERT_FILE --ssl-keyfile $KEY_FILE"
+  fi
 fi
 
 UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
