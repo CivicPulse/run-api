@@ -138,14 +138,25 @@ def main() -> None:
                     org_id,
                     ADMIN_SMOKE_CAMPAIGN_NAME,
                     "admin-smoke-test-campaign",
-                    "local",
-                    "active",
+                    "LOCAL",
+                    "ACTIVE",
                     DEV_ADMIN_ZITADEL_ID,
                     now,
                     now,
                 ),
             )
             print(f"ensure-dev-org: created smoke campaign {campaign_id}")
+
+        cur.execute(
+            """
+            UPDATE campaigns
+            SET type = 'LOCAL', status = 'ACTIVE', updated_at = %s
+            WHERE id = %s AND (type <> 'LOCAL' OR status <> 'ACTIVE')
+            """,
+            (now, campaign_id),
+        )
+        if cur.rowcount:
+            print(f"ensure-dev-org: normalized smoke campaign enum values for {campaign_id}")
 
         # 5. Ensure the dev admin has owner rights on the smoke campaign.
         cur.execute(

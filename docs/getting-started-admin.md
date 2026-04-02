@@ -52,35 +52,33 @@ cd run-api
 cp .env.example .env
 ```
 
-### 3. Configure ZITADEL credentials
-
-Edit `.env` and fill in your ZITADEL values (see [ZITADEL Configuration](#zitadel-configuration) below for how to obtain these):
-
-```dotenv
-ZITADEL_ISSUER=https://auth.civpulse.org
-ZITADEL_PROJECT_ID=your-project-id
-ZITADEL_SERVICE_CLIENT_ID=your-service-client-id
-ZITADEL_SERVICE_CLIENT_SECRET=your-service-client-secret
-ZITADEL_SPA_CLIENT_ID=your-spa-client-id
-```
-
-### 4. Start all services
+### 3. Start all services from a clean slate
 
 ```bash
-docker compose up
+docker compose down -v
+docker compose up --build
 ```
 
-Docker Compose will start three services:
+Docker Compose will start the full local stack:
 - **api** -- Builds from the Dockerfile, runs migrations automatically, then starts uvicorn with hot-reload
+- **web** -- Vite dev server with proxying to the API and MinIO
 - **postgres** -- PostGIS 17-3.5 with health checks
 - **minio** -- S3-compatible object storage with console UI
+- **zitadel** -- Local OIDC provider for browser login
+- **zitadel-bootstrap** -- One-shot bootstrap that creates the local project/apps
+- **worker** -- Background task worker
 
-### 5. Verify services are running
+No external ZITADEL setup is required for local Docker development. The
+bootstrap container writes the local auth settings automatically on first boot.
+
+### 4. Verify services are running
 
 | Service | URL | Expected |
 |---------|-----|----------|
-| API | http://localhost:8000 | Web UI (React app served by API) |
-| API Docs | http://localhost:8000/docs | Swagger/OpenAPI interactive docs |
+| Web UI | http://localhost:5173 | React app with Vite proxy |
+| API | http://localhost:18000 | FastAPI backend |
+| API Docs | http://localhost:18000/docs | Swagger/OpenAPI interactive docs |
+| ZITADEL | http://localhost:8080 | Local auth server |
 | MinIO Console | http://localhost:9001 | MinIO admin dashboard |
 | MinIO API | http://localhost:9000 | S3-compatible endpoint |
 | PostgreSQL | localhost:5433 | Connect with any SQL client |
@@ -89,6 +87,10 @@ The API container automatically:
 1. Runs Alembic database migrations (`alembic upgrade head`)
 2. Creates the MinIO `voter-imports` bucket if it does not exist
 3. Starts uvicorn with hot-reload on port 8000
+
+Default local admin login after the first successful boot:
+
+- `admin@localhost` / `Admin1234!`
 
 ## ZITADEL Configuration
 

@@ -33,18 +33,41 @@ Choose the guide for your role:
 
 ## Quick Start (Development)
 
+Requires [Tailscale](https://tailscale.com) to be installed and connected (for trusted TLS certs).
+
 ```bash
 git clone <repo-url>
 cd run-api
 cp .env.example .env
-# Edit .env with your ZITADEL credentials (see Admin guide)
-docker compose up
+./scripts/bootstrap-dev.sh
 ```
 
-- API: http://localhost:8000
-- Web UI: http://localhost:8000 (served by API container)
-- MinIO Console: http://localhost:9001
-- API Docs: http://localhost:8000/docs
+The bootstrap script auto-detects your Tailscale FQDN, generates a trusted TLS cert, updates `.env`, wipes stale volumes, and brings up all services. Wait ~60 seconds for ZITADEL to initialize, then seed:
+
+```bash
+docker compose exec api bash -c "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
+```
+
+Services run on non-standard ports (378xx range) to avoid conflicts with other projects:
+
+| Service | URL |
+|---------|-----|
+| Web UI | `https://<tailscale-fqdn>:37822` |
+| API | `http://localhost:37821` |
+| API Docs | `http://localhost:37821/docs` |
+| ZITADEL | `http://<tailscale-fqdn>:37823` |
+| MinIO Console | `http://localhost:37827` |
+| PostgreSQL | `localhost:37824` |
+
+Local auth after the first successful boot:
+
+- `admin@localhost` / `Admin1234!`
+
+Create the broader E2E test users after the stack is up:
+
+```bash
+docker compose exec api bash -lc "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py"
+```
 
 ### Seed Data
 

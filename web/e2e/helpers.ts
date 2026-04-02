@@ -511,10 +511,24 @@ export async function createDisposableMappedCanvassingFixture(
     }
   }
 
+  const baseLatitude = 35 + Math.random()
+  const baseLongitude = -84 + Math.random()
   const voterConfigs = [
-    { address: "100 Alpha St", latitude: 0.0005, longitude: 0.0005 },
-    { address: "200 Bravo St", latitude: 0.006, longitude: 0.006 },
-    { address: "300 Charlie St", latitude: 0.0105, longitude: 0.0105 },
+    {
+      address: "100 Alpha St",
+      latitude: baseLatitude + 0.0005,
+      longitude: baseLongitude + 0.0005,
+    },
+    {
+      address: "200 Bravo St",
+      latitude: baseLatitude + 0.006,
+      longitude: baseLongitude + 0.006,
+    },
+    {
+      address: "300 Charlie St",
+      latitude: baseLatitude + 0.0105,
+      longitude: baseLongitude + 0.0105,
+    },
   ]
 
   const createdVoters: Array<{ id: string; address: string }> = []
@@ -552,11 +566,11 @@ export async function createDisposableMappedCanvassingFixture(
         type: "Polygon",
         coordinates: [
           [
-            [-0.01, -0.01],
-            [0.02, -0.01],
-            [0.02, 0.02],
-            [-0.01, 0.02],
-            [-0.01, -0.01],
+            [baseLongitude - 0.01, baseLatitude - 0.01],
+            [baseLongitude + 0.02, baseLatitude - 0.01],
+            [baseLongitude + 0.02, baseLatitude + 0.02],
+            [baseLongitude - 0.01, baseLatitude + 0.02],
+            [baseLongitude - 0.01, baseLatitude - 0.01],
           ],
         ],
       },
@@ -647,8 +661,8 @@ export async function createDisposableMappedCanvassingFixture(
     orderedAddresses,
     partiallyMappedAddress: "200 Bravo St",
     volunteerLocation: {
-      latitude: 0.011,
-      longitude: 0.011,
+      latitude: baseLatitude + 0.011,
+      longitude: baseLongitude + 0.011,
     },
   }
 }

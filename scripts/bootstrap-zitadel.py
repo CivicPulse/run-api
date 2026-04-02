@@ -27,6 +27,10 @@ OUTPUT_PATH = "/home/app/output/.env.zitadel"
 PROJECT_NAME = "CivicPulse"
 ROLES = ["owner", "admin", "manager", "volunteer", "viewer"]
 
+# External port the Vite dev server is accessible on from the browser.
+# Matches WEB_HOST_PORT in docker-compose / .env (default 37822).
+WEB_EXTERNAL_PORT = os.environ.get("WEB_EXTERNAL_PORT", "37822")
+
 # Build the external issuer URL (what appears in JWTs and what browsers use)
 _SCHEME = "https" if ZITADEL_EXTERNAL_SECURE else "http"
 EXTERNAL_ISSUER = f"{_SCHEME}://{ZITADEL_DOMAIN}:{ZITADEL_EXTERNAL_PORT}"
@@ -90,18 +94,28 @@ def api_call(
     """Make an authenticated call to the ZITADEL API.
 
     Uses verify=False because internal Docker networking uses the hostname
-    'zitadel' but the TLS cert is for 'dev.tailb56d83.ts.net'.
+    'zitadel' but the TLS cert is for the external domain.
+
+    Retries up to 10 times on 503 — ZITADEL's management API can lag behind
+    its /debug/ready health endpoint on a fresh cold start.
     """
-    resp = client.request(
-        method,
-        f"{ZITADEL_URL}{path}",
-        headers={
-            "Authorization": f"Bearer {pat}",
-            "Host": _host_header(),
-        },
-        json=json,
-        timeout=30,
-    )
+    for attempt in range(10):
+        resp = client.request(
+            method,
+            f"{ZITADEL_URL}{path}",
+            headers={
+                "Authorization": f"Bearer {pat}",
+                "Host": _host_header(),
+            },
+            json=json,
+            timeout=30,
+        )
+        if resp.status_code == 503:
+            if attempt < 9:
+                print(f"  {path} -> 503 (attempt {attempt + 1}), retrying in 3s...")
+                time.sleep(3)
+                continue
+        break
     if allow_conflict and resp.status_code == 409:
         print(f"  {path} -> already exists (409), skipping")
         return None
@@ -237,17 +251,32 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
     # Include both dev-server and preview-server HTTPS origins because the
     # frontend derives redirect_uri from window.location.origin at runtime.
     redirect_uris = [
-        "http://localhost:5173/callback",
-        "https://localhost:5173/callback",
+        f"http://localhost:{WEB_EXTERNAL_PORT}/callback",
+        f"https://localhost:{WEB_EXTERNAL_PORT}/callback",
         "http://localhost:8000/callback",
-        "https://localhost:4173/callback",
+        f"https://localhost:4173/callback",
     ]
     post_logout_uris = [
-        "http://localhost:5173",
-        "https://localhost:5173",
+        f"http://localhost:{WEB_EXTERNAL_PORT}",
+        f"https://localhost:{WEB_EXTERNAL_PORT}",
         "http://localhost:8000",
         "https://localhost:4173",
     ]
+    if ZITADEL_DOMAIN != "localhost":
+        redirect_uris.extend(
+            [
+                f"http://{ZITADEL_DOMAIN}:{WEB_EXTERNAL_PORT}/callback",
+                f"https://{ZITADEL_DOMAIN}:{WEB_EXTERNAL_PORT}/callback",
+                f"http://{ZITADEL_DOMAIN}:8000/callback",
+                f"https://{ZITADEL_DOMAIN}:8000/callback",
+            ]
+        )
+        post_logout_uris.extend(
+            [
+                f"http://{ZITADEL_DOMAIN}:{WEB_EXTERNAL_PORT}",
+                f"https://{ZITADEL_DOMAIN}:{WEB_EXTERNAL_PORT}",
+            ]
+        )
 
     if existing:
         app_id = existing[0]["id"]
@@ -292,21 +321,6 @@ def create_spa_app(client: httpx.Client, pat: str, project_id: str) -> str:
             print("  Updated existing SPA app OIDC config")
 
         return client_id
-    if ZITADEL_DOMAIN != "localhost":
-        redirect_uris.extend(
-            [
-                f"http://{ZITADEL_DOMAIN}:5173/callback",
-                f"https://{ZITADEL_DOMAIN}:5173/callback",
-                f"http://{ZITADEL_DOMAIN}:8000/callback",
-                f"https://{ZITADEL_DOMAIN}:8000/callback",
-            ]
-        )
-        post_logout_uris.extend(
-            [
-                f"http://{ZITADEL_DOMAIN}:5173",
-                f"https://{ZITADEL_DOMAIN}:5173",
-            ]
-        )
 
     data = api_call(
         client,

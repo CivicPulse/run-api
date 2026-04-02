@@ -6,12 +6,12 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
         VITE_ZITADEL_ISSUER: ${VITE_ZITADEL_ISSUER:-http://localhost:8080}
-        VITE_ZITADEL_CLIENT_ID: ${VITE_ZITADEL_CLIENT_ID}
-        VITE_ZITADEL_PROJECT_ID: ${VITE_ZITADEL_PROJECT_ID}
+        VITE_ZITADEL_CLIENT_ID: ${VITE_ZITADEL_CLIENT_ID:-}
+        VITE_ZITADEL_PROJECT_ID: ${VITE_ZITADEL_PROJECT_ID:-}
     command: bash /home/app/scripts/dev-entrypoint.sh
     container_name: run-api-api
     ports:
-      - "8000:8000"
+      - "${API_HOST_PORT:-37821}:8000"
     env_file:
       - .env
       - path: .env.zitadel
@@ -46,18 +46,26 @@ services:
     image: node:22-slim
     container_name: run-api-web
     working_dir: /home/app/web
-    command: sh -c "npm install && npm run dev"
+    command: >-
+      sh -c "if [ -f /home/app/zitadel-data/env.zitadel ]; then
+      set -a;
+      . /home/app/zitadel-data/env.zitadel;
+      set +a;
+      fi;
+      npm install && npm run dev"
     ports:
-      - "5173:5173"
+      - "${WEB_HOST_PORT:-37822}:5173"
     environment:
       API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8000}
       MINIO_PROXY_TARGET: http://minio:9000
+      WEB_EXTERNAL_PORT: ${WEB_HOST_PORT:-37822}
     env_file:
       - path: web/.env.local
         required: false
     volumes:
       - ./web:/home/app/web
       - ./certs:/home/app/certs:ro
+      - ./.zitadel-data:/home/app/zitadel-data:ro
       - web_node_modules:/home/app/web/node_modules
     depends_on:
       - api
@@ -96,7 +104,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "${PG_HOST_PORT:-37824}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -113,8 +121,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_HOST_PORT:-37826}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-37827}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -134,7 +142,7 @@ services:
       POSTGRES_USER: ${ZITADEL_DB_USER:-zitadel}
       POSTGRES_PASSWORD: ${ZITADEL_DB_PASSWORD:-zitadel}
     ports:
-      - "5434:5432"
+      - "${ZITADEL_DB_HOST_PORT:-37825}:5432"
     volumes:
       - zitadel_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -160,11 +168,11 @@ services:
       ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
       # External URL configuration
       ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNAL_SECURE:-false}
-      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-37823}
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-localhost}
       # TLS (only used when ZITADEL_TLS_MODE=enabled)
-      ZITADEL_TLS_CERTPATH: /certs/kudzu.tailb56d83.ts.net.crt
-      ZITADEL_TLS_KEYPATH: /certs/kudzu.tailb56d83.ts.net.key
+      ZITADEL_TLS_CERTPATH: /certs/${ZITADEL_DOMAIN}.crt
+      ZITADEL_TLS_KEYPATH: /certs/${ZITADEL_DOMAIN}.key
       # First instance: admin user
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin@localhost
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "${ZITADEL_ADMIN_PASSWORD:-Admin1234!}"
@@ -174,7 +182,7 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
       ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel-data/pat.txt
     ports:
-      - "8080:8080"
+      - "${ZITADEL_EXTERNAL_PORT:-37823}:8080"
     volumes:
       - ./.zitadel-data:/zitadel-data
       - ./certs:/certs:ro
@@ -197,8 +205,9 @@ services:
       - .:/home/app/output
     environment:
       ZITADEL_DOMAIN: ${ZITADEL_DOMAIN:-localhost}
-      ZITADEL_EXTERNAL_PORT: ${ZITADEL_EXTERNAL_PORT:-8080}
+      ZITADEL_EXTERNAL_PORT: ${ZITADEL_EXTERNAL_PORT:-37823}
       ZITADEL_EXTERNAL_SECURE: ${ZITADEL_EXTERNAL_SECURE:-false}
+      WEB_EXTERNAL_PORT: ${WEB_HOST_PORT:-37822}
     depends_on:
       zitadel:
         condition: service_started

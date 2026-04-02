@@ -125,7 +125,7 @@ export function CanvassingMap({
           >
             {unmappedCount === households.length
               ? "No household coordinates are available yet, so the in-app map is hidden. Keep canvassing from the door list and use external navigation links when needed."
-              : `${unmappedCount} household${unmappedCount === 1 ? "" : "s"} are missing coordinates, so only mapped doors appear on the in-app map. Unmapped doors stay available in sequence order and via Google Maps links.`}
+              : `${unmappedCount} household${unmappedCount === 1 ? "" : "s"} ${unmappedCount === 1 ? "is" : "are"} missing coordinates, so only mapped doors appear on the in-app map. Unmapped doors stay available in sequence order and via Google Maps links.`}
           </div>
         )}
 
@@ -192,6 +192,12 @@ export function CanvassingMap({
                 <Badge variant="outline">Sequence order still available</Badge>
               )}
             </div>
+
+            {activeMappableHousehold && (
+              <p className="text-xs text-muted-foreground">
+                Current door: {activeMappableHousehold.address}
+              </p>
+            )}
           </div>
         )}
       </Card>

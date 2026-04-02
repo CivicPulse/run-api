@@ -86,7 +86,7 @@ describe("CanvassingMap", () => {
 
     expect(screen.getByText(/permission was denied/i)).toBeInTheDocument()
     expect(screen.getByText(/sequence order and keep using door cards or google maps links/i)).toBeInTheDocument()
-    expect(screen.getByText("Current door: 123 Main St")).toBeInTheDocument()
+    expect(screen.getByTestId("canvassing-map-container")).toHaveTextContent("Current door: 123 Main St")
     expect(screen.getByText("Sequence order still available")).toBeInTheDocument()
   })
 

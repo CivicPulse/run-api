@@ -23,6 +23,9 @@ const hasTailscaleCerts = !!(
 )
 
 const isDocker = !!process.env.API_PROXY_TARGET
+// External port the browser uses to reach the Vite dev server (matches WEB_HOST_PORT
+// in docker-compose). Needed for HMR WebSocket when behind a Docker port mapping.
+const webExternalPort = parseInt(process.env.WEB_EXTERNAL_PORT || "37822", 10)
 const apiTarget =
   process.env.API_PROXY_TARGET ||
   (hasTailscaleCerts ? "https://localhost:8000" : "http://localhost:8000")
@@ -81,10 +84,10 @@ export default defineConfig({
       ? {
           protocol: "wss",
           host: tailscaleHost,
-          clientPort: 5173,
+          clientPort: webExternalPort,
         }
       : {
-          clientPort: 5173,
+          clientPort: webExternalPort,
         },
     proxy: proxyConfig,
   },

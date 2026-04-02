@@ -32,21 +32,18 @@ Script: `scripts/seed.py`
 
 ### TLS Configuration
 
-For local dev, `.env` should have:
-```bash
-ZITADEL_TLS_MODE=disabled
-ZITADEL_EXTERNAL_SECURE=false
-ZITADEL_DOMAIN=localhost
-DISABLE_TLS=true
-```
+Dev always uses Tailscale TLS. Run `./scripts/bootstrap-dev.sh` for a clean start — it auto-detects your Tailscale FQDN, generates certs, updates `.env`, and brings up Docker Compose.
 
-For Tailscale access, switch to:
+Key `.env` settings (set by bootstrap-dev.sh):
 ```bash
+ZITADEL_DOMAIN=<your-machine>.tailXXXX.ts.net
 ZITADEL_TLS_MODE=enabled
 ZITADEL_EXTERNAL_SECURE=true
-ZITADEL_DOMAIN=dev.tailb56d83.ts.net
-# Remove DISABLE_TLS or set to false
+DISABLE_TLS=true          # uvicorn stays plain HTTP; Vite proxy handles TLS
 ```
+
+Services run on non-conflicting 378xx ports. Access the app at:
+`https://<tailscale-fqdn>:37822`
 
 ## Code Style
 

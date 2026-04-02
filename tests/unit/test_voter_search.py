@@ -688,6 +688,7 @@ class TestVoterServiceCRUD:
     def mock_db(self):
         db = AsyncMock()
         db.add = MagicMock()
+        db.flush = AsyncMock()
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
         db.execute = AsyncMock()
@@ -724,7 +725,7 @@ class TestVoterServiceCRUD:
             await service.get_voter(mock_db, campaign_id, uuid.uuid4())
 
     async def test_create_voter(self, mock_db):
-        """create_voter adds voter to session and commits."""
+        """create_voter adds voter to session, syncs geom, and commits."""
         from app.services.voter import VoterService
 
         service = VoterService()
@@ -733,9 +734,41 @@ class TestVoterServiceCRUD:
             "first_name": "John",
             "last_name": "Doe",
             "source_type": "manual",
+            "latitude": 32.84,
+            "longitude": -83.63,
         }
 
         campaign_id = uuid.uuid4()
         await service.create_voter(mock_db, campaign_id, data)
         mock_db.add.assert_called_once()
+        mock_db.flush.assert_awaited_once()
+        mock_db.execute.assert_awaited_once()
+        stmt, params = mock_db.execute.await_args.args
+        assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(stmt)
+        assert params["voter_id"]
+        mock_db.commit.assert_awaited_once()
+
+    async def test_update_voter_syncs_geom_after_coordinate_change(self, mock_db):
+        """update_voter re-syncs geom after coordinate edits."""
+        from app.services.voter import VoterService
+
+        service = VoterService()
+        campaign_id = uuid.uuid4()
+        voter_id = uuid.uuid4()
+        mock_voter = MagicMock(spec=Voter)
+        mock_voter.id = voter_id
+
+        data = MagicMock()
+        data.model_dump.return_value = {"latitude": 32.84, "longitude": -83.63}
+
+        service.get_voter = AsyncMock(return_value=mock_voter)
+
+        await service.update_voter(mock_db, campaign_id, voter_id, data)
+
+        assert mock_voter.latitude == 32.84
+        assert mock_voter.longitude == -83.63
+        mock_db.execute.assert_awaited_once()
+        stmt, params = mock_db.execute.await_args.args
+        assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(stmt)
+        assert params == {"voter_id": voter_id}
         mock_db.commit.assert_awaited_once()

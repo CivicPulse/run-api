@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Select, and_, delete, exists, func, or_, select
+from sqlalchemy import Select, and_, delete, exists, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utcnow
@@ -77,6 +77,19 @@ def decode_cursor(cursor: str, sort_by: str | None) -> tuple:
         cursor_val = val_str
 
     return cursor_val, cursor_id
+
+
+def _sync_voter_geom_stmt(voter_id: uuid.UUID):
+    """Build a PostGIS geom sync statement for one voter."""
+    return text(
+        "UPDATE voters"
+        " SET geom = CASE"
+        "   WHEN latitude IS NOT NULL AND longitude IS NOT NULL"
+        "   THEN ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)"
+        "   ELSE NULL"
+        " END"
+        " WHERE id = :voter_id"
+    ), {"voter_id": voter_id}
 
 
 def build_voter_query(campaign_id: uuid.UUID, filters: VoterFilter) -> Select:
@@ -443,6 +456,9 @@ class VoterService:
             **data.model_dump(exclude_none=True),
         )
         db.add(voter)
+        await db.flush()
+        stmt, params = _sync_voter_geom_stmt(voter.id)
+        await db.execute(stmt, params)
         await db.commit()
         await db.refresh(voter)
         return voter
@@ -472,6 +488,8 @@ class VoterService:
         for field, value in update_data.items():
             setattr(voter, field, value)
         voter.updated_at = utcnow()
+        stmt, params = _sync_voter_geom_stmt(voter.id)
+        await db.execute(stmt, params)
         await db.commit()
         await db.refresh(voter)
         return voter
