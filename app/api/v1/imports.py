@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_, select
@@ -42,6 +43,46 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 _service = ImportService()
+
+
+def _rewrite_presigned_url_for_browser_origin(upload_url: str, request: Request) -> str:
+    """Retarget a presigned URL to the browser-visible origin when possible.
+
+    In local dev, uploads are intentionally routed through the Vite proxy under
+    `/voter-imports`. The signature must match the host that the browser sends to
+    the proxy, not an internal/default host like `localhost:5173`.
+
+    Because `/api` requests are proxied to the backend with `changeOrigin: true`,
+    `request.base_url` is not a reliable browser origin. Prefer the browser's
+    `Origin` header (falling back to `Referer`) and only rewrite the scheme/netloc,
+    preserving the signed path and query string exactly.
+    """
+    browser_origin = request.headers.get("origin") or request.headers.get("referer")
+    if not browser_origin:
+        return upload_url
+
+    try:
+        upload_parts = urlsplit(upload_url)
+        browser_parts = urlsplit(browser_origin)
+    except ValueError:
+        return upload_url
+
+    if not upload_parts.scheme or not upload_parts.netloc:
+        return upload_url
+    if not browser_parts.scheme or not browser_parts.netloc:
+        return upload_url
+    if upload_parts.netloc == browser_parts.netloc and upload_parts.scheme == browser_parts.scheme:
+        return upload_url
+
+    return urlunsplit(
+        (
+            browser_parts.scheme,
+            browser_parts.netloc,
+            upload_parts.path,
+            upload_parts.query,
+            upload_parts.fragment,
+        )
+    )
 
 
 @router.post(
@@ -96,6 +137,7 @@ async def initiate_import(
     await db.commit()
 
     upload_url = await storage.generate_upload_url(file_key)
+    upload_url = _rewrite_presigned_url_for_browser_origin(upload_url, request)
 
     return ImportUploadResponse(
         job_id=job.id,

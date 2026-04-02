@@ -688,6 +688,11 @@ def ensure_user_password(
 # Database helpers
 # ---------------------------------------------------------------------------
 
+TARGET_CAMPAIGN_NAMES = (
+    "Macon-Bibb Demo Campaign",
+    "Admin Smoke Test Campaign",
+)
+
 
 def _get_sync_url() -> str | None:
     database_url = os.environ.get("DATABASE_URL", "")
@@ -822,11 +827,34 @@ def ensure_org_membership(
         print(f"  WARNING: Could not insert org membership: {exc}", file=sys.stderr)
 
 
-def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None:
-    """Insert campaign_members row with explicit role for the seed campaign.
+def _find_target_campaigns(cur) -> list[tuple[str, str]]:
+    """Return campaign IDs + names that should receive seeded role memberships."""
+    cur.execute(
+        """
+        SELECT id::text, name
+        FROM campaigns
+        WHERE name = ANY(%s)
+        ORDER BY name
+        """,
+        (list(TARGET_CAMPAIGN_NAMES),),
+    )
+    rows = cur.fetchall()
+    if rows:
+        return [(row[0], row[1]) for row in rows]
 
-    Targets the seed campaign specifically (name starts with 'Macon-Bibb')
-    to avoid accidentally joining E2E-created campaigns with the wrong role.
+    # Backward-compatible fallback for partially seeded dev DBs.
+    cur.execute("SELECT id::text, name FROM campaigns LIMIT 1")
+    row = cur.fetchone()
+    return [(row[0], row[1])] if row else []
+
+
+
+def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None:
+    """Insert campaign_members rows with explicit roles for seeded dev campaigns.
+
+    We assign explicit roles to both default dev campaigns so auth-sensitive UI
+    tests and smoke workflows do not depend on a JWT fallback or on whichever
+    campaign happened to be created first.
     """
     import psycopg2  # noqa: PLC0415
 
@@ -840,34 +868,28 @@ def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None
         conn.autocommit = True
         cur = conn.cursor()
 
-        # Find the seed campaign specifically (not just any campaign)
-        cur.execute("SELECT id FROM campaigns WHERE name LIKE 'Macon-Bibb%%' LIMIT 1")
-        row = cur.fetchone()
-        if not row:
-            # Fallback to first campaign if seed campaign not found
-            cur.execute("SELECT id FROM campaigns LIMIT 1")
-            row = cur.fetchone()
-        if not row:
+        target_campaigns = _find_target_campaigns(cur)
+        if not target_campaigns:
             print("  WARNING: No campaigns found, skipping campaign membership")
             cur.close()
             conn.close()
             return
-        campaign_id = row[0]
 
-        cur.execute(
-            """
-            INSERT INTO campaign_members (id, user_id, campaign_id, role)
-            VALUES (gen_random_uuid(), %s, %s, %s)
-            ON CONFLICT ON CONSTRAINT uq_user_campaign DO UPDATE
-            SET role = EXCLUDED.role
-            """,
-            (user_zitadel_id, str(campaign_id), campaign_role),
-        )
-        print(
-            f"  Ensured campaign membership: "
-            f"user={user_zitadel_id}, role={campaign_role}, "
-            f"campaign={campaign_id}"
-        )
+        for campaign_id, campaign_name in target_campaigns:
+            cur.execute(
+                """
+                INSERT INTO campaign_members (id, user_id, campaign_id, role)
+                VALUES (gen_random_uuid(), %s, %s, %s)
+                ON CONFLICT ON CONSTRAINT uq_user_campaign DO UPDATE
+                SET role = EXCLUDED.role
+                """,
+                (user_zitadel_id, campaign_id, campaign_role),
+            )
+            print(
+                f"  Ensured campaign membership: "
+                f"user={user_zitadel_id}, role={campaign_role}, "
+                f"campaign={campaign_name} ({campaign_id})"
+            )
 
         cur.close()
         conn.close()

@@ -1,21 +1,26 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 
-interface CallingState {
+export interface CallingEntrySnapshot {
+  id: string
+  voter_id: string
+  voter_name: string | null
+  phone_numbers: Array<{ phone_id: string; value: string; type: string; is_primary: boolean }>
+  phone_attempts: Record<string, { result: string; at: string }> | null
+  attempt_count: number
+  priority_score: number
+}
+
+export interface CallingSessionSnapshot {
   sessionId: string | null
-  callListId: string | null
-  entries: Array<{
-    id: string
-    voter_id: string
-    voter_name: string | null
-    phone_numbers: Array<{ phone_id: string; value: string; type: string; is_primary: boolean }>
-    phone_attempts: Record<string, { result: string; at: string }> | null
-    attempt_count: number
-    priority_score: number
-  }>
+  entries: CallingEntrySnapshot[]
   currentEntryIndex: number
-  completedCalls: Record<string, string>  // entryId -> resultCode
+  completedCalls: Record<string, string>
   skippedEntries: string[]
+}
+
+interface CallingState extends CallingSessionSnapshot {
+  callListId: string | null
   callStartedAt: string | null      // ISO timestamp when call initiated
   phoneNumberUsed: string | null    // E.164 of dialed number
   lastActiveAt: number
@@ -30,6 +35,63 @@ interface CallingState {
   clearCallStarted: () => void
   reset: () => void
   touch: () => void
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isPhoneNumber(value: unknown): value is CallingEntrySnapshot["phone_numbers"][number] {
+  return (
+    isRecord(value)
+    && typeof value.phone_id === "string"
+    && typeof value.value === "string"
+    && typeof value.type === "string"
+    && typeof value.is_primary === "boolean"
+  )
+}
+
+function isPhoneAttempts(value: unknown): value is CallingEntrySnapshot["phone_attempts"] {
+  if (value === null) return true
+  if (!isRecord(value)) return false
+
+  return Object.values(value).every((attempt) => (
+    isRecord(attempt)
+    && typeof attempt.result === "string"
+    && typeof attempt.at === "string"
+  ))
+}
+
+function isCallingEntrySnapshot(value: unknown): value is CallingEntrySnapshot {
+  return (
+    isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.voter_id === "string"
+    && (typeof value.voter_name === "string" || value.voter_name === null)
+    && Array.isArray(value.phone_numbers)
+    && value.phone_numbers.every(isPhoneNumber)
+    && isPhoneAttempts(value.phone_attempts)
+    && typeof value.attempt_count === "number"
+    && typeof value.priority_score === "number"
+  )
+}
+
+export function canResumeCallingSession(
+  snapshot: CallingSessionSnapshot,
+  sessionId: string,
+): boolean {
+  return (
+    sessionId.length > 0
+    && snapshot.sessionId === sessionId
+    && Number.isInteger(snapshot.currentEntryIndex)
+    && snapshot.currentEntryIndex >= 0
+    && Array.isArray(snapshot.entries)
+    && snapshot.entries.every(isCallingEntrySnapshot)
+    && isRecord(snapshot.completedCalls)
+    && Object.values(snapshot.completedCalls).every((value) => typeof value === "string")
+    && Array.isArray(snapshot.skippedEntries)
+    && snapshot.skippedEntries.every((entryId) => typeof entryId === "string")
+  )
 }
 
 export const useCallingStore = create<CallingState>()(

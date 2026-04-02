@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { useCallingStore } from "./callingStore"
+import { canResumeCallingSession, useCallingStore } from "./callingStore"
 
 const mockEntries = [
   {
@@ -24,6 +24,7 @@ const mockEntries = [
 
 describe("callingStore", () => {
   beforeEach(() => {
+    sessionStorage.clear()
     useCallingStore.getState().reset()
   })
 
@@ -87,5 +88,40 @@ describe("callingStore", () => {
     expect(state.sessionId).toBeNull()
     expect(state.entries).toEqual([])
     expect(state.completedCalls).toEqual({})
+  })
+
+  it("canResumeCallingSession returns true only for a valid matching session snapshot", () => {
+    useCallingStore.getState().startSession("session-a", "cl1", mockEntries)
+
+    expect(
+      canResumeCallingSession(useCallingStore.getState(), "session-a"),
+    ).toBe(true)
+    expect(
+      canResumeCallingSession(useCallingStore.getState(), "session-b"),
+    ).toBe(false)
+  })
+
+  it("canResumeCallingSession rejects malformed persisted entry shapes", () => {
+    useCallingStore.setState({
+      sessionId: "session-a",
+      entries: [
+        {
+          id: "broken-entry",
+          voter_id: "v1",
+          voter_name: "Broken",
+          phone_numbers: "not-an-array",
+          phone_attempts: null,
+          attempt_count: 0,
+          priority_score: 100,
+        },
+      ] as never,
+      currentEntryIndex: 0,
+      completedCalls: {},
+      skippedEntries: [],
+    })
+
+    expect(
+      canResumeCallingSession(useCallingStore.getState(), "session-a"),
+    ).toBe(false)
   })
 })
