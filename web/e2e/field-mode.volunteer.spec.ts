@@ -2,6 +2,7 @@ import { test, expect, type Page, type BrowserContext, type Browser } from "@pla
 import {
   createDisposableCanvassingSurveyFixture,
   createDisposablePhoneBankFixture,
+  resolveAuthStatePath,
 } from "./helpers"
 
 /**
@@ -28,9 +29,11 @@ test.use({
 // browser.newContext() does NOT inherit the config's `use.baseURL`, so we must
 // pass it explicitly when creating contexts manually in beforeAll hooks.
 const BASE_URL =
-  process.env.E2E_USE_DEV_SERVER === "1"
-    ? "http://localhost:5173"
-    : "https://localhost:4173"
+  process.env.E2E_USE_DEV_SERVER === "0"
+    ? "https://localhost:4173"
+    : "https://localhost:5173"
+const OWNER_AUTH_STATE = resolveAuthStatePath("owner")
+const VOLUNTEER_AUTH_STATE = resolveAuthStatePath("volunteer")
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
@@ -427,18 +430,19 @@ test.beforeAll(async ({ browser }) => {
     { timeout: 15_000 },
   )
 
-  // Find a walk list with entries (using owner context for API access)
+  // Find a walk list with entries (using owner context for API access).
+  // Some environments only need the phone-banking path for this slice, so do
+  // not fail global setup if canvassing seed data is absent.
   const walkLists = await getWalkLists(ownerPage, campaignId)
   const walkListWithEntries = walkLists.find(
-    (wl) =>
-      (wl.entry_count ?? wl.total_entries ?? 0) > 0 ||
-      walkLists.length > 0, // Seed data creates 4 walk lists, assume they have entries
+    (wl) => (wl.entry_count ?? wl.total_entries ?? 0) > 0,
   )
   walkListId = walkListWithEntries?.id ?? walkLists[0]?.id ?? ""
-  expect(walkListId).toBeTruthy()
 
-  // Assign volunteer to walk list (accept 409 if already assigned)
-  await assignCanvasser(ownerPage, campaignId, walkListId, volunteerUserId)
+  if (walkListId) {
+    // Assign volunteer to walk list (accept 409 if already assigned)
+    await assignCanvasser(ownerPage, campaignId, walkListId, volunteerUserId)
+  }
 
   await ownerPage.close()
   await ownerContext.close()
@@ -958,10 +962,11 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
 test.describe.serial("Field Mode -- Phone Banking", () => {
   let page: Page
+  let context: BrowserContext
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: "playwright/.auth/volunteer.json",
+  test.beforeEach(async ({ browser }) => {
+    context = await browser.newContext({
+      storageState: VOLUNTEER_AUTH_STATE,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -969,14 +974,18 @@ test.describe.serial("Field Mode -- Phone Banking", () => {
       baseURL: BASE_URL,
     })
     page = await context.newPage()
-    // Suppress tour to avoid blocking
+    // Start each phone-banking test from a clean local route/store state.
     await page.goto(`/field/${campaignId}`)
     await waitForAuth(page)
+    await page.evaluate(() => {
+      localStorage.removeItem("calling-session")
+    })
     await suppressTour(page, campaignId)
   })
 
-  test.afterAll(async () => {
-    await page.close()
+  test.afterEach(async () => {
+    await page?.close()
+    await context?.close()
   })
 
   test("FIELD-08: start phone banking from hub", async ({ browser }) => {

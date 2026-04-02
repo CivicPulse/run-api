@@ -293,7 +293,7 @@ DECLARE
     _job_id bigint;
 BEGIN
     IF end_status NOT IN ('succeeded', 'failed', 'aborted') THEN
-        RAISE 'End status should be either "succeeded", "failed" or "aborted" (job id: %%)', job_id;
+        RAISE 'End status should be either "succeeded", "failed" or "aborted" (job id: %)', job_id;
     END IF;
     IF delete_job THEN
         DELETE FROM procrastinate_jobs
@@ -310,7 +310,7 @@ BEGIN
         RETURNING id INTO _job_id;
     END IF;
     IF _job_id IS NULL THEN
-        RAISE 'Job was not found or not in "doing" or "todo" status (job id: %%)', job_id;
+        RAISE 'Job was not found or not in "doing" or "todo" status (job id: %)', job_id;
     END IF;
 END;
 $$;
@@ -380,7 +380,7 @@ BEGIN
     END IF;
 
     IF _job_id IS NULL THEN
-        RAISE 'Job was not found or not in "doing" status (job id: %%)', job_id;
+        RAISE 'Job was not found or not in "doing" status (job id: %)', job_id;
     END IF;
 END;
 $$;
@@ -419,7 +419,7 @@ BEGIN
     END IF;
 
     IF _job_id IS NULL THEN
-        RAISE 'Job was not found or has an invalid status to retry (job id: %%)', job_id;
+        RAISE 'Job was not found or has an invalid status to retry (job id: %)', job_id;
     END IF;
 
 END;

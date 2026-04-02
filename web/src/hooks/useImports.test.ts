@@ -168,6 +168,7 @@ class MockXHR {
 
 describe("IMPT-01: XHR upload to MinIO presigned URL", () => {
   let OriginalXHR: typeof XMLHttpRequest
+  const originalLocation = window.location
 
   beforeEach(() => {
     MockXHR.instances = []
@@ -178,6 +179,10 @@ describe("IMPT-01: XHR upload to MinIO presigned URL", () => {
 
   afterEach(() => {
     globalThis.XMLHttpRequest = OriginalXHR
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      configurable: true,
+    })
   })
 
   it("uploadToMinIO calls XHR PUT with correct Content-Type and no Authorization header", async () => {
@@ -218,6 +223,56 @@ describe("IMPT-01: XHR upload to MinIO presigned URL", () => {
     xhr.status = 200
     xhr.onload?.()
     await promise
+  })
+
+  it("rewrites http presigned URLs to a relative proxy path on https pages", async () => {
+    Object.defineProperty(window, "location", {
+      value: { protocol: "https:" },
+      configurable: true,
+    })
+
+    const file = new File(["data"], "voters.csv", { type: "text/csv" })
+    const promise = uploadToMinIO(
+      "http://localhost:5173/voter-imports/imports/test/job/voters.csv?X-Amz-Signature=abc",
+      file,
+      vi.fn(),
+    )
+
+    const xhr = MockXHR.instances[0]
+    xhr.status = 200
+    xhr.onload?.()
+
+    await promise
+
+    expect(xhr.open).toHaveBeenCalledWith(
+      "PUT",
+      "/voter-imports/imports/test/job/voters.csv?X-Amz-Signature=abc",
+    )
+  })
+
+  it("keeps fully qualified https presigned URLs unchanged", async () => {
+    Object.defineProperty(window, "location", {
+      value: { protocol: "https:" },
+      configurable: true,
+    })
+
+    const file = new File(["data"], "voters.csv", { type: "text/csv" })
+    const promise = uploadToMinIO(
+      "https://kudzu.tailb56d83.ts.net:5173/voter-imports/imports/test/job/voters.csv?X-Amz-Signature=abc",
+      file,
+      vi.fn(),
+    )
+
+    const xhr = MockXHR.instances[0]
+    xhr.status = 200
+    xhr.onload?.()
+
+    await promise
+
+    expect(xhr.open).toHaveBeenCalledWith(
+      "PUT",
+      "https://kudzu.tailb56d83.ts.net:5173/voter-imports/imports/test/job/voters.csv?X-Amz-Signature=abc",
+    )
   })
 
   it("resolves on 2xx status", async () => {
