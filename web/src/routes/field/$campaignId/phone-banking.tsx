@@ -9,6 +9,7 @@ import { checkMilestone } from "@/lib/milestones"
 import { useCallingSession } from "@/hooks/useCallingSession"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { CALL_OUTCOME_CONFIGS } from "@/types/calling"
+import { buildRecordCallPayload } from "@/types/phone-bank-session"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -46,8 +47,10 @@ function PhoneBanking() {
     isLoading,
     isError,
     scriptId,
-    handleOutcome,
-    handlePostSurveyAdvance,
+    selectedPhoneNumber,
+    callStartedAt,
+    isSubmittingCall,
+    submitCall,
     handleSkip,
     handleEndSession,
     handleCallStarted,
@@ -85,7 +88,7 @@ function PhoneBanking() {
 
   // Local state
   const [surveyOpen, setSurveyOpen] = useState(false)
-  const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
+  const [draftEntryId, setDraftEntryId] = useState<string | null>(null)
   const [outcomeState, setOutcomeState] = useState<{ entryId?: string; message: string }>({ message: "" })
   const [endDialogOpen, setEndDialogOpen] = useState(false)
 
@@ -108,39 +111,84 @@ function PhoneBanking() {
     checkMilestone(completedCount, displayTotal, key)
   }, [completedCount, displayTotal, sessionId])
 
+  const buildCurrentPayload = useCallback((resultCode: string, extras?: {
+    notes?: string
+    surveyResponses?: Array<{ question_id: string; answer_value: string }>
+    surveyComplete?: boolean
+  }) => {
+    if (!currentEntry) return null
+
+    const now = new Date().toISOString()
+
+    return buildRecordCallPayload({
+      call_list_entry_id: currentEntry.id,
+      result_code: resultCode,
+      phone_number_used: selectedPhoneNumber,
+      call_started_at: callStartedAt || now,
+      call_ended_at: now,
+      notes: extras?.notes,
+      survey_responses: extras?.surveyResponses,
+      survey_complete: extras?.surveyComplete,
+    })
+  }, [callStartedAt, currentEntry, selectedPhoneNumber])
+
   // Outcome selection handler
   const handleOutcomeSelect = useCallback(
-    (code: string) => {
-      if (!currentEntry) return
-      const result = handleOutcome(code)
+    async (code: string) => {
+      if (!currentEntry || isSubmittingCall) return
 
-      // ARIA: announce outcome and track which entry it belongs to
+      if (code === "answered") {
+        setDraftEntryId(currentEntry.id)
+        setSurveyOpen(true)
+        return
+      }
+
+      const payload = buildCurrentPayload(code)
+      if (!payload) return
+
+      const saved = await submitCall(payload)
+      if (!saved) return
+
       const config = CALL_OUTCOME_CONFIGS.find((c) => c.code === code)
       setOutcomeState({
-        entryId: currentEntry?.id,
+        entryId: currentEntry.id,
         message: `${config?.label || code} recorded for ${currentEntry.voter_name || "Unknown Voter"}.`,
       })
-
-      // Survey trigger check
-      if (result.surveyTrigger && scriptId) {
-        setSurveyVoterId(currentEntry.voter_id)
-        setSurveyOpen(true)
-      }
     },
-    [currentEntry, handleOutcome, scriptId],
+    [buildCurrentPayload, currentEntry, isSubmittingCall, submitCall],
   )
 
-  const handleSurveyComplete = useCallback(() => {
-    setSurveyOpen(false)
-    setSurveyVoterId(null)
-    handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+  const handleAnsweredDraftSubmit = useCallback(async (
+    draft: {
+      notes: string
+      surveyResponses: Array<{ question_id: string; answer_value: string }>
+      surveyComplete: boolean
+    },
+  ) => {
+    if (!currentEntry || draftEntryId !== currentEntry.id) return
 
-  const handleSurveySkip = useCallback(() => {
+    const payload = buildCurrentPayload("answered", {
+      notes: draft.notes,
+      surveyResponses: draft.surveyResponses,
+      surveyComplete: draft.surveyComplete,
+    })
+    if (!payload) return
+
+    const saved = await submitCall(payload)
+    if (!saved) return
+
+    setOutcomeState({
+      entryId: currentEntry.id,
+      message: `Answered recorded for ${currentEntry.voter_name || "Unknown Voter"}.`,
+    })
     setSurveyOpen(false)
-    setSurveyVoterId(null)
-    handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+    setDraftEntryId(null)
+  }, [buildCurrentPayload, currentEntry, draftEntryId, submitCall])
+
+  const handleSurveyCancel = useCallback(() => {
+    setSurveyOpen(false)
+    setDraftEntryId(null)
+  }, [])
 
   const handleConfirmEndSession = useCallback(() => {
     handleEndSession()
@@ -301,6 +349,7 @@ function PhoneBanking() {
               <OutcomeGrid
                 outcomes={CALL_OUTCOME_CONFIGS}
                 onSelect={handleOutcomeSelect}
+                disabled={surveyOpen || isSubmittingCall}
                 voterName={currentEntry?.voter_name || "Unknown Voter"}
               />
             </div>
@@ -314,6 +363,7 @@ function PhoneBanking() {
           variant="outline"
           className="min-h-11"
           onClick={handleSkip}
+          disabled={surveyOpen || isSubmittingCall}
           aria-label="Skip this voter and move to next"
           data-tour="skip-button"
         >
@@ -344,16 +394,18 @@ function PhoneBanking() {
         </AlertDialog>
       </div>
 
-      {/* InlineSurvey sheet */}
-      {scriptId && surveyVoterId && (
+      {/* Answered-call draft sheet */}
+      {currentEntry && draftEntryId === currentEntry.id && (
         <InlineSurvey
+          mode="controlled"
           campaignId={campaignId}
-          scriptId={scriptId}
-          voterId={surveyVoterId}
+          scriptId={scriptId ?? ""}
           open={surveyOpen}
-          onComplete={handleSurveyComplete}
-          onSkip={handleSurveySkip}
+          onSkip={handleSurveyCancel}
           voterName={currentEntry?.voter_name || "Unknown Voter"}
+          onSubmitDraft={handleAnsweredDraftSubmit}
+          isSubmitting={isSubmittingCall}
+          submitLabel="Save Call"
         />
       )}
     </div>

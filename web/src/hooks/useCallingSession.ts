@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { canResumeCallingSession, useCallingStore } from "@/stores/callingStore"
-import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
   useCheckIn,
   useCheckOut,
@@ -12,9 +11,9 @@ import {
 import { useCallList } from "@/hooks/useCallLists"
 import { useMutation } from "@tanstack/react-query"
 import { api } from "@/api/client"
-import { CALL_SURVEY_TRIGGER } from "@/types/calling"
 import type { SessionStats, CallingEntry } from "@/types/calling"
 import type { CallListEntry } from "@/types/call-list"
+import type { RecordCallPayload } from "@/types/phone-bank-session"
 
 const BATCH_SIZE = 5
 const PREFETCH_THRESHOLD = 2
@@ -31,8 +30,32 @@ function toCallingEntry(e: CallListEntry): CallingEntry {
   }
 }
 
-interface OutcomeResult {
-  surveyTrigger: boolean
+function getPreferredPhoneNumber(entry: CallingEntry | null, phoneNumberUsed: string | null): string {
+  if (phoneNumberUsed) return phoneNumberUsed
+  if (!entry) return ""
+
+  return (
+    entry.phone_numbers.find((phone) => phone.is_primary)?.value
+    ?? entry.phone_numbers[0]?.value
+    ?? ""
+  )
+}
+
+function isRecordCallResponse(value: unknown): value is {
+  id: string
+  result_code: string
+  interaction_id: string
+} {
+  return (
+    typeof value === "object"
+    && value !== null
+    && "id" in value
+    && typeof value.id === "string"
+    && "result_code" in value
+    && typeof value.result_code === "string"
+    && "interaction_id" in value
+    && typeof value.interaction_id === "string"
+  )
 }
 
 export function useCallingSession(campaignId: string, sessionId: string) {
@@ -99,6 +122,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   const sessionRef = useRef<string | null>(null)
   const [noEntries, setNoEntries] = useState(false)
   const [claimError, setClaimError] = useState(false)
+  const [isSubmittingCall, setIsSubmittingCall] = useState(false)
   const advanceRef = useRef(advanceEntry)
   useLayoutEffect(() => { advanceRef.current = advanceEntry })
 
@@ -111,6 +135,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     noEntriesRef.current = false
     setNoEntries(false)
     setClaimError(false)
+    setIsSubmittingCall(false)
   }, [sessionId])
 
   // Touch every 60 seconds for stale detection
@@ -171,6 +196,11 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     [activeEntries, activeCurrentEntryIndex],
   )
 
+  const selectedPhoneNumber = useMemo(
+    () => getPreferredPhoneNumber(currentEntry, phoneNumberUsed),
+    [currentEntry, phoneNumberUsed],
+  )
+
   const completedCount = useMemo(
     () => Object.keys(activeCompletedCalls).length,
     [activeCompletedCalls],
@@ -222,60 +252,44 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     })
   }, [callListId, activeEntries.length, remainingEntries, isComplete, claimBatch, addEntries])
 
-  const handleOutcome = useCallback(
-    (resultCode: string): OutcomeResult => {
-      if (!currentEntry) return { surveyTrigger: false }
+  const submitCall = useCallback(
+    async (payload: RecordCallPayload) => {
+      if (!currentEntry) return false
+      if (isSubmittingCall) return false
 
-      const entryId = currentEntry.id
-      const now = new Date().toISOString()
-      const startedAt = callStartedAt || now
-      const phone = phoneNumberUsed || ""
-
-      const callPayload = {
-        call_list_entry_id: entryId,
-        result_code: resultCode,
-        phone_number_used: phone,
-        call_started_at: startedAt,
-        call_ended_at: now,
-      }
-      recordCall.mutate(callPayload, {
-        onError: (err) => {
-          if (err instanceof TypeError) {
-            useOfflineQueueStore.getState().push({
-              type: "call_record",
-              payload: callPayload,
-              campaignId,
-              resourceId: sessionId,
-            })
-            // Optimistic UI stays via callingStore.recordOutcome() called below
-          }
-          // Server errors: no special handling; callingStore already recorded outcome optimistically
-        },
-      })
-
-      recordOutcome(entryId, resultCode)
-
-      if (resultCode === CALL_SURVEY_TRIGGER) {
-        return { surveyTrigger: true }
+      if (!payload.phone_number_used) {
+        toast.error("Select or tap the voter's phone number before saving this call.")
+        return false
       }
 
-      // Auto-advance after brief delay
-      setTimeout(() => advanceRef.current(), 300)
-      return { surveyTrigger: false }
+      setIsSubmittingCall(true)
+
+      try {
+        const response = await recordCall.mutateAsync(payload)
+        if (!isRecordCallResponse(response)) {
+          toast.error("The call save response was invalid. Please review and try again.")
+          return false
+        }
+
+        recordOutcome(payload.call_list_entry_id, payload.result_code)
+        advanceEntry()
+        return true
+      } catch {
+        toast.error("Failed to record call. Your draft is still here so you can retry.")
+        return false
+      } finally {
+        setIsSubmittingCall(false)
+      }
     },
-    [currentEntry, callStartedAt, phoneNumberUsed, recordCall, recordOutcome, campaignId, sessionId],
+    [advanceEntry, currentEntry, isSubmittingCall, recordCall, recordOutcome],
   )
 
-  const handlePostSurveyAdvance = useCallback(() => {
-    advanceEntry()
-  }, [advanceEntry])
-
   const handleSkip = useCallback(() => {
-    if (!currentEntry) return
+    if (!currentEntry || isSubmittingCall) return
     selfRelease.mutate(currentEntry.id)
     skipEntry(currentEntry.id)
     setTimeout(() => advanceRef.current(), 300)
-  }, [currentEntry, selfRelease, skipEntry])
+  }, [currentEntry, isSubmittingCall, selfRelease, skipEntry])
 
   const handleEndSession = useCallback(() => {
     checkOut.mutate()
@@ -307,8 +321,10 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     isError: sessionQuery.isError || sessionDetailMalformed || claimError,
     error: sessionQuery.error,
     scriptId,
-    handleOutcome,
-    handlePostSurveyAdvance,
+    selectedPhoneNumber,
+    callStartedAt,
+    isSubmittingCall,
+    submitCall,
     handleSkip,
     handleEndSession,
     handleCallStarted,

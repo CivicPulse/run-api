@@ -3,11 +3,12 @@ import { waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useCallingSession } from "./useCallingSession"
 import { useCallingStore } from "@/stores/callingStore"
+import { buildRecordCallPayload } from "@/types/phone-bank-session"
 
 const {
   mockCheckInMutate,
   mockCheckOutMutate,
-  mockRecordCallMutate,
+  mockRecordCallMutateAsync,
   mockSelfReleaseMutate,
   mockApiPost,
   mockToastError,
@@ -20,7 +21,7 @@ const {
 } = vi.hoisted(() => ({
   mockCheckInMutate: vi.fn(),
   mockCheckOutMutate: vi.fn(),
-  mockRecordCallMutate: vi.fn(),
+  mockRecordCallMutateAsync: vi.fn(),
   mockSelfReleaseMutate: vi.fn(),
   mockApiPost: vi.fn(),
   mockToastError: vi.fn(),
@@ -111,7 +112,7 @@ describe("useCallingSession", () => {
       mutate: mockCheckInMutate.mockImplementation((_, options) => options?.onSuccess?.({})),
     })
     mockUseCheckOut.mockReturnValue({ mutate: mockCheckOutMutate })
-    mockUseRecordCall.mockReturnValue({ mutate: mockRecordCallMutate })
+    mockUseRecordCall.mockReturnValue({ mutateAsync: mockRecordCallMutateAsync })
     mockUseSelfReleaseEntry.mockReturnValue({ mutate: mockSelfReleaseMutate })
     primeSessionQuery()
   })
@@ -129,6 +130,7 @@ describe("useCallingSession", () => {
     expect(result.current.isError).toBe(false)
     expect(result.current.currentEntry?.id).toBe("entry-a")
     expect(result.current.currentEntry?.phone_numbers[0]?.value).toBe("+15551111111")
+    expect(result.current.selectedPhoneNumber).toBe("+15551111111")
     expect(mockCheckInMutate).not.toHaveBeenCalled()
     expect(mockApiPost).not.toHaveBeenCalled()
   })
@@ -200,5 +202,73 @@ describe("useCallingSession", () => {
 
     expect(result.current.isError).toBe(true)
     expect(result.current.currentEntry).toBeNull()
+  })
+
+  it("fails fast when the current call has no selected or visible phone number", async () => {
+    useCallingStore.getState().startSession("session-a", "call-list-1", [
+      { ...mockEntryA, phone_numbers: [] },
+    ])
+
+    const { result } = renderHook(() => useCallingSession("campaign-1", "session-a"))
+
+    const saved = await result.current.submitCall(buildRecordCallPayload({
+      call_list_entry_id: "entry-a",
+      result_code: "answered",
+      phone_number_used: result.current.selectedPhoneNumber,
+      call_started_at: "2026-04-02T12:00:00.000Z",
+      call_ended_at: "2026-04-02T12:01:00.000Z",
+      notes: "No visible phone available.",
+    }))
+
+    expect(saved).toBe(false)
+    expect(mockRecordCallMutateAsync).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith("Select or tap the voter's phone number before saving this call.")
+  })
+
+  it("records and advances only after a valid record_call response", async () => {
+    useCallingStore.getState().startSession("session-a", "call-list-1", [mockEntryA, mockEntryB])
+    mockRecordCallMutateAsync.mockResolvedValue({
+      id: "call-1",
+      result_code: "answered",
+      interaction_id: "interaction-1",
+    })
+
+    const { result } = renderHook(() => useCallingSession("campaign-1", "session-a"))
+
+    const saved = await result.current.submitCall(buildRecordCallPayload({
+      call_list_entry_id: "entry-a",
+      result_code: "answered",
+      phone_number_used: result.current.selectedPhoneNumber,
+      call_started_at: "2026-04-02T12:00:00.000Z",
+      call_ended_at: "2026-04-02T12:01:00.000Z",
+      notes: "Reached the voter.",
+      survey_responses: [{ question_id: "q-1", answer_value: "Support" }],
+      survey_complete: true,
+    }))
+
+    expect(saved).toBe(true)
+    expect(useCallingStore.getState().completedCalls).toEqual({ "entry-a": "answered" })
+    expect(useCallingStore.getState().currentEntryIndex).toBe(1)
+  })
+
+  it("preserves the current voter when the save response is malformed", async () => {
+    useCallingStore.getState().startSession("session-a", "call-list-1", [mockEntryA, mockEntryB])
+    mockRecordCallMutateAsync.mockResolvedValue({ result_code: "answered" })
+
+    const { result } = renderHook(() => useCallingSession("campaign-1", "session-a"))
+
+    const saved = await result.current.submitCall(buildRecordCallPayload({
+      call_list_entry_id: "entry-a",
+      result_code: "answered",
+      phone_number_used: result.current.selectedPhoneNumber,
+      call_started_at: "2026-04-02T12:00:00.000Z",
+      call_ended_at: "2026-04-02T12:01:00.000Z",
+      notes: "Retry needed.",
+    }))
+
+    expect(saved).toBe(false)
+    expect(useCallingStore.getState().completedCalls).toEqual({})
+    expect(useCallingStore.getState().currentEntryIndex).toBe(0)
+    expect(mockToastError).toHaveBeenCalledWith("The call save response was invalid. Please review and try again.")
   })
 })

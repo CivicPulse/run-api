@@ -9,18 +9,37 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { useSurveyScript, useRecordResponses } from "@/hooks/useSurveys"
 import type { QuestionResponse } from "@/types/survey"
+import type { RecordCallSurveyResponse } from "@/types/phone-bank-session"
 
-interface InlineSurveyProps {
+interface BaseInlineSurveyProps {
   campaignId: string
   scriptId: string
-  voterId: string
   open: boolean
-  onComplete: () => void
   onSkip: () => void
   voterName?: string
 }
+
+interface DirectSaveInlineSurveyProps extends BaseInlineSurveyProps {
+  mode?: "direct-save"
+  voterId: string
+  onComplete: () => void
+}
+
+interface ControlledInlineSurveyProps extends BaseInlineSurveyProps {
+  mode: "controlled"
+  onSubmitDraft: (draft: {
+    notes: string
+    surveyResponses: RecordCallSurveyResponse[]
+    surveyComplete: boolean
+  }) => void | Promise<void>
+  isSubmitting?: boolean
+  submitLabel?: string
+}
+
+type InlineSurveyProps = DirectSaveInlineSurveyProps | ControlledInlineSurveyProps
 
 function ScaleQuestion({
   question,
@@ -56,59 +75,103 @@ function ScaleQuestion({
   )
 }
 
-export function InlineSurvey({
-  campaignId,
-  scriptId,
-  voterId,
-  open,
-  onComplete,
-  onSkip,
-  voterName,
-}: InlineSurveyProps) {
-  const { data: scriptDetail } = useSurveyScript(campaignId, scriptId)
+function isRenderableQuestion(question: QuestionResponse): boolean {
+  if (!question?.id || !question?.question_text || !question?.question_type) return false
+
+  if (question.question_type === "multiple_choice") {
+    const choices = (question.options as { choices?: string[] } | null)?.choices
+    return Array.isArray(choices) && choices.every((choice) => typeof choice === "string") && choices.length > 0
+  }
+
+  if (question.question_type === "scale") {
+    const opts = question.options as Record<string, unknown> | null
+    const min = opts?.min
+    const max = opts?.max
+    return (min === undefined || typeof min === "number") && (max === undefined || typeof max === "number")
+  }
+
+  return question.question_type === "free_text"
+}
+
+export function InlineSurvey(props: InlineSurveyProps) {
+  const { campaignId, scriptId, open, onSkip, voterName } = props
+  const isControlled = props.mode === "controlled"
+
+  const scriptQuery = useSurveyScript(campaignId, scriptId)
   const recordMutation = useRecordResponses(campaignId, scriptId)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [notes, setNotes] = useState("")
 
-  const questions = useMemo(
-    () =>
-      scriptDetail?.questions
-        ? [...scriptDetail.questions].sort((a, b) => a.position - b.position)
-        : [],
-    [scriptDetail?.questions],
+  const rawQuestions = useMemo(
+    () => (Array.isArray(scriptQuery.data?.questions) ? scriptQuery.data.questions : []),
+    [scriptQuery.data?.questions],
   )
 
-  // If no scriptId or no questions, skip immediately
-  useEffect(() => {
-    if (!scriptId) {
-      onSkip()
-      return
-    }
-    if (scriptDetail && questions.length === 0) {
-      onSkip()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scriptId, scriptDetail])
+  const questions = useMemo(
+    () => [...rawQuestions].sort((a, b) => a.position - b.position),
+    [rawQuestions],
+  )
 
-  // Reset answers when voterId changes
+  const renderableQuestions = useMemo(
+    () => questions.filter(isRenderableQuestion),
+    [questions],
+  )
+
+  const hasMalformedQuestions = questions.length > 0 && renderableQuestions.length !== questions.length
+  const requiresSurvey = scriptId.length > 0
+  const showQuestionState = requiresSurvey && (scriptQuery.isLoading || scriptQuery.isError || hasMalformedQuestions || renderableQuestions.length === 0)
+  const requiresNotes = isControlled
+
   useEffect(() => {
     setAnswers({})
-  }, [voterId])
+    setNotes("")
+  }, [open, scriptId])
 
-  const handleSave = () => {
+  const orderedResponses = useMemo<RecordCallSurveyResponse[]>(() => (
+    renderableQuestions.flatMap((question) => {
+      const rawValue = answers[question.id] ?? ""
+      const answerValue = question.question_type === "free_text" ? rawValue.trim() : rawValue
+      return answerValue
+        ? [{ question_id: question.id, answer_value: answerValue }]
+        : []
+    })
+  ), [answers, renderableQuestions])
+
+  const isSurveyComplete = !requiresSurvey || (
+    !showQuestionState
+    && orderedResponses.length === renderableQuestions.length
+  )
+
+  const isNotesComplete = !requiresNotes || notes.trim().length > 0
+  const canSubmitControlled = isNotesComplete && isSurveyComplete && !showQuestionState && !props.isSubmitting
+
+  const handleDirectSave = () => {
+    if (props.mode === "controlled") return
+
     const batchData = {
-      voter_id: voterId,
-      responses: Object.entries(answers).map(([questionId, value]) => ({
-        question_id: questionId,
-        voter_id: voterId,
-        answer_value: value,
+      voter_id: props.voterId,
+      responses: orderedResponses.map((response) => ({
+        question_id: response.question_id,
+        voter_id: props.voterId,
+        answer_value: response.answer_value,
       })),
     }
-    recordMutation.mutate(batchData, { onSuccess: () => onComplete() })
+
+    recordMutation.mutate(batchData, { onSuccess: () => props.onComplete() })
   }
 
-  const updateAnswer = (questionId: string, value: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }))
+  const handleControlledSubmit = async () => {
+    if (props.mode !== "controlled" || !canSubmitControlled) return
+
+    await props.onSubmitDraft({
+      notes: notes.trim(),
+      surveyResponses: orderedResponses,
+      surveyComplete: requiresSurvey ? orderedResponses.length === renderableQuestions.length : false,
+    })
   }
+
+  const submitLabel = props.mode === "controlled" ? (props.submitLabel ?? "Save Call") : "Save Answers"
+  const isPending = props.mode === "controlled" ? Boolean(props.isSubmitting) : recordMutation.isPending
 
   return (
     <Sheet
@@ -123,27 +186,60 @@ export function InlineSurvey({
         aria-label={voterName ? `Survey questions for ${voterName}` : "Survey questions"}
       >
         <SheetHeader>
-          <SheetTitle>Survey Questions</SheetTitle>
+          <SheetTitle>{isControlled ? "Record Answered Call" : "Survey Questions"}</SheetTitle>
         </SheetHeader>
 
         <div aria-live="polite" className="sr-only">
-          {questions.length > 0
-            ? `Survey questions. ${questions.length} questions.`
-            : ""}
+          {requiresSurvey && renderableQuestions.length > 0
+            ? `Survey questions. ${renderableQuestions.length} questions.`
+            : isControlled
+              ? "Call notes form."
+              : ""}
         </div>
 
         <div className="overflow-y-auto flex-1 space-y-6 py-4 px-4">
-          {questions.map((question) => (
+          {requiresSurvey && scriptQuery.isLoading && (
+            <div className="flex items-center gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading survey questions…
+            </div>
+          )}
+
+          {requiresSurvey && scriptQuery.isError && (
+            <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <p>Couldn&apos;t load the survey questions. Retry before saving this answered call.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => scriptQuery.refetch()}>
+                Retry Survey Load
+              </Button>
+            </div>
+          )}
+
+          {requiresSurvey && !scriptQuery.isLoading && !scriptQuery.isError && hasMalformedQuestions && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              Some survey questions were malformed, so this call can&apos;t be saved until the script is fixed.
+            </div>
+          )}
+
+          {requiresSurvey && !scriptQuery.isLoading && !scriptQuery.isError && !hasMalformedQuestions && renderableQuestions.length === 0 && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              This script has no usable questions yet. Add questions or remove the script before saving an answered call.
+            </div>
+          )}
+
+          {!showQuestionState && renderableQuestions.map((question) => (
             <div key={question.id} className="space-y-2">
               <p className="text-base font-medium">{question.question_text}</p>
 
               {question.question_type === "multiple_choice" && (
                 <RadioGroup
                   value={answers[question.id] ?? ""}
-                  onValueChange={(val) => updateAnswer(question.id, val)}
+                  onValueChange={(val) => setAnswers((prev) => ({ ...prev, [question.id]: val }))}
                 >
                   {(
-                    (question.options as { choices?: string[] })?.choices ?? []
+                    (question.options as { choices?: string[] } | null)?.choices ?? []
                   ).map((choice) => (
                     <Label
                       key={choice}
@@ -160,7 +256,7 @@ export function InlineSurvey({
                 <ScaleQuestion
                   question={question}
                   value={answers[question.id] ?? ""}
-                  onChange={(val) => updateAnswer(question.id, val)}
+                  onChange={(val) => setAnswers((prev) => ({ ...prev, [question.id]: val }))}
                 />
               )}
 
@@ -168,24 +264,46 @@ export function InlineSurvey({
                 <Textarea
                   className="min-h-[80px]"
                   value={answers[question.id] ?? ""}
-                  onChange={(e) => updateAnswer(question.id, e.target.value)}
+                  onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
                   placeholder="Type your answer..."
                 />
               )}
             </div>
           ))}
+
+          {isControlled && (
+            <div className="space-y-2">
+              <Label htmlFor="field-call-notes" className="text-sm font-medium">
+                Call Notes
+              </Label>
+              <Textarea
+                id="field-call-notes"
+                className="min-h-[100px]"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="What happened on this call?"
+              />
+              {!isNotesComplete && (
+                <p className="text-sm text-destructive">Add notes before saving this answered call.</p>
+              )}
+              {requiresSurvey && !showQuestionState && !isSurveyComplete && (
+                <p className="text-sm text-destructive">Answer every survey question before saving this call.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between pt-4 border-t px-4 pb-4">
           <Button variant="ghost" onClick={onSkip} className="min-h-11">
-            Skip Survey
+            {isControlled ? "Cancel" : "Skip Survey"}
           </Button>
           <Button
-            onClick={handleSave}
-            disabled={recordMutation.isPending}
+            onClick={props.mode === "controlled" ? handleControlledSubmit : handleDirectSave}
+            disabled={isPending || (props.mode === "controlled" ? !canSubmitControlled : showQuestionState)}
             className="min-h-11"
           >
-            Save Answers
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitLabel}
           </Button>
         </div>
       </SheetContent>

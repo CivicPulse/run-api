@@ -37,6 +37,11 @@ export interface SessionUpdate {
   scheduled_end?: string | null
 }
 
+export interface RecordCallSurveyResponse {
+  question_id: string
+  answer_value: string
+}
+
 export interface RecordCallPayload {
   call_list_entry_id: string
   result_code: string
@@ -44,8 +49,39 @@ export interface RecordCallPayload {
   call_started_at: string
   call_ended_at: string
   notes?: string
-  survey_responses?: Array<{ question_id: string; answer_value: string }>
+  survey_responses?: RecordCallSurveyResponse[]
   survey_complete?: boolean
+}
+
+export function buildRecordCallPayload({
+  call_list_entry_id,
+  result_code,
+  phone_number_used,
+  call_started_at,
+  call_ended_at,
+  notes,
+  survey_responses,
+  survey_complete,
+}: RecordCallPayload): RecordCallPayload {
+  const trimmedNotes = notes?.trim()
+  const normalizedResponses = survey_responses?.filter(
+    (response) => response.question_id.trim().length > 0,
+  )
+
+  return {
+    call_list_entry_id,
+    result_code,
+    phone_number_used,
+    call_started_at,
+    call_ended_at,
+    ...(trimmedNotes ? { notes: trimmedNotes } : {}),
+    ...(normalizedResponses && normalizedResponses.length > 0
+      ? {
+          survey_responses: normalizedResponses,
+          survey_complete: survey_complete ?? true,
+        }
+      : {}),
+  }
 }
 
 export interface CallerProgressItem {

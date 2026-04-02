@@ -11,7 +11,7 @@ import {
 } from "@/hooks/usePhoneBankSessions"
 import { useCallList } from "@/hooks/useCallLists"
 import { OUTCOME_GROUPS } from "@/types/phone-bank-session"
-import type { RecordCallPayload } from "@/types/phone-bank-session"
+import { buildRecordCallPayload, type RecordCallPayload } from "@/types/phone-bank-session"
 import type { CallListEntry } from "@/types/call-list"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -294,23 +294,22 @@ function ActiveCallingPage() {
   async function handleOutcome(resultCode: string) {
     if (state.phase !== "claimed") return
     const endedAt = new Date().toISOString()
-    const payload: RecordCallPayload = {
+    const payload: RecordCallPayload = buildRecordCallPayload({
       call_list_entry_id: state.entry.id,
       result_code: resultCode,
       phone_number_used: state.selectedPhone,
       call_started_at: state.startedAt,
       call_ended_at: endedAt,
-      ...(notes.trim() ? { notes: notes.trim() } : {}),
-      // Survey responses only sent when call was answered
-      ...(resultCode === "answered" && Object.keys(surveyResponses).length > 0
-        ? {
-            survey_responses: Object.entries(surveyResponses).map(
-              ([question_id, answer_value]) => ({ question_id, answer_value }),
-            ),
-            survey_complete: true,
-          }
-        : {}),
-    }
+      notes,
+      survey_responses: resultCode === "answered"
+        ? Object.entries(surveyResponses).map(
+            ([question_id, answer_value]) => ({ question_id, answer_value }),
+          )
+        : undefined,
+      survey_complete: resultCode === "answered" && Object.keys(surveyResponses).length > 0
+        ? true
+        : undefined,
+    })
     try {
       await recordCall.mutateAsync(payload)
       setState({ phase: "recorded", entry: state.entry, resultCode })
