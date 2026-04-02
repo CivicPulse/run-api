@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from app.models.call_list import CallList
+from app.models.call_list import CallList, CallListStatus
 from app.models.campaign import Campaign
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.walk_list import WalkList, WalkListCanvasser
@@ -85,12 +85,13 @@ class FieldService:
                 select(CallList).where(CallList.id == phone_session.call_list_id)
             )
             call_list = cl_result.scalar_one_or_none()
-            phone_banking_data = {
-                "session_id": phone_session.id,
-                "name": phone_session.name,
-                "total": call_list.total_entries if call_list else 0,
-                "completed": call_list.completed_entries if call_list else 0,
-            }
+            if call_list and call_list.status == CallListStatus.ACTIVE:
+                phone_banking_data = {
+                    "session_id": phone_session.id,
+                    "name": phone_session.name,
+                    "total": call_list.total_entries,
+                    "completed": call_list.completed_entries,
+                }
 
         # Build canvassing data
         canvassing_data = None

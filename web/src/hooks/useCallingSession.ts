@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react"
+import { toast } from "sonner"
 import { useCallingStore } from "@/stores/callingStore"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
@@ -79,6 +80,7 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   const prefetchRef = useRef(false)
   const noEntriesRef = useRef(false)
   const [noEntries, setNoEntries] = useState(false)
+  const [claimError, setClaimError] = useState(false)
   const advanceRef = useRef(advanceEntry)
   useLayoutEffect(() => { advanceRef.current = advanceEntry })
 
@@ -99,49 +101,30 @@ export function useCallingSession(campaignId: string, sessionId: string) {
 
     initRef.current = true
 
+    const doClaim = () =>
+      api
+        .post(
+          `api/v1/campaigns/${campaignId}/call-lists/${callListId}/claim`,
+          { json: { batch_size: BATCH_SIZE } },
+        )
+        .json<CallListEntry[]>()
+        .then((claimed) => {
+          if (claimed.length === 0) {
+            noEntriesRef.current = true
+            setNoEntries(true)
+            startSession(sessionId, callListId, [])
+            return
+          }
+          startSession(sessionId, callListId, claimed.map(toCallingEntry))
+        })
+        .catch(() => {
+          toast.error("Couldn't load voters. The call list may not be ready yet.")
+          setClaimError(true)
+        })
+
     checkIn.mutate(undefined, {
-      onSuccess: () => {
-        api
-          .post(
-            `api/v1/campaigns/${campaignId}/call-lists/${callListId}/claim`,
-            { json: { batch_size: BATCH_SIZE } },
-          )
-          .json<CallListEntry[]>()
-          .then((claimed) => {
-            if (claimed.length === 0) {
-              noEntriesRef.current = true
-              setNoEntries(true)
-              startSession(sessionId, callListId, [])
-              return
-            }
-            startSession(sessionId, callListId, claimed.map(toCallingEntry))
-          })
-          .catch(() => {
-            // Claim failed -- session started but no entries loaded
-            startSession(sessionId, callListId, [])
-          })
-      },
-      onError: () => {
-        // Check-in failed -- may already be checked in; try claiming anyway
-        api
-          .post(
-            `api/v1/campaigns/${campaignId}/call-lists/${callListId}/claim`,
-            { json: { batch_size: BATCH_SIZE } },
-          )
-          .json<CallListEntry[]>()
-          .then((claimed) => {
-            if (claimed.length === 0) {
-              noEntriesRef.current = true
-              setNoEntries(true)
-              startSession(sessionId, callListId, [])
-              return
-            }
-            startSession(sessionId, callListId, claimed.map(toCallingEntry))
-          })
-          .catch(() => {
-            startSession(sessionId, callListId, [])
-          })
-      },
+      onSuccess: () => { doClaim() },
+      onError: () => { doClaim() },
     })
   }, [sessionId, callListId, storeSessionId, campaignId, checkIn, startSession])
 
@@ -181,7 +164,8 @@ export function useCallingSession(campaignId: string, sessionId: string) {
 
   // Pre-fetch next batch when running low
   useEffect(() => {
-    if (!callListId || remainingEntries > PREFETCH_THRESHOLD || prefetchRef.current) return
+    // Don't prefetch until init has loaded the first batch (entries.length > 0 or noEntries)
+    if (!callListId || entries.length === 0 || remainingEntries > PREFETCH_THRESHOLD || prefetchRef.current) return
     if (isComplete) return
 
     prefetchRef.current = true
@@ -271,8 +255,8 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     totalEntries: entries.length,
     isComplete,
     sessionStats,
-    isLoading: sessionQuery.isLoading || (!storeSessionId && !noEntries),
-    isError: sessionQuery.isError,
+    isLoading: sessionQuery.isLoading || (!storeSessionId && !noEntries && !claimError),
+    isError: sessionQuery.isError || claimError,
     error: sessionQuery.error,
     scriptId,
     handleOutcome,
