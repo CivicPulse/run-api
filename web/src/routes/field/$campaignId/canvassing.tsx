@@ -18,7 +18,7 @@ import { useAuthStore } from "@/stores/authStore"
 import { useTourStore, tourKey } from "@/stores/tourStore"
 import { canvassingSteps } from "@/components/field/tour/tourSteps"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, List, LocateFixed, ListOrdered } from "lucide-react"
 import { toast } from "sonner"
@@ -96,6 +96,11 @@ function Canvassing() {
   const [draftVoterId, setDraftVoterId] = useState<string | null>(null)
   const [draftOutcome, setDraftOutcome] = useState<Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused"> | null>(null)
   const [listViewOpen, setListViewOpen] = useState(false)
+  const [saveFailure, setSaveFailure] = useState<{
+    title: string
+    detail: string
+    actionLabel: string
+  } | null>(null)
 
   const navigationKey = `${currentAddressIndex}:${activeEntryId ?? ""}:${isComplete ? 1 : 0}`
   const [outcomeAnnouncement, setOutcomeAnnouncement] = useState<{
@@ -164,6 +169,7 @@ function Canvassing() {
     setDraftEntryId(null)
     setDraftVoterId(null)
     setDraftOutcome(null)
+    setSaveFailure(null)
   }, [])
 
   const handleSurveyComplete = useCallback(() => {
@@ -184,6 +190,7 @@ function Canvassing() {
         setDraftEntryId(entryId)
         setDraftVoterId(voterId)
         setDraftOutcome(outcome as Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused">)
+        setSaveFailure(null)
         setSurveyOpen(true)
         return
       }
@@ -254,7 +261,8 @@ function Canvassing() {
   ) => {
     if (!draftEntryId || !draftVoterId || !draftOutcome) return
 
-    const saved = await handleSubmitContact({
+    setSaveFailure(null)
+    const submission = await handleSubmitContact({
       entryId: draftEntryId,
       voterId: draftVoterId,
       result: draftOutcome,
@@ -262,7 +270,10 @@ function Canvassing() {
       surveyResponses: draft.surveyResponses,
       surveyComplete: draft.surveyComplete,
     })
-    if (!saved) return
+    if (!submission.saved) {
+      setSaveFailure(submission.failure)
+      return
+    }
 
     setOutcomeAnnouncement({
       key: navigationKey,
@@ -431,6 +442,31 @@ function Canvassing() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
+        {saveFailure && draftEntryId && draftVoterId && draftOutcome && (
+          <Card className="border-destructive/40 bg-destructive/5" data-testid="canvassing-save-failure-card">
+            <CardHeader className="gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                {saveFailure.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>{saveFailure.detail}</p>
+              <p>
+                You&apos;re still on {draftVoterName || activeVoterName || "this voter"}. Review the answers below and retry when you&apos;re ready.
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={handleSurveySkip}>
+                Back to hub
+              </Button>
+              <Button type="button" onClick={() => setSaveFailure(null)}>
+                {saveFailure.actionLabel}
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
         {currentHousehold && (
           <>
             <CanvassingMap

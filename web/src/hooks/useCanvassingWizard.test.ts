@@ -117,7 +117,7 @@ describe("useCanvassingWizard", () => {
     expect(mutateAsync).not.toHaveBeenCalled()
     expect(useCanvassingStore.getState().completedEntries).toEqual({})
 
-    const saved = await result.current.handleSubmitContact({
+    const submission = await result.current.handleSubmitContact({
       entryId: "entry-a",
       voterId: "voter-a",
       result: "supporter",
@@ -126,7 +126,8 @@ describe("useCanvassingWizard", () => {
       surveyComplete: true,
     })
 
-    expect(saved).toBe(true)
+    expect(submission.saved).toBe(true)
+    expect(submission.failure).toBeNull()
     expect(mutateAsync).toHaveBeenCalledWith({
       walk_list_entry_id: "entry-a",
       voter_id: "voter-a",
@@ -141,7 +142,7 @@ describe("useCanvassingWizard", () => {
     mutateAsync.mockRejectedValue(new Error("boom"))
     const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
 
-    const saved = await result.current.handleSubmitContact({
+    const submission = await result.current.handleSubmitContact({
       entryId: "entry-a",
       voterId: "voter-a",
       result: "supporter",
@@ -150,10 +151,15 @@ describe("useCanvassingWizard", () => {
       surveyComplete: true,
     })
 
-    expect(saved).toBe(false)
+    expect(submission.saved).toBe(false)
+    expect(submission.failure).toEqual({
+      title: "Couldn’t save this door knock yet",
+      detail: "boom",
+      actionLabel: "Retry save",
+    })
     expect(useCanvassingStore.getState().completedEntries).toEqual({})
     expect(useCanvassingStore.getState().currentAddressIndex).toBe(0)
-    expect(toastError).toHaveBeenCalledWith("Failed to save this contact. Please retry before moving on.")
+    expect(toastError).not.toHaveBeenCalled()
   })
 
   test("auto-advances after non-contact saves on the same submit path", async () => {

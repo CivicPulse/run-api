@@ -135,7 +135,13 @@ vi.mock("@/components/field/QuickStartCard", () => ({ QuickStartCard: () => null
 vi.mock("@/components/field/CanvassingMap", () => ({ CanvassingMap: () => <div>Map</div> }))
 vi.mock("@/components/field/CanvassingCompletionSummary", () => ({ CanvassingCompletionSummary: () => <div>Complete</div> }))
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, onClick, disabled, asChild, ...props }: any) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button> }))
-vi.mock("@/components/ui/card", () => ({ Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
+vi.mock("@/components/ui/card", () => ({
+  Card: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardHeader: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardContent: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardFooter: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardTitle: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+}))
 vi.mock("@/components/ui/badge", () => ({ Badge: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
 vi.mock("@/components/field/ResumePrompt", () => ({ useResumePrompt: vi.fn() }))
 vi.mock("@/lib/milestones", () => ({ checkMilestone: (...args: unknown[]) => mockCheckMilestone(...args) }))
@@ -187,7 +193,7 @@ function makeWizardState() {
     isError: false,
     isSavingDoorKnock: false,
     handleOutcome: vi.fn().mockResolvedValue({}),
-    handleSubmitContact: vi.fn().mockResolvedValue(true),
+    handleSubmitContact: vi.fn().mockResolvedValue({ saved: true, failure: null }),
     handlePostSurveyAdvance: vi.fn(),
     handleSkipAddress: vi.fn(),
     handleBulkNotHome: vi.fn().mockResolvedValue(true),
@@ -208,7 +214,7 @@ describe("field canvassing route", () => {
 
   it("opens a controlled draft for contact outcomes and waits for final submit", async () => {
     const handleOutcome = vi.fn().mockResolvedValue({ surveyTrigger: true })
-    const handleSubmitContact = vi.fn().mockResolvedValue(true)
+    const handleSubmitContact = vi.fn().mockResolvedValue({ saved: true, failure: null })
     mockUseCanvassingWizard.mockReturnValue(createWizardState({ handleOutcome, handleSubmitContact }))
 
     renderPage()
@@ -231,9 +237,16 @@ describe("field canvassing route", () => {
     }))
   })
 
-  it("keeps the same draft open when the final submit fails", async () => {
+  it("shows a persistent retry card when the final submit fails and keeps the same draft open", async () => {
     const handleOutcome = vi.fn().mockResolvedValue({ surveyTrigger: true })
-    const handleSubmitContact = vi.fn().mockResolvedValue(false)
+    const handleSubmitContact = vi.fn().mockResolvedValue({
+      saved: false,
+      failure: {
+        title: "Couldn’t save this door knock yet",
+        detail: "boom",
+        actionLabel: "Retry save",
+      },
+    })
     mockUseCanvassingWizard.mockReturnValue(createWizardState({ handleOutcome, handleSubmitContact }))
 
     renderPage()
@@ -245,6 +258,10 @@ describe("field canvassing route", () => {
 
     await waitFor(() => expect(handleSubmitContact).toHaveBeenCalledTimes(1))
     expect(screen.getByText("Inline Survey for Avery A")).toBeInTheDocument()
+    expect(screen.getByTestId("canvassing-save-failure-card")).toBeInTheDocument()
+    expect(screen.getByText("boom")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry save" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Back to hub" })).toBeInTheDocument()
   })
 
   it("prompts for household-wide not-home handling and records the bulk action", async () => {

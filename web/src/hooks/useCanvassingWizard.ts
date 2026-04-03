@@ -26,6 +26,12 @@ interface OutcomeResult {
   surveyTrigger?: boolean
 }
 
+export interface FieldFailureState {
+  title: string
+  detail: string
+  actionLabel: string
+}
+
 interface ContactDraftSubmit {
   entryId: string
   voterId: string
@@ -41,6 +47,17 @@ function getPinnedCurrentHousehold(
 ): Household | null {
   if (sequenceHouseholds.length === 0) return null
   return sequenceHouseholds[currentAddressIndex] ?? sequenceHouseholds[sequenceHouseholds.length - 1]
+}
+
+function toVolunteerSafeMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const detail = error.message.trim()
+    if (detail.length > 0) {
+      return detail
+    }
+  }
+
+  return fallback
 }
 
 export function useCanvassingWizard(campaignId: string, walkListId: string) {
@@ -189,6 +206,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       advanceOnSuccess?: boolean
       showErrorToast?: boolean
       errorMessage?: string
+      onError?: (error: unknown) => void
     },
   ) => {
     try {
@@ -205,6 +223,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         }
         return true
       }
+
+      options?.onError?.(err)
 
       if (options?.showErrorToast !== false) {
         toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
@@ -265,11 +285,28 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       survey_complete: surveyComplete,
     }
 
-    return submitDoorKnock(payload, {
+    let failure: FieldFailureState | null = null
+    const saved = await submitDoorKnock(payload, {
       household: currentHousehold,
       advanceOnSuccess: true,
+      showErrorToast: false,
       errorMessage: "Failed to save this contact. Please retry before moving on.",
+      onError: (error) => {
+        failure = {
+          title: "Couldn’t save this door knock yet",
+          detail: toVolunteerSafeMessage(
+            error,
+            "Your notes and survey answers are still here. Retry this save or head back to the hub if the problem keeps happening.",
+          ),
+          actionLabel: "Retry save",
+        }
+      },
     })
+
+    return {
+      saved,
+      failure,
+    }
   }, [currentHousehold, submitDoorKnock])
 
   const handlePostSurveyAdvance = useCallback(() => {
