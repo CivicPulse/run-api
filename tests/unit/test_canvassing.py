@@ -119,11 +119,16 @@ class TestCanvassService:
         mock_wl_result = MagicMock()
         mock_wl_result.scalar_one.return_value = mock_walk_list
 
+        mock_script = MagicMock()
+        mock_script.id = script_id
+        mock_script_result = MagicMock()
+        mock_script_result.scalar_one_or_none.return_value = mock_script
+
         mock_count_result = MagicMock()
         mock_count_result.scalar_one.return_value = 2
 
         session.execute = AsyncMock(
-            side_effect=[mock_entry_result, mock_wl_result, mock_count_result]
+            side_effect=[mock_entry_result, mock_wl_result, mock_script_result, mock_count_result]
         )
 
         now = utcnow()
@@ -174,6 +179,62 @@ class TestCanvassService:
         call_args = service._interaction_service.record_interaction.call_args
         assert call_args.kwargs["payload"]["survey_complete"] is False
         assert call_args.kwargs["payload"]["notes"] == "Asked about vote by mail"
+
+    @pytest.mark.asyncio
+    async def test_record_door_knock_with_survey_responses_requires_attached_script(
+        self,
+    ) -> None:
+        """CANV-04: Contact survey writes fail fast when readback script context is missing."""
+        from app.services.canvass import CanvassService
+
+        service = CanvassService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+        walk_list_id = uuid.uuid4()
+        entry_id = uuid.uuid4()
+        voter_id = uuid.uuid4()
+
+        mock_entry = MagicMock()
+        mock_entry.id = entry_id
+        mock_entry.walk_list_id = walk_list_id
+        mock_entry.status = WalkListEntryStatus.PENDING
+
+        mock_entry_result = MagicMock()
+        mock_entry_result.scalar_one_or_none.return_value = mock_entry
+
+        mock_walk_list = MagicMock()
+        mock_walk_list.id = walk_list_id
+        mock_walk_list.script_id = None
+        mock_walk_list.visited_entries = 0
+
+        mock_wl_result = MagicMock()
+        mock_wl_result.scalar_one.return_value = mock_walk_list
+
+        session.execute = AsyncMock(side_effect=[mock_entry_result, mock_wl_result])
+        service._interaction_service.record_interaction = AsyncMock()
+        service._survey_service.record_responses_batch = AsyncMock(return_value=[])
+
+        data = SimpleNamespace(
+            voter_id=voter_id,
+            walk_list_entry_id=entry_id,
+            result_code=DoorKnockResult.SUPPORTER,
+            notes="Answered the door",
+            survey_responses=[
+                ResponseCreate(
+                    question_id=uuid.uuid4(),
+                    voter_id=voter_id,
+                    answer_value="Yes",
+                )
+            ],
+            survey_complete=False,
+        )
+
+        with pytest.raises(ValueError, match="attached survey script"):
+            await service.record_door_knock(
+                session, campaign_id, walk_list_id, data, "user-1"
+            )
+
+        service._survey_service.record_responses_batch.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_record_door_knock_non_contact_without_survey_keeps_backward_compatibility(

@@ -17,6 +17,11 @@ import pytest
 from sqlalchemy import text
 
 from app.core.time import utcnow
+from app.models.walk_list import DoorKnockResult
+from app.schemas.canvass import DoorKnockCreate
+from app.schemas.survey import ResponseCreate
+from app.services.canvass import CanvassService
+from app.services.survey import SurveyService
 
 
 @pytest.fixture
@@ -455,6 +460,62 @@ class TestCanvassingRLSIsolation:
         ids = [row[0] for row in result.all()]
         assert data["response_a_id"] in ids
         assert data["response_b_id"] not in ids
+
+    async def test_door_knock_persists_survey_responses_for_authoritative_readback(
+        self, app_user_session, two_campaigns_with_canvassing_data
+    ):
+        """Door-knock survey saves must read back on the same campaign/script/voter seam."""
+        data = two_campaigns_with_canvassing_data
+        session = app_user_session
+        await self._set_context(session, data["campaign_a_id"])
+
+        survey_service = SurveyService()
+        canvass_service = CanvassService()
+        answer = f"supporter-{uuid.uuid4().hex[:8]}"
+
+        result = await canvass_service.record_door_knock(
+            session=session,
+            campaign_id=data["campaign_a_id"],
+            walk_list_id=data["walk_list_a_id"],
+            data=DoorKnockCreate(
+                voter_id=data["voter_a_id"],
+                walk_list_entry_id=data["entry_a_id"],
+                result_code=DoorKnockResult.SUPPORTER,
+                notes="Integration proof",
+                survey_complete=True,
+                survey_responses=[
+                    ResponseCreate(
+                        question_id=data["question_a_id"],
+                        voter_id=data["voter_a_id"],
+                        answer_value=answer,
+                    )
+                ],
+            ),
+            user_id=data["user_a_id"],
+        )
+        await session.commit()
+
+        interaction_row = await session.execute(
+            text(
+                "SELECT payload, type FROM voter_interactions "
+                "WHERE id = :interaction_id"
+            ),
+            {"interaction_id": result.interaction_id},
+        )
+        interaction = interaction_row.one()
+        assert interaction.type == "door_knock"
+        assert interaction.payload["result_code"] == "supporter"
+        assert interaction.payload["survey_complete"] is True
+        assert interaction.payload["notes"] == "Integration proof"
+
+        responses = await survey_service.get_voter_responses(
+            session=session,
+            campaign_id=data["campaign_a_id"],
+            voter_id=data["voter_a_id"],
+            script_id=data["script_a_id"],
+        )
+        answers = [response.answer_value for response in responses]
+        assert answer in answers
 
     async def test_voter_geom_column_exists(self, superuser_session):
         """Verify voter geom column exists in the voters table schema."""

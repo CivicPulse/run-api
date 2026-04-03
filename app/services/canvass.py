@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import func, select
 
+from app.models.survey import SurveyScript
 from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.models.walk_list import WalkList, WalkListEntry, WalkListEntryStatus
 from app.schemas.canvass import DoorKnockResponse
@@ -83,16 +84,19 @@ class CanvassService:
         )
 
         if data.survey_responses:
-            script_id = walk_list.script_id
-            if script_id:
-                await self._survey_service.record_responses_batch(
-                    session=session,
-                    campaign_id=campaign_id,
-                    script_id=script_id,
-                    voter_id=data.voter_id,
-                    responses=data.survey_responses,
-                    user_id=user_id,
-                )
+            script_id = await self._resolve_walk_list_script_id(
+                session=session,
+                campaign_id=campaign_id,
+                walk_list=walk_list,
+            )
+            await self._survey_service.record_responses_batch(
+                session=session,
+                campaign_id=campaign_id,
+                script_id=script_id,
+                voter_id=data.voter_id,
+                responses=data.survey_responses,
+                user_id=user_id,
+            )
 
         entry.status = WalkListEntryStatus.VISITED
         walk_list.visited_entries = WalkList.visited_entries + 1
@@ -117,3 +121,39 @@ class CanvassService:
             attempt_number=attempt_number,
             created_at=interaction.created_at,
         )
+
+    async def _resolve_walk_list_script_id(
+        self,
+        session: AsyncSession,
+        campaign_id: uuid.UUID,
+        walk_list: WalkList,
+    ) -> uuid.UUID:
+        """Resolve the authoritative survey script for a walk list contact.
+
+        Door-knock survey responses must persist under the same
+        ``campaign_id/script_id/voter_id`` contract used by readback.
+        Reject response batches when the walk list has no attached script or
+        the script cannot be resolved in the same campaign context.
+        """
+        script_id = walk_list.script_id
+        if script_id is None:
+            msg = (
+                "Survey responses require a walk list with an attached survey script"
+            )
+            raise ValueError(msg)
+
+        script_result = await session.execute(
+            select(SurveyScript).where(
+                SurveyScript.id == script_id,
+                SurveyScript.campaign_id == campaign_id,
+            )
+        )
+        script = script_result.scalar_one_or_none()
+        if script is None:
+            msg = (
+                f"Walk list {walk_list.id} references survey script {script_id} "
+                f"outside campaign {campaign_id}"
+            )
+            raise ValueError(msg)
+
+        return cast(uuid.UUID, script.id)
