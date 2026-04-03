@@ -225,7 +225,11 @@ Plans:
   2. The last completing chunk triggers finalization exactly once, guarded by a PostgreSQL advisory lock
   3. Per-chunk error reports stored in MinIO are merged into a single downloadable file on finalization
   4. An import where some chunks succeed and some fail transitions to COMPLETED_WITH_ERRORS (not COMPLETED or FAILED)
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 61-01-PLAN.md — Add the missing chunk aggregation schema contract (`phones_created` and widened parent status) plus unit coverage
+- [ ] 61-02-PLAN.md — Implement the locked parent finalizer, SQL SUM aggregation, merged chunk error artifact, and terminal-status fan-in
+- [ ] 61-03-PLAN.md — Add integration coverage proving exactly-once parent finalization under concurrent chunk completion
 
 ### Phase 62: Resilience & Cancellation
 **Goal**: Chunk failures, cancellations, and crashes are handled gracefully without losing completed work
