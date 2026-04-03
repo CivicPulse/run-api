@@ -6,6 +6,7 @@ import uuid
 from contextlib import suppress
 
 from loguru import logger
+from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.time import utcnow
@@ -14,6 +15,7 @@ from app.db.session import async_session_factory
 from app.models.import_job import (
     ImportChunk,
     ImportChunkStatus,
+    ImportChunkTaskStatus,
     ImportJob,
     ImportStatus,
 )
@@ -36,6 +38,50 @@ def _count_mapped_columns(field_mapping: dict | None) -> int:
     if not isinstance(field_mapping, dict):
         return 0
     return sum(1 for value in field_mapping.values() if value)
+
+
+async def _promote_next_pending_chunk(
+    *,
+    session,
+    import_job_id: uuid.UUID,
+    campaign_id: str,
+) -> str | None:
+    """Defer the next pending primary chunk without double-dispatching it."""
+    next_chunk = (
+        (
+            await session.execute(
+                select(ImportChunk)
+                .where(
+                    ImportChunk.import_job_id == import_job_id,
+                    ImportChunk.status == ImportChunkStatus.PENDING,
+                )
+                .order_by(ImportChunk.row_start.asc())
+                .with_for_update(skip_locked=True)
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if next_chunk is None:
+        return None
+
+    try:
+        await process_import_chunk.defer_async(str(next_chunk.id), campaign_id)
+    except Exception:
+        await session.rollback()
+        await set_campaign_context(session, campaign_id)
+        logger.exception(
+            "Failed to defer successor chunk {} for import {}",
+            next_chunk.id,
+            import_job_id,
+        )
+        return None
+
+    next_chunk.status = ImportChunkStatus.QUEUED
+    next_chunk.last_progress_at = utcnow()
+    await commit_and_restore_rls(session, campaign_id)
+    return str(next_chunk.id)
 
 
 @procrastinate_app.task(name="process_import", queue="imports")
@@ -78,6 +124,8 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
 
             if not is_resume:
                 job.status = ImportStatus.PROCESSING
+                if getattr(job, "processing_started_at", None) is None:
+                    job.processing_started_at = utcnow()
                 job.last_progress_at = utcnow()
                 job.orphaned_at = None
                 job.orphaned_reason = None
@@ -138,10 +186,12 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
             )
 
             mapped_column_count = _count_mapped_columns(job.field_mapping)
+            file_size_bytes = await storage.get_object_size(job.file_key)
             chunk_ranges = plan_chunk_ranges(
                 total_rows=total_rows,
                 mapped_column_count=mapped_column_count,
                 chunk_size_default=settings.import_chunk_size_default,
+                file_size_bytes=file_size_bytes,
             )
 
             try:
@@ -163,7 +213,11 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
                 ) from exc
 
             try:
-                for chunk in chunks:
+                initial_limit = min(
+                    max(settings.import_max_chunks_per_import, 1),
+                    len(chunks),
+                )
+                for chunk in chunks[:initial_limit]:
                     await process_import_chunk.defer_async(str(chunk.id), campaign_id)
                     chunk.status = ImportChunkStatus.QUEUED
                     chunk.last_progress_at = utcnow()
@@ -213,6 +267,8 @@ async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
 
     async with async_session_factory() as session:
         chunk: ImportChunk | None = None
+        job: ImportJob | None = None
+        finalize_parent = False
         try:
             await set_campaign_context(session, campaign_id)
 
@@ -223,6 +279,30 @@ async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
             job = await session.get(ImportJob, chunk.import_job_id)
             if job is None:
                 raise ValueError(f"ImportJob {chunk.import_job_id} not found")
+
+            if chunk.status in (
+                ImportChunkStatus.COMPLETED,
+                ImportChunkStatus.CANCELLED,
+            ):
+                logger.info(
+                    "Import chunk {} already terminal with status {}",
+                    chunk_id,
+                    chunk.status,
+                )
+                return
+
+            if job.cancelled_at is not None:
+                logger.info(
+                    "Import chunk {} skipped because parent import {} is cancelled",
+                    chunk_id,
+                    job.id,
+                )
+                chunk.status = ImportChunkStatus.CANCELLED
+                chunk.error_message = None
+                chunk.last_progress_at = utcnow()
+                await commit_and_restore_rls(session, campaign_id)
+                finalize_parent = True
+                return
 
             chunk.status = ImportChunkStatus.PROCESSING
             chunk.error_message = None
@@ -240,23 +320,159 @@ async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
                 chunk=chunk,
             )
             if chunk.status == ImportChunkStatus.PROCESSING:
-                chunk.status = ImportChunkStatus.COMPLETED
+                await _promote_next_pending_chunk(
+                    session=session,
+                    import_job_id=job.id,
+                    campaign_id=campaign_id,
+                )
+                if chunk.phone_manifest:
+                    await process_import_chunk_phones.defer_async(
+                        str(chunk.id), campaign_id
+                    )
+                    chunk.phone_task_status = ImportChunkTaskStatus.QUEUED
+                else:
+                    chunk.phone_task_status = ImportChunkTaskStatus.COMPLETED
+                if chunk.geometry_manifest:
+                    await process_import_chunk_geometry.defer_async(
+                        str(chunk.id), campaign_id
+                    )
+                    chunk.geometry_task_status = ImportChunkTaskStatus.QUEUED
+                else:
+                    chunk.geometry_task_status = ImportChunkTaskStatus.COMPLETED
                 chunk.error_message = None
                 chunk.last_progress_at = utcnow()
-                await session.commit()
+                await commit_and_restore_rls(session, campaign_id)
+            finalize_parent = True
         except Exception as exc:
             logger.exception("Import chunk {} failed", chunk_id)
             await session.rollback()
-            if chunk is not None:
+            if chunk is not None and not finalize_parent:
                 try:
                     await set_campaign_context(session, campaign_id)
                     chunk.status = ImportChunkStatus.FAILED
                     chunk.error_message = str(exc)
                     chunk.last_progress_at = utcnow()
-                    await session.commit()
+                    await commit_and_restore_rls(session, campaign_id)
+                    finalize_parent = True
                 except Exception:
                     logger.exception("Failed to update chunk status for {}", chunk_id)
             raise
+        finally:
+            if finalize_parent and job is not None:
+                await service.maybe_complete_chunk_after_secondary_tasks(
+                    session=session,
+                    storage=storage,
+                    job=job,
+                    chunk=chunk,
+                    campaign_id=campaign_id,
+                )
+
+
+@procrastinate_app.task(name="process_import_chunk_phones", queue="imports")
+async def process_import_chunk_phones(chunk_id: str, campaign_id: str) -> None:
+    """Apply deferred phone work for one chunk."""
+    storage = StorageService()
+    service = ImportService()
+    async with async_session_factory() as session:
+        chunk: ImportChunk | None = None
+        job: ImportJob | None = None
+        try:
+            await set_campaign_context(session, campaign_id)
+            chunk = await session.get(ImportChunk, uuid.UUID(chunk_id))
+            if chunk is None:
+                raise ValueError(f"ImportChunk {chunk_id} not found")
+            job = await session.get(ImportJob, chunk.import_job_id)
+            if job is None:
+                raise ValueError(f"ImportJob {chunk.import_job_id} not found")
+            if job.cancelled_at is not None:
+                chunk.phone_task_status = ImportChunkTaskStatus.CANCELLED
+            else:
+                chunk.phone_task_status = ImportChunkTaskStatus.PROCESSING
+            await commit_and_restore_rls(session, campaign_id)
+
+            if chunk.phone_task_status == ImportChunkTaskStatus.CANCELLED:
+                return
+
+            created = await service._apply_phone_manifest(
+                session, list(chunk.phone_manifest or [])
+            )
+            chunk.phones_created = created
+            chunk.phone_manifest = []
+            chunk.phone_task_status = ImportChunkTaskStatus.COMPLETED
+            chunk.phone_task_error = None
+            chunk.last_progress_at = utcnow()
+            await commit_and_restore_rls(session, campaign_id)
+        except Exception as exc:
+            await session.rollback()
+            if chunk is not None:
+                await set_campaign_context(session, campaign_id)
+                chunk.phone_task_status = ImportChunkTaskStatus.FAILED
+                chunk.phone_task_error = str(exc)
+                chunk.last_progress_at = utcnow()
+                await commit_and_restore_rls(session, campaign_id)
+            raise
+        finally:
+            if chunk is not None and job is not None:
+                await service.maybe_complete_chunk_after_secondary_tasks(
+                    session=session,
+                    storage=storage,
+                    job=job,
+                    chunk=chunk,
+                    campaign_id=campaign_id,
+                )
+
+
+@procrastinate_app.task(name="process_import_chunk_geometry", queue="imports")
+async def process_import_chunk_geometry(chunk_id: str, campaign_id: str) -> None:
+    """Apply deferred geometry work for one chunk."""
+    storage = StorageService()
+    service = ImportService()
+    async with async_session_factory() as session:
+        chunk: ImportChunk | None = None
+        job: ImportJob | None = None
+        try:
+            await set_campaign_context(session, campaign_id)
+            chunk = await session.get(ImportChunk, uuid.UUID(chunk_id))
+            if chunk is None:
+                raise ValueError(f"ImportChunk {chunk_id} not found")
+            job = await session.get(ImportJob, chunk.import_job_id)
+            if job is None:
+                raise ValueError(f"ImportJob {chunk.import_job_id} not found")
+            if job.cancelled_at is not None:
+                chunk.geometry_task_status = ImportChunkTaskStatus.CANCELLED
+            else:
+                chunk.geometry_task_status = ImportChunkTaskStatus.PROCESSING
+            await commit_and_restore_rls(session, campaign_id)
+
+            if chunk.geometry_task_status == ImportChunkTaskStatus.CANCELLED:
+                return
+
+            await service._apply_geometry_manifest(
+                session, list(chunk.geometry_manifest or [])
+            )
+            chunk.geometry_manifest = []
+            chunk.geometry_task_status = ImportChunkTaskStatus.COMPLETED
+            chunk.geometry_task_error = None
+            chunk.last_progress_at = utcnow()
+            await commit_and_restore_rls(session, campaign_id)
+        except Exception as exc:
+            await session.rollback()
+            if chunk is not None:
+                await set_campaign_context(session, campaign_id)
+                chunk.geometry_task_status = ImportChunkTaskStatus.FAILED
+                chunk.geometry_task_error = str(exc)
+                chunk.last_progress_at = utcnow()
+                await commit_and_restore_rls(session, campaign_id)
+            raise
+        finally:
+            if chunk is not None and job is not None:
+                await service.maybe_complete_chunk_after_secondary_tasks(
+                    session=session,
+                    storage=storage,
+                    job=job,
+                    chunk=chunk,
+                    campaign_id=campaign_id,
+                )
 
 
 @procrastinate_app.task(name="recover_import", queue="imports")

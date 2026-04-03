@@ -38,6 +38,17 @@ class ImportChunkStatus(enum.StrEnum):
     CANCELLED = "cancelled"
 
 
+class ImportChunkTaskStatus(enum.StrEnum):
+    """Lifecycle for post-primary chunk tasks."""
+
+    PENDING = "pending"
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class ImportJob(Base):
     """Tracks a voter file import from upload through processing."""
 
@@ -64,6 +75,7 @@ class ImportJob(Base):
     skipped_rows: Mapped[int | None] = mapped_column()
     phones_created: Mapped[int | None] = mapped_column()
     last_committed_row: Mapped[int | None] = mapped_column(default=0)
+    processing_started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     last_progress_at: Mapped[datetime | None] = mapped_column(nullable=True)
     orphaned_at: Mapped[datetime | None] = mapped_column(nullable=True)
     orphaned_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -90,7 +102,7 @@ class ImportChunk(Base):
         ForeignKey("campaigns.id"), nullable=False
     )
     import_job_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("import_jobs.id"), nullable=False
+        ForeignKey("import_jobs.id", ondelete="CASCADE"), nullable=False
     )
     row_start: Mapped[int] = mapped_column(nullable=False)
     row_end: Mapped[int] = mapped_column(nullable=False)
@@ -101,6 +113,18 @@ class ImportChunk(Base):
     imported_rows: Mapped[int | None] = mapped_column(default=0)
     skipped_rows: Mapped[int | None] = mapped_column(default=0)
     phones_created: Mapped[int | None] = mapped_column(default=0)
+    phone_task_status: Mapped[ImportChunkTaskStatus | None] = mapped_column(
+        Enum(ImportChunkTaskStatus, name="import_chunk_task_status", native_enum=False),
+        nullable=True,
+    )
+    geometry_task_status: Mapped[ImportChunkTaskStatus | None] = mapped_column(
+        Enum(ImportChunkTaskStatus, name="import_chunk_task_status", native_enum=False),
+        nullable=True,
+    )
+    phone_task_error: Mapped[str | None] = mapped_column()
+    geometry_task_error: Mapped[str | None] = mapped_column()
+    phone_manifest: Mapped[list | None] = mapped_column(JSONB)
+    geometry_manifest: Mapped[list | None] = mapped_column(JSONB)
     last_committed_row: Mapped[int | None] = mapped_column(default=0)
     error_report_key: Mapped[str | None] = mapped_column(String(500))
     error_message: Mapped[str | None] = mapped_column()

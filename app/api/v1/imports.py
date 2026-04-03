@@ -12,7 +12,7 @@ import uuid
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +22,7 @@ from app.core.security import AuthenticatedUser, require_role
 from app.core.time import utcnow
 from app.models.import_job import (
     FieldMappingTemplate,
+    ImportChunk,
     ImportJob,
     ImportStatus,
 )
@@ -408,7 +409,7 @@ async def get_import_status(
     # Generate pre-signed download URL for error report if it exists
     if job.error_report_key:
         storage = request.app.state.storage_service
-        response.error_report_key = await storage.generate_download_url(
+        response.error_report_url = await storage.generate_download_url(
             job.error_report_key
         )
 
@@ -473,7 +474,23 @@ async def delete_import(
         except Exception:
             logger.warning("Failed to delete S3 error report %s", job.error_report_key)
 
+    chunk_error_keys_result = await db.execute(
+        select(ImportChunk.error_report_key).where(ImportChunk.import_job_id == job.id)
+    )
+    chunk_error_keys = [
+        key for key in chunk_error_keys_result.scalars().all() if key is not None
+    ]
+    for chunk_error_key in chunk_error_keys:
+        try:
+            await storage.delete_object(chunk_error_key)
+        except Exception:
+            logger.warning(
+                "Failed to delete chunk error report %s",
+                chunk_error_key,
+            )
+
     try:
+        await db.execute(delete(ImportChunk).where(ImportChunk.import_job_id == job.id))
         await db.delete(job)
         await db.commit()
     except IntegrityError as exc:
@@ -532,7 +549,15 @@ async def list_imports(
     if has_more:
         jobs = jobs[:limit]
 
-    items = [ImportJobResponse.model_validate(j) for j in jobs]
+    storage = request.app.state.storage_service
+    items: list[ImportJobResponse] = []
+    for job in jobs:
+        response = ImportJobResponse.model_validate(job)
+        if job.error_report_key:
+            response.error_report_url = await storage.generate_download_url(
+                job.error_report_key
+            )
+        items.append(response)
     next_cursor = str(jobs[-1].id) if has_more and jobs else None
 
     return PaginatedResponse[ImportJobResponse](

@@ -12,6 +12,42 @@ import type {
   ImportTemplate,
 } from "@/types/import-job"
 
+export function isTerminalImportStatus(
+  status: ImportStatus | string | undefined,
+): boolean {
+  return (
+    status === "completed"
+    || status === "completed_with_errors"
+    || status === "failed"
+    || status === "cancelled"
+  )
+}
+
+export function getImportStatusLabel(status: ImportStatus | string): string {
+  switch (status) {
+    case "pending":
+      return "Pending"
+    case "uploaded":
+      return "Uploaded"
+    case "queued":
+      return "Queued"
+    case "processing":
+      return "Processing"
+    case "completed_with_errors":
+      return "Completed with errors"
+    case "completed":
+      return "Completed"
+    case "failed":
+      return "Failed"
+    case "cancelled":
+      return "Cancelled"
+    case "cancelling":
+      return "Cancelling"
+    default:
+      return status.replaceAll("_", " ")
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Query key factory
 // ---------------------------------------------------------------------------
@@ -43,6 +79,7 @@ export function deriveStep(status: ImportStatus | string | undefined): number {
     case "cancelling":
       return 3
     case "completed":
+    case "completed_with_errors":
     case "failed":
     case "cancelled":
       return 4
@@ -75,12 +112,16 @@ export function useInitiateImport(campaignId: string) {
 export function useDetectColumns(campaignId: string, jobId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
+    mutationFn: (overrideJobId?: string) =>
       api
-        .post(`api/v1/campaigns/${campaignId}/imports/${jobId}/detect`)
+        .post(
+          `api/v1/campaigns/${campaignId}/imports/${overrideJobId ?? jobId}/detect`,
+        )
         .json<ImportDetectResponse>(),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: importKeys.detail(campaignId, jobId) }),
+    onSuccess: (_data, overrideJobId) =>
+      qc.invalidateQueries({
+        queryKey: importKeys.detail(campaignId, overrideJobId ?? jobId),
+      }),
   })
 }
 
@@ -137,9 +178,7 @@ export function useImportJob(
     refetchInterval: polling
       ? (query) => {
           const status = query.state.data?.status
-          return status === "completed" || status === "failed" || status === "cancelled"
-            ? false
-            : 3000
+          return isTerminalImportStatus(status) ? false : 3000
         }
       : false,
   })
@@ -160,12 +199,7 @@ export function useImports(campaignId: string) {
     enabled: !!campaignId,
     refetchInterval: (query) => {
       const items = query.state.data?.items ?? []
-      const hasActive = items.some(
-        (j) =>
-          j.status !== "completed" &&
-          j.status !== "failed" &&
-          j.status !== "cancelled",
-      )
+      const hasActive = items.some((j) => !isTerminalImportStatus(j.status))
       return hasActive ? 3000 : false
     },
   })

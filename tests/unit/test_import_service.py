@@ -9,14 +9,20 @@ import pytest
 from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 
 from app.core.config import settings
-from app.models.import_job import ImportChunkStatus, ImportStatus
+from app.models.import_job import (
+    ImportChunkStatus,
+    ImportStatus,
+)
 from app.services.import_service import (
     ImportService,
+    _phone_conflict_sort_key,
+    _voter_conflict_sort_key,
     calculate_effective_rows_per_write,
     count_csv_data_rows,
     plan_chunk_ranges,
     should_use_serial_import,
 )
+from app.services.storage import StorageService
 
 
 class TestDetectColumns:
@@ -87,6 +93,35 @@ class TestChunkSizingHelpers:
             plan_chunk_ranges(0, mapped_column_count=10, chunk_size_default=500) == []
         )
 
+    def test_plan_chunk_ranges_changes_for_different_file_sizes(self):
+        """Same row counts split differently for materially different file sizes."""
+        large_file_ranges = plan_chunk_ranges(
+            total_rows=12_000,
+            mapped_column_count=8,
+            chunk_size_default=4_000,
+            file_size_bytes=24_000_000,
+        )
+        small_file_ranges = plan_chunk_ranges(
+            total_rows=12_000,
+            mapped_column_count=8,
+            chunk_size_default=4_000,
+            file_size_bytes=1_200_000,
+        )
+
+        assert large_file_ranges != small_file_ranges
+        assert len(large_file_ranges) > len(small_file_ranges)
+
+    def test_plan_chunk_ranges_keeps_bind_limit_for_wide_files(self):
+        """File-size hints never exceed the asyncpg bind-parameter ceiling."""
+        ranges = plan_chunk_ranges(
+            total_rows=25_000,
+            mapped_column_count=400,
+            chunk_size_default=settings.import_chunk_size_default,
+            file_size_bytes=500_000,
+        )
+
+        assert ranges[0] == (1, 81)
+
     @pytest.mark.parametrize(
         ("total_rows", "expected"),
         [
@@ -98,11 +133,33 @@ class TestChunkSizingHelpers:
     def test_should_use_serial_import(self, total_rows, expected):
         """Unknown and below-threshold totals stay on the serial path."""
         assert (
-            should_use_serial_import(
-                total_rows, settings.import_serial_threshold
-            )
+            should_use_serial_import(total_rows, settings.import_serial_threshold)
             is expected
         )
+
+
+class TestChunkOrderingHelpers:
+    """Tests for deterministic conflict-key ordering helpers."""
+
+    def test_voter_conflict_sort_key_uses_upsert_target(self):
+        """Voter ordering matches the ON CONFLICT key used in batch upserts."""
+        assert _voter_conflict_sort_key(
+            {
+                "campaign_id": "campaign-b",
+                "source_type": "csv",
+                "source_id": "row-7",
+            }
+        ) == ("campaign-b", "csv", "row-7")
+
+    def test_phone_conflict_sort_key_uses_phone_uniqueness_contract(self):
+        """Phone ordering matches the VoterPhone uniqueness contract."""
+        assert _phone_conflict_sort_key(
+            {
+                "campaign_id": "campaign-a",
+                "voter_id": "voter-2",
+                "value": "+15551234567",
+            }
+        ) == ("campaign-a", "voter-2", "+15551234567")
 
 
 class TestPhase60SharedImportSeam:
@@ -131,9 +188,7 @@ class TestPhase60SharedImportSeam:
         assert total_rows == 3
 
     @pytest.mark.asyncio
-    async def test_process_import_range_honors_absolute_row_bounds(
-        self, monkeypatch
-    ):
+    async def test_process_import_range_honors_absolute_row_bounds(self, monkeypatch):
         """Ranged processing skips before row_start and stops after row_end."""
         service = ImportService()
         job = MagicMock()
@@ -224,6 +279,8 @@ class TestPhase60SharedImportSeam:
                     "total_imported": 0,
                     "total_skipped": 0,
                     "total_phones_created": 0,
+                    "phone_manifest": [],
+                    "geometry_manifest": [],
                     "last_absolute_row": 3,
                 },
             )
@@ -231,6 +288,7 @@ class TestPhase60SharedImportSeam:
         assert job.total_rows == 2
         assert job.imported_rows == 2
         assert job.last_committed_row == 3
+        assert job.processing_started_at is not None
         assert commit_calls
 
     @pytest.mark.asyncio
@@ -298,6 +356,13 @@ class TestPhase60SharedImportSeam:
         chunk.status = ImportChunkStatus.QUEUED
         chunk.imported_rows = 0
         chunk.skipped_rows = 0
+        chunk.phones_created = 0
+        chunk.phone_task_status = None
+        chunk.geometry_task_status = None
+        chunk.phone_task_error = None
+        chunk.geometry_task_error = None
+        chunk.phone_manifest = []
+        chunk.geometry_manifest = []
         chunk.last_committed_row = 0
         chunk.error_report_key = None
         chunk.error_message = "old chunk error"
@@ -380,9 +445,10 @@ class TestPhase60SharedImportSeam:
             )
         ]
         assert merged_error_calls == [["chunk-error-key"]]
-        assert chunk.status == ImportChunkStatus.COMPLETED
+        assert chunk.status == ImportChunkStatus.PROCESSING
         assert chunk.imported_rows == 2
         assert chunk.skipped_rows == 0
+        assert chunk.phones_created == 0
         assert chunk.last_committed_row == 3
         assert chunk.error_report_key == "merged-chunk-errors.csv"
         assert chunk.error_message is None
@@ -395,10 +461,10 @@ class TestPhase60SharedImportSeam:
         assert commit_campaign_ids
 
     @pytest.mark.asyncio
-    async def test_process_import_range_persists_chunk_phone_counts(
+    async def test_process_import_range_persists_chunk_secondary_manifests(
         self, monkeypatch
     ):
-        """Chunk processing writes phones_created on the chunk, not the parent job."""
+        """Chunk primary processing persists deferred phone and geometry manifests."""
         service = ImportService()
         job = MagicMock()
         job.id = uuid.uuid4()
@@ -424,7 +490,13 @@ class TestPhase60SharedImportSeam:
         chunk.status = ImportChunkStatus.QUEUED
         chunk.imported_rows = 0
         chunk.skipped_rows = 0
-        chunk.phones_created = None
+        chunk.phones_created = 0
+        chunk.phone_task_status = None
+        chunk.geometry_task_status = None
+        chunk.phone_task_error = None
+        chunk.geometry_task_error = None
+        chunk.phone_manifest = []
+        chunk.geometry_manifest = []
         chunk.last_committed_row = 0
         chunk.error_report_key = None
         chunk.error_message = None
@@ -454,10 +526,14 @@ class TestPhase60SharedImportSeam:
             del batch, batch_num, campaign_id
             assert progress_target is chunk
             counters["total_imported"] += 2
-            counters["total_phones_created"] += 2
+            counters["phone_manifest"].extend(
+                [{"voter_id": "v-1", "value": "+15551234567"}]
+            )
+            counters["geometry_manifest"].extend(["v-1", "v-2"])
             progress_target.imported_rows = counters["total_imported"]
             progress_target.skipped_rows = counters["total_skipped"]
-            progress_target.phones_created = counters["total_phones_created"]
+            progress_target.phone_manifest = counters["phone_manifest"]
+            progress_target.geometry_manifest = counters["geometry_manifest"]
             progress_target.last_committed_row = counters["last_absolute_row"]
 
         monkeypatch.setattr(
@@ -481,8 +557,10 @@ class TestPhase60SharedImportSeam:
             chunk=chunk,
         )
 
-        assert chunk.phones_created == 2
+        assert chunk.phones_created == 0
         assert chunk.imported_rows == 2
+        assert chunk.phone_manifest == [{"voter_id": "v-1", "value": "+15551234567"}]
+        assert chunk.geometry_manifest == ["v-1", "v-2"]
         assert job.phones_created == 12
         assert job.imported_rows == 17
 
@@ -511,12 +589,18 @@ class TestPhase60SharedImportSeam:
         chunk.imported_rows = None
         chunk.skipped_rows = None
         chunk.phones_created = None
+        chunk.phone_task_status = None
+        chunk.geometry_task_status = None
+        chunk.phone_task_error = None
+        chunk.geometry_task_error = None
+        chunk.phone_manifest = None
+        chunk.geometry_manifest = None
         chunk.last_committed_row = None
         chunk.error_report_key = "old.csv"
         chunk.error_message = "old error"
         chunk.last_progress_at = None
 
-        captured_chunk_start: dict[str, int | None] = {}
+        captured_chunk_start: dict[str, object] = {}
 
         async def fake_stream_csv_lines(_storage, _file_key):
             for line in ("First_Name", "Ada"):
@@ -539,6 +623,7 @@ class TestPhase60SharedImportSeam:
             del _error_prefix, _batch_error_keys
             captured_chunk_start["phones_created"] = progress_target.phones_created
             captured_chunk_start["imported_rows"] = progress_target.imported_rows
+            captured_chunk_start["phone_manifest"] = progress_target.phone_manifest
             counters["total_imported"] += 1
             progress_target.imported_rows = counters["total_imported"]
             progress_target.skipped_rows = counters["total_skipped"]
@@ -565,7 +650,11 @@ class TestPhase60SharedImportSeam:
             chunk=chunk,
         )
 
-        assert captured_chunk_start == {"phones_created": 0, "imported_rows": 0}
+        assert captured_chunk_start == {
+            "phones_created": 0,
+            "imported_rows": 0,
+            "phone_manifest": [],
+        }
         assert job.phones_created == 9
 
     @pytest.mark.asyncio
@@ -642,9 +731,410 @@ class TestPhase60SharedImportSeam:
         assert job.status != "failed"
         assert commit_calls
 
+    @pytest.mark.asyncio
+    async def test_process_import_range_marks_chunk_cancelled_at_batch_boundary(
+        self, monkeypatch
+    ):
+        """Chunk imports stop after a committed batch when parent cancellation lands."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.campaign_id = uuid.uuid4()
+        job.field_mapping = {"First_Name": "first_name"}
+        job.source_type = "csv"
+        job.file_key = "imports/test.csv"
+        job.imported_rows = 0
+        job.skipped_rows = 0
+        job.total_rows = 0
+        job.phones_created = 0
+        job.last_committed_row = 0
+        job.cancelled_at = None
+
+        chunk = MagicMock()
+        chunk.id = uuid.uuid4()
+        chunk.status = ImportChunkStatus.QUEUED
+        chunk.imported_rows = 0
+        chunk.skipped_rows = 0
+        chunk.phones_created = 0
+        chunk.last_committed_row = 0
+        chunk.error_report_key = None
+        chunk.error_message = None
+        chunk.last_progress_at = None
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in ("First_Name", "Ada", "Grace"):
+                yield line
+
+        batch_calls: list[int] = []
+        commit_calls: list[str] = []
+
+        async def fake_process_single_batch(
+            batch,
+            batch_num,
+            _job,
+            campaign_id,
+            _session,
+            _storage,
+            _error_prefix,
+            _batch_error_keys,
+            counters,
+            *,
+            progress_target,
+        ):
+            del batch_num, _job, _session, _storage, _error_prefix, _batch_error_keys
+            batch_calls.append(len(batch))
+            counters["total_imported"] += len(batch)
+            progress_target.imported_rows = counters["total_imported"]
+            progress_target.skipped_rows = counters["total_skipped"]
+            progress_target.phones_created = counters["total_phones_created"]
+            progress_target.last_committed_row = counters["last_absolute_row"]
+            job.cancelled_at = object()
+            assert campaign_id == str(job.campaign_id)
+
+        async def fake_commit_and_restore_rls(_session, campaign_id):
+            commit_calls.append(campaign_id)
+
+        session = AsyncMock()
+        session.refresh = AsyncMock(side_effect=lambda model: model)
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+        monkeypatch.setattr(service, "_process_single_batch", fake_process_single_batch)
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            fake_commit_and_restore_rls,
+        )
+
+        await service.process_import_range(
+            job=job,
+            import_job_id=str(job.id),
+            session=session,
+            storage=MagicMock(),
+            campaign_id=str(job.campaign_id),
+            row_start=1,
+            row_end=2,
+            chunk=chunk,
+        )
+
+        assert batch_calls == [2]
+        assert chunk.status == ImportChunkStatus.CANCELLED
+        assert chunk.imported_rows == 2
+        assert chunk.last_committed_row == 2
+        assert chunk.error_message is None
+        assert commit_calls
+
+    @pytest.mark.asyncio
+    async def test_process_import_range_resumes_chunk_from_last_committed_row(
+        self, monkeypatch
+    ):
+        """Chunk retries skip committed rows and preserve cumulative counters."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.campaign_id = uuid.uuid4()
+        job.field_mapping = {"First_Name": "first_name"}
+        job.source_type = "csv"
+        job.file_key = "imports/test.csv"
+        job.imported_rows = 0
+        job.skipped_rows = 0
+        job.total_rows = 0
+        job.phones_created = 0
+        job.last_committed_row = 0
+        job.cancelled_at = None
+
+        chunk = MagicMock()
+        chunk.id = uuid.uuid4()
+        chunk.status = ImportChunkStatus.PROCESSING
+        chunk.imported_rows = 2
+        chunk.skipped_rows = 0
+        chunk.phones_created = 0
+        chunk.last_committed_row = 2
+        chunk.error_report_key = None
+        chunk.error_message = None
+        chunk.last_progress_at = None
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in ("First_Name", "Ada", "Grace", "Katherine", "Annie"):
+                yield line
+
+        processed_rows: list[list[str]] = []
+
+        async def fake_process_single_batch(
+            batch,
+            batch_num,
+            _job,
+            campaign_id,
+            _session,
+            _storage,
+            _error_prefix,
+            _batch_error_keys,
+            counters,
+            *,
+            progress_target,
+        ):
+            del batch_num, _job, _session, _storage, _error_prefix, _batch_error_keys
+            processed_rows.append([row["First_Name"] for row in batch])
+            counters["total_imported"] += len(batch)
+            progress_target.imported_rows = counters["total_imported"]
+            progress_target.skipped_rows = counters["total_skipped"]
+            progress_target.phones_created = counters["total_phones_created"]
+            progress_target.last_committed_row = counters["last_absolute_row"]
+            assert campaign_id == str(job.campaign_id)
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+        monkeypatch.setattr(service, "_process_single_batch", fake_process_single_batch)
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            AsyncMock(),
+        )
+
+        session = AsyncMock()
+        session.refresh = AsyncMock(side_effect=lambda model: model)
+
+        await service.process_import_range(
+            job=job,
+            import_job_id=str(job.id),
+            session=session,
+            storage=MagicMock(),
+            campaign_id=str(job.campaign_id),
+            row_start=1,
+            row_end=4,
+            chunk=chunk,
+        )
+
+        assert processed_rows == [["Katherine", "Annie"]]
+        assert chunk.imported_rows == 4
+        assert chunk.last_committed_row == 4
+        assert chunk.status == ImportChunkStatus.PROCESSING
+
     def test_import_status_exposes_completed_with_errors(self):
         """Partial-success finalization can target a durable terminal status."""
         assert ImportStatus.COMPLETED_WITH_ERRORS.value == "completed_with_errors"
+
+    @pytest.mark.asyncio
+    async def test_maybe_finalize_chunked_import_skips_non_terminal_chunks(
+        self, monkeypatch
+    ):
+        """Parent finalization waits until every chunk is terminal."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.status = ImportStatus.PROCESSING
+
+        monkeypatch.setattr(
+            service,
+            "_try_claim_chunk_finalization_lock",
+            AsyncMock(return_value=True),
+        )
+        monkeypatch.setattr(
+            service,
+            "_get_chunk_finalization_summary",
+            AsyncMock(
+                return_value=type(
+                    "Summary",
+                    (),
+                    {
+                        "total_chunks": 2,
+                        "terminal_chunks": 1,
+                        "completed_chunks": 1,
+                        "failed_chunks": 0,
+                        "cancelled_chunks": 0,
+                        "imported_rows": 4,
+                        "skipped_rows": 0,
+                        "phones_created": 1,
+                        "error_keys": [],
+                    },
+                )()
+            ),
+        )
+        merge_mock = AsyncMock()
+        monkeypatch.setattr(service, "_merge_error_files", merge_mock)
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            AsyncMock(),
+        )
+
+        session = AsyncMock()
+        finalized = await service.maybe_finalize_chunked_import(
+            session=session,
+            storage=MagicMock(),
+            job=job,
+            campaign_id=str(uuid.uuid4()),
+        )
+
+        assert finalized is False
+        assert job.status == ImportStatus.PROCESSING
+        merge_mock.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("completed", "failed", "expected_status"),
+        [
+            (1, 1, ImportStatus.COMPLETED_WITH_ERRORS),
+            (0, 2, ImportStatus.FAILED),
+            (2, 0, ImportStatus.COMPLETED),
+        ],
+    )
+    async def test_maybe_finalize_chunked_import_sets_parent_totals_and_status(
+        self, monkeypatch, completed, failed, expected_status
+    ):
+        """Locked fan-in derives parent status and totals from chunk rows."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.status = ImportStatus.PROCESSING
+
+        summary = type(
+            "Summary",
+            (),
+            {
+                "total_chunks": completed + failed,
+                "terminal_chunks": completed + failed,
+                "completed_chunks": completed,
+                "failed_chunks": failed,
+                "cancelled_chunks": 0,
+                "imported_rows": 9,
+                "skipped_rows": 3,
+                "phones_created": 2,
+                "error_keys": ["chunks/errors.csv"] if failed else [],
+            },
+        )()
+
+        monkeypatch.setattr(
+            service,
+            "_try_claim_chunk_finalization_lock",
+            AsyncMock(return_value=True),
+        )
+        monkeypatch.setattr(
+            service,
+            "_get_chunk_finalization_summary",
+            AsyncMock(return_value=summary),
+        )
+        merge_mock = AsyncMock()
+        monkeypatch.setattr(service, "_merge_error_files", merge_mock)
+        commit_mock = AsyncMock()
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            commit_mock,
+        )
+
+        campaign_id = str(uuid.uuid4())
+        finalized = await service.maybe_finalize_chunked_import(
+            session=AsyncMock(),
+            storage=MagicMock(),
+            job=job,
+            campaign_id=campaign_id,
+        )
+
+        assert finalized is True
+        assert job.imported_rows == 9
+        assert job.skipped_rows == 3
+        assert job.phones_created == 2
+        assert job.status == expected_status
+        if failed:
+            merge_mock.assert_awaited_once()
+            assert "error" in job.error_message.lower()
+        else:
+            merge_mock.assert_not_awaited()
+            assert job.error_message is None
+        commit_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_maybe_finalize_chunked_import_marks_parent_cancelled(
+        self, monkeypatch
+    ):
+        """Cancelled chunk sets fan in to a cancelled parent when user cancel won."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.status = ImportStatus.PROCESSING
+        job.cancelled_at = object()
+
+        summary = type(
+            "Summary",
+            (),
+            {
+                "total_chunks": 2,
+                "terminal_chunks": 2,
+                "completed_chunks": 1,
+                "failed_chunks": 0,
+                "cancelled_chunks": 1,
+                "imported_rows": 5,
+                "skipped_rows": 0,
+                "phones_created": 1,
+                "error_keys": [],
+            },
+        )()
+
+        monkeypatch.setattr(
+            service,
+            "_try_claim_chunk_finalization_lock",
+            AsyncMock(return_value=True),
+        )
+        monkeypatch.setattr(
+            service,
+            "_get_chunk_finalization_summary",
+            AsyncMock(return_value=summary),
+        )
+        monkeypatch.setattr(service, "_merge_error_files", AsyncMock())
+        commit_mock = AsyncMock()
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            commit_mock,
+        )
+
+        finalized = await service.maybe_finalize_chunked_import(
+            session=AsyncMock(),
+            storage=MagicMock(),
+            job=job,
+            campaign_id=str(uuid.uuid4()),
+        )
+
+        assert finalized is True
+        assert job.status == ImportStatus.CANCELLED
+        assert "cancelled" in job.error_message.lower()
+        commit_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_maybe_finalize_chunked_import_returns_when_lock_is_lost(
+        self, monkeypatch
+    ):
+        """Lock losers do not mutate the parent import."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.status = ImportStatus.PROCESSING
+        job.imported_rows = 0
+        job.skipped_rows = 0
+        job.phones_created = 0
+
+        monkeypatch.setattr(
+            service,
+            "_try_claim_chunk_finalization_lock",
+            AsyncMock(return_value=False),
+        )
+        summary_mock = AsyncMock()
+        monkeypatch.setattr(service, "_get_chunk_finalization_summary", summary_mock)
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            AsyncMock(),
+        )
+
+        finalized = await service.maybe_finalize_chunked_import(
+            session=AsyncMock(),
+            storage=MagicMock(),
+            job=job,
+            campaign_id=str(uuid.uuid4()),
+        )
+
+        assert finalized is False
+        assert job.status == ImportStatus.PROCESSING
+        summary_mock.assert_not_awaited()
 
 
 class TestProcessCsvBatch:
@@ -760,6 +1250,79 @@ class TestProcessCsvBatch:
         # Empty strings are excluded from extra_data
         assert "Empty" not in voter["extra_data"]
 
+    @pytest.mark.asyncio
+    async def test_process_csv_batch_orders_voters_by_conflict_key(
+        self, service, campaign_id, monkeypatch
+    ):
+        """Voter upserts use deterministic conflict-key ordering, not input order."""
+        captured_voter_values: list[dict] = []
+
+        class FakeInsert:
+            def __init__(self, values):
+                self._values = values
+                self.excluded = type(
+                    "Excluded",
+                    (),
+                    {"__getattr__": lambda _self, name: name},
+                )()
+
+            def values(self, values):
+                captured_voter_values.extend(values)
+                self._values = values
+                return self
+
+            def on_conflict_do_update(self, **kwargs):
+                del kwargs
+                return self
+
+            def returning(self, *_args, **_kwargs):
+                return self
+
+        monkeypatch.setattr(
+            "app.services.import_service.insert",
+            lambda _model: FakeInsert([]),
+        )
+        monkeypatch.setattr(
+            service,
+            "apply_field_mapping",
+            lambda *_args, **_kwargs: [
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-b",
+                    }
+                },
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-a",
+                    }
+                },
+            ],
+        )
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=MagicMock(all=lambda: []))
+        session.flush = AsyncMock()
+
+        imported, errors, phones = await service.process_csv_batch(
+            [{"Source": "row-b"}, {"Source": "row-a"}],
+            {"Source": "source_id"},
+            campaign_id,
+            "csv",
+            session,
+        )
+
+        assert imported == 2
+        assert errors == []
+        assert phones == 0
+        assert [row["source_id"] for row in captured_voter_values] == [
+            "row-a",
+            "row-b",
+        ]
+
 
 class TestUpsertSetClause:
     """Tests for the fixed SET clause and RETURNING in process_csv_batch."""
@@ -846,6 +1409,79 @@ class TestUpsertSetClause:
         compiled = captured_stmts[0].compile(dialect=pg_dialect())
         sql_text = str(compiled)
         assert "RETURNING" in sql_text.upper()
+
+    @pytest.mark.asyncio
+    async def test_process_csv_batch_orders_voters_by_conflict_key(
+        self, service, campaign_id, monkeypatch
+    ):
+        """Voter upserts use deterministic conflict-key ordering, not input order."""
+        captured_voter_values: list[dict] = []
+
+        class FakeInsert:
+            def __init__(self, values):
+                self._values = values
+                self.excluded = type(
+                    "Excluded",
+                    (),
+                    {"__getattr__": lambda _self, name: name},
+                )()
+
+            def values(self, values):
+                captured_voter_values.extend(values)
+                self._values = values
+                return self
+
+            def on_conflict_do_update(self, **kwargs):
+                del kwargs
+                return self
+
+            def returning(self, *_args, **_kwargs):
+                return self
+
+        monkeypatch.setattr(
+            "app.services.import_service.insert",
+            lambda _model: FakeInsert([]),
+        )
+        monkeypatch.setattr(
+            service,
+            "apply_field_mapping",
+            lambda *_args, **_kwargs: [
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-b",
+                    }
+                },
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-a",
+                    }
+                },
+            ],
+        )
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=MagicMock(all=lambda: []))
+        session.flush = AsyncMock()
+
+        imported, errors, phones = await service.process_csv_batch(
+            [{"Source": "row-b"}, {"Source": "row-a"}],
+            {"Source": "source_id"},
+            campaign_id,
+            "csv",
+            session,
+        )
+
+        assert imported == 2
+        assert errors == []
+        assert phones == 0
+        assert [row["source_id"] for row in captured_voter_values] == [
+            "row-a",
+            "row-b",
+        ]
 
     @pytest.mark.asyncio
     async def test_process_csv_batch_returns_three_tuple(self, service, campaign_id):
@@ -1130,3 +1766,111 @@ class TestPhoneCreationInBatch:
             else ""
         )
         assert "IS_PRIMARY" not in on_conflict_part
+
+    @pytest.mark.asyncio
+    async def test_process_csv_batch_orders_phone_upserts_deterministically(
+        self, service, campaign_id, monkeypatch
+    ):
+        """Phone rows are ordered on their uniqueness contract before upsert."""
+        voter_ids = [uuid.uuid4(), uuid.uuid4()]
+        captured_phone_values: list[dict] = []
+
+        class FakeInsert:
+            def __init__(self, values):
+                self._values = values
+                self.excluded = type(
+                    "Excluded",
+                    (),
+                    {"__getattr__": lambda _self, name: name},
+                )()
+
+            def values(self, values):
+                if values and "voter_id" in values[0]:
+                    captured_phone_values.extend(values)
+                self._values = values
+                return self
+
+            def on_conflict_do_update(self, **kwargs):
+                del kwargs
+                return self
+
+            def returning(self, *_args, **_kwargs):
+                return self
+
+        monkeypatch.setattr(
+            "app.services.import_service.insert",
+            lambda _model: FakeInsert([]),
+        )
+        monkeypatch.setattr(
+            service,
+            "apply_field_mapping",
+            lambda *_args, **_kwargs: [
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-b",
+                    },
+                    "phone_value": "5551239999",
+                },
+                {
+                    "voter": {
+                        "campaign_id": campaign_id,
+                        "source_type": "csv",
+                        "source_id": "row-a",
+                    },
+                    "phone_value": "5551234567",
+                },
+            ],
+        )
+
+        session = AsyncMock()
+        session.execute = AsyncMock(
+            side_effect=[
+                MagicMock(all=lambda: [(voter_ids[1],), (voter_ids[0],)]),
+                MagicMock(),
+                MagicMock(),
+            ]
+        )
+        session.flush = AsyncMock()
+
+        imported, errors, phones_created = await service.process_csv_batch(
+            [{"Source": "row-b"}, {"Source": "row-a"}],
+            {"Source": "source_id"},
+            campaign_id,
+            "csv",
+            session,
+        )
+
+        assert imported == 2
+        assert errors == []
+        assert phones_created == 2
+        assert captured_phone_values == sorted(
+            captured_phone_values,
+            key=_phone_conflict_sort_key,
+        )
+
+
+@pytest.mark.asyncio
+async def test_storage_service_get_object_size_reads_content_length(monkeypatch):
+    """Object metadata lookup returns S3 ContentLength as an integer."""
+    storage = StorageService()
+    head_object = AsyncMock(return_value={"ContentLength": "12345"})
+
+    class FakeClient:
+        async def __aenter__(self):
+            return MagicMock(head_object=head_object)
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    monkeypatch.setattr(storage.session, "client", lambda **_: FakeClient())
+
+    size = await storage.get_object_size("imports/file.csv")
+
+    assert size == 12345
+    head_object.assert_awaited_once_with(
+        Bucket=settings.s3_bucket,
+        Key="imports/file.csv",
+    )

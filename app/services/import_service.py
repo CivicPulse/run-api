@@ -14,11 +14,12 @@ import math
 import re
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from loguru import logger
 from rapidfuzz import fuzz, process
-from sqlalchemy import func, text
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
@@ -27,11 +28,13 @@ from app.db.rls import commit_and_restore_rls, set_campaign_context
 from app.models.import_job import (
     ImportChunk,
     ImportChunkStatus,
+    ImportChunkTaskStatus,
     ImportJob,
     ImportStatus,
 )
 from app.models.voter import Voter
 from app.models.voter_contact import VoterPhone
+from app.services.import_recovery import advisory_lock_key
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -415,6 +418,34 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
     ],
 }
 
+TERMINAL_IMPORT_STATUSES = {
+    ImportStatus.COMPLETED,
+    ImportStatus.COMPLETED_WITH_ERRORS,
+    ImportStatus.FAILED,
+    ImportStatus.CANCELLED,
+}
+TERMINAL_CHUNK_STATUSES = {
+    ImportChunkStatus.COMPLETED,
+    ImportChunkStatus.FAILED,
+    ImportChunkStatus.CANCELLED,
+}
+
+
+@dataclass(slots=True)
+class ChunkFinalizationSummary:
+    """Aggregate view of a parent import's chunk state."""
+
+    total_chunks: int
+    terminal_chunks: int
+    completed_chunks: int
+    failed_chunks: int
+    cancelled_chunks: int
+    imported_rows: int
+    skipped_rows: int
+    phones_created: int
+    error_keys: list[str]
+
+
 # Build reverse lookup: alias -> canonical field name
 _ALIAS_LIST: list[str] = []
 _ALIAS_TO_FIELD: dict[str, str] = {}
@@ -635,15 +666,25 @@ def plan_chunk_ranges(
     total_rows: int,
     mapped_column_count: int,
     chunk_size_default: int,
+    file_size_bytes: int | None = None,
 ) -> list[tuple[int, int]]:
     """Plan deterministic 1-based inclusive chunk ranges."""
     if total_rows <= 0:
         return []
 
-    chunk_rows = calculate_effective_rows_per_write(
+    bind_limited_rows = calculate_effective_rows_per_write(
         mapped_column_count=mapped_column_count,
         target_rows=chunk_size_default,
     )
+    chunk_rows = bind_limited_rows
+    if file_size_bytes is not None:
+        average_bytes_per_row = max(file_size_bytes // max(total_rows, 1), 1)
+        target_chunk_bytes = 2_000_000
+        file_limited_rows = max(1, target_chunk_bytes // average_bytes_per_row)
+        chunk_rows = max(
+            1,
+            min(bind_limited_rows, file_limited_rows, chunk_size_default),
+        )
     return [
         (row_start, min(row_start + chunk_rows - 1, total_rows))
         for row_start in range(1, total_rows + 1, chunk_rows)
@@ -655,6 +696,24 @@ def should_use_serial_import(total_rows: int | None, serial_threshold: int) -> b
     if total_rows is None or not isinstance(total_rows, int):
         return True
     return total_rows <= serial_threshold
+
+
+def _voter_conflict_sort_key(voter: dict) -> tuple[str, str, str]:
+    """Order voter upserts by their conflict target to reduce lock inversion."""
+    return (
+        str(voter.get("campaign_id") or ""),
+        str(voter.get("source_type") or ""),
+        str(voter.get("source_id") or ""),
+    )
+
+
+def _phone_conflict_sort_key(phone_record: dict) -> tuple[str, str, str]:
+    """Order phone upserts by their uniqueness contract."""
+    return (
+        str(phone_record.get("campaign_id") or ""),
+        str(phone_record.get("voter_id") or ""),
+        str(phone_record.get("value") or ""),
+    )
 
 
 def suggest_field_mapping(csv_columns: list[str]) -> dict[str, dict]:
@@ -802,6 +861,14 @@ class ImportService:
     def _mark_progress(job: ImportJob) -> None:
         """Persist the latest durable progress timestamp on the import job."""
         job.last_progress_at = utcnow()
+
+    @staticmethod
+    def _normalize_task_status(
+        value: ImportChunkTaskStatus | str | None,
+    ) -> ImportChunkTaskStatus | None:
+        if value is None or isinstance(value, ImportChunkTaskStatus):
+            return value
+        return ImportChunkTaskStatus(value)
 
     def detect_columns(self, file_content: bytes) -> list[str]:
         """Detect CSV column headers from file content.
@@ -1026,6 +1093,13 @@ class ImportService:
         phones_created = 0
 
         if valid_voters:
+            ordered_pairs = sorted(
+                zip(valid_voters, phone_values, strict=False),
+                key=lambda pair: _voter_conflict_sort_key(pair[0]),
+            )
+            valid_voters = [pair[0] for pair in ordered_pairs]
+            phone_values = [pair[1] for pair in ordered_pairs]
+
             # Build SET clause from Voter model columns (not from row keys)
             stmt = insert(Voter).values(valid_voters)
             update_cols = {
@@ -1087,6 +1161,7 @@ class ImportService:
                         )
 
             if phone_records:
+                phone_records.sort(key=_phone_conflict_sort_key)
                 phone_stmt = insert(VoterPhone).values(phone_records)
                 phone_stmt = phone_stmt.on_conflict_do_update(
                     constraint="uq_voter_phone_campaign_voter_value",
@@ -1103,6 +1178,190 @@ class ImportService:
             phones_created = len(phone_records)
 
         return len(valid_voters), errors, phones_created
+
+    async def process_csv_batch_primary(
+        self,
+        rows: list[dict[str, str]],
+        field_mapping: dict[str, str | None],
+        campaign_id: str,
+        source_type: str,
+        session: AsyncSession,
+    ) -> tuple[int, list[dict], list[dict], list[str]]:
+        """Process only the voter upsert and emit durable secondary work items."""
+        mapped_results = self.apply_field_mapping(
+            rows, field_mapping, campaign_id, source_type
+        )
+
+        valid_voters: list[dict] = []
+        phone_values: list[str | None] = []
+        errors: list[dict] = []
+
+        for i, result in enumerate(mapped_results):
+            if result.get("error"):
+                errors.append(
+                    {
+                        "row": rows[i] if i < len(rows) else {},
+                        "reason": result["error"],
+                    }
+                )
+            else:
+                voter = result["voter"]
+                if not voter.get("source_id"):
+                    voter["source_id"] = str(uuid.uuid4())
+                phone_values.append(result.get("phone_value"))
+                valid_voters.append(voter)
+
+        if not valid_voters:
+            return 0, errors, [], []
+
+        ordered_pairs = sorted(
+            zip(valid_voters, phone_values, strict=False),
+            key=lambda pair: _voter_conflict_sort_key(pair[0]),
+        )
+        valid_voters = [pair[0] for pair in ordered_pairs]
+        phone_values = [pair[1] for pair in ordered_pairs]
+
+        stmt = insert(Voter).values(valid_voters)
+        update_cols = {
+            col.name: getattr(stmt.excluded, col.name)
+            for col in Voter.__table__.columns
+            if col.name not in _UPSERT_EXCLUDE
+        }
+        update_cols["updated_at"] = func.now()
+        update_cols["latitude"] = func.coalesce(
+            stmt.excluded.latitude, Voter.__table__.c.latitude
+        )
+        update_cols["longitude"] = func.coalesce(
+            stmt.excluded.longitude, Voter.__table__.c.longitude
+        )
+        update_cols.pop("geom", None)
+
+        result = await session.execute(
+            stmt.on_conflict_do_update(
+                index_elements=["campaign_id", "source_type", "source_id"],
+                set_=update_cols,
+            ).returning(Voter.id)
+        )
+        voter_ids = [str(row[0]) for row in result.all()]
+        await session.flush()
+
+        phone_manifest: list[dict] = []
+        geometry_manifest: list[str] = []
+        for index, voter in enumerate(valid_voters):
+            if index >= len(voter_ids):
+                continue
+            voter_id = voter_ids[index]
+            phone_raw = phone_values[index]
+            if phone_raw:
+                normalized = normalize_phone(phone_raw)
+                if normalized is not None:
+                    phone_manifest.append(
+                        {
+                            "campaign_id": voter["campaign_id"],
+                            "voter_id": voter_id,
+                            "value": normalized,
+                            "type": "cell",
+                            "source": "import",
+                            "is_primary": True,
+                        }
+                    )
+            if voter.get("latitude") is not None and voter.get("longitude") is not None:
+                geometry_manifest.append(voter_id)
+
+        return len(valid_voters), errors, phone_manifest, geometry_manifest
+
+    async def _apply_phone_manifest(
+        self, session: AsyncSession, phone_manifest: list[dict]
+    ) -> int:
+        """Bulk apply deferred phone work for one chunk."""
+        if not phone_manifest:
+            return 0
+        phone_records = sorted(phone_manifest, key=_phone_conflict_sort_key)
+        phone_stmt = insert(VoterPhone).values(phone_records)
+        phone_stmt = phone_stmt.on_conflict_do_update(
+            constraint="uq_voter_phone_campaign_voter_value",
+            set_={
+                "type": phone_stmt.excluded.type,
+                "source": phone_stmt.excluded.source,
+                "updated_at": func.now(),
+            },
+        )
+        await session.execute(phone_stmt)
+        await session.flush()
+        return len(phone_records)
+
+    async def _apply_geometry_manifest(
+        self, session: AsyncSession, geometry_manifest: list[str]
+    ) -> None:
+        """Bulk apply deferred geometry backfill for one chunk."""
+        if not geometry_manifest:
+            return
+        await session.execute(
+            text(
+                "UPDATE voters"
+                " SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)"
+                " WHERE id = ANY(:ids)"
+                " AND latitude IS NOT NULL"
+                " AND longitude IS NOT NULL"
+            ),
+            {"ids": geometry_manifest},
+        )
+
+    async def maybe_complete_chunk_after_secondary_tasks(
+        self,
+        *,
+        session: AsyncSession,
+        storage: StorageService,
+        job: ImportJob,
+        chunk: ImportChunk,
+        campaign_id: str,
+    ) -> bool:
+        """Mark a chunk terminal only after secondary work reaches terminal state."""
+        phone_status = self._normalize_task_status(chunk.phone_task_status)
+        geometry_status = self._normalize_task_status(chunk.geometry_task_status)
+        terminal_statuses = {
+            ImportChunkTaskStatus.COMPLETED,
+            ImportChunkTaskStatus.FAILED,
+            ImportChunkTaskStatus.CANCELLED,
+        }
+        if (
+            phone_status not in terminal_statuses
+            or geometry_status not in terminal_statuses
+        ):
+            return False
+
+        if chunk.status in TERMINAL_CHUNK_STATUSES:
+            return await self.maybe_finalize_chunked_import(
+                session=session,
+                storage=storage,
+                job=job,
+                campaign_id=campaign_id,
+            )
+
+        if (
+            phone_status == ImportChunkTaskStatus.FAILED
+            or geometry_status == ImportChunkTaskStatus.FAILED
+        ):
+            chunk.status = ImportChunkStatus.FAILED
+            chunk.error_message = chunk.phone_task_error or chunk.geometry_task_error
+        elif job.cancelled_at is not None and (
+            phone_status == ImportChunkTaskStatus.CANCELLED
+            or geometry_status == ImportChunkTaskStatus.CANCELLED
+        ):
+            chunk.status = ImportChunkStatus.CANCELLED
+            chunk.error_message = None
+        else:
+            chunk.status = ImportChunkStatus.COMPLETED
+            chunk.error_message = None
+
+        self._mark_progress(chunk)
+        await commit_and_restore_rls(session, campaign_id)
+        return await self.maybe_finalize_chunked_import(
+            session=session,
+            storage=storage,
+            job=job,
+            campaign_id=campaign_id,
+        )
 
     @staticmethod
     def _build_error_csv(errors: list[dict]) -> bytes:
@@ -1128,7 +1387,7 @@ class ImportService:
         self,
         storage: StorageService,
         batch_error_keys: list[str],
-        job: ImportJob,
+        job: ImportJob | ImportChunk,
         import_job_id: str,
     ) -> None:
         """Merge per-batch error CSVs into a single error report.
@@ -1155,7 +1414,12 @@ class ImportService:
                 if len(lines) > 1 and lines[1]:
                     merged_buf.write(lines[1])
 
-        final_error_key = f"imports/{job.campaign_id}/{import_job_id}/errors.csv"
+        if isinstance(job, ImportChunk):
+            final_error_key = (
+                f"imports/{job.campaign_id}/{import_job_id}/chunks/{job.id}/errors.csv"
+            )
+        else:
+            final_error_key = f"imports/{job.campaign_id}/{import_job_id}/errors.csv"
         await storage.upload_bytes(
             final_error_key,
             merged_buf.getvalue().encode("utf-8"),
@@ -1165,6 +1429,151 @@ class ImportService:
 
         # Clean up per-batch files
         await storage.delete_objects(batch_error_keys)
+
+    async def _try_claim_chunk_finalization_lock(
+        self,
+        session: AsyncSession,
+        import_job_id: uuid.UUID,
+    ) -> bool:
+        """Claim a short-lived xact advisory lock for chunk fan-in."""
+        result = await session.execute(
+            text("SELECT pg_try_advisory_xact_lock(:lock_key)"),
+            {"lock_key": -advisory_lock_key(import_job_id)},
+        )
+        scalar = result.scalar()
+        return bool(await scalar if hasattr(scalar, "__await__") else scalar)
+
+    async def _get_chunk_finalization_summary(
+        self,
+        session: AsyncSession,
+        import_job_id: uuid.UUID,
+    ) -> ChunkFinalizationSummary:
+        """Read aggregate chunk state for one parent import."""
+        summary_result = await session.execute(
+            select(
+                func.count(ImportChunk.id),
+                func.count(ImportChunk.id).filter(
+                    ImportChunk.status.in_(TERMINAL_CHUNK_STATUSES)
+                ),
+                func.count(ImportChunk.id).filter(
+                    ImportChunk.status == ImportChunkStatus.COMPLETED
+                ),
+                func.count(ImportChunk.id).filter(
+                    ImportChunk.status == ImportChunkStatus.FAILED
+                ),
+                func.count(ImportChunk.id).filter(
+                    ImportChunk.status == ImportChunkStatus.CANCELLED
+                ),
+                func.coalesce(func.sum(ImportChunk.imported_rows), 0),
+                func.coalesce(func.sum(ImportChunk.skipped_rows), 0),
+                func.coalesce(func.sum(ImportChunk.phones_created), 0),
+            ).where(ImportChunk.import_job_id == import_job_id)
+        )
+        row = summary_result.one()
+        error_key_rows = await session.execute(
+            select(ImportChunk.error_report_key).where(
+                ImportChunk.import_job_id == import_job_id,
+                ImportChunk.error_report_key.is_not(None),
+            )
+        )
+        error_keys = [key for key in error_key_rows.scalars().all() if key]
+        return ChunkFinalizationSummary(
+            total_chunks=int(row[0] or 0),
+            terminal_chunks=int(row[1] or 0),
+            completed_chunks=int(row[2] or 0),
+            failed_chunks=int(row[3] or 0),
+            cancelled_chunks=int(row[4] or 0),
+            imported_rows=int(row[5] or 0),
+            skipped_rows=int(row[6] or 0),
+            phones_created=int(row[7] or 0),
+            error_keys=error_keys,
+        )
+
+    def _determine_chunked_parent_status(
+        self,
+        job: ImportJob,
+        summary: ChunkFinalizationSummary,
+    ) -> ImportStatus:
+        """Map terminal chunk outcomes to one parent terminal status."""
+        if (
+            job.cancelled_at is not None
+            and summary.cancelled_chunks > 0
+            and summary.failed_chunks == 0
+        ):
+            return ImportStatus.CANCELLED
+        unsuccessful_chunks = summary.failed_chunks + summary.cancelled_chunks
+        if summary.completed_chunks > 0 and unsuccessful_chunks > 0:
+            return ImportStatus.COMPLETED_WITH_ERRORS
+        if unsuccessful_chunks > 0 and summary.completed_chunks == 0:
+            return ImportStatus.FAILED
+        return ImportStatus.COMPLETED
+
+    def _build_chunked_parent_error_message(
+        self,
+        summary: ChunkFinalizationSummary,
+        status: ImportStatus,
+    ) -> str | None:
+        """Create the parent summary error message for chunk fan-in."""
+        unsuccessful_chunks = summary.failed_chunks + summary.cancelled_chunks
+        if status == ImportStatus.CANCELLED:
+            return (
+                f"Import cancelled after {summary.completed_chunks} of "
+                f"{summary.total_chunks} chunks completed."
+            )
+        if status == ImportStatus.COMPLETED_WITH_ERRORS:
+            return (
+                f"Import completed with errors: {unsuccessful_chunks} of "
+                f"{summary.total_chunks} chunks failed. See merged error report."
+            )
+        if status == ImportStatus.FAILED:
+            return (
+                f"Import failed: all {summary.total_chunks} chunks failed. "
+                "See merged error report for row-level details."
+            )
+        return None
+
+    async def maybe_finalize_chunked_import(
+        self,
+        *,
+        session: AsyncSession,
+        storage: StorageService,
+        job: ImportJob,
+        campaign_id: str,
+    ) -> bool:
+        """Finalize a chunked parent import exactly once when all chunks terminate."""
+        if job.status in TERMINAL_IMPORT_STATUSES:
+            return False
+
+        if not await self._try_claim_chunk_finalization_lock(session, job.id):
+            return False
+
+        await session.refresh(job)
+        if job.status in TERMINAL_IMPORT_STATUSES:
+            return False
+
+        summary = await self._get_chunk_finalization_summary(session, job.id)
+        if summary.total_chunks == 0 or summary.terminal_chunks != summary.total_chunks:
+            return False
+
+        status = self._determine_chunked_parent_status(job, summary)
+        if summary.error_keys:
+            await self._merge_error_files(
+                storage=storage,
+                batch_error_keys=summary.error_keys,
+                job=job,
+                import_job_id=str(job.id),
+            )
+        else:
+            job.error_report_key = None
+
+        job.imported_rows = summary.imported_rows
+        job.skipped_rows = summary.skipped_rows
+        job.phones_created = summary.phones_created
+        job.error_message = self._build_chunked_parent_error_message(summary, status)
+        job.status = status
+        self._mark_progress(job)
+        await commit_and_restore_rls(session, campaign_id)
+        return True
 
     async def _process_single_batch(
         self,
@@ -1186,13 +1595,30 @@ class ImportService:
         """
         is_chunk_target = isinstance(progress_target, ImportChunk)
         try:
-            imported, errors, phones = await self.process_csv_batch(
-                batch,
-                job.field_mapping,
-                campaign_id,
-                job.source_type,
-                session,
-            )
+            if is_chunk_target:
+                (
+                    imported,
+                    errors,
+                    phone_manifest,
+                    geometry_manifest,
+                ) = await self.process_csv_batch_primary(
+                    batch,
+                    job.field_mapping,
+                    campaign_id,
+                    job.source_type,
+                    session,
+                )
+                phones = 0
+                counters["phone_manifest"].extend(phone_manifest)
+                counters["geometry_manifest"].extend(geometry_manifest)
+            else:
+                imported, errors, phones = await self.process_csv_batch(
+                    batch,
+                    job.field_mapping,
+                    campaign_id,
+                    job.source_type,
+                    session,
+                )
             counters["total_imported"] += imported
             counters["total_skipped"] += len(errors)
             counters["total_phones_created"] += phones
@@ -1209,6 +1635,8 @@ class ImportService:
                 progress_target.imported_rows = counters["total_imported"]
                 progress_target.skipped_rows = counters["total_skipped"]
                 progress_target.phones_created = counters["total_phones_created"]
+                progress_target.phone_manifest = counters["phone_manifest"]
+                progress_target.geometry_manifest = counters["geometry_manifest"]
                 progress_target.last_committed_row = counters["last_absolute_row"]
                 self._mark_progress(progress_target)
             else:
@@ -1263,6 +1691,8 @@ class ImportService:
             if is_chunk_target:
                 progress_target.skipped_rows = counters["total_skipped"]
                 progress_target.phones_created = counters["total_phones_created"]
+                progress_target.phone_manifest = counters["phone_manifest"]
+                progress_target.geometry_manifest = counters["geometry_manifest"]
                 progress_target.last_committed_row = counters["last_absolute_row"]
                 self._mark_progress(progress_target)
             else:
@@ -1306,6 +1736,12 @@ class ImportService:
                 progress_target.imported_rows = 0
                 progress_target.skipped_rows = 0
                 progress_target.phones_created = 0
+                progress_target.phone_task_status = ImportChunkTaskStatus.PENDING
+                progress_target.geometry_task_status = ImportChunkTaskStatus.PENDING
+                progress_target.phone_task_error = None
+                progress_target.geometry_task_error = None
+                progress_target.phone_manifest = []
+                progress_target.geometry_manifest = []
                 progress_target.last_committed_row = 0
                 progress_target.error_report_key = None
                 progress_target.error_message = None
@@ -1316,6 +1752,8 @@ class ImportService:
                 job.skipped_rows = 0
                 job.total_rows = 0
                 job.last_committed_row = 0
+                if getattr(job, "processing_started_at", None) is None:
+                    job.processing_started_at = utcnow()
                 job.error_message = None
                 job.orphaned_at = None
                 job.orphaned_reason = None
@@ -1334,6 +1772,7 @@ class ImportService:
         batch_num = 0
         absolute_row_number = 0
         batch_error_keys: list[str] = []
+        chunk_cancelled = bool(is_chunk_target and job.cancelled_at is not None)
         if is_chunk_target:
             error_prefix = (
                 f"imports/{job.campaign_id}/{import_job_id}/chunks/{chunk.id}/errors/"
@@ -1354,8 +1793,21 @@ class ImportService:
                 if is_chunk_target
                 else job.phones_created or 0
             ),
+            "phone_manifest": list(progress_target.phone_manifest or [])
+            if is_chunk_target
+            else [],
+            "geometry_manifest": list(progress_target.geometry_manifest or [])
+            if is_chunk_target
+            else [],
             "last_absolute_row": progress_target.last_committed_row or 0,
         }
+
+        if chunk_cancelled:
+            progress_target.status = ImportChunkStatus.CANCELLED
+            progress_target.error_message = None
+            self._mark_progress(progress_target)
+            await commit_and_restore_rls(session, campaign_id)
+            return
 
         try:
             async for line in stream_csv_lines(storage, job.file_key):
@@ -1391,15 +1843,15 @@ class ImportService:
                     )
                     batch = []
 
-                    if not is_chunk_target:
-                        await session.refresh(job)
-                        if job.cancelled_at is not None:
-                            logger.info(
-                                "Import {} cancelled after batch {}",
-                                import_job_id,
-                                batch_num,
-                            )
-                            break
+                    await session.refresh(job)
+                    if job.cancelled_at is not None:
+                        logger.info(
+                            "Import {} cancelled after batch {}",
+                            import_job_id,
+                            batch_num,
+                        )
+                        chunk_cancelled = is_chunk_target
+                        break
         except UnicodeDecodeError:
             if is_chunk_target:
                 progress_target.status = ImportChunkStatus.FAILED
@@ -1441,6 +1893,9 @@ class ImportService:
                     self._mark_progress(progress_target)
                     await commit_and_restore_rls(session, campaign_id)
                 raise
+            await session.refresh(job)
+            if is_chunk_target and job.cancelled_at is not None:
+                chunk_cancelled = True
 
         if batch_error_keys:
             await self._merge_error_files(
@@ -1448,7 +1903,10 @@ class ImportService:
             )
 
         if is_chunk_target:
-            progress_target.status = ImportChunkStatus.COMPLETED
+            if chunk_cancelled:
+                progress_target.status = ImportChunkStatus.CANCELLED
+                progress_target.phone_task_status = ImportChunkTaskStatus.CANCELLED
+                progress_target.geometry_task_status = ImportChunkTaskStatus.CANCELLED
             progress_target.error_message = None
             self._mark_progress(progress_target)
             await commit_and_restore_rls(session, campaign_id)
@@ -1471,7 +1929,9 @@ class ImportService:
             (
                 "chunk-complete"
                 if is_chunk_target
-                else "cancelled" if job.cancelled_at is not None else "complete"
+                else "cancelled"
+                if job.cancelled_at is not None
+                else "complete"
             ),
             counters["total_imported"],
             counters["total_phones_created"],

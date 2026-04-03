@@ -14,7 +14,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.models.import_job import ImportChunkStatus
+from app.models.import_job import ImportChunkStatus, ImportChunkTaskStatus
 
 
 @pytest.fixture
@@ -77,6 +77,14 @@ def test_no_broker_imports():
     assert "broker.task" not in source, (
         "import_task.py must not use broker.task decorator"
     )
+
+
+def test_successor_claim_uses_skip_locked():
+    """Successor promotion must use skip_locked to avoid double-dispatch."""
+    source = inspect.getsource(
+        __import__("app.tasks.import_task", fromlist=["import_task"])
+    )
+    assert ".with_for_update(skip_locked=True)" in source
 
 
 async def _run_process_import_with_total_rows(
@@ -407,6 +415,8 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
     mock_service = MagicMock()
     mock_service.count_csv_data_rows = AsyncMock(return_value=12000)
     mock_service.process_import_file = AsyncMock()
+    mock_storage = MagicMock()
+    mock_storage.get_object_size = AsyncMock(return_value=24_000_000)
     mock_defer = AsyncMock()
     planned_ranges = [(1, 4000), (4001, 8000), (8001, 12000)]
     added_chunks: list[object] = []
@@ -444,9 +454,10 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
             "app.tasks.import_task.ImportService",
             return_value=mock_service,
         ),
-        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.StorageService", return_value=mock_storage),
         patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
         patch("app.tasks.import_task.settings.import_chunk_size_default", 4000),
+        patch("app.tasks.import_task.settings.import_max_chunks_per_import", 2),
         patch(
             "app.tasks.import_task.plan_chunk_ranges",
             return_value=planned_ranges,
@@ -461,16 +472,22 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
         total_rows=12000,
         mapped_column_count=2,
         chunk_size_default=4000,
+        file_size_bytes=24_000_000,
     )
     assert [
         (chunk.row_start, chunk.row_end) for chunk in added_chunks
     ] == planned_ranges
-    assert all(chunk.status == ImportChunkStatus.QUEUED for chunk in added_chunks)
+    assert [chunk.status for chunk in added_chunks] == [
+        ImportChunkStatus.QUEUED,
+        ImportChunkStatus.QUEUED,
+        ImportChunkStatus.PENDING,
+    ]
     assert [chunk.import_job_id for chunk in added_chunks] == [mock_job.id] * 3
     assert [chunk.campaign_id for chunk in added_chunks] == [mock_job.campaign_id] * 3
     assert [call.args for call in mock_defer.await_args_list] == [
-        (str(chunk_id), campaign_id) for chunk_id in generated_chunk_ids
+        (str(chunk_id), campaign_id) for chunk_id in generated_chunk_ids[:2]
     ]
+    mock_storage.get_object_size.assert_awaited_once_with("imports/file.csv")
     mock_service.process_import_file.assert_not_awaited()
 
 
@@ -527,6 +544,8 @@ async def test_process_import_fails_fast_when_chunk_orchestration_fails(
     else:
         mock_service.count_csv_data_rows = AsyncMock(return_value=9000)
     mock_service.process_import_file = AsyncMock()
+    mock_storage = MagicMock()
+    mock_storage.get_object_size = AsyncMock(return_value=9_000_000)
 
     mock_defer = AsyncMock()
     if failure_target == "defer_async":
@@ -554,7 +573,7 @@ async def test_process_import_fails_fast_when_chunk_orchestration_fails(
             "app.tasks.import_task.ImportService",
             return_value=mock_service,
         ),
-        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.StorageService", return_value=mock_storage),
         patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
         patch(
             "app.tasks.import_task.plan_chunk_ranges",
@@ -964,6 +983,7 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
     job.skipped_rows = 2
     job.total_rows = 100
     job.last_progress_at = None
+    job.cancelled_at = None
 
     chunk = MagicMock()
     chunk.id = uuid.UUID(chunk_id)
@@ -976,6 +996,10 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
     chunk.last_committed_row = 0
     chunk.error_message = "old error"
     chunk.last_progress_at = None
+    chunk.phone_manifest = []
+    chunk.geometry_manifest = []
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
 
     session = AsyncMock()
 
@@ -993,6 +1017,11 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
     session.get = AsyncMock(side_effect=fake_get)
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
+    no_pending_scalars = MagicMock()
+    no_pending_scalars.first.return_value = None
+    no_pending_result = MagicMock()
+    no_pending_result.scalars.return_value = no_pending_scalars
+    session.execute = AsyncMock(return_value=no_pending_result)
 
     class SessionContext:
         async def __aenter__(self):
@@ -1005,6 +1034,9 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
     storage = MagicMock()
     mock_service = MagicMock()
     mock_service.process_import_range = AsyncMock()
+    mock_service.maybe_complete_chunk_after_secondary_tasks = AsyncMock(
+        return_value=True
+    )
 
     async def fake_set_context(db_session, cid):
         assert db_session is session
@@ -1040,9 +1072,11 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
     assert "session.get.job" in call_order
     claim_lock.assert_not_awaited()
     release_lock.assert_not_awaited()
-    assert chunk.status == ImportChunkStatus.COMPLETED
+    assert chunk.status == ImportChunkStatus.PROCESSING
     assert chunk.error_message is None
     assert chunk.last_progress_at is not None
+    assert chunk.phone_task_status == ImportChunkTaskStatus.COMPLETED
+    assert chunk.geometry_task_status == ImportChunkTaskStatus.COMPLETED
     mock_service.process_import_range.assert_awaited_once_with(
         job=job,
         import_job_id=import_job_id,
@@ -1053,8 +1087,183 @@ async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
         row_end=20,
         chunk=chunk,
     )
+    mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once_with(
+        session=session,
+        storage=storage,
+        job=job,
+        chunk=chunk,
+        campaign_id=campaign_id,
+    )
     assert job.imported_rows == 13
     assert job.skipped_rows == 2
+
+
+@pytest.mark.asyncio
+async def test_process_import_chunk_promotes_next_pending_chunk(campaign_id: str):
+    """A completed primary worker promotes exactly one successor chunk."""
+    import_job_id = str(uuid.uuid4())
+    chunk_id = str(uuid.uuid4())
+
+    job = MagicMock()
+    job.id = uuid.UUID(import_job_id)
+    job.campaign_id = uuid.UUID(campaign_id)
+    job.cancelled_at = None
+
+    chunk = MagicMock()
+    chunk.id = uuid.UUID(chunk_id)
+    chunk.import_job_id = job.id
+    chunk.row_start = 1
+    chunk.row_end = 5
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.phone_manifest = []
+    chunk.geometry_manifest = []
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
+    chunk.error_message = None
+    chunk.last_progress_at = None
+
+    next_chunk = MagicMock()
+    next_chunk.id = uuid.uuid4()
+    next_chunk.import_job_id = job.id
+    next_chunk.row_start = 6
+    next_chunk.row_end = 10
+    next_chunk.status = ImportChunkStatus.PENDING
+    next_chunk.last_progress_at = None
+
+    scalar_result = MagicMock()
+    scalar_result.first.return_value = next_chunk
+    execute_result = MagicMock()
+    execute_result.scalars.return_value = scalar_result
+
+    session = AsyncMock()
+    session.get = AsyncMock(side_effect=[chunk, job])
+    session.execute = AsyncMock(return_value=execute_result)
+    session.rollback = AsyncMock()
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    mock_service = MagicMock()
+    mock_service.process_import_range = AsyncMock()
+    mock_service.maybe_complete_chunk_after_secondary_tasks = AsyncMock(
+        return_value=True
+    )
+    mock_defer = AsyncMock()
+    commit_rls = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            side_effect=lambda: SessionContext(),
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.ImportService", return_value=mock_service),
+        patch("app.tasks.import_task.process_import_chunk.defer_async", mock_defer),
+        patch("app.tasks.import_task.commit_and_restore_rls", commit_rls),
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(chunk_id, campaign_id)
+
+    session.execute.assert_awaited_once()
+    mock_defer.assert_awaited_once_with(str(next_chunk.id), campaign_id)
+    assert next_chunk.status == ImportChunkStatus.QUEUED
+    mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_import_chunk_successor_defer_failure_leaves_pending(
+    campaign_id: str,
+):
+    """A failed successor defer rolls back the claim and keeps the chunk pending."""
+    import_job_id = str(uuid.uuid4())
+    chunk_id = str(uuid.uuid4())
+
+    job = MagicMock()
+    job.id = uuid.UUID(import_job_id)
+    job.campaign_id = uuid.UUID(campaign_id)
+    job.cancelled_at = None
+
+    chunk = MagicMock()
+    chunk.id = uuid.UUID(chunk_id)
+    chunk.import_job_id = job.id
+    chunk.row_start = 1
+    chunk.row_end = 5
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.phone_manifest = []
+    chunk.geometry_manifest = []
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
+    chunk.error_message = None
+    chunk.last_progress_at = None
+
+    next_chunk = MagicMock()
+    next_chunk.id = uuid.uuid4()
+    next_chunk.import_job_id = job.id
+    next_chunk.row_start = 6
+    next_chunk.row_end = 10
+    next_chunk.status = ImportChunkStatus.PENDING
+    next_chunk.last_progress_at = None
+
+    scalar_result = MagicMock()
+    scalar_result.first.return_value = next_chunk
+    execute_result = MagicMock()
+    execute_result.scalars.return_value = scalar_result
+
+    session = AsyncMock()
+    session.get = AsyncMock(side_effect=[chunk, job])
+    session.execute = AsyncMock(return_value=execute_result)
+    session.rollback = AsyncMock()
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    mock_service = MagicMock()
+    mock_service.process_import_range = AsyncMock()
+    mock_service.maybe_complete_chunk_after_secondary_tasks = AsyncMock(
+        return_value=True
+    )
+    commit_rls = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            side_effect=lambda: SessionContext(),
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.ImportService", return_value=mock_service),
+        patch(
+            "app.tasks.import_task.process_import_chunk.defer_async",
+            AsyncMock(side_effect=RuntimeError("queue unavailable")),
+        ),
+        patch("app.tasks.import_task.commit_and_restore_rls", commit_rls),
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(chunk_id, campaign_id)
+
+    session.rollback.assert_awaited_once()
+    assert next_chunk.status == ImportChunkStatus.PENDING
+    assert chunk.status == ImportChunkStatus.PROCESSING
+    mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -1070,6 +1279,7 @@ async def test_process_import_chunk_marks_only_chunk_failed(campaign_id: str):
     job.imported_rows = 9
     job.skipped_rows = 1
     job.last_progress_at = None
+    job.cancelled_at = None
 
     chunk = MagicMock()
     chunk.id = uuid.UUID(chunk_id)
@@ -1082,11 +1292,20 @@ async def test_process_import_chunk_marks_only_chunk_failed(campaign_id: str):
     chunk.last_committed_row = 0
     chunk.error_message = None
     chunk.last_progress_at = None
+    chunk.phone_manifest = []
+    chunk.geometry_manifest = []
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
 
     session = AsyncMock()
     session.get = AsyncMock(side_effect=[chunk, job])
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
+    no_pending_scalars = MagicMock()
+    no_pending_scalars.first.return_value = None
+    no_pending_result = MagicMock()
+    no_pending_result.scalars.return_value = no_pending_scalars
+    session.execute = AsyncMock(return_value=no_pending_result)
 
     class SessionContext:
         async def __aenter__(self):
@@ -1099,6 +1318,9 @@ async def test_process_import_chunk_marks_only_chunk_failed(campaign_id: str):
     mock_service = MagicMock()
     mock_service.process_import_range = AsyncMock(
         side_effect=RuntimeError("chunk runtime failure")
+    )
+    mock_service.maybe_complete_chunk_after_secondary_tasks = AsyncMock(
+        return_value=True
     )
 
     with (
@@ -1131,6 +1353,94 @@ async def test_process_import_chunk_marks_only_chunk_failed(campaign_id: str):
     assert chunk.status == ImportChunkStatus.FAILED
     assert chunk.error_message == "chunk runtime failure"
     assert chunk.last_progress_at is not None
+    mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once_with(
+        session=session,
+        storage=ANY,
+        job=job,
+        chunk=chunk,
+        campaign_id=campaign_id,
+    )
     assert job.status == "processing"
     assert job.imported_rows == 9
     assert job.skipped_rows == 1
+
+
+@pytest.mark.asyncio
+async def test_process_import_chunk_skips_when_parent_cancelled(campaign_id: str):
+    """Queued chunk tasks mark the chunk cancelled without entering range work."""
+    import_job_id = str(uuid.uuid4())
+    chunk_id = str(uuid.uuid4())
+
+    job = MagicMock()
+    job.id = uuid.UUID(import_job_id)
+    job.campaign_id = uuid.UUID(campaign_id)
+    job.cancelled_at = object()
+    job.imported_rows = 3
+    job.skipped_rows = 1
+
+    chunk = MagicMock()
+    chunk.id = uuid.UUID(chunk_id)
+    chunk.import_job_id = uuid.UUID(import_job_id)
+    chunk.row_start = 1
+    chunk.row_end = 5
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.imported_rows = 0
+    chunk.skipped_rows = 0
+    chunk.last_committed_row = 0
+    chunk.error_message = "stale"
+    chunk.last_progress_at = None
+    chunk.phone_manifest = []
+    chunk.geometry_manifest = []
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
+
+    session = AsyncMock()
+    session.get = AsyncMock(side_effect=[chunk, job])
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    no_pending_scalars = MagicMock()
+    no_pending_scalars.first.return_value = None
+    no_pending_result = MagicMock()
+    no_pending_result.scalars.return_value = no_pending_scalars
+    session.execute = AsyncMock(return_value=no_pending_result)
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    mock_service = MagicMock()
+    mock_service.process_import_range = AsyncMock()
+    mock_service.maybe_complete_chunk_after_secondary_tasks = AsyncMock(
+        return_value=True
+    )
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            side_effect=lambda: SessionContext(),
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.ImportService", return_value=mock_service),
+        patch(
+            "app.tasks.import_task.commit_and_restore_rls",
+            new_callable=AsyncMock,
+        ) as commit_rls,
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(chunk_id, campaign_id)
+
+    assert chunk.status == ImportChunkStatus.CANCELLED
+    assert chunk.error_message is None
+    assert chunk.last_progress_at is not None
+    mock_service.process_import_range.assert_not_awaited()
+    mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once()
+    commit_rls.assert_awaited_once_with(session, campaign_id)

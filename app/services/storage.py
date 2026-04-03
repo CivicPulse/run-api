@@ -116,6 +116,15 @@ class StorageService:
             async for chunk in response["Body"].iter_chunks(chunk_size):
                 yield chunk
 
+    async def get_object_size(self, key: str) -> int:
+        """Return object size in bytes from S3 metadata."""
+        async with self.session.client(**self._client_kwargs()) as s3:
+            response = await s3.head_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
+            return int(response["ContentLength"])
+
     async def upload_bytes(
         self,
         key: str,

@@ -663,6 +663,7 @@ def test_response_schema_has_recovery_metadata_fields():
         "orphaned_reason",
         "source_exhausted_at",
         "recovery_started_at",
+        "error_report_url",
     ):
         assert field in ImportJobResponse.model_fields
 

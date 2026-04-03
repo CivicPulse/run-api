@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { useAuthStore } from "@/stores/authStore"
 import { api } from "@/api/client"
-import { ROLE_HIERARCHY } from "@/hooks/usePermissions"
-import type { CampaignRole } from "@/types/auth"
+import { getConfig } from "@/config"
+import { getHighestRoleFromClaims } from "@/lib/auth-claims"
 import type { UserCampaign } from "@/types/user"
 
 // Module-level flag prevents signinRedirectCallback() from being called
@@ -14,27 +14,8 @@ import type { UserCampaign } from "@/types/user"
 // page navigation through the OIDC provider, which reloads this module fresh.
 let callbackProcessed = false
 
-/**
- * Extract the highest role from the OIDC user's JWT claims.
- * Returns the highest CampaignRole found, or null if no role claim present.
- */
-function getHighestRoleFromUser(user: { profile: Record<string, unknown> }): CampaignRole | null {
-  const projectId = import.meta.env.VITE_ZITADEL_PROJECT_ID ?? ""
-  const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
-  const claims = user.profile
-
-  if (!(claimKey in claims)) return null
-
-  const roleMap = claims[claimKey] as Record<string, unknown>
-  const foundRoles = Object.keys(roleMap).filter(
-    (r): r is CampaignRole => r in ROLE_HIERARCHY
-  )
-
-  if (foundRoles.length === 0) return null
-
-  return foundRoles.reduce((best, r) =>
-    ROLE_HIERARCHY[r] > ROLE_HIERARCHY[best] ? r : best
-  , foundRoles[0])
+export function __resetCallbackProcessedForTests() {
+  callbackProcessed = false
 }
 
 function CallbackPage() {
@@ -61,8 +42,9 @@ function CallbackPage() {
           return
         }
 
-        const highestRole = getHighestRoleFromUser(
-          user as unknown as { profile: Record<string, unknown> }
+        const highestRole = getHighestRoleFromClaims(
+          (user as unknown as { profile: Record<string, unknown> }).profile,
+          getConfig().zitadel_project_id,
         )
 
         // Volunteer-only users go directly to field mode
