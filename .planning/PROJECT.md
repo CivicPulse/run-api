@@ -97,6 +97,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
 - ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
 - ✓ Import recovery with orphan detection, startup reclaim, advisory-lock protection, and crash-resume verification — v1.10
+- ✓ Chunk import foundation with durable ImportChunk schema, adaptive chunk sizing, and serial-path threshold routing seams — v1.11 Phase 59
 
 ### Active
 
@@ -138,7 +139,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.10 Import Recovery shipped on 2026-04-01. The platform now self-heals orphaned import jobs across worker restarts and deploy interruptions, with durable progress timestamps, startup recovery scans, advisory-lock protection, and automated crash-resume coverage. v1.11 Faster Imports is the active next milestone.
+v1.10 Import Recovery shipped on 2026-04-01. Phase 59 of v1.11 Faster Imports completed on 2026-04-03, adding the durable ImportChunk schema, conservative chunk settings, bind-limit-aware sizing helpers, and explicit serial-routing seams while keeping runtime fan-out deferred to Phase 60.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
@@ -203,4 +204,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v1.10 milestone completion*
+*Last updated: 2026-04-03 after Phase 59 completion*
