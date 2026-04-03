@@ -928,13 +928,7 @@ test.describe.serial("Field Mode -- Canvassing", () => {
           request.method() === "POST" &&
           request.url().includes(`/api/v1/campaigns/${campaignId}/walk-lists/${fixture.walkListId}/door-knocks`)
         ) {
-          const postData = request.postDataJSON() as {
-            result_code?: string
-            notes?: string
-            survey_responses?: Array<{ question_id: string; answer_value: string }>
-            survey_complete?: boolean
-          }
-          doorKnockRequests.push(postData)
+          doorKnockRequests.push({})
         }
       })
 
@@ -960,6 +954,8 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       await expect(field07Page.getByRole("button", { name: "Save Door Knock" })).toBeEnabled()
 
       await field07Page.getByRole("button", { name: "Save Door Knock" }).click()
+
+      await expect.poll(() => doorKnockRequests.length, { timeout: 10_000 }).toBe(1)
 
       await expect.poll(async () => {
         const interactions = await apiGet(
