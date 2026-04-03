@@ -125,11 +125,19 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 </details>
 
-### ✅ v1.10 Import Recovery (Shipped 2026-04-01)
+<details>
+<summary>✅ v1.10 Import Recovery (Phases 56-58) — SHIPPED 2026-04-01</summary>
 
-Phases 56-58 complete. See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.planning/milestones/v1.10-REQUIREMENTS.md` for archived requirements.
+- [x] Phase 56: Schema & Orphan Detection (1/1 plan) — completed 2026-04-01
+- [x] Phase 57: Recovery Engine & Completion Hardening (1/1 plan) — completed 2026-04-01
+- [x] Phase 58: Test Coverage (1/1 plan) — completed 2026-04-01
 
-### 📋 v1.11 Faster Imports (Planned)
+See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.planning/milestones/v1.10-REQUIREMENTS.md` for archived requirements.
+
+</details>
+
+<details>
+<summary>📋 v1.11 Faster Imports (Phases 59-64) — PLANNED</summary>
 
 **Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
@@ -141,6 +149,115 @@ Phases 56-58 complete. See: `.planning/milestones/v1.10-ROADMAP.md` for archived
 - [ ] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
+
+</details>
+
+## Active Phase Details
+
+### Phase 56: Schema & Orphan Detection
+**Goal**: Identify imports stuck in `PROCESSING` using application-owned progress timestamps and emit recovery-ready diagnostics.
+**Depends on**: Nothing (first phase of v1.10)
+**Requirements**: ORPH-01, ORPH-02, ORPH-03, ORPH-04
+**Success Criteria** (what must be TRUE):
+  1. Import jobs record durable progress timestamps and orphan metadata needed for later recovery
+  2. Orphan detection uses a configurable staleness threshold with a safe default
+  3. Structured diagnostics are emitted when stale imports are detected
+  4. Detection state persists on the import record instead of relying on queue internals
+**Plans**: 1 complete
+
+### Phase 57: Recovery Engine & Completion Hardening
+**Goal**: Reclaim stale imports safely, resume from `last_committed_row`, and harden finalization so completed work cannot stay stuck.
+**Depends on**: Phase 56
+**Requirements**: RECV-01, RECV-02, RECV-03, RECV-04, HARD-01, HARD-02
+**Success Criteria** (what must be TRUE):
+  1. Worker startup scans detect stale imports and enqueue recovery work
+  2. Recovery resumes from `last_committed_row` without duplicating voters
+  3. Advisory locking prevents duplicate processing or finalization
+  4. Source-exhausted imports can finalize safely after recovery
+**Plans**: 1 complete
+
+### Phase 58: Test Coverage
+**Goal**: Verify stale-import detection, crash-resume recovery, and duplicate-prevention with automated tests.
+**Depends on**: Phase 57
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Success Criteria** (what must be TRUE):
+  1. Unit tests verify stale import detection and recovery queueing
+  2. Unit tests verify terminal and fresh imports are not reclaimed incorrectly
+  3. Integration coverage verifies crash-resume begins after `last_committed_row`
+  4. Regression assertions prove committed rows are not duplicated
+**Plans**: 1 complete
+
+### Phase 59: Chunk Schema & Configuration
+**Goal**: The system has the data model and configuration to represent chunked imports without changing runtime behavior
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: CHUNK-01, CHUNK-05, CHUNK-06, CHUNK-07
+**Success Criteria** (what must be TRUE):
+  1. ImportChunk model exists with row_start, row_end, status, imported_rows, skipped_rows, error_key fields and an Alembic migration creates the table with RLS
+  2. Application settings expose chunk_size_default, max_chunks_per_import, and serial_threshold as configurable values
+  3. A chunk sizing function returns appropriate chunk boundaries that respect the asyncpg bind-parameter limit based on column count
+  4. Files under the serial threshold are routed to the existing serial import path with no behavior change
+**Plans**: 2 plans
+Plans:
+- [ ] 59-01-PLAN.md — Add ImportChunk schema, conservative chunk settings, migration, and RLS verification
+- [ ] 59-02-PLAN.md — Extract chunk sizing helpers and serial-routing seams without enabling fan-out
+
+### Phase 60: Parent Split & Parallel Processing
+**Goal**: A large CSV is split into chunks that are processed concurrently by multiple workers
+**Depends on**: Phase 59
+**Requirements**: CHUNK-02, CHUNK-03, CHUNK-04
+**Success Criteria** (what must be TRUE):
+  1. A pre-scan task reads the CSV from MinIO and counts total rows without loading the full file into memory
+  2. The parent split task creates ImportChunk records with computed row ranges and defers one Procrastinate child task per chunk
+  3. Each chunk worker processes only its assigned row range with independent database sessions, per-batch commits, and RLS restoration
+  4. Multiple chunk workers run concurrently on the same import without interfering with each other
+**Plans**: TBD
+
+### Phase 61: Completion Aggregation & Error Merging
+**Goal**: Users see unified import progress and results regardless of how many chunks processed their data
+**Depends on**: Phase 60
+**Requirements**: PROG-01, PROG-02, PROG-03, PROG-05
+**Success Criteria** (what must be TRUE):
+  1. The parent job's imported_rows, skipped_rows, and phones_created reflect the SQL SUM of all chunk records
+  2. The last completing chunk triggers finalization exactly once, guarded by a PostgreSQL advisory lock
+  3. Per-chunk error reports stored in MinIO are merged into a single downloadable file on finalization
+  4. An import where some chunks succeed and some fail transitions to COMPLETED_WITH_ERRORS (not COMPLETED or FAILED)
+**Plans**: TBD
+
+### Phase 62: Resilience & Cancellation
+**Goal**: Chunk failures, cancellations, and crashes are handled gracefully without losing completed work
+**Depends on**: Phase 61
+**Requirements**: RESL-01, RESL-02, RESL-03, RESL-04
+**Success Criteria** (what must be TRUE):
+  1. A single chunk failure does not prevent other chunks from completing; partial results from successful chunks are preserved in the database
+  2. Setting cancelled_at on the parent import causes all in-flight chunks to stop at their next batch boundary and all queued chunks to skip execution
+  3. A crashed chunk worker resumes from its own last_committed_row on retry without producing duplicate voters
+  4. Batch upserts within each chunk sort rows by the conflict key before INSERT, preventing cross-chunk deadlocks on concurrent upserts
+**Plans**: TBD
+
+### Phase 63: Secondary Work Offloading
+**Goal**: VoterPhone creation and geometry updates no longer slow down the critical voter upsert path
+**Depends on**: Phase 60
+**Requirements**: SECW-01, SECW-02
+**Success Criteria** (what must be TRUE):
+  1. VoterPhone records are created by a separate post-chunk Procrastinate task rather than inline during voter upsert
+  2. Geometry backfill and derived-field updates run as separate post-chunk tasks that execute after voter data is committed
+  3. The overall import wall-clock time for a large file is measurably shorter with secondary work offloaded
+**Plans**: TBD
+
+### Phase 64: Frontend Throughput & Status UI
+**Goal**: Users can monitor import speed and understand partial-failure outcomes
+**Depends on**: Phase 61
+**Requirements**: PROG-04
+**Success Criteria** (what must be TRUE):
+  1. The import progress UI displays rows-per-second throughput calculated from aggregated progress data
+  2. The import progress UI displays an estimated time remaining based on current throughput and total rows
+  3. COMPLETED_WITH_ERRORS imports show a distinct visual treatment (not the same as success or failure) with access to the merged error report
+**Plans**: TBD
+**UI hint**: yes
+
+### Backlog / Parking Lot
+
+- [ ] Phase 999.1: Update Zitadel to v3 or v4 — parked backlog item, not part of the active milestone sequence
 
 ## Progress
 
