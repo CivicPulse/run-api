@@ -227,7 +227,7 @@ Plans:
   4. An import where some chunks succeed and some fail transitions to COMPLETED_WITH_ERRORS (not COMPLETED or FAILED)
 **Plans**: 3 plans
 Plans:
-- [ ] 61-01-PLAN.md — Add the missing chunk aggregation schema contract (`phones_created` and widened parent status) plus unit coverage
+- [x] 61-01-PLAN.md — Add the missing chunk aggregation schema contract (`phones_created` and widened parent status) plus unit coverage
 - [ ] 61-02-PLAN.md — Implement the locked parent finalizer, SQL SUM aggregation, merged chunk error artifact, and terminal-status fan-in
 - [ ] 61-03-PLAN.md — Add integration coverage proving exactly-once parent finalization under concurrent chunk completion
 
@@ -283,7 +283,7 @@ Plans:
 | 58 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 59 | v1.11 | 2/2 | Complete    | 2026-04-03 |
 | 60 | v1.11 | 3/3 | Complete   | 2026-04-03 |
-| 61 | v1.11 | 0/0 | Not started | - |
+| 61 | v1.11 | 1/3 | In Progress|  |
 | 62 | v1.11 | 0/0 | Not started | - |
 | 63 | v1.11 | 0/0 | Not started | - |
 | 64 | v1.11 | 0/0 | Not started | - |
