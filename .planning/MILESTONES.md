@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.11 Faster Imports (Shipped: 2026-04-03)
+
+**Phases completed:** 10 phases, 27 plans
+**Timeline:** 3 days (2026-04-01 → 2026-04-03)
+**Files modified:** 24 | **Lines added:** 3,400+ | **Commits:** multiple
+
+**Key accomplishments:**
+
+1. Parallelized the import runtime with deterministic chunk planning, parent fan-out, chunk-local progress, advisory-locked parent finalization, and merged error reporting
+2. Hardened chunked imports for cancellation, crash recovery, deadlock avoidance, and deferred secondary phone/geometry work
+3. Delivered frontend throughput, ETA, and partial-success import states while repairing the end-to-end upload wizard flow
+4. Closed post-audit cleanup by fixing chunked-import deletion semantics, adding a durable `processing_started_at` metric contract, and retiring stale Phase 59 traceability
+5. Brought the remaining Phase 59 and 60 validation artifacts to Nyquist-compliant status
+
+**Audit:** .planning/v1.11-MILESTONE-AUDIT.md (status: passed, 18/18 requirements satisfied)
+
+---
+
 ## v1.10 Import Recovery (Shipped: 2026-04-01)
 
 **Phases completed:** 3 phases, 3 plans, 9 tasks

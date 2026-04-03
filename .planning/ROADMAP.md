@@ -10,7 +10,7 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - ✅ **v1.10 Import Recovery** — Phases 56-58 (shipped 2026-04-01)
-- 📋 **v1.11 Faster Imports** — Phases 59-66 (in gap closure)
+- ✅ **v1.11 Faster Imports** — Phases 59-68 (shipped 2026-04-03)
 
 ## Phases
 
@@ -136,8 +136,8 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 
 </details>
 
-<details>
-<summary>📋 v1.11 Faster Imports (Phases 59-66) — GAP CLOSURE IN PROGRESS</summary>
+<details open>
+<summary>✅ v1.11 Faster Imports (Phases 59-68) — SHIPPED 2026-04-03</summary>
 
 **Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
@@ -147,8 +147,10 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 - [x] **Phase 62: Resilience & Cancellation** - Chunk failure isolation, cancellation propagation, per-chunk crash resume, deadlock prevention — completed 2026-04-03
 - [x] **Phase 63: Secondary Work Offloading** - VoterPhone creation and geometry updates as separate post-chunk tasks — completed 2026-04-03
 - [x] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment — completed 2026-04-03
-- [ ] **Phase 65: Chunk Planning & Concurrency Cap Closure** - File-size-aware chunk sizing, enforced max chunk concurrency, and orchestration regression coverage
-- [ ] **Phase 66: Import Wizard Flow Recovery & Progress Accuracy** - Fix new-import detect-columns wiring and close the end-to-end progress/completion flow gaps
+- [x] **Phase 65: Chunk Planning & Concurrency Cap Closure** - File-size-aware chunk sizing, enforced max chunk concurrency, and orchestration regression coverage — completed 2026-04-03
+- [x] **Phase 66: Import Wizard Flow Recovery & Progress Accuracy** - Fix new-import detect-columns wiring and close the end-to-end progress/completion flow gaps — completed 2026-04-03
+- [x] **Phase 67: Chunk Import Cleanup & Deletion Semantics** - Close post-audit cleanup around chunked import deletion behavior and stale Phase 59 traceability artifacts — completed 2026-04-03
+- [x] **Phase 68: Progress Metric Accuracy & Validation Closeout** - Improve import throughput/ETA timing accuracy and complete remaining Nyquist validation follow-up — completed 2026-04-03
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
@@ -196,11 +198,11 @@ Plans:
   2. Parent orchestration enforces `import_max_chunks_per_import` instead of deferring every planned chunk immediately
   3. Automated coverage proves capped chunk fan-out and adaptive chunk planning behavior end to end
   4. Requirement traceability and verification evidence are updated to reflect the repaired runtime behavior
-**Plans**: 3 plans
+**Plans**: 3 complete
 Plans:
-- [ ] 65-01-PLAN.md — Add object-size lookup and file-size-aware chunk planning with unit coverage
-- [ ] 65-02-PLAN.md — Enforce capped primary chunk fan-out with successor promotion and orchestration regression coverage
-- [ ] 65-03-PLAN.md — Update v1.11 requirements and audit evidence to record the closed chunk-planning gaps
+- [x] 65-01-PLAN.md — Add object-size lookup and file-size-aware chunk planning with unit coverage
+- [x] 65-02-PLAN.md — Enforce capped primary chunk fan-out with successor promotion and orchestration regression coverage
+- [x] 65-03-PLAN.md — Update v1.11 requirements and audit evidence to record the closed chunk-planning gaps
 
 ### Phase 66: Import Wizard Flow Recovery & Progress Accuracy
 **Goal**: Restore the end-to-end import upload flow so users reliably reach mapping, progress, completion, and partial-success surfaces for newly created imports
@@ -212,7 +214,38 @@ Plans:
   2. Automated coverage proves the upload-to-detect-to-progress flow uses the correct job identifier
   3. Progress, completion, and history surfaces remain reachable and correct for partial-success imports created through the wizard
   4. Progress metrics are validated for accuracy against the chosen runtime timestamps or explicitly corrected if they currently overstate elapsed time
-**Plans**: 0 planned
+**Plans**: 2 complete
+Plans:
+- [x] 66-01-PLAN.md — Repair the upload wizard detect-columns handoff so it always targets the fresh import job id and add route coverage
+- [x] 66-02-PLAN.md — Close Phase 66 traceability and milestone status once the repaired wizard flow is verified
+
+### Phase 67: Chunk Import Cleanup & Deletion Semantics
+**Goal**: Remove the remaining chunk-import cleanup debt so delete flows and milestone traceability match the shipped runtime behavior
+**Depends on**: Phase 66
+**Requirements**: none (post-audit cleanup)
+**Gap Closure**: Closes v1.11 audit debt for chunked import deletion semantics and stale Phase 59 traceability
+**Success Criteria** (what must be TRUE):
+  1. Deleting a chunked import no longer fails because `import_chunks` child rows still exist
+  2. Automated coverage proves parent and child cleanup behavior for chunked imports
+  3. Phase 59 milestone artifacts no longer attribute runtime chunk creation to the schema-foundation phase
+  4. The audit debt entry for chunk cleanup/traceability is retired with updated evidence
+**Plans**: 1 complete
+Plans:
+- [x] 67-01-PLAN.md — Repair chunked import delete cleanup and retire stale Phase 59 runtime traceability
+
+### Phase 68: Progress Metric Accuracy & Validation Closeout
+**Goal**: Make import progress metrics reflect actual processing time and close the remaining phase-validation debt from the milestone audit
+**Depends on**: Phase 67
+**Requirements**: none (post-audit cleanup)
+**Gap Closure**: Closes v1.11 audit debt for progress timing accuracy and Nyquist follow-up on Phases 59 and 60
+**Success Criteria** (what must be TRUE):
+  1. Throughput and ETA derive from a processing-start signal that excludes pre-processing queue/upload time or are explicitly corrected to equivalent accuracy
+  2. Automated frontend/backend coverage proves the revised progress metric contract
+  3. `59-VALIDATION.md` and `60-VALIDATION.md` are brought to Nyquist-compliant state or replaced with compliant validation evidence
+  4. The audit debt entry for progress-metric accuracy and validation debt is retired with updated evidence
+**Plans**: 1 complete
+Plans:
+- [x] 68-01-PLAN.md — Add processing-start-backed progress metrics and close the remaining 59/60 validation debt
 
 ### Phase 56: Schema & Orphan Detection
 **Goal**: Identify imports stuck in `PROCESSING` using application-owned progress timestamps and emit recovery-ready diagnostics.

@@ -25,22 +25,22 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 ### Progress & Completion
 
 - [x] **PROG-01**: Parent job's imported_rows, skipped_rows, and phones_created are aggregated from chunk records via SQL SUM
-- [ ] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
-- [ ] **PROG-03**: Error reports from individual chunks are merged into a single downloadable file on finalization
-- [ ] **PROG-04**: Import progress UI shows rows/second throughput and estimated time remaining
+- [x] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
+- [x] **PROG-03**: Error reports from individual chunks are merged into a single downloadable file on finalization
+- [x] **PROG-04**: Import progress UI shows rows/second throughput and estimated time remaining
 - [x] **PROG-05**: COMPLETED_WITH_ERRORS status distinguishes partial chunk failures from full success or full failure
 
 ### Resilience
 
-- [ ] **RESL-01**: Individual chunk failure does not block other chunks; partial results are preserved
-- [ ] **RESL-02**: Cancellation propagates to all in-flight and queued chunks via parent's cancelled_at check
-- [ ] **RESL-03**: Each chunk resumes from its own last_committed_row after worker crash
-- [ ] **RESL-04**: Batch upserts sort rows by conflict key before INSERT to prevent cross-chunk deadlocks
+- [x] **RESL-01**: Individual chunk failure does not block other chunks; partial results are preserved
+- [x] **RESL-02**: Cancellation propagates to all in-flight and queued chunks via parent's cancelled_at check
+- [x] **RESL-03**: Each chunk resumes from its own last_committed_row after worker crash
+- [x] **RESL-04**: Batch upserts sort rows by conflict key before INSERT to prevent cross-chunk deadlocks
 
 ### Secondary Work
 
-- [ ] **SECW-01**: VoterPhone creation runs as a separate post-chunk task instead of inline with voter upsert
-- [ ] **SECW-02**: Geometry and derived-field updates run as separate post-chunk tasks
+- [x] **SECW-01**: VoterPhone creation runs as a separate post-chunk task instead of inline with voter upsert
+- [x] **SECW-02**: Geometry and derived-field updates run as separate post-chunk tasks
 
 ## v2 Requirements
 
@@ -71,24 +71,24 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHUNK-01 | Phase 59 | Complete |
+| CHUNK-01 | Phase 59/60 | Complete |
 | CHUNK-02 | Phase 60 | Complete |
 | CHUNK-03 | Phase 60 | Complete |
 | CHUNK-04 | Phase 60 | Complete |
 | CHUNK-05 | Phase 59 | Complete |
-| CHUNK-06 | Phase 59 | Complete |
-| CHUNK-07 | Phase 59 | Complete |
+| CHUNK-06 | Phase 65 | Complete |
+| CHUNK-07 | Phase 65 | Complete |
 | PROG-01 | Phase 61 | Complete |
-| PROG-02 | Phase 61 | Pending |
-| PROG-03 | Phase 61 | Pending |
-| PROG-04 | Phase 64 | Pending |
-| PROG-05 | Phase 61 | Complete |
-| RESL-01 | Phase 62 | Pending |
-| RESL-02 | Phase 62 | Pending |
-| RESL-03 | Phase 62 | Pending |
-| RESL-04 | Phase 62 | Pending |
-| SECW-01 | Phase 63 | Pending |
-| SECW-02 | Phase 63 | Pending |
+| PROG-02 | Phase 61 | Complete |
+| PROG-03 | Phase 61 | Complete |
+| PROG-04 | Phase 64/68 | Complete |
+| PROG-05 | Phase 66 | Complete |
+| RESL-01 | Phase 62 | Complete |
+| RESL-02 | Phase 62 | Complete |
+| RESL-03 | Phase 62 | Complete |
+| RESL-04 | Phase 62 | Complete |
+| SECW-01 | Phase 63 | Complete |
+| SECW-02 | Phase 63 | Complete |
 
 ---
 *Active requirements file for GSD workflows*

@@ -34,7 +34,7 @@ key-decisions:
 patterns-established:
   - "Chunk state remains internal to the worker/schema layer until later phases wire fan-out and aggregation."
   - "Chunk tables get explicit app_user grants plus direct campaign_id RLS in Alembic."
-requirements-completed: [CHUNK-01, CHUNK-07]
+requirements-completed: [CHUNK-07]
 duration: 5min
 completed: 2026-04-03
 ---
@@ -56,6 +56,7 @@ completed: 2026-04-03
 - Added conservative chunk configuration defaults for chunk size, serial threshold, and per-import concurrency.
 - Created the `import_chunks` Alembic revision with indexes, direct `campaign_id` RLS, and `app_user` grants.
 - Extended unit and integration coverage to verify model registration, settings defaults, and `import_chunks` RLS isolation.
+- Left runtime chunk creation and parent fan-out traceability to Phase 60, which is where the worker orchestration actually ships.
 
 ## Task Commits
 
