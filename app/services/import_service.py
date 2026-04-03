@@ -772,6 +772,20 @@ async def stream_csv_lines(
             yield line
 
 
+async def count_csv_data_rows(storage: StorageService, file_key: str) -> int:
+    """Count CSV data rows with O(1) memory by streaming the file once."""
+    header_seen = False
+    total_rows = 0
+
+    async for _line in stream_csv_lines(storage, file_key):
+        if not header_seen:
+            header_seen = True
+            continue
+        total_rows += 1
+
+    return total_rows
+
+
 class ImportService:
     """Voter file import processing service.
 
@@ -1233,38 +1247,21 @@ class ImportService:
             self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
 
-    async def process_import_file(
+    async def process_import_range(
         self,
+        *,
+        job: ImportJob,
         import_job_id: str,
         session: AsyncSession,
         storage: StorageService,
         campaign_id: str,
+        row_start: int,
+        row_end: int | None,
     ) -> None:
-        """Process a full voter file import with per-batch commits.
-
-        Streams CSV lines from S3 incrementally via stream_csv_lines(),
-        parses rows one at a time in configurable batches, commits each
-        batch independently with RLS restoration, writes per-batch errors
-        to MinIO, merges them on completion, and supports crash-resume
-        from last_committed_row.  Memory is bounded to ~2 batches + 1
-        S3 chunk regardless of file size.
-
-        Args:
-            import_job_id: ImportJob UUID string.
-            session: Async DB session (RLS context must be set).
-            storage: StorageService for file download/upload.
-            campaign_id: Campaign UUID string for RLS restore after
-                each commit.
-        """
-        # Load the import job
-        job = await session.get(ImportJob, uuid.UUID(import_job_id))
-        if job is None:
-            raise ValueError(f"ImportJob {import_job_id} not found")
-
-        # Resume detection: if already PROCESSING with committed rows,
-        # skip ahead
-        rows_to_skip = job.last_committed_row or 0
-        is_resume = rows_to_skip > 0
+        """Process an inclusive absolute CSV row range with serial durability."""
+        effective_row_start = max(row_start, 1)
+        rows_to_skip = max(job.last_committed_row or 0, effective_row_start - 1)
+        is_resume = (job.last_committed_row or 0) > 0
 
         num_mapped = sum(1 for v in (job.field_mapping or {}).values() if v)
         effective_batch_size = calculate_effective_rows_per_write(
@@ -1273,7 +1270,6 @@ class ImportService:
         )
 
         if not is_resume:
-            # Fresh start -- reset counters
             job.status = ImportStatus.PROCESSING
             job.imported_rows = 0
             job.skipped_rows = 0
@@ -1292,43 +1288,33 @@ class ImportService:
                 rows_to_skip,
             )
 
-        # Stream CSV lines from S3 incrementally (per D-01, MEMD-01)
-        # Encoding detected from first chunk; lines reconstructed across
-        # chunk boundaries; memory bounded to ~2 batches + 1 chunk.
         header: list[str] | None = None
         batch: list[dict[str, str]] = []
         batch_num = 0
-        total_rows = job.total_rows or 0  # Preserve on resume
-        total_imported = job.imported_rows or 0  # Preserve on resume
-        total_skipped = job.skipped_rows or 0  # Preserve on resume
-        total_phones_created = job.phones_created or 0  # Preserve on resume
-        rows_skipped = 0
+        absolute_row_number = 0
         batch_error_keys: list[str] = []
         error_prefix = f"imports/{job.campaign_id}/{import_job_id}/errors/"
-
         counters = {
-            "total_rows": total_rows,
-            "total_imported": total_imported,
-            "total_skipped": total_skipped,
-            "total_phones_created": total_phones_created,
+            "total_rows": job.total_rows or 0,
+            "total_imported": job.imported_rows or 0,
+            "total_skipped": job.skipped_rows or 0,
+            "total_phones_created": job.phones_created or 0,
         }
 
         try:
             async for line in stream_csv_lines(storage, job.file_key):
                 if header is None:
-                    # First line is the CSV header -- parse field names
                     header = next(csv.reader([line]))
                     continue
 
-                # Parse data row using known header fields
+                absolute_row_number += 1
+                if absolute_row_number <= rows_to_skip:
+                    continue
+                if row_end is not None and absolute_row_number > row_end:
+                    break
+
                 values = next(csv.reader([line]))
                 row = dict(zip(header, values, strict=False))
-
-                # Resume skip (per D-05)
-                if rows_skipped < rows_to_skip:
-                    rows_skipped += 1
-                    continue
-
                 batch.append(row)
                 counters["total_rows"] += 1
 
@@ -1347,7 +1333,6 @@ class ImportService:
                     )
                     batch = []
 
-                    # Cancellation check (per D-01, D-02, D-03)
                     await session.refresh(job)
                     if job.cancelled_at is not None:
                         logger.info(
@@ -1363,7 +1348,6 @@ class ImportService:
             await commit_and_restore_rls(session, campaign_id)
             return
 
-        # Process remaining rows in final batch
         if batch:
             batch_num += 1
             await self._process_single_batch(
@@ -1378,7 +1362,6 @@ class ImportService:
                 counters,
             )
 
-        # Merge per-batch error files into a single errors.csv
         if batch_error_keys:
             await self._merge_error_files(storage, batch_error_keys, job, import_job_id)
 
@@ -1386,9 +1369,6 @@ class ImportService:
         self._mark_progress(job)
         await commit_and_restore_rls(session, campaign_id)
 
-        # Finalize: re-read cancelled_at to handle race with cancel
-        # endpoint (Pitfall 2 from research). cancelled_at is the
-        # authoritative signal for cancellation.
         await session.refresh(job)
         if job.cancelled_at is not None:
             job.status = ImportStatus.CANCELLED
@@ -1405,4 +1385,26 @@ class ImportService:
             counters["total_phones_created"],
             counters["total_skipped"],
             counters["total_rows"],
+        )
+
+    async def process_import_file(
+        self,
+        import_job_id: str,
+        session: AsyncSession,
+        storage: StorageService,
+        campaign_id: str,
+    ) -> None:
+        """Process a full import by delegating to the shared range engine."""
+        job = await session.get(ImportJob, uuid.UUID(import_job_id))
+        if job is None:
+            raise ValueError(f"ImportJob {import_job_id} not found")
+
+        await self.process_import_range(
+            job=job,
+            import_job_id=import_job_id,
+            session=session,
+            storage=storage,
+            campaign_id=campaign_id,
+            row_start=1,
+            row_end=None,
         )

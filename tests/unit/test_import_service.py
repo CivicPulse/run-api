@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.services.import_service import (
     ImportService,
     calculate_effective_rows_per_write,
+    count_csv_data_rows,
     plan_chunk_ranges,
     should_use_serial_import,
 )
@@ -94,6 +95,171 @@ class TestChunkSizingHelpers:
     def test_should_use_serial_import(self, total_rows, expected):
         """Unknown and below-threshold totals stay on the serial path."""
         assert should_use_serial_import(total_rows, settings.import_serial_threshold) is expected
+
+
+class TestPhase60SharedImportSeam:
+    """Tests for the shared row-bounded import engine."""
+
+    @pytest.mark.asyncio
+    async def test_count_csv_data_rows_skips_header(self, monkeypatch):
+        """Pre-scan counts only 1-based data rows after the header."""
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in (
+                "First_Name,Last_Name",
+                "Ada,Lovelace",
+                "Grace,Hopper",
+                "Katherine,Johnson",
+            ):
+                yield line
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+
+        total_rows = await count_csv_data_rows(MagicMock(), "imports/test.csv")
+
+        assert total_rows == 3
+
+    @pytest.mark.asyncio
+    async def test_process_import_range_honors_absolute_row_bounds(
+        self, monkeypatch
+    ):
+        """Ranged processing skips before row_start and stops after row_end."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.campaign_id = uuid.uuid4()
+        job.field_mapping = {"First_Name": "first_name", "Last_Name": "last_name"}
+        job.source_type = "csv"
+        job.file_key = "imports/test.csv"
+        job.imported_rows = 0
+        job.skipped_rows = 0
+        job.total_rows = 0
+        job.phones_created = 0
+        job.last_committed_row = 0
+        job.cancelled_at = None
+
+        lines = (
+            "First_Name,Last_Name",
+            "Ada,Lovelace",
+            "Grace,Hopper",
+            "Katherine,Johnson",
+            "Annie,Easley",
+        )
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in lines:
+                yield line
+
+        processed_batches: list[tuple[int, list[dict[str, str]], dict[str, int]]] = []
+        commit_calls: list[str] = []
+
+        async def fake_process_single_batch(
+            batch,
+            batch_num,
+            _job,
+            campaign_id,
+            _session,
+            _storage,
+            _error_prefix,
+            _batch_error_keys,
+            counters,
+        ):
+            processed_batches.append((batch_num, list(batch), dict(counters)))
+            counters["total_imported"] += len(batch)
+            _job.total_rows = counters["total_rows"]
+            _job.imported_rows = counters["total_imported"]
+            _job.skipped_rows = counters["total_skipped"]
+            _job.phones_created = counters["total_phones_created"]
+            _job.last_committed_row = counters["total_rows"]
+
+        async def fake_commit_and_restore_rls(_session, campaign_id):
+            commit_calls.append(campaign_id)
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            fake_commit_and_restore_rls,
+        )
+        monkeypatch.setattr(service, "_process_single_batch", fake_process_single_batch)
+
+        session = AsyncMock()
+        storage = MagicMock()
+
+        await service.process_import_range(
+            job=job,
+            import_job_id=str(job.id),
+            session=session,
+            storage=storage,
+            campaign_id=str(job.campaign_id),
+            row_start=2,
+            row_end=3,
+        )
+
+        assert processed_batches == [
+            (
+                1,
+                [
+                    {"First_Name": "Grace", "Last_Name": "Hopper"},
+                    {"First_Name": "Katherine", "Last_Name": "Johnson"},
+                ],
+                {
+                    "total_rows": 2,
+                    "total_imported": 0,
+                    "total_skipped": 0,
+                    "total_phones_created": 0,
+                },
+            )
+        ]
+        assert job.total_rows == 2
+        assert job.imported_rows == 2
+        assert job.last_committed_row == 2
+        assert commit_calls
+
+    @pytest.mark.asyncio
+    async def test_process_import_file_delegates_to_full_range_engine(
+        self, monkeypatch
+    ):
+        """Serial wrapper delegates to the shared engine with full-file bounds."""
+        service = ImportService()
+        import_job_id = str(uuid.uuid4())
+        campaign_id = str(uuid.uuid4())
+        job = MagicMock()
+
+        session = AsyncMock()
+        session.get = AsyncMock(return_value=job)
+        storage = MagicMock()
+
+        delegated_calls: list[dict] = []
+
+        async def fake_process_import_range(**kwargs):
+            delegated_calls.append(kwargs)
+
+        monkeypatch.setattr(service, "process_import_range", fake_process_import_range)
+
+        await service.process_import_file(
+            import_job_id=import_job_id,
+            session=session,
+            storage=storage,
+            campaign_id=campaign_id,
+        )
+
+        assert delegated_calls == [
+            {
+                "job": job,
+                "import_job_id": import_job_id,
+                "session": session,
+                "storage": storage,
+                "campaign_id": campaign_id,
+                "row_start": 1,
+                "row_end": None,
+            }
+        ]
 
 
 class TestProcessCsvBatch:
