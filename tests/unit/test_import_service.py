@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 
 from app.core.config import settings
-from app.models.import_job import ImportChunkStatus
+from app.models.import_job import ImportChunkStatus, ImportStatus
 from app.services.import_service import (
     ImportService,
     calculate_effective_rows_per_write,
@@ -395,6 +395,180 @@ class TestPhase60SharedImportSeam:
         assert commit_campaign_ids
 
     @pytest.mark.asyncio
+    async def test_process_import_range_persists_chunk_phone_counts(
+        self, monkeypatch
+    ):
+        """Chunk processing writes phones_created on the chunk, not the parent job."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.campaign_id = uuid.uuid4()
+        job.field_mapping = {
+            "First_Name": "first_name",
+            "Last_Name": "last_name",
+            "Cell": "__cell_phone",
+        }
+        job.source_type = "csv"
+        job.file_key = "imports/test.csv"
+        job.imported_rows = 17
+        job.skipped_rows = 4
+        job.total_rows = 999
+        job.phones_created = 12
+        job.last_committed_row = 88
+        job.cancelled_at = None
+        job.error_report_key = None
+        job.error_message = None
+
+        chunk = MagicMock()
+        chunk.id = uuid.uuid4()
+        chunk.status = ImportChunkStatus.QUEUED
+        chunk.imported_rows = 0
+        chunk.skipped_rows = 0
+        chunk.phones_created = None
+        chunk.last_committed_row = 0
+        chunk.error_report_key = None
+        chunk.error_message = None
+        chunk.last_progress_at = None
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in (
+                "First_Name,Last_Name,Cell",
+                "Ada,Lovelace,5551234567",
+                "Grace,Hopper,5551239999",
+            ):
+                yield line
+
+        async def fake_process_single_batch(
+            batch,
+            batch_num,
+            _job,
+            campaign_id,
+            _session,
+            _storage,
+            _error_prefix,
+            _batch_error_keys,
+            counters,
+            *,
+            progress_target,
+        ):
+            del batch, batch_num, campaign_id
+            assert progress_target is chunk
+            counters["total_imported"] += 2
+            counters["total_phones_created"] += 2
+            progress_target.imported_rows = counters["total_imported"]
+            progress_target.skipped_rows = counters["total_skipped"]
+            progress_target.phones_created = counters["total_phones_created"]
+            progress_target.last_committed_row = counters["last_absolute_row"]
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            AsyncMock(),
+        )
+        monkeypatch.setattr(service, "_process_single_batch", fake_process_single_batch)
+
+        await service.process_import_range(
+            job=job,
+            import_job_id=str(job.id),
+            session=AsyncMock(),
+            storage=MagicMock(),
+            campaign_id=str(job.campaign_id),
+            row_start=1,
+            row_end=2,
+            chunk=chunk,
+        )
+
+        assert chunk.phones_created == 2
+        assert chunk.imported_rows == 2
+        assert job.phones_created == 12
+        assert job.imported_rows == 17
+
+    @pytest.mark.asyncio
+    async def test_process_import_range_initializes_chunk_phone_counter_only(
+        self, monkeypatch
+    ):
+        """Chunk targets start phones_created at zero without touching the parent."""
+        service = ImportService()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.campaign_id = uuid.uuid4()
+        job.field_mapping = {"First_Name": "first_name"}
+        job.source_type = "csv"
+        job.file_key = "imports/test.csv"
+        job.imported_rows = 1
+        job.skipped_rows = 2
+        job.total_rows = 3
+        job.phones_created = 9
+        job.last_committed_row = 0
+        job.cancelled_at = None
+
+        chunk = MagicMock()
+        chunk.id = uuid.uuid4()
+        chunk.status = ImportChunkStatus.QUEUED
+        chunk.imported_rows = None
+        chunk.skipped_rows = None
+        chunk.phones_created = None
+        chunk.last_committed_row = None
+        chunk.error_report_key = "old.csv"
+        chunk.error_message = "old error"
+        chunk.last_progress_at = None
+
+        captured_chunk_start: dict[str, int | None] = {}
+
+        async def fake_stream_csv_lines(_storage, _file_key):
+            for line in ("First_Name", "Ada"):
+                yield line
+
+        async def fake_process_single_batch(
+            batch,
+            batch_num,
+            _job,
+            campaign_id,
+            _session,
+            _storage,
+            _error_prefix,
+            _batch_error_keys,
+            counters,
+            *,
+            progress_target,
+        ):
+            del batch, batch_num, _job, campaign_id, _session, _storage
+            del _error_prefix, _batch_error_keys
+            captured_chunk_start["phones_created"] = progress_target.phones_created
+            captured_chunk_start["imported_rows"] = progress_target.imported_rows
+            counters["total_imported"] += 1
+            progress_target.imported_rows = counters["total_imported"]
+            progress_target.skipped_rows = counters["total_skipped"]
+            progress_target.last_committed_row = counters["last_absolute_row"]
+
+        monkeypatch.setattr(
+            "app.services.import_service.stream_csv_lines",
+            fake_stream_csv_lines,
+        )
+        monkeypatch.setattr(
+            "app.services.import_service.commit_and_restore_rls",
+            AsyncMock(),
+        )
+        monkeypatch.setattr(service, "_process_single_batch", fake_process_single_batch)
+
+        await service.process_import_range(
+            job=job,
+            import_job_id=str(job.id),
+            session=AsyncMock(),
+            storage=MagicMock(),
+            campaign_id=str(job.campaign_id),
+            row_start=1,
+            row_end=1,
+            chunk=chunk,
+        )
+
+        assert captured_chunk_start == {"phones_created": 0, "imported_rows": 0}
+        assert job.phones_created == 9
+
+    @pytest.mark.asyncio
     async def test_process_import_range_uses_chunk_error_prefix_on_failure(
         self, monkeypatch
     ):
@@ -467,6 +641,10 @@ class TestPhase60SharedImportSeam:
         assert chunk.error_report_key is None
         assert job.status != "failed"
         assert commit_calls
+
+    def test_import_status_exposes_completed_with_errors(self):
+        """Partial-success finalization can target a durable terminal status."""
+        assert ImportStatus.COMPLETED_WITH_ERRORS.value == "completed_with_errors"
 
 
 class TestProcessCsvBatch:
