@@ -53,7 +53,7 @@ completed: 2026-04-03
 
 1. **Task 1-2: Shared service seam and coverage** - `025457f` (feat)
 
-**Plan metadata:** Pending docs/state commit
+**Plan metadata:** `bdfe03d` (docs)
 
 ## Files Created/Modified
 
