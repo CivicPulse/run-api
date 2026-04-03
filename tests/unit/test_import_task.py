@@ -10,9 +10,11 @@ from __future__ import annotations
 import ast
 import inspect
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
+
+from app.models.import_job import ImportChunkStatus
 
 
 @pytest.fixture
@@ -94,6 +96,8 @@ async def _run_process_import_with_total_rows(
     mock_job.cancelled_at = None
     mock_job.last_committed_row = 0
     mock_job.total_rows = total_rows
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {"first_name": "First Name"}
 
     mock_session = AsyncMock()
     mock_session.get = AsyncMock(return_value=mock_job)
@@ -107,6 +111,7 @@ async def _run_process_import_with_total_rows(
     mock_session_factory.__aexit__ = AsyncMock(return_value=False)
 
     mock_service = MagicMock()
+    mock_service.count_csv_data_rows = AsyncMock(return_value=2500)
     mock_service.process_import_file = AsyncMock()
 
     with (
@@ -154,6 +159,9 @@ async def test_set_campaign_context_called_before_query(
     mock_job.skipped_rows = 0
     mock_job.cancelled_at = None
     mock_job.last_committed_row = 0
+    mock_job.total_rows = 100
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {"first_name": "First Name"}
 
     mock_session = AsyncMock()
 
@@ -217,6 +225,9 @@ async def test_status_transitions_on_success(import_job_id: str, campaign_id: st
             self.skipped_rows = 0
             self.last_committed_row = 0
             self.cancelled_at = None
+            self.total_rows = 100
+            self.file_key = "imports/file.csv"
+            self.field_mapping = {"first_name": "First Name"}
 
         @property
         def status(self):
@@ -271,13 +282,13 @@ async def test_status_transitions_on_success(import_job_id: str, campaign_id: st
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("total_rows", [None, 5000, 20000])
-async def test_process_import_keeps_single_serial_service_call(
+@pytest.mark.parametrize("total_rows", [5000])
+async def test_process_import_keeps_single_serial_service_call_below_threshold(
     import_job_id: str,
     campaign_id: str,
-    total_rows: int | None,
+    total_rows: int,
 ):
-    """Phase 59 still routes every import through one serial service call."""
+    """Known below-threshold totals still use one serial service call."""
     process_import_file = await _run_process_import_with_total_rows(
         import_job_id=import_job_id,
         campaign_id=campaign_id,
@@ -285,6 +296,278 @@ async def test_process_import_keeps_single_serial_service_call(
     )
 
     process_import_file.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_import_preserves_serial_path_after_below_threshold_prescan(
+    import_job_id: str, campaign_id: str
+):
+    """Unknown totals that pre-scan below threshold stay on the serial path."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.imported_rows = 0
+    mock_job.skipped_rows = 0
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+    mock_job.total_rows = None
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {"first_name": "First Name"}
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+    mock_session.add = MagicMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.count_csv_data_rows = AsyncMock(return_value=2500)
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    mock_service.count_csv_data_rows.assert_awaited_once_with(ANY, mock_job.file_key)
+    assert mock_job.total_rows == 2500
+    mock_session.add.assert_not_called()
+    mock_service.process_import_file.assert_awaited_once_with(
+        import_job_id, mock_session, ANY, campaign_id
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_import_creates_deterministic_chunks_and_defers_children(
+    import_job_id: str, campaign_id: str
+):
+    """Large imports create chunk rows in order and defer one child per chunk."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.imported_rows = 0
+    mock_job.skipped_rows = 0
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+    mock_job.total_rows = None
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {
+        "first_name": "First Name",
+        "last_name": "Last Name",
+    }
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+    mock_session.add = MagicMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.count_csv_data_rows = AsyncMock(return_value=12000)
+    mock_service.process_import_file = AsyncMock()
+    mock_defer = AsyncMock()
+    planned_ranges = [(1, 4000), (4001, 8000), (8001, 12000)]
+    added_chunks: list[object] = []
+    generated_chunk_ids = [
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    ]
+
+    def capture_chunk(chunk):
+        chunk.id = generated_chunk_ids[len(added_chunks)]
+        added_chunks.append(chunk)
+
+    mock_session.add.side_effect = capture_chunk
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
+        patch("app.tasks.import_task.settings.import_chunk_size_default", 4000),
+        patch(
+            "app.tasks.import_task.plan_chunk_ranges",
+            return_value=planned_ranges,
+        ) as plan_ranges,
+        patch("app.tasks.import_task.process_import_chunk.defer_async", mock_defer),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    plan_ranges.assert_called_once_with(
+        total_rows=12000,
+        mapped_column_count=2,
+        chunk_size_default=4000,
+    )
+    assert [(chunk.row_start, chunk.row_end) for chunk in added_chunks] == planned_ranges
+    assert all(chunk.status == ImportChunkStatus.QUEUED for chunk in added_chunks)
+    assert [chunk.import_job_id for chunk in added_chunks] == [mock_job.id] * 3
+    assert [chunk.campaign_id for chunk in added_chunks] == [mock_job.campaign_id] * 3
+    assert [call.args for call in mock_defer.await_args_list] == [
+        (str(chunk_id), campaign_id) for chunk_id in generated_chunk_ids
+    ]
+    mock_service.process_import_file.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure_target", "expected_error"),
+    [
+        ("count_csv_data_rows", "Import orchestration failed during CSV pre-scan"),
+        ("session_add", "Import orchestration failed during chunk creation"),
+        ("defer_async", "Import orchestration failed during chunk deferral"),
+    ],
+)
+async def test_process_import_fails_fast_when_chunk_orchestration_fails(
+    import_job_id: str,
+    campaign_id: str,
+    failure_target: str,
+    expected_error: str,
+):
+    """Chunk-eligible imports fail explicitly instead of falling back to serial."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.imported_rows = 0
+    mock_job.skipped_rows = 0
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+    mock_job.total_rows = None
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {"first_name": "First Name"}
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+    mock_session.add = MagicMock()
+
+    if failure_target == "session_add":
+        mock_session.add.side_effect = RuntimeError("chunk create failed")
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    if failure_target == "count_csv_data_rows":
+        mock_service.count_csv_data_rows = AsyncMock(
+            side_effect=RuntimeError("pre-scan failed")
+        )
+    else:
+        mock_service.count_csv_data_rows = AsyncMock(return_value=9000)
+    mock_service.process_import_file = AsyncMock()
+
+    mock_defer = AsyncMock()
+    if failure_target == "defer_async":
+        mock_defer.side_effect = RuntimeError("defer failed")
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
+        patch(
+            "app.tasks.import_task.plan_chunk_ranges",
+            return_value=[(1, 4500), (4501, 9000)],
+        ),
+        patch("app.tasks.import_task.process_import_chunk.defer_async", mock_defer),
+        pytest.raises(RuntimeError),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    assert mock_job.status == ImportStatus.FAILED
+    assert mock_job.error_message == expected_error
+    mock_service.process_import_file.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -297,6 +580,9 @@ async def test_status_set_to_failed_on_error(import_job_id: str, campaign_id: st
     mock_job.status = ImportStatus.QUEUED
     mock_job.cancelled_at = None
     mock_job.last_committed_row = 0
+    mock_job.total_rows = 100
+    mock_job.file_key = "imports/file.csv"
+    mock_job.field_mapping = {"first_name": "First Name"}
 
     mock_session = AsyncMock()
     mock_session.get = AsyncMock(return_value=mock_job)
@@ -595,6 +881,9 @@ async def test_process_import_resumes_without_resetting_status(
             self.orphaned_at = "2026-01-01T00:00:00"
             self.orphaned_reason = "stale"
             self.source_exhausted_at = None
+            self.total_rows = 100
+            self.file_key = "imports/file.csv"
+            self.field_mapping = {"first_name": "First Name"}
 
         @property
         def status(self):
