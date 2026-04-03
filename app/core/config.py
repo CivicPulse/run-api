@@ -55,7 +55,10 @@ class Settings(BaseSettings):
 
     # Import processing
     import_batch_size: int = 1000
+    import_chunk_size_default: int = 10000
+    import_max_chunks_per_import: int = 4
     import_orphan_threshold_minutes: int = 30
+    import_serial_threshold: int = 10000
 
     # Observability
     sentry_dsn: str = ""

@@ -26,6 +26,17 @@ class ImportStatus(enum.StrEnum):
     FAILED = "failed"
 
 
+class ImportChunkStatus(enum.StrEnum):
+    """Import chunk lifecycle status."""
+
+    PENDING = "pending"
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class ImportJob(Base):
     """Tracks a voter file import from upload through processing."""
 
@@ -62,6 +73,36 @@ class ImportJob(Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ImportChunk(Base):
+    """Internal chunk state for future parallel import processing."""
+
+    __tablename__ = "import_chunks"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("campaigns.id"), nullable=False
+    )
+    import_job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("import_jobs.id"), nullable=False
+    )
+    row_start: Mapped[int] = mapped_column(nullable=False)
+    row_end: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[ImportChunkStatus] = mapped_column(
+        Enum(ImportChunkStatus, name="import_chunk_status", native_enum=False),
+        default=ImportChunkStatus.PENDING,
+    )
+    imported_rows: Mapped[int | None] = mapped_column(default=0)
+    skipped_rows: Mapped[int | None] = mapped_column(default=0)
+    last_committed_row: Mapped[int | None] = mapped_column(default=0)
+    error_report_key: Mapped[str | None] = mapped_column(String(500))
+    error_message: Mapped[str | None] = mapped_column()
+    last_progress_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()

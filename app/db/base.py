@@ -13,6 +13,7 @@ class Base(DeclarativeBase):
 
 # Import all models here so Alembic can detect them.
 # These imports must be after Base is defined to avoid circular imports.
+# ImportChunk and ImportChunkStatus are registered via app.models.import_job.
 import app.models.call_list  # noqa: E402, F401
 import app.models.campaign  # noqa: E402, F401
 import app.models.campaign_member  # noqa: E402, F401
