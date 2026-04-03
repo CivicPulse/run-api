@@ -77,9 +77,11 @@ ensure_e2e_users() {
 ensure_e2e_users
 
 # ── Dev server auto-detection ───────────────────────────────────────────────
-# If E2E_USE_DEV_SERVER is not explicitly set, check if :5173 is responding
+# If E2E_USE_DEV_SERVER is not explicitly set, check if the HTTPS Vite dev
+# server is responding on :5173. Fall back to plain HTTP for older setups.
 if [ -z "${E2E_USE_DEV_SERVER+x}" ]; then
-  if curl -s --max-time 2 http://localhost:5173/ &>/dev/null; then
+  if curl -sk --max-time 2 https://localhost:5173/ &>/dev/null || \
+     curl -s --max-time 2 http://localhost:5173/ &>/dev/null; then
     export E2E_USE_DEV_SERVER=1
     echo "▸ Auto-detected dev server on :5173 — skipping build+preview"
   else

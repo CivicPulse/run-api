@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test"
+import { pickSeedCampaignId } from "../src/lib/seed-campaign"
 
 // Worker-scoped fixture: resolves seed campaign ID once per worker process.
 // Eliminates ~120 redundant navigateToSeedCampaign() calls (each 3-8s).
@@ -14,7 +15,7 @@ export const test = base.extend<{}, { campaignId: string }>({
     // Navigate to app to establish auth context
     const baseURL = process.env.CI
       ? "https://localhost:4173"
-      : (process.env.E2E_USE_DEV_SERVER === "1" ? "http://localhost:5173" : "https://localhost:4173")
+      : (process.env.E2E_USE_DEV_SERVER === "1" ? "https://localhost:5173" : "https://localhost:4173")
     await page.goto(baseURL)
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),
@@ -62,14 +63,7 @@ export const test = base.extend<{}, { campaignId: string }>({
         if (resp.ok()) {
           const campaigns = await resp.json()
           if (Array.isArray(campaigns)) {
-            const seed = campaigns.find(
-              (c: { campaign_id?: string; campaign_name?: string; name?: string }) => {
-                const n = c.campaign_name ?? c.name ?? ""
-                // Match original seed name OR known CAMP-01 rename (transient during tests)
-                return /macon.?bibb/i.test(n) || /E2E Test Campaign \(CAMP-01\)/i.test(n)
-              },
-            )
-            campaignId = seed?.campaign_id ?? seed?.id
+            campaignId = pickSeedCampaignId(campaigns)
             if (campaignId) break
             // Array is valid but seed campaign not found - log for debugging
             const names = campaigns.slice(0, 3).map((c: { campaign_name?: string }) => c.campaign_name).join(", ")
