@@ -273,7 +273,7 @@ Plans:
 | 56 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 57 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 58 | v1.10 | 1/1 | Complete | 2026-04-01 |
-| 59 | v1.11 | 2/2 | Complete   | 2026-04-03 |
+| 59 | v1.11 | 2/2 | Complete    | 2026-04-03 |
 | 60 | v1.11 | 0/0 | Not started | - |
 | 61 | v1.11 | 0/0 | Not started | - |
 | 62 | v1.11 | 0/0 | Not started | - |
