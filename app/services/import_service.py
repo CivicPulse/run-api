@@ -548,6 +548,9 @@ _UPSERT_EXCLUDE = frozenset(
     }
 )
 
+DEFAULT_MAX_BIND_PARAMS = 32_767
+DEFAULT_EXTRA_COLUMNS_PER_ROW = 4
+
 # Canonical field names that exist as columns on the Voter model
 _VOTER_COLUMNS: set[str] = {
     "source_id",
@@ -609,6 +612,44 @@ _VOTER_COLUMNS: set[str] = {
     "mailing_household_party_registration",
     "mailing_household_size",
 }
+
+
+def calculate_effective_rows_per_write(
+    mapped_column_count: int,
+    target_rows: int,
+    max_bind_params: int = DEFAULT_MAX_BIND_PARAMS,
+    extra_columns_per_row: int = DEFAULT_EXTRA_COLUMNS_PER_ROW,
+) -> int:
+    """Clamp a row count to the asyncpg bind-parameter ceiling."""
+    cols_per_row = max(mapped_column_count + extra_columns_per_row, 1)
+    bind_limited_rows = max_bind_params // cols_per_row
+    return max(1, min(target_rows, bind_limited_rows))
+
+
+def plan_chunk_ranges(
+    total_rows: int,
+    mapped_column_count: int,
+    chunk_size_default: int,
+) -> list[tuple[int, int]]:
+    """Plan deterministic 1-based inclusive chunk ranges."""
+    if total_rows <= 0:
+        return []
+
+    chunk_rows = calculate_effective_rows_per_write(
+        mapped_column_count=mapped_column_count,
+        target_rows=chunk_size_default,
+    )
+    return [
+        (row_start, min(row_start + chunk_rows - 1, total_rows))
+        for row_start in range(1, total_rows + 1, chunk_rows)
+    ]
+
+
+def should_use_serial_import(total_rows: int | None, serial_threshold: int) -> bool:
+    """Keep unknown and below-threshold imports on the serial path."""
+    if total_rows is None:
+        return True
+    return total_rows <= serial_threshold
 
 
 def suggest_field_mapping(csv_columns: list[str]) -> dict[str, dict]:
@@ -1225,16 +1266,10 @@ class ImportService:
         rows_to_skip = job.last_committed_row or 0
         is_resume = rows_to_skip > 0
 
-        # Dynamic batch size: asyncpg enforces a 32,767 bind-parameter
-        # limit per query.  The bulk INSERT uses ~N columns per row, so
-        # we cap the batch to stay safely under the limit.
-        max_params = 32_767  # asyncpg per-query bind-parameter ceiling
         num_mapped = sum(1 for v in (job.field_mapping or {}).values() if v)
-        # Voter model adds campaign_id, source_type, created_at, updated_at
-        cols_per_row = max(num_mapped + 4, 1)
-        effective_batch_size = min(
-            settings.import_batch_size,
-            max_params // cols_per_row,
+        effective_batch_size = calculate_effective_rows_per_write(
+            mapped_column_count=num_mapped,
+            target_rows=settings.import_batch_size,
         )
 
         if not is_resume:
