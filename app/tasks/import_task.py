@@ -11,15 +11,26 @@ from app.core.config import settings
 from app.core.time import utcnow
 from app.db.rls import set_campaign_context
 from app.db.session import async_session_factory
-from app.models.import_job import ImportJob, ImportStatus
+from app.models.import_job import ImportChunk, ImportChunkStatus, ImportJob, ImportStatus
 from app.services.import_recovery import (
     is_import_stale,
     release_import_lock,
     try_claim_import_lock,
 )
-from app.services.import_service import ImportService, should_use_serial_import
+from app.services.import_service import (
+    ImportService,
+    plan_chunk_ranges,
+    should_use_serial_import,
+)
 from app.services.storage import StorageService
 from app.tasks.procrastinate_app import procrastinate_app
+
+
+def _count_mapped_columns(field_mapping: dict | None) -> int:
+    """Count mapped columns for chunk sizing heuristics."""
+    if not isinstance(field_mapping, dict):
+        return 0
+    return sum(1 for value in field_mapping.values() if value)
 
 
 @procrastinate_app.task(name="process_import", queue="imports")
@@ -80,41 +91,90 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
                 return
 
             total_rows = getattr(job, "total_rows", None)
-            use_serial_import = should_use_serial_import(
-                total_rows, settings.import_serial_threshold
-            )
-            if use_serial_import:
+            if total_rows is None:
+                try:
+                    total_rows = await service.count_csv_data_rows(storage, job.file_key)
+                except Exception as exc:
+                    raise RuntimeError(
+                        "Import orchestration failed during CSV pre-scan"
+                    ) from exc
+                job.total_rows = total_rows
+
+            if should_use_serial_import(total_rows, settings.import_serial_threshold):
                 logger.debug(
                     "Import {} using serial path for total_rows={} threshold={}",
                     import_job_id,
                     total_rows,
                     settings.import_serial_threshold,
                 )
-            else:
-                logger.info(
-                    "Import {} exceeds serial threshold (total_rows={}, "
-                    "threshold={}); chunk fan-out is deferred until Phase 60, "
-                    "continuing on the serial path",
-                    import_job_id,
-                    total_rows,
-                    settings.import_serial_threshold,
+                # process_import_file handles per-batch commits, RLS restore,
+                # error storage, resume skipping, and sets COMPLETED status.
+                await service.process_import_file(
+                    import_job_id, session, storage, campaign_id
                 )
 
-            # process_import_file handles per-batch commits, RLS restore,
-            # error storage, resume skipping, and sets COMPLETED status.
-            await service.process_import_file(
-                import_job_id, session, storage, campaign_id
-            )
+                await session.refresh(job)
+                logger.info(
+                    "Import job {} completed: {} imported, {} skipped",
+                    import_job_id,
+                    job.imported_rows,
+                    job.skipped_rows,
+                )
+                return
 
-            await session.refresh(job)
             logger.info(
-                "Import job {} completed: {} imported, {} skipped",
+                "Import {} exceeds serial threshold (total_rows={}, threshold={}); "
+                "creating deterministic chunks and deferring child workers",
                 import_job_id,
-                job.imported_rows,
-                job.skipped_rows,
+                total_rows,
+                settings.import_serial_threshold,
             )
 
-        except Exception:
+            mapped_column_count = _count_mapped_columns(job.field_mapping)
+            chunk_ranges = plan_chunk_ranges(
+                total_rows=total_rows,
+                mapped_column_count=mapped_column_count,
+                chunk_size_default=settings.import_chunk_size_default,
+            )
+
+            try:
+                chunks: list[ImportChunk] = []
+                for row_start, row_end in chunk_ranges:
+                    chunk = ImportChunk(
+                        campaign_id=job.campaign_id,
+                        import_job_id=job.id,
+                        row_start=row_start,
+                        row_end=row_end,
+                        status=ImportChunkStatus.PENDING,
+                    )
+                    session.add(chunk)
+                    chunks.append(chunk)
+                await session.flush()
+            except Exception as exc:
+                raise RuntimeError(
+                    "Import orchestration failed during chunk creation"
+                ) from exc
+
+            try:
+                for chunk in chunks:
+                    await process_import_chunk.defer_async(str(chunk.id), campaign_id)
+                    chunk.status = ImportChunkStatus.QUEUED
+                    chunk.last_progress_at = utcnow()
+                job.last_progress_at = utcnow()
+                await session.commit()
+            except Exception as exc:
+                raise RuntimeError(
+                    "Import orchestration failed during chunk deferral"
+                ) from exc
+
+            logger.info(
+                "Import job {} queued {} chunk workers",
+                import_job_id,
+                len(chunks),
+            )
+            return
+
+        except Exception as exc:
             logger.exception("Import job {} failed", import_job_id)
             await session.rollback()
             try:
@@ -122,7 +182,10 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
                 job = await session.get(ImportJob, uuid.UUID(import_job_id))
                 if job is not None:
                     job.status = ImportStatus.FAILED
-                    job.error_message = "Import processing failed unexpectedly"
+                    if isinstance(exc, RuntimeError) and exc.args:
+                        job.error_message = str(exc)
+                    else:
+                        job.error_message = "Import processing failed unexpectedly"
                     job.last_progress_at = utcnow()
                     await session.commit()
             except Exception:
@@ -132,6 +195,16 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
             if lock_claimed:
                 with suppress(Exception):
                     await release_import_lock(session, uuid.UUID(import_job_id))
+
+
+@procrastinate_app.task(name="process_import_chunk", queue="imports")
+async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
+    """Placeholder child task entrypoint for Phase 60 chunk fan-out."""
+    logger.info(
+        "Chunk worker {} queued for campaign {}; execution lands in Phase 60-03",
+        chunk_id,
+        campaign_id,
+    )
 
 
 @procrastinate_app.task(name="recover_import", queue="imports")
