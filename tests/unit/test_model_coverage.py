@@ -23,3 +23,11 @@ def test_all_models_imported_in_base():
     ]
 
     assert not missing, f"Models not imported in app/db/base.py: {missing}"
+
+
+def test_import_chunk_exports_available():
+    """ImportChunk exports remain available from app.models."""
+    from app.models import ImportChunk, ImportChunkStatus
+
+    assert ImportChunk.__name__ == "ImportChunk"
+    assert ImportChunkStatus.__name__ == "ImportChunkStatus"
