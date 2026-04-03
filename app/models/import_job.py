@@ -23,6 +23,7 @@ class ImportStatus(enum.StrEnum):
     CANCELLING = "cancelling"
     CANCELLED = "cancelled"
     COMPLETED = "completed"
+    COMPLETED_WITH_ERRORS = "completed_with_errors"
     FAILED = "failed"
 
 
@@ -99,6 +100,7 @@ class ImportChunk(Base):
     )
     imported_rows: Mapped[int | None] = mapped_column(default=0)
     skipped_rows: Mapped[int | None] = mapped_column(default=0)
+    phones_created: Mapped[int | None] = mapped_column(default=0)
     last_committed_row: Mapped[int | None] = mapped_column(default=0)
     error_report_key: Mapped[str | None] = mapped_column(String(500))
     error_message: Mapped[str | None] = mapped_column()

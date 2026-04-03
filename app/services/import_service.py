@@ -1208,6 +1208,7 @@ class ImportService:
             if is_chunk_target:
                 progress_target.imported_rows = counters["total_imported"]
                 progress_target.skipped_rows = counters["total_skipped"]
+                progress_target.phones_created = counters["total_phones_created"]
                 progress_target.last_committed_row = counters["last_absolute_row"]
                 self._mark_progress(progress_target)
             else:
@@ -1243,7 +1244,9 @@ class ImportService:
             counters["total_imported"] = progress_target.imported_rows or 0
             counters["total_skipped"] = progress_target.skipped_rows or 0
             counters["total_phones_created"] = (
-                0 if is_chunk_target else job.phones_created or 0
+                progress_target.phones_created or 0
+                if is_chunk_target
+                else job.phones_created or 0
             )
 
             # Write entire failed batch to error file
@@ -1259,6 +1262,7 @@ class ImportService:
             # Update counters and commit after error accounting
             if is_chunk_target:
                 progress_target.skipped_rows = counters["total_skipped"]
+                progress_target.phones_created = counters["total_phones_created"]
                 progress_target.last_committed_row = counters["last_absolute_row"]
                 self._mark_progress(progress_target)
             else:
@@ -1301,6 +1305,7 @@ class ImportService:
                 progress_target.status = ImportChunkStatus.PROCESSING
                 progress_target.imported_rows = 0
                 progress_target.skipped_rows = 0
+                progress_target.phones_created = 0
                 progress_target.last_committed_row = 0
                 progress_target.error_report_key = None
                 progress_target.error_message = None
@@ -1344,7 +1349,11 @@ class ImportService:
             ),
             "total_imported": progress_target.imported_rows or 0,
             "total_skipped": progress_target.skipped_rows or 0,
-            "total_phones_created": 0 if is_chunk_target else job.phones_created or 0,
+            "total_phones_created": (
+                progress_target.phones_created or 0
+                if is_chunk_target
+                else job.phones_created or 0
+            ),
             "last_absolute_row": progress_target.last_committed_row or 0,
         }
 
