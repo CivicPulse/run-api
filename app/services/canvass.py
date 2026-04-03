@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from app.models.voter_interaction import InteractionType, VoterInteraction
 from app.models.walk_list import WalkList, WalkListEntry, WalkListEntryStatus
 from app.schemas.canvass import DoorKnockResponse
+from app.services.survey import SurveyService
 from app.services.voter_interaction import VoterInteractionService
 
 if TYPE_CHECKING:
@@ -23,6 +24,7 @@ class CanvassService:
 
     def __init__(self) -> None:
         self._interaction_service = VoterInteractionService()
+        self._survey_service = SurveyService()
 
     async def record_door_knock(
         self,
@@ -47,7 +49,6 @@ class CanvassService:
         Raises:
             ValueError: If entry doesn't belong to the walk list.
         """
-        # Verify walk_list_entry belongs to this walk_list
         entry_result = await session.execute(
             select(WalkListEntry).where(
                 WalkListEntry.id == data.walk_list_entry_id,
@@ -61,11 +62,16 @@ class CanvassService:
             )
             raise ValueError(msg)
 
-        # Record VoterInteraction with DOOR_KNOCK type
+        walk_list_result = await session.execute(
+            select(WalkList).where(WalkList.id == walk_list_id)
+        )
+        walk_list = walk_list_result.scalar_one()
+
         payload = {
             "result_code": data.result_code.value,
             "walk_list_id": str(walk_list_id),
             "notes": data.notes,
+            "survey_complete": data.survey_complete,
         }
         interaction = await self._interaction_service.record_interaction(
             session=session,
@@ -76,20 +82,23 @@ class CanvassService:
             user_id=user_id,
         )
 
-        # Update entry status to VISITED atomically
-        entry.status = WalkListEntryStatus.VISITED
+        if data.survey_responses:
+            script_id = walk_list.script_id
+            if script_id:
+                await self._survey_service.record_responses_batch(
+                    session=session,
+                    campaign_id=campaign_id,
+                    script_id=script_id,
+                    voter_id=data.voter_id,
+                    responses=data.survey_responses,
+                    user_id=user_id,
+                )
 
-        # Increment walk list visited_entries using SQL expression
-        walk_list_result = await session.execute(
-            select(WalkList).where(WalkList.id == walk_list_id)
-        )
-        walk_list = walk_list_result.scalar_one()
+        entry.status = WalkListEntryStatus.VISITED
         walk_list.visited_entries = WalkList.visited_entries + 1
 
         await session.flush()
 
-        # Compute attempt_number on read: count of DOOR_KNOCK
-        # interactions for this voter
         count_result = await session.execute(
             select(func.count(VoterInteraction.id)).where(
                 VoterInteraction.voter_id == data.voter_id,

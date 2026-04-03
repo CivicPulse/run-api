@@ -7,6 +7,7 @@ from datetime import datetime
 
 from app.models.walk_list import DoorKnockResult, WalkListEntryStatus
 from app.schemas.common import BaseSchema
+from app.schemas.survey import ResponseCreate
 
 
 class VoterDetail(BaseSchema):
@@ -53,6 +54,8 @@ class DoorKnockCreate(BaseSchema):
     walk_list_entry_id: uuid.UUID
     result_code: DoorKnockResult
     notes: str | None = None
+    survey_responses: list[ResponseCreate] | None = None
+    survey_complete: bool = True
 
 
 class DoorKnockResponse(BaseSchema):
@@ -65,3 +68,6 @@ class DoorKnockResponse(BaseSchema):
     notes: str | None = None
     attempt_number: int
     created_at: datetime
+
+
+DoorKnockCreate.model_rebuild()
