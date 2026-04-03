@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.11
-milestone_name: Faster Imports
-status: ready_to_plan
-stopped_at: v1.10 archived; Phase 59 ready for planning
-last_updated: "2026-04-01T20:45:00.000Z"
-last_activity: 2026-04-01
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Completed 59-01-PLAN.md
+last_updated: "2026-04-03T16:22:17.323Z"
+last_activity: 2026-04-03
 progress:
-  total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 9
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.11 Faster Imports — Ready to plan Phase 59
+**Current focus:** Phase 59 — chunk-schema-configuration
 
 ## Current Position
 
-Phase: 59 of 64 (Chunk Schema & Configuration)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-04-01 — v1.10 archived and v1.11 handoff restored
+Phase: 59 (chunk-schema-configuration) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-03
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -40,6 +40,8 @@ Progress: [░░░░░░░░░░] 0%
 - Secondary import work should be offloaded from the critical voter upsert path where possible
 - Application-level orphan detection (`last_progress_at`) is the durable recovery signal
 - Fresh task requeue plus `pg_try_advisory_lock` is the recovery concurrency model
+- [Phase 59]: Store campaign_id directly on import_chunks so direct PostgreSQL RLS policies and indexes match other campaign-owned tables.
+- [Phase 59]: Use a dedicated ImportChunkStatus enum so chunk states can evolve independently of parent import status.
 
 ### Blockers/Concerns
 
@@ -48,5 +50,5 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-01 — v1.10 archived, ready for v1.11 Phase 59 planning
-Stopped at: Roadmap exists, requirements archived, waiting for Phase 59 planning
+Stopped at: Completed 59-01-PLAN.md
 Resume file: None
