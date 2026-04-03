@@ -77,6 +77,69 @@ def test_no_broker_imports():
     )
 
 
+async def _run_process_import_with_total_rows(
+    import_job_id: str,
+    campaign_id: str,
+    total_rows: int | None,
+) -> AsyncMock:
+    """Execute process_import with a mocked job and return the service mock."""
+    from app.models.import_job import ImportStatus
+
+    mock_job = MagicMock()
+    mock_job.id = uuid.UUID(import_job_id)
+    mock_job.campaign_id = uuid.UUID(campaign_id)
+    mock_job.status = ImportStatus.QUEUED
+    mock_job.imported_rows = 10
+    mock_job.skipped_rows = 0
+    mock_job.cancelled_at = None
+    mock_job.last_committed_row = 0
+    mock_job.total_rows = total_rows
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_job)
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    mock_service = MagicMock()
+    mock_service.process_import_file = AsyncMock()
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=mock_service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import
+
+        await process_import(import_job_id, campaign_id)
+
+    return mock_service.process_import_file
+
+
 @pytest.mark.asyncio
 async def test_set_campaign_context_called_before_query(
     import_job_id: str, campaign_id: str
@@ -205,6 +268,23 @@ async def test_status_transitions_on_success(import_job_id: str, campaign_id: st
     assert "completed" not in status_changes, (
         "Task should not set COMPLETED -- service handles it now"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("total_rows", [None, 5000, 20000])
+async def test_process_import_keeps_single_serial_service_call(
+    import_job_id: str,
+    campaign_id: str,
+    total_rows: int | None,
+):
+    """Phase 59 still routes every import through one serial service call."""
+    process_import_file = await _run_process_import_with_total_rows(
+        import_job_id=import_job_id,
+        campaign_id=campaign_id,
+        total_rows=total_rows,
+    )
+
+    process_import_file.assert_awaited_once()
 
 
 @pytest.mark.asyncio

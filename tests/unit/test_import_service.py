@@ -8,7 +8,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 
-from app.services.import_service import ImportService
+from app.core.config import settings
+from app.services.import_service import (
+    ImportService,
+    calculate_effective_rows_per_write,
+    plan_chunk_ranges,
+    should_use_serial_import,
+)
 
 
 class TestDetectColumns:
@@ -43,6 +49,51 @@ class TestDetectColumns:
         service = ImportService()
         columns = service.detect_columns(bom_content)
         assert columns == ["First_Name", "Last_Name"]
+
+
+class TestChunkSizingHelpers:
+    """Tests for bind-limit-aware chunk sizing helpers."""
+
+    def test_calculate_effective_rows_per_write_respects_bind_limit(self):
+        """High mapped-column counts clamp rows below the default chunk size."""
+        effective_rows = calculate_effective_rows_per_write(
+            mapped_column_count=400,
+            target_rows=settings.import_chunk_size_default,
+        )
+
+        assert effective_rows == 81
+        assert effective_rows < settings.import_chunk_size_default
+
+    def test_plan_chunk_ranges_creates_multiple_ranges(self):
+        """Large imports split into deterministic 1-based inclusive ranges."""
+        ranges = plan_chunk_ranges(
+            total_rows=25_000,
+            mapped_column_count=0,
+            chunk_size_default=settings.import_chunk_size_default,
+        )
+
+        assert ranges == [
+            (1, 8_191),
+            (8_192, 16_382),
+            (16_383, 24_573),
+            (24_574, 25_000),
+        ]
+
+    def test_plan_chunk_ranges_returns_empty_for_zero_rows(self):
+        """Non-positive totals do not create chunk ranges."""
+        assert plan_chunk_ranges(0, mapped_column_count=10, chunk_size_default=500) == []
+
+    @pytest.mark.parametrize(
+        ("total_rows", "expected"),
+        [
+            (None, True),
+            (5_000, True),
+            (20_000, False),
+        ],
+    )
+    def test_should_use_serial_import(self, total_rows, expected):
+        """Unknown and below-threshold totals stay on the serial path."""
+        assert should_use_serial_import(total_rows, settings.import_serial_threshold) is expected
 
 
 class TestProcessCsvBatch:
