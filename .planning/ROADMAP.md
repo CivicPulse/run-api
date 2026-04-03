@@ -199,7 +199,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 **Plans**: 2 plans
 Plans:
 - [x] 59-01-PLAN.md — Add ImportChunk schema, conservative chunk settings, migration, and RLS verification
-- [ ] 59-02-PLAN.md — Extract chunk sizing helpers and serial-routing seams without enabling fan-out
+- [x] 59-02-PLAN.md — Extract chunk sizing helpers and serial-routing seams without enabling fan-out
 
 ### Phase 60: Parent Split & Parallel Processing
 **Goal**: A large CSV is split into chunks that are processed concurrently by multiple workers
@@ -273,7 +273,7 @@ Plans:
 | 56 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 57 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 58 | v1.10 | 1/1 | Complete | 2026-04-01 |
-| 59 | v1.11 | 1/2 | In Progress|  |
+| 59 | v1.11 | 2/2 | Complete   | 2026-04-03 |
 | 60 | v1.11 | 0/0 | Not started | - |
 | 61 | v1.11 | 0/0 | Not started | - |
 | 62 | v1.11 | 0/0 | Not started | - |
