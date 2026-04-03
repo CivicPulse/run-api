@@ -9,9 +9,14 @@ from loguru import logger
 
 from app.core.config import settings
 from app.core.time import utcnow
-from app.db.rls import set_campaign_context
+from app.db.rls import commit_and_restore_rls, set_campaign_context
 from app.db.session import async_session_factory
-from app.models.import_job import ImportChunk, ImportChunkStatus, ImportJob, ImportStatus
+from app.models.import_job import (
+    ImportChunk,
+    ImportChunkStatus,
+    ImportJob,
+    ImportStatus,
+)
 from app.services.import_recovery import (
     is_import_stale,
     release_import_lock,
@@ -93,7 +98,9 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
             total_rows = getattr(job, "total_rows", None)
             if total_rows is None:
                 try:
-                    total_rows = await service.count_csv_data_rows(storage, job.file_key)
+                    total_rows = await service.count_csv_data_rows(
+                        storage, job.file_key
+                    )
                 except Exception as exc:
                     raise RuntimeError(
                         "Import orchestration failed during CSV pre-scan"
@@ -199,12 +206,57 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
 
 @procrastinate_app.task(name="process_import_chunk", queue="imports")
 async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
-    """Placeholder child task entrypoint for Phase 60 chunk fan-out."""
-    logger.info(
-        "Chunk worker {} queued for campaign {}; execution lands in Phase 60-03",
-        chunk_id,
-        campaign_id,
-    )
+    """Process one import chunk using an independent session and bounded row range."""
+    logger.info("Starting import chunk {} for campaign {}", chunk_id, campaign_id)
+    storage = StorageService()
+    service = ImportService()
+
+    async with async_session_factory() as session:
+        chunk: ImportChunk | None = None
+        try:
+            await set_campaign_context(session, campaign_id)
+
+            chunk = await session.get(ImportChunk, uuid.UUID(chunk_id))
+            if chunk is None:
+                raise ValueError(f"ImportChunk {chunk_id} not found")
+
+            job = await session.get(ImportJob, chunk.import_job_id)
+            if job is None:
+                raise ValueError(f"ImportJob {chunk.import_job_id} not found")
+
+            chunk.status = ImportChunkStatus.PROCESSING
+            chunk.error_message = None
+            chunk.last_progress_at = utcnow()
+            await commit_and_restore_rls(session, campaign_id)
+
+            await service.process_import_range(
+                job=job,
+                import_job_id=str(job.id),
+                session=session,
+                storage=storage,
+                campaign_id=campaign_id,
+                row_start=chunk.row_start,
+                row_end=chunk.row_end,
+                chunk=chunk,
+            )
+            if chunk.status == ImportChunkStatus.PROCESSING:
+                chunk.status = ImportChunkStatus.COMPLETED
+                chunk.error_message = None
+                chunk.last_progress_at = utcnow()
+                await session.commit()
+        except Exception as exc:
+            logger.exception("Import chunk {} failed", chunk_id)
+            await session.rollback()
+            if chunk is not None:
+                try:
+                    await set_campaign_context(session, campaign_id)
+                    chunk.status = ImportChunkStatus.FAILED
+                    chunk.error_message = str(exc)
+                    chunk.last_progress_at = utcnow()
+                    await session.commit()
+                except Exception:
+                    logger.exception("Failed to update chunk status for {}", chunk_id)
+            raise
 
 
 @procrastinate_app.task(name="recover_import", queue="imports")

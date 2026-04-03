@@ -24,7 +24,12 @@ from sqlalchemy.dialects.postgresql import insert
 from app.core.config import settings
 from app.core.time import utcnow
 from app.db.rls import commit_and_restore_rls, set_campaign_context
-from app.models.import_job import ImportJob, ImportStatus
+from app.models.import_job import (
+    ImportChunk,
+    ImportChunkStatus,
+    ImportJob,
+    ImportStatus,
+)
 from app.models.voter import Voter
 from app.models.voter_contact import VoterPhone
 
@@ -1172,11 +1177,14 @@ class ImportService:
         error_prefix: str,
         batch_error_keys: list[str],
         counters: dict,
+        *,
+        progress_target: ImportJob | ImportChunk,
     ) -> None:
         """Process a single batch with commit, RLS restore, and error handling.
 
         Updates counters dict in-place with running totals.
         """
+        is_chunk_target = isinstance(progress_target, ImportChunk)
         try:
             imported, errors, phones = await self.process_csv_batch(
                 batch,
@@ -1197,12 +1205,18 @@ class ImportService:
                 batch_error_keys.append(batch_error_key)
 
             # Update counters and commit
-            job.total_rows = counters["total_rows"]
-            job.imported_rows = counters["total_imported"]
-            job.skipped_rows = counters["total_skipped"]
-            job.phones_created = counters["total_phones_created"]
-            job.last_committed_row = counters["total_rows"]
-            self._mark_progress(job)
+            if is_chunk_target:
+                progress_target.imported_rows = counters["total_imported"]
+                progress_target.skipped_rows = counters["total_skipped"]
+                progress_target.last_committed_row = counters["last_absolute_row"]
+                self._mark_progress(progress_target)
+            else:
+                job.total_rows = counters["total_rows"]
+                job.imported_rows = counters["total_imported"]
+                job.skipped_rows = counters["total_skipped"]
+                job.phones_created = counters["total_phones_created"]
+                job.last_committed_row = counters["last_absolute_row"]
+                self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
 
             logger.debug(
@@ -1226,9 +1240,11 @@ class ImportService:
             # Re-read counters from job object (reflects last committed
             # state because expire_on_commit=False and rollback reverts
             # to last commit)
-            counters["total_imported"] = job.imported_rows or 0
-            counters["total_skipped"] = job.skipped_rows or 0
-            counters["total_phones_created"] = job.phones_created or 0
+            counters["total_imported"] = progress_target.imported_rows or 0
+            counters["total_skipped"] = progress_target.skipped_rows or 0
+            counters["total_phones_created"] = (
+                0 if is_chunk_target else job.phones_created or 0
+            )
 
             # Write entire failed batch to error file
             failed_errors = [
@@ -1241,10 +1257,15 @@ class ImportService:
             batch_error_keys.append(batch_error_key)
 
             # Update counters and commit after error accounting
-            job.total_rows = counters["total_rows"]
-            job.skipped_rows = counters["total_skipped"]
-            job.last_committed_row = counters["total_rows"]
-            self._mark_progress(job)
+            if is_chunk_target:
+                progress_target.skipped_rows = counters["total_skipped"]
+                progress_target.last_committed_row = counters["last_absolute_row"]
+                self._mark_progress(progress_target)
+            else:
+                job.total_rows = counters["total_rows"]
+                job.skipped_rows = counters["total_skipped"]
+                job.last_committed_row = counters["last_absolute_row"]
+                self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
 
     async def process_import_range(
@@ -1257,11 +1278,17 @@ class ImportService:
         campaign_id: str,
         row_start: int,
         row_end: int | None,
+        chunk: ImportChunk | None = None,
     ) -> None:
         """Process an inclusive absolute CSV row range with serial durability."""
+        progress_target: ImportJob | ImportChunk = chunk or job
+        is_chunk_target = chunk is not None
         effective_row_start = max(row_start, 1)
-        rows_to_skip = max(job.last_committed_row or 0, effective_row_start - 1)
-        is_resume = (job.last_committed_row or 0) > 0
+        rows_to_skip = max(
+            progress_target.last_committed_row or 0,
+            effective_row_start - 1,
+        )
+        is_resume = (progress_target.last_committed_row or 0) > 0
 
         num_mapped = sum(1 for v in (job.field_mapping or {}).values() if v)
         effective_batch_size = calculate_effective_rows_per_write(
@@ -1270,16 +1297,25 @@ class ImportService:
         )
 
         if not is_resume:
-            job.status = ImportStatus.PROCESSING
-            job.imported_rows = 0
-            job.skipped_rows = 0
-            job.total_rows = 0
-            job.last_committed_row = 0
-            job.error_message = None
-            job.orphaned_at = None
-            job.orphaned_reason = None
-            job.source_exhausted_at = None
-            self._mark_progress(job)
+            if is_chunk_target:
+                progress_target.status = ImportChunkStatus.PROCESSING
+                progress_target.imported_rows = 0
+                progress_target.skipped_rows = 0
+                progress_target.last_committed_row = 0
+                progress_target.error_report_key = None
+                progress_target.error_message = None
+                self._mark_progress(progress_target)
+            else:
+                job.status = ImportStatus.PROCESSING
+                job.imported_rows = 0
+                job.skipped_rows = 0
+                job.total_rows = 0
+                job.last_committed_row = 0
+                job.error_message = None
+                job.orphaned_at = None
+                job.orphaned_reason = None
+                job.source_exhausted_at = None
+                self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
         else:
             logger.info(
@@ -1293,12 +1329,23 @@ class ImportService:
         batch_num = 0
         absolute_row_number = 0
         batch_error_keys: list[str] = []
-        error_prefix = f"imports/{job.campaign_id}/{import_job_id}/errors/"
+        if is_chunk_target:
+            error_prefix = (
+                f"imports/{job.campaign_id}/{import_job_id}/chunks/{chunk.id}/errors/"
+            )
+        else:
+            error_prefix = f"imports/{job.campaign_id}/{import_job_id}/errors/"
         counters = {
-            "total_rows": job.total_rows or 0,
-            "total_imported": job.imported_rows or 0,
-            "total_skipped": job.skipped_rows or 0,
-            "total_phones_created": job.phones_created or 0,
+            "total_rows": (
+                (progress_target.imported_rows or 0)
+                + (progress_target.skipped_rows or 0)
+                if is_chunk_target
+                else job.total_rows or 0
+            ),
+            "total_imported": progress_target.imported_rows or 0,
+            "total_skipped": progress_target.skipped_rows or 0,
+            "total_phones_created": 0 if is_chunk_target else job.phones_created or 0,
+            "last_absolute_row": progress_target.last_committed_row or 0,
         }
 
         try:
@@ -1317,6 +1364,7 @@ class ImportService:
                 row = dict(zip(header, values, strict=False))
                 batch.append(row)
                 counters["total_rows"] += 1
+                counters["last_absolute_row"] = absolute_row_number
 
                 if len(batch) >= effective_batch_size:
                     batch_num += 1
@@ -1330,57 +1378,92 @@ class ImportService:
                         error_prefix,
                         batch_error_keys,
                         counters,
+                        progress_target=progress_target,
                     )
                     batch = []
 
-                    await session.refresh(job)
-                    if job.cancelled_at is not None:
-                        logger.info(
-                            "Import {} cancelled after batch {}",
-                            import_job_id,
-                            batch_num,
-                        )
-                        break
+                    if not is_chunk_target:
+                        await session.refresh(job)
+                        if job.cancelled_at is not None:
+                            logger.info(
+                                "Import {} cancelled after batch {}",
+                                import_job_id,
+                                batch_num,
+                            )
+                            break
         except UnicodeDecodeError:
-            job.status = ImportStatus.FAILED
-            job.error_message = "Unable to decode file content"
-            self._mark_progress(job)
+            if is_chunk_target:
+                progress_target.status = ImportChunkStatus.FAILED
+                progress_target.error_message = "Unable to decode file content"
+                self._mark_progress(progress_target)
+            else:
+                job.status = ImportStatus.FAILED
+                job.error_message = "Unable to decode file content"
+                self._mark_progress(job)
             await commit_and_restore_rls(session, campaign_id)
             return
+        except Exception as exc:
+            if is_chunk_target:
+                progress_target.status = ImportChunkStatus.FAILED
+                progress_target.error_message = str(exc)
+                self._mark_progress(progress_target)
+                await commit_and_restore_rls(session, campaign_id)
+            raise
 
         if batch:
             batch_num += 1
-            await self._process_single_batch(
-                batch,
-                batch_num,
-                job,
-                campaign_id,
-                session,
-                storage,
-                error_prefix,
-                batch_error_keys,
-                counters,
-            )
+            try:
+                await self._process_single_batch(
+                    batch,
+                    batch_num,
+                    job,
+                    campaign_id,
+                    session,
+                    storage,
+                    error_prefix,
+                    batch_error_keys,
+                    counters,
+                    progress_target=progress_target,
+                )
+            except Exception as exc:
+                if is_chunk_target:
+                    progress_target.status = ImportChunkStatus.FAILED
+                    progress_target.error_message = str(exc)
+                    self._mark_progress(progress_target)
+                    await commit_and_restore_rls(session, campaign_id)
+                raise
 
         if batch_error_keys:
-            await self._merge_error_files(storage, batch_error_keys, job, import_job_id)
+            await self._merge_error_files(
+                storage, batch_error_keys, progress_target, import_job_id
+            )
 
-        job.source_exhausted_at = utcnow()
-        self._mark_progress(job)
-        await commit_and_restore_rls(session, campaign_id)
-
-        await session.refresh(job)
-        if job.cancelled_at is not None:
-            job.status = ImportStatus.CANCELLED
+        if is_chunk_target:
+            progress_target.status = ImportChunkStatus.COMPLETED
+            progress_target.error_message = None
+            self._mark_progress(progress_target)
+            await commit_and_restore_rls(session, campaign_id)
         else:
-            job.status = ImportStatus.COMPLETED
-        self._mark_progress(job)
-        await commit_and_restore_rls(session, campaign_id)
+            job.source_exhausted_at = utcnow()
+            self._mark_progress(job)
+            await commit_and_restore_rls(session, campaign_id)
+
+            await session.refresh(job)
+            if job.cancelled_at is not None:
+                job.status = ImportStatus.CANCELLED
+            else:
+                job.status = ImportStatus.COMPLETED
+            self._mark_progress(job)
+            await commit_and_restore_rls(session, campaign_id)
 
         logger.info(
             "Import {} {}: {} imported, {} phones, {} skipped of {} total",
             import_job_id,
-            "cancelled" if job.cancelled_at is not None else "complete",
+            (
+                "chunk-complete"
+                if is_chunk_target
+                else "cancelled" if job.cancelled_at is not None else "complete"
+            ),
             counters["total_imported"],
             counters["total_phones_created"],
             counters["total_skipped"],
@@ -1407,4 +1490,5 @@ class ImportService:
             campaign_id=campaign_id,
             row_start=1,
             row_end=None,
+            chunk=None,
         )
