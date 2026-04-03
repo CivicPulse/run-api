@@ -647,7 +647,7 @@ def plan_chunk_ranges(
 
 def should_use_serial_import(total_rows: int | None, serial_threshold: int) -> bool:
     """Keep unknown and below-threshold imports on the serial path."""
-    if total_rows is None:
+    if total_rows is None or not isinstance(total_rows, int):
         return True
     return total_rows <= serial_threshold
 

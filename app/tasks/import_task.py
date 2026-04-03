@@ -7,6 +7,7 @@ from contextlib import suppress
 
 from loguru import logger
 
+from app.core.config import settings
 from app.core.time import utcnow
 from app.db.rls import set_campaign_context
 from app.db.session import async_session_factory
@@ -16,7 +17,7 @@ from app.services.import_recovery import (
     release_import_lock,
     try_claim_import_lock,
 )
-from app.services.import_service import ImportService
+from app.services.import_service import ImportService, should_use_serial_import
 from app.services.storage import StorageService
 from app.tasks.procrastinate_app import procrastinate_app
 
@@ -77,6 +78,27 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
                 job.status = ImportStatus.CANCELLED
                 await session.commit()
                 return
+
+            total_rows = getattr(job, "total_rows", None)
+            use_serial_import = should_use_serial_import(
+                total_rows, settings.import_serial_threshold
+            )
+            if use_serial_import:
+                logger.debug(
+                    "Import {} using serial path for total_rows={} threshold={}",
+                    import_job_id,
+                    total_rows,
+                    settings.import_serial_threshold,
+                )
+            else:
+                logger.info(
+                    "Import {} exceeds serial threshold (total_rows={}, "
+                    "threshold={}); chunk fan-out is deferred until Phase 60, "
+                    "continuing on the serial path",
+                    import_job_id,
+                    total_rows,
+                    settings.import_serial_threshold,
+                )
 
             # process_import_file handles per-batch commits, RLS restore,
             # error storage, resume skipping, and sets COMPLETED status.
