@@ -462,7 +462,9 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
         mapped_column_count=2,
         chunk_size_default=4000,
     )
-    assert [(chunk.row_start, chunk.row_end) for chunk in added_chunks] == planned_ranges
+    assert [
+        (chunk.row_start, chunk.row_end) for chunk in added_chunks
+    ] == planned_ranges
     assert all(chunk.status == ImportChunkStatus.QUEUED for chunk in added_chunks)
     assert [chunk.import_job_id for chunk in added_chunks] == [mock_job.id] * 3
     assert [chunk.campaign_id for chunk in added_chunks] == [mock_job.campaign_id] * 3
@@ -944,3 +946,191 @@ async def test_process_import_resumes_without_resetting_status(
     )
     # Service should still be called to continue processing
     mock_service.process_import_file.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_import_chunk_uses_fresh_session_and_row_bounds(
+    campaign_id: str,
+):
+    """Child workers create their own session and call the ranged engine."""
+    import_job_id = str(uuid.uuid4())
+    chunk_id = str(uuid.uuid4())
+    call_order: list[str] = []
+
+    job = MagicMock()
+    job.id = uuid.UUID(import_job_id)
+    job.campaign_id = uuid.UUID(campaign_id)
+    job.imported_rows = 13
+    job.skipped_rows = 2
+    job.total_rows = 100
+    job.last_progress_at = None
+
+    chunk = MagicMock()
+    chunk.id = uuid.UUID(chunk_id)
+    chunk.import_job_id = uuid.UUID(import_job_id)
+    chunk.row_start = 11
+    chunk.row_end = 20
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.imported_rows = 0
+    chunk.skipped_rows = 0
+    chunk.last_committed_row = 0
+    chunk.error_message = "old error"
+    chunk.last_progress_at = None
+
+    session = AsyncMock()
+
+    async def fake_get(model, object_id):
+        if model.__name__ == "ImportChunk":
+            call_order.append("session.get.chunk")
+            assert object_id == uuid.UUID(chunk_id)
+            return chunk
+        if model.__name__ == "ImportJob":
+            call_order.append("session.get.job")
+            assert object_id == uuid.UUID(import_job_id)
+            return job
+        raise AssertionError(f"Unexpected model lookup: {model}")
+
+    session.get = AsyncMock(side_effect=fake_get)
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    storage = MagicMock()
+    mock_service = MagicMock()
+    mock_service.process_import_range = AsyncMock()
+
+    async def fake_set_context(db_session, cid):
+        assert db_session is session
+        assert cid == campaign_id
+        call_order.append("set_campaign_context")
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            side_effect=lambda: SessionContext(),
+        ) as session_factory,
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            side_effect=fake_set_context,
+        ),
+        patch("app.tasks.import_task.StorageService", return_value=storage),
+        patch("app.tasks.import_task.ImportService", return_value=mock_service),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+        ) as claim_lock,
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ) as release_lock,
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(chunk_id, campaign_id)
+
+    session_factory.assert_called_once_with()
+    assert call_order[:2] == ["set_campaign_context", "session.get.chunk"]
+    assert "session.get.job" in call_order
+    claim_lock.assert_not_awaited()
+    release_lock.assert_not_awaited()
+    assert chunk.status == ImportChunkStatus.COMPLETED
+    assert chunk.error_message is None
+    assert chunk.last_progress_at is not None
+    mock_service.process_import_range.assert_awaited_once_with(
+        job=job,
+        import_job_id=import_job_id,
+        session=session,
+        storage=storage,
+        campaign_id=campaign_id,
+        row_start=11,
+        row_end=20,
+        chunk=chunk,
+    )
+    assert job.imported_rows == 13
+    assert job.skipped_rows == 2
+
+
+@pytest.mark.asyncio
+async def test_process_import_chunk_marks_only_chunk_failed(campaign_id: str):
+    """Child-worker failures are recorded on the chunk without finalizing the parent."""
+    import_job_id = str(uuid.uuid4())
+    chunk_id = str(uuid.uuid4())
+
+    job = MagicMock()
+    job.id = uuid.UUID(import_job_id)
+    job.campaign_id = uuid.UUID(campaign_id)
+    job.status = "processing"
+    job.imported_rows = 9
+    job.skipped_rows = 1
+    job.last_progress_at = None
+
+    chunk = MagicMock()
+    chunk.id = uuid.UUID(chunk_id)
+    chunk.import_job_id = uuid.UUID(import_job_id)
+    chunk.row_start = 21
+    chunk.row_end = 30
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.imported_rows = 0
+    chunk.skipped_rows = 0
+    chunk.last_committed_row = 0
+    chunk.error_message = None
+    chunk.last_progress_at = None
+
+    session = AsyncMock()
+    session.get = AsyncMock(side_effect=[chunk, job])
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+    mock_service = MagicMock()
+    mock_service.process_import_range = AsyncMock(
+        side_effect=RuntimeError("chunk runtime failure")
+    )
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            side_effect=lambda: SessionContext(),
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+        patch("app.tasks.import_task.ImportService", return_value=mock_service),
+        patch(
+            "app.tasks.import_task.try_claim_import_lock",
+            new_callable=AsyncMock,
+        ) as claim_lock,
+        patch(
+            "app.tasks.import_task.release_import_lock",
+            new_callable=AsyncMock,
+        ) as release_lock,
+        pytest.raises(RuntimeError, match="chunk runtime failure"),
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(chunk_id, campaign_id)
+
+    claim_lock.assert_not_awaited()
+    release_lock.assert_not_awaited()
+    assert chunk.status == ImportChunkStatus.FAILED
+    assert chunk.error_message == "chunk runtime failure"
+    assert chunk.last_progress_at is not None
+    assert job.status == "processing"
+    assert job.imported_rows == 9
+    assert job.skipped_rows == 1
