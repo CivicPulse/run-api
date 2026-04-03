@@ -15,9 +15,9 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 ### Chunk Infrastructure
 
 - [x] **CHUNK-01**: System has a durable ImportChunk schema with row ranges and per-chunk status tracking ready for internal runtime use
-- [ ] **CHUNK-02**: System pre-scans CSV to count total rows for deterministic chunk boundary calculation
+- [x] **CHUNK-02**: System pre-scans CSV to count total rows for deterministic chunk boundary calculation
 - [ ] **CHUNK-03**: Parent split task creates chunk records and defers one Procrastinate child task per chunk
-- [ ] **CHUNK-04**: Chunk workers process their row range with per-batch commits, RLS restore, and independent sessions
+- [x] **CHUNK-04**: Chunk workers process their row range with per-batch commits, RLS restore, and independent sessions
 - [x] **CHUNK-05**: Files under a configurable row threshold bypass chunking and run the existing serial path
 - [x] **CHUNK-06**: Chunk size adapts based on column count (asyncpg bind-parameter limit) and file size
 - [x] **CHUNK-07**: Max concurrent chunks per import is configurable (default capped to prevent worker starvation)
@@ -72,9 +72,9 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CHUNK-01 | Phase 59 | Complete |
-| CHUNK-02 | Phase 60 | Pending |
+| CHUNK-02 | Phase 60 | Complete |
 | CHUNK-03 | Phase 60 | Pending |
-| CHUNK-04 | Phase 60 | Pending |
+| CHUNK-04 | Phase 60 | Complete |
 | CHUNK-05 | Phase 59 | Complete |
 | CHUNK-06 | Phase 59 | Complete |
 | CHUNK-07 | Phase 59 | Complete |

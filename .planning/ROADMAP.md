@@ -210,7 +210,11 @@ Plans:
   2. The parent split task creates ImportChunk records with computed row ranges and defers one Procrastinate child task per chunk
   3. Each chunk worker processes only its assigned row range with independent database sessions, per-batch commits, and RLS restoration
   4. Multiple chunk workers run concurrently on the same import without interfering with each other
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 60-01-PLAN.md — Add the pre-scan helper and shared row-bounded import engine behind the existing serial wrapper
+- [ ] 60-02-PLAN.md — Extend `process_import` into the parent coordinator with deterministic chunk creation and eager child deferral
+- [ ] 60-03-PLAN.md — Implement independent child chunk workers and verify concurrent range-bound execution
 
 ### Phase 61: Completion Aggregation & Error Merging
 **Goal**: Users see unified import progress and results regardless of how many chunks processed their data
@@ -274,7 +278,7 @@ Plans:
 | 57 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 58 | v1.10 | 1/1 | Complete | 2026-04-01 |
 | 59 | v1.11 | 2/2 | Complete    | 2026-04-03 |
-| 60 | v1.11 | 0/0 | Not started | - |
+| 60 | v1.11 | 1/3 | In Progress|  |
 | 61 | v1.11 | 0/0 | Not started | - |
 | 62 | v1.11 | 0/0 | Not started | - |
 | 63 | v1.11 | 0/0 | Not started | - |
