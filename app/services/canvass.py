@@ -74,6 +74,17 @@ class CanvassService:
             "notes": data.notes,
             "survey_complete": data.survey_complete,
         }
+
+        script_id: uuid.UUID | None = None
+        if data.survey_responses:
+            script_id = await self._resolve_walk_list_script_id(
+                session=session,
+                campaign_id=campaign_id,
+                walk_list=walk_list,
+            )
+            payload["script_id"] = str(script_id)
+            payload["survey_response_count"] = len(data.survey_responses)
+
         interaction = await self._interaction_service.record_interaction(
             session=session,
             campaign_id=campaign_id,
@@ -84,11 +95,7 @@ class CanvassService:
         )
 
         if data.survey_responses:
-            script_id = await self._resolve_walk_list_script_id(
-                session=session,
-                campaign_id=campaign_id,
-                walk_list=walk_list,
-            )
+            assert script_id is not None
             await self._survey_service.record_responses_batch(
                 session=session,
                 campaign_id=campaign_id,

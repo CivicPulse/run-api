@@ -955,6 +955,15 @@ test.describe.serial("Field Mode -- Canvassing", () => {
 
       await field07Page.getByRole("button", { name: "Save Door Knock" }).click()
 
+      await expect.poll(async () => {
+        const interactions = await apiGet(
+          field07Page,
+          `/api/v1/campaigns/${campaignId}/voters/${firstHouseholdVoterId}/interactions`,
+        ) as { items?: Array<{ type?: string; payload?: { result_code?: string; notes?: string; survey_complete?: boolean; script_id?: string } }> }
+        const doorKnock = interactions.items?.find((item) => item.type === "door_knock")
+        return doorKnock?.payload?.script_id ?? null
+      }, { timeout: 15_000 }).toBe(fixture.scriptId)
+
       await expect.poll(() => doorKnockRequests.length, { timeout: 10_000 }).toBe(1)
 
       await expect.poll(async () => {
@@ -976,6 +985,17 @@ test.describe.serial("Field Mode -- Canvassing", () => {
         notes: "Volunteer confirmed support at the door.",
       })
 
+      await expect.poll(async () => {
+        const savedResponses = await apiGet(
+          field07Page,
+          `/api/v1/campaigns/${campaignId}/surveys/${fixture.scriptId}/voters/${firstHouseholdVoterId}/responses`,
+        ) as { items?: Array<{ answer_value?: string }> | Array<{ answer_value?: string }> }
+        const responseItems = Array.isArray(savedResponses)
+          ? savedResponses
+          : (savedResponses.items ?? [])
+        return responseItems.length
+      }, { timeout: 15_000 }).toBe(1)
+
       const savedResponses = await apiGet(
         field07Page,
         `/api/v1/campaigns/${campaignId}/surveys/${fixture.scriptId}/voters/${firstHouseholdVoterId}/responses`,
@@ -983,7 +1003,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       const responseItems = Array.isArray(savedResponses)
         ? savedResponses
         : (savedResponses.items ?? [])
-      expect(responseItems).toHaveLength(1)
       expect(responseItems[0]?.answer_value).toBe("Yes")
 
       await expect(field07Page.getByTestId("household-door-position")).toContainText("Door 2 of 3")

@@ -179,6 +179,8 @@ class TestCanvassService:
         call_args = service._interaction_service.record_interaction.call_args
         assert call_args.kwargs["payload"]["survey_complete"] is False
         assert call_args.kwargs["payload"]["notes"] == "Asked about vote by mail"
+        assert call_args.kwargs["payload"]["script_id"] == str(script_id)
+        assert call_args.kwargs["payload"]["survey_response_count"] == 2
 
     @pytest.mark.asyncio
     async def test_record_door_knock_with_survey_responses_requires_attached_script(
