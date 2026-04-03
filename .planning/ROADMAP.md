@@ -10,7 +10,7 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - ✅ **v1.10 Import Recovery** — Phases 56-58 (shipped 2026-04-01)
-- 📋 **v1.11 Faster Imports** — Phases 59-64 (planned)
+- 📋 **v1.11 Faster Imports** — Phases 59-66 (in gap closure)
 
 ## Phases
 
@@ -137,22 +137,82 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 </details>
 
 <details>
-<summary>📋 v1.11 Faster Imports (Phases 59-64) — PLANNED</summary>
+<summary>📋 v1.11 Faster Imports (Phases 59-66) — GAP CLOSURE IN PROGRESS</summary>
 
 **Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
-- [ ] **Phase 59: Chunk Schema & Configuration** - ImportChunk model, settings, serial-bypass threshold, adaptive chunk sizing
-- [ ] **Phase 60: Parent Split & Parallel Processing** - CSV pre-scan, parent split task, child chunk workers with per-batch commits
-- [ ] **Phase 61: Completion Aggregation & Error Merging** - Progress aggregation via SQL SUM, finalization with advisory lock, error report merge, COMPLETED_WITH_ERRORS status
-- [ ] **Phase 62: Resilience & Cancellation** - Chunk failure isolation, cancellation propagation, per-chunk crash resume, deadlock prevention
-- [ ] **Phase 63: Secondary Work Offloading** - VoterPhone creation and geometry updates as separate post-chunk tasks
-- [ ] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment
+- [x] **Phase 59: Chunk Schema & Configuration** - ImportChunk model, settings, serial-bypass threshold, adaptive chunk sizing — completed 2026-04-03
+- [x] **Phase 60: Parent Split & Parallel Processing** - CSV pre-scan, parent split task, child chunk workers with per-batch commits — completed 2026-04-03
+- [x] **Phase 61: Completion Aggregation & Error Merging** - Progress aggregation via SQL SUM, finalization with advisory lock, error report merge, COMPLETED_WITH_ERRORS status — completed 2026-04-03
+- [x] **Phase 62: Resilience & Cancellation** - Chunk failure isolation, cancellation propagation, per-chunk crash resume, deadlock prevention — completed 2026-04-03
+- [x] **Phase 63: Secondary Work Offloading** - VoterPhone creation and geometry updates as separate post-chunk tasks — completed 2026-04-03
+- [x] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment — completed 2026-04-03
+- [ ] **Phase 65: Chunk Planning & Concurrency Cap Closure** - File-size-aware chunk sizing, enforced max chunk concurrency, and orchestration regression coverage
+- [ ] **Phase 66: Import Wizard Flow Recovery & Progress Accuracy** - Fix new-import detect-columns wiring and close the end-to-end progress/completion flow gaps
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
 </details>
 
 ## Active Phase Details
+
+### Phase 63: Secondary Work Offloading
+**Goal**: Remove phone creation and geometry backfill from the chunk critical path while preserving durable chunk and parent completion semantics
+**Depends on**: Phase 62
+**Requirements**: SECW-01, SECW-02
+**Success Criteria** (what must be TRUE):
+  1. `VoterPhone` creation runs as a separate post-chunk task instead of inline with the voter upsert path
+  2. Geometry and derived-field updates run as separate post-chunk tasks
+  3. Chunks remain non-terminal until both secondary task states are terminal
+  4. Parent finalization still waits on chunk terminal state instead of primary-range completion
+**Plans**: 3 complete
+Plans:
+- [x] 63-01-PLAN.md — Add durable chunk secondary-work state, manifests, and migration coverage
+- [x] 63-02-PLAN.md — Move phone and geometry work to dedicated deferred chunk tasks and gate chunk completion on them
+- [x] 63-03-PLAN.md — Extend integration coverage for deferred secondary-work lifecycle and parent fan-in
+
+### Phase 64: Frontend Throughput & Status UI
+**Goal**: Show import throughput, ETA, and partial-success terminal states clearly in the UI without exposing chunk internals
+**Depends on**: Phase 63
+**Requirements**: PROG-04, PROG-05
+**Success Criteria** (what must be TRUE):
+  1. Import progress UI displays rows-per-second throughput derived from durable import timestamps and counters
+  2. Import progress UI displays an estimated time remaining when enough progress data exists
+  3. `COMPLETED_WITH_ERRORS` is treated as a first-class terminal state in progress, completion, and history surfaces
+  4. Error-report download affordances remain explicit for partial-success imports
+**Plans**: 3 complete
+Plans:
+- [x] 64-01-PLAN.md — Fix the import API/frontend contract for terminal partial-success state and explicit error-report URLs
+- [x] 64-02-PLAN.md — Add client-side throughput and ETA metrics to the live import progress UI
+- [x] 64-03-PLAN.md — Present partial-success outcomes clearly in the completion and history surfaces
+
+### Phase 65: Chunk Planning & Concurrency Cap Closure
+**Goal**: Close the remaining backend/runtime gaps so chunk planning honors file characteristics and parent orchestration enforces bounded concurrency
+**Depends on**: Phase 64
+**Requirements**: CHUNK-06, CHUNK-07
+**Gap Closure**: Closes v1.11 audit gaps `CHUNK-06`, `CHUNK-07`, `INT-01`, `INT-02`, `FLOW-02`, `FLOW-03`
+**Success Criteria** (what must be TRUE):
+  1. Chunk planning incorporates file-size input in addition to bind-limit and mapped-column constraints
+  2. Parent orchestration enforces `import_max_chunks_per_import` instead of deferring every planned chunk immediately
+  3. Automated coverage proves capped chunk fan-out and adaptive chunk planning behavior end to end
+  4. Requirement traceability and verification evidence are updated to reflect the repaired runtime behavior
+**Plans**: 3 plans
+Plans:
+- [ ] 65-01-PLAN.md — Add object-size lookup and file-size-aware chunk planning with unit coverage
+- [ ] 65-02-PLAN.md — Enforce capped primary chunk fan-out with successor promotion and orchestration regression coverage
+- [ ] 65-03-PLAN.md — Update v1.11 requirements and audit evidence to record the closed chunk-planning gaps
+
+### Phase 66: Import Wizard Flow Recovery & Progress Accuracy
+**Goal**: Restore the end-to-end import upload flow so users reliably reach mapping, progress, completion, and partial-success surfaces for newly created imports
+**Depends on**: Phase 65
+**Requirements**: PROG-04, PROG-05
+**Gap Closure**: Closes v1.11 audit gaps `PROG-04`, `PROG-05`, `INT-03`, `FLOW-01`
+**Success Criteria** (what must be TRUE):
+  1. The upload wizard always runs detect-columns against the newly created import job
+  2. Automated coverage proves the upload-to-detect-to-progress flow uses the correct job identifier
+  3. Progress, completion, and history surfaces remain reachable and correct for partial-success imports created through the wizard
+  4. Progress metrics are validated for accuracy against the chosen runtime timestamps or explicitly corrected if they currently overstate elapsed time
+**Plans**: 0 planned
 
 ### Phase 56: Schema & Orphan Detection
 **Goal**: Identify imports stuck in `PROCESSING` using application-owned progress timestamps and emit recovery-ready diagnostics.
@@ -225,11 +285,11 @@ Plans:
   2. The last completing chunk triggers finalization exactly once, guarded by a PostgreSQL advisory lock
   3. Per-chunk error reports stored in MinIO are merged into a single downloadable file on finalization
   4. An import where some chunks succeed and some fail transitions to COMPLETED_WITH_ERRORS (not COMPLETED or FAILED)
-**Plans**: 3 plans
+**Plans**: 3 complete
 Plans:
 - [x] 61-01-PLAN.md — Add the missing chunk aggregation schema contract (`phones_created` and widened parent status) plus unit coverage
-- [ ] 61-02-PLAN.md — Implement the locked parent finalizer, SQL SUM aggregation, merged chunk error artifact, and terminal-status fan-in
-- [ ] 61-03-PLAN.md — Add integration coverage proving exactly-once parent finalization under concurrent chunk completion
+- [x] 61-02-PLAN.md — Implement the locked parent finalizer, SQL SUM aggregation, merged chunk error artifact, and terminal-status fan-in
+- [x] 61-03-PLAN.md — Add integration coverage proving exactly-once parent finalization under concurrent chunk completion
 
 ### Phase 62: Resilience & Cancellation
 **Goal**: Chunk failures, cancellations, and crashes are handled gracefully without losing completed work
@@ -240,7 +300,11 @@ Plans:
   2. Setting cancelled_at on the parent import causes all in-flight chunks to stop at their next batch boundary and all queued chunks to skip execution
   3. A crashed chunk worker resumes from its own last_committed_row on retry without producing duplicate voters
   4. Batch upserts within each chunk sort rows by the conflict key before INSERT, preventing cross-chunk deadlocks on concurrent upserts
-**Plans**: TBD
+**Plans**: 3 complete
+Plans:
+- [x] 62-01-PLAN.md — Propagate parent cancellation into queued and in-flight chunk workers without losing committed progress
+- [x] 62-02-PLAN.md — Preserve same-row chunk resume semantics and surface cancelled parent outcomes correctly
+- [x] 62-03-PLAN.md — Add deterministic conflict-key ordering for voter and phone upserts plus regression coverage
 
 ### Phase 63: Secondary Work Offloading
 **Goal**: VoterPhone creation and geometry updates no longer slow down the critical voter upsert path
