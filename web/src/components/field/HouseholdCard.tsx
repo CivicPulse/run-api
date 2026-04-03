@@ -22,6 +22,7 @@ interface HouseholdCardProps {
   household: Household
   activeEntryId: string | null
   completedEntries: Record<string, string>
+  skippedEntries?: string[]
   currentDoorNumber: number
   totalDoors: number
   sortMode: CanvassingSortMode
@@ -37,12 +38,35 @@ export function HouseholdCard({
   household,
   activeEntryId,
   completedEntries,
+  skippedEntries = [],
   currentDoorNumber,
   totalDoors,
   sortMode,
   onOutcomeSelect,
   onSkip,
 }: HouseholdCardProps) {
+  const pendingCount = household.entries.filter(
+    (entry) => completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id),
+  ).length
+  const visitedCount = household.entries.filter(
+    (entry) => completedEntries[entry.id] !== undefined,
+  ).length
+  const skippedCount = household.entries.filter((entry) => skippedEntries.includes(entry.id)).length
+
+  let householdStatusLabel = "Pending"
+  let householdStatusVariant: "outline" | "secondary" | "default" = "outline"
+
+  if (pendingCount === 0 && skippedCount === household.entries.length) {
+    householdStatusLabel = "Skipped"
+    householdStatusVariant = "secondary"
+  } else if (pendingCount === 0) {
+    householdStatusLabel = "Visited"
+    householdStatusVariant = "default"
+  } else if (visitedCount > 0 || skippedCount > 0) {
+    householdStatusLabel = `${pendingCount} left at this address`
+    householdStatusVariant = "secondary"
+  }
+
   return (
     <Card className="p-4 shadow-md" data-tour="household-card">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -52,12 +76,21 @@ export function HouseholdCard({
         <Badge variant="outline" data-testid="household-order-mode">
           {sortMode === "distance" ? "Distance order" : "Sequence order"}
         </Badge>
+        <Badge variant={householdStatusVariant} data-testid="household-status-copy">
+          {householdStatusLabel}
+        </Badge>
       </div>
 
       <div className="mt-2 flex items-center gap-2">
         <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
         <span className="text-xl font-bold">{household.address}</span>
       </div>
+
+      <p className="mt-2 text-sm text-muted-foreground" data-testid="household-progress-copy">
+        {pendingCount > 0
+          ? `${pendingCount} voter${pendingCount === 1 ? "" : "s"} still need attention at this address.`
+          : "Everyone at this address has been handled. You can move on or revisit from All Doors."}
+      </p>
 
       {hasAddress(household.entries[0].voter) ? (
         <Button

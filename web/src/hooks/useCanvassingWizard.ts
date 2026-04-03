@@ -18,11 +18,21 @@ import type {
   EnrichedWalkListEntry,
   Household,
 } from "@/types/canvassing"
+import type { DoorKnockCreate, DoorKnockSurveyResponse } from "@/types/walk-list"
 import { toast } from "sonner"
 
 interface OutcomeResult {
   bulkPrompt?: boolean
   surveyTrigger?: boolean
+}
+
+interface ContactDraftSubmit {
+  entryId: string
+  voterId: string
+  result: Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused">
+  notes: string
+  surveyResponses: DoorKnockSurveyResponse[]
+  surveyComplete: boolean
 }
 
 function getPinnedCurrentHousehold(
@@ -142,78 +152,129 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     advanceRef.current = advanceAddress
   }, [advanceAddress])
 
+  const currentHouseholdRef = useRef(currentHousehold)
+  useLayoutEffect(() => {
+    currentHouseholdRef.current = currentHousehold
+  }, [currentHousehold])
+
+  const queueDoorKnockOffline = useCallback((payload: DoorKnockCreate) => {
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload,
+      campaignId,
+      resourceId: walkListId,
+    })
+    useCanvassingStore.getState().recordOutcome(payload.walk_list_entry_id, payload.result_code)
+  }, [campaignId, walkListId])
+
+  const maybeAdvanceAfterHouseholdSettled = useCallback((household?: Household | null) => {
+    const targetHousehold = household ?? currentHouseholdRef.current
+    if (!targetHousehold) return
+
+    const state = useCanvassingStore.getState()
+    const allDone = targetHousehold.entries.every(
+      (entry) =>
+        state.completedEntries[entry.id] !== undefined ||
+        state.skippedEntries.includes(entry.id),
+    )
+    if (allDone) {
+      advanceRef.current()
+    }
+  }, [])
+
+  const submitDoorKnock = useCallback(async (
+    payload: DoorKnockCreate,
+    options?: {
+      household?: Household | null
+      advanceOnSuccess?: boolean
+      showErrorToast?: boolean
+      errorMessage?: string
+    },
+  ) => {
+    try {
+      await doorKnockMutation.mutateAsync(payload)
+      if (options?.advanceOnSuccess) {
+        maybeAdvanceAfterHouseholdSettled(options.household)
+      }
+      return true
+    } catch (err) {
+      if (err instanceof TypeError) {
+        queueDoorKnockOffline(payload)
+        if (options?.advanceOnSuccess) {
+          maybeAdvanceAfterHouseholdSettled(options.household)
+        }
+        return true
+      }
+
+      if (options?.showErrorToast !== false) {
+        toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
+      }
+      return false
+    }
+  }, [doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
+
   const handleOutcome = useCallback(
-    (entryId: string, voterId: string, result: DoorKnockResultCode): OutcomeResult => {
+    async (entryId: string, voterId: string, result: DoorKnockResultCode): Promise<OutcomeResult> => {
+      if (SURVEY_TRIGGER_OUTCOMES.has(result)) {
+        return { surveyTrigger: true }
+      }
+
       const payload = {
         walk_list_entry_id: entryId,
         voter_id: voterId,
         result_code: result,
       }
-      doorKnockMutation.mutate(payload, {
-        onError: (err) => {
-          if (err instanceof TypeError) {
-            useOfflineQueueStore.getState().push({
-              type: "door_knock",
-              payload,
-              campaignId,
-              resourceId: walkListId,
-            })
-          } else {
-            useCanvassingStore.getState().revertOutcome(entryId)
-            toast.error("Failed to save outcome. Please try again.")
-          }
-        },
+
+      const saved = await submitDoorKnock(payload, {
+        household: currentHousehold,
+        advanceOnSuccess: AUTO_ADVANCE_OUTCOMES.has(result),
       })
+      if (!saved) return {}
 
       if (result === "not_home" && currentHousehold && currentHousehold.entries.length > 1) {
-        const alreadyCompleted = currentHousehold.entries.filter(
-          (entry) => completedEntries[entry.id] !== undefined,
+        const state = useCanvassingStore.getState()
+        const alreadyHandledElsewhere = currentHousehold.entries.filter(
+          (entry) =>
+            entry.id !== entryId &&
+            (state.completedEntries[entry.id] !== undefined || state.skippedEntries.includes(entry.id)),
         )
-        if (alreadyCompleted.length === 0) {
+        if (alreadyHandledElsewhere.length === 0) {
           return { bulkPrompt: true }
         }
       }
 
-      if (AUTO_ADVANCE_OUTCOMES.has(result)) {
-        setTimeout(() => {
-          const state = useCanvassingStore.getState()
-          const household = currentHousehold
-          if (household) {
-            const allDone = household.entries.every(
-              (entry) =>
-                state.completedEntries[entry.id] !== undefined ||
-                state.skippedEntries.includes(entry.id),
-            )
-            if (allDone) {
-              advanceRef.current()
-            }
-          }
-        }, 300)
-        return {}
-      }
-
-      if (SURVEY_TRIGGER_OUTCOMES.has(result)) {
-        return { surveyTrigger: true }
-      }
-
       return {}
     },
-    [doorKnockMutation, currentHousehold, completedEntries, campaignId, walkListId],
+    [currentHousehold, submitDoorKnock],
   )
 
-  const handlePostSurveyAdvance = useCallback(() => {
-    if (currentHousehold) {
-      const state = useCanvassingStore.getState()
-      const allDone = currentHousehold.entries.every(
-        (entry) =>
-          state.completedEntries[entry.id] !== undefined ||
-          state.skippedEntries.includes(entry.id),
-      )
-      if (allDone) {
-        advanceAddress()
-      }
+  const handleSubmitContact = useCallback(async ({
+    entryId,
+    voterId,
+    result,
+    notes,
+    surveyResponses,
+    surveyComplete,
+  }: ContactDraftSubmit) => {
+    const payload: DoorKnockCreate = {
+      walk_list_entry_id: entryId,
+      voter_id: voterId,
+      result_code: result,
+      notes,
+      survey_responses: surveyResponses,
+      survey_complete: surveyComplete,
     }
-  }, [currentHousehold, advanceAddress])
+
+    return submitDoorKnock(payload, {
+      household: currentHousehold,
+      advanceOnSuccess: true,
+      errorMessage: "Failed to save this contact. Please retry before moving on.",
+    })
+  }, [currentHousehold, submitDoorKnock])
+
+  const handlePostSurveyAdvance = useCallback(() => {
+    maybeAdvanceAfterHouseholdSettled(currentHousehold)
+  }, [currentHousehold, maybeAdvanceAfterHouseholdSettled])
 
   const handleSkipAddress = useCallback(() => {
     if (!currentHousehold) return
@@ -227,32 +288,36 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   }, [currentHousehold, completedEntries, skippedEntries, skipEntry, skipEntryMutation])
 
   const handleBulkNotHome = useCallback(
-    (entries: EnrichedWalkListEntry[]) => {
+    async (entries: EnrichedWalkListEntry[]) => {
+      const household = currentHousehold
+      if (!household) return false
+
+      let allSaved = true
       for (const entry of entries) {
-        const payload = {
+        const saved = await submitDoorKnock({
           walk_list_entry_id: entry.id,
           voter_id: entry.voter_id,
           result_code: "not_home",
-        }
-        doorKnockMutation.mutate(payload, {
-          onError: (err) => {
-            if (err instanceof TypeError) {
-              useOfflineQueueStore.getState().push({
-                type: "door_knock",
-                payload,
-                campaignId,
-                resourceId: walkListId,
-              })
-            } else {
-              useCanvassingStore.getState().revertOutcome(entry.id)
-              toast.error("Failed to save outcome. Please try again.")
-            }
-          },
+        }, {
+          household,
+          showErrorToast: false,
         })
+
+        if (!saved) {
+          allSaved = false
+          break
+        }
       }
-      setTimeout(() => advanceRef.current(), 500)
+
+      if (!allSaved) {
+        toast.error("Failed to save not-home results for this address. Please retry.")
+        return false
+      }
+
+      maybeAdvanceAfterHouseholdSettled(household)
+      return true
     },
-    [doorKnockMutation, campaignId, walkListId],
+    [currentHousehold, maybeAdvanceAfterHouseholdSettled, submitDoorKnock],
   )
 
   const handleJumpToAddress = useCallback(
@@ -277,7 +342,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     isComplete,
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,
+    isSavingDoorKnock: doorKnockMutation.isPending,
     handleOutcome,
+    handleSubmitContact,
     handlePostSurveyAdvance,
     handleSkipAddress,
     handleBulkNotHome,

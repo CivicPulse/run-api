@@ -45,7 +45,9 @@ function Canvassing() {
     isComplete,
     isLoading,
     isError,
+    isSavingDoorKnock,
     handleOutcome,
+    handleSubmitContact,
     handlePostSurveyAdvance,
     handleSkipAddress,
     handleBulkNotHome,
@@ -87,10 +89,12 @@ function Canvassing() {
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: walkListDetail } = useWalkList(campaignId, walkListId)
-  const scriptId = walkListDetail?.script_id
+  const scriptId = walkListDetail?.script_id ?? ""
 
   const [surveyOpen, setSurveyOpen] = useState(false)
-  const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
+  const [draftEntryId, setDraftEntryId] = useState<string | null>(null)
+  const [draftVoterId, setDraftVoterId] = useState<string | null>(null)
+  const [draftOutcome, setDraftOutcome] = useState<Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused"> | null>(null)
   const [listViewOpen, setListViewOpen] = useState(false)
 
   const navigationKey = `${currentAddressIndex}:${activeEntryId ?? ""}:${isComplete ? 1 : 0}`
@@ -109,6 +113,17 @@ function Canvassing() {
         .join(" ") || "Unknown Voter"
     )
   }, [currentHousehold, activeEntryId])
+
+  const draftVoterName = useMemo(() => {
+    if (!currentHousehold || !draftEntryId) return ""
+    const entry = currentHousehold.entries.find((e) => e.id === draftEntryId)
+    if (!entry) return ""
+    return (
+      [entry.voter.first_name, entry.voter.last_name]
+        .filter(Boolean)
+        .join(" ") || "Unknown Voter"
+    )
+  }, [currentHousehold, draftEntryId])
 
   useResumePrompt({
     walkListId: walkListId || null,
@@ -144,21 +159,34 @@ function Canvassing() {
     checkMilestone(completedAddresses, totalAddresses, key)
   }, [completedAddresses, totalAddresses, walkListId])
 
-  const handleSurveyComplete = useCallback(() => {
+  const closeDraft = useCallback(() => {
     setSurveyOpen(false)
-    setSurveyVoterId(null)
+    setDraftEntryId(null)
+    setDraftVoterId(null)
+    setDraftOutcome(null)
+  }, [])
+
+  const handleSurveyComplete = useCallback(() => {
+    closeDraft()
     handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+  }, [closeDraft, handlePostSurveyAdvance])
 
   const handleSurveySkip = useCallback(() => {
-    setSurveyOpen(false)
-    setSurveyVoterId(null)
-    handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+    closeDraft()
+  }, [closeDraft])
 
   const handleOutcomeWithBulk = useCallback(
-    (entryId: string, voterId: string, result: string) => {
-      handleOutcome(entryId, voterId, result as DoorKnockResultCode)
+    async (entryId: string, voterId: string, result: string) => {
+      const outcome = result as DoorKnockResultCode
+      const outcomeResult = await handleOutcome(entryId, voterId, outcome)
+
+      if (outcomeResult.surveyTrigger) {
+        setDraftEntryId(entryId)
+        setDraftVoterId(voterId)
+        setDraftOutcome(outcome as Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused">)
+        setSurveyOpen(true)
+        return
+      }
 
       const voterEntry = currentHousehold?.entries.find(
         (e) => e.id === entryId,
@@ -170,31 +198,32 @@ function Canvassing() {
             .join(" ") || "Unknown Voter"
         setOutcomeAnnouncement({
           key: navigationKey,
-          message: `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
+          message: `${OUTCOME_LABELS[outcome]} recorded for ${voterName}.`,
         })
       }
 
-      if (
-        result === "not_home" &&
-        currentHousehold &&
-        currentHousehold.entries.length > 1
-      ) {
+      if (outcomeResult.bulkPrompt && currentHousehold) {
         const remaining = currentHousehold.entries.filter(
           (e) =>
             e.id !== entryId &&
             completedEntries[e.id] === undefined &&
             !skippedEntries.includes(e.id),
         )
-        const previouslyCompleted = currentHousehold.entries.filter(
-          (e) => e.id !== entryId && completedEntries[e.id] !== undefined,
-        )
-        if (remaining.length > 0 && previouslyCompleted.length === 0) {
+        if (remaining.length > 0) {
           toast(
             `Apply to all ${remaining.length + 1} voters at this address?`,
             {
               action: {
                 label: "Yes",
-                onClick: () => handleBulkNotHome(remaining),
+                onClick: async () => {
+                  const bulkSaved = await handleBulkNotHome(remaining)
+                  if (bulkSaved) {
+                    setOutcomeAnnouncement({
+                      key: navigationKey,
+                      message: `Not Home recorded for ${remaining.length + 1} voters at ${currentHousehold.address}.`,
+                    })
+                  }
+                },
               },
               cancel: {
                 label: "No",
@@ -204,12 +233,6 @@ function Canvassing() {
             },
           )
         }
-        return
-      }
-
-      if (SURVEY_TRIGGER_OUTCOMES.has(result as DoorKnockResultCode) && scriptId) {
-        setSurveyVoterId(voterId)
-        setSurveyOpen(true)
       }
     },
     [
@@ -218,10 +241,35 @@ function Canvassing() {
       handleBulkNotHome,
       handleOutcome,
       navigationKey,
-      scriptId,
       skippedEntries,
     ],
   )
+
+  const handleSubmitContactDraft = useCallback(async (
+    draft: {
+      notes: string
+      surveyResponses: Array<{ question_id: string; answer_value: string }>
+      surveyComplete: boolean
+    },
+  ) => {
+    if (!draftEntryId || !draftVoterId || !draftOutcome) return
+
+    const saved = await handleSubmitContact({
+      entryId: draftEntryId,
+      voterId: draftVoterId,
+      result: draftOutcome,
+      notes: draft.notes,
+      surveyResponses: draft.surveyResponses,
+      surveyComplete: draft.surveyComplete,
+    })
+    if (!saved) return
+
+    setOutcomeAnnouncement({
+      key: navigationKey,
+      message: `${OUTCOME_LABELS[draftOutcome]} recorded for ${draftVoterName || "Unknown Voter"}.`,
+    })
+    closeDraft()
+  }, [closeDraft, draftEntryId, draftOutcome, draftVoterId, draftVoterName, handleSubmitContact, navigationKey])
 
   const requestDistanceOrder = useCallback(
     (refreshLocation = false) => {
@@ -460,6 +508,7 @@ function Canvassing() {
                 household={currentHousehold}
                 activeEntryId={activeEntryId}
                 completedEntries={completedEntries}
+                skippedEntries={skippedEntries}
                 currentDoorNumber={currentAddressIndex + 1}
                 totalDoors={totalAddresses}
                 sortMode={sortMode}
@@ -471,15 +520,17 @@ function Canvassing() {
         )}
       </div>
 
-      {scriptId && surveyVoterId && (
+      {draftEntryId && draftVoterId && draftOutcome && (
         <InlineSurvey
+          mode="controlled"
           campaignId={campaignId}
           scriptId={scriptId}
-          voterId={surveyVoterId}
           open={surveyOpen}
-          onComplete={handleSurveyComplete}
           onSkip={handleSurveySkip}
-          voterName={activeVoterName}
+          voterName={draftVoterName || activeVoterName}
+          onSubmitDraft={handleSubmitContactDraft}
+          isSubmitting={isSavingDoorKnock}
+          submitLabel="Save Door Knock"
         />
       )}
 

@@ -18,20 +18,16 @@ export function useEnrichedEntries(campaignId: string, walkListId: string) {
 
 export function useDoorKnockMutation(campaignId: string, walkListId: string) {
   const queryClient = useQueryClient()
-  const { recordOutcome } = useCanvassingStore.getState()
 
   return useMutation({
     mutationFn: (data: DoorKnockCreate) =>
       api.post(`api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/door-knocks`, { json: data }).json(),
-    onMutate: (data) => {
-      // Optimistic: record in Zustand store immediately
-      recordOutcome(data.walk_list_entry_id, data.result_code)
-    },
-    // onError removed — call sites (useCanvassingWizard handleOutcome, handleBulkNotHome)
-    // handle errors with context-specific logic (offline queue vs revert)
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      useCanvassingStore.getState().recordOutcome(variables.walk_list_entry_id, variables.result_code)
       queryClient.invalidateQueries({ queryKey: ["walk-list-entries-enriched", campaignId, walkListId] })
     },
+    // onError remains caller-owned so route-specific flows can keep the active
+    // door stable, queue offline retries, and preserve draft state.
   })
 }
 
