@@ -18,7 +18,13 @@ from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
-from app.models.import_job import ImportChunk, ImportJob, ImportStatus
+from app.models.import_job import (
+    ImportChunk,
+    ImportChunkStatus,
+    ImportChunkTaskStatus,
+    ImportJob,
+    ImportStatus,
+)
 from app.models.user import User
 
 CAMPAIGN_ID = uuid.uuid4()
@@ -677,3 +683,97 @@ async def _async_iter(items):
     """Yield items as an async iterator."""
     for item in items:
         yield item
+
+
+# --------------- chunk cancellation regression ---------------
+
+
+@pytest.mark.asyncio()
+async def test_queued_only_cancellation_finalizes_parent():
+    """Queued chunk with cancelled parent reaches CANCELLED with
+    CANCELLED secondary statuses, and the terminal gate fires
+    parent finalization."""
+    cancel_ts = utcnow()
+    chunk_id = uuid.uuid4()
+    job_id = uuid.uuid4()
+
+    chunk = MagicMock()
+    chunk.id = chunk_id
+    chunk.import_job_id = job_id
+    chunk.status = ImportChunkStatus.QUEUED
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
+    chunk.error_message = None
+    chunk.last_progress_at = None
+
+    job = MagicMock()
+    job.id = job_id
+    job.campaign_id = CAMPAIGN_ID
+    job.status = "cancelling"
+    job.cancelled_at = cancel_ts
+
+    mock_session = AsyncMock()
+
+    # session.get returns chunk first, then job
+    call_count = 0
+
+    async def _mock_get(model, pk):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return chunk
+        return job
+
+    mock_session.get = _mock_get
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.rollback = AsyncMock()
+
+    mock_session_factory = AsyncMock()
+    mock_session_factory.__aenter__ = AsyncMock(
+        return_value=mock_session,
+    )
+    mock_session_factory.__aexit__ = AsyncMock(return_value=False)
+
+    from app.services.import_service import ImportService
+
+    service = ImportService()
+    service.maybe_finalize_chunked_import = AsyncMock(
+        return_value=True,
+    )
+
+    with (
+        patch(
+            "app.tasks.import_task.async_session_factory",
+            return_value=mock_session_factory,
+        ),
+        patch(
+            "app.tasks.import_task.set_campaign_context",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.commit_and_restore_rls",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.tasks.import_task.ImportService",
+            return_value=service,
+        ),
+        patch("app.tasks.import_task.StorageService"),
+    ):
+        from app.tasks.import_task import process_import_chunk
+
+        await process_import_chunk(
+            str(chunk_id), str(CAMPAIGN_ID)
+        )
+
+    assert chunk.status == ImportChunkStatus.CANCELLED
+    assert (
+        chunk.phone_task_status
+        == ImportChunkTaskStatus.CANCELLED
+    )
+    assert (
+        chunk.geometry_task_status
+        == ImportChunkTaskStatus.CANCELLED
+    )
+    service.maybe_finalize_chunked_import.assert_awaited()
