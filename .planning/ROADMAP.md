@@ -112,7 +112,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** Close the 76 findings from the 2026-04-04 comprehensive codebase review — eliminate multi-tenant data leaks, race conditions, and reliability gaps before expanding scope.
 
-- [ ] **Phase 71: Tenant Isolation — Service & Route Scoping** - Fix IDOR vulnerabilities by scoping service queries and sub-resource validation to `campaign_id`
+- [x] **Phase 71: Tenant Isolation — Service & Route Scoping** - Fix IDOR vulnerabilities by scoping service queries and sub-resource validation to `campaign_id` (completed 2026-04-04)
 - [ ] **Phase 72: Row-Level Security Hardening** - Add FORCE RLS to core tables and enable RLS on organization tables
 - [ ] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages
 - [ ] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints
@@ -135,7 +135,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 **Plans**: 3 plans
 - [x] 71-01-PLAN.md — Wave 0: test infrastructure (two_campaigns_with_resources fixture + test_tenant_isolation.py)
 - [x] 71-02-PLAN.md — Campaign/VoterList/Import service scoping (SEC-01, SEC-02, SEC-03)
-- [ ] 71-03-PLAN.md — Invite/Tag/Survey scoping (SEC-04, SEC-13)
+- [x] 71-03-PLAN.md — Invite/Tag/Survey scoping (SEC-04, SEC-13)
 
 ### Phase 72: Row-Level Security Hardening
 **Goal**: Core and organization tables enforce RLS at the database layer even against owner/superuser roles.
@@ -226,7 +226,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
-| 71 | v1.12 | 2/3 | In Progress|  |
+| 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 0/0 | Not started | - |
 | 73 | v1.12 | 0/0 | Not started | - |
 | 74 | v1.12 | 0/0 | Not started | - |

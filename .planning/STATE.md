@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: verifying
-stopped_at: Completed 71-02-PLAN.md
-last_updated: "2026-04-04T20:31:38.330Z"
+stopped_at: Completed 71-03-PLAN.md
+last_updated: "2026-04-04T20:31:47.605Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
@@ -43,6 +43,7 @@ Progress: [░░░░░░░░░░] 0%
 - Quality (77) depends on Phases 73 and 75 because several QUAL-* test-coverage items exercise code paths those phases repair
 - [Phase 71]: Use SQLAlchemy Enum member names (STATIC, UPLOADED) in raw SQL inserts for non-native_enum columns
 - [Phase 71]: Phase 71 Plan 02: Applied inline campaign_id guards at service layer for list_campaigns, VoterListService, and ImportJob routes — closes IDORs C1/C2/C3 (SEC-01/02/03)
+- [Phase 71-tenant-isolation-service-route-scoping]: 404 (not 403) on cross-campaign access, inline guards per service method, route-layer ValueError->HTTPException mapping
 
 ### Blockers/Concerns
 
@@ -53,7 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 71-02-PLAN.md
+Stopped at: Completed 71-03-PLAN.md
 Resume file: None
 
 ## Performance Metrics

@@ -18,7 +18,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **SEC-01**: `list_campaigns` returns only campaigns the requesting user has membership in or shared org with (C1)
 - [x] **SEC-02**: All `VoterListService` methods scope queries by both `list_id` and `campaign_id`, blocking cross-campaign read/update/delete (C2)
 - [x] **SEC-03**: All `ImportJob` routes validate the job belongs to the path's `campaign_id` before any action (C3)
-- [ ] **SEC-04**: `revoke_invite` service validates invite belongs to the path's `campaign_id` before revoking (C4)
+- [x] **SEC-04**: `revoke_invite` service validates invite belongs to the path's `campaign_id` before revoking (C4)
 - [ ] **SEC-05**: `campaigns`, `campaign_members`, and `users` tables have `FORCE ROW LEVEL SECURITY` enabled (C5)
 - [ ] **SEC-06**: `organizations` and `organization_members` tables have `ENABLE` + `FORCE ROW LEVEL SECURITY` with scoping policies (C6)
 - [ ] **SEC-07**: Root route guard redirects unauthenticated users to `/login` instead of rendering protected children in the public shell (C7)
@@ -27,7 +27,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [ ] **SEC-10**: Settings routes (general/members/danger) enforce role guards before rendering (H24)
 - [ ] **SEC-11**: DNC list page is gated to `manager` role and above (H25)
 - [ ] **SEC-12**: Active calling page enforces check-in server-side, not only via local state (H26)
-- [ ] **SEC-13**: `voter_tags.add_tag` and `surveys` script/question routes validate sub-resources belong to the path `campaign_id` (H4, H5)
+- [x] **SEC-13**: `voter_tags.add_tag` and `surveys` script/question routes validate sub-resources belong to the path `campaign_id` (H4, H5)
 
 ### Data Integrity & Concurrency
 
@@ -92,8 +92,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | SEC-01 | Phase 71 | Complete |
 | SEC-02 | Phase 71 | Complete |
 | SEC-03 | Phase 71 | Complete |
-| SEC-04 | Phase 71 | Pending |
-| SEC-13 | Phase 71 | Pending |
+| SEC-04 | Phase 71 | Complete |
+| SEC-13 | Phase 71 | Complete |
 | SEC-05 | Phase 72 | Pending |
 | SEC-06 | Phase 72 | Pending |
 | SEC-07 | Phase 73 | Pending |
