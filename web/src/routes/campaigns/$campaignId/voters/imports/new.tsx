@@ -105,7 +105,26 @@ export function ImportWizardPage() {
   // Auto-restore step from job status when jobId is in URL
   useEffect(() => {
     if (!jobId || !jobQuery.data) return
-    const correctStep = deriveStep(jobQuery.data.status)
+    const job = jobQuery.data
+    const correctStep = deriveStep(job.status)
+
+    // Hydrate mapping state for uploaded jobs (reopen case)
+    if (
+      job.status === "uploaded" &&
+      job.detected_columns &&
+      job.detected_columns.length > 0 &&
+      detectedColumns.length === 0 // only hydrate once — don't overwrite user edits
+    ) {
+      setDetectedColumns(job.detected_columns)
+      setSuggestedMapping(job.suggested_mapping ?? {})
+      setFormatDetected(job.format_detected ?? null)
+      const initialMapping: Record<string, string> = {}
+      for (const col of job.detected_columns) {
+        initialMapping[col] = (job.suggested_mapping?.[col]?.field) ?? ""
+      }
+      setMapping(initialMapping)
+    }
+
     // Don't let stale query data navigate backwards — status only moves forward
     if (correctStep < step) return
     if (correctStep !== step) {
@@ -114,7 +133,7 @@ export function ImportWizardPage() {
         replace: true,
       })
     }
-  }, [jobId, jobQuery.data, step, navigate])
+  }, [jobId, jobQuery.data, step, navigate, detectedColumns.length])
 
   // Polling job for step 3
   const pollingJob = useImportJob(campaignId, jobId, step === 3)
