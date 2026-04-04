@@ -87,11 +87,48 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 ## Traceability
 
-Filled by `/gsd:plan-phase` as phases are created.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (pending roadmap) | — | — |
+| SEC-01 | Phase 71 | Pending |
+| SEC-02 | Phase 71 | Pending |
+| SEC-03 | Phase 71 | Pending |
+| SEC-04 | Phase 71 | Pending |
+| SEC-13 | Phase 71 | Pending |
+| SEC-05 | Phase 72 | Pending |
+| SEC-06 | Phase 72 | Pending |
+| SEC-07 | Phase 73 | Pending |
+| SEC-08 | Phase 73 | Pending |
+| SEC-09 | Phase 73 | Pending |
+| SEC-10 | Phase 73 | Pending |
+| SEC-11 | Phase 73 | Pending |
+| SEC-12 | Phase 73 | Pending |
+| DATA-01 | Phase 74 | Pending |
+| DATA-02 | Phase 74 | Pending |
+| DATA-03 | Phase 74 | Pending |
+| DATA-04 | Phase 74 | Pending |
+| DATA-05 | Phase 74 | Pending |
+| DATA-06 | Phase 74 | Pending |
+| DATA-07 | Phase 74 | Pending |
+| DATA-08 | Phase 74 | Pending |
+| REL-01 | Phase 75 | Pending |
+| REL-02 | Phase 75 | Pending |
+| REL-03 | Phase 75 | Pending |
+| REL-08 | Phase 75 | Pending |
+| REL-04 | Phase 76 | Pending |
+| REL-05 | Phase 76 | Pending |
+| REL-06 | Phase 76 | Pending |
+| REL-07 | Phase 76 | Pending |
+| REL-09 | Phase 76 | Pending |
+| REL-10 | Phase 76 | Pending |
+| REL-11 | Phase 76 | Pending |
+| QUAL-01 | Phase 77 | Pending |
+| QUAL-02 | Phase 77 | Pending |
+| QUAL-03 | Phase 77 | Pending |
+| QUAL-04 | Phase 77 | Pending |
+| QUAL-05 | Phase 77 | Pending |
+| QUAL-06 | Phase 77 | Pending |
+| QUAL-07 | Phase 77 | Pending |
+| QUAL-08 | Phase 77 | Pending |
 
 ---
 *Active requirements file for GSD workflows*
