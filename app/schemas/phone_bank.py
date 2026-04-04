@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import field_validator
+from pydantic import computed_field, field_validator
 
 from app.schemas.common import BaseSchema
 
@@ -70,6 +70,18 @@ class SessionCallerResponse(BaseSchema):
     check_in_at: datetime | None = None
     check_out_at: datetime | None = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def checked_in(self) -> bool:
+        """True when the caller is currently checked in to the session.
+
+        A caller is considered checked in when ``check_in_at`` is set
+        and ``check_out_at`` is still NULL. After checkout the flag
+        flips back to false. SEC-12: server-side source of truth for
+        the active calling page's check-in gate.
+        """
+        return self.check_in_at is not None and self.check_out_at is None
 
 
 class CallRecordCreate(BaseSchema):

@@ -254,7 +254,7 @@ class TestCallerCheckInStatus:
         app_user_engine,
         superuser_engine,
     ):
-        """Assigned caller with check_in_at set + check_out_at null -> checked_in=true."""
+        """check_in_at set + check_out_at null -> checked_in=true."""
         data = session_with_caller
         now = utcnow()
         await superuser_session.execute(
@@ -351,13 +351,12 @@ class TestCallerCheckInStatus:
         self,
         session_with_caller,
     ):
-        """Unauthenticated request -> 403 (HTTPBearer auto-error).
+        """Unauthenticated request -> 401.
 
         The app's real ``get_current_user`` dependency is left in
         place so the request hits the auth layer without a JWT.
-        Matches existing auth patterns in ``test_api_*`` where a
-        missing Authorization header surfaces as 403 via
-        ``HTTPBearer(auto_error=True)``.
+        A custom exception handler surfaces HTTPBearer's auto-error
+        as 401 Unauthorized ("Not authenticated").
         """
         from app.main import create_app
 
@@ -370,4 +369,4 @@ class TestCallerCheckInStatus:
         ) as client:
             resp = await client.get(self._url(data))
 
-        assert resp.status_code == 403, resp.text
+        assert resp.status_code == 401, resp.text
