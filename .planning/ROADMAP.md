@@ -10,7 +10,7 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - ✅ **v1.10 Import Recovery** — Phases 56-58 (shipped 2026-04-01)
-- 🟡 **v1.11 Faster Imports** — Phases 59-70 (audit follow-up planned 2026-04-04)
+- ✅ **v1.11 Faster Imports** — Phases 59-70 (shipped 2026-04-04)
 
 ## Phases
 
@@ -136,8 +136,8 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 
 </details>
 
-<details open>
-<summary>🟡 v1.11 Faster Imports (Phases 59-70) — AUDIT FOLLOW-UP PLANNED 2026-04-04</summary>
+<details>
+<summary>✅ v1.11 Faster Imports (Phases 59-70) — SHIPPED 2026-04-04</summary>
 
 **Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
@@ -151,8 +151,8 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 - [x] **Phase 66: Import Wizard Flow Recovery & Progress Accuracy** - Fix new-import detect-columns wiring and close the end-to-end progress/completion flow gaps — completed 2026-04-03
 - [x] **Phase 67: Chunk Import Cleanup & Deletion Semantics** - Close post-audit cleanup around chunked import deletion behavior and stale Phase 59 traceability artifacts — completed 2026-04-03
 - [x] **Phase 68: Progress Metric Accuracy & Validation Closeout** - Improve import throughput/ETA timing accuracy and complete remaining Nyquist validation follow-up — completed 2026-04-03
-- [ ] **Phase 69: Queued Cancellation Finalization Closure** - Ensure queued chunk cancellation still drives chunk terminal state and parent import finalization
-- [ ] **Phase 70: Reopened Import Restore Flow Closure** - Restore detected-column payload and mapping state when reopening uploaded imports from history or details
+- [x] **Phase 69: Queued Cancellation Finalization Closure** - Ensure queued chunk cancellation still drives chunk terminal state and parent import finalization — completed 2026-04-04
+- [x] **Phase 70: Reopened Import Restore Flow Closure** - Restore detected-column payload and mapping state when reopening uploaded imports from history or details — completed 2026-04-04
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
