@@ -30,6 +30,9 @@ export interface ImportJob {
   last_progress_at?: string | null
   created_at: string
   updated_at: string
+  detected_columns: string[] | null
+  suggested_mapping: Record<string, FieldMapping> | null
+  format_detected: "l2" | "generic" | null
 }
 
 export interface ImportUploadResponse {
