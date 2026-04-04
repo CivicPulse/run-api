@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 72-01-PLAN.md
-last_updated: "2026-04-04T22:36:43.021Z"
+stopped_at: Completed 72-02-PLAN.md
+last_updated: "2026-04-04T22:41:41.974Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 72 (Row-Level Security Hardening) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-04
 
@@ -46,6 +46,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 71-tenant-isolation-service-route-scoping]: 404 (not 403) on cross-campaign access, inline guards per service method, route-layer ValueError->HTTPException mapping
 - [Phase 72]: Seed organization_members explicitly in two_orgs_with_campaigns since migration 015 only seeds on upgrade
 - [Phase 72]: SEC-05 tests pass pre-migration (ENABLE RLS already isolates app_user); red bar is SEC-06 organization tests + reversibility placeholder
+- [Phase 72]: Migration 026: FORCE on C5 tables, ENABLE+FORCE+campaign-scoped policies on C6; downgrade uses NO FORCE (C5) + DISABLE (C6) to preserve pre-existing policies
 
 ### Blockers/Concerns
 
@@ -56,7 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 72-01-PLAN.md
+Stopped at: Completed 72-02-PLAN.md
 Resume file: None
 
 ## Performance Metrics

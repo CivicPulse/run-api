@@ -227,7 +227,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
-| 72 | v1.12 | 1/3 | In Progress|  |
+| 72 | v1.12 | 2/3 | In Progress|  |
 | 73 | v1.12 | 0/0 | Not started | - |
 | 74 | v1.12 | 0/0 | Not started | - |
 | 75 | v1.12 | 0/0 | Not started | - |
