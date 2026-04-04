@@ -132,7 +132,10 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. All `ImportJob` routes (detect, confirm-mapping, cancel, status) return 404 when the job's `campaign_id` does not match the path's `campaign_id`
   4. `revoke_invite`, `voter_tags.add_tag`, and surveys script/question routes reject sub-resources belonging to a different campaign
   5. Automated tests prove cross-campaign access attempts return 404 (not 200) on every affected endpoint
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 71-01-PLAN.md — Wave 0: test infrastructure (two_campaigns_with_resources fixture + test_tenant_isolation.py)
+- [ ] 71-02-PLAN.md — Campaign/VoterList/Import service scoping (SEC-01, SEC-02, SEC-03)
+- [ ] 71-03-PLAN.md — Invite/Tag/Survey scoping (SEC-04, SEC-13)
 
 ### Phase 72: Row-Level Security Hardening
 **Goal**: Core and organization tables enforce RLS at the database layer even against owner/superuser roles.
