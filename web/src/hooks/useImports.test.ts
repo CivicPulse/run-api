@@ -322,7 +322,7 @@ vi.mock("@/api/client", () => ({
 }))
 
 import { api } from "@/api/client"
-import { useDetectColumns } from "./useImports"
+import { useConfirmMapping, useDetectColumns } from "./useImports"
 
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
@@ -374,5 +374,60 @@ describe("IMPT-02: detect columns returns suggested_mapping", () => {
     expect(result.current.data?.detected_columns).toEqual(["First Name", "Email", "Party"])
     expect(result.current.data?.suggested_mapping["First Name"]).toBe("first_name")
     expect(result.current.data?.suggested_mapping["Party"]).toBeNull()
+  })
+})
+
+describe("IMPT-08: confirm mapping returns the full import job contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("useConfirmMapping parses the backend response as a full ImportJob", async () => {
+    const confirmResponse = {
+      id: "job-xyz",
+      campaign_id: "campaign-abc",
+      original_filename: "voters.csv",
+      status: "queued",
+      total_rows: 120,
+      imported_rows: 0,
+      skipped_rows: 0,
+      error_report_key: null,
+      error_report_url: null,
+      error_message: null,
+      cancelled_at: null,
+      phones_created: null,
+      source_type: "file",
+      field_mapping: { "First Name": "first_name" },
+      created_by: "user-123",
+      last_committed_row: null,
+      processing_started_at: null,
+      last_progress_at: null,
+      created_at: "2026-04-04T12:00:00Z",
+      updated_at: "2026-04-04T12:00:00Z",
+    }
+
+    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(confirmResponse) })
+
+    const { result } = renderHook(
+      () => useConfirmMapping("campaign-abc", "job-xyz"),
+      { wrapper: makeWrapper() },
+    )
+
+    result.current.mutate({ field_mapping: { "First Name": "first_name" } })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "api/v1/campaigns/campaign-abc/imports/job-xyz/confirm",
+      {
+        json: { field_mapping: { "First Name": "first_name" } },
+      },
+    )
+    expect(result.current.data).toEqual(confirmResponse)
+    expect(result.current.data?.id).toBe("job-xyz")
+    expect(result.current.data?.campaign_id).toBe("campaign-abc")
+    expect(result.current.data?.field_mapping).toEqual({
+      "First Name": "first_name",
+    })
   })
 })

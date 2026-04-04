@@ -137,7 +137,7 @@ export function useConfirmMapping(campaignId: string, jobId: string) {
         .post(`api/v1/campaigns/${campaignId}/imports/${jobId}/confirm`, {
           json: data,
         })
-        .json<{ job_id: string; status: ImportStatus }>(),
+        .json<ImportJob>(),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: importKeys.detail(campaignId, jobId) }),
   })
