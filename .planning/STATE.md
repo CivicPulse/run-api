@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 70-02-PLAN.md
-last_updated: "2026-04-04T14:41:23.211Z"
+milestone: v1.12
+milestone_name: Hardening & Remediation
+status: defining_requirements
+stopped_at: ""
+last_updated: "2026-04-04T15:00:00.000Z"
 last_activity: 2026-04-04
 progress:
-  total_phases: 15
-  completed_phases: 15
-  total_plans: 31
-  completed_plans: 31
-  percent: 83
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-01)
+See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 70 — reopened-import-restore-flow-closure
+**Current focus:** v1.12 Hardening & Remediation — closing codebase review findings
 
 ## Current Position
 
-Phase: 70
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-04
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-04 — Milestone v1.12 started
 
-Progress: [████████░░] 83%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -76,41 +76,15 @@ Progress: [████████░░] 83%
 
 ### Blockers/Concerns
 
-- v1.11 milestone audit still fails until Phases 69 and 70 are implemented and re-audited
+- 16 CRITICAL findings from 2026-04-04 codebase review block production hardening
+- Multi-tenant data isolation has 4 IDOR vulnerabilities and RLS gaps on core tables
 
 ## Session Continuity
 
-Last activity: 2026-04-04 — Planned Phases 69 and 70 to close v1.11 audit gaps
-Stopped at: Completed 70-02-PLAN.md
+Last activity: 2026-04-04 — Started milestone v1.12 Hardening & Remediation
+Stopped at: —
 Resume file: None
 
 ## Performance Metrics
 
-| Phase | Plan | Duration | Tasks | Files | Date |
-|-------|------|----------|-------|-------|------|
-| 60-parent-split-parallel-processing | 01 | 12min | 2 | 3 | 2026-04-03 |
-| 60-parent-split-parallel-processing | 02 | 8min | 2 | 3 | 2026-04-03 |
-| 60-parent-split-parallel-processing | 03 | 7min | 2 | 6 | 2026-04-03 |
-| Phase 61-completion-aggregation-error-merging P01 | 4min | 2 tasks | 4 files |
-| Phase 61-completion-aggregation-error-merging P02 | 14min | 2 tasks | 4 files |
-| Phase 61-completion-aggregation-error-merging P03 | 6min | 1 task | 1 file |
-| Phase 62-resilience-cancellation P01 | 10min | 2 tasks | 4 files | 2026-04-03 |
-| Phase 62-resilience-cancellation P02 | 8min | 2 tasks | 3 files | 2026-04-03 |
-| Phase 62-resilience-cancellation P03 | 6min | 2 tasks | 2 files | 2026-04-03 |
-| Phase 63-secondary-work-offloading P01 | 7min | 1 task | 3 files | 2026-04-03 |
-| Phase 63-secondary-work-offloading P02 | 14min | 2 tasks | 4 files | 2026-04-03 |
-| Phase 63-secondary-work-offloading P03 | 6min | 1 task | 1 file | 2026-04-03 |
-| Phase 64-frontend-throughput-status-ui P01 | 8min | 1 task | 5 files | 2026-04-03 |
-| Phase 64-frontend-throughput-status-ui P02 | 10min | 2 tasks | 3 files | 2026-04-03 |
-| Phase 64-frontend-throughput-status-ui P03 | 7min | 1 task | 2 files | 2026-04-03 |
-| Phase 65-chunk-planning-concurrency-cap-closure P01 | 12min | 2 tasks | 3 files | 2026-04-03 |
-| Phase 65-chunk-planning-concurrency-cap-closure P02 | 16min | 2 tasks | 3 files | 2026-04-03 |
-| Phase 65-chunk-planning-concurrency-cap-closure P03 | 6min | 2 tasks | 3 files | 2026-04-03 |
-| Phase 66-import-wizard-flow-recovery-progress-accuracy P01 | 10min | 2 tasks | 4 files | 2026-04-03 |
-| Phase 66-import-wizard-flow-recovery-progress-accuracy P02 | 8min | 2 tasks | 5 files | 2026-04-03 |
-| Phase 67-chunk-import-cleanup-deletion-semantics P01 | 10min | 2 tasks | 5 files | 2026-04-03 |
-| Phase 68-progress-metric-accuracy-validation-closeout P01 | 12min | 2 tasks | 10 files | 2026-04-03 |
-| Phase 69-queued-cancellation-finalization-closure P01 | 1min | 1 tasks | 2 files |
-| Phase 69-queued-cancellation-finalization-closure P02 | 4min | 2 tasks | 2 files |
-| Phase 70-reopened-import-restore-flow-closure P01 | 1min | 2 tasks | 2 files |
-| Phase 70-reopened-import-restore-flow-closure P02 | 9min | 2 tasks | 2 files |
+(Reset for v1.12 — prior metrics archived with v1.11 milestone completion.)
