@@ -188,7 +188,7 @@ Plans:
 **Plans**: 0 complete
 Plans:
 - [x] 70-01-PLAN.md — Extend the import-job contract and wizard restore logic to hydrate detected-column and mapping state
-- [ ] 70-02-PLAN.md — Add route-level coverage for reopening uploaded imports into mapping and subsequent progress/completion flow
+- [x] 70-02-PLAN.md — Add route-level coverage for reopening uploaded imports into mapping and subsequent progress/completion flow
 
 ### Phase 63: Secondary Work Offloading
 **Goal**: Remove phone creation and geometry backfill from the chunk critical path while preserving durable chunk and parent completion semantics
