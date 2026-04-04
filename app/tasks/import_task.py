@@ -298,6 +298,8 @@ async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
                     job.id,
                 )
                 chunk.status = ImportChunkStatus.CANCELLED
+                chunk.phone_task_status = ImportChunkTaskStatus.CANCELLED
+                chunk.geometry_task_status = ImportChunkTaskStatus.CANCELLED
                 chunk.error_message = None
                 chunk.last_progress_at = utcnow()
                 await commit_and_restore_rls(session, campaign_id)
