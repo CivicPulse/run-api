@@ -185,3 +185,51 @@ test.describe("RBAC: manager permissions", () => {
     await expect(createButton).not.toBeVisible()
   })
 })
+
+/**
+ * Phase 73 role gates (manager partial access) — H23, H24, H25 / SEC-10, SEC-11.
+ *
+ * Manager lacks org_admin (so /campaigns/new redirects) and lacks admin
+ * campaign role (so settings redirects) but HAS manager role, so DNC is
+ * visible. Failing-red: today /campaigns/new and /settings/general are
+ * ungated — manager sees them instead of being redirected.
+ */
+test.describe("Phase 73 role gates (manager partial access)", () => {
+  test.setTimeout(60_000)
+
+  async function expectRedirectedHome(
+    page: import("@playwright/test").Page,
+  ) {
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  }
+
+  test("/campaigns/new redirects manager to / (org_admin required)", async ({
+    page,
+  }) => {
+    await page.goto("/campaigns/new")
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/general redirects manager to / (admin+ required)", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/phone-banking/dnc IS visible to manager", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await page.waitForLoadState("domcontentloaded")
+
+    // Manager should see the DNC page — URL stays on /dnc and a DNC heading renders.
+    await expect(page).toHaveURL(/\/phone-banking\/dnc/, { timeout: 10_000 })
+    await expect(
+      page.getByRole("heading", { name: /do not contact|dnc/i }).first(),
+    ).toBeVisible({ timeout: 30_000 })
+  })
+})

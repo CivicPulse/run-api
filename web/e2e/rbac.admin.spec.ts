@@ -177,3 +177,51 @@ test.describe("RBAC: admin permissions", () => {
     await expect(settingsLink).toBeVisible({ timeout: 30_000 })
   })
 })
+
+/**
+ * Phase 73 role gates (admin has most, not danger) — H23, H24 / SEC-10, SEC-11.
+ *
+ * admin1@localhost has org_admin per seed data (see rbac.admin.spec.ts:13),
+ * so /campaigns/new and settings/{general,members} must be visible.
+ * settings/danger requires owner so admin gets redirected home.
+ *
+ * Failing-red: today settings/danger is ungated — admin sees danger zone
+ * instead of being redirected.
+ */
+test.describe("Phase 73 role gates (admin has most, not danger)", () => {
+  test.setTimeout(60_000)
+
+  test("/campaigns/:id/settings/general visible to admin", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/settings\/general/, { timeout: 10_000 })
+  })
+
+  test("/campaigns/:id/settings/members visible to admin", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/members`)
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/settings\/members/, { timeout: 10_000 })
+  })
+
+  test("/campaigns/:id/settings/danger redirects admin to / (owner only)", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/danger`)
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  })
+
+  test("/campaigns/new visible to admin (admin1 has org_admin)", async ({
+    page,
+  }) => {
+    await page.goto("/campaigns/new")
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/campaigns\/new/, { timeout: 10_000 })
+  })
+})

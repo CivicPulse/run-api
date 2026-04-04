@@ -178,3 +178,55 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(orgSettingsLink).not.toBeVisible()
   })
 })
+
+/**
+ * Phase 73 role gates (viewer is denied) — H23, H24, H25 / SEC-10, SEC-11.
+ *
+ * Failing-red scaffolds: direct-URL navigation to gated routes must redirect
+ * viewers to `/` (home). Today these routes have no page-level guards.
+ */
+test.describe("Phase 73 role gates (viewer is denied)", () => {
+  test.setTimeout(60_000)
+
+  async function expectRedirectedHome(
+    page: import("@playwright/test").Page,
+  ) {
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  }
+
+  test("/campaigns/new redirects viewer to /", async ({ page }) => {
+    await page.goto("/campaigns/new")
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/general redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/members redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/members`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/danger redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/danger`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/phone-banking/dnc redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await expectRedirectedHome(page)
+  })
+})
