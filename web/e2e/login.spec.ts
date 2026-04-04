@@ -52,25 +52,26 @@ test.describe("Login flow", () => {
     await context.close()
   })
 
-  test("unauthenticated access shows landing page with sign-in link", async ({
+  test("unauthenticated access to protected root redirects to /login then ZITADEL", async ({
     browser,
   }) => {
     const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
     const page = await context.newPage()
 
-    // Access root as unauthenticated user
+    // Per Phase 73 (SEC-07/D-01): unauthenticated users hitting a
+    // protected route (including "/") are redirected to /login with the
+    // original path preserved in the redirect query param, then /login
+    // kicks off the OIDC flow to ZITADEL.
     await page.goto("/")
 
-    // Should see the landing page with Sign In button (not the dashboard)
-    const signInLink = page.getByRole("link", { name: /sign in/i })
-    await expect(signInLink).toBeVisible({ timeout: 15_000 })
-
-    // Clicking Sign In navigates to /login route
-    await signInLink.click()
-
-    // /login triggers OIDC redirect to ZITADEL
+    // Either we land on /login?redirect=/ (if ZITADEL is slow) or we
+    // make it all the way to the ZITADEL login UI.
     await page.waitForURL(
-      (url) => url.port === "8080" || url.pathname.includes("/ui/login") || url.pathname.includes("/loginname"),
+      (url) =>
+        url.port === "8080" ||
+        url.pathname.includes("/ui/login") ||
+        url.pathname.includes("/loginname") ||
+        /\/login\?redirect=/.test(url.href),
       { timeout: 15_000 },
     )
 

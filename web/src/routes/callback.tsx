@@ -4,6 +4,8 @@ import { useAuthStore } from "@/stores/authStore"
 import { api } from "@/api/client"
 import { getConfig } from "@/config"
 import { getHighestRoleFromClaims } from "@/lib/auth-claims"
+import { isSafeRedirect } from "@/lib/safeRedirect"
+import { POST_LOGIN_REDIRECT_KEY } from "@/routes/login"
 import type { UserCampaign } from "@/types/user"
 
 // Module-level flag prevents signinRedirectCallback() from being called
@@ -35,6 +37,16 @@ function CallbackPage() {
 
     handleCallback(url)
       .then(async () => {
+        // Honor the stored post-login redirect (SEC-08) — validated
+        // same-origin again at read time. Clear it unconditionally so a
+        // stale value can't leak into a future session.
+        const saved = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY)
+        sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+        if (isSafeRedirect(saved)) {
+          navigate({ to: saved })
+          return
+        }
+
         // After callback completes, store is updated with the user
         const user = useAuthStore.getState().user
         if (!user) {
