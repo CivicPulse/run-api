@@ -187,7 +187,7 @@ Plans:
   4. The audit evidence for the broken import-job restore seam is retired with updated verification
 **Plans**: 0 complete
 Plans:
-- [ ] 70-01-PLAN.md — Extend the import-job contract and wizard restore logic to hydrate detected-column and mapping state
+- [x] 70-01-PLAN.md — Extend the import-job contract and wizard restore logic to hydrate detected-column and mapping state
 - [ ] 70-02-PLAN.md — Add route-level coverage for reopening uploaded imports into mapping and subsequent progress/completion flow
 
 ### Phase 63: Secondary Work Offloading
