@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/authStore"
 import { useParams } from "@tanstack/react-router"
-import { useMyCampaignRole } from "./useUsers"
+import { useMyCampaignRole, useMyCampaigns } from "./useUsers"
 import { getConfig } from "@/config"
 import type { CampaignRole } from "@/types/auth"
 
@@ -16,8 +16,13 @@ export const ROLE_HIERARCHY: Record<CampaignRole, number> = {
 
 let _warnedMissingClaim = false
 
-export function usePermissions(): { role: CampaignRole; hasRole: (minimum: CampaignRole) => boolean } {
+export function usePermissions(): {
+  role: CampaignRole
+  hasRole: (minimum: CampaignRole) => boolean
+  isLoading: boolean
+} {
   const user = useAuthStore((s) => s.user)
+  const isInitialized = useAuthStore((s) => s.isInitialized)
 
   // Get campaignId for the fallback API call (may not be in route params)
   let campaignId = ""
@@ -31,6 +36,11 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
 
   // Always call the fallback hook unconditionally (Rules of Hooks)
   const apiRole = useMyCampaignRole(campaignId)
+  const {
+    data: campaigns,
+    isLoading: isCampaignsLoading,
+    isFetched: isCampaignsFetched,
+  } = useMyCampaigns()
 
   let role: CampaignRole = "viewer"
 
@@ -77,5 +87,18 @@ export function usePermissions(): { role: CampaignRole; hasRole: (minimum: Campa
   const hasRole = (minimum: CampaignRole): boolean =>
     ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[minimum]
 
-  return { role, hasRole }
+  // isLoading: auth still initializing, OR we're in a campaign context and
+  // the per-campaign role fetch is still pending (no cached data yet). Guards
+  // should treat this as "pending" — render null rather than firing
+  // <Navigate>, which would cause a false-positive redirect before the API
+  // role resolves.
+  const isLoading =
+    !isInitialized ||
+    (!!user &&
+      !!campaignId &&
+      !campaigns &&
+      isCampaignsLoading &&
+      !isCampaignsFetched)
+
+  return { role, hasRole, isLoading }
 }

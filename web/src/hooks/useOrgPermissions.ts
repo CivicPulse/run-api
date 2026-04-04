@@ -11,7 +11,8 @@ const ORG_ROLE_LEVELS: Record<OrgRole, number> = {
 
 export function useOrgPermissions() {
   const user = useAuthStore((s) => s.user)
-  const { data: orgs } = useMyOrgs()
+  const isInitialized = useAuthStore((s) => s.isInitialized)
+  const { data: orgs, isLoading: isOrgsLoading, isFetched: isOrgsFetched } = useMyOrgs()
 
   // Collect all org IDs from JWT role claims (multi-tenant support).
   // resourceowner:id is the user's home org which may differ from tenant orgs.
@@ -50,10 +51,18 @@ export function useOrgPermissions() {
     )
   }
 
+  // isLoading: auth still initializing, OR authenticated user has no org
+  // data resolved yet (TanStack Query pending on first fetch). Guards should
+  // treat this as "pending" — render null rather than firing <Navigate>,
+  // which would cause a false-positive redirect before roles resolve.
+  const isLoading =
+    !isInitialized || (!!user && !orgs && isOrgsLoading && !isOrgsFetched)
+
   return {
     orgRole,
     hasOrgRole,
     currentOrg,
     orgs: orgs ?? [],
+    isLoading,
   }
 }
