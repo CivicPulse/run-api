@@ -133,7 +133,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. `revoke_invite`, `voter_tags.add_tag`, and surveys script/question routes reject sub-resources belonging to a different campaign
   5. Automated tests prove cross-campaign access attempts return 404 (not 200) on every affected endpoint
 **Plans**: 3 plans
-- [ ] 71-01-PLAN.md — Wave 0: test infrastructure (two_campaigns_with_resources fixture + test_tenant_isolation.py)
+- [x] 71-01-PLAN.md — Wave 0: test infrastructure (two_campaigns_with_resources fixture + test_tenant_isolation.py)
 - [ ] 71-02-PLAN.md — Campaign/VoterList/Import service scoping (SEC-01, SEC-02, SEC-03)
 - [ ] 71-03-PLAN.md — Invite/Tag/Survey scoping (SEC-04, SEC-13)
 
@@ -226,7 +226,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
 | 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
-| 71 | v1.12 | 0/0 | Not started | - |
+| 71 | v1.12 | 1/3 | In Progress|  |
 | 72 | v1.12 | 0/0 | Not started | - |
 | 73 | v1.12 | 0/0 | Not started | - |
 | 74 | v1.12 | 0/0 | Not started | - |
