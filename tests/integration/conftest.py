@@ -247,6 +247,174 @@ async def two_campaigns(superuser_session):
 
 
 @pytest.fixture
+async def two_orgs_with_campaigns(superuser_session):
+    """Two organizations + campaigns + users for RLS hardening tests.
+
+    Creates a disjoint pair of (organization, campaign, user,
+    organization_members, campaign_members) rows so Phase 72 tests
+    can assert cross-org isolation via the shared
+    ``app.current_campaign_id`` session variable.
+
+    All inserts use the superuser session (bypasses RLS). Yields a
+    dict with the six IDs tests need.
+    """
+    session = superuser_session
+    now = utcnow()
+
+    org_a_id = uuid.uuid4()
+    org_b_id = uuid.uuid4()
+    zitadel_org_a = f"zit-hard-a-{org_a_id.hex[:8]}"
+    zitadel_org_b = f"zit-hard-b-{org_b_id.hex[:8]}"
+    campaign_a_id = uuid.uuid4()
+    campaign_b_id = uuid.uuid4()
+    user_a_id = f"user-hard-a-{uuid.uuid4().hex[:8]}"
+    user_b_id = f"user-hard-b-{uuid.uuid4().hex[:8]}"
+
+    # Users first (organizations.created_by FKs to users.id)
+    for uid, name, email in [
+        (user_a_id, "Hardening User A", f"hard-a-{user_a_id}@test.com"),
+        (user_b_id, "Hardening User B", f"hard-b-{user_b_id}@test.com"),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO users (id, display_name, email, created_at, updated_at) "
+                "VALUES (:id, :name, :email, :now, :now)"
+            ),
+            {"id": uid, "name": name, "email": email, "now": now},
+        )
+
+    # Organizations
+    for oid, zit, name, created_by in [
+        (org_a_id, zitadel_org_a, f"Hardening Org A {org_a_id.hex[:6]}", user_a_id),
+        (org_b_id, zitadel_org_b, f"Hardening Org B {org_b_id.hex[:6]}", user_b_id),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO organizations "
+                "(id, zitadel_org_id, name, created_by, created_at, updated_at) "
+                "VALUES (:id, :zit, :name, :created_by, :now, :now)"
+            ),
+            {
+                "id": oid,
+                "zit": zit,
+                "name": name,
+                "created_by": created_by,
+                "now": now,
+            },
+        )
+
+    # Campaigns (linked to their org via organization_id + zitadel_org_id)
+    for cid, oid, zit, name, ctype, created_by in [
+        (
+            campaign_a_id,
+            org_a_id,
+            zitadel_org_a,
+            "Hardening Campaign A",
+            "STATE",
+            user_a_id,
+        ),
+        (
+            campaign_b_id,
+            org_b_id,
+            zitadel_org_b,
+            "Hardening Campaign B",
+            "FEDERAL",
+            user_b_id,
+        ),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO campaigns "
+                "(id, organization_id, zitadel_org_id, name, type, status, "
+                "created_by, created_at, updated_at) "
+                "VALUES (:id, :org_id, :zit, :name, :type, 'ACTIVE', "
+                ":created_by, :now, :now)"
+            ),
+            {
+                "id": cid,
+                "org_id": oid,
+                "zit": zit,
+                "name": name,
+                "type": ctype,
+                "created_by": created_by,
+                "now": now,
+            },
+        )
+
+    # Organization members
+    for oid, uid in [
+        (org_a_id, user_a_id),
+        (org_b_id, user_b_id),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO organization_members "
+                "(id, organization_id, user_id, role, created_at, updated_at) "
+                "VALUES (:id, :oid, :uid, 'org_owner', :now, :now)"
+            ),
+            {
+                "id": uuid.uuid4(),
+                "oid": oid,
+                "uid": uid,
+                "now": now,
+            },
+        )
+
+    # Campaign members
+    for cid, uid in [
+        (campaign_a_id, user_a_id),
+        (campaign_b_id, user_b_id),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO campaign_members "
+                "(id, user_id, campaign_id, role, synced_at) "
+                "VALUES (:id, :user_id, :campaign_id, 'admin', :now)"
+            ),
+            {
+                "id": uuid.uuid4(),
+                "user_id": uid,
+                "campaign_id": cid,
+                "now": now,
+            },
+        )
+
+    await session.commit()
+
+    yield {
+        "org_a_id": org_a_id,
+        "org_b_id": org_b_id,
+        "campaign_a_id": campaign_a_id,
+        "campaign_b_id": campaign_b_id,
+        "user_a_id": user_a_id,
+        "user_b_id": user_b_id,
+    }
+
+    # Teardown -- reverse FK order
+    await session.execute(
+        text("DELETE FROM campaign_members WHERE campaign_id IN (:a, :b)"),
+        {"a": campaign_a_id, "b": campaign_b_id},
+    )
+    await session.execute(
+        text("DELETE FROM organization_members WHERE organization_id IN (:a, :b)"),
+        {"a": org_a_id, "b": org_b_id},
+    )
+    await session.execute(
+        text("DELETE FROM campaigns WHERE id IN (:a, :b)"),
+        {"a": campaign_a_id, "b": campaign_b_id},
+    )
+    await session.execute(
+        text("DELETE FROM organizations WHERE id IN (:a, :b)"),
+        {"a": org_a_id, "b": org_b_id},
+    )
+    await session.execute(
+        text("DELETE FROM users WHERE id IN (:a, :b)"),
+        {"a": user_a_id, "b": user_b_id},
+    )
+    await session.commit()
+
+
+@pytest.fixture
 async def two_campaigns_with_resources(superuser_session):
     """Two campaigns each with a full resource set for tenant-isolation tests.
 
