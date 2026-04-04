@@ -25,7 +25,7 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 ### Progress & Completion
 
 - [x] **PROG-01**: Parent job's imported_rows, skipped_rows, and phones_created are aggregated from chunk records via SQL SUM
-- [ ] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
+- [x] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
 - [x] **PROG-03**: Error reports from individual chunks are merged into a single downloadable file on finalization
 - [x] **PROG-04**: Import progress UI shows rows/second throughput and estimated time remaining
 - [x] **PROG-05**: COMPLETED_WITH_ERRORS status distinguishes partial chunk failures from full success or full failure
@@ -79,7 +79,7 @@ Requirements for Faster Imports milestone. Each maps to roadmap phases.
 | CHUNK-06 | Phase 65 | Complete |
 | CHUNK-07 | Phase 65 | Complete |
 | PROG-01 | Phase 61 | Complete |
-| PROG-02 | Phase 69 | Pending |
+| PROG-02 | Phase 69 | Complete |
 | PROG-03 | Phase 61 | Complete |
 | PROG-04 | Phase 64/68 | Complete |
 | PROG-05 | Phase 66 | Complete |

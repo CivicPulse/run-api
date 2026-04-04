@@ -173,7 +173,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 **Plans**: 0 complete
 Plans:
 - [x] 69-01-PLAN.md — Repair queued chunk terminal-state handling so cancellation always unblocks parent finalization
-- [ ] 69-02-PLAN.md — Add regression coverage for queued chunk cancellation and terminal parent outcomes
+- [x] 69-02-PLAN.md — Add regression coverage for queued chunk cancellation and terminal parent outcomes
 
 ### Phase 70: Reopened Import Restore Flow Closure
 **Goal**: Restore the uploaded-import reopen flow so the mapping wizard can resume with the detected-column payload and suggested mappings intact
