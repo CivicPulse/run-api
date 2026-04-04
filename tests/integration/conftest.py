@@ -373,7 +373,7 @@ async def two_campaigns_with_resources(superuser_session):
                 "INSERT INTO voter_lists "
                 "(id, campaign_id, name, list_type, created_by, "
                 "created_at, updated_at) "
-                "VALUES (:id, :cid, :name, 'static', :created_by, "
+                "VALUES (:id, :cid, :name, 'STATIC', :created_by, "
                 ":now, :now)"
             ),
             {
@@ -395,7 +395,7 @@ async def two_campaigns_with_resources(superuser_session):
                 "INSERT INTO import_jobs "
                 "(id, campaign_id, status, file_key, original_filename, "
                 "source_type, created_by, created_at, updated_at) "
-                "VALUES (:id, :cid, 'uploaded', :fk, :fn, 'csv', "
+                "VALUES (:id, :cid, 'UPLOADED', :fk, :fn, 'csv', "
                 ":created_by, :now, :now)"
             ),
             {
