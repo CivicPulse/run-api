@@ -330,4 +330,75 @@ test.describe("L2 Import Wizard", () => {
       page.getByText("L2 voter file detected — columns auto-mapped"),
     ).not.toBeVisible()
   })
+
+  test("restores mapping state when reopening uploaded import from history", async ({
+    page,
+  }) => {
+    await setupAuth(page)
+    await setupApiMocks(page, {
+      columns: L2_COLUMNS,
+      mapping: L2_MAPPING,
+      formatDetected: "l2",
+    })
+
+    // Navigate directly with jobId (simulates clicking from history/details)
+    await page.goto(
+      `/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=1`,
+    )
+    await page.waitForLoadState("networkidle")
+
+    // The step-restore effect should hydrate mapping and navigate to step 2
+    // Wait for the column mapping heading to appear (step 2)
+    await expect(
+      page.getByRole("heading", { name: /column mapping/i }),
+    ).toBeVisible({ timeout: 10_000 })
+
+    // Verify columns from detected_columns rendered in the mapping table
+    // Use .first() since column names appear both as labels and as select values
+    await expect(page.getByText("Voter ID").first()).toBeVisible()
+    await expect(page.getByText("First Name").first()).toBeVisible()
+    await expect(page.getByText("Last Name").first()).toBeVisible()
+
+    // Verify L2 detection banner is shown
+    await expect(
+      page.getByText("L2 voter file detected — columns auto-mapped"),
+    ).toBeVisible()
+
+    // Verify comboboxes are populated (mapping was restored, not empty)
+    const selectTriggers = page.getByRole("combobox")
+    const count = await selectTriggers.count()
+    expect(count).toBeGreaterThanOrEqual(10)
+  })
+
+  test("reopened import can proceed from mapping to preview step", async ({
+    page,
+  }) => {
+    await setupAuth(page)
+    await setupApiMocks(page, {
+      columns: L2_COLUMNS,
+      mapping: L2_MAPPING,
+      formatDetected: "l2",
+    })
+
+    // Navigate directly with jobId (reopen from history)
+    await page.goto(
+      `/campaigns/${CAMPAIGN_ID}/voters/imports/new?jobId=${JOB_ID}&step=1`,
+    )
+    await page.waitForLoadState("networkidle")
+
+    // Should auto-navigate to step 2 with mapping populated
+    await expect(
+      page.getByRole("heading", { name: /column mapping/i }),
+    ).toBeVisible({ timeout: 10_000 })
+
+    // Click "Next" to proceed to the preview step (step 2.5)
+    const nextButton = page.getByRole("button", { name: /next/i })
+    await expect(nextButton).toBeVisible()
+    await nextButton.click()
+
+    // Preview step should render with mapping summary
+    await expect(
+      page.getByRole("heading", { name: /preview.*mapping/i }),
+    ).toBeVisible({ timeout: 10_000 })
+  })
 })
