@@ -62,7 +62,9 @@ async def list_lists(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    items, pagination = await _service.list_lists(db, cursor=cursor, limit=limit)
+    items, pagination = await _service.list_lists(
+        db, campaign_id, cursor=cursor, limit=limit
+    )
     return PaginatedResponse[VoterListResponse](
         items=[VoterListResponse.model_validate(vl) for vl in items],
         pagination=pagination,
@@ -87,7 +89,7 @@ async def get_list(
     """
     await ensure_user_synced(user, db)
     try:
-        voter_list = await _service.get_list(db, list_id)
+        voter_list = await _service.get_list(db, list_id, campaign_id)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
     return VoterListResponse.model_validate(voter_list)
@@ -112,7 +114,7 @@ async def update_list(
     """
     await ensure_user_synced(user, db)
     try:
-        voter_list = await _service.update_list(db, list_id, body)
+        voter_list = await _service.update_list(db, list_id, campaign_id, body)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
     return VoterListResponse.model_validate(voter_list)
@@ -136,7 +138,7 @@ async def delete_list(
     """
     await ensure_user_synced(user, db)
     try:
-        await _service.delete_list(db, list_id)
+        await _service.delete_list(db, list_id, campaign_id)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -164,7 +166,9 @@ async def get_list_voters(
     """
     await ensure_user_synced(user, db)
     try:
-        return await _service.get_list_voters(db, list_id, cursor=cursor, limit=limit)
+        return await _service.get_list_voters(
+            db, list_id, campaign_id, cursor=cursor, limit=limit
+        )
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
 
@@ -188,7 +192,7 @@ async def add_members(
     """
     await ensure_user_synced(user, db)
     try:
-        await _service.add_members(db, list_id, body.voter_ids)
+        await _service.add_members(db, list_id, campaign_id, body.voter_ids)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -213,7 +217,7 @@ async def remove_members(
     """
     await ensure_user_synced(user, db)
     try:
-        await _service.remove_members(db, list_id, body.voter_ids)
+        await _service.remove_members(db, list_id, campaign_id, body.voter_ids)
     except ValueError as exc:
         raise VoterListNotFoundError(list_id) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

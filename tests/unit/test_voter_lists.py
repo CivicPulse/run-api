@@ -76,7 +76,9 @@ class TestVoterListService:
         mock_result.scalar_one_or_none.return_value = static_list
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        result = await service.get_list(mock_db, static_list.id)
+        result = await service.get_list(
+            mock_db, static_list.id, static_list.campaign_id
+        )
         assert result.id == static_list.id
 
     async def test_get_list_raises_when_not_found(self, mock_db):
@@ -89,7 +91,7 @@ class TestVoterListService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(ValueError, match="not found"):
-            await service.get_list(mock_db, uuid.uuid4())
+            await service.get_list(mock_db, uuid.uuid4(), uuid.uuid4())
 
     async def test_delete_list(self, mock_db, static_list):
         """delete_list removes the list."""
@@ -100,7 +102,7 @@ class TestVoterListService:
         mock_result.scalar_one_or_none.return_value = static_list
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        await service.delete_list(mock_db, static_list.id)
+        await service.delete_list(mock_db, static_list.id, static_list.campaign_id)
         mock_db.commit.assert_awaited()
 
     async def test_add_members_to_static_list(self, mock_db, static_list):
@@ -113,7 +115,9 @@ class TestVoterListService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         voter_ids = [uuid.uuid4(), uuid.uuid4()]
-        await service.add_members(mock_db, static_list.id, voter_ids)
+        await service.add_members(
+            mock_db, static_list.id, static_list.campaign_id, voter_ids
+        )
         # Should add members and commit
         assert mock_db.add.call_count >= 1
         mock_db.commit.assert_awaited()
@@ -128,7 +132,9 @@ class TestVoterListService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(ValueError, match="static"):
-            await service.add_members(mock_db, dynamic_list.id, [uuid.uuid4()])
+            await service.add_members(
+                mock_db, dynamic_list.id, dynamic_list.campaign_id, [uuid.uuid4()]
+            )
 
     async def test_remove_members_from_static_list(self, mock_db, static_list):
         """remove_members deletes voter IDs from join table."""
@@ -140,7 +146,9 @@ class TestVoterListService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         voter_ids = [uuid.uuid4()]
-        await service.remove_members(mock_db, static_list.id, voter_ids)
+        await service.remove_members(
+            mock_db, static_list.id, static_list.campaign_id, voter_ids
+        )
         mock_db.commit.assert_awaited()
 
     async def test_dynamic_list_uses_stored_filter(self, dynamic_list):
