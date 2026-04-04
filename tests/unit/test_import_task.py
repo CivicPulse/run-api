@@ -1439,6 +1439,8 @@ async def test_process_import_chunk_skips_when_parent_cancelled(campaign_id: str
         await process_import_chunk(chunk_id, campaign_id)
 
     assert chunk.status == ImportChunkStatus.CANCELLED
+    assert chunk.phone_task_status == ImportChunkTaskStatus.CANCELLED
+    assert chunk.geometry_task_status == ImportChunkTaskStatus.CANCELLED
     assert chunk.error_message is None
     assert chunk.last_progress_at is not None
     mock_service.process_import_range.assert_not_awaited()
