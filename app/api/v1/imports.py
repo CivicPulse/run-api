@@ -182,7 +182,7 @@ async def detect_columns(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -211,7 +211,10 @@ async def detect_columns(
     # Generate mapping suggestions
     if template_id is not None:
         template = await db.get(FieldMappingTemplate, template_id)
-        if template is None:
+        if template is None or (
+            template.campaign_id is not None
+            and template.campaign_id != campaign_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Mapping template not found",
@@ -270,7 +273,7 @@ async def confirm_mapping(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -349,7 +352,7 @@ async def cancel_import(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -398,7 +401,7 @@ async def get_import_status(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
