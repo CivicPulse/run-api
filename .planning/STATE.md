@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
-status: verifying
-stopped_at: Completed 71-03-PLAN.md
-last_updated: "2026-04-04T20:31:47.605Z"
+status: executing
+stopped_at: Completed 72-01-PLAN.md
+last_updated: "2026-04-04T22:36:43.021Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 71 — Tenant Isolation — Service & Route Scoping
+**Current focus:** Phase 72 — Row-Level Security Hardening
 
 ## Current Position
 
-Phase: 71 (Tenant Isolation — Service & Route Scoping) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 72 (Row-Level Security Hardening) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -44,6 +44,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 71]: Use SQLAlchemy Enum member names (STATIC, UPLOADED) in raw SQL inserts for non-native_enum columns
 - [Phase 71]: Phase 71 Plan 02: Applied inline campaign_id guards at service layer for list_campaigns, VoterListService, and ImportJob routes — closes IDORs C1/C2/C3 (SEC-01/02/03)
 - [Phase 71-tenant-isolation-service-route-scoping]: 404 (not 403) on cross-campaign access, inline guards per service method, route-layer ValueError->HTTPException mapping
+- [Phase 72]: Seed organization_members explicitly in two_orgs_with_campaigns since migration 015 only seeds on upgrade
+- [Phase 72]: SEC-05 tests pass pre-migration (ENABLE RLS already isolates app_user); red bar is SEC-06 organization tests + reversibility placeholder
 
 ### Blockers/Concerns
 
@@ -54,7 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 71-03-PLAN.md
+Stopped at: Completed 72-01-PLAN.md
 Resume file: None
 
 ## Performance Metrics

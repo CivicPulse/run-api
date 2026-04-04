@@ -94,8 +94,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | SEC-03 | Phase 71 | Complete |
 | SEC-04 | Phase 71 | Complete |
 | SEC-13 | Phase 71 | Complete |
-| SEC-05 | Phase 72 | Pending |
-| SEC-06 | Phase 72 | Pending |
+| SEC-05 | Phase 72 | In Progress |
+| SEC-06 | Phase 72 | In Progress |
 | SEC-07 | Phase 73 | Pending |
 | SEC-08 | Phase 73 | Pending |
 | SEC-09 | Phase 73 | Pending |
