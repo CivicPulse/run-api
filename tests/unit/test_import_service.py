@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 from app.core.config import settings
 from app.models.import_job import (
     ImportChunkStatus,
+    ImportChunkTaskStatus,
     ImportStatus,
 )
 from app.services.import_service import (
@@ -1135,6 +1136,72 @@ class TestPhase60SharedImportSeam:
         assert finalized is False
         assert job.status == ImportStatus.PROCESSING
         summary_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_maybe_complete_chunk_passes_gate_for_cancelled_chunk():
+    """Cancelled chunk with CANCELLED secondary statuses passes terminal gate."""
+    from app.core.time import utcnow
+
+    service = ImportService()
+
+    chunk = MagicMock()
+    chunk.phone_task_status = ImportChunkTaskStatus.CANCELLED
+    chunk.geometry_task_status = ImportChunkTaskStatus.CANCELLED
+    chunk.status = ImportChunkStatus.CANCELLED
+    chunk.phone_task_error = None
+    chunk.geometry_task_error = None
+
+    job = MagicMock()
+    job.cancelled_at = utcnow()
+    job.status = "cancelling"
+
+    mock_finalize = AsyncMock(return_value=True)
+    service.maybe_finalize_chunked_import = mock_finalize
+
+    result = await service.maybe_complete_chunk_after_secondary_tasks(
+        session=AsyncMock(),
+        storage=MagicMock(),
+        job=job,
+        chunk=chunk,
+        campaign_id="test-campaign",
+    )
+
+    assert result is True
+    mock_finalize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_maybe_complete_chunk_rejects_cancelled_chunk_with_none_secondary_statuses():  # noqa: E501
+    """Cancelled chunk with None secondary statuses does NOT pass terminal gate."""
+    from app.core.time import utcnow
+
+    service = ImportService()
+
+    chunk = MagicMock()
+    chunk.phone_task_status = None
+    chunk.geometry_task_status = None
+    chunk.status = ImportChunkStatus.CANCELLED
+    chunk.phone_task_error = None
+    chunk.geometry_task_error = None
+
+    job = MagicMock()
+    job.cancelled_at = utcnow()
+    job.status = "cancelling"
+
+    mock_finalize = AsyncMock(return_value=True)
+    service.maybe_finalize_chunked_import = mock_finalize
+
+    result = await service.maybe_complete_chunk_after_secondary_tasks(
+        session=AsyncMock(),
+        storage=MagicMock(),
+        job=job,
+        chunk=chunk,
+        campaign_id="test-campaign",
+    )
+
+    assert result is False
+    mock_finalize.assert_not_awaited()
 
 
 class TestProcessCsvBatch:
