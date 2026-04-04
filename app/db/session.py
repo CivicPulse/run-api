@@ -36,7 +36,10 @@ def reset_rls_context(dbapi_connection, connection_record, connection_proxy):
         "SELECT set_config('app.current_campaign_id', "
         "'00000000-0000-0000-0000-000000000000', false)"
     )
-    # Phase 41: add set_config('app.current_org_id', ...) here
+    # Note: Phase 72 (SEC-06) added RLS to organizations via a subquery
+    # through campaigns.organization_id, so no separate app.current_org_id
+    # session variable is required. Setting app.current_campaign_id is
+    # sufficient for both campaign-scoped and organization-scoped policies.
     cursor.close()
 
 

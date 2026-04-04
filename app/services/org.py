@@ -1,4 +1,4 @@
-"""Organization service -- org-scoped queries (no RLS)."""
+"""Organization service -- org-scoped queries."""
 
 from __future__ import annotations
 
@@ -17,8 +17,14 @@ from app.models.user import User
 class OrgService:
     """Service for org-level data access.
 
-    All queries filter by organization_id explicitly
-    (D-17: no RLS on org data).
+    Phase 72 (SEC-06): organizations and organization_members now enforce RLS
+    scoped via app.current_campaign_id -> campaigns.organization_id subquery.
+    This service runs with Depends(get_db) which currently connects as the
+    postgres superuser, so RLS policies are bypassed at runtime. When the
+    API switches to the app_user role (tracked as follow-up tech debt),
+    callers MUST set a campaign context before querying organization data,
+    or use an elevated-privilege session for cross-org admin operations.
+    All queries filter by organization_id explicitly as defense-in-depth.
     """
 
     async def get_org(self, db: AsyncSession, org_id: uuid.UUID) -> Organization | None:
