@@ -1,49 +1,53 @@
 # Phase 59: Chunk Schema & Configuration - Context
 
-**Gathered:** 2026-04-01
+**Gathered:** 2026-04-03
 **Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
 
-Add the schema, settings, and sizing logic needed to represent chunked imports without changing the existing serial import runtime path for files that stay below the configured bypass threshold.
+Add the internal schema and configuration needed for chunked imports without changing the current user-facing import flow or enabling parallel execution yet. This phase defines how chunk state is represented, how small files stay on the existing serial path, and how chunk sizing/concurrency defaults are configured for later phases.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### Chunk Record Model
-- **D-01:** `ImportChunk` should be operational from day one, not a placeholder table. Include row range, per-chunk status, imported/skipped counters, `last_committed_row`, error report key, and lifecycle timestamps needed for resume and recovery.
-- **D-02:** Do not duplicate parent-import configuration snapshots into every chunk in Phase 59. Keep the chunk record focused on execution state and row assignment unless a later phase proves snapshotting is required.
+### ImportChunk data model
+- **D-01:** `ImportChunk` is an internal child record attached to the parent `ImportJob`, not a user-facing import entity.
+- **D-02:** Each chunk record should track row range, lifecycle status, counters, `last_committed_row`, `error_report_key`, and timestamps needed for later aggregation and crash-resume behavior.
+- **D-03:** Parent `ImportJob` remains the only API/UI status surface in this phase; chunk details stay implementation-only.
 
-### Chunk Status Semantics
-- **D-03:** Use a dedicated `ImportChunkStatus` enum instead of reusing parent `ImportStatus`.
-- **D-04:** Parent and chunk lifecycle states are intentionally separate: parent import status remains the user-facing source of truth, while chunk status is an internal coordination primitive for fan-out/fan-in phases.
+### Serial bypass policy
+- **D-04:** Files below a configurable row threshold must stay on the existing serial import path by default.
+- **D-05:** The serial bypass should be conservative so chunk orchestration is introduced only where it is likely to improve a materially large import.
 
-### Serial Bypass Policy
-- **D-05:** Phase 59 uses a deterministic row-count-based `serial_threshold` to decide whether an import stays on the existing serial path.
-- **D-06:** Small files below the threshold do not create chunk records and should preserve current behavior as closely as possible.
+### Chunk sizing strategy
+- **D-06:** Chunk sizing should reuse the existing bind-limit-aware sizing logic instead of inventing a separate formula from scratch.
+- **D-07:** Phase 59 should establish a deterministic chunk sizing function that starts from a default chunk target and clamps it using mapped-column count and total file size.
 
-### Adaptive Chunk Sizing Policy
-- **D-07:** Chunk sizing should respect the existing asyncpg bind-parameter safety model already used by the serial importer, so column count remains a first-class input.
-- **D-08:** Final chunk sizing should be constrained by both bind-limit-safe rows per batch and a configurable `max_chunks_per_import` cap to avoid flooding workers with excessive child jobs.
-- **D-09:** Phase 59 should establish deterministic chunk-boundary calculation logic now, but actual concurrent child execution stays in Phase 60.
+### Per-import chunk concurrency
+- **D-08:** Maximum concurrent chunks per import should be configurable in application settings.
+- **D-09:** The default concurrency cap should be intentionally low to avoid worker starvation until real throughput data justifies raising it.
+
+### Carry-forward constraints
+- **D-10:** This phase must preserve the current serial import behavior, including per-batch commits, RLS restoration, and resume semantics on the parent import path.
+- **D-11:** Chunk-level execution, progress aggregation, error merge/finalization, cancellation propagation, and secondary-work offloading are deferred to Phases 60-64.
 
 ### the agent's Discretion
-- Exact enum member names for `ImportChunkStatus`, as long as they clearly support pending, queued, processing, completed, cancelled, and failed-style chunk states.
-- Exact setting names and defaults, as long as they cover default chunk size, serial bypass threshold, and maximum chunks per import.
-- Whether chunk timestamps mirror parent naming (`created_at`, `updated_at`) only or also add phase-specific fields such as `started_at` / `completed_at`.
+- Exact table/enum field names for `ImportChunk`, as long as they align with existing model and migration conventions.
+- Exact settings names for chunk threshold, default chunk size, and max concurrent chunks, as long as they fit the current `Settings` pattern cleanly.
+- Whether chunk status uses the same enum values as `ImportJob` or a closely related dedicated enum, as long as later phases can express partial completion and failure cleanly.
 
 </decisions>
 
 <specifics>
 ## Specific Ideas
 
-- Keep chunking invisible to end users in this milestone slice. Users still see one import job, not internal chunk rows.
-- Preserve the current serial import path for below-threshold files rather than forcing “one chunk” semantics too early.
-- The current importer already computes a safe effective batch size from mapped column count and the asyncpg 32,767 bind-parameter limit; Phase 59 should extend that idea rather than introduce a separate sizing model.
-- Advisory-lock-based coordination and `last_committed_row` resume behavior from v1.10 remain foundational assumptions for the parallel import design.
+- Chunking should remain invisible to the user; the system should still feel like one import with one progress/status surface.
+- Small and medium imports should continue using the proven serial path unless the configured threshold says otherwise.
+- The existing asyncpg bind-parameter constraint handling in the import service should become the foundation for chunk sizing rather than a separate competing mechanism.
+- Worker-capacity protection matters from day one; concurrency defaults should bias toward safety first.
 
 </specifics>
 
@@ -52,20 +56,24 @@ Add the schema, settings, and sizing logic needed to represent chunked imports w
 
 **Downstream agents MUST read these before planning or implementing.**
 
-### Milestone scope
-- `.planning/ROADMAP.md` — Active roadmap showing v1.11 Faster Imports and the current Phase 59 definition.
-- `.planning/milestones/v1.11-ROADMAP.md` — Detailed Phase 59 goal, dependencies, and success criteria.
-- `.planning/milestones/v1.11-REQUIREMENTS.md` — v1.11 requirements traceability, especially CHUNK-01, CHUNK-05, CHUNK-06, and CHUNK-07.
+### Milestone scope and requirements
+- `.planning/PROJECT.md` — project constraints, current milestone intent, and previously locked import architecture decisions
+- `.planning/STATE.md` — current milestone state and carry-forward decisions for chunked child jobs and secondary-work offloading
+- `.planning/ROADMAP.md` — top-level milestone summary showing v1.11 sequencing and Phase 59 scope
+- `.planning/milestones/v1.11-ROADMAP.md` — full Phase 59 goal, success criteria, dependencies, and execution order
+- `.planning/milestones/v1.11-REQUIREMENTS.md` — CHUNK-01, CHUNK-05, CHUNK-06, and CHUNK-07 requirements
 
 ### Existing import pipeline
-- `app/models/import_job.py` — Current parent import model and status lifecycle that chunk infrastructure must complement, not replace.
-- `app/services/import_service.py` — Existing serial import path, resume behavior, and bind-limit-aware batch sizing logic.
-- `app/tasks/import_task.py` — Current background-task orchestration, advisory locking, and serial processing entrypoint.
-- `app/core/config.py` — Existing import settings location to extend with chunking configuration.
+- `app/models/import_job.py` — current parent import schema and status model that chunk records must complement
+- `app/schemas/import_job.py` — existing parent import response surface that should remain the user-facing abstraction
+- `app/services/import_service.py` — current serial import path, bind-limit-aware batch sizing, per-batch commits, and resume semantics
+- `app/tasks/import_task.py` — current task entry point, advisory-lock usage, and parent import lifecycle transitions
+- `app/api/v1/imports.py` — current import API flow that should keep presenting one import job to callers
+- `app/core/config.py` — existing settings pattern where chunking configuration should be introduced
 
-### Carry-forward decisions
-- `.planning/phases/57-recovery-engine-completion-hardening/57-CONTEXT.md` — Recovery-task and advisory-lock decisions that constrain chunk coordination.
-- `.planning/phases/58-test-coverage/58-CONTEXT.md` — Existing recovery coverage expectations that future chunk work should preserve and extend.
+### Design and historical context
+- `docs/import-parallelization-options.md` — rationale for choosing chunked child jobs over other acceleration approaches
+- `docs/issues/large-voter-import-crash.md` — historical context for why durable background imports and faster single-file throughput matter
 
 </canonical_refs>
 
@@ -73,32 +81,38 @@ Add the schema, settings, and sizing logic needed to represent chunked imports w
 ## Existing Code Insights
 
 ### Reusable Assets
-- `ImportJob` already exposes status, `last_committed_row`, `last_progress_at`, `source_exhausted_at`, and cancellation metadata that establish the parent import lifecycle.
-- `ImportService.process_import_file()` already computes an effective batch size from mapped column count and the asyncpg bind limit.
-- `process_import` and `recover_import` already use advisory locks plus explicit campaign context setup before querying RLS-protected tables.
+- `app/models/import_job.py`: already holds parent import counters, recovery metadata, and lifecycle state, so `ImportChunk` should complement rather than replace it.
+- `app/services/import_service.py`: already computes a safe effective batch size from mapped column count and the asyncpg bind-parameter ceiling.
+- `app/tasks/import_task.py`: already owns import task boundaries and advisory-lock coordination, which later phases can extend for parent/child orchestration.
+- `app/core/config.py`: already exposes import-specific settings, so chunk threshold and concurrency settings should land there.
 
 ### Established Patterns
-- Import coordination is task-driven through Procrastinate, not a generic workflow engine.
-- Resume behavior is row-based via `last_committed_row`, with per-batch commits and RLS restoration after each commit.
-- Import settings live in `app/core/config.py` and are exposed as strongly typed Pydantic settings.
+- Import durability is built around per-batch commits plus resume from `last_committed_row`.
+- The import API and schema expose one parent job, not internal worker steps.
+- Recovery state is application-owned and stored on durable records, not inferred from queue internals.
+- Project requirements explicitly keep chunk details out of the UI.
 
 ### Integration Points
-- Phase 59 will likely add a new import-chunk model plus an Alembic migration.
-- The parent import task flow in `app/tasks/import_task.py` is the eventual handoff point for serial-threshold routing in later phases.
-- Future chunk aggregation and recovery work will need to align with the existing parent `ImportJob` counters instead of replacing them.
+- Alembic migration plus ORM model registration for the new chunk table
+- Parent import settings/config in `app/core/config.py`
+- Serial-path branching and chunk sizing helpers in `app/services/import_service.py`
+- Future parent/child task orchestration in `app/tasks/import_task.py`
 
 </code_context>
 
 <deferred>
 ## Deferred Ideas
 
-- Per-chunk UI visibility or user-triggered chunk retries — explicitly out of scope per v1.11 requirements.
-- Copying parent configuration snapshots into each chunk row — defer unless later phases demonstrate a concrete need.
-- File-size-based or runtime-adaptive serial bypass heuristics beyond row-count thresholding — defer until the simple threshold proves insufficient.
+- Parent CSV pre-scan and child task fan-out belong to Phase 60.
+- Parent progress aggregation, merged error reports, and `COMPLETED_WITH_ERRORS` belong to Phase 61.
+- Chunk-level failure isolation, cancellation propagation, per-chunk resume, and deadlock prevention belong to Phase 62.
+- VoterPhone creation and geometry/derived updates moving off the critical path belong to Phase 63.
+- Throughput/ETA UI remains Phase 64 work.
+- Fixing the stale GSD phase resolver so Phase 59 resolves to the active v1.11 phase instead of archived v1.7 planning should be handled separately from this feature phase.
 
 </deferred>
 
 ---
 
 *Phase: 59-chunk-schema-configuration*
-*Context gathered: 2026-04-01*
+*Context gathered: 2026-04-03*
