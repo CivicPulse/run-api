@@ -230,15 +230,19 @@ class CampaignService:
     async def list_campaigns(
         self,
         db: AsyncSession,
+        user: AuthenticatedUser,
         limit: int = 20,
         cursor: str | None = None,
     ) -> tuple[list[Campaign], PaginationResponse]:
         """List campaigns with cursor-based pagination.
 
+        Scoped to campaigns where the requesting user has a CampaignMember
+        row (strict membership-based visibility, no org-wide fallback).
         Uses created_at + id for stable cursor ordering.
 
         Args:
             db: Async database session.
+            user: The authenticated user whose memberships scope the list.
             limit: Maximum number of items to return.
             cursor: Opaque cursor string (created_at|id format).
 
@@ -247,7 +251,11 @@ class CampaignService:
         """
         query = (
             select(Campaign)
-            .where(Campaign.status != CampaignStatus.DELETED)
+            .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
+            .where(
+                Campaign.status != CampaignStatus.DELETED,
+                CampaignMember.user_id == user.id,
+            )
             .order_by(Campaign.created_at.desc(), Campaign.id.desc())
         )
 
