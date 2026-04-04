@@ -1,94 +1,97 @@
 # Requirements: CivicPulse Run API
 
-**Active milestone:** v1.11 Faster Imports
-**Defined:** 2026-04-01
-**Synced to:** `.planning/milestones/v1.11-REQUIREMENTS.md`
+**Active milestone:** v1.12 Hardening & Remediation
+**Defined:** 2026-04-04
+**Synced to:** `.planning/milestones/v1.12-REQUIREMENTS.md` (pending milestone completion)
 **Core Value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
+**Source:** `.planning/CODEBASE-REVIEW-2026-04-04.md` — comprehensive 8-agent codebase review identifying 76 findings.
 
 This file is the canonical active requirements entrypoint for GSD workflows.
 Archived milestone requirements remain in `.planning/milestones/`.
 
-## v1.11 Requirements
+## v1.12 Requirements
 
-Requirements for Faster Imports milestone. Each maps to roadmap phases.
+Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C1, H6, M14) are listed for traceability.
 
-### Chunk Infrastructure
+### Security & Tenant Isolation
 
-- [x] **CHUNK-01**: System has a durable ImportChunk schema with row ranges and per-chunk status tracking ready for internal runtime use
-- [x] **CHUNK-02**: System pre-scans CSV to count total rows for deterministic chunk boundary calculation
-- [x] **CHUNK-03**: Parent split task creates chunk records and defers one Procrastinate child task per chunk
-- [x] **CHUNK-04**: Chunk workers process their row range with per-batch commits, RLS restore, and independent sessions
-- [x] **CHUNK-05**: Files under a configurable row threshold bypass chunking and run the existing serial path
-- [x] **CHUNK-06**: Chunk size adapts based on column count (asyncpg bind-parameter limit) and file size
-- [x] **CHUNK-07**: Max concurrent chunks per import is configurable (default capped to prevent worker starvation)
+- [ ] **SEC-01**: `list_campaigns` returns only campaigns the requesting user has membership in or shared org with (C1)
+- [ ] **SEC-02**: All `VoterListService` methods scope queries by both `list_id` and `campaign_id`, blocking cross-campaign read/update/delete (C2)
+- [ ] **SEC-03**: All `ImportJob` routes validate the job belongs to the path's `campaign_id` before any action (C3)
+- [ ] **SEC-04**: `revoke_invite` service validates invite belongs to the path's `campaign_id` before revoking (C4)
+- [ ] **SEC-05**: `campaigns`, `campaign_members`, and `users` tables have `FORCE ROW LEVEL SECURITY` enabled (C5)
+- [ ] **SEC-06**: `organizations` and `organization_members` tables have `ENABLE` + `FORCE ROW LEVEL SECURITY` with scoping policies (C6)
+- [ ] **SEC-07**: Root route guard redirects unauthenticated users to `/login` instead of rendering protected children in the public shell (C7)
+- [ ] **SEC-08**: OIDC callback surfaces identity-provider error responses (`error`, `error_description`) to the user instead of silently redirecting (C8)
+- [ ] **SEC-09**: `/campaigns/new` is gated by `RequireOrgRole minimum="org_admin"` (H23)
+- [ ] **SEC-10**: Settings routes (general/members/danger) enforce role guards before rendering (H24)
+- [ ] **SEC-11**: DNC list page is gated to `manager` role and above (H25)
+- [ ] **SEC-12**: Active calling page enforces check-in server-side, not only via local state (H26)
+- [ ] **SEC-13**: `voter_tags.add_tag` and `surveys` script/question routes validate sub-resources belong to the path `campaign_id` (H4, H5)
 
-### Progress & Completion
+### Data Integrity & Concurrency
 
-- [x] **PROG-01**: Parent job's imported_rows, skipped_rows, and phones_created are aggregated from chunk records via SQL SUM
-- [x] **PROG-02**: Last completing chunk triggers finalization (error report merge, parent status) guarded by advisory lock
-- [x] **PROG-03**: Error reports from individual chunks are merged into a single downloadable file on finalization
-- [x] **PROG-04**: Import progress UI shows rows/second throughput and estimated time remaining
-- [x] **PROG-05**: COMPLETED_WITH_ERRORS status distinguishes partial chunk failures from full success or full failure
+- [ ] **DATA-01**: Shift signup is race-free under concurrency: two concurrent signups at capacity never both succeed (C9)
+- [ ] **DATA-02**: DNC bulk import handles concurrent imports without raising IntegrityError to the client (C10)
+- [ ] **DATA-03**: `accept_invite` rolls back ZITADEL project-role grant if DB commit fails, leaving no orphaned grants (C11)
+- [ ] **DATA-04**: `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)` (C12)
+- [ ] **DATA-05**: Invite uniqueness on `(email, campaign_id)` only applies to pending invites (not-yet-accepted and not-revoked) (C13)
+- [ ] **DATA-06**: `VoterEmail` has a unique constraint on `(campaign_id, voter_id, value)` matching peer `VoterPhone` (H18)
+- [ ] **DATA-07**: `VolunteerTag` has a unique constraint on `(campaign_id, name)` matching peer `VoterTag` (H19)
+- [ ] **DATA-08**: `transfer_ownership` is atomic: ZITADEL role swap and DB member-role updates either all succeed or all roll back (H3)
 
-### Resilience
+### Reliability & Infrastructure
 
-- [x] **RESL-01**: Individual chunk failure does not block other chunks; partial results are preserved
-- [x] **RESL-02**: Cancellation propagates to all in-flight and queued chunks via parent's cancelled_at check
-- [x] **RESL-03**: Each chunk resumes from its own last_committed_row after worker crash
-- [x] **RESL-04**: Batch upserts sort rows by conflict key before INSERT to prevent cross-chunk deadlocks
+- [ ] **REL-01**: `useSyncEngine` releases its `isSyncing` lock on any exception path (try/finally) (C14)
+- [ ] **REL-02**: Offline queue items failing beyond MAX_RETRY are removed with user feedback; transient errors use `continue` not `break` (C15)
+- [ ] **REL-03**: `callingStore` does not persist voter PII to sessionStorage (partialize or sanitize-on-rehydrate) (C16)
+- [ ] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
+- [ ] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
+- [ ] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
+- [ ] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
+- [ ] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
+- [ ] **REL-09**: DNC CSV upload enforces a maximum file size before reading (H1)
+- [ ] **REL-10**: Import filename is sanitized before being used in S3 object keys (H2)
+- [ ] **REL-11**: Rate limiting default in docker-compose is `DISABLE_RATE_LIMIT=false` (H12)
 
-### Secondary Work
+### Quality, Accessibility & Test Coverage
 
-- [x] **SECW-01**: VoterPhone creation runs as a separate post-chunk task instead of inline with voter upsert
-- [x] **SECW-02**: Geometry and derived-field updates run as separate post-chunk tasks
+- [ ] **QUAL-01**: Leaflet marker icons are self-hosted instead of fetched from unpkg CDN (H31)
+- [ ] **QUAL-02**: `DoorKnockDialog`, `WalkListGenerateDialog`, and `InlineSurvey` radio items have explicit `htmlFor`/`id` label associations (H32, H33)
+- [ ] **QUAL-03**: `authStore` has unit tests covering token storage, OIDC events, `switchOrg`, and logout paths
+- [ ] **QUAL-04**: `api/client.ts` has unit tests covering auth header injection and 401/403 handling
+- [ ] **QUAL-05**: `useOrgPermissions` has unit tests covering the permission gates used by the root layout
+- [ ] **QUAL-06**: OIDC callback has tests for error response, null-user, no-campaigns, campaigns API failure, and non-volunteer user paths
+- [ ] **QUAL-07**: `authStore.logout()` calls `removeUser()` + store reset before `signoutRedirect()` so cleanup is not dead code (H27)
+- [ ] **QUAL-08**: `useOrgCampaigns` error handling narrows to `PermissionError` and 404 instead of swallowing all errors (H28)
 
 ## v2 Requirements
 
-### Periodic Recovery
+### Expanded Remediation (MEDIUM items deferred)
 
-- **PREC-01**: Periodic reconciliation loop running every N minutes in the worker
-- **PREC-02**: Configurable reconciliation interval via settings
-
-### Import Optimization
-
-- **IOPT-01**: Byte-offset recording during pre-scan for S3 Range requests (skip overhead elimination)
-- **IOPT-02**: K8s HPA auto-scaling workers based on queue depth
+- **V2-01**: Pagination limits on `list_campaigns`, `list_volunteers`, `list_members`, `list_enriched_entries` (M2)
+- **V2-02**: `call_list.claim_entries` atomic stale-release for fair distribution (M6)
+- **V2-03**: `WalkList.total_entries`/`visited_entries` counter sync via trigger (M8)
+- **V2-04**: DataTable clickable rows keyboard-navigable (M22)
+- **V2-05**: Route-level `<title>` management for WCAG 2.4.2 (M13)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Database COPY / staging table approach | Shifts validation to SQL, breaks per-row error reporting, architectural overhaul |
-| Producer-consumer with intermediate queue | Adds durable intermediate state, complicates resume, overkill for current scale |
-| Generic workflow/DAG engine | One use case doesn't justify a framework; manual fan-out/fan-in is sufficient |
-| WebSocket/SSE for real-time progress | 3-second polling is adequate for batch operations taking minutes |
-| Chunk-level UI visibility | Chunks are implementation detail; users see one import, one progress bar |
-| Per-chunk retry from UI | Automatic retry + re-import (upsert is idempotent) covers this |
-| Cross-chunk transaction coordination (2PC) | Massive complexity, no user benefit; partial results are acceptable |
-| Import rollback | Voters may have interactions/tags; re-import with corrected file instead |
+| Refactor of logging middleware architecture | Targeted IP-spoofing fix is sufficient; full rewrite is a separate initiative |
+| Rewrite of offline sync engine | Targeted lock + retry fixes address the review findings; full rewrite deferred |
+| Full RLS audit of every table | v1.12 targets the specific tables identified in C5/C6; remaining tables reviewed next milestone |
+| New integration test harness | Unit tests address coverage gaps; integration tests deferred to v2 |
+| Additional L1/L2 review-style audits | The 2026-04-04 review is the spec; no additional discovery needed |
 
 ## Traceability
 
+Filled by `/gsd:plan-phase` as phases are created.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHUNK-01 | Phase 59/60 | Complete |
-| CHUNK-02 | Phase 60 | Complete |
-| CHUNK-03 | Phase 60 | Complete |
-| CHUNK-04 | Phase 60 | Complete |
-| CHUNK-05 | Phase 59 | Complete |
-| CHUNK-06 | Phase 65 | Complete |
-| CHUNK-07 | Phase 65 | Complete |
-| PROG-01 | Phase 61 | Complete |
-| PROG-02 | Phase 69 | Complete |
-| PROG-03 | Phase 61 | Complete |
-| PROG-04 | Phase 64/68 | Complete |
-| PROG-05 | Phase 66 | Complete |
-| RESL-01 | Phase 62 | Complete |
-| RESL-02 | Phase 69 | Complete |
-| RESL-03 | Phase 62 | Complete |
-| RESL-04 | Phase 62 | Complete |
-| SECW-01 | Phase 63 | Complete |
-| SECW-02 | Phase 63 | Complete |
+| (pending roadmap) | — | — |
 
 ---
 *Active requirements file for GSD workflows*
