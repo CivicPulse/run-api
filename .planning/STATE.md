@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 72-02-PLAN.md
-last_updated: "2026-04-04T22:41:41.974Z"
+stopped_at: Completed 73-01-PLAN.md
+last_updated: "2026-04-04T23:48:13.448Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 5
+  completed_phases: 2
+  total_plans: 12
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 72 — Row-Level Security Hardening
+**Current focus:** Phase 73 — Frontend Auth Guards & OIDC Error Surfacing
 
 ## Current Position
 
-Phase: 72 (Row-Level Security Hardening) — EXECUTING
-Plan: 3 of 3
+Phase: 73 (Frontend Auth Guards & OIDC Error Surfacing) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
 Last activity: 2026-04-04
 
@@ -57,7 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 72-02-PLAN.md
+Stopped at: Completed 73-01-PLAN.md
 Resume file: None
 
 ## Performance Metrics

@@ -159,7 +159,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. The active calling page enforces check-in server-side so direct URL navigation cannot bypass the local state guard
   5. Automated coverage proves route guards reject unauthorized users on each gated page
 **Plans**: 6 plans
-  - [ ] 73-01-PLAN.md — Wave 0 E2E test scaffolds (auth-guard-redirect, oidc-error, call-page-checkin + rbac assertions)
+  - [x] 73-01-PLAN.md — Wave 0 E2E test scaffolds (auth-guard-redirect, oidc-error, call-page-checkin + rbac assertions)
   - [ ] 73-02-PLAN.md — Backend GET callers/me check-in status endpoint
   - [ ] 73-03-PLAN.md — C7 root auth guard fix + login redirect param + same-origin safety
   - [ ] 73-04-PLAN.md — C8 OIDC callback error state (Alert + Back to login CTA)
@@ -234,7 +234,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 2/3 | In Progress|  |
-| 73 | v1.12 | 0/0 | Not started | - |
+| 73 | v1.12 | 1/6 | In Progress|  |
 | 74 | v1.12 | 0/0 | Not started | - |
 | 75 | v1.12 | 0/0 | Not started | - |
 | 76 | v1.12 | 0/0 | Not started | - |

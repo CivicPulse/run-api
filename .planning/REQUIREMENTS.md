@@ -21,12 +21,12 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **SEC-04**: `revoke_invite` service validates invite belongs to the path's `campaign_id` before revoking (C4)
 - [x] **SEC-05**: `campaigns`, `campaign_members`, and `users` tables have `FORCE ROW LEVEL SECURITY` enabled (C5)
 - [x] **SEC-06**: `organizations` and `organization_members` tables have `ENABLE` + `FORCE ROW LEVEL SECURITY` with scoping policies (C6)
-- [ ] **SEC-07**: Root route guard redirects unauthenticated users to `/login` instead of rendering protected children in the public shell (C7)
-- [ ] **SEC-08**: OIDC callback surfaces identity-provider error responses (`error`, `error_description`) to the user instead of silently redirecting (C8)
-- [ ] **SEC-09**: `/campaigns/new` is gated by `RequireOrgRole minimum="org_admin"` (H23)
-- [ ] **SEC-10**: Settings routes (general/members/danger) enforce role guards before rendering (H24)
-- [ ] **SEC-11**: DNC list page is gated to `manager` role and above (H25)
-- [ ] **SEC-12**: Active calling page enforces check-in server-side, not only via local state (H26)
+- [x] **SEC-07**: Root route guard redirects unauthenticated users to `/login` instead of rendering protected children in the public shell (C7)
+- [x] **SEC-08**: OIDC callback surfaces identity-provider error responses (`error`, `error_description`) to the user instead of silently redirecting (C8)
+- [x] **SEC-09**: `/campaigns/new` is gated by `RequireOrgRole minimum="org_admin"` (H23)
+- [x] **SEC-10**: Settings routes (general/members/danger) enforce role guards before rendering (H24)
+- [x] **SEC-11**: DNC list page is gated to `manager` role and above (H25)
+- [x] **SEC-12**: Active calling page enforces check-in server-side, not only via local state (H26)
 - [x] **SEC-13**: `voter_tags.add_tag` and `surveys` script/question routes validate sub-resources belong to the path `campaign_id` (H4, H5)
 
 ### Data Integrity & Concurrency
@@ -96,12 +96,12 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | SEC-13 | Phase 71 | Complete |
 | SEC-05 | Phase 72 | In Progress |
 | SEC-06 | Phase 72 | In Progress |
-| SEC-07 | Phase 73 | Pending |
-| SEC-08 | Phase 73 | Pending |
-| SEC-09 | Phase 73 | Pending |
-| SEC-10 | Phase 73 | Pending |
-| SEC-11 | Phase 73 | Pending |
-| SEC-12 | Phase 73 | Pending |
+| SEC-07 | Phase 73 | Complete |
+| SEC-08 | Phase 73 | Complete |
+| SEC-09 | Phase 73 | Complete |
+| SEC-10 | Phase 73 | Complete |
+| SEC-11 | Phase 73 | Complete |
+| SEC-12 | Phase 73 | Complete |
 | DATA-01 | Phase 74 | Pending |
 | DATA-02 | Phase 74 | Pending |
 | DATA-03 | Phase 74 | Pending |
