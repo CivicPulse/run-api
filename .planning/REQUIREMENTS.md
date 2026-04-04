@@ -15,9 +15,9 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 ### Security & Tenant Isolation
 
-- [ ] **SEC-01**: `list_campaigns` returns only campaigns the requesting user has membership in or shared org with (C1)
-- [ ] **SEC-02**: All `VoterListService` methods scope queries by both `list_id` and `campaign_id`, blocking cross-campaign read/update/delete (C2)
-- [ ] **SEC-03**: All `ImportJob` routes validate the job belongs to the path's `campaign_id` before any action (C3)
+- [x] **SEC-01**: `list_campaigns` returns only campaigns the requesting user has membership in or shared org with (C1)
+- [x] **SEC-02**: All `VoterListService` methods scope queries by both `list_id` and `campaign_id`, blocking cross-campaign read/update/delete (C2)
+- [x] **SEC-03**: All `ImportJob` routes validate the job belongs to the path's `campaign_id` before any action (C3)
 - [ ] **SEC-04**: `revoke_invite` service validates invite belongs to the path's `campaign_id` before revoking (C4)
 - [ ] **SEC-05**: `campaigns`, `campaign_members`, and `users` tables have `FORCE ROW LEVEL SECURITY` enabled (C5)
 - [ ] **SEC-06**: `organizations` and `organization_members` tables have `ENABLE` + `FORCE ROW LEVEL SECURITY` with scoping policies (C6)
@@ -89,9 +89,9 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 71 | Pending |
-| SEC-02 | Phase 71 | Pending |
-| SEC-03 | Phase 71 | Pending |
+| SEC-01 | Phase 71 | Complete |
+| SEC-02 | Phase 71 | Complete |
+| SEC-03 | Phase 71 | Complete |
 | SEC-04 | Phase 71 | Pending |
 | SEC-13 | Phase 71 | Pending |
 | SEC-05 | Phase 72 | Pending |

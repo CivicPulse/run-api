@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
-status: executing
-stopped_at: Completed 71-01-PLAN.md
-last_updated: "2026-04-04T20:23:17.357Z"
+status: verifying
+stopped_at: Completed 71-02-PLAN.md
+last_updated: "2026-04-04T20:31:38.330Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 71 (Tenant Isolation — Service & Route Scoping) — EXECUTING
-Plan: 2 of 3
-Status: Ready to execute
+Plan: 3 of 3
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -42,6 +42,7 @@ Progress: [░░░░░░░░░░] 0%
 - Data Integrity (74) depends on Phase 71 because several DATA-* fixes live in the same service files as SEC-* fixes
 - Quality (77) depends on Phases 73 and 75 because several QUAL-* test-coverage items exercise code paths those phases repair
 - [Phase 71]: Use SQLAlchemy Enum member names (STATIC, UPLOADED) in raw SQL inserts for non-native_enum columns
+- [Phase 71]: Phase 71 Plan 02: Applied inline campaign_id guards at service layer for list_campaigns, VoterListService, and ImportJob routes — closes IDORs C1/C2/C3 (SEC-01/02/03)
 
 ### Blockers/Concerns
 
@@ -52,7 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 71-01-PLAN.md
+Stopped at: Completed 71-02-PLAN.md
 Resume file: None
 
 ## Performance Metrics
