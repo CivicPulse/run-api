@@ -241,20 +241,29 @@ class InviteService:
         self,
         db: AsyncSession,
         invite_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> Invite:
         """Revoke a pending invite.
 
         Args:
             db: Async database session.
             invite_id: The invite UUID.
+            campaign_id: The campaign UUID scope — invite must belong here.
 
         Returns:
             The revoked Invite.
 
         Raises:
-            ValueError: If invite not found.
+            ValueError: If invite not found (or belongs to a different campaign).
         """
-        result = await db.execute(select(Invite).where(Invite.id == invite_id))
+        result = await db.execute(
+            select(Invite).where(
+                and_(
+                    Invite.id == invite_id,
+                    Invite.campaign_id == campaign_id,
+                )
+            )
+        )
         invite = result.scalar_one_or_none()
         if invite is None:
             msg = "Invite not found"

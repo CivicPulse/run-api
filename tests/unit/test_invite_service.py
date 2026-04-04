@@ -237,7 +237,7 @@ class TestRevokeInvite:
         mock_result.scalar_one_or_none.return_value = invite
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        result = await service.revoke_invite(mock_db, invite.id)
+        result = await service.revoke_invite(mock_db, invite.id, invite.campaign_id)
         assert result.revoked_at is not None
         mock_db.commit.assert_awaited_once()
 
