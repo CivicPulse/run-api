@@ -122,14 +122,18 @@ async def get_script(
     """Get a script with its questions. Requires volunteer+ role."""
     await ensure_user_synced(user, db)
 
-    script = await _service.get_script(session=db, script_id=script_id)
+    script = await _service.get_script(
+        session=db, script_id=script_id, campaign_id=campaign_id
+    )
     if script is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Script {script_id} not found",
         )
 
-    questions = await _service.list_questions(session=db, script_id=script_id)
+    questions = await _service.list_questions(
+        session=db, script_id=script_id, campaign_id=campaign_id
+    )
 
     return ScriptDetailResponse(
         **ScriptResponse.model_validate(script).model_dump(),
@@ -155,13 +159,15 @@ async def update_script(
 
     try:
         script = await _service.update_script(
-            session=db, script_id=script_id, data=body
+            session=db, script_id=script_id, data=body, campaign_id=campaign_id
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return ScriptResponse.model_validate(script)
@@ -183,12 +189,16 @@ async def delete_script(
     await ensure_user_synced(user, db)
 
     try:
-        await _service.delete_script(session=db, script_id=script_id)
+        await _service.delete_script(
+            session=db, script_id=script_id, campaign_id=campaign_id
+        )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -218,13 +228,15 @@ async def add_question(
 
     try:
         question = await _service.add_question(
-            session=db, script_id=script_id, data=body
+            session=db, script_id=script_id, data=body, campaign_id=campaign_id
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return QuestionResponse.model_validate(question)
@@ -249,13 +261,19 @@ async def update_question(
 
     try:
         question = await _service.update_question(
-            session=db, question_id=question_id, data=body
+            session=db,
+            script_id=script_id,
+            question_id=question_id,
+            data=body,
+            campaign_id=campaign_id,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return QuestionResponse.model_validate(question)
@@ -278,12 +296,19 @@ async def delete_question(
     await ensure_user_synced(user, db)
 
     try:
-        await _service.delete_question(session=db, question_id=question_id)
+        await _service.delete_question(
+            session=db,
+            script_id=script_id,
+            question_id=question_id,
+            campaign_id=campaign_id,
+        )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -307,13 +332,18 @@ async def reorder_questions(
 
     try:
         questions = await _service.reorder_questions(
-            session=db, script_id=script_id, question_ids=question_ids
+            session=db,
+            script_id=script_id,
+            question_ids=question_ids,
+            campaign_id=campaign_id,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc).lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
 
     return [QuestionResponse.model_validate(q) for q in questions]
