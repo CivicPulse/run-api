@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 73-01-PLAN.md
-last_updated: "2026-04-04T23:48:13.448Z"
+stopped_at: Completed 73-03-PLAN.md
+last_updated: "2026-04-04T23:53:41.362Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -47,6 +47,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 72]: Seed organization_members explicitly in two_orgs_with_campaigns since migration 015 only seeds on upgrade
 - [Phase 72]: SEC-05 tests pass pre-migration (ENABLE RLS already isolates app_user); red bar is SEC-06 organization tests + reversibility placeholder
 - [Phase 72]: Migration 026: FORCE on C5 tables, ENABLE+FORCE+campaign-scoped policies on C6; downgrade uses NO FORCE (C5) + DISABLE (C6) to preserve pre-existing policies
+- [Phase 73]: Plan 03: sessionStorage (not OIDC state) as the redirect-preservation vehicle — keeps authStore.login() signature stable per D-07
+- [Phase 73]: Plan 03: validate redirect twice (on write in login.tsx AND on read in callback.tsx) + use location.searchStr (raw string) not location.search (parsed object)
 
 ### Blockers/Concerns
 
@@ -57,7 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 73-01-PLAN.md
+Stopped at: Completed 73-03-PLAN.md
 Resume file: None
 
 ## Performance Metrics
