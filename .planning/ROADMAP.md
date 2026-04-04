@@ -10,7 +10,7 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - ✅ **v1.10 Import Recovery** — Phases 56-58 (shipped 2026-04-01)
-- ✅ **v1.11 Faster Imports** — Phases 59-68 (shipped 2026-04-03)
+- 🟡 **v1.11 Faster Imports** — Phases 59-70 (audit follow-up planned 2026-04-04)
 
 ## Phases
 
@@ -137,7 +137,7 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 </details>
 
 <details open>
-<summary>✅ v1.11 Faster Imports (Phases 59-68) — SHIPPED 2026-04-03</summary>
+<summary>🟡 v1.11 Faster Imports (Phases 59-70) — AUDIT FOLLOW-UP PLANNED 2026-04-04</summary>
 
 **Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
 
@@ -151,12 +151,44 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.pl
 - [x] **Phase 66: Import Wizard Flow Recovery & Progress Accuracy** - Fix new-import detect-columns wiring and close the end-to-end progress/completion flow gaps — completed 2026-04-03
 - [x] **Phase 67: Chunk Import Cleanup & Deletion Semantics** - Close post-audit cleanup around chunked import deletion behavior and stale Phase 59 traceability artifacts — completed 2026-04-03
 - [x] **Phase 68: Progress Metric Accuracy & Validation Closeout** - Improve import throughput/ETA timing accuracy and complete remaining Nyquist validation follow-up — completed 2026-04-03
+- [ ] **Phase 69: Queued Cancellation Finalization Closure** - Ensure queued chunk cancellation still drives chunk terminal state and parent import finalization
+- [ ] **Phase 70: Reopened Import Restore Flow Closure** - Restore detected-column payload and mapping state when reopening uploaded imports from history or details
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
 </details>
 
 ## Active Phase Details
+
+### Phase 69: Queued Cancellation Finalization Closure
+**Goal**: Close the queued-cancellation seam so cancelled queued chunks still reach terminal secondary-work state and reliably trigger parent import finalization
+**Depends on**: Phase 68
+**Requirements**: PROG-02, RESL-02
+**Gap Closure**: Closes the v1.11 audit blockers around queued chunk cancellation, chunk terminal-state gating, and parent finalization
+**Success Criteria** (what must be TRUE):
+  1. Cancelling an import with queued sibling chunks transitions those queued chunks into a fully terminal secondary-work state
+  2. `maybe_finalize_chunked_import()` can observe queued-cancelled chunks as terminal and publish a terminal parent result
+  3. Automated coverage proves queued-only cancellation no longer strands the parent import in `cancelling`
+  4. Requirement traceability and audit evidence are updated to reflect the repaired cancellation/finalization path
+**Plans**: 0 complete
+Plans:
+- [x] 69-01-PLAN.md — Repair queued chunk terminal-state handling so cancellation always unblocks parent finalization
+- [ ] 69-02-PLAN.md — Add regression coverage for queued chunk cancellation and terminal parent outcomes
+
+### Phase 70: Reopened Import Restore Flow Closure
+**Goal**: Restore the uploaded-import reopen flow so the mapping wizard can resume with the detected-column payload and suggested mappings intact
+**Depends on**: Phase 69
+**Requirements**: none (cross-phase integration and flow closure)
+**Gap Closure**: Closes the v1.11 audit blockers around import-job payload restoration and the reopened-import mapping flow
+**Success Criteria** (what must be TRUE):
+  1. The frontend import-job contract includes detected columns, suggested mapping, and format metadata returned by the API
+  2. Reopening an uploaded import from history or details restores the mapping step with the data needed to continue
+  3. Automated coverage proves the reopen flow reaches mapping, progress, and completion without manual re-upload
+  4. The audit evidence for the broken import-job restore seam is retired with updated verification
+**Plans**: 0 complete
+Plans:
+- [ ] 70-01-PLAN.md — Extend the import-job contract and wizard restore logic to hydrate detected-column and mapping state
+- [ ] 70-02-PLAN.md — Add route-level coverage for reopening uploaded imports into mapping and subsequent progress/completion flow
 
 ### Phase 63: Secondary Work Offloading
 **Goal**: Remove phone creation and geometry backfill from the chunk critical path while preserving durable chunk and parent completion semantics
