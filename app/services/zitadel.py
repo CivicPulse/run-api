@@ -60,7 +60,7 @@ class ZitadelService:
 
         try:
             async with httpx.AsyncClient(
-                headers=self._extra_headers, verify=self._verify_tls
+                headers=self._extra_headers, verify=self._verify_tls, timeout=10.0
             ) as client:
                 response = await client.post(
                     f"{self.base_url}/oauth/v2/token",
@@ -114,7 +114,9 @@ class ZitadelService:
         """
         try:
             token = await self._get_token()
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/orgs",
                     headers=self._auth_headers(token),
@@ -150,7 +152,9 @@ class ZitadelService:
             token = await self._get_token()
             headers = self._auth_headers(token)
             headers["x-zitadel-orgid"] = org_id
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/orgs/{org_id}/_deactivate",
                     headers=headers,
@@ -185,7 +189,9 @@ class ZitadelService:
             token = await self._get_token()
             headers = self._auth_headers(token)
             headers["x-zitadel-orgid"] = org_id
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.delete(
                     f"{self.base_url}/management/v1/orgs/{org_id}",
                     headers=headers,
@@ -238,7 +244,9 @@ class ZitadelService:
             }
             if project_grant_id:
                 body["projectGrantId"] = project_grant_id
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/users/{user_id}/grants",
                     headers=headers,
@@ -292,7 +300,9 @@ class ZitadelService:
             headers = self._auth_headers(token)
             if org_id:
                 headers["x-zitadel-orgid"] = org_id
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 # Search user grants via the project grants endpoint.
                 # The per-user /users/{id}/grants/_search and global
                 # /usergrants/_search endpoints are not supported in
@@ -372,7 +382,9 @@ class ZitadelService:
             headers = self._auth_headers(token)
             if org_id:
                 headers["x-zitadel-orgid"] = org_id
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 # Search user grants via the project grants endpoint.
                 response = await client.get(
                     f"{self.base_url}/management/v1/projects/{project_id}/grants/_search",
@@ -423,7 +435,9 @@ class ZitadelService:
         try:
             token = await self._get_token()
             headers = self._auth_headers(token)
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/projects/{project_id}/grants",
                     headers=headers,
@@ -484,7 +498,9 @@ class ZitadelService:
         try:
             token = await self._get_token()
             headers = self._auth_headers(token)
-            async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            async with httpx.AsyncClient(
+                verify=self._verify_tls, timeout=10.0
+            ) as client:
                 response = await client.post(
                     f"{self.base_url}/management/v1/projects/{project_id}/grants/_search",
                     headers=headers,
