@@ -115,7 +115,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] **Phase 71: Tenant Isolation — Service & Route Scoping** - Fix IDOR vulnerabilities by scoping service queries and sub-resource validation to `campaign_id` (completed 2026-04-04)
 - [ ] **Phase 72: Row-Level Security Hardening** - Add FORCE RLS to core tables and enable RLS on organization tables
 - [x] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages (completed 2026-04-05)
-- [ ] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints
+- [x] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints (completed 2026-04-05)
 - [ ] **Phase 75: Reliability — Frontend State & PII Hygiene** - Fix sync-engine lock/retry, scrub callingStore PII, unify query keys
 - [ ] **Phase 76: Reliability — Backend Infrastructure** - Add HTTP/DB timeouts, remove duplicate Settings fields, fix IP spoofing, enforce upload limits, sanitize filenames, rate-limit defaults
 - [ ] **Phase 77: Quality, Accessibility & Test Coverage** - Self-host Leaflet assets, a11y label gaps, unit-test backfill for auth/api/org-permissions, logout cleanup, error-narrowing
@@ -150,7 +150,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
 - [x] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
 - [x] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
-- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
+- [x] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 73: Frontend Auth Guards & OIDC Error Surfacing
 **Goal**: Unauthenticated users cannot reach protected content, sensitive routes enforce role gates, and OIDC errors surface to users instead of silently redirecting.
@@ -184,8 +184,8 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 **Plans**: 4 plans
 - [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
 - [x] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
-- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
-- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
+- [x] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [x] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 75: Reliability — Frontend State & PII Hygiene
 **Goal**: Offline sync never deadlocks, failing items exit the queue, voter PII does not leak to sessionStorage, and mutations invalidate all hook consumers.
@@ -198,8 +198,8 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. `useFieldOps` hooks share query keys with their dedicated hook files so mutations invalidate all consumers
 **Plans**: 4 plans
 - [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
-- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
-- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [x] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [x] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
 - [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 76: Reliability — Backend Infrastructure
@@ -213,7 +213,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. Request-logging middleware only resolves client IP via the trusted-proxy CIDR check
   5. DNC CSV uploads enforce a max file size before reading, and import filenames are sanitized before use in S3 object keys
 **Plans**: 4 plans
-- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
 - [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
 - [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
 - [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
@@ -255,7 +255,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 2/3 | In Progress|  |
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
-| 74 | v1.12 | 3/4 | In Progress|  |
+| 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 75 | v1.12 | 0/0 | Not started | - |
 | 76 | v1.12 | 0/0 | Not started | - |
 | 77 | v1.12 | 0/0 | Not started | - |
