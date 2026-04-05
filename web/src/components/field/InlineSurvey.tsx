@@ -144,7 +144,11 @@ export function InlineSurvey(props: InlineSurveyProps) {
   )
 
   const isNotesComplete = !requiresNotes || notes.trim().length > 0
-  const canSubmitControlled = isNotesComplete && isSurveyComplete && !showQuestionState && !props.isSubmitting
+  const canSubmitControlled =
+    isNotesComplete &&
+    isSurveyComplete &&
+    !showQuestionState &&
+    !(props.mode === "controlled" && props.isSubmitting)
 
   const handleDirectSave = () => {
     if (props.mode === "controlled") return

@@ -192,7 +192,7 @@ function LandingPage() {
         <h1 className="text-4xl font-bold">CivicPulse Run</h1>
         <p className="mt-2 text-muted-foreground">Campaign management platform</p>
         <Button className="mt-6" asChild>
-          <Link to="/login">Sign In</Link>
+          <Link to="/login" search={{ redirect: undefined }}>Sign In</Link>
         </Button>
       </div>
     </div>

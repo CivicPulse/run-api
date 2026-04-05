@@ -26,6 +26,9 @@ function makeJob(overrides: Partial<ImportJob> = {}): ImportJob {
     last_progress_at: "2026-04-03T19:09:00Z",
     created_at: "2026-04-03T19:00:00Z",
     updated_at: "2026-04-03T19:09:00Z",
+    detected_columns: null,
+    suggested_mapping: null,
+    format_detected: null,
     ...overrides,
   }
 }

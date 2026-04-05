@@ -22,7 +22,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, List, LocateFixed, ListOrdered } from "lucide-react"
 import { toast } from "sonner"
-import { SURVEY_TRIGGER_OUTCOMES, OUTCOME_LABELS } from "@/types/canvassing"
+import { OUTCOME_LABELS } from "@/types/canvassing"
 import type { CoordinatePoint, DoorKnockResultCode } from "@/types/canvassing"
 
 function Canvassing() {
@@ -48,7 +48,6 @@ function Canvassing() {
     isSavingDoorKnock,
     handleOutcome,
     handleSubmitContact,
-    handlePostSurveyAdvance,
     handleSkipAddress,
     handleBulkNotHome,
     handleJumpToAddress,
@@ -171,11 +170,6 @@ function Canvassing() {
     setDraftOutcome(null)
     setSaveFailure(null)
   }, [])
-
-  const handleSurveyComplete = useCallback(() => {
-    closeDraft()
-    handlePostSurveyAdvance()
-  }, [closeDraft, handlePostSurveyAdvance])
 
   const handleSurveySkip = useCallback(() => {
     closeDraft()

@@ -184,7 +184,7 @@ function UserMenu() {
   const handleLogout = () => {
     logout().catch(() => {
       // If OIDC logout fails, clear local state and redirect
-      navigate({ to: "/login" })
+      navigate({ to: "/login", search: { redirect: undefined } })
     })
   }
 
