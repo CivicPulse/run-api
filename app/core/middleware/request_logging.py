@@ -16,6 +16,7 @@ from app.core.observability import (
     request_id_var,
     user_id_var,
 )
+from app.core.rate_limit import _is_trusted_proxy  # noqa: PLC2701
 
 # Campaign UUID extraction from URL path
 _CAMPAIGN_PATH_RE = re.compile(r"/api/v1/campaigns/([0-9a-f-]{36})")
@@ -78,11 +79,16 @@ class StructlogMiddleware:
 
         # Extract client metadata
         user_agent = _get_header(headers, b"user-agent") or ""
-        client_ip = (
-            _get_header(headers, b"cf-connecting-ip")
-            or _get_header(headers, b"x-real-ip")
-            or scope.get("client", ("",))[0]
-        )
+        scope_client = scope.get("client") or ("",)
+        scope_client_ip = scope_client[0] if scope_client else ""
+        if scope_client_ip and _is_trusted_proxy(scope_client_ip):
+            client_ip = (
+                _get_header(headers, b"cf-connecting-ip")
+                or _get_header(headers, b"x-real-ip")
+                or scope_client_ip
+            )
+        else:
+            client_ip = scope_client_ip
 
         start = time.perf_counter()
         status_code = 500
