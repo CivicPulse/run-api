@@ -267,7 +267,7 @@ describe("drainQueue", () => {
     expect(useOfflineQueueStore.getState().items[0].retryCount).toBe(1)
   })
 
-  test("stops drain (breaks loop) on network error after incrementing retry", async () => {
+  test("continues drain on network error after incrementing retry (C15 fix — no break)", async () => {
     let callCount = 0;
     (api.post as Mock).mockImplementation(() => {
       callCount++
@@ -296,9 +296,10 @@ describe("drainQueue", () => {
 
     await drainQueue(queryClient as unknown as QueryClient)
 
-    // First item retried, second item untouched
-    expect(callCount).toBe(1)
-    expect(useOfflineQueueStore.getState().items).toHaveLength(2)
+    // Post-C15: both items attempted. First retried, second succeeded (removed).
+    expect(callCount).toBe(2)
+    expect(useOfflineQueueStore.getState().items).toHaveLength(1)
+    expect(useOfflineQueueStore.getState().items[0].id).toBe("id-1")
   })
 
   test("skips item when retryCount >= 2 (already attempted 3 times)", async () => {

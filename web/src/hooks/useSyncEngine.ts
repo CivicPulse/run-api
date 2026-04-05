@@ -8,6 +8,8 @@ import { toast } from "sonner"
 import type { DoorKnockCreate } from "@/types/walk-list"
 import type { EnrichedWalkListEntry } from "@/types/canvassing"
 
+export const MAX_RETRY = 3
+
 export function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError
 }
@@ -53,50 +55,59 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
   >()
   const syncedEntryIds = new Set<string>()
 
-  const snapshot = [...items]
+  try {
+    const snapshot = [...items]
 
-  for (const item of snapshot) {
-    if (
-      item.type === "door_knock" &&
-      !(item.payload as DoorKnockCreate).voter_id
-    ) {
-      useOfflineQueueStore.getState().remove(item.id)
-      toast.error(
-        "A queued canvassing record was missing voter data and has been removed.",
-      )
-      continue
-    }
-    try {
-      await replayMutation(item)
-      useOfflineQueueStore.getState().remove(item.id)
-      syncedCampaignIds.add(item.campaignId)
-      syncedResourceIds.set(item.resourceId, {
-        type: item.type,
-        campaignId: item.campaignId,
-      })
-      if (item.type === "door_knock") {
-        syncedEntryIds.add(
-          (item.payload as DoorKnockCreate).walk_list_entry_id
-        )
-      }
-    } catch (err) {
-      if (isConflict(err)) {
+    for (const item of snapshot) {
+      if (
+        item.type === "door_knock" &&
+        !(item.payload as DoorKnockCreate).voter_id
+      ) {
         useOfflineQueueStore.getState().remove(item.id)
+        toast.error(
+          "A queued canvassing record was missing voter data and has been removed.",
+        )
         continue
-      } else if (item.retryCount >= 2) {
+      }
+      try {
+        await replayMutation(item)
+        useOfflineQueueStore.getState().remove(item.id)
+        syncedCampaignIds.add(item.campaignId)
+        syncedResourceIds.set(item.resourceId, {
+          type: item.type,
+          campaignId: item.campaignId,
+        })
+        if (item.type === "door_knock") {
+          syncedEntryIds.add(
+            (item.payload as DoorKnockCreate).walk_list_entry_id
+          )
+        }
+      } catch (err) {
+        if (isConflict(err)) {
+          useOfflineQueueStore.getState().remove(item.id)
+          continue
+        }
+        // C15 fix: if already at MAX_RETRY, remove + toast; otherwise
+        // increment and CONTINUE (never break — one bad item must not
+        // stall the whole queue).
+        if (item.retryCount >= MAX_RETRY) {
+          useOfflineQueueStore.getState().remove(item.id)
+          const label =
+            item.type === "door_knock"
+              ? `door knock for walk list ${item.resourceId}`
+              : `call record for session ${item.resourceId}`
+          toast.error(
+            `Sync failed after ${MAX_RETRY} attempts — removed ${label}.`,
+          )
+          continue
+        }
         useOfflineQueueStore.getState().incrementRetry(item.id)
         continue
-      } else {
-        useOfflineQueueStore.getState().incrementRetry(item.id)
-        break
       }
     }
-  }
 
-  useOfflineQueueStore.getState().setSyncing(false)
-
-  // Post-sync: invalidate queries and handle toasts
-  if (syncedResourceIds.size > 0) {
+    // Post-sync: invalidate queries and handle toasts
+    if (syncedResourceIds.size > 0) {
     const invalidationPromises: Promise<void>[] = []
 
     for (const [resourceId, { type, campaignId }] of syncedResourceIds) {
@@ -168,6 +179,11 @@ export async function drainQueue(queryClient: QueryClient): Promise<void> {
         toast("This door was visited \u2014 moving to next")
       }
     }
+    }
+  } finally {
+    // C14 fix: lock always releases, even if invalidateQueries or any
+    // post-sync work throws.
+    useOfflineQueueStore.getState().setSyncing(false)
   }
 }
 
