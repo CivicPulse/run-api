@@ -117,7 +117,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages (completed 2026-04-05)
 - [x] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints (completed 2026-04-05)
 - [x] **Phase 75: Reliability — Frontend State & PII Hygiene** - Fix sync-engine lock/retry, scrub callingStore PII, unify query keys (completed 2026-04-05)
-- [ ] **Phase 76: Reliability — Backend Infrastructure** - Add HTTP/DB timeouts, remove duplicate Settings fields, fix IP spoofing, enforce upload limits, sanitize filenames, rate-limit defaults
+- [x] **Phase 76: Reliability — Backend Infrastructure** - Add HTTP/DB timeouts, remove duplicate Settings fields, fix IP spoofing, enforce upload limits, sanitize filenames, rate-limit defaults (completed 2026-04-05)
 - [ ] **Phase 77: Quality, Accessibility & Test Coverage** - Self-host Leaflet assets, a11y label gaps, unit-test backfill for auth/api/org-permissions, logout cleanup, error-narrowing
 
 ## Active Phase Details
@@ -217,7 +217,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] 76-02-PLAN.md — Config hygiene: Settings dedup + docker-compose rate-limit default + alembic.ini interpolation (Wave 1)
 - [x] 76-03-PLAN.md — Timeouts: ZitadelService 10s + DB engine pool/statement timeouts (Wave 1)
 - [x] 76-04-PLAN.md — Upload safety: DNC 10MB cap + import filename sanitization (Wave 1)
-- [ ] 76-05-PLAN.md — Request-logging trusted-proxy IP check (Wave 2)
+- [x] 76-05-PLAN.md — Request-logging trusted-proxy IP check (Wave 2)
 
 ### Phase 77: Quality, Accessibility & Test Coverage
 **Goal**: Field users get self-hosted assets, screen readers get proper labels, auth/logout paths are correct, and critical auth/data hooks have unit test coverage.
@@ -258,5 +258,5 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
 | 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 75 | v1.12 | 4/4 | Complete   | 2026-04-05 |
-| 76 | v1.12 | 4/5 | In Progress|  |
+| 76 | v1.12 | 5/5 | Complete   | 2026-04-05 |
 | 77 | v1.12 | 0/0 | Not started | - |

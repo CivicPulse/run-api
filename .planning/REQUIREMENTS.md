@@ -48,7 +48,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
 - [x] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
 - [x] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
-- [ ] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
+- [x] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
 - [x] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
 - [x] **REL-09**: DNC CSV upload enforces a maximum file size before reading (H1)
 - [x] **REL-10**: Import filename is sanitized before being used in S3 object keys (H2)
@@ -117,7 +117,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | REL-04 | Phase 76 | Complete |
 | REL-05 | Phase 76 | Complete |
 | REL-06 | Phase 76 | Complete |
-| REL-07 | Phase 76 | Pending |
+| REL-07 | Phase 76 | Complete |
 | REL-09 | Phase 76 | Complete |
 | REL-10 | Phase 76 | Complete |
 | REL-11 | Phase 76 | Complete |
