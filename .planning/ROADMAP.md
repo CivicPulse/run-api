@@ -146,7 +146,11 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   2. `organizations` and `organization_members` tables have `ENABLE` + `FORCE ROW LEVEL SECURITY` with scoping policies that restrict reads/writes by org membership
   3. A migration encodes all RLS changes and runs cleanly forward and backward
   4. Integration tests prove cross-org reads of organizations and memberships return no rows
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 73: Frontend Auth Guards & OIDC Error Surfacing
 **Goal**: Unauthenticated users cannot reach protected content, sensitive routes enforce role gates, and OIDC errors surface to users instead of silently redirecting.
@@ -177,7 +181,11 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. `accept_invite` and `transfer_ownership` roll back ZITADEL grant changes if the DB commit fails, leaving no orphaned grants
   4. `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)`; the same email/invite can be re-invited to a campaign once the previous invite is accepted or revoked
   5. `VoterEmail` has a unique `(campaign_id, voter_id, value)` constraint and `VolunteerTag` has a unique `(campaign_id, name)` constraint matching their peer models
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 75: Reliability — Frontend State & PII Hygiene
 **Goal**: Offline sync never deadlocks, failing items exit the queue, voter PII does not leak to sessionStorage, and mutations invalidate all hook consumers.
@@ -188,7 +196,11 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   2. Offline queue items exceeding MAX_RETRY are removed with a user-visible toast; transient errors no longer halt the queue
   3. `callingStore` never persists voter PII to sessionStorage (either partialized or sanitized on rehydrate, matching `canvassingStore`)
   4. `useFieldOps` hooks share query keys with their dedicated hook files so mutations invalidate all consumers
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 76: Reliability — Backend Infrastructure
 **Goal**: HTTP clients, DB connections, rate limits, uploads, and log IP resolution have the defaults and safeguards needed for production.
@@ -200,7 +212,11 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed and the docker-compose default is `DISABLE_RATE_LIMIT=false`
   4. Request-logging middleware only resolves client IP via the trusted-proxy CIDR check
   5. DNC CSV uploads enforce a max file size before reading, and import filenames are sanitized before use in S3 object keys
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
 ### Phase 77: Quality, Accessibility & Test Coverage
 **Goal**: Field users get self-hosted assets, screen readers get proper labels, auth/logout paths are correct, and critical auth/data hooks have unit test coverage.
@@ -212,7 +228,11 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. Unit tests cover `authStore` (token storage, OIDC events, `switchOrg`, logout), `api/client.ts` (auth header, 401/403), `useOrgPermissions`, and OIDC callback error/null-user/no-campaigns paths
   4. `authStore.logout()` calls `removeUser()` and resets the store before `signoutRedirect()` so cleanup always runs
   5. `useOrgCampaigns` narrows its catch to `PermissionError` and 404 instead of swallowing all errors
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
+- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 **UI hint**: yes
 
 ### Backlog / Parking Lot
