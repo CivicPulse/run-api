@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, func
+from sqlalchemy import Enum, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,6 +41,10 @@ class VoterInteraction(Base):
     """
 
     __tablename__ = "voter_interactions"
+    __table_args__ = (
+        Index("ix_voter_interactions_campaign_voter", "campaign_id", "voter_id"),
+        Index("ix_voter_interactions_campaign_created", "campaign_id", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(

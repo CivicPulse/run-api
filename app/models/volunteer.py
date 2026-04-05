@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, String, Text, func
+from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -87,7 +87,10 @@ class VolunteerTag(Base):
     """Free-form campaign-scoped tag for categorizing volunteers."""
 
     __tablename__ = "volunteer_tags"
-    __table_args__ = (Index("ix_volunteer_tags_campaign_id", "campaign_id"),)
+    __table_args__ = (
+        Index("ix_volunteer_tags_campaign_id", "campaign_id"),
+        UniqueConstraint("campaign_id", "name", name="uq_volunteer_tag_campaign_name"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(

@@ -43,6 +43,14 @@ class VoterEmail(Base):
     """Email address associated with a voter."""
 
     __tablename__ = "voter_emails"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id",
+            "voter_id",
+            "value",
+            name="uq_voter_email_campaign_voter_value",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
