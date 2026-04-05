@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 76-03-PLAN.md
-last_updated: "2026-04-05T01:54:19.953Z"
+stopped_at: Completed 76-02-PLAN.md
+last_updated: "2026-04-05T01:54:55.424Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 24
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 76 (Reliability — Backend Infrastructure) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 74]: C11 invite/transfer compensation: each inverse ZITADEL op isolated in its own try/except; original commit exception always propagates
 - [Phase 75]: D-H29 implementation: import canonical *Keys from dedicated hook files into useFieldOps (preserves single source of truth)
 - [Phase 76]: Wave 0 test scaffold: source-text assertions + direct ASGI middleware drive pattern established for reliability hardening tests
+- [Phase 76]: 76-02: Removed duplicate Settings fields; DISABLE_RATE_LIMIT default=false; alembic uses %(DATABASE_URL_SYNC)s
 
 ### Blockers/Concerns
 
@@ -71,7 +72,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 76-03-PLAN.md
+Stopped at: Completed 76-02-PLAN.md
 Resume file: None
 
 ## Performance Metrics

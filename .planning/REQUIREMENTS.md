@@ -47,12 +47,12 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **REL-03**: `callingStore` does not persist voter PII to sessionStorage (partialize or sanitize-on-rehydrate) (C16)
 - [x] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
 - [x] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
-- [ ] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
+- [x] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
 - [ ] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
 - [x] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
-- [ ] **REL-09**: DNC CSV upload enforces a maximum file size before reading (H1)
-- [ ] **REL-10**: Import filename is sanitized before being used in S3 object keys (H2)
-- [ ] **REL-11**: Rate limiting default in docker-compose is `DISABLE_RATE_LIMIT=false` (H12)
+- [x] **REL-09**: DNC CSV upload enforces a maximum file size before reading (H1)
+- [x] **REL-10**: Import filename is sanitized before being used in S3 object keys (H2)
+- [x] **REL-11**: Rate limiting default in docker-compose is `DISABLE_RATE_LIMIT=false` (H12)
 
 ### Quality, Accessibility & Test Coverage
 
@@ -116,11 +116,11 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | REL-08 | Phase 75 | Complete |
 | REL-04 | Phase 76 | Complete |
 | REL-05 | Phase 76 | Complete |
-| REL-06 | Phase 76 | Pending |
+| REL-06 | Phase 76 | Complete |
 | REL-07 | Phase 76 | Pending |
-| REL-09 | Phase 76 | Pending |
-| REL-10 | Phase 76 | Pending |
-| REL-11 | Phase 76 | Pending |
+| REL-09 | Phase 76 | Complete |
+| REL-10 | Phase 76 | Complete |
+| REL-11 | Phase 76 | Complete |
 | QUAL-01 | Phase 77 | Pending |
 | QUAL-02 | Phase 77 | Pending |
 | QUAL-03 | Phase 77 | Pending |
