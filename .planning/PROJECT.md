@@ -137,11 +137,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.10 Import Recovery shipped on 2026-04-01. Phase 59 of v1.11 Faster Imports completed on 2026-04-03, adding the durable ImportChunk schema, conservative chunk settings, bind-limit-aware sizing helpers, and explicit serial-routing seams while keeping runtime fan-out deferred to Phase 60.
+v1.12 Hardening & Remediation shipped on 2026-04-05. The milestone closed 7 phases, 30 plans, and all 40 audited requirements from the 2026-04-04 codebase review, including tenant-isolation fixes, FORCE RLS hardening, frontend auth/role-gate repairs, concurrency safeguards, reliability hardening, and targeted accessibility/test-coverage backfill.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
+
+## Next Milestone Goals
+
+- Switch production runtime to a non-superuser app role so FORCE RLS protections apply in deployed environments
+- Triage the parked Zitadel upgrade backlog item (`Phase 999.1`) against current auth stability and migration effort
+- Retire deferred medium-severity remediation items and reduce the remaining pre-existing lint/test debt called out in the v1.12 audit
 
 ## Context
 
@@ -202,4 +208,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 — v1.12 Hardening & Remediation milestone started*
+*Last updated: 2026-04-05 — after v1.12 Hardening & Remediation shipped*

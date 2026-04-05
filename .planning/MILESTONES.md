@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.12 Hardening & Remediation (Shipped: 2026-04-05)
+
+**Phases completed:** 7 phases, 30 plans, 30 tasks
+
+**Key accomplishments:**
+
+- Closed the tenant-isolation review findings by enforcing campaign scoping across campaign listing, voter lists, import jobs, invites, tags, and survey sub-resources
+- Hardened database isolation with FORCE RLS on core tables, enabled organization RLS, and shipped migration-backed coverage for cross-org isolation
+- Repaired frontend auth and permission enforcement: root route redirects, OIDC callback error surfacing, org-role gates, and server-side active-calling check-in validation
+- Eliminated key integrity and concurrency hazards with shift-signup locking, DNC idempotency, compensating transaction rollbacks, and missing uniqueness/index fixes
+- Hardened reliability paths across offline sync, session-storage PII handling, backend timeouts, trusted-proxy IP logging, upload-size enforcement, and filename sanitization
+- Backfilled quality coverage with auth/api/org-permission tests, callback edge-case tests, logout cleanup verification, a11y label fixes, and self-hosted Leaflet assets
+
+---
+
 ## v1.11 Faster Imports (Shipped: 2026-04-04)
 
 **Phases completed:** 15 phases, 31 plans, 24 tasks
