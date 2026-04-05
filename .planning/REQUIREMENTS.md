@@ -42,14 +42,14 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 ### Reliability & Infrastructure
 
-- [ ] **REL-01**: `useSyncEngine` releases its `isSyncing` lock on any exception path (try/finally) (C14)
-- [ ] **REL-02**: Offline queue items failing beyond MAX_RETRY are removed with user feedback; transient errors use `continue` not `break` (C15)
-- [ ] **REL-03**: `callingStore` does not persist voter PII to sessionStorage (partialize or sanitize-on-rehydrate) (C16)
+- [x] **REL-01**: `useSyncEngine` releases its `isSyncing` lock on any exception path (try/finally) (C14)
+- [x] **REL-02**: Offline queue items failing beyond MAX_RETRY are removed with user feedback; transient errors use `continue` not `break` (C15)
+- [x] **REL-03**: `callingStore` does not persist voter PII to sessionStorage (partialize or sanitize-on-rehydrate) (C16)
 - [ ] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
 - [ ] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
 - [ ] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
 - [ ] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
-- [ ] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
+- [x] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
 - [ ] **REL-09**: DNC CSV upload enforces a maximum file size before reading (H1)
 - [ ] **REL-10**: Import filename is sanitized before being used in S3 object keys (H2)
 - [ ] **REL-11**: Rate limiting default in docker-compose is `DISABLE_RATE_LIMIT=false` (H12)
@@ -110,10 +110,10 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | DATA-06 | Phase 74 | Complete |
 | DATA-07 | Phase 74 | Complete |
 | DATA-08 | Phase 74 | Complete |
-| REL-01 | Phase 75 | Pending |
-| REL-02 | Phase 75 | Pending |
-| REL-03 | Phase 75 | Pending |
-| REL-08 | Phase 75 | Pending |
+| REL-01 | Phase 75 | Complete |
+| REL-02 | Phase 75 | Complete |
+| REL-03 | Phase 75 | Complete |
+| REL-08 | Phase 75 | Complete |
 | REL-04 | Phase 76 | Pending |
 | REL-05 | Phase 76 | Pending |
 | REL-06 | Phase 76 | Pending |

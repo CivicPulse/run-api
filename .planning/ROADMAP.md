@@ -197,7 +197,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. `callingStore` never persists voter PII to sessionStorage (either partialized or sanitized on rehydrate, matching `canvassingStore`)
   4. `useFieldOps` hooks share query keys with their dedicated hook files so mutations invalidate all consumers
 **Plans**: 4 plans
-- [ ] 75-01-PLAN.md — Failing Vitest test stubs for C14/C15/C16/H29 (Wave 0)
+- [x] 75-01-PLAN.md — Failing Vitest test stubs for C14/C15/C16/H29 (Wave 0)
 - [ ] 75-02-PLAN.md — Sync engine try/finally lock + continue + MAX_RETRY removal+toast (Wave 1)
 - [ ] 75-03-PLAN.md — callingStore PII sanitizer (partialize + rehydrate merge) (Wave 1)
 - [ ] 75-04-PLAN.md — useFieldOps query key alignment with dedicated hook files (Wave 2)
@@ -256,6 +256,6 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 72 | v1.12 | 2/3 | In Progress|  |
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
 | 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
-| 75 | v1.12 | 0/0 | Not started | - |
+| 75 | v1.12 | 1/4 | In Progress|  |
 | 76 | v1.12 | 0/0 | Not started | - |
 | 77 | v1.12 | 0/0 | Not started | - |
