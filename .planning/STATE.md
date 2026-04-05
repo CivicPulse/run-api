@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 75-01-PLAN.md
-last_updated: "2026-04-05T01:30:45.102Z"
+stopped_at: Completed 75-04-PLAN.md
+last_updated: "2026-04-05T01:33:58.428Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 75 (Reliability — Frontend State & PII Hygiene) — EXECUTING
-Plan: 2 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 74]: C9: Lock at _get_shift_raw (single chokepoint) — all 8 callers are write paths
 - [Phase 74]: C10: ON CONFLICT DO NOTHING over DO UPDATE — import semantics leave existing rows intact
 - [Phase 74]: C11 invite/transfer compensation: each inverse ZITADEL op isolated in its own try/except; original commit exception always propagates
+- [Phase 75]: D-H29 implementation: import canonical *Keys from dedicated hook files into useFieldOps (preserves single source of truth)
 
 ### Blockers/Concerns
 
@@ -69,7 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 75-01-PLAN.md
+Stopped at: Completed 75-04-PLAN.md
 Resume file: None
 
 ## Performance Metrics

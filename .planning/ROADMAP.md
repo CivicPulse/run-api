@@ -116,7 +116,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [ ] **Phase 72: Row-Level Security Hardening** - Add FORCE RLS to core tables and enable RLS on organization tables
 - [x] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages (completed 2026-04-05)
 - [x] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints (completed 2026-04-05)
-- [ ] **Phase 75: Reliability — Frontend State & PII Hygiene** - Fix sync-engine lock/retry, scrub callingStore PII, unify query keys
+- [x] **Phase 75: Reliability — Frontend State & PII Hygiene** - Fix sync-engine lock/retry, scrub callingStore PII, unify query keys (completed 2026-04-05)
 - [ ] **Phase 76: Reliability — Backend Infrastructure** - Add HTTP/DB timeouts, remove duplicate Settings fields, fix IP spoofing, enforce upload limits, sanitize filenames, rate-limit defaults
 - [ ] **Phase 77: Quality, Accessibility & Test Coverage** - Self-host Leaflet assets, a11y label gaps, unit-test backfill for auth/api/org-permissions, logout cleanup, error-narrowing
 
@@ -200,7 +200,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] 75-01-PLAN.md — Failing Vitest test stubs for C14/C15/C16/H29 (Wave 0)
 - [x] 75-02-PLAN.md — Sync engine try/finally lock + continue + MAX_RETRY removal+toast (Wave 1)
 - [x] 75-03-PLAN.md — callingStore PII sanitizer (partialize + rehydrate merge) (Wave 1)
-- [ ] 75-04-PLAN.md — useFieldOps query key alignment with dedicated hook files (Wave 2)
+- [x] 75-04-PLAN.md — useFieldOps query key alignment with dedicated hook files (Wave 2)
 
 ### Phase 76: Reliability — Backend Infrastructure
 **Goal**: HTTP clients, DB connections, rate limits, uploads, and log IP resolution have the defaults and safeguards needed for production.
@@ -256,6 +256,6 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 72 | v1.12 | 2/3 | In Progress|  |
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
 | 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
-| 75 | v1.12 | 3/4 | In Progress|  |
+| 75 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 76 | v1.12 | 0/0 | Not started | - |
 | 77 | v1.12 | 0/0 | Not started | - |
