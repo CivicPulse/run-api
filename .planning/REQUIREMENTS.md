@@ -33,7 +33,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 - [x] **DATA-01**: Shift signup is race-free under concurrency: two concurrent signups at capacity never both succeed (C9)
 - [x] **DATA-02**: DNC bulk import handles concurrent imports without raising IntegrityError to the client (C10)
-- [ ] **DATA-03**: `accept_invite` rolls back ZITADEL project-role grant if DB commit fails, leaving no orphaned grants (C11)
+- [x] **DATA-03**: `accept_invite` rolls back ZITADEL project-role grant if DB commit fails, leaving no orphaned grants (C11)
 - [x] **DATA-04**: `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)` (C12)
 - [x] **DATA-05**: Invite uniqueness on `(email, campaign_id)` only applies to pending invites (not-yet-accepted and not-revoked) (C13)
 - [x] **DATA-06**: `VoterEmail` has a unique constraint on `(campaign_id, voter_id, value)` matching peer `VoterPhone` (H18)
@@ -104,7 +104,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | SEC-12 | Phase 73 | Complete |
 | DATA-01 | Phase 74 | Complete |
 | DATA-02 | Phase 74 | Complete |
-| DATA-03 | Phase 74 | Pending |
+| DATA-03 | Phase 74 | Complete |
 | DATA-04 | Phase 74 | Complete |
 | DATA-05 | Phase 74 | Complete |
 | DATA-06 | Phase 74 | Complete |
