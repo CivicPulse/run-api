@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useId, useMemo } from "react"
 import {
   Sheet,
   SheetContent,
@@ -97,6 +97,7 @@ export function InlineSurvey(props: InlineSurveyProps) {
   const { campaignId, scriptId, open, onSkip, voterName } = props
   const isControlled = props.mode === "controlled"
 
+  const choiceIdPrefix = useId()
   const scriptQuery = useSurveyScript(campaignId, scriptId)
   const recordMutation = useRecordResponses(campaignId, scriptId)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -240,15 +241,20 @@ export function InlineSurvey(props: InlineSurveyProps) {
                 >
                   {(
                     (question.options as { choices?: string[] } | null)?.choices ?? []
-                  ).map((choice) => (
-                    <Label
-                      key={choice}
-                      className="min-h-11 flex items-center gap-2 cursor-pointer"
-                    >
-                      <RadioGroupItem value={choice} />
-                      {choice}
-                    </Label>
-                  ))}
+                  ).map((choice, index) => {
+                    const choiceId = `${choiceIdPrefix}-${question.id}-${index}`
+                    return (
+                      <div
+                        key={choice}
+                        className="min-h-11 flex items-center gap-2"
+                      >
+                        <RadioGroupItem value={choice} id={choiceId} />
+                        <Label htmlFor={choiceId} className="cursor-pointer flex-1">
+                          {choice}
+                        </Label>
+                      </div>
+                    )
+                  })}
                 </RadioGroup>
               )}
 
