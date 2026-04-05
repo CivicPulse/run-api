@@ -83,7 +83,7 @@ function CallbackPage() {
       })
       .catch((err) => {
         console.error("OIDC callback failed:", err)
-        navigate({ to: "/login" })
+        navigate({ to: "/login", search: { redirect: undefined } })
       })
   }, [handleCallback, navigate, code, state, hasError])
 
@@ -114,7 +114,7 @@ function CallbackPage() {
             variant="default"
             className="w-full mt-4"
             autoFocus
-            onClick={() => navigate({ to: "/login" })}
+            onClick={() => navigate({ to: "/login", search: { redirect: undefined } })}
           >
             Back to login
           </Button>

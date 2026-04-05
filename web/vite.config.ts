@@ -72,7 +72,13 @@ export default defineConfig(({ mode }) => {
       host: "127.0.0.1",
       port: 4173,
       strictPort: true,
-      https: useHttps || !isDocker,
+      https:
+        useHttps && certPath && keyPath
+          ? {
+              cert: fs.readFileSync(certPath),
+              key: fs.readFileSync(keyPath),
+            }
+          : undefined,
       proxy: proxyConfig,
     },
     server: {

@@ -33,7 +33,7 @@ export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }
 
   const handleLogout = () => {
     logout().catch(() => {
-      navigate({ to: "/login" })
+      navigate({ to: "/login", search: { redirect: undefined } })
     })
   }
 

@@ -168,8 +168,8 @@ function createCallingSessionState() {
     sessionStats: { totalCalls: 0, answered: 0, noAnswer: 0, voicemail: 0, other: 0 },
     isLoading: false,
     isError: false,
-    scriptId: "script-1",
-    selectedPhoneNumber: "+15551111111",
+    scriptId: "script-1" as string | null,
+    selectedPhoneNumber: "+15551111111" as string | null,
     callStartedAt: "2026-04-02T12:00:00.000Z",
     isSubmittingCall: false,
     submitCall: vi.fn().mockResolvedValue(true),
@@ -177,8 +177,8 @@ function createCallingSessionState() {
     handleEndSession: vi.fn(),
     handleCallStarted: vi.fn(),
     noEntriesAvailable: false,
-    claimFailure: null,
-    saveFailure: null,
+    claimFailure: null as { title: string; detail: string; actionLabel: string } | null,
+    saveFailure: null as { title: string; detail: string; actionLabel: string } | null,
     retryLoad: vi.fn(),
   }
 }
