@@ -1,5 +1,5 @@
 import React from "react"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const store = vi.hoisted(() => ({
@@ -15,12 +15,26 @@ const state = vi.hoisted(() => ({
   user: null as null | { profile: Record<string, unknown> },
 }))
 
+const searchState = vi.hoisted(() => ({
+  value: {
+    code: "code-123",
+    state: "state-123",
+    error: "",
+    error_description: "",
+  } as {
+    code: string
+    state: string
+    error: string
+    error_description: string
+  },
+}))
+
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: { component: React.ComponentType; validateSearch?: unknown }) => {
     store.component = opts.component
     return {
       options: opts,
-      useSearch: () => ({ code: "code-123", state: "state-123" }),
+      useSearch: () => searchState.value,
     }
   },
   useNavigate: () => mockNavigate,
@@ -61,6 +75,12 @@ describe("Callback route", () => {
     vi.clearAllMocks()
     __resetCallbackProcessedForTests()
     state.user = null
+    searchState.value = {
+      code: "code-123",
+      state: "state-123",
+      error: "",
+      error_description: "",
+    }
     mockGetConfig.mockReturnValue({ zitadel_project_id: "project-runtime" })
     mockHandleCallback.mockResolvedValue(undefined)
     mockApiGet.mockReturnValue({
@@ -104,5 +124,87 @@ describe("Callback route", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" })
     })
+  })
+
+  it("renders OIDC error alert and does not call handleCallback", async () => {
+    searchState.value = {
+      code: "",
+      state: "",
+      error: "access_denied",
+      error_description: "User declined",
+    }
+
+    renderPage()
+
+    expect(await screen.findByText("User declined")).toBeInTheDocument()
+    expect(mockHandleCallback).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("button", { name: /back to login/i }))
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/login" })
+  })
+
+  it("navigates home when callback resolves but authStore has no user", async () => {
+    state.user = null
+    mockHandleCallback.mockResolvedValue(undefined)
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(mockHandleCallback).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" })
+    })
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: expect.stringMatching(/^\/field\//) }),
+    )
+  })
+
+  it("navigates home when volunteer has no campaigns", async () => {
+    state.user = {
+      profile: {
+        "urn:zitadel:iam:org:project:project-runtime:roles": {
+          volunteer: { "org-1": "org-1" },
+        },
+      },
+    }
+    mockApiGet.mockReturnValue({
+      json: vi.fn().mockResolvedValue([]),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith("api/v1/me/campaigns")
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" })
+    })
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: expect.stringMatching(/^\/field\//) }),
+    )
+  })
+
+  it("falls through to home when campaigns API fails for volunteer", async () => {
+    state.user = {
+      profile: {
+        "urn:zitadel:iam:org:project:project-runtime:roles": {
+          volunteer: { "org-1": "org-1" },
+        },
+      },
+    }
+    mockApiGet.mockReturnValue({
+      json: vi.fn().mockRejectedValue(new Error("network failure")),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith("api/v1/me/campaigns")
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" })
+    })
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/login" })
   })
 })
