@@ -117,24 +117,34 @@ describe("useCanvassingWizard", () => {
     expect(mutateAsync).not.toHaveBeenCalled()
     expect(useCanvassingStore.getState().completedEntries).toEqual({})
 
-    const submission = await result.current.handleSubmitContact({
-      entryId: "entry-a",
-      voterId: "voter-a",
-      result: "supporter",
-      notes: "Met voter at the door.",
-      surveyResponses: [{ question_id: "q-1", answer_value: "Supporter" }],
-      surveyComplete: true,
+    let submission: Awaited<ReturnType<typeof result.current.handleSubmitContact>> | undefined
+    await act(async () => {
+      submission = await result.current.handleSubmitContact({
+        entryId: "entry-a",
+        voterId: "voter-a",
+        result: "supporter",
+        notes: "Met voter at the door.",
+        surveyResponses: [{ question_id: "q-1", answer_value: "Supporter" }],
+        surveyComplete: true,
+      })
     })
 
-    expect(submission.saved).toBe(true)
-    expect(submission.failure).toBeNull()
+    expect(submission!.saved).toBe(true)
+    expect(submission!.failure).toBeNull()
     expect(mutateAsync).toHaveBeenCalledWith({
       walk_list_entry_id: "entry-a",
       voter_id: "voter-a",
       result_code: "supporter",
       notes: "Met voter at the door.",
-      survey_responses: [{ question_id: "q-1", answer_value: "Supporter" }],
+      survey_responses: [{ question_id: "q-1", voter_id: "voter-a", answer_value: "Supporter" }],
       survey_complete: true,
+    })
+
+    // Deep per-voter contact submit advances the wizard unconditionally — even
+    // if remaining residents at this address are still pending — so the
+    // volunteer can move forward and revisit via All Doors if needed.
+    await waitFor(() => {
+      expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
     })
   })
 

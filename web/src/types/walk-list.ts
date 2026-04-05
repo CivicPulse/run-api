@@ -31,6 +31,7 @@ export interface CanvasserAssignment {
 
 export interface DoorKnockSurveyResponse {
   question_id: string
+  voter_id: string
   answer_value: string
 }
 

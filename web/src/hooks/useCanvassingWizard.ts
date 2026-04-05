@@ -18,7 +18,7 @@ import type {
   EnrichedWalkListEntry,
   Household,
 } from "@/types/canvassing"
-import type { DoorKnockCreate, DoorKnockSurveyResponse } from "@/types/walk-list"
+import type { DoorKnockCreate } from "@/types/walk-list"
 import { toast } from "sonner"
 
 interface OutcomeResult {
@@ -37,7 +37,7 @@ interface ContactDraftSubmit {
   voterId: string
   result: Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused">
   notes: string
-  surveyResponses: DoorKnockSurveyResponse[]
+  surveyResponses: Array<{ question_id: string; answer_value: string }>
   surveyComplete: boolean
 }
 
@@ -281,14 +281,17 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       voter_id: voterId,
       result_code: result,
       notes,
-      survey_responses: surveyResponses,
+      survey_responses: surveyResponses.map((response) => ({
+        ...response,
+        voter_id: voterId,
+      })),
       survey_complete: surveyComplete,
     }
 
     let failure: FieldFailureState | null = null
     const saved = await submitDoorKnock(payload, {
       household: currentHousehold,
-      advanceOnSuccess: true,
+      advanceOnSuccess: false,
       showErrorToast: false,
       errorMessage: "Failed to save this contact. Please retry before moving on.",
       onError: (error) => {
@@ -302,6 +305,16 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         }
       },
     })
+
+    // Deep per-voter contact submits (supporter/undecided/opposed/refused with
+    // survey + notes) advance the wizard unconditionally: the volunteer has
+    // completed a deliberate interaction and should move forward. Any remaining
+    // residents at this address can be revisited via All Doors. This diverges
+    // intentionally from handleOutcome (simple outcomes like not_home), which
+    // waits for every resident to settle before advancing.
+    if (saved) {
+      advanceRef.current()
+    }
 
     return {
       saved,
