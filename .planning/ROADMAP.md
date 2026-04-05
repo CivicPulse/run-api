@@ -114,7 +114,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 
 - [x] **Phase 71: Tenant Isolation — Service & Route Scoping** - Fix IDOR vulnerabilities by scoping service queries and sub-resource validation to `campaign_id` (completed 2026-04-04)
 - [ ] **Phase 72: Row-Level Security Hardening** - Add FORCE RLS to core tables and enable RLS on organization tables
-- [ ] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages
+- [x] **Phase 73: Frontend Auth Guards & OIDC Error Surfacing** - Fix route guard logic, OIDC callback errors, and role gates on sensitive pages (completed 2026-04-05)
 - [ ] **Phase 74: Data Integrity & Concurrency** - Close race conditions, TOCTOUs, compensating-transaction gaps, missing indexes and unique constraints
 - [ ] **Phase 75: Reliability — Frontend State & PII Hygiene** - Fix sync-engine lock/retry, scrub callingStore PII, unify query keys
 - [ ] **Phase 76: Reliability — Backend Infrastructure** - Add HTTP/DB timeouts, remove duplicate Settings fields, fix IP spoofing, enforce upload limits, sanitize filenames, rate-limit defaults
@@ -164,7 +164,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   - [x] 73-03-PLAN.md — C7 root auth guard fix + login redirect param + same-origin safety
   - [x] 73-04-PLAN.md — C8 OIDC callback error state (Alert + Back to login CTA)
   - [x] 73-05-PLAN.md — H23-H25 role gates on 5 routes + isLoading safety fix
-  - [ ] 73-06-PLAN.md — H26 call page server-side check-in enforcement
+  - [x] 73-06-PLAN.md — H26 call page server-side check-in enforcement
 **UI hint**: yes
 
 ### Phase 74: Data Integrity & Concurrency
@@ -234,7 +234,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 2/3 | In Progress|  |
-| 73 | v1.12 | 5/6 | In Progress|  |
+| 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
 | 74 | v1.12 | 0/0 | Not started | - |
 | 75 | v1.12 | 0/0 | Not started | - |
 | 76 | v1.12 | 0/0 | Not started | - |
