@@ -58,10 +58,10 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 - [x] **QUAL-01**: Leaflet marker icons are self-hosted instead of fetched from unpkg CDN (H31)
 - [x] **QUAL-02**: `DoorKnockDialog`, `WalkListGenerateDialog`, and `InlineSurvey` radio items have explicit `htmlFor`/`id` label associations (H32, H33)
-- [ ] **QUAL-03**: `authStore` has unit tests covering token storage, OIDC events, `switchOrg`, and logout paths
-- [ ] **QUAL-04**: `api/client.ts` has unit tests covering auth header injection and 401/403 handling
+- [x] **QUAL-03**: `authStore` has unit tests covering token storage, OIDC events, `switchOrg`, and logout paths
+- [x] **QUAL-04**: `api/client.ts` has unit tests covering auth header injection and 401/403 handling
 - [ ] **QUAL-05**: `useOrgPermissions` has unit tests covering the permission gates used by the root layout
-- [ ] **QUAL-06**: OIDC callback has tests for error response, null-user, no-campaigns, campaigns API failure, and non-volunteer user paths
+- [x] **QUAL-06**: OIDC callback has tests for error response, null-user, no-campaigns, campaigns API failure, and non-volunteer user paths
 - [ ] **QUAL-07**: `authStore.logout()` calls `removeUser()` + store reset before `signoutRedirect()` so cleanup is not dead code (H27)
 - [ ] **QUAL-08**: `useOrgCampaigns` error handling narrows to `PermissionError` and 404 instead of swallowing all errors (H28)
 
@@ -123,10 +123,10 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | REL-11 | Phase 76 | Complete |
 | QUAL-01 | Phase 77 | Complete |
 | QUAL-02 | Phase 77 | Complete |
-| QUAL-03 | Phase 77 | Pending |
-| QUAL-04 | Phase 77 | Pending |
+| QUAL-03 | Phase 77 | Complete |
+| QUAL-04 | Phase 77 | Complete |
 | QUAL-05 | Phase 77 | Pending |
-| QUAL-06 | Phase 77 | Pending |
+| QUAL-06 | Phase 77 | Complete |
 | QUAL-07 | Phase 77 | Pending |
 | QUAL-08 | Phase 77 | Pending |
 
