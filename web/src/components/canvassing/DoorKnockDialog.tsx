@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -57,6 +58,7 @@ export function DoorKnockDialog({
   open,
   onOpenChange,
 }: DoorKnockDialogProps) {
+  const resultId = useId()
   const record = useRecordDoorKnock(campaignId, walkListId)
   const {
     handleSubmit,
@@ -96,9 +98,9 @@ export function DoorKnockDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label>Result</Label>
+            <Label htmlFor={resultId}>Result</Label>
             <Select onValueChange={(val) => setValue("result_code", val)}>
-              <SelectTrigger>
+              <SelectTrigger id={resultId}>
                 <SelectValue placeholder="Select result" />
               </SelectTrigger>
               <SelectContent>

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
-import { deriveStep } from "./useImports"
+import { deriveStep, isTerminalImportStatus, getImportStatusLabel } from "./useImports"
 
 // ---------------------------------------------------------------------------
 // deriveStep — pure function, no mocking needed
@@ -32,6 +32,10 @@ describe("IMPT-07: deriveStep maps status to wizard step", () => {
     expect(deriveStep("completed")).toBe(4)
   })
 
+  it("deriveStep('completed_with_errors') returns 4", () => {
+    expect(deriveStep("completed_with_errors")).toBe(4)
+  })
+
   it("deriveStep('failed') returns 4", () => {
     expect(deriveStep("failed")).toBe(4)
   })
@@ -54,7 +58,7 @@ describe("IMPT-07: deriveStep maps status to wizard step", () => {
 
 /** Mirrors useImportJob's internal refetchInterval decision logic */
 const jobIntervalFn = (status: string | undefined): number | false =>
-  status === "completed" || status === "failed" || status === "cancelled" ? false : 3000
+  isTerminalImportStatus(status) ? false : 3000
 
 describe("IMPT-05: useImportJob polling stops at terminal status", () => {
   it("returns false when status is 'completed'", () => {
@@ -63,6 +67,10 @@ describe("IMPT-05: useImportJob polling stops at terminal status", () => {
 
   it("returns false when status is 'failed'", () => {
     expect(jobIntervalFn("failed")).toBe(false)
+  })
+
+  it("returns false when status is 'completed_with_errors'", () => {
+    expect(jobIntervalFn("completed_with_errors")).toBe(false)
   })
 
   it("returns 3000 when status is 'processing'", () => {
@@ -88,12 +96,7 @@ describe("IMPT-05: useImportJob polling stops at terminal status", () => {
 
 /** Mirrors useImports (history) internal refetchInterval decision logic */
 const historyIntervalFn = (items: Array<{ status: string }>): number | false => {
-  const hasActive = items.some(
-    (j) =>
-      j.status !== "completed" &&
-      j.status !== "failed" &&
-      j.status !== "cancelled",
-  )
+  const hasActive = items.some((j) => !isTerminalImportStatus(j.status))
   return hasActive ? 3000 : false
 }
 
@@ -124,6 +127,7 @@ describe("IMPT-06: useImports history conditional polling", () => {
     expect(
       historyIntervalFn([
         { status: "completed" },
+        { status: "completed_with_errors" },
         { status: "cancelled" },
         { status: "failed" },
       ]),
@@ -138,6 +142,12 @@ describe("IMPT-06: useImports history conditional polling", () => {
 
   it("returns false for empty items list (no active jobs)", () => {
     expect(historyIntervalFn([])).toBe(false)
+  })
+})
+
+describe("import status labels", () => {
+  it("formats partial success for users", () => {
+    expect(getImportStatusLabel("completed_with_errors")).toBe("Completed with errors")
   })
 })
 
@@ -312,7 +322,7 @@ vi.mock("@/api/client", () => ({
 }))
 
 import { api } from "@/api/client"
-import { useDetectColumns } from "./useImports"
+import { useConfirmMapping, useDetectColumns } from "./useImports"
 
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
@@ -337,7 +347,7 @@ describe("IMPT-02: detect columns returns suggested_mapping", () => {
     vi.clearAllMocks()
   })
 
-  it("useDetectColumns calls POST /imports/{id}/detect and returns detected_columns and suggested_mapping", async () => {
+  it("useDetectColumns accepts an override job id and returns detected columns", async () => {
     const detectResponse = {
       detected_columns: ["First Name", "Email", "Party"],
       suggested_mapping: {
@@ -354,15 +364,70 @@ describe("IMPT-02: detect columns returns suggested_mapping", () => {
       { wrapper: makeWrapper() },
     )
 
-    result.current.mutate()
+    result.current.mutate("job-new")
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(mockApi.post).toHaveBeenCalledWith(
-      "api/v1/campaigns/campaign-abc/imports/job-xyz/detect",
+      "api/v1/campaigns/campaign-abc/imports/job-new/detect",
     )
     expect(result.current.data?.detected_columns).toEqual(["First Name", "Email", "Party"])
     expect(result.current.data?.suggested_mapping["First Name"]).toBe("first_name")
     expect(result.current.data?.suggested_mapping["Party"]).toBeNull()
+  })
+})
+
+describe("IMPT-08: confirm mapping returns the full import job contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("useConfirmMapping parses the backend response as a full ImportJob", async () => {
+    const confirmResponse = {
+      id: "job-xyz",
+      campaign_id: "campaign-abc",
+      original_filename: "voters.csv",
+      status: "queued",
+      total_rows: 120,
+      imported_rows: 0,
+      skipped_rows: 0,
+      error_report_key: null,
+      error_report_url: null,
+      error_message: null,
+      cancelled_at: null,
+      phones_created: null,
+      source_type: "file",
+      field_mapping: { "First Name": "first_name" },
+      created_by: "user-123",
+      last_committed_row: null,
+      processing_started_at: null,
+      last_progress_at: null,
+      created_at: "2026-04-04T12:00:00Z",
+      updated_at: "2026-04-04T12:00:00Z",
+    }
+
+    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(confirmResponse) })
+
+    const { result } = renderHook(
+      () => useConfirmMapping("campaign-abc", "job-xyz"),
+      { wrapper: makeWrapper() },
+    )
+
+    result.current.mutate({ field_mapping: { "First Name": "first_name" } })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "api/v1/campaigns/campaign-abc/imports/job-xyz/confirm",
+      {
+        json: { field_mapping: { "First Name": "first_name" } },
+      },
+    )
+    expect(result.current.data).toEqual(confirmResponse)
+    expect(result.current.data?.id).toBe("job-xyz")
+    expect(result.current.data?.campaign_id).toBe("campaign-abc")
+    expect(result.current.data?.field_mapping).toEqual({
+      "First Name": "first_name",
+    })
   })
 })

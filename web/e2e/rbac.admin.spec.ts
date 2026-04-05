@@ -97,9 +97,14 @@ test.describe("RBAC: admin permissions", () => {
     await expect(saveButton).toBeVisible({ timeout: 30_000 })
   })
 
-  test("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
+  test.skip("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/danger
+    // now redirects anyone below owner to "/" at the page level, so admins
+    // never reach the danger-zone page content. See the "Phase 73 role
+    // gates (admin partial access)" describe block below for redirect-based
+    // assertions.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
     await page.waitForURL(/danger/, { timeout: 30_000 })
@@ -175,5 +180,53 @@ test.describe("RBAC: admin permissions", () => {
 
     const settingsLink = page.getByRole("link", { name: /^settings$/i })
     await expect(settingsLink).toBeVisible({ timeout: 30_000 })
+  })
+})
+
+/**
+ * Phase 73 role gates (admin has most, not danger) — H23, H24 / SEC-10, SEC-11.
+ *
+ * admin1@localhost has org_admin per seed data (see rbac.admin.spec.ts:13),
+ * so /campaigns/new and settings/{general,members} must be visible.
+ * settings/danger requires owner so admin gets redirected home.
+ *
+ * Failing-red: today settings/danger is ungated — admin sees danger zone
+ * instead of being redirected.
+ */
+test.describe("Phase 73 role gates (admin has most, not danger)", () => {
+  test.setTimeout(60_000)
+
+  test("/campaigns/:id/settings/general visible to admin", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/settings\/general/, { timeout: 10_000 })
+  })
+
+  test("/campaigns/:id/settings/members visible to admin", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/members`)
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/settings\/members/, { timeout: 10_000 })
+  })
+
+  test("/campaigns/:id/settings/danger redirects admin to / (owner only)", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/danger`)
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  })
+
+  test("/campaigns/new visible to admin (admin1 has org_admin)", async ({
+    page,
+  }) => {
+    await page.goto("/campaigns/new")
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page).toHaveURL(/\/campaigns\/new/, { timeout: 10_000 })
   })
 })

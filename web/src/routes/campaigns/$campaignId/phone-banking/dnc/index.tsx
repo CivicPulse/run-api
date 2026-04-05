@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router"
+import { createFileRoute, Navigate, useParams } from "@tanstack/react-router"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { PhoneOff } from "lucide-react"
@@ -30,8 +30,16 @@ const REASON_LABELS: Record<string, string> = {
   manual: "Manual",
 }
 
+function GuardedDNCListPage() {
+  return (
+    <RequireRole minimum="manager" fallback={<Navigate to="/" />}>
+      <DNCListPage />
+    </RequireRole>
+  )
+}
+
 export const Route = createFileRoute("/campaigns/$campaignId/phone-banking/dnc/")({
-  component: DNCListPage,
+  component: GuardedDNCListPage,
 })
 
 interface AddFormValues {

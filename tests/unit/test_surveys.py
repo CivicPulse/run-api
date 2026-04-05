@@ -123,7 +123,10 @@ class TestSurveyService:
 
         data = ScriptUpdate(status=ScriptStatus.ACTIVE)
         result = await service.update_script(
-            session=mock_db, script_id=draft_script.id, data=data
+            session=mock_db,
+            script_id=draft_script.id,
+            data=data,
+            campaign_id=campaign_id,
         )
         assert result.status == ScriptStatus.ACTIVE
 
@@ -133,7 +136,10 @@ class TestSurveyService:
 
         data = ScriptUpdate(status=ScriptStatus.ARCHIVED)
         result = await service.update_script(
-            session=mock_db, script_id=active_script.id, data=data
+            session=mock_db,
+            script_id=active_script.id,
+            data=data,
+            campaign_id=campaign_id,
         )
         assert result.status == ScriptStatus.ARCHIVED
 
@@ -146,6 +152,7 @@ class TestSurveyService:
                 session=mock_db,
                 script_id=archived_script.id,
                 data=ScriptUpdate(status=ScriptStatus.DRAFT),
+                campaign_id=campaign_id,
             )
 
         # active -> draft: NOT allowed
@@ -157,6 +164,7 @@ class TestSurveyService:
                 session=mock_db,
                 script_id=active_script2.id,
                 data=ScriptUpdate(status=ScriptStatus.DRAFT),
+                campaign_id=campaign_id,
             )
 
     async def test_question_crud_draft_only(self, service, mock_db, campaign_id):
@@ -174,7 +182,10 @@ class TestSurveyService:
 
         with pytest.raises(ValueError, match="draft"):
             await service.add_question(
-                session=mock_db, script_id=active_script.id, data=data
+                session=mock_db,
+                script_id=active_script.id,
+                data=data,
+                campaign_id=campaign_id,
             )
 
     async def test_question_type_validation(self, service):

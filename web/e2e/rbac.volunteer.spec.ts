@@ -150,3 +150,58 @@ test.describe("RBAC: volunteer permissions", () => {
     await expect(createButton).not.toBeVisible()
   })
 })
+
+/**
+ * Phase 73 role gates (volunteer is denied) — H23, H24, H25 / SEC-10, SEC-11.
+ *
+ * Failing-red scaffolds: direct-URL navigation to gated routes must redirect
+ * volunteers to `/` (home). Today these routes have no page-level guards,
+ * so the volunteer sees the page content directly.
+ */
+test.describe("Phase 73 role gates (volunteer is denied)", () => {
+  test.setTimeout(60_000)
+
+  async function expectRedirectedHome(
+    page: import("@playwright/test").Page,
+  ) {
+    // After the gate fires, pathname should become "/" (org dashboard).
+    // Give the <Navigate> a moment to fire.
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  }
+
+  test("/campaigns/new redirects volunteer to /", async ({ page }) => {
+    await page.goto("/campaigns/new")
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/general redirects volunteer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/members redirects volunteer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/members`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/danger redirects volunteer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/danger`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/phone-banking/dnc redirects volunteer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await expectRedirectedHome(page)
+  })
+})

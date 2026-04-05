@@ -10,7 +10,8 @@
 - ✅ **v1.5 Go Live — Production Readiness** — Phases 39-48 (shipped 2026-03-25)
 - ✅ **v1.6 Imports** — Phases 49-55 (shipped 2026-03-29)
 - ✅ **v1.10 Import Recovery** — Phases 56-58 (shipped 2026-04-01)
-- 📋 **v1.11 Faster Imports** — Phases 59-64 (planned)
+- ✅ **v1.11 Faster Imports** — Phases 59-70 (shipped 2026-04-04)
+- ✅ **v1.12 Hardening & Remediation** — Phases 71-77 (shipped 2026-04-05)
 
 ## Phases
 
@@ -44,32 +45,12 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 <details>
 <summary>✅ v1.2 Full UI (Phases 12-22) — SHIPPED 2026-03-13</summary>
 
-- [x] Phase 12: Shared Infrastructure & Campaign Foundation (3/3 plans) — completed 2026-03-10
-- [x] Phase 13: Voter Management Completion (7/7 plans) — completed 2026-03-11
-- [x] Phase 14: Voter Import Wizard (4/4 plans) — completed 2026-03-11
-- [x] Phase 15: Call Lists & DNC Management (6/6 plans) — completed 2026-03-11
-- [x] Phase 16: Phone Banking (7/7 plans) — completed 2026-03-11
-- [x] Phase 17: Volunteer Management (5/5 plans) — completed 2026-03-12
-- [x] Phase 18: Shift Management (4/4 plans) — completed 2026-03-12
-- [x] Phase 19: Verification & Validation Gap Closure (3/3 plans) — completed 2026-03-12
-- [x] Phase 20: Caller Picker UX (2/2 plans) — completed 2026-03-12
-- [x] Phase 21: Integration Polish (1/1 plan) — completed 2026-03-12
-- [x] Phase 22: Final Integration Fixes (1/1 plan) — completed 2026-03-13
-
 See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
 
 </details>
 
 <details>
 <summary>✅ v1.3 Voter Model & Import Enhancement (Phases 23-29) — SHIPPED 2026-03-15</summary>
-
-- [x] Phase 23: Schema Foundation (2/2 plans) — completed 2026-03-13
-- [x] Phase 24: Import Pipeline Enhancement (3/3 plans) — completed 2026-03-13
-- [x] Phase 25: Filter Builder & Query Enhancement (2/2 plans) — completed 2026-03-14
-- [x] Phase 26: Frontend Updates (4/4 plans) — completed 2026-03-14
-- [x] Phase 27: Wire Advanced Filters to Backend (3/3 plans) — completed 2026-03-15
-- [x] Phase 28: Filter Chips & Frontend Type Coverage (2/2 plans) — completed 2026-03-15
-- [x] Phase 29: Integration Polish & Tech Debt Cleanup (2/2 plans) — completed 2026-03-15
 
 See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 
@@ -78,33 +59,12 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
 <details>
 <summary>✅ v1.4 Volunteer Field Mode (Phases 30-38) — SHIPPED 2026-03-17</summary>
 
-- [x] Phase 30: Field Layout Shell & Volunteer Landing (3/3 plans) — completed 2026-03-15
-- [x] Phase 31: Canvassing Wizard (5/5 plans) — completed 2026-03-15
-- [x] Phase 32: Phone Banking Field Mode (3/3 plans) — completed 2026-03-15
-- [x] Phase 33: Offline Queue & Sync (2/2 plans) — completed 2026-03-16
-- [x] Phase 34: Guided Onboarding Tour (4/4 plans) — completed 2026-03-16
-- [x] Phase 35: Accessibility Audit & Polish (4/4 plans) — completed 2026-03-16
-- [x] Phase 36: Google Maps Navigation Link (2/2 plans) — completed 2026-03-16
-- [x] Phase 37: Offline Sync Integration Fixes (1/1 plan) — completed 2026-03-16
-- [x] Phase 38: Tech Debt Cleanup (2/2 plans) — completed 2026-03-17
-
 See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
 
 </details>
 
 <details>
 <summary>✅ v1.5 Go Live — Production Readiness (Phases 39-48) — SHIPPED 2026-03-25</summary>
-
-- [x] Phase 39: RLS Fix & Multi-Campaign Foundation (4/4 plans) — completed 2026-03-24
-- [x] Phase 40: Production Hardening & Observability (2/2 plans) — completed 2026-03-24
-- [x] Phase 41: Organization Data Model & Auth (3/3 plans) — completed 2026-03-24
-- [x] Phase 42: Map-Based Turf Editor (4/4 plans) — completed 2026-03-24
-- [x] Phase 43: Organization UI (5/5 plans) — completed 2026-03-24
-- [x] Phase 44: UI/UX Polish & Frontend Hardening (5/5 plans) — completed 2026-03-24
-- [x] Phase 45: WCAG Compliance Audit (4/4 plans) — completed 2026-03-25
-- [x] Phase 46: E2E Testing & Integration (4/4 plans) — completed 2026-03-25
-- [x] Phase 47: Integration Consistency & Documentation Cleanup (4/4 plans) — completed 2026-03-25
-- [x] Phase 48: Connected E2E Journey Spec (1/1 plan) — completed 2026-03-25
 
 See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
 
@@ -113,34 +73,59 @@ See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
 <details>
 <summary>✅ v1.6 Imports (Phases 49-55) — SHIPPED 2026-03-29</summary>
 
-- [x] Phase 49: Procrastinate Integration & Worker Infrastructure (3/3 plans) — completed 2026-03-28
-- [x] Phase 50: Per-Batch Commits & Crash Resilience (2/2 plans) — completed 2026-03-29
-- [x] Phase 51: Memory Safety & Streaming (2/2 plans) — completed 2026-03-29
-- [x] Phase 52: L2 Auto-Mapping Completion (4/4 plans) — completed 2026-03-29
-- [x] Phase 53: Concurrent Safety & Cancellation (3/3 plans) — completed 2026-03-29
-- [x] Phase 54: Error Report Download & Type Safety Fix (1/1 plan) — completed 2026-03-29
-- [x] Phase 55: Documentation & Dead Code Cleanup (1/1 plan) — completed 2026-03-29
-
 See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 
 </details>
 
-### ✅ v1.10 Import Recovery (Shipped 2026-04-01)
+<details>
+<summary>✅ v1.10 Import Recovery (Phases 56-58) — SHIPPED 2026-04-01</summary>
 
-Phases 56-58 complete. See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details and `.planning/milestones/v1.10-REQUIREMENTS.md` for archived requirements.
+- [x] Phase 56: Schema & Orphan Detection (1/1 plan) — completed 2026-04-01
+- [x] Phase 57: Recovery Engine & Completion Hardening (1/1 plan) — completed 2026-04-01
+- [x] Phase 58: Test Coverage (1/1 plan) — completed 2026-04-01
 
-### 📋 v1.11 Faster Imports (Planned)
+See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details.
 
-**Milestone Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work to separate tasks.
+</details>
 
-- [ ] **Phase 59: Chunk Schema & Configuration** - ImportChunk model, settings, serial-bypass threshold, adaptive chunk sizing
-- [ ] **Phase 60: Parent Split & Parallel Processing** - CSV pre-scan, parent split task, child chunk workers with per-batch commits
-- [ ] **Phase 61: Completion Aggregation & Error Merging** - Progress aggregation via SQL SUM, finalization with advisory lock, error report merge, COMPLETED_WITH_ERRORS status
-- [ ] **Phase 62: Resilience & Cancellation** - Chunk failure isolation, cancellation propagation, per-chunk crash resume, deadlock prevention
-- [ ] **Phase 63: Secondary Work Offloading** - VoterPhone creation and geometry updates as separate post-chunk tasks
-- [ ] **Phase 64: Frontend Throughput & Status UI** - Rows/second throughput display, ETA calculation, COMPLETED_WITH_ERRORS UI treatment
+<details>
+<summary>✅ v1.11 Faster Imports (Phases 59-70) — SHIPPED 2026-04-04</summary>
+
+- [x] Phase 59: Chunk Schema & Configuration — completed 2026-04-03
+- [x] Phase 60: Parent Split & Parallel Processing — completed 2026-04-03
+- [x] Phase 61: Completion Aggregation & Error Merging — completed 2026-04-03
+- [x] Phase 62: Resilience & Cancellation — completed 2026-04-03
+- [x] Phase 63: Secondary Work Offloading — completed 2026-04-03
+- [x] Phase 64: Frontend Throughput & Status UI — completed 2026-04-03
+- [x] Phase 65: Chunk Planning & Concurrency Cap Closure — completed 2026-04-03
+- [x] Phase 66: Import Wizard Flow Recovery & Progress Accuracy — completed 2026-04-03
+- [x] Phase 67: Chunk Import Cleanup & Deletion Semantics — completed 2026-04-03
+- [x] Phase 68: Progress Metric Accuracy & Validation Closeout — completed 2026-04-03
+- [x] Phase 69: Queued Cancellation Finalization Closure — completed 2026-04-04
+- [x] Phase 70: Reopened Import Restore Flow Closure — completed 2026-04-04
 
 See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
+
+</details>
+
+<details>
+<summary>✅ v1.12 Hardening & Remediation (Phases 71-77) — SHIPPED 2026-04-05</summary>
+
+- [x] Phase 71: Tenant Isolation — Service & Route Scoping (3/3 plans) — completed 2026-04-04
+- [x] Phase 72: Row-Level Security Hardening (3/3 plans) — completed 2026-04-05
+- [x] Phase 73: Frontend Auth Guards & OIDC Error Surfacing (6/6 plans) — completed 2026-04-05
+- [x] Phase 74: Data Integrity & Concurrency (4/4 plans) — completed 2026-04-05
+- [x] Phase 75: Reliability — Frontend State & PII Hygiene (4/4 plans) — completed 2026-04-05
+- [x] Phase 76: Reliability — Backend Infrastructure (5/5 plans) — completed 2026-04-05
+- [x] Phase 77: Quality, Accessibility & Test Coverage (5/5 plans) — completed 2026-04-05
+
+See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
+
+</details>
+
+### Backlog / Parking Lot
+
+- [ ] Phase 999.1: Update Zitadel to v3 or v4 — parked backlog item, not part of the active milestone sequence
 
 ## Progress
 
@@ -153,12 +138,6 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 30-38 | v1.4 | 26/26 | Complete | 2026-03-17 |
 | 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
 | 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
-| 56 | v1.10 | 1/1 | Complete | 2026-04-01 |
-| 57 | v1.10 | 1/1 | Complete | 2026-04-01 |
-| 58 | v1.10 | 1/1 | Complete | 2026-04-01 |
-| 59 | v1.11 | 0/0 | Not started | - |
-| 60 | v1.11 | 0/0 | Not started | - |
-| 61 | v1.11 | 0/0 | Not started | - |
-| 62 | v1.11 | 0/0 | Not started | - |
-| 63 | v1.11 | 0/0 | Not started | - |
-| 64 | v1.11 | 0/0 | Not started | - |
+| 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
+| 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
+| 71-77 | v1.12 | 30/30 | Complete | 2026-04-05 |

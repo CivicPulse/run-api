@@ -139,8 +139,16 @@ class ShiftService:
         session: AsyncSession,
         shift_id: uuid.UUID,
     ) -> Shift | None:
-        """Fetch shift model directly (no counts)."""
-        result = await session.execute(select(Shift).where(Shift.id == shift_id))
+        """Fetch shift model directly (no counts).
+
+        Acquires a pessimistic row-level lock (SELECT ... FOR UPDATE) so that
+        concurrent write paths (signup_volunteer, update_status, etc.) cannot
+        race on capacity/status. Matches the pattern used by
+        _promote_from_waitlist.
+        """
+        result = await session.execute(
+            select(Shift).where(Shift.id == shift_id).with_for_update()
+        )
         return result.scalar_one_or_none()
 
     async def update_shift(

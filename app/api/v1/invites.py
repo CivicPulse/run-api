@@ -97,14 +97,14 @@ async def list_invites(
 @limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def revoke_invite(
     request: Request,
-    campaign_id: uuid.UUID,  # noqa: ARG001
+    campaign_id: uuid.UUID,
     invite_id: uuid.UUID,
     user: AuthenticatedUser = Depends(require_role("admin")),  # noqa: ARG001
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke a pending invite. Requires admin+ role."""
     try:
-        await invite_service.revoke_invite(db, invite_id)
+        await invite_service.revoke_invite(db, invite_id, campaign_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

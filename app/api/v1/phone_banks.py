@@ -321,6 +321,46 @@ async def list_callers(
     return [SessionCallerResponse.model_validate(c) for c in callers]
 
 
+@router.get(
+    "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/callers/me",
+    response_model=SessionCallerResponse,
+)
+@limiter.limit("240/minute", key_func=get_user_or_ip_key)
+async def get_my_caller_status(
+    request: Request,
+    campaign_id: uuid.UUID,
+    session_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("volunteer")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Return the current user's caller assignment + check-in status.
+
+    Server-side source of truth for the active calling page's
+    check-in gate (SEC-12). The response includes a computed
+    ``checked_in`` boolean so the client does not have to derive it
+    from ``check_in_at`` / ``check_out_at`` timestamps.
+
+    Returns 404 when the current user is not an assigned caller
+    on this session. Requires volunteer+ role.
+    """
+    await ensure_user_synced(user, db)
+    result = await db.execute(
+        select(SessionCaller).where(
+            SessionCaller.session_id == session_id,
+            SessionCaller.user_id == user.id,
+        )
+    )
+    caller = result.scalar_one_or_none()
+    if caller is None:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Not an Assigned Caller",
+            detail="Current user is not an assigned caller for this session",
+            type="caller-not-assigned",
+        )
+    return SessionCallerResponse.model_validate(caller)
+
+
 @router.post(
     "/campaigns/{campaign_id}/phone-bank-sessions/{session_id}/check-in",
     response_model=SessionCallerResponse,

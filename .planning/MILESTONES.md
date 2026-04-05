@@ -1,5 +1,60 @@
 # Milestones
 
+## v1.11 Faster Imports (Shipped: 2026-04-04)
+
+**Phases completed:** 15 phases, 31 plans, 24 tasks
+
+**Key accomplishments:**
+
+- Internal ImportChunk records, conservative chunk settings, and campaign-scoped RLS foundation for future parallel imports
+- Reusable bind-limit-aware chunk sizing helpers and a deferred fan-out routing seam for serial imports
+- Streamed CSV row counting plus a shared row-bounded import engine behind the existing serial wrapper
+- Parent import coordination with total-row pre-scan, deterministic chunk rows, and eager child deferral behind the existing process_import entrypoint
+- Independent chunk workers over the shared ranged import engine with chunk-only progress and concurrency-shape coverage
+- Chunk-local phones_created persistence with widened parent status storage for completed_with_errors finalization
+- Exactly-once parent fan-in over durable chunk rows with merged error artifacts and partial-success terminal state handling
+- Concurrent chunk-completion coverage proving one authoritative parent result for both mixed and all-success outcomes
+- Parent-driven chunk cancellation that preserves committed work and keeps parent fan-in authoritative
+- Retry-safe chunk resume and cancellation-aware parent status fan-in
+- Deterministic conflict-key ordering inside the batch upsert path to reduce cross-chunk deadlocks
+- Durable chunk state for deferred phone and geometry work
+- Primary chunk work now stops at voter durability and hands phones plus geometry to separate tasks
+- Integration coverage now proves deferred secondary work blocks chunk and parent completion until finished
+- Contract cleanup for partial-success imports and direct error-report access
+- Client-side throughput and ETA metrics on the live import progress card
+- Completion and history UI now explain partial success instead of hiding it behind raw statuses
+- File-size-aware chunk planning and metadata lookup
+- Rolling-window chunk dispatch and successor promotion
+- Traceability and audit evidence for the repaired chunk runtime
+- Fresh-job detect-columns wiring for the upload wizard
+- Traceability and milestone closeout after the wizard flow repair
+- Chunked import deletes now clean up child state, and Phase 59 no longer claims Phase 60 runtime behavior
+- Import throughput now measures actual processing time, and the old validation debt is closed
+- Two-line fix setting phone_task_status and geometry_task_status to CANCELLED on queued chunk cancellation, unblocking the secondary-task terminal gate
+- Three regression tests proving cancelled chunks pass the secondary-task terminal gate and that queued-only cancellation drives parent import finalization
+- Extended ImportJob frontend type with detect-column fields and added once-guarded hydration to step-restore effect for reopened uploaded imports
+- E2E tests prove reopened imports restore mapping columns from job data and proceed through the wizard; audit gap for import-job restore seam retired
+
+---
+
+## v1.11 Faster Imports (Shipped: 2026-04-03)
+
+**Phases completed:** 10 phases, 27 plans
+**Timeline:** 3 days (2026-04-01 → 2026-04-03)
+**Files modified:** 24 | **Lines added:** 3,400+ | **Commits:** multiple
+
+**Key accomplishments:**
+
+1. Parallelized the import runtime with deterministic chunk planning, parent fan-out, chunk-local progress, advisory-locked parent finalization, and merged error reporting
+2. Hardened chunked imports for cancellation, crash recovery, deadlock avoidance, and deferred secondary phone/geometry work
+3. Delivered frontend throughput, ETA, and partial-success import states while repairing the end-to-end upload wizard flow
+4. Closed post-audit cleanup by fixing chunked-import deletion semantics, adding a durable `processing_started_at` metric contract, and retiring stale Phase 59 traceability
+5. Brought the remaining Phase 59 and 60 validation artifacts to Nyquist-compliant status
+
+**Audit:** .planning/v1.11-MILESTONE-AUDIT.md (status: passed, 18/18 requirements satisfied)
+
+---
+
 ## v1.10 Import Recovery (Shipped: 2026-04-01)
 
 **Phases completed:** 3 phases, 3 plans, 9 tasks

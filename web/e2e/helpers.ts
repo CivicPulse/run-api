@@ -2,6 +2,7 @@ import { execSync } from "child_process"
 import fs from "fs"
 import path from "path"
 import type { Page, APIResponse } from "@playwright/test"
+import { pickSeedCampaignId } from "../src/lib/seed-campaign"
 
 const LOCAL_AUTH_DIR = path.join(import.meta.dirname, "../playwright/.auth")
 
@@ -54,11 +55,8 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
       })
       if (resp.ok()) {
         const campaigns = await resp.json()
-        const seed = campaigns.find(
-          (c: { campaign_name?: string; name?: string }) =>
-            /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
-        )
-        if (seed?.campaign_id ?? seed?.id) return seed.campaign_id ?? seed.id
+        const seedCampaignId = pickSeedCampaignId(campaigns)
+        if (seedCampaignId) return seedCampaignId
       }
       if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     } catch {

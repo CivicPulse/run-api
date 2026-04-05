@@ -1,9 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
+import { AlertCircle } from "lucide-react"
 import { useAuthStore } from "@/stores/authStore"
 import { api } from "@/api/client"
-import { ROLE_HIERARCHY } from "@/hooks/usePermissions"
-import type { CampaignRole } from "@/types/auth"
+import { getConfig } from "@/config"
+import { getHighestRoleFromClaims } from "@/lib/auth-claims"
+import { isSafeRedirect } from "@/lib/safeRedirect"
+import { POST_LOGIN_REDIRECT_KEY } from "@/routes/login"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import type { UserCampaign } from "@/types/user"
 
 // Module-level flag prevents signinRedirectCallback() from being called
@@ -14,35 +19,18 @@ import type { UserCampaign } from "@/types/user"
 // page navigation through the OIDC provider, which reloads this module fresh.
 let callbackProcessed = false
 
-/**
- * Extract the highest role from the OIDC user's JWT claims.
- * Returns the highest CampaignRole found, or null if no role claim present.
- */
-function getHighestRoleFromUser(user: { profile: Record<string, unknown> }): CampaignRole | null {
-  const projectId = import.meta.env.VITE_ZITADEL_PROJECT_ID ?? ""
-  const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
-  const claims = user.profile
-
-  if (!(claimKey in claims)) return null
-
-  const roleMap = claims[claimKey] as Record<string, unknown>
-  const foundRoles = Object.keys(roleMap).filter(
-    (r): r is CampaignRole => r in ROLE_HIERARCHY
-  )
-
-  if (foundRoles.length === 0) return null
-
-  return foundRoles.reduce((best, r) =>
-    ROLE_HIERARCHY[r] > ROLE_HIERARCHY[best] ? r : best
-  , foundRoles[0])
+export function __resetCallbackProcessedForTests() {
+  callbackProcessed = false
 }
 
 function CallbackPage() {
   const handleCallback = useAuthStore((state) => state.handleCallback)
   const navigate = useNavigate()
-  const { code, state } = Route.useSearch()
+  const { code, state, error, error_description } = Route.useSearch()
+  const hasError = Boolean(error || error_description)
 
   useEffect(() => {
+    if (hasError) return
     if (callbackProcessed) return
     callbackProcessed = true
 
@@ -54,6 +42,16 @@ function CallbackPage() {
 
     handleCallback(url)
       .then(async () => {
+        // Honor the stored post-login redirect (SEC-08) — validated
+        // same-origin again at read time. Clear it unconditionally so a
+        // stale value can't leak into a future session.
+        const saved = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY)
+        sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+        if (isSafeRedirect(saved)) {
+          navigate({ to: saved })
+          return
+        }
+
         // After callback completes, store is updated with the user
         const user = useAuthStore.getState().user
         if (!user) {
@@ -61,8 +59,9 @@ function CallbackPage() {
           return
         }
 
-        const highestRole = getHighestRoleFromUser(
-          user as unknown as { profile: Record<string, unknown> }
+        const highestRole = getHighestRoleFromClaims(
+          (user as unknown as { profile: Record<string, unknown> }).profile,
+          getConfig().zitadel_project_id,
         )
 
         // Volunteer-only users go directly to field mode
@@ -86,7 +85,43 @@ function CallbackPage() {
         console.error("OIDC callback failed:", err)
         navigate({ to: "/login" })
       })
-  }, [handleCallback, navigate, code, state])
+  }, [handleCallback, navigate, code, state, hasError])
+
+  if (hasError) {
+    const primary = error_description
+      ? error_description
+      : error
+        ? `Sign-in error: ${error}`
+        : "Something went wrong during sign-in. Please try again."
+    const showSecondary = Boolean(error_description && error)
+
+    return (
+      <div className="flex h-svh items-center justify-center">
+        <div className="max-w-sm w-full mx-auto px-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Sign-in failed</AlertTitle>
+            <AlertDescription>
+              <p className="text-sm">{primary}</p>
+              {showSecondary && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Error code: {error}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="default"
+            className="w-full mt-4"
+            autoFocus
+            onClick={() => navigate({ to: "/login" })}
+          >
+            Back to login
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-svh items-center justify-center">
@@ -102,5 +137,7 @@ export const Route = createFileRoute("/callback")({
   validateSearch: (search: Record<string, unknown>) => ({
     code: (search.code as string) ?? "",
     state: (search.state as string) ?? "",
+    error: (search.error as string) ?? "",
+    error_description: (search.error_description as string) ?? "",
   }),
 })

@@ -54,20 +54,27 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> VoterList:
-        """Get a voter list by ID.
+        """Get a voter list by ID, scoped to the given campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
 
         Returns:
             The VoterList.
 
         Raises:
-            ValueError: If list not found.
+            ValueError: If list not found in this campaign.
         """
-        result = await db.execute(select(VoterList).where(VoterList.id == list_id))
+        result = await db.execute(
+            select(VoterList).where(
+                VoterList.id == list_id,
+                VoterList.campaign_id == campaign_id,
+            )
+        )
         voter_list = result.scalar_one_or_none()
         if voter_list is None:
             msg = f"Voter list {list_id} not found"
@@ -78,22 +85,24 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         data: object,
     ) -> VoterList:
-        """Update a voter list.
+        """Update a voter list scoped to a campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
             data: Pydantic model with fields to update.
 
         Returns:
             The updated VoterList.
 
         Raises:
-            ValueError: If list not found.
+            ValueError: If list not found in this campaign.
         """
-        voter_list = await self.get_list(db, list_id)
+        voter_list = await self.get_list(db, list_id, campaign_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(voter_list, field, value)
@@ -106,17 +115,19 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
-        """Delete a voter list and its members.
+        """Delete a voter list and its members, scoped to a campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
 
         Raises:
-            ValueError: If list not found.
+            ValueError: If list not found in this campaign.
         """
-        voter_list = await self.get_list(db, list_id)
+        voter_list = await self.get_list(db, list_id, campaign_id)
         # Delete members first
         await db.execute(
             delete(VoterListMember).where(VoterListMember.voter_list_id == list_id)
@@ -127,21 +138,25 @@ class VoterListService:
     async def list_lists(
         self,
         db: AsyncSession,
+        campaign_id: uuid.UUID,
         cursor: str | None = None,
         limit: int = 50,
     ) -> tuple[list[VoterList], PaginationResponse]:
-        """List voter lists with cursor-based pagination.
+        """List voter lists for a campaign with cursor-based pagination.
 
         Args:
             db: Async database session.
+            campaign_id: The campaign UUID used to scope the listing.
             cursor: Opaque cursor string.
             limit: Maximum number of items.
 
         Returns:
             Tuple of (lists, pagination metadata).
         """
-        query = select(VoterList).order_by(
-            VoterList.created_at.desc(), VoterList.id.desc()
+        query = (
+            select(VoterList)
+            .where(VoterList.campaign_id == campaign_id)
+            .order_by(VoterList.created_at.desc(), VoterList.id.desc())
         )
 
         if cursor:
@@ -177,19 +192,21 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         voter_ids: list[uuid.UUID],
     ) -> None:
-        """Add voters to a static list.
+        """Add voters to a static list, scoped to a campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
             voter_ids: List of voter UUIDs to add.
 
         Raises:
-            ValueError: If list is dynamic or not found.
+            ValueError: If list is dynamic or not found in this campaign.
         """
-        voter_list = await self.get_list(db, list_id)
+        voter_list = await self.get_list(db, list_id, campaign_id)
         if voter_list.list_type != ListType.STATIC:
             msg = "Can only add members to static lists"
             raise ValueError(msg)
@@ -203,19 +220,21 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         voter_ids: list[uuid.UUID],
     ) -> None:
-        """Remove voters from a static list.
+        """Remove voters from a static list, scoped to a campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
             voter_ids: List of voter UUIDs to remove.
 
         Raises:
-            ValueError: If list is dynamic or not found.
+            ValueError: If list is dynamic or not found in this campaign.
         """
-        voter_list = await self.get_list(db, list_id)
+        voter_list = await self.get_list(db, list_id, campaign_id)
         if voter_list.list_type != ListType.STATIC:
             msg = "Can only remove members from static lists"
             raise ValueError(msg)
@@ -234,14 +253,16 @@ class VoterListService:
         self,
         db: AsyncSession,
         list_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         cursor: str | None = None,
         limit: int = 50,
     ) -> PaginatedResponse[VoterResponse]:
-        """Get voters in a list (static: join table, dynamic: evaluate filter).
+        """Get voters in a list, scoped to a campaign.
 
         Args:
             db: Async database session.
             list_id: The list UUID.
+            campaign_id: The campaign UUID used to scope the lookup.
             cursor: Opaque cursor string.
             limit: Maximum number of items.
 
@@ -249,9 +270,9 @@ class VoterListService:
             PaginatedResponse with VoterResponse items.
 
         Raises:
-            ValueError: If list not found.
+            ValueError: If list not found in this campaign.
         """
-        voter_list = await self.get_list(db, list_id)
+        voter_list = await self.get_list(db, list_id, campaign_id)
 
         if voter_list.list_type == ListType.DYNAMIC:
             # Deserialize stored filter and evaluate

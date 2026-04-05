@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -19,11 +19,11 @@ class Invite(Base):
     """
 
     __tablename__ = "invites"
-    __table_args__ = (
-        UniqueConstraint(
-            "email", "campaign_id", name="uq_pending_invite_email_campaign"
-        ),
-    )
+    # Uniqueness for pending invites is enforced at the DB level via a
+    # partial unique index created in migration 027_data_integrity.py
+    # (CREATE UNIQUE INDEX ... WHERE accepted_at IS NULL AND revoked_at IS NULL).
+    # SQLAlchemy cannot declaratively express partial unique constraints, so no
+    # __table_args__ entry is needed here.
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     campaign_id: Mapped[uuid.UUID] = mapped_column(

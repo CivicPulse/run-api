@@ -585,6 +585,7 @@ class VoterService:
         db: AsyncSession,
         tag_id: uuid.UUID,
         name: str,
+        campaign_id: uuid.UUID,
     ) -> VoterTag:
         """Update a campaign-scoped voter tag name.
 
@@ -592,11 +593,22 @@ class VoterService:
             db: Async database session.
             tag_id: The tag UUID.
             name: New tag name.
+            campaign_id: The campaign UUID scope — tag must belong here.
 
         Returns:
             The updated VoterTag.
+
+        Raises:
+            ValueError: If tag not found in the given campaign.
         """
-        result = await db.execute(select(VoterTag).where(VoterTag.id == tag_id))
+        result = await db.execute(
+            select(VoterTag).where(
+                and_(
+                    VoterTag.id == tag_id,
+                    VoterTag.campaign_id == campaign_id,
+                )
+            )
+        )
         tag = result.scalar_one_or_none()
         if tag is None:
             raise ValueError(f"Tag {tag_id} not found")
@@ -609,13 +621,29 @@ class VoterService:
         self,
         db: AsyncSession,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Delete a campaign-scoped voter tag and remove all voter associations.
 
         Args:
             db: Async database session.
             tag_id: The tag UUID.
+            campaign_id: The campaign UUID scope — tag must belong here.
+
+        Raises:
+            ValueError: If tag not found in the given campaign.
         """
+        result = await db.execute(
+            select(VoterTag).where(
+                and_(
+                    VoterTag.id == tag_id,
+                    VoterTag.campaign_id == campaign_id,
+                )
+            )
+        )
+        tag = result.scalar_one_or_none()
+        if tag is None:
+            raise ValueError(f"Tag {tag_id} not found")
         await db.execute(delete(VoterTagMember).where(VoterTagMember.tag_id == tag_id))
         await db.execute(delete(VoterTag).where(VoterTag.id == tag_id))
         await db.commit()
@@ -625,14 +653,43 @@ class VoterService:
         db: AsyncSession,
         voter_id: uuid.UUID,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Add a tag to a voter.
+
+        Both the voter and the tag must belong to the given campaign_id.
 
         Args:
             db: Async database session.
             voter_id: The voter UUID.
             tag_id: The tag UUID.
+            campaign_id: The campaign UUID scope.
+
+        Raises:
+            ValueError: If voter or tag not found in the given campaign.
         """
+        tag_result = await db.execute(
+            select(VoterTag).where(
+                and_(
+                    VoterTag.id == tag_id,
+                    VoterTag.campaign_id == campaign_id,
+                )
+            )
+        )
+        if tag_result.scalar_one_or_none() is None:
+            raise ValueError(f"Tag {tag_id} not found")
+
+        voter_result = await db.execute(
+            select(Voter).where(
+                and_(
+                    Voter.id == voter_id,
+                    Voter.campaign_id == campaign_id,
+                )
+            )
+        )
+        if voter_result.scalar_one_or_none() is None:
+            raise ValueError(f"Voter {voter_id} not found")
+
         member = VoterTagMember(voter_id=voter_id, tag_id=tag_id)
         db.add(member)
         await db.commit()
@@ -642,14 +699,43 @@ class VoterService:
         db: AsyncSession,
         voter_id: uuid.UUID,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Remove a tag from a voter.
+
+        Both the voter and the tag must belong to the given campaign_id.
 
         Args:
             db: Async database session.
             voter_id: The voter UUID.
             tag_id: The tag UUID.
+            campaign_id: The campaign UUID scope.
+
+        Raises:
+            ValueError: If voter or tag not found in the given campaign.
         """
+        tag_result = await db.execute(
+            select(VoterTag).where(
+                and_(
+                    VoterTag.id == tag_id,
+                    VoterTag.campaign_id == campaign_id,
+                )
+            )
+        )
+        if tag_result.scalar_one_or_none() is None:
+            raise ValueError(f"Tag {tag_id} not found")
+
+        voter_result = await db.execute(
+            select(Voter).where(
+                and_(
+                    Voter.id == voter_id,
+                    Voter.campaign_id == campaign_id,
+                )
+            )
+        )
+        if voter_result.scalar_one_or_none() is None:
+            raise ValueError(f"Voter {voter_id} not found")
+
         await db.execute(
             delete(VoterTagMember).where(
                 and_(
@@ -664,19 +750,43 @@ class VoterService:
         self,
         db: AsyncSession,
         voter_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> list[VoterTag]:
         """Get all tags for a specific voter.
+
+        The voter must belong to the given campaign_id, and only tags from that
+        campaign are returned.
 
         Args:
             db: Async database session.
             voter_id: The voter UUID.
+            campaign_id: The campaign UUID scope.
 
         Returns:
             List of VoterTag objects.
+
+        Raises:
+            ValueError: If voter not found in the given campaign.
         """
+        voter_result = await db.execute(
+            select(Voter).where(
+                and_(
+                    Voter.id == voter_id,
+                    Voter.campaign_id == campaign_id,
+                )
+            )
+        )
+        if voter_result.scalar_one_or_none() is None:
+            raise ValueError(f"Voter {voter_id} not found")
+
         result = await db.execute(
             select(VoterTag)
             .join(VoterTagMember, VoterTag.id == VoterTagMember.tag_id)
-            .where(VoterTagMember.voter_id == voter_id)
+            .where(
+                and_(
+                    VoterTagMember.voter_id == voter_id,
+                    VoterTag.campaign_id == campaign_id,
+                )
+            )
         )
         return list(result.scalars().all())

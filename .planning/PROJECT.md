@@ -97,20 +97,19 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Concurrent import prevention verified end-to-end via Procrastinate queueing lock with 409 Conflict response — v1.6
 - ✓ Error report download via MinIO pre-signed URL after partial imports with errors — v1.6
 - ✓ Import recovery with orphan detection, startup reclaim, advisory-lock protection, and crash-resume verification — v1.10
+- ✓ Chunk import foundation with durable ImportChunk schema, adaptive chunk sizing, and serial-path threshold routing seams — v1.11 Phase 59
 
 ### Active
 
-## Current Milestone: v1.11 Faster Imports
+## Current Milestone: v1.12 Hardening & Remediation
 
-**Goal:** Parallelize the import pipeline so a single large CSV completes materially faster by splitting into concurrent chunk jobs and offloading secondary work from the critical path.
+**Goal:** Close the 76 findings from the 2026-04-04 comprehensive codebase review — eliminate multi-tenant data leaks, race conditions, and reliability gaps before expanding scope.
 
 **Target features:**
-- Chunk schema and configuration for `ImportChunk` records, adaptive chunk sizing, and serial-path bypass
-- Parent split plus parallel child processing with per-batch commits and RLS restoration
-- Completion aggregation, merged error reporting, and `COMPLETED_WITH_ERRORS` status
-- Chunk resilience and cancellation propagation without losing partial completed work
-- Post-chunk secondary work offloading for phone creation and derived updates
-- Throughput and ETA UI for long-running imports
+- Security blockers: 4 IDOR/tenant-isolation fixes, FORCE RLS on core tables, route auth guard logic fix, role guards on settings/DNC/create-campaign, OIDC error callback
+- Data integrity: shift signup race, DNC TOCTOU, invite compensating transaction, voter_interactions indexes, partial unique invite constraint, sync engine lock + retry
+- Reliability: callingStore PII scrub, ZitadelService HTTP timeouts, DB pool/statement timeouts, duplicate Settings fields, IP spoofing in logs, duplicate query keys
+- Quality: self-host Leaflet markers, a11y label gaps, unit test backfill for authStore/api-client/useOrgPermissions, remaining MEDIUM items
 
 ### Out of Scope
 
@@ -138,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.10 Import Recovery shipped on 2026-04-01. The platform now self-heals orphaned import jobs across worker restarts and deploy interruptions, with durable progress timestamps, startup recovery scans, advisory-lock protection, and automated crash-resume coverage. v1.11 Faster Imports is the active next milestone.
+v1.10 Import Recovery shipped on 2026-04-01. Phase 59 of v1.11 Faster Imports completed on 2026-04-03, adding the durable ImportChunk schema, conservative chunk settings, bind-limit-aware sizing helpers, and explicit serial-routing seams while keeping runtime fan-out deferred to Phase 60.
 
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
@@ -203,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v1.10 milestone completion*
+*Last updated: 2026-04-04 — v1.12 Hardening & Remediation milestone started*

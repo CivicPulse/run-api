@@ -8,6 +8,7 @@ import { ColumnMappingTable } from "@/components/voters/ColumnMappingTable"
 import { MappingPreview } from "@/components/voters/MappingPreview"
 import { ImportProgress } from "@/components/voters/ImportProgress"
 import {
+  getImportStatusLabel,
   useInitiateImport,
   useDetectColumns,
   useConfirmMapping,
@@ -104,7 +105,26 @@ export function ImportWizardPage() {
   // Auto-restore step from job status when jobId is in URL
   useEffect(() => {
     if (!jobId || !jobQuery.data) return
-    const correctStep = deriveStep(jobQuery.data.status)
+    const job = jobQuery.data
+    const correctStep = deriveStep(job.status)
+
+    // Hydrate mapping state for uploaded jobs (reopen case)
+    if (
+      job.status === "uploaded" &&
+      job.detected_columns &&
+      job.detected_columns.length > 0 &&
+      detectedColumns.length === 0 // only hydrate once — don't overwrite user edits
+    ) {
+      setDetectedColumns(job.detected_columns)
+      setSuggestedMapping(job.suggested_mapping ?? {})
+      setFormatDetected(job.format_detected ?? null)
+      const initialMapping: Record<string, string> = {}
+      for (const col of job.detected_columns) {
+        initialMapping[col] = (job.suggested_mapping?.[col]?.field) ?? ""
+      }
+      setMapping(initialMapping)
+    }
+
     // Don't let stale query data navigate backwards — status only moves forward
     if (correctStep < step) return
     if (correctStep !== step) {
@@ -113,7 +133,7 @@ export function ImportWizardPage() {
         replace: true,
       })
     }
-  }, [jobId, jobQuery.data, step, navigate])
+  }, [jobId, jobQuery.data, step, navigate, detectedColumns.length])
 
   // Polling job for step 3
   const pollingJob = useImportJob(campaignId, jobId, step === 3)
@@ -143,7 +163,7 @@ export function ImportWizardPage() {
       })
 
       // Upload done — detect columns
-      const detected = await detectColumns.mutateAsync()
+      const detected = await detectColumns.mutateAsync(job_id)
       const { detected_columns, suggested_mapping, format_detected } = detected
 
       setDetectedColumns(detected_columns)
@@ -332,12 +352,29 @@ export function ImportWizardPage() {
               <h2 className="text-lg font-semibold">
                 {jobQuery.data?.status === "cancelled"
                   ? "Import Cancelled"
-                  : "Import Complete"}
+                  : jobQuery.data?.status === "completed_with_errors"
+                    ? "Import Completed with Errors"
+                    : "Import Complete"}
               </h2>
               {jobQuery.data && (
-                <div className="rounded-md border p-4 space-y-2">
+                <div
+                  className={`rounded-md border p-4 space-y-2 ${
+                    jobQuery.data.status === "completed_with_errors"
+                      ? "border-status-warning/40 bg-status-warning/10"
+                      : ""
+                  }`}
+                >
+                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    {getImportStatusLabel(jobQuery.data.status)}
+                  </p>
                   <p className="text-sm">
-                    <span className="font-medium text-status-success-foreground">
+                    <span
+                      className={`font-medium ${
+                        jobQuery.data.status === "completed_with_errors"
+                          ? "text-status-warning-foreground"
+                          : "text-status-success-foreground"
+                      }`}
+                    >
                       {jobQuery.data.imported_rows ?? 0}
                     </span>{" "}
                     rows imported
@@ -353,9 +390,14 @@ export function ImportWizardPage() {
                       phones created
                     </p>
                   )}
-                  {jobQuery.data.error_report_key && (
+                  {jobQuery.data.status === "completed_with_errors" && (
+                    <p className="text-sm text-muted-foreground">
+                      Some rows were skipped or failed validation. Successful rows were kept.
+                    </p>
+                  )}
+                  {jobQuery.data.error_report_url && (
                     <a
-                      href={jobQuery.data.error_report_key}
+                      href={jobQuery.data.error_report_url}
                       className="text-sm text-primary underline"
                       target="_blank"
                       rel="noopener noreferrer"

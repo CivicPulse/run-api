@@ -128,24 +128,17 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(editVolunteerButton).not.toBeVisible()
   })
 
-  test("campaign settings: Members nav link IS visible but members content is gated", async ({
+  test.skip("campaign settings: Members nav link IS visible but members content is gated", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/* routes
+    // now redirect viewers to "/" at the page level, so there is no
+    // opportunity to assert nav-link / inline-gate visibility from within the
+    // settings layout. See the "Phase 73 role gates (viewer is denied)"
+    // describe block below for the current assertions.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings/, { timeout: 30_000 })
-
-    // The Members nav link exists in the settings layout for all roles
-    const membersLink = page.getByRole("link", { name: /members/i })
-    await expect(membersLink).toBeVisible({ timeout: 30_000 })
-
-    // Navigate to members page -- content should be gated
-    await membersLink.click()
-    await page.waitForURL(/members/, { timeout: 30_000 })
-
-    // The invite form requires admin+ role
-    const inviteSection = page.getByRole("button", { name: /invite/i })
-    await expect(inviteSection).not.toBeVisible()
   })
 
   test("org dashboard: Create Campaign link is NOT visible", async ({ page, campaignId }) => {
@@ -176,5 +169,57 @@ test.describe("RBAC: viewer permissions", () => {
 
     const orgSettingsLink = page.getByRole("link", { name: /^settings$/i })
     await expect(orgSettingsLink).not.toBeVisible()
+  })
+})
+
+/**
+ * Phase 73 role gates (viewer is denied) — H23, H24, H25 / SEC-10, SEC-11.
+ *
+ * Failing-red scaffolds: direct-URL navigation to gated routes must redirect
+ * viewers to `/` (home). Today these routes have no page-level guards.
+ */
+test.describe("Phase 73 role gates (viewer is denied)", () => {
+  test.setTimeout(60_000)
+
+  async function expectRedirectedHome(
+    page: import("@playwright/test").Page,
+  ) {
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(1_500)
+    const pathname = new URL(page.url()).pathname
+    expect(pathname).toBe("/")
+  }
+
+  test("/campaigns/new redirects viewer to /", async ({ page }) => {
+    await page.goto("/campaigns/new")
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/general redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/general`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/members redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/members`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/settings/danger redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/settings/danger`)
+    await expectRedirectedHome(page)
+  })
+
+  test("/campaigns/:id/phone-banking/dnc redirects viewer to /", async ({
+    page, campaignId,
+  }) => {
+    await page.goto(`/campaigns/${campaignId}/phone-banking/dnc`)
+    await expectRedirectedHome(page)
   })
 })

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 
 from app.core.time import utcnow
 from app.models.survey import (
@@ -88,18 +88,25 @@ class SurveyService:
         self,
         session: AsyncSession,
         script_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> SurveyScript | None:
-        """Get a single script by ID.
+        """Get a single script by ID, scoped to the given campaign.
 
         Args:
             session: Async database session.
             script_id: Script UUID.
+            campaign_id: Campaign UUID scope — script must belong here.
 
         Returns:
-            The SurveyScript or None if not found.
+            The SurveyScript or None if not found in the given campaign.
         """
         result = await session.execute(
-            select(SurveyScript).where(SurveyScript.id == script_id)
+            select(SurveyScript).where(
+                and_(
+                    SurveyScript.id == script_id,
+                    SurveyScript.campaign_id == campaign_id,
+                )
+            )
         )
         return result.scalar_one_or_none()
 
@@ -165,6 +172,7 @@ class SurveyService:
         session: AsyncSession,
         script_id: uuid.UUID,
         data: ScriptUpdate,
+        campaign_id: uuid.UUID,
     ) -> SurveyScript:
         """Update a script -- enforce lifecycle transitions and edit restrictions.
 
@@ -172,6 +180,7 @@ class SurveyService:
             session: Async database session.
             script_id: Script UUID.
             data: Update data.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             The updated SurveyScript.
@@ -179,7 +188,7 @@ class SurveyService:
         Raises:
             ValueError: If script not found, invalid transition, or edit on non-draft.
         """
-        script = await self.get_script(session, script_id)
+        script = await self.get_script(session, script_id, campaign_id)
         if script is None:
             msg = f"Script {script_id} not found"
             raise ValueError(msg)
@@ -211,17 +220,19 @@ class SurveyService:
         self,
         session: AsyncSession,
         script_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Delete a draft script.
 
         Args:
             session: Async database session.
             script_id: Script UUID.
+            campaign_id: Campaign UUID scope.
 
         Raises:
             ValueError: If script not found or not in draft status.
         """
-        script = await self.get_script(session, script_id)
+        script = await self.get_script(session, script_id, campaign_id)
         if script is None:
             msg = f"Script {script_id} not found"
             raise ValueError(msg)
@@ -241,6 +252,7 @@ class SurveyService:
         session: AsyncSession,
         script_id: uuid.UUID,
         data: QuestionCreate,
+        campaign_id: uuid.UUID,
     ) -> SurveyQuestion:
         """Add a question to a draft script.
 
@@ -248,6 +260,7 @@ class SurveyService:
             session: Async database session.
             script_id: Script UUID.
             data: Question creation data.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             The created SurveyQuestion.
@@ -255,7 +268,7 @@ class SurveyService:
         Raises:
             ValueError: If script not found, not draft, or invalid options.
         """
-        script = await self.get_script(session, script_id)
+        script = await self.get_script(session, script_id, campaign_id)
         if script is None:
             msg = f"Script {script_id} not found"
             raise ValueError(msg)
@@ -290,15 +303,19 @@ class SurveyService:
     async def update_question(
         self,
         session: AsyncSession,
+        script_id: uuid.UUID,
         question_id: uuid.UUID,
         data: QuestionUpdate,
+        campaign_id: uuid.UUID,
     ) -> SurveyQuestion:
         """Update a question -- only if parent script is draft.
 
         Args:
             session: Async database session.
+            script_id: Script UUID (parent).
             question_id: Question UUID.
             data: Update data.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             The updated SurveyQuestion.
@@ -306,8 +323,10 @@ class SurveyService:
         Raises:
             ValueError: If question not found, parent not draft, or invalid options.
         """
-        question = await self._get_question(session, question_id)
-        script = await self.get_script(session, question.script_id)
+        question = await self._get_question(
+            session, script_id, question_id, campaign_id
+        )
+        script = await self.get_script(session, question.script_id, campaign_id)
         if script is None or script.status != ScriptStatus.DRAFT:
             msg = "Questions can only be edited on draft scripts"
             raise ValueError(msg)
@@ -329,19 +348,25 @@ class SurveyService:
     async def delete_question(
         self,
         session: AsyncSession,
+        script_id: uuid.UUID,
         question_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Delete a question -- only if parent script is draft.
 
         Args:
             session: Async database session.
+            script_id: Script UUID (parent).
             question_id: Question UUID.
+            campaign_id: Campaign UUID scope.
 
         Raises:
             ValueError: If question not found or parent not draft.
         """
-        question = await self._get_question(session, question_id)
-        script = await self.get_script(session, question.script_id)
+        question = await self._get_question(
+            session, script_id, question_id, campaign_id
+        )
+        script = await self.get_script(session, question.script_id, campaign_id)
         if script is None or script.status != ScriptStatus.DRAFT:
             msg = "Questions can only be deleted from draft scripts"
             raise ValueError(msg)
@@ -354,6 +379,7 @@ class SurveyService:
         session: AsyncSession,
         script_id: uuid.UUID,
         question_ids: list[uuid.UUID],
+        campaign_id: uuid.UUID,
     ) -> list[SurveyQuestion]:
         """Reorder questions by setting position based on list order.
 
@@ -361,6 +387,7 @@ class SurveyService:
             session: Async database session.
             script_id: Script UUID.
             question_ids: Ordered list of question UUIDs.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             Reordered list of SurveyQuestion.
@@ -368,7 +395,7 @@ class SurveyService:
         Raises:
             ValueError: If script not found or not draft.
         """
-        script = await self.get_script(session, script_id)
+        script = await self.get_script(session, script_id, campaign_id)
         if script is None:
             msg = f"Script {script_id} not found"
             raise ValueError(msg)
@@ -398,19 +425,30 @@ class SurveyService:
         self,
         session: AsyncSession,
         script_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> list[SurveyQuestion]:
         """List questions for a script ordered by position.
+
+        Scoped by campaign_id: only returns questions whose parent script
+        belongs to the given campaign.
 
         Args:
             session: Async database session.
             script_id: Script UUID.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             Ordered list of SurveyQuestion.
         """
         result = await session.execute(
             select(SurveyQuestion)
-            .where(SurveyQuestion.script_id == script_id)
+            .join(SurveyScript, SurveyScript.id == SurveyQuestion.script_id)
+            .where(
+                and_(
+                    SurveyQuestion.script_id == script_id,
+                    SurveyScript.campaign_id == campaign_id,
+                )
+            )
             .order_by(SurveyQuestion.position)
         )
         return list(result.scalars().all())
@@ -442,7 +480,7 @@ class SurveyService:
         Raises:
             ValueError: If script not active, question not in script, or invalid answer.
         """
-        script = await self.get_script(session, script_id)
+        script = await self.get_script(session, script_id, campaign_id)
         if script is None:
             msg = f"Script {script_id} not found"
             raise ValueError(msg)
@@ -564,22 +602,38 @@ class SurveyService:
     async def _get_question(
         self,
         session: AsyncSession,
+        script_id: uuid.UUID,
         question_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> SurveyQuestion:
-        """Get a question by ID or raise ValueError.
+        """Get a question by ID scoped to the given script and campaign.
+
+        JOINs SurveyScript to enforce that the parent script belongs to the
+        given campaign — prevents cross-campaign question access via a
+        crafted script path parameter.
 
         Args:
             session: Async database session.
+            script_id: Parent script UUID.
             question_id: Question UUID.
+            campaign_id: Campaign UUID scope.
 
         Returns:
             The SurveyQuestion.
 
         Raises:
-            ValueError: If not found.
+            ValueError: If not found in this script+campaign.
         """
         result = await session.execute(
-            select(SurveyQuestion).where(SurveyQuestion.id == question_id)
+            select(SurveyQuestion)
+            .join(SurveyScript, SurveyScript.id == SurveyQuestion.script_id)
+            .where(
+                and_(
+                    SurveyQuestion.id == question_id,
+                    SurveyQuestion.script_id == script_id,
+                    SurveyScript.campaign_id == campaign_id,
+                )
+            )
         )
         question = result.scalar_one_or_none()
         if question is None:

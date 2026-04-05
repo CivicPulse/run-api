@@ -226,6 +226,76 @@ class TestAcceptInvite:
         with pytest.raises(ValueError, match="Email does not match"):
             await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
 
+    async def test_accept_commit_failure_removes_role(
+        self, service, mock_db, mock_zitadel
+    ):
+        """If db.commit() fails, the newly-granted ZITADEL role is removed."""
+        invite = _make_invite(email="user@test.com", role="manager")
+        user = _make_user(email="user@test.com")
+
+        validate_result = MagicMock()
+        validate_result.scalar_one_or_none.return_value = invite
+        member_result = MagicMock()
+        member_result.scalar_one_or_none.return_value = None
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[validate_result, member_result, campaign_result]
+        )
+
+        # Commit raises — compensation should fire
+        commit_error = RuntimeError("DB write failed")
+        mock_db.commit = AsyncMock(side_effect=commit_error)
+        mock_db.rollback = AsyncMock()
+
+        with pytest.raises(RuntimeError, match="DB write failed"):
+            await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
+
+        # Rollback was awaited
+        mock_db.rollback.assert_awaited_once()
+        # Compensation: remove the freshly-granted role
+        mock_zitadel.remove_project_role.assert_awaited_once()
+        call = mock_zitadel.remove_project_role.await_args
+        assert call.args[1] == user.id
+        assert call.args[2] == invite.role
+        assert call.kwargs.get("org_id") == "org-1"
+
+    async def test_accept_commit_failure_cleanup_also_fails(
+        self, service, mock_db, mock_zitadel
+    ):
+        """Original commit exception propagates even if cleanup also raises."""
+        invite = _make_invite(email="user@test.com", role="manager")
+        user = _make_user(email="user@test.com")
+
+        validate_result = MagicMock()
+        validate_result.scalar_one_or_none.return_value = invite
+        member_result = MagicMock()
+        member_result.scalar_one_or_none.return_value = None
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[validate_result, member_result, campaign_result]
+        )
+
+        mock_db.commit = AsyncMock(side_effect=RuntimeError("original commit error"))
+        mock_db.rollback = AsyncMock()
+        mock_zitadel.remove_project_role = AsyncMock(
+            side_effect=RuntimeError("zitadel cleanup error")
+        )
+
+        # Original commit exception must propagate (not cleanup exception)
+        with pytest.raises(RuntimeError, match="original commit error"):
+            await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
+
+        mock_db.rollback.assert_awaited_once()
+        mock_zitadel.remove_project_role.assert_awaited_once()
+
 
 class TestRevokeInvite:
     """Tests for revoke_invite."""
@@ -237,7 +307,7 @@ class TestRevokeInvite:
         mock_result.scalar_one_or_none.return_value = invite
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        result = await service.revoke_invite(mock_db, invite.id)
+        result = await service.revoke_invite(mock_db, invite.id, invite.campaign_id)
         assert result.revoked_at is not None
         mock_db.commit.assert_awaited_once()
 

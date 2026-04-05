@@ -13,7 +13,11 @@ export function RequireOrgRole({
   children,
   fallback = null,
 }: RequireOrgRoleProps) {
-  const { hasOrgRole } = useOrgPermissions()
+  const { hasOrgRole, isLoading } = useOrgPermissions()
+  // While permissions are still loading, render nothing rather than firing
+  // the fallback — prevents false-positive redirects on initial mount before
+  // org roles have been fetched.
+  if (isLoading) return null
   return hasOrgRole(minimum) ? (
     <>{children}</>
   ) : (

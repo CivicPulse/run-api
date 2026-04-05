@@ -14,7 +14,11 @@ import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirm
 import { EmptyState } from "@/components/shared/EmptyState"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { RequireRole } from "@/components/shared/RequireRole"
-import { useImports, useDeleteImport } from "@/hooks/useImports"
+import {
+  getImportStatusLabel,
+  useImports,
+  useDeleteImport,
+} from "@/hooks/useImports"
 import type { ImportJob, ImportStatus } from "@/types/import-job"
 
 // ---------------------------------------------------------------------------
@@ -24,8 +28,13 @@ function importStatusVariant(status: ImportStatus | string) {
   switch (status) {
     case "completed":
       return "success" as const
+    case "completed_with_errors":
+      return "warning" as const
     case "failed":
       return "error" as const
+    case "cancelled":
+    case "cancelling":
+      return "warning" as const
     case "processing":
     case "queued":
       return "info" as const
@@ -67,7 +76,7 @@ function ImportsHistoryPage() {
       header: "Status",
       cell: ({ row }) => (
         <StatusBadge
-          status={row.original.status}
+          status={getImportStatusLabel(row.original.status)}
           variant={importStatusVariant(row.original.status)}
         />
       ),
@@ -117,9 +126,15 @@ function ImportsHistoryPage() {
               >
                 View details
               </DropdownMenuItem>
-              {job.error_report_key && (
-                <DropdownMenuItem disabled>
-                  Download error report
+              {job.error_report_url && (
+                <DropdownMenuItem asChild>
+                  <a
+                    href={job.error_report_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Download error report
+                  </a>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem

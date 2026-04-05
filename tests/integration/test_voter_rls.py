@@ -3,7 +3,7 @@
 Verifies that RLS policies correctly prevent cross-campaign data access
 for voters, voter_tags, voter_tag_members, voter_lists, voter_list_members,
 voter_interactions, voter_phones, voter_emails, voter_addresses,
-import_jobs, and field_mapping_templates.
+import_jobs, import_chunks, and field_mapping_templates.
 
 Requires: PostgreSQL running via docker compose, migrations applied.
 """
@@ -37,6 +37,10 @@ async def two_campaigns_with_voter_data(superuser_session):
     tag_b_id = uuid.uuid4()
     list_a_id = uuid.uuid4()
     list_b_id = uuid.uuid4()
+    import_job_a_id = uuid.uuid4()
+    import_job_b_id = uuid.uuid4()
+    chunk_a_id = uuid.uuid4()
+    chunk_b_id = uuid.uuid4()
     now = utcnow()
 
     # Users
@@ -230,7 +234,10 @@ async def two_campaigns_with_voter_data(superuser_session):
         )
 
     # Import jobs
-    for cid, uid in [(campaign_a_id, user_a_id), (campaign_b_id, user_b_id)]:
+    for import_job_id, cid, uid in [
+        (import_job_a_id, campaign_a_id, user_a_id),
+        (import_job_b_id, campaign_b_id, user_b_id),
+    ]:
         await session.execute(
             text(
                 "INSERT INTO import_jobs (id, campaign_id,"
@@ -240,7 +247,30 @@ async def two_campaigns_with_voter_data(superuser_session):
                 " 's3://test', 'pending', :uid,"
                 " :now, :now)"
             ),
-            {"id": uuid.uuid4(), "cid": cid, "uid": uid, "now": now},
+            {"id": import_job_id, "cid": cid, "uid": uid, "now": now},
+        )
+
+    # Import chunks
+    for chunk_id, cid, import_job_id, row_start, row_end in [
+        (chunk_a_id, campaign_a_id, import_job_a_id, 1, 100),
+        (chunk_b_id, campaign_b_id, import_job_b_id, 101, 200),
+    ]:
+        await session.execute(
+            text(
+                "INSERT INTO import_chunks (id, campaign_id, import_job_id,"
+                " row_start, row_end, status, imported_rows, skipped_rows,"
+                " last_committed_row, created_at, updated_at) "
+                "VALUES (:id, :cid, :import_job_id, :row_start, :row_end,"
+                " 'pending', 0, 0, 0, :now, :now)"
+            ),
+            {
+                "id": chunk_id,
+                "cid": cid,
+                "import_job_id": import_job_id,
+                "row_start": row_start,
+                "row_end": row_end,
+                "now": now,
+            },
         )
 
     # Field mapping templates (campaign-scoped, not NULL campaign_id)
@@ -271,6 +301,10 @@ async def two_campaigns_with_voter_data(superuser_session):
         "tag_b_id": tag_b_id,
         "list_a_id": list_a_id,
         "list_b_id": list_b_id,
+        "import_job_a_id": import_job_a_id,
+        "import_job_b_id": import_job_b_id,
+        "chunk_a_id": chunk_a_id,
+        "chunk_b_id": chunk_b_id,
     }
 
     # Cleanup (reverse dependency order)
@@ -285,6 +319,7 @@ async def two_campaigns_with_voter_data(superuser_session):
     )
     for table in [
         "field_mapping_templates",
+        "import_chunks",
         "import_jobs",
         "voter_addresses",
         "voter_emails",
@@ -462,6 +497,20 @@ class TestVoterRLSIsolation:
 
         assert data["campaign_a_id"] in campaign_ids
         assert data["campaign_b_id"] not in campaign_ids
+
+    async def test_import_chunks_isolated(
+        self, app_user_session, two_campaigns_with_voter_data
+    ):
+        """Import chunks only visible for the active campaign context."""
+        data = two_campaigns_with_voter_data
+        session = app_user_session
+
+        await self._set_context(session, data["campaign_a_id"])
+        result = await session.execute(text("SELECT id FROM import_chunks"))
+        chunk_ids = [row[0] for row in result.all()]
+
+        assert data["chunk_a_id"] in chunk_ids
+        assert data["chunk_b_id"] not in chunk_ids
 
     async def test_field_mapping_templates_isolated(
         self, app_user_session, two_campaigns_with_voter_data

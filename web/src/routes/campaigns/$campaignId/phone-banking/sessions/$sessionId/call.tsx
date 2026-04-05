@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import { createFileRoute, Link, Navigate, useParams } from "@tanstack/react-router"
+import { Loader2 } from "lucide-react"
 import { formatPhoneDisplay } from "@/types/calling"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -10,6 +11,7 @@ import {
   useSelfReleaseEntry,
 } from "@/hooks/usePhoneBankSessions"
 import { useCallList } from "@/hooks/useCallLists"
+import { useCallerCheckInStatus } from "@/hooks/useCallerCheckInStatus"
 import { OUTCOME_GROUPS } from "@/types/phone-bank-session"
 import { buildRecordCallPayload, type RecordCallPayload } from "@/types/phone-bank-session"
 import type { CallListEntry } from "@/types/call-list"
@@ -249,6 +251,42 @@ function ActiveCallingPage() {
     from: "/campaigns/$campaignId/phone-banking/sessions/$sessionId/call",
   })
 
+  // Server-side check-in gate (SEC-12 / H26). Server is the source of truth
+  // for check-in state; direct URL navigation must not bypass the check-in
+  // step that lives on the peer session detail page. Rendering a separate
+  // inner component keeps hook order stable across gated and ungated states.
+  const checkInStatus = useCallerCheckInStatus(campaignId, sessionId)
+
+  if (checkInStatus.isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+  if (
+    checkInStatus.notAssigned ||
+    checkInStatus.isError ||
+    !checkInStatus.data?.checked_in
+  ) {
+    return (
+      <Navigate
+        to="/campaigns/$campaignId/phone-banking/sessions/$sessionId"
+        params={{ campaignId, sessionId }}
+      />
+    )
+  }
+
+  return <ActiveCallingPageInner campaignId={campaignId} sessionId={sessionId} />
+}
+
+function ActiveCallingPageInner({
+  campaignId,
+  sessionId,
+}: {
+  campaignId: string
+  sessionId: string
+}) {
   const { data: session } = usePhoneBankSession(campaignId, sessionId)
   const callListId = session?.call_list_id ?? ""
   const { data: callList } = useCallList(campaignId, callListId)

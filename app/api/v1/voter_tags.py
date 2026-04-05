@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
@@ -83,7 +83,12 @@ async def update_tag(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    tag = await _service.update_tag(db, tag_id, body.name)
+    try:
+        tag = await _service.update_tag(db, tag_id, body.name, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return VoterTagResponse.model_validate(tag)
 
 
@@ -104,7 +109,12 @@ async def delete_tag(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await _service.delete_tag(db, tag_id)
+    try:
+        await _service.delete_tag(db, tag_id, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -126,7 +136,12 @@ async def add_tag_to_voter(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await _service.add_tag_to_voter(db, voter_id, body.tag_id)
+    try:
+        await _service.add_tag_to_voter(db, voter_id, body.tag_id, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -148,7 +163,12 @@ async def remove_tag_from_voter(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    await _service.remove_tag_from_voter(db, voter_id, tag_id)
+    try:
+        await _service.remove_tag_from_voter(db, voter_id, tag_id, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -169,5 +189,10 @@ async def get_voter_tags(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    tags = await _service.get_voter_tags(db, voter_id)
+    try:
+        tags = await _service.get_voter_tags(db, voter_id, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return [VoterTagResponse.model_validate(t) for t in tags]
