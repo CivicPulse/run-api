@@ -45,8 +45,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **REL-01**: `useSyncEngine` releases its `isSyncing` lock on any exception path (try/finally) (C14)
 - [x] **REL-02**: Offline queue items failing beyond MAX_RETRY are removed with user feedback; transient errors use `continue` not `break` (C15)
 - [x] **REL-03**: `callingStore` does not persist voter PII to sessionStorage (partialize or sanitize-on-rehydrate) (C16)
-- [ ] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
-- [ ] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
+- [x] **REL-04**: `ZitadelService` HTTP clients have explicit 10s timeouts on all calls (H6)
+- [x] **REL-05**: Database engine configures `pool_timeout` and per-statement `statement_timeout` (H14)
 - [ ] **REL-06**: Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed from `app/core/config.py` (H11)
 - [ ] **REL-07**: Request-logging middleware resolves client IP only via trusted-proxy CIDR check (H16)
 - [x] **REL-08**: `useFieldOps` hooks share query keys with dedicated hook files so mutations invalidate all consumers (H29)
@@ -114,8 +114,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | REL-02 | Phase 75 | Complete |
 | REL-03 | Phase 75 | Complete |
 | REL-08 | Phase 75 | Complete |
-| REL-04 | Phase 76 | Pending |
-| REL-05 | Phase 76 | Pending |
+| REL-04 | Phase 76 | Complete |
+| REL-05 | Phase 76 | Complete |
 | REL-06 | Phase 76 | Pending |
 | REL-07 | Phase 76 | Pending |
 | REL-09 | Phase 76 | Pending |
