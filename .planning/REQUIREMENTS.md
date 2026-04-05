@@ -62,7 +62,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [x] **QUAL-04**: `api/client.ts` has unit tests covering auth header injection and 401/403 handling
 - [ ] **QUAL-05**: `useOrgPermissions` has unit tests covering the permission gates used by the root layout
 - [x] **QUAL-06**: OIDC callback has tests for error response, null-user, no-campaigns, campaigns API failure, and non-volunteer user paths
-- [ ] **QUAL-07**: `authStore.logout()` calls `removeUser()` + store reset before `signoutRedirect()` so cleanup is not dead code (H27)
+- [x] **QUAL-07**: `authStore.logout()` calls `removeUser()` + store reset before `signoutRedirect()` so cleanup is not dead code (H27)
 - [ ] **QUAL-08**: `useOrgCampaigns` error handling narrows to `PermissionError` and 404 instead of swallowing all errors (H28)
 
 ## v2 Requirements
@@ -127,7 +127,7 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | QUAL-04 | Phase 77 | Complete |
 | QUAL-05 | Phase 77 | Pending |
 | QUAL-06 | Phase 77 | Complete |
-| QUAL-07 | Phase 77 | Pending |
+| QUAL-07 | Phase 77 | Complete |
 | QUAL-08 | Phase 77 | Pending |
 
 ---
