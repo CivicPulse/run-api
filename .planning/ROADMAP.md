@@ -230,9 +230,9 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. `authStore.logout()` calls `removeUser()` and resets the store before `signoutRedirect()` so cleanup always runs
   5. `useOrgCampaigns` narrows its catch to `PermissionError` and 404 instead of swallowing all errors
 **Plans**: 5 plans
-- [ ] 77-01-PLAN.md — Leaflet self-host + 3-dialog a11y label fixes (Wave 1)
+- [x] 77-01-PLAN.md — Leaflet self-host + 3-dialog a11y label fixes (Wave 1)
 - [ ] 77-02-PLAN.md — authStore.logout() reorder + authStore unit tests (Wave 1)
-- [ ] 77-03-PLAN.md — useOrgCampaigns catch narrowing + useOrg tests (Wave 1)
+- [x] 77-03-PLAN.md — useOrgCampaigns catch narrowing + useOrg tests (Wave 1)
 - [ ] 77-04-PLAN.md — api/client.ts unit tests (Wave 2)
 - [ ] 77-05-PLAN.md — useOrgPermissions tests + callback.tsx error/null-user/no-campaigns tests (Wave 2)
 **UI hint**: yes
@@ -260,4 +260,4 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 75 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 76 | v1.12 | 5/5 | Complete   | 2026-04-05 |
-| 77 | v1.12 | 0/0 | Not started | - |
+| 77 | v1.12 | 2/5 | In Progress|  |

@@ -56,8 +56,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 
 ### Quality, Accessibility & Test Coverage
 
-- [ ] **QUAL-01**: Leaflet marker icons are self-hosted instead of fetched from unpkg CDN (H31)
-- [ ] **QUAL-02**: `DoorKnockDialog`, `WalkListGenerateDialog`, and `InlineSurvey` radio items have explicit `htmlFor`/`id` label associations (H32, H33)
+- [x] **QUAL-01**: Leaflet marker icons are self-hosted instead of fetched from unpkg CDN (H31)
+- [x] **QUAL-02**: `DoorKnockDialog`, `WalkListGenerateDialog`, and `InlineSurvey` radio items have explicit `htmlFor`/`id` label associations (H32, H33)
 - [ ] **QUAL-03**: `authStore` has unit tests covering token storage, OIDC events, `switchOrg`, and logout paths
 - [ ] **QUAL-04**: `api/client.ts` has unit tests covering auth header injection and 401/403 handling
 - [ ] **QUAL-05**: `useOrgPermissions` has unit tests covering the permission gates used by the root layout
@@ -121,8 +121,8 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | REL-09 | Phase 76 | Complete |
 | REL-10 | Phase 76 | Complete |
 | REL-11 | Phase 76 | Complete |
-| QUAL-01 | Phase 77 | Pending |
-| QUAL-02 | Phase 77 | Pending |
+| QUAL-01 | Phase 77 | Complete |
+| QUAL-02 | Phase 77 | Complete |
 | QUAL-03 | Phase 77 | Pending |
 | QUAL-04 | Phase 77 | Pending |
 | QUAL-05 | Phase 77 | Pending |
