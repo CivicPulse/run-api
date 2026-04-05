@@ -228,6 +228,9 @@ screenshots/
 .claude/settings.local.json
 .claude/worktrees
 
+# Local secrets (credentials, test user passwords, etc. — never commit)
+.secrets/
+
 
 # hatchkit
 .hatchkit/cache/
