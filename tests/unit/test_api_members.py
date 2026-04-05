@@ -153,6 +153,8 @@ def _setup_role_resolution(mock_db, org_id=ORG_ID, role="admin"):
     campaign_mock.zitadel_org_id = org_id
     mock_db.scalar = AsyncMock(
         side_effect=[
+            # ensure_user_synced RLS context read (current_setting)
+            "",
             member_mock,  # CampaignMember lookup → explicit member with role
             campaign_mock,  # Campaign lookup → for org role check
         ]
@@ -460,12 +462,13 @@ class TestTransferOwnership:
         # DB rollback should have been called
         mock_db.rollback.assert_awaited_once()
 
-        # Forward ZITADEL calls only (rollback block is a no-op `pass`):
-        # 2 removes (demote owner, remove target old role) + 2 assigns
-        assert mock_zitadel.remove_project_role.await_count == 2
-        assert mock_zitadel.assign_project_role.await_count == 2
+        # Forward: 2 removes + 2 assigns.
+        # Compensation: inverse of all 4 ops (2 more removes + 2 more assigns).
+        # Total: 4 removes + 4 assigns.
+        assert mock_zitadel.remove_project_role.await_count == 4
+        assert mock_zitadel.assign_project_role.await_count == 4
 
-        # Verify forward calls were made:
+        # Forward calls:
         mock_zitadel.remove_project_role.assert_any_await(
             TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
         )
@@ -478,3 +481,88 @@ class TestTransferOwnership:
         mock_zitadel.assign_project_role.assert_any_await(
             TEST_PROJECT_ID, "new-owner", "owner", org_id=ORG_ID
         )
+
+        # Inverse compensation calls:
+        # Inverse of op 4 (assign owner to target): remove owner from target
+        mock_zitadel.remove_project_role.assert_any_await(
+            TEST_PROJECT_ID, "new-owner", "owner", org_id=ORG_ID
+        )
+        # Inverse of op 3 (remove target_old_role): re-grant it
+        mock_zitadel.assign_project_role.assert_any_await(
+            TEST_PROJECT_ID, "new-owner", "manager", org_id=ORG_ID
+        )
+        # Inverse of op 2 (assign admin to current): remove admin
+        mock_zitadel.remove_project_role.assert_any_await(
+            TEST_PROJECT_ID, "owner-1", "admin", org_id=ORG_ID
+        )
+        # Inverse of op 1 (remove owner from current): re-grant owner
+        mock_zitadel.assign_project_role.assert_any_await(
+            TEST_PROJECT_ID, "owner-1", "owner", org_id=ORG_ID
+        )
+
+    async def test_transfer_ownership_partial_compensation_failure(
+        self, mock_db, mock_zitadel
+    ):
+        """One compensation step failing does not stop remaining reversal steps."""
+        user = _make_user(user_id="owner-1", role=CampaignRole.OWNER)
+        campaign = _make_campaign(created_by="owner-1")
+        target_member = _make_member(user_id="new-owner", role="manager")
+        owner_member = _make_member(user_id="owner-1", role="owner")
+        app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
+        _setup_role_resolution(mock_db, role="owner")
+
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        target_result = MagicMock()
+        target_result.scalar_one_or_none.return_value = target_member
+        owner_member_result = MagicMock()
+        owner_member_result.scalar_one_or_none.return_value = owner_member
+        mock_db.execute = AsyncMock(
+            side_effect=_sync_results(user_id="owner-1")
+            + [campaign_result, target_result, owner_member_result]
+        )
+
+        mock_db.commit = AsyncMock(side_effect=Exception("DB write failed"))
+        mock_db.rollback = AsyncMock()
+
+        # 4 forward calls succeed; then compensation phase:
+        #   1st compensation call (remove owner from target) fails.
+        #   remaining compensation calls must still fire.
+        call_count = {"remove": 0, "assign": 0}
+        original_remove = mock_zitadel.remove_project_role
+        original_assign = mock_zitadel.assign_project_role
+
+        async def remove_side_effect(*args, **kwargs):
+            call_count["remove"] += 1
+            # Forward removes are calls 1, 2; compensation removes are 3, 4.
+            # Fail the first compensation remove (call 3).
+            if call_count["remove"] == 3:
+                raise Exception("zitadel transient failure")
+            return None
+
+        async def assign_side_effect(*args, **kwargs):
+            call_count["assign"] += 1
+            return None
+
+        mock_zitadel.remove_project_role = AsyncMock(side_effect=remove_side_effect)
+        mock_zitadel.assign_project_role = AsyncMock(side_effect=assign_side_effect)
+
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/transfer-ownership",
+                json={"new_owner_id": "new-owner"},
+            )
+
+        # Original commit error should surface as 500
+        assert resp.status_code == 500
+        mock_db.rollback.assert_awaited_once()
+
+        # All 4 compensation steps attempted despite 1 failing
+        # Total removes = 2 forward + 2 compensation = 4 calls attempted
+        # Total assigns = 2 forward + 2 compensation = 4 calls attempted
+        assert call_count["remove"] == 4
+        assert call_count["assign"] == 4
+        # Touch the originals to avoid "unused" warnings
+        _ = original_remove
+        _ = original_assign
