@@ -75,6 +75,7 @@ async def _delete_campaign_and_user(
         ("shifts", "campaign_id", campaign_id),
         ("volunteers", "campaign_id", campaign_id),
         ("invites", "campaign_id", campaign_id),
+        ("do_not_call", "campaign_id", campaign_id),
         ("campaigns", "id", campaign_id),
     ]:
         if table == "shift_volunteers":
@@ -215,12 +216,66 @@ async def test_shift_signup_race_no_overflow(superuser_engine):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason="optional per plan -- Plan 02 fills in if runtime budget allows"
-)
 async def test_dnc_concurrent_import(superuser_engine):
-    """Two concurrent DNC imports with overlapping numbers don't raise."""
-    raise NotImplementedError
+    """Two concurrent DNC imports with overlapping numbers don't raise.
+
+    Uses pg_insert().on_conflict_do_nothing on (campaign_id, phone_number)
+    so the second transaction's overlapping rows are silently skipped at
+    the DB level -- no IntegrityError bubbles up. Combined row count
+    equals the union of both input sets.
+    """
+    from app.services.dnc import DNCService
+
+    factory = async_sessionmaker(superuser_engine, expire_on_commit=False)
+
+    async with factory() as session:
+        campaign_id, user_id = await _insert_campaign_and_user(session)
+        await session.commit()
+
+    svc = DNCService()
+
+    # Two CSVs with overlapping phones: 3 shared, 2 unique to each = union of 7
+    shared = ["5551110000", "5551110001", "5551110002"]
+    only_a = ["5551110010", "5551110011"]
+    only_b = ["5551110020", "5551110021"]
+    csv_a = "phone_number\n" + "\n".join(shared + only_a) + "\n"
+    csv_b = "phone_number\n" + "\n".join(shared + only_b) + "\n"
+
+    async def run_import(csv_content: str) -> object:
+        async with factory() as s:
+            try:
+                res = await svc.bulk_import(s, campaign_id, csv_content, user_id)
+                await s.commit()
+                return res
+            except Exception as exc:  # noqa: BLE001
+                await s.rollback()
+                return exc
+
+    try:
+        results = await asyncio.gather(
+            run_import(csv_a), run_import(csv_b), return_exceptions=False
+        )
+
+        # Neither call raised an IntegrityError
+        for r in results:
+            assert not isinstance(r, IntegrityError), f"unexpected IntegrityError: {r}"
+            assert not isinstance(r, Exception), f"unexpected exception: {r}"
+
+        # Total rows in DB should equal the union of phone sets (7)
+        async with factory() as session:
+            count_result = await session.execute(
+                text(
+                    "SELECT COUNT(*) FROM do_not_call WHERE campaign_id = :cid"
+                ),
+                {"cid": campaign_id},
+            )
+            total = count_result.scalar_one()
+        assert total == len(set(shared + only_a + only_b)), (
+            f"expected {len(set(shared + only_a + only_b))} rows, got {total}"
+        )
+    finally:
+        async with factory() as session:
+            await _delete_campaign_and_user(session, campaign_id, user_id)
 
 
 # ---------------------------------------------------------------------------
