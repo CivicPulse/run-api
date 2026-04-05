@@ -163,7 +163,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   - [x] 73-02-PLAN.md — Backend GET callers/me check-in status endpoint
   - [x] 73-03-PLAN.md — C7 root auth guard fix + login redirect param + same-origin safety
   - [ ] 73-04-PLAN.md — C8 OIDC callback error state (Alert + Back to login CTA)
-  - [ ] 73-05-PLAN.md — H23-H25 role gates on 5 routes + isLoading safety fix
+  - [x] 73-05-PLAN.md — H23-H25 role gates on 5 routes + isLoading safety fix
   - [ ] 73-06-PLAN.md — H26 call page server-side check-in enforcement
 **UI hint**: yes
 
@@ -234,7 +234,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 2/3 | In Progress|  |
-| 73 | v1.12 | 3/6 | In Progress|  |
+| 73 | v1.12 | 4/6 | In Progress|  |
 | 74 | v1.12 | 0/0 | Not started | - |
 | 75 | v1.12 | 0/0 | Not started | - |
 | 76 | v1.12 | 0/0 | Not started | - |

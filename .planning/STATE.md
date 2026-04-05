@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 73-02-PLAN.md
-last_updated: "2026-04-04T23:54:19.815Z"
-last_activity: 2026-04-04
+stopped_at: Completed 73-05-PLAN.md
+last_updated: "2026-04-05T00:07:15.847Z"
+last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 73 (Frontend Auth Guards & OIDC Error Surfacing) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-04-04
+Last activity: 2026-04-05
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -50,6 +50,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 73]: Plan 03: sessionStorage (not OIDC state) as the redirect-preservation vehicle — keeps authStore.login() signature stable per D-07
 - [Phase 73]: Plan 03: validate redirect twice (on write in login.tsx AND on read in callback.tsx) + use location.searchStr (raw string) not location.search (parsed object)
 - [Phase 73]: Plan 73-02: GET callers/me endpoint returns SessionCallerResponse with computed checked_in boolean; 404 when caller not assigned
+- [Phase 73]: Plan 73-05: added isLoading signal to permission hooks (authStore.isInitialized + TanStack Query pending state); guards render null while loading to prevent false-positive <Navigate/> redirects
+- [Phase 73]: Plan 73-05: removed manager -> org_admin auto-promotion in app/api/deps.py; manager is campaign-scoped only and should not bypass org_admin gates
 
 ### Blockers/Concerns
 
@@ -60,7 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 73-02-PLAN.md
+Stopped at: Completed 73-05-PLAN.md
 Resume file: None
 
 ## Performance Metrics
