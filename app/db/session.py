@@ -19,6 +19,8 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=20,
     max_overflow=20,
+    pool_timeout=10,
+    connect_args={"server_settings": {"statement_timeout": "30000"}},
 )
 
 
