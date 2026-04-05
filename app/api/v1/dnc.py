@@ -24,6 +24,8 @@ router = APIRouter()
 
 _dnc_service = DNCService()
 
+MAX_DNC_CSV_BYTES = 10 * 1024 * 1024  # 10 MB per REL-09
+
 
 @router.get(
     "/campaigns/{campaign_id}/dnc",
@@ -88,7 +90,37 @@ async def bulk_import_dnc(
     Requires manager+ role. CSV must have a phone_number column.
     """
     await ensure_user_synced(user, db)
-    content = await file.read()
+    # REL-09: enforce 10MB cap via Content-Length + streaming byte-count
+    content_length_header = request.headers.get("content-length")
+    if content_length_header is not None:
+        try:
+            declared = int(content_length_header)
+        except ValueError:
+            declared = 0
+        if declared > MAX_DNC_CSV_BYTES:
+            return problem.ProblemResponse(
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                title="CSV Upload Too Large",
+                detail=f"DNC CSV upload exceeds {MAX_DNC_CSV_BYTES} byte limit",
+                type="dnc-csv-too-large",
+            )
+
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_DNC_CSV_BYTES:
+            return problem.ProblemResponse(
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                title="CSV Upload Too Large",
+                detail=f"DNC CSV upload exceeds {MAX_DNC_CSV_BYTES} byte limit",
+                type="dnc-csv-too-large",
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
     csv_content = content.decode("utf-8")
     result = await _dnc_service.bulk_import(
         db, campaign_id, csv_content, user.id, default_reason=reason
