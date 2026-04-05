@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import type { Turf, WalkList, CallList, PhoneBankSession, Volunteer, Shift } from "@/types/field-ops"
 import type { PaginatedResponse } from "@/types/common"
+import { callListKeys } from "./useCallLists"
+import { sessionKeys } from "./usePhoneBankSessions"
+import { volunteerKeys } from "./useVolunteers"
+import { shiftKeys } from "./useShifts"
 
 export function useTurfs(campaignId: string) {
   return useQuery({
@@ -23,7 +27,7 @@ export function useWalkLists(campaignId: string) {
 
 export function useCallLists(campaignId: string) {
   return useQuery({
-    queryKey: ["call-lists", campaignId],
+    queryKey: callListKeys.all(campaignId),
     queryFn: () =>
       api.get(`api/v1/campaigns/${campaignId}/call-lists`).json<PaginatedResponse<CallList>>(),
     enabled: !!campaignId,
@@ -32,7 +36,7 @@ export function useCallLists(campaignId: string) {
 
 export function usePhoneBankSessions(campaignId: string) {
   return useQuery({
-    queryKey: ["phone-bank-sessions", campaignId],
+    queryKey: sessionKeys.all(campaignId),
     queryFn: () =>
       api.get(`api/v1/campaigns/${campaignId}/phone-bank-sessions`).json<PaginatedResponse<PhoneBankSession>>(),
     enabled: !!campaignId,
@@ -41,7 +45,7 @@ export function usePhoneBankSessions(campaignId: string) {
 
 export function useVolunteers(campaignId: string) {
   return useQuery({
-    queryKey: ["volunteers", campaignId],
+    queryKey: volunteerKeys.all(campaignId),
     queryFn: () =>
       api.get(`api/v1/campaigns/${campaignId}/volunteers`).json<PaginatedResponse<Volunteer>>(),
     enabled: !!campaignId,
@@ -50,7 +54,7 @@ export function useVolunteers(campaignId: string) {
 
 export function useShifts(campaignId: string) {
   return useQuery({
-    queryKey: ["shifts", campaignId],
+    queryKey: shiftKeys.all(campaignId),
     queryFn: () =>
       api.get(`api/v1/campaigns/${campaignId}/shifts`).json<PaginatedResponse<Shift>>(),
     enabled: !!campaignId,

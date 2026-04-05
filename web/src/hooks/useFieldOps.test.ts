@@ -131,6 +131,7 @@ describe("useFieldOps invalidation via canonical keys (REL-08)", () => {
 
     await queryClient.invalidateQueries({
       queryKey: callListKeys.all(CAMPAIGN_ID),
+      refetchType: "none",
     })
 
     const query = queryClient.getQueryCache().getAll()[0]
@@ -147,6 +148,7 @@ describe("useFieldOps invalidation via canonical keys (REL-08)", () => {
 
     await queryClient.invalidateQueries({
       queryKey: sessionKeys.all(CAMPAIGN_ID),
+      refetchType: "none",
     })
 
     const query = queryClient.getQueryCache().getAll()[0]
