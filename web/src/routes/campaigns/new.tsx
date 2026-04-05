@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Navigate, useBlocker, useNavigate } from "@tanstack/react-router"
 import { useForm, Controller } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
@@ -23,6 +23,7 @@ import { api } from "@/api/client"
 // useFormGuard not used here — custom blocker with submittedRef bypass
 import { useOrgMembers, useAddMemberToCampaign } from "@/hooks/useOrg"
 import { useOrgPermissions } from "@/hooks/useOrgPermissions"
+import { RequireOrgRole } from "@/components/shared/RequireOrgRole"
 import { useAuthStore } from "@/stores/authStore"
 import type { Campaign, CampaignType } from "@/types/campaign"
 
@@ -613,6 +614,14 @@ function NewCampaignPage() {
   )
 }
 
+function GuardedNewCampaignPage() {
+  return (
+    <RequireOrgRole minimum="org_admin" fallback={<Navigate to="/" />}>
+      <NewCampaignPage />
+    </RequireOrgRole>
+  )
+}
+
 export const Route = createFileRoute("/campaigns/new")({
-  component: NewCampaignPage,
+  component: GuardedNewCampaignPage,
 })

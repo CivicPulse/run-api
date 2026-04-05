@@ -24,11 +24,17 @@ from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
 from app.models.user import User
 
-# Map JWT role names to OrganizationMember role values
+# Map JWT role names to OrganizationMember role values.
+#
+# Only "owner" and "admin" project roles map to org-level membership. The
+# "manager" JWT role is a CAMPAIGN-level role — managers should NOT be
+# auto-promoted to org_admin, because org_admin gates (e.g. /campaigns/new
+# creation and other org-wide admin screens) are designed to be more
+# restrictive than manager. Promoting manager → org_admin defeats those
+# frontend gates (Phase 73 SEC-10/11) and the security intent behind them.
 _JWT_ROLE_TO_ORG_ROLE: dict[str, str] = {
     "owner": "org_owner",
     "admin": "org_admin",
-    "manager": "org_admin",
 }
 
 

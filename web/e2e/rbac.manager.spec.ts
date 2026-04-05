@@ -135,42 +135,29 @@ test.describe("RBAC: manager permissions", () => {
     }
   })
 
-  test("campaign settings: Members nav link is visible but members content is NOT accessible", async ({
+  test.skip("campaign settings: Members nav link is visible but members content is NOT accessible", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/* routes
+    // now redirect managers to "/" at the page level, so there is no
+    // opportunity to assert nav-link / inline-gate visibility from within
+    // the settings layout. See the "Phase 73 role gates (manager partial
+    // access)" describe block below for the current assertions.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings/, { timeout: 30_000 })
-
-    // The Members nav link exists in the layout for all roles
-    const membersLink = page.getByRole("link", { name: /members/i })
-    await expect(membersLink).toBeVisible({ timeout: 30_000 })
-
-    // Navigate to members page
-    await membersLink.click()
-    await page.waitForURL(/members/, { timeout: 30_000 })
-
-    // Invite button requires admin+ role
-    const inviteButton = page.getByRole("button", { name: /invite/i })
-    await expect(inviteButton).not.toBeVisible()
   })
 
-  test("campaign settings danger zone: Transfer and Delete NOT visible", async ({
+  test.skip("campaign settings danger zone: Transfer and Delete NOT visible", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/danger
+    // now redirects anyone below owner to "/" at the page level, so managers
+    // never reach the danger-zone buttons. The redirect-based assertion
+    // lives in the "Phase 73 role gates (manager partial access)" describe
+    // block below.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
-    await page.waitForURL(/danger/, { timeout: 30_000 })
-
-    // Transfer Ownership requires owner role
-    const transferButton = page.getByRole("button", {
-      name: /transfer ownership/i,
-    })
-    await expect(transferButton).not.toBeVisible()
-
-    // Delete Campaign requires owner role
-    const deleteButton = page.getByRole("button", { name: /delete campaign/i })
-    await expect(deleteButton).not.toBeVisible()
   })
 
   test("org dashboard: Create Campaign link NOT visible", async ({ page, campaignId }) => {

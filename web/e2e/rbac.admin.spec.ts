@@ -97,9 +97,14 @@ test.describe("RBAC: admin permissions", () => {
     await expect(saveButton).toBeVisible({ timeout: 30_000 })
   })
 
-  test("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
+  test.skip("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/danger
+    // now redirects anyone below owner to "/" at the page level, so admins
+    // never reach the danger-zone page content. See the "Phase 73 role
+    // gates (admin partial access)" describe block below for redirect-based
+    // assertions.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/danger`)
     await page.waitForURL(/danger/, { timeout: 30_000 })

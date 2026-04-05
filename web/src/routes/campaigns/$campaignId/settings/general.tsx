@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router"
+import { createFileRoute, Navigate, useParams } from "@tanstack/react-router"
 import { useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { RequireRole } from "@/components/shared/RequireRole"
 import { useCampaign, useUpdateCampaign } from "@/hooks/useCampaigns"
 import { useFormGuard } from "@/hooks/useFormGuard"
 
@@ -159,6 +160,14 @@ function GeneralSettings() {
   )
 }
 
+function GuardedGeneralSettings() {
+  return (
+    <RequireRole minimum="admin" fallback={<Navigate to="/" />}>
+      <GeneralSettings />
+    </RequireRole>
+  )
+}
+
 export const Route = createFileRoute("/campaigns/$campaignId/settings/general")({
-  component: GeneralSettings,
+  component: GuardedGeneralSettings,
 })

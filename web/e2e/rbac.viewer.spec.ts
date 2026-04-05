@@ -128,24 +128,17 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(editVolunteerButton).not.toBeVisible()
   })
 
-  test("campaign settings: Members nav link IS visible but members content is gated", async ({
+  test.skip("campaign settings: Members nav link IS visible but members content is gated", async ({
     page, campaignId,
   }) => {
+    // Superseded by Phase 73 role gates (SEC-10, SEC-11): /settings/* routes
+    // now redirect viewers to "/" at the page level, so there is no
+    // opportunity to assert nav-link / inline-gate visibility from within the
+    // settings layout. See the "Phase 73 role gates (viewer is denied)"
+    // describe block below for the current assertions.
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/settings/general`)
     await page.waitForURL(/settings/, { timeout: 30_000 })
-
-    // The Members nav link exists in the settings layout for all roles
-    const membersLink = page.getByRole("link", { name: /members/i })
-    await expect(membersLink).toBeVisible({ timeout: 30_000 })
-
-    // Navigate to members page -- content should be gated
-    await membersLink.click()
-    await page.waitForURL(/members/, { timeout: 30_000 })
-
-    // The invite form requires admin+ role
-    const inviteSection = page.getByRole("button", { name: /invite/i })
-    await expect(inviteSection).not.toBeVisible()
   })
 
   test("org dashboard: Create Campaign link is NOT visible", async ({ page, campaignId }) => {

@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router"
+import { createFileRoute, Navigate, useParams } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -521,6 +521,14 @@ function MembersSettings() {
   )
 }
 
+function GuardedMembersSettings() {
+  return (
+    <RequireRole minimum="admin" fallback={<Navigate to="/" />}>
+      <MembersSettings />
+    </RequireRole>
+  )
+}
+
 export const Route = createFileRoute("/campaigns/$campaignId/settings/members")({
-  component: MembersSettings,
+  component: GuardedMembersSettings,
 })
