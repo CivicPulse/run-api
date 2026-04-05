@@ -101,15 +101,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-## Current Milestone: v1.12 Hardening & Remediation
+## Current Milestone: v1.13 Production Shakedown Remediation
 
-**Goal:** Close the 76 findings from the 2026-04-04 comprehensive codebase review — eliminate multi-tenant data leaks, race conditions, and reliability gaps before expanding scope.
+**Goal:** Resolve the production shakedown NO-GO from 2026-04-05 by eliminating every reported launch blocker and retiring the remaining verified defects or documentation drift before external launch.
 
 **Target features:**
-- Security blockers: 4 IDOR/tenant-isolation fixes, FORCE RLS on core tables, route auth guard logic fix, role guards on settings/DNC/create-campaign, OIDC error callback
-- Data integrity: shift signup race, DNC TOCTOU, invite compensating transaction, voter_interactions indexes, partial unique invite constraint, sync engine lock + retry
-- Reliability: callingStore PII scrub, ZitadelService HTTP timeouts, DB pool/statement timeouts, duplicate Settings fields, IP spoofing in logs, duplicate query keys
-- Quality: self-host Leaflet markers, a11y label gaps, unit test backfill for authStore/api-client/useOrgPermissions, remaining MEDIUM items
+- Cross-tenant isolation: close all 6 reported P0 breaches across voter lists, call lists, voter interactions, turf voter queries, volunteer subresources, and field mode membership checks
+- Security/runtime hardening: add clean exception mapping, production security headers, HTTPS redirect/HSTS, and non-leaky error handling paths
+- Broken workflows: restore campaign creation, restore CSV import, fix signup-cancel/idempotency and key validation gaps, and repair API behaviors that diverged from the shakedown expectations
+- Accessibility/performance/reverification: close reported a11y issues, improve field hub 3G load, rerun affected shakedown phases, and clean up shakedown-created state
 
 ### Out of Scope
 
@@ -139,15 +139,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 v1.12 Hardening & Remediation shipped on 2026-04-05. The milestone closed 7 phases, 30 plans, and all 40 audited requirements from the 2026-04-04 codebase review, including tenant-isolation fixes, FORCE RLS hardening, frontend auth/role-gate repairs, concurrency safeguards, reliability hardening, and targeted accessibility/test-coverage backfill.
 
+The 2026-04-05 production shakedown against `https://run.civpulse.org` returned a NO-GO verdict: 702 checks executed, 508 PASS, 69 FAIL, 101 SKIP, 18 BLOCKED, with 6 P0 cross-tenant isolation breaches and 20 P1 launch blockers still open in production behavior. The next milestone is therefore remediation-led rather than feature expansion.
+
 The platform provides a production-ready multi-tenant campaign field operations API with full web UI. Imports run as durable Procrastinate background jobs with per-batch commits (crash-resilient, resumable), streaming CSV from MinIO (constant memory), complete L2 auto-mapping (217 aliases, voting history parsing), cancellation support, and concurrent import prevention. The system includes ZITADEL OIDC auth, PostgreSQL RLS multi-tenancy, PostGIS canvassing, phone banking, volunteer management, org-level administration, WCAG AA compliance, Sentry observability, rate limiting, and Playwright E2E test coverage.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Switch production runtime to a non-superuser app role so FORCE RLS protections apply in deployed environments
-- Triage the parked Zitadel upgrade backlog item (`Phase 999.1`) against current auth stability and migration effort
-- Retire deferred medium-severity remediation items and reduce the remaining pre-existing lint/test debt called out in the v1.12 audit
+- Ship a production-ready tenant-boundary audit closure so the shakedown rerun reports zero cross-tenant leaks
+- Retire launch-blocking shakedown defects in security headers, error handling, campaign creation, CSV import, accessibility, and field performance
+- Address the remaining shakedown findings either with code fixes or explicit product/documentation decisions where the report identified plan drift rather than a defect
 
 ## Context
 
@@ -188,6 +190,7 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Streaming CSV with async generator | Memory-bounded import regardless of file size | ✓ Good — constant ~2 batch + 1 chunk memory footprint |
 | cancelled_at timestamp over status enum | Race-safe cancellation signal independent of status transitions | ✓ Good — avoids lost-update race between worker and API |
 | format_detected as transient (not persisted) | L2 detection computed at detect time, no schema change needed | ✓ Good — simple, no migration required |
+| Production shakedown drives v1.13 scope | Verified failures in deployed behavior should set remediation priority over new feature work | — Pending |
 
 ---
 ## Evolution
@@ -208,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 — after v1.12 Hardening & Remediation shipped*
+*Last updated: 2026-04-05 — after starting v1.13 Production Shakedown Remediation*
