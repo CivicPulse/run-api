@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -42,6 +43,7 @@ export function WalkListGenerateDialog({
   open,
   onOpenChange,
 }: WalkListGenerateDialogProps) {
+  const turfId = useId()
   const generate = useGenerateWalkList(campaignId)
   const {
     register,
@@ -85,9 +87,9 @@ export function WalkListGenerateDialog({
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label>Turf</Label>
+            <Label htmlFor={turfId}>Turf</Label>
             <Select onValueChange={(val) => setValue("turf_id", val)}>
-              <SelectTrigger>
+              <SelectTrigger id={turfId}>
                 <SelectValue placeholder="Select a turf" />
               </SelectTrigger>
               <SelectContent>

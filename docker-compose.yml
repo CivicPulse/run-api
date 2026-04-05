@@ -22,7 +22,7 @@ services:
       S3_ENDPOINT_URL: http://minio:9000
       S3_PRESIGN_ENDPOINT_URL: http://localhost:5173
       DISABLE_TLS: ${DISABLE_TLS:-false}
-      DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-true}
+      DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-false}  # Rate limiting ENABLED by default per REL-06; opt out via env var
       UVICORN_WORKERS: ${UVICORN_WORKERS:-4}
     volumes:
       - ./app:/home/app/app

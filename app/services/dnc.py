@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.time import utcnow
 from app.models.dnc import DoNotCallEntry
@@ -93,40 +94,42 @@ class DNCService:
         """
         reader = csv.DictReader(io.StringIO(csv_content))
 
-        added = 0
-        skipped = 0
+        rows: list[dict] = []
         invalid = 0
+        now = utcnow()
 
         for row in reader:
             phone = row.get("phone_number", "").strip()
-            reason = row.get("reason", default_reason).strip()
+            reason = (row.get("reason") or default_reason).strip() or default_reason
 
             # Validate phone format
             if not PHONE_REGEX.match(phone):
                 invalid += 1
                 continue
 
-            # Check for existing
-            existing_result = await session.execute(
-                select(DoNotCallEntry).where(
-                    DoNotCallEntry.campaign_id == campaign_id,
-                    DoNotCallEntry.phone_number == phone,
+            rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "campaign_id": campaign_id,
+                    "phone_number": phone,
+                    "reason": reason,
+                    "added_by": added_by,
+                    "added_at": now,
+                }
+            )
+
+        added = 0
+        if rows:
+            stmt = (
+                pg_insert(DoNotCallEntry)
+                .values(rows)
+                .on_conflict_do_nothing(
+                    index_elements=["campaign_id", "phone_number"]
                 )
             )
-            if existing_result.scalar_one_or_none() is not None:
-                skipped += 1
-                continue
-
-            entry = DoNotCallEntry(
-                id=uuid.uuid4(),
-                campaign_id=campaign_id,
-                phone_number=phone,
-                reason=reason,
-                added_by=added_by,
-                added_at=utcnow(),
-            )
-            session.add(entry)
-            added += 1
+            result = await session.execute(stmt)
+            added = result.rowcount or 0
+        skipped = len(rows) - added
 
         logger.info(
             "DNC bulk import for campaign {}: added={}, skipped={}, invalid={}",

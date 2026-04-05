@@ -138,7 +138,7 @@ class TestDNCBulkImport:
 
     @pytest.mark.asyncio
     async def test_bulk_import_csv(self) -> None:
-        """Import CSV with phone_number column, reports stats."""
+        """Import CSV issues a single batched ON CONFLICT insert."""
         from app.services.dnc import DNCService
 
         svc = DNCService()
@@ -150,16 +150,46 @@ class TestDNCBulkImport:
             "phone_number,reason\n5551111111,manual\n5552222222,registry_import\n"
         )
 
-        # No existing entries for any phone
-        no_existing = MagicMock()
-        no_existing.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=no_existing)
+        # Single batched insert: rowcount == rows inserted (no conflicts)
+        batch_result = MagicMock()
+        batch_result.rowcount = 2
+        session.execute = AsyncMock(return_value=batch_result)
 
         result = await svc.bulk_import(session, campaign_id, csv_content, "user-1")
 
         assert result.added == 2
         assert result.skipped == 0
         assert result.invalid == 0
+        # Exactly one batched execute call (not N+1)
+        assert session.execute.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_bulk_import_with_conflicts(self) -> None:
+        """Overlapping rows are reported as skipped, not surfaced as errors."""
+        from app.services.dnc import DNCService
+
+        svc = DNCService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+
+        # 3 valid rows, but only 2 inserted (1 conflict skipped by ON CONFLICT)
+        csv_content = (
+            "phone_number,reason\n"
+            "5551111111,manual\n"
+            "5552222222,manual\n"
+            "5553333333,manual\n"
+        )
+
+        batch_result = MagicMock()
+        batch_result.rowcount = 2  # one existing row skipped via ON CONFLICT
+        session.execute = AsyncMock(return_value=batch_result)
+
+        result = await svc.bulk_import(session, campaign_id, csv_content, "user-1")
+
+        assert result.added == 2
+        assert result.skipped == 1
+        assert result.invalid == 0
+        assert session.execute.call_count == 1
 
     @pytest.mark.asyncio
     async def test_bulk_import_invalid_phones(self) -> None:
@@ -173,11 +203,34 @@ class TestDNCBulkImport:
 
         csv_content = "phone_number\n123\n5551234567\nabc\n"
 
-        no_existing = MagicMock()
-        no_existing.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=no_existing)
+        batch_result = MagicMock()
+        batch_result.rowcount = 1
+        session.execute = AsyncMock(return_value=batch_result)
 
         result = await svc.bulk_import(session, campaign_id, csv_content, "user-1")
 
         assert result.added == 1  # Only 5551234567 is valid
         assert result.invalid == 2  # 123 and abc
+        assert result.skipped == 0
+        # One batched execute call for the single valid row
+        assert session.execute.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_bulk_import_all_invalid_no_execute(self) -> None:
+        """When every row is invalid, no execute call is issued."""
+        from app.services.dnc import DNCService
+
+        svc = DNCService()
+        session = AsyncMock()
+        campaign_id = uuid.uuid4()
+
+        csv_content = "phone_number\n123\nabc\n"
+
+        session.execute = AsyncMock()
+
+        result = await svc.bulk_import(session, campaign_id, csv_content, "user-1")
+
+        assert result.added == 0
+        assert result.skipped == 0
+        assert result.invalid == 2
+        assert session.execute.call_count == 0

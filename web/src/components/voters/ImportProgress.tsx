@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { deriveImportProgressMetrics } from "@/lib/import-progress"
 import type { ImportJob } from "@/types/import-job"
 
 interface ImportProgressProps {
@@ -30,6 +31,9 @@ export function ImportProgress({
     if (job.status === "completed") {
       firedRef.current = true
       onComplete()
+    } else if (job.status === "completed_with_errors") {
+      firedRef.current = true
+      onComplete()
     } else if (job.status === "failed") {
       firedRef.current = true
       onFailed()
@@ -42,6 +46,8 @@ export function ImportProgress({
   const progressPercent = job.total_rows
     ? Math.round(((job.imported_rows ?? 0) / job.total_rows) * 100)
     : 0
+  const metrics = deriveImportProgressMetrics(job)
+  const showProcessingState = job.status === "queued" || job.status === "processing"
 
   return (
     <div className="space-y-4" aria-live="polite" aria-atomic="true">
@@ -50,11 +56,11 @@ export function ImportProgress({
         <p className="text-xs text-muted-foreground">{progressPercent}%</p>
       </div>
 
-      {(job.status === "queued" || job.status === "processing") && (
+      {showProcessingState && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Processing...</span>
+            <span>{job.status === "queued" ? "Queued..." : "Processing..."}</span>
           </div>
           <Button
             variant="outline"
@@ -70,6 +76,29 @@ export function ImportProgress({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Cancelling...</span>
+        </div>
+      )}
+
+      {showProcessingState && (
+        <div className="grid gap-3 rounded-md border border-border/70 bg-muted/30 p-3 sm:grid-cols-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              Throughput
+            </p>
+            <p className="mt-1 text-sm font-medium">
+              {metrics.throughputLabel ?? "Calculating..."}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              ETA
+            </p>
+            <p className="mt-1 text-sm font-medium">
+              {job.status === "queued"
+                ? "Waiting to start"
+                : metrics.etaLabel ?? "Calculating..."}
+            </p>
+          </div>
         </div>
       )}
 
@@ -99,6 +128,17 @@ export function ImportProgress({
       {job.status === "failed" && (
         <div className="rounded-md bg-destructive/10 p-3">
           <p className="text-sm font-medium text-destructive">Import failed</p>
+        </div>
+      )}
+
+      {job.status === "completed_with_errors" && (
+        <div className="rounded-md bg-status-warning/15 p-3">
+          <p className="text-sm font-medium text-status-warning-foreground">
+            Import completed with errors
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Successful rows were kept. Review the merged error report for skipped rows.
+          </p>
         </div>
       )}
 

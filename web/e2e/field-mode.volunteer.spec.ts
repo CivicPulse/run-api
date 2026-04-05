@@ -244,7 +244,14 @@ async function createCanvassingSurveyFixtureForVolunteer(
   campaignId: string,
   volunteerUserId: string,
   labelPrefix: string,
-): Promise<{ walkListId: string; walkListName: string; scriptTitle: string; entryCount: number }> {
+): Promise<{
+  walkListId: string
+  walkListName: string
+  scriptTitle: string
+  entryCount: number
+  orderedAddresses: string[]
+  revisitAddress: string
+}> {
   const ownerContext = await browser.newContext({
     storageState: OWNER_AUTH_STATE,
     ignoreHTTPSErrors: true,
@@ -271,8 +278,11 @@ async function createCanvassingSurveyFixtureForVolunteer(
   return {
     walkListId: fixture.walkListId,
     walkListName: fixture.walkListName,
+    scriptId: fixture.scriptId,
     scriptTitle: fixture.scriptTitle,
     entryCount: fixture.entryCount,
+    orderedAddresses: fixture.orderedAddresses,
+    revisitAddress: fixture.revisitAddress,
   }
 }
 
@@ -857,7 +867,12 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       "FIELD-07",
     )
     expect(fixture.walkListId).toBeTruthy()
-    expect(fixture.entryCount).toBeGreaterThan(0)
+    expect(fixture.entryCount).toBeGreaterThanOrEqual(4)
+    expect(fixture.orderedAddresses).toEqual([
+      "100 Survey Ave",
+      fixture.revisitAddress,
+      "300 Survey Ave",
+    ])
 
     const field07Context = await browser.newContext({
       storageState: VOLUNTEER_AUTH_STATE,
@@ -872,7 +887,6 @@ test.describe.serial("Field Mode -- Canvassing", () => {
     try {
       await field07Page.goto(`/field/${campaignId}`)
       await waitForAuth(field07Page)
-
       await waitForCanvassingAssignment(field07Page, campaignId, fixture.walkListName)
 
       await field07Page.evaluate(() => {
@@ -880,78 +894,43 @@ test.describe.serial("Field Mode -- Canvassing", () => {
         localStorage.removeItem("tour-state")
       })
 
-      const fieldMe = (await apiGet(
+      await suppressTour(field07Page, campaignId)
+      await field07Page.goto(`/field/${campaignId}/canvassing`)
+      await field07Page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+      await dismissTourIfVisible(field07Page)
+
+      await expect(field07Page.locator("[data-tour='household-card']")).toBeVisible({ timeout: 20_000 })
+      await expect(field07Page.getByTestId("household-door-position")).toContainText("Door 1 of 3")
+      await expect(field07Page.getByText(fixture.orderedAddresses[0]).first()).toBeVisible()
+
+      const firstHouseholdResponse = await apiGet(
         field07Page,
-        `/api/v1/campaigns/${campaignId}/field/me`,
-      )) as {
-        canvassing?: { walk_list_id?: string; name?: string } | null
-      }
-      expect(fieldMe.canvassing?.walk_list_id).toBe(fixture.walkListId)
+        `/api/v1/campaigns/${campaignId}/walk-lists/${fixture.walkListId}/entries/enriched`,
+      ) as Array<{
+        id: string
+        voter_id: string
+        voter: { registration_line1?: string | null }
+      }>
+      const firstHouseholdEntry = firstHouseholdResponse.find(
+        (entry) => entry.voter.registration_line1 === fixture.orderedAddresses[0],
+      )
+      expect(firstHouseholdEntry?.voter_id).toBeTruthy()
+      const firstHouseholdVoterId = firstHouseholdEntry!.voter_id
 
-      const householdCard = field07Page.locator("[data-tour='household-card']")
-      const outcomeGridReady = field07Page.locator("[data-tour='outcome-grid']")
-
-      let isLoaded = false
-      for (let attempt = 0; attempt < 6; attempt++) {
-        await field07Page.goto(`/field/${campaignId}`)
-        await waitForAuth(field07Page)
-        await suppressTour(field07Page, campaignId)
-        await dismissTourIfVisible(field07Page)
-
-        const hubError = field07Page.getByText(/couldn't load your assignments/i)
-        if (await hubError.isVisible({ timeout: 1_500 }).catch(() => false)) {
-          const retryBtn = field07Page.getByRole("button", { name: /retry/i })
-          if (await retryBtn.isVisible({ timeout: 1_500 }).catch(() => false)) {
-            await retryBtn.click()
-            await field07Page.waitForTimeout(1_000)
-          }
+      const doorKnockRequests: Array<{
+        result_code?: string
+        notes?: string
+        survey_responses?: Array<{ question_id: string; answer_value: string }>
+        survey_complete?: boolean
+      }> = []
+      field07Page.on("request", (request) => {
+        if (
+          request.method() === "POST" &&
+          request.url().includes(`/api/v1/campaigns/${campaignId}/walk-lists/${fixture.walkListId}/door-knocks`)
+        ) {
+          doorKnockRequests.push({})
         }
-
-        await field07Page
-          .locator("[data-tour='hub-greeting']")
-          .waitFor({ state: "visible", timeout: 15_000 })
-          .catch(() => {})
-
-        const assignmentCard = field07Page
-          .locator("[data-tour='assignment-card']")
-          .filter({ hasText: fixture.walkListName })
-          .first()
-        await field07Page
-          .locator("[data-tour='assignment-card']")
-          .first()
-          .waitFor({ state: "visible", timeout: 10_000 })
-          .catch(() => {})
-
-        if (await assignmentCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-          await assignmentCard.click()
-        } else {
-          await field07Page.goto(`/field/${campaignId}/canvassing`)
-        }
-
-        await field07Page.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
-
-        const hasHousehold = await householdCard
-          .isVisible({ timeout: 20_000 })
-          .catch(() => false)
-        const hasOutcomeGrid = await outcomeGridReady
-          .isVisible({ timeout: 8_000 })
-          .catch(() => false)
-        isLoaded = hasHousehold || hasOutcomeGrid
-        if (isLoaded) break
-
-        const noAssignment = await field07Page
-          .getByText(/no canvassing assignment/i)
-          .first()
-          .isVisible({ timeout: 1_000 })
-          .catch(() => false)
-        if (noAssignment) {
-          await waitForCanvassingAssignment(field07Page, campaignId, fixture.walkListName)
-        }
-
-        await field07Page.waitForTimeout(1_000)
-      }
-
-      expect(isLoaded).toBeTruthy()
+      })
 
       const outcomeGrid = field07Page.locator("[data-tour='outcome-grid']")
       await expect(outcomeGrid).toBeVisible({ timeout: 10_000 })
@@ -962,34 +941,134 @@ test.describe.serial("Field Mode -- Canvassing", () => {
       await expect(supporterBtn).toBeVisible({ timeout: 10_000 })
       await supporterBtn.click()
 
-      const surveySheet = field07Page.getByText(/survey|question/i)
-      await expect(surveySheet.first()).toBeVisible({ timeout: 10_000 })
+      await expect(field07Page.getByRole("button", { name: "Save Door Knock" })).toBeVisible({ timeout: 10_000 })
       await expect(
-        field07Page.getByText(new RegExp(fixture.scriptTitle, "i")).first(),
+        field07Page.getByText("Should we count on your support this election?").first(),
       ).toBeVisible({ timeout: 10_000 })
+      await expect(field07Page.getByLabel(/call notes/i)).toBeVisible({ timeout: 10_000 })
+      expect(doorKnockRequests).toHaveLength(0)
 
-      const answerOption = field07Page
-        .getByRole("radio")
-        .first()
-        .or(field07Page.getByRole("button", { name: /yes|no|undecided/i }).first())
-      await expect(answerOption).toBeVisible({ timeout: 10_000 })
-      await answerOption.click()
+      await expect(field07Page.getByRole("button", { name: "Save Door Knock" })).toBeDisabled()
+      await field07Page.getByLabel(/call notes/i).fill("Volunteer confirmed support at the door.")
+      await field07Page.getByLabel("Yes").click()
+      await expect(field07Page.getByRole("button", { name: "Save Door Knock" })).toBeEnabled()
 
-      const submitBtn = field07Page
-        .getByRole("button", { name: /submit|done|save/i })
-        .first()
-      await expect(submitBtn).toBeVisible({ timeout: 10_000 })
-      await submitBtn.click()
+      await field07Page.getByRole("button", { name: "Save Door Knock" }).click()
 
-      const hasHousehold = await householdCard.isVisible().catch(() => false)
-      const hasCompletion = await field07Page
-        .getByText(/complete|all done|great work/i)
-        .isVisible()
-        .catch(() => false)
-      expect(hasHousehold || hasCompletion).toBeTruthy()
+      await expect.poll(async () => {
+        const interactions = await apiGet(
+          field07Page,
+          `/api/v1/campaigns/${campaignId}/voters/${firstHouseholdVoterId}/interactions`,
+        ) as { items?: Array<{ type?: string; payload?: { result_code?: string; notes?: string; survey_complete?: boolean; script_id?: string } }> }
+        const doorKnock = interactions.items?.find((item) => item.type === "door_knock")
+        return doorKnock?.payload?.script_id ?? null
+      }, { timeout: 15_000 }).toBe(fixture.scriptId)
+
+      await expect.poll(() => doorKnockRequests.length, { timeout: 10_000 }).toBe(1)
+
+      await expect.poll(async () => {
+        const interactions = await apiGet(
+          field07Page,
+          `/api/v1/campaigns/${campaignId}/voters/${firstHouseholdVoterId}/interactions`,
+        ) as { items?: Array<{ type?: string; payload?: { result_code?: string; notes?: string; survey_complete?: boolean } }> }
+        const doorKnock = interactions.items?.find((item) => item.type === "door_knock")
+        return doorKnock?.payload?.result_code ?? null
+      }, { timeout: 15_000 }).toBe("supporter")
+
+      const interactions = await apiGet(
+        field07Page,
+        `/api/v1/campaigns/${campaignId}/voters/${firstHouseholdVoterId}/interactions`,
+      ) as { items?: Array<{ type?: string; payload?: { result_code?: string; notes?: string; survey_complete?: boolean } }> }
+      const savedDoorKnock = interactions.items?.find((item) => item.type === "door_knock")
+      expect(savedDoorKnock?.payload).toMatchObject({
+        result_code: "supporter",
+        notes: "Volunteer confirmed support at the door.",
+      })
+
+      await expect.poll(async () => {
+        const savedResponses = await apiGet(
+          field07Page,
+          `/api/v1/campaigns/${campaignId}/surveys/${fixture.scriptId}/voters/${firstHouseholdVoterId}/responses`,
+        ) as { items?: Array<{ answer_value?: string }> | Array<{ answer_value?: string }> }
+        const responseItems = Array.isArray(savedResponses)
+          ? savedResponses
+          : (savedResponses.items ?? [])
+        return responseItems.length
+      }, { timeout: 15_000 }).toBe(1)
+
+      const savedResponses = await apiGet(
+        field07Page,
+        `/api/v1/campaigns/${campaignId}/surveys/${fixture.scriptId}/voters/${firstHouseholdVoterId}/responses`,
+      ) as { items?: Array<{ answer_value?: string }> | Array<{ answer_value?: string }> }
+      const responseItems = Array.isArray(savedResponses)
+        ? savedResponses
+        : (savedResponses.items ?? [])
+      expect(responseItems[0]?.answer_value).toBe("Yes")
+
+      await expect(field07Page.getByTestId("household-door-position")).toContainText("Door 2 of 3")
+      await expect(field07Page.getByText(fixture.revisitAddress).first()).toBeVisible()
     } finally {
       await field07Page.close()
       await field07Context.close()
+    }
+  })
+
+  test("FIELD-13: skipped addresses stay visible in All Doors and can be revisited from the queue", async ({ browser }) => {
+    test.setTimeout(120_000)
+
+    const fixture = await createCanvassingSurveyFixtureForVolunteer(
+      browser,
+      campaignId,
+      volunteerUserId,
+      "FIELD-13",
+    )
+
+    const context = await browser.newContext({
+      storageState: VOLUNTEER_AUTH_STATE,
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+      ignoreHTTPSErrors: true,
+      baseURL: BASE_URL,
+    })
+    const volunteerPage = await context.newPage()
+
+    try {
+      await volunteerPage.goto(`/field/${campaignId}`)
+      await waitForAuth(volunteerPage)
+      await waitForCanvassingAssignment(volunteerPage, campaignId, fixture.walkListName)
+      await volunteerPage.evaluate(() => {
+        localStorage.removeItem("canvassing-store")
+        localStorage.removeItem("tour-state")
+      })
+      await suppressTour(volunteerPage, campaignId)
+      await volunteerPage.goto(`/field/${campaignId}/canvassing`)
+      await volunteerPage.waitForURL(/\/field\/.*\/canvassing/, { timeout: 15_000 })
+      await dismissTourIfVisible(volunteerPage)
+
+      await expect(volunteerPage.getByTestId("household-door-position")).toContainText("Door 1 of 3")
+      await expect(volunteerPage.getByText(fixture.orderedAddresses[0]).first()).toBeVisible()
+
+      await volunteerPage.getByRole("button", { name: /^skip$/i }).click()
+
+      await expect(volunteerPage.getByTestId("household-door-position")).toContainText("Door 2 of 3")
+      await expect(volunteerPage.getByText(fixture.revisitAddress).first()).toBeVisible()
+
+      await volunteerPage.getByRole("button", { name: /all doors/i }).click()
+      await expect(volunteerPage.getByText("All Doors")).toBeVisible({ timeout: 10_000 })
+      await expect(volunteerPage.getByTestId("door-list-item-1")).toContainText("100 Survey Ave")
+      await expect(volunteerPage.getByTestId("door-list-item-1")).toContainText("Skipped")
+      await expect(volunteerPage.getByTestId("door-list-item-2")).toContainText(fixture.revisitAddress)
+      await expect(volunteerPage.getByTestId("door-list-item-2")).toContainText("Current")
+
+      await volunteerPage.getByTestId("door-list-item-1").click()
+      await expect(volunteerPage.getByTestId("household-door-position")).toContainText("Door 1 of 3")
+      await expect(volunteerPage.getByText("100 Survey Ave").first()).toBeVisible()
+      await expect(volunteerPage.getByTestId("household-status-copy")).toContainText("Skipped")
+      await expect(volunteerPage.getByTestId("household-progress-copy")).toContainText(/everyone at this address has been handled\. you can move on or revisit from all doors\./i)
+    } finally {
+      await volunteerPage.close()
+      await context.close()
     }
   })
 

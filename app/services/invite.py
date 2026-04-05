@@ -226,9 +226,31 @@ class InviteService:
             org_id=zitadel_org_id,
         )
 
-        invite.accepted_at = utcnow()
-        await db.commit()
-        await db.refresh(invite)
+        try:
+            invite.accepted_at = utcnow()
+            await db.commit()
+            await db.refresh(invite)
+        except Exception as commit_exc:
+            logger.error(
+                "DB commit failed for invite accept (invite_id={}): {}",
+                invite.id,
+                commit_exc,
+            )
+            await db.rollback()
+            try:
+                await zitadel.remove_project_role(
+                    settings.zitadel_project_id,
+                    user.id,
+                    invite.role,
+                    org_id=zitadel_org_id,
+                )
+            except Exception as cleanup_exc:
+                logger.error(
+                    "Failed to remove orphaned ZITADEL role after "
+                    "invite commit failure: {}",
+                    cleanup_exc,
+                )
+            raise
         logger.info(
             "Invite accepted by {} for campaign {} with role {}",
             user.id,
@@ -241,20 +263,29 @@ class InviteService:
         self,
         db: AsyncSession,
         invite_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> Invite:
         """Revoke a pending invite.
 
         Args:
             db: Async database session.
             invite_id: The invite UUID.
+            campaign_id: The campaign UUID scope — invite must belong here.
 
         Returns:
             The revoked Invite.
 
         Raises:
-            ValueError: If invite not found.
+            ValueError: If invite not found (or belongs to a different campaign).
         """
-        result = await db.execute(select(Invite).where(Invite.id == invite_id))
+        result = await db.execute(
+            select(Invite).where(
+                and_(
+                    Invite.id == invite_id,
+                    Invite.campaign_id == campaign_id,
+                )
+            )
+        )
         invite = result.scalar_one_or_none()
         if invite is None:
             msg = "Invite not found"

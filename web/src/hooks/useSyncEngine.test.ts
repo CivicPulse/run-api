@@ -28,6 +28,7 @@ import {
   replayMutation,
   isNetworkError,
   isConflict,
+  MAX_RETRY,
 } from "@/hooks/useSyncEngine"
 
 function makeItem(overrides: Partial<QueueItem> = {}): QueueItem {
@@ -266,7 +267,7 @@ describe("drainQueue", () => {
     expect(useOfflineQueueStore.getState().items[0].retryCount).toBe(1)
   })
 
-  test("stops drain (breaks loop) on network error after incrementing retry", async () => {
+  test("continues drain on network error after incrementing retry (C15 fix — no break)", async () => {
     let callCount = 0;
     (api.post as Mock).mockImplementation(() => {
       callCount++
@@ -295,9 +296,10 @@ describe("drainQueue", () => {
 
     await drainQueue(queryClient as unknown as QueryClient)
 
-    // First item retried, second item untouched
-    expect(callCount).toBe(1)
-    expect(useOfflineQueueStore.getState().items).toHaveLength(2)
+    // Post-C15: both items attempted. First retried, second succeeded (removed).
+    expect(callCount).toBe(2)
+    expect(useOfflineQueueStore.getState().items).toHaveLength(1)
+    expect(useOfflineQueueStore.getState().items[0].id).toBe("id-1")
   })
 
   test("skips item when retryCount >= 2 (already attempted 3 times)", async () => {
@@ -525,5 +527,202 @@ describe("drainQueue", () => {
 
     // Should NOT advance because entry-B was synced by us
     expect(advanceSpy).not.toHaveBeenCalled()
+  })
+})
+
+// =============================================================================
+// Phase 75 Plan 01 — RED tests for C14, C15, MAX_RETRY (REL-01, REL-02)
+// These tests assert behavior NOT YET IMPLEMENTED. Plan 02 makes them pass.
+// =============================================================================
+
+describe("drainQueue — C14 lock release (REL-01)", () => {
+  let queryClient: ReturnType<typeof makeQueryClient>
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    useOfflineQueueStore.getState().clear()
+    useCanvassingStore.getState().reset()
+    queryClient = makeQueryClient()
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
+  })
+
+  test("releases isSyncing lock when invalidateQueries throws unexpectedly (try/finally)", async () => {
+    const mockJson = vi.fn().mockResolvedValue({});
+    (api.post as Mock).mockReturnValue({ json: mockJson })
+
+    // invalidateQueries throws — this escapes the per-item try/catch because it
+    // runs AFTER the loop, in the post-sync phase. Without try/finally around
+    // the entire drain body, isSyncing remains true forever.
+    queryClient.invalidateQueries.mockRejectedValue(new Error("boom"))
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+
+    // Drain may reject; either way the lock MUST be released
+    await drainQueue(queryClient as unknown as QueryClient).catch(() => {})
+
+    expect(useOfflineQueueStore.getState().isSyncing).toBe(false)
+  })
+
+  test("releases isSyncing lock when a non-Error value is thrown inside replay path", async () => {
+    // Throw a raw string (non-Error) that slips past typical catch handling
+    ;(api.post as Mock).mockImplementation(() => {
+      throw "raw string boom"
+    })
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+
+    await drainQueue(queryClient as unknown as QueryClient).catch(() => {})
+
+    expect(useOfflineQueueStore.getState().isSyncing).toBe(false)
+  })
+})
+
+describe("drainQueue — C15 continue on transient error (REL-02)", () => {
+  let queryClient: ReturnType<typeof makeQueryClient>
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    useOfflineQueueStore.getState().clear()
+    useCanvassingStore.getState().reset()
+    queryClient = makeQueryClient()
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
+  })
+
+  test("continues queue after transient error — subsequent items still processed", async () => {
+    let callCount = 0
+    ;(api.post as Mock).mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return { json: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")) }
+      }
+      return { json: vi.fn().mockResolvedValue({}) }
+    })
+
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("id-2" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("id-3" as ReturnType<typeof crypto.randomUUID>)
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e3", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+
+    await drainQueue(queryClient as unknown as QueryClient)
+
+    // All 3 items attempted (no break on transient error)
+    expect(callCount).toBe(3)
+
+    // Items 2 and 3 removed (succeeded); item 1 retried
+    const remaining = useOfflineQueueStore.getState().items
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].id).toBe("id-1")
+    expect(remaining[0].retryCount).toBe(1)
+  })
+})
+
+describe("drainQueue — C15 MAX_RETRY removal + toast (REL-02)", () => {
+  let queryClient: ReturnType<typeof makeQueryClient>
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    useOfflineQueueStore.getState().clear()
+    useCanvassingStore.getState().reset()
+    queryClient = makeQueryClient()
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
+  })
+
+  test("removes item and shows toast.error when retryCount >= MAX_RETRY on failure", async () => {
+    ;(api.post as Mock).mockReturnValue({
+      json: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+    })
+
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(
+      "id-1" as ReturnType<typeof crypto.randomUUID>,
+    )
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+
+    // Bump retryCount to MAX_RETRY so next failure triggers removal
+    const target = useOfflineQueueStore.getState().items[0]
+    for (let i = 0; i < MAX_RETRY; i++) {
+      useOfflineQueueStore.getState().incrementRetry(target.id)
+    }
+
+    await drainQueue(queryClient as unknown as QueryClient)
+
+    // Item REMOVED (not just retried)
+    expect(useOfflineQueueStore.getState().items).toHaveLength(0)
+    // User-visible toast fired
+    expect(toast.error).toHaveBeenCalled()
+  })
+
+  test("toast message on max-retry drop includes item type context (door knock)", async () => {
+    ;(api.post as Mock).mockReturnValue({
+      json: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+    })
+
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(
+      "id-1" as ReturnType<typeof crypto.randomUUID>,
+    )
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
+      campaignId: "c1",
+      resourceId: "wl-1",
+    })
+
+    const target = useOfflineQueueStore.getState().items[0]
+    for (let i = 0; i < MAX_RETRY; i++) {
+      useOfflineQueueStore.getState().incrementRetry(target.id)
+    }
+
+    await drainQueue(queryClient as unknown as QueryClient)
+
+    const calls = (toast.error as Mock).mock.calls
+    const anyCallMentionsDoorKnock = calls.some(([msg]) =>
+      typeof msg === "string" && /door.?knock/i.test(msg),
+    )
+    expect(anyCallMentionsDoorKnock).toBe(true)
+  })
+})
+
+describe("MAX_RETRY constant (REL-02)", () => {
+  test("is exported from useSyncEngine module", () => {
+    expect(typeof MAX_RETRY).toBe("number")
+  })
+
+  test("equals 3 per locked decision", () => {
+    expect(MAX_RETRY).toBe(3)
   })
 })

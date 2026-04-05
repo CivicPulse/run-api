@@ -58,8 +58,16 @@ class TestVoterTagOperations:
         service = VoterService()
         voter_id = uuid.uuid4()
         tag_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
 
-        await service.add_tag_to_voter(mock_db, voter_id, tag_id)
+        # Two scoped lookups (tag then voter) must return non-None
+        tag_found = MagicMock()
+        tag_found.scalar_one_or_none.return_value = MagicMock()
+        voter_found = MagicMock()
+        voter_found.scalar_one_or_none.return_value = MagicMock()
+        mock_db.execute = AsyncMock(side_effect=[tag_found, voter_found])
+
+        await service.add_tag_to_voter(mock_db, voter_id, tag_id, campaign_id)
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()
 
@@ -70,9 +78,18 @@ class TestVoterTagOperations:
         service = VoterService()
         voter_id = uuid.uuid4()
         tag_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
 
-        await service.remove_tag_from_voter(mock_db, voter_id, tag_id)
-        # Should execute a delete and commit
+        tag_found = MagicMock()
+        tag_found.scalar_one_or_none.return_value = MagicMock()
+        voter_found = MagicMock()
+        voter_found.scalar_one_or_none.return_value = MagicMock()
+        delete_result = MagicMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[tag_found, voter_found, delete_result]
+        )
+
+        await service.remove_tag_from_voter(mock_db, voter_id, tag_id, campaign_id)
         mock_db.execute.assert_awaited()
         mock_db.commit.assert_awaited()
 
@@ -82,13 +99,16 @@ class TestVoterTagOperations:
 
         service = VoterService()
         voter_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
 
         tag1 = MagicMock(spec=VoterTag)
         tag1.name = "yard-sign"
 
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [tag1]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        voter_found = MagicMock()
+        voter_found.scalar_one_or_none.return_value = MagicMock()
+        tags_result = MagicMock()
+        tags_result.scalars.return_value.all.return_value = [tag1]
+        mock_db.execute = AsyncMock(side_effect=[voter_found, tags_result])
 
-        result = await service.get_voter_tags(mock_db, voter_id)
+        result = await service.get_voter_tags(mock_db, voter_id, campaign_id)
         assert len(result) == 1

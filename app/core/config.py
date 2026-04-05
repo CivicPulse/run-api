@@ -40,10 +40,8 @@ class Settings(BaseSettings):
         "https://dev.tailb56d83.ts.net:8000",
     ]
 
-    # Rate limiting
+    # Rate limiting (disable flag only; defaults live below)
     disable_rate_limit: bool = False
-    trusted_proxy_cidrs: list[str] = []
-    rate_limit_unauthenticated: str = "30/minute"
 
     # S3-compatible object storage (MinIO local, Cloudflare R2 production)
     s3_endpoint_url: str = "http://localhost:9000"
@@ -55,7 +53,10 @@ class Settings(BaseSettings):
 
     # Import processing
     import_batch_size: int = 1000
+    import_chunk_size_default: int = 10000
+    import_max_chunks_per_import: int = 4
     import_orphan_threshold_minutes: int = 30
+    import_serial_threshold: int = 10000
 
     # Observability
     sentry_dsn: str = ""

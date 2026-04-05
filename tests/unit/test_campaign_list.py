@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
+from app.core.security import AuthenticatedUser, CampaignRole
 from app.core.time import utcnow
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.services.campaign import CampaignService
@@ -14,6 +15,14 @@ from app.services.campaign import CampaignService
 # ---------------------------------------------------------------------------
 
 ORG_ID = "zitadel-org-list-test"
+
+
+def _mock_user() -> AuthenticatedUser:
+    return AuthenticatedUser(
+        id="user-list-test",
+        org_id=ORG_ID,
+        role=CampaignRole.VIEWER,
+    )
 
 
 def _campaign(
@@ -50,7 +59,9 @@ class TestCampaignListVisibility:
         db.execute = AsyncMock(return_value=result_mock)
 
         service = CampaignService()
-        items, pagination = await service.list_campaigns(db=db, limit=20)
+        items, pagination = await service.list_campaigns(
+            db=db, user=_mock_user(), limit=20
+        )
 
         assert len(items) == 3
         assert all(isinstance(c, Campaign) for c in items)
@@ -66,7 +77,9 @@ class TestCampaignListVisibility:
         db.execute = AsyncMock(return_value=result_mock)
 
         service = CampaignService()
-        items, pagination = await service.list_campaigns(db=db, limit=20)
+        items, pagination = await service.list_campaigns(
+            db=db, user=_mock_user(), limit=20
+        )
 
         assert len(items) == 2
 
@@ -78,7 +91,9 @@ class TestCampaignListVisibility:
         db.execute = AsyncMock(return_value=result_mock)
 
         service = CampaignService()
-        items, pagination = await service.list_campaigns(db=db, limit=20)
+        items, pagination = await service.list_campaigns(
+            db=db, user=_mock_user(), limit=20
+        )
 
         assert len(items) == 0
         assert pagination.next_cursor is None

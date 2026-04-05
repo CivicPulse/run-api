@@ -8,11 +8,12 @@ list mapping templates.
 from __future__ import annotations
 
 import logging
+import re as _re
 import uuid
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ from app.core.security import AuthenticatedUser, require_role
 from app.core.time import utcnow
 from app.models.import_job import (
     FieldMappingTemplate,
+    ImportChunk,
     ImportJob,
     ImportStatus,
 )
@@ -85,6 +87,31 @@ def _rewrite_presigned_url_for_browser_origin(upload_url: str, request: Request)
     )
 
 
+_SAFE_FILENAME_RE = _re.compile(r"[^A-Za-z0-9._-]+")
+_MAX_FILENAME_LEN = 120
+
+
+def _sanitize_filename(name: str) -> str:
+    """Produce a filesystem- and S3-safe basename.
+
+    Strips path separators, null bytes, control chars, and any char outside
+    [A-Za-z0-9._-]. Replaces runs of disallowed chars with a single '-'.
+    Truncates to 120 chars. Falls back to 'file' if result is empty.
+    """
+    # Take basename only (strip any leading path fragments)
+    base = name.replace("\\", "/").rsplit("/", 1)[-1]
+    # Strip null bytes and control chars
+    base = base.replace("\x00", "").strip()
+    # Replace leading dots (hidden files / parent-dir refs) with underscore
+    while base.startswith("."):
+        base = base[1:]
+    # Replace disallowed runs
+    safe = _SAFE_FILENAME_RE.sub("-", base).strip("-._")
+    if not safe:
+        safe = "file"
+    return safe[:_MAX_FILENAME_LEN]
+
+
 @router.post(
     "/campaigns/{campaign_id}/imports",
     response_model=ImportUploadResponse,
@@ -131,8 +158,10 @@ async def initiate_import(
     db.add(job)
     await db.flush()
 
-    # Generate S3 key and pre-signed URL
-    file_key = f"imports/{campaign_id}/{job.id}/{original_filename}"
+    # Generate S3 key and pre-signed URL (REL-10: sanitize filename)
+    safe_name = _sanitize_filename(original_filename)
+    unique_prefix = uuid.uuid4()
+    file_key = f"imports/{campaign_id}/{job.id}/{unique_prefix}-{safe_name}"
     job.file_key = file_key
     await db.commit()
 
@@ -181,7 +210,7 @@ async def detect_columns(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -210,7 +239,10 @@ async def detect_columns(
     # Generate mapping suggestions
     if template_id is not None:
         template = await db.get(FieldMappingTemplate, template_id)
-        if template is None:
+        if template is None or (
+            template.campaign_id is not None
+            and template.campaign_id != campaign_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Mapping template not found",
@@ -269,7 +301,7 @@ async def confirm_mapping(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -348,7 +380,7 @@ async def cancel_import(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -397,7 +429,7 @@ async def get_import_status(
     await ensure_user_synced(user, db)
 
     job = await db.get(ImportJob, import_id)
-    if job is None:
+    if job is None or job.campaign_id != campaign_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Import job not found",
@@ -408,7 +440,7 @@ async def get_import_status(
     # Generate pre-signed download URL for error report if it exists
     if job.error_report_key:
         storage = request.app.state.storage_service
-        response.error_report_key = await storage.generate_download_url(
+        response.error_report_url = await storage.generate_download_url(
             job.error_report_key
         )
 
@@ -473,7 +505,23 @@ async def delete_import(
         except Exception:
             logger.warning("Failed to delete S3 error report %s", job.error_report_key)
 
+    chunk_error_keys_result = await db.execute(
+        select(ImportChunk.error_report_key).where(ImportChunk.import_job_id == job.id)
+    )
+    chunk_error_keys = [
+        key for key in chunk_error_keys_result.scalars().all() if key is not None
+    ]
+    for chunk_error_key in chunk_error_keys:
+        try:
+            await storage.delete_object(chunk_error_key)
+        except Exception:
+            logger.warning(
+                "Failed to delete chunk error report %s",
+                chunk_error_key,
+            )
+
     try:
+        await db.execute(delete(ImportChunk).where(ImportChunk.import_job_id == job.id))
         await db.delete(job)
         await db.commit()
     except IntegrityError as exc:
@@ -532,7 +580,15 @@ async def list_imports(
     if has_more:
         jobs = jobs[:limit]
 
-    items = [ImportJobResponse.model_validate(j) for j in jobs]
+    storage = request.app.state.storage_service
+    items: list[ImportJobResponse] = []
+    for job in jobs:
+        response = ImportJobResponse.model_validate(job)
+        if job.error_report_key:
+            response.error_report_url = await storage.generate_download_url(
+                job.error_report_key
+            )
+        items.append(response)
     next_cursor = str(jobs[-1].id) if has_more and jobs else None
 
     return PaginatedResponse[ImportJobResponse](

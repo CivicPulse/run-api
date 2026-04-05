@@ -2,6 +2,7 @@ import { execSync } from "child_process"
 import fs from "fs"
 import path from "path"
 import type { Page, APIResponse } from "@playwright/test"
+import { pickSeedCampaignId } from "../src/lib/seed-campaign"
 
 const LOCAL_AUTH_DIR = path.join(import.meta.dirname, "../playwright/.auth")
 
@@ -54,11 +55,8 @@ export async function getSeedCampaignId(page: Page): Promise<string> {
       })
       if (resp.ok()) {
         const campaigns = await resp.json()
-        const seed = campaigns.find(
-          (c: { campaign_name?: string; name?: string }) =>
-            /macon.?bibb/i.test(c.campaign_name ?? c.name ?? ""),
-        )
-        if (seed?.campaign_id ?? seed?.id) return seed.campaign_id ?? seed.id
+        const seedCampaignId = pickSeedCampaignId(campaigns)
+        if (seedCampaignId) return seedCampaignId
       }
       if (attempt < 4) await page.waitForTimeout(2000 * (attempt + 1))
     } catch {
@@ -199,6 +197,8 @@ export interface DisposableCanvassingSurveyFixture {
   scriptId: string
   scriptTitle: string
   entryCount: number
+  orderedAddresses: string[]
+  revisitAddress: string
 }
 
 export interface DisposableMappedCanvassingFixture {
@@ -359,7 +359,7 @@ export async function createDisposableCanvassingSurveyFixture(
     `/api/v1/campaigns/${campaignId}/surveys`,
     {
       title: `${labelPrefix} Survey ${suffix}`,
-      description: "Deterministic FIELD-07 inline survey fixture",
+      description: "Deterministic FIELD canvassing survey fixture",
     },
   )
   if (!surveyResp.ok()) {
@@ -399,6 +399,55 @@ export async function createDisposableCanvassingSurveyFixture(
     )
   }
 
+  const baseLatitude = 36 + Math.random()
+  const baseLongitude = -83 + Math.random()
+  const revisitAddress = "200 Survey Ave"
+  const voterConfigs = [
+    {
+      address: "100 Survey Ave",
+      latitude: baseLatitude + 0.0005,
+      longitude: baseLongitude + 0.0005,
+      residents: ["Casey", "Jordan"],
+    },
+    {
+      address: revisitAddress,
+      latitude: baseLatitude + 0.003,
+      longitude: baseLongitude + 0.003,
+      residents: ["Taylor"],
+    },
+    {
+      address: "300 Survey Ave",
+      latitude: baseLatitude + 0.006,
+      longitude: baseLongitude + 0.006,
+      residents: ["Morgan"],
+    },
+  ]
+
+  for (const [addressIndex, voterConfig] of voterConfigs.entries()) {
+    for (const [residentIndex, residentFirstName] of voterConfig.residents.entries()) {
+      const voterResp = await apiPostWithRetry(
+        page,
+        `/api/v1/campaigns/${campaignId}/voters`,
+        {
+          first_name: residentFirstName,
+          last_name: `${labelPrefix.replace(/\s+/g, "")}${suffix}${addressIndex}${residentIndex}`,
+          party: "IND",
+          registration_line1: voterConfig.address,
+          registration_city: "Testville",
+          registration_state: "GA",
+          registration_zip: "30000",
+          latitude: voterConfig.latitude,
+          longitude: voterConfig.longitude,
+        },
+      )
+      if (!voterResp.ok()) {
+        throw new Error(
+          `Fixture voter create failed: ${voterResp.status()} ${await voterResp.text()}`,
+        )
+      }
+    }
+  }
+
   const turfResp = await apiPostWithRetry(
     page,
     `/api/v1/campaigns/${campaignId}/turfs`,
@@ -408,11 +457,11 @@ export async function createDisposableCanvassingSurveyFixture(
         type: "Polygon",
         coordinates: [
           [
-            [-83.66, 32.86],
-            [-83.62, 32.86],
-            [-83.62, 32.83],
-            [-83.66, 32.83],
-            [-83.66, 32.86],
+            [baseLongitude - 0.01, baseLatitude - 0.01],
+            [baseLongitude + 0.02, baseLatitude - 0.01],
+            [baseLongitude + 0.02, baseLatitude + 0.02],
+            [baseLongitude - 0.01, baseLatitude + 0.02],
+            [baseLongitude - 0.01, baseLatitude - 0.01],
           ],
         ],
       },
@@ -462,12 +511,22 @@ export async function createDisposableCanvassingSurveyFixture(
       `Fixture walk list entries check failed: ${entriesResp.status()} ${await entriesResp.text()}`,
     )
   }
-  const entries = (await entriesResp.json()) as unknown[]
+  const entries = (await entriesResp.json()) as Array<{
+    voter: { registration_line1?: string | null }
+  }>
   const entryCount = entries.length
-  if (entryCount < 1) {
+  if (entryCount < 4) {
     throw new Error(
-      `Fixture walk list has no entries: ${walkListId}. Adjust turf boundary for seeded voters.`,
+      `Fixture walk list has too few entries for canvassing proof: ${walkListId} (${entryCount}).`,
     )
+  }
+
+  const orderedAddresses = Array.from(
+    new Set(entries.map((entry) => entry.voter.registration_line1 ?? "")),
+  ).filter(Boolean)
+
+  if (orderedAddresses.join("|") !== voterConfigs.map((voter) => voter.address).join("|")) {
+    throw new Error(`Fixture address order mismatch: ${orderedAddresses.join(", ")}`)
   }
 
   return {
@@ -477,6 +536,8 @@ export async function createDisposableCanvassingSurveyFixture(
     scriptId,
     scriptTitle,
     entryCount,
+    orderedAddresses,
+    revisitAddress,
   }
 }
 

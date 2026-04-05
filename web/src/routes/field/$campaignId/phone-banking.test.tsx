@@ -103,6 +103,18 @@ vi.mock("@/components/field/QuickStartCard", () => ({
   QuickStartCard: () => null,
 }))
 
+vi.mock("@/components/ui/button", () => ({
+  Button: ({ children, onClick, disabled, asChild, ...props }: any) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button>,
+}))
+
+vi.mock("@/components/ui/card", () => ({
+  Card: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardHeader: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardContent: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardFooter: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  CardTitle: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+}))
+
 vi.mock("@/components/ui/alert-dialog", () => ({
   AlertDialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -165,6 +177,9 @@ function createCallingSessionState() {
     handleEndSession: vi.fn(),
     handleCallStarted: vi.fn(),
     noEntriesAvailable: false,
+    claimFailure: null,
+    saveFailure: null,
+    retryLoad: vi.fn(),
   }
 }
 
@@ -262,9 +277,16 @@ describe("field phone banking route", () => {
     })
   })
 
-  it("keeps the answered draft open when save fails so the same voter can retry", async () => {
+  it("keeps the answered draft open and shows a persistent retry card when save fails", async () => {
     const submitCall = vi.fn().mockResolvedValue(false)
-    mockUseCallingSession.mockReturnValue(makeCallingSession({ submitCall }))
+    mockUseCallingSession.mockReturnValue(makeCallingSession({
+      submitCall,
+      saveFailure: {
+        title: "Couldn’t save this call yet",
+        detail: "boom",
+        actionLabel: "Retry save",
+      },
+    }))
 
     renderPage()
 
@@ -281,6 +303,10 @@ describe("field phone banking route", () => {
     await waitFor(() => expect(submitCall).toHaveBeenCalledTimes(1))
     expect(screen.getByText("Jane Doe")).toBeInTheDocument()
     expect(screen.getByLabelText("Call Notes")).toBeInTheDocument()
+    expect(screen.getByTestId("phone-banking-save-failure-card")).toBeInTheDocument()
+    expect(screen.getByText("boom")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry save" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Back to Hub" })).toBeInTheDocument()
   })
 
   it("allows answered calls without a script to save notes through the same record_call path", async () => {
@@ -304,6 +330,30 @@ describe("field phone banking route", () => {
       call_ended_at: expect.any(String),
       notes: "Reached voter and confirmed they plan to vote early.",
     })
+  })
+
+  it("renders a recoverable session-load failure card with retry and back actions", () => {
+    const retryLoad = vi.fn()
+    mockUseCallingSession.mockReturnValue(makeCallingSession({
+      isError: true,
+      claimFailure: {
+        title: "Couldn’t load your next calls",
+        detail: "Assignment claim failed.",
+        actionLabel: "Retry loading calls",
+      },
+      retryLoad,
+    }))
+
+    renderPage()
+
+    expect(screen.getByText("Couldn’t load your next calls")).toBeInTheDocument()
+    expect(screen.getByText("Assignment claim failed.")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading calls" }))
+    expect(retryLoad).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to Hub" }))
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/field/$campaignId", params: { campaignId: "campaign-1" } })
   })
 
   it("blocks answered submission when the survey question load fails", async () => {

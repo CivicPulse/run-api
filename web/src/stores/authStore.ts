@@ -88,10 +88,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user, isAuthenticated: true })
   },
 
+  // Logout invariant: OIDC user cleared → zustand state reset → redirect.
+  // Cleanup MUST run before signoutRedirect(): if the redirect throws
+  // (network error, mocked in tests, popup blocked) local state is still
+  // consistent. See QUAL-03/QUAL-04.
   logout: async () => {
     const mgr = await ensureUserManager()
-    await mgr.signoutRedirect()
+    await mgr.removeUser()
     set({ user: null, isAuthenticated: false })
+    await mgr.signoutRedirect()
   },
 
   getAccessToken: () => {

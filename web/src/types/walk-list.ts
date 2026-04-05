@@ -29,11 +29,18 @@ export interface CanvasserAssignment {
   user_id: string
 }
 
+export interface DoorKnockSurveyResponse {
+  question_id: string
+  answer_value: string
+}
+
 export interface DoorKnockCreate {
   walk_list_entry_id: string
   voter_id: string
   result_code: string
   notes?: string
+  survey_responses?: DoorKnockSurveyResponse[]
+  survey_complete?: boolean
   latitude?: number
   longitude?: number
 }

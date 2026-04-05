@@ -364,8 +364,15 @@ class TestCampaignService:
         mock_result.scalars.return_value.all.return_value = campaigns
         mock_db.execute = AsyncMock(return_value=mock_result)
 
+        from app.core.security import AuthenticatedUser, CampaignRole
+
+        user = AuthenticatedUser(
+            id="user-abc",
+            org_id="zitadel-org-test",
+            role=CampaignRole.VIEWER,
+        )
         items, pagination = await service.list_campaigns(
-            db=mock_db, limit=10, cursor=None
+            db=mock_db, user=user, limit=10, cursor=None
         )
 
         assert len(items) == 3

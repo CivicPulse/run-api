@@ -4,6 +4,9 @@ import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useCanvassingStore } from "@/stores/canvassingStore"
 import type { EnrichedWalkListEntry } from "@/types/canvassing"
 
+const mutateAsync = vi.fn()
+const skipMutate = vi.fn()
+
 const entries: EnrichedWalkListEntry[] = [
   {
     id: "entry-a",
@@ -51,20 +54,25 @@ const entries: EnrichedWalkListEntry[] = [
   },
 ]
 
+const toastError = vi.hoisted(() => vi.fn())
+
 vi.mock("@/hooks/useCanvassing", () => ({
   useEnrichedEntries: vi.fn(() => ({ data: entries, isLoading: false, isError: false })),
-  useDoorKnockMutation: vi.fn(() => ({ mutate: vi.fn() })),
-  useSkipEntryMutation: vi.fn(() => ({ mutate: vi.fn() })),
+  useDoorKnockMutation: vi.fn(() => ({ mutateAsync, isPending: false })),
+  useSkipEntryMutation: vi.fn(() => ({ mutate: skipMutate })),
 }))
 
 vi.mock("sonner", () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
+  toast: Object.assign(vi.fn(), { error: toastError, success: vi.fn() }),
 }))
 
 describe("useCanvassingWizard", () => {
   beforeEach(() => {
     sessionStorage.clear()
     useCanvassingStore.getState().reset()
+    mutateAsync.mockReset()
+    skipMutate.mockReset()
+    toastError.mockReset()
   })
 
   test("keeps the active household pinned while reordering the remaining route by distance", async () => {
@@ -98,4 +106,88 @@ describe("useCanvassingWizard", () => {
       expect(result.current.currentAddressIndex).toBe(0)
     })
   })
+
+  test("holds contact outcomes as drafts until the final submit path runs", async () => {
+    mutateAsync.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    const outcome = await result.current.handleOutcome("entry-a", "voter-a", "supporter")
+
+    expect(outcome).toEqual({ surveyTrigger: true })
+    expect(mutateAsync).not.toHaveBeenCalled()
+    expect(useCanvassingStore.getState().completedEntries).toEqual({})
+
+    const submission = await result.current.handleSubmitContact({
+      entryId: "entry-a",
+      voterId: "voter-a",
+      result: "supporter",
+      notes: "Met voter at the door.",
+      surveyResponses: [{ question_id: "q-1", answer_value: "Supporter" }],
+      surveyComplete: true,
+    })
+
+    expect(submission.saved).toBe(true)
+    expect(submission.failure).toBeNull()
+    expect(mutateAsync).toHaveBeenCalledWith({
+      walk_list_entry_id: "entry-a",
+      voter_id: "voter-a",
+      result_code: "supporter",
+      notes: "Met voter at the door.",
+      survey_responses: [{ question_id: "q-1", answer_value: "Supporter" }],
+      survey_complete: true,
+    })
+  })
+
+  test("keeps the active door stable when final submit fails", async () => {
+    mutateAsync.mockRejectedValue(new Error("boom"))
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    const submission = await result.current.handleSubmitContact({
+      entryId: "entry-a",
+      voterId: "voter-a",
+      result: "supporter",
+      notes: "Need retry.",
+      surveyResponses: [{ question_id: "q-1", answer_value: "Supporter" }],
+      surveyComplete: true,
+    })
+
+    expect(submission.saved).toBe(false)
+    expect(submission.failure).toEqual({
+      title: "Couldn’t save this door knock yet",
+      detail: "boom",
+      actionLabel: "Retry save",
+    })
+    expect(useCanvassingStore.getState().completedEntries).toEqual({})
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(0)
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  test("auto-advances after non-contact saves on the same submit path", async () => {
+    mutateAsync.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    const outcome = await result.current.handleOutcome("entry-a", "voter-a", "not_home")
+
+    expect(outcome).toEqual({})
+    expect(mutateAsync).toHaveBeenCalledWith({
+      walk_list_entry_id: "entry-a",
+      voter_id: "voter-a",
+      result_code: "not_home",
+    })
+  })
+
+  test("skips the current address back into the queue and advances to the next door", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    await waitFor(() => {
+      expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
+      expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+    })
+    expect(skipMutate).toHaveBeenCalledWith("entry-a")
+  })
 })
+

@@ -15,6 +15,12 @@ import type { SessionStats, CallingEntry } from "@/types/calling"
 import type { CallListEntry } from "@/types/call-list"
 import type { RecordCallPayload } from "@/types/phone-bank-session"
 
+export interface CallingSessionFailureState {
+  title: string
+  detail: string
+  actionLabel: string
+}
+
 const BATCH_SIZE = 5
 const PREFETCH_THRESHOLD = 2
 
@@ -56,6 +62,17 @@ function isRecordCallResponse(value: unknown): value is {
     && "interaction_id" in value
     && typeof value.interaction_id === "string"
   )
+}
+
+function toVolunteerSafeMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const detail = error.message.trim()
+    if (detail.length > 0) {
+      return detail
+    }
+  }
+
+  return fallback
 }
 
 export function useCallingSession(campaignId: string, sessionId: string) {
@@ -122,6 +139,8 @@ export function useCallingSession(campaignId: string, sessionId: string) {
   const sessionRef = useRef<string | null>(null)
   const [noEntries, setNoEntries] = useState(false)
   const [claimError, setClaimError] = useState(false)
+  const [claimFailure, setClaimFailure] = useState<CallingSessionFailureState | null>(null)
+  const [saveFailure, setSaveFailure] = useState<CallingSessionFailureState | null>(null)
   const [isSubmittingCall, setIsSubmittingCall] = useState(false)
   const advanceRef = useRef(advanceEntry)
   useLayoutEffect(() => { advanceRef.current = advanceEntry })
@@ -135,6 +154,8 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     noEntriesRef.current = false
     setNoEntries(false)
     setClaimError(false)
+    setClaimFailure(null)
+    setSaveFailure(null)
     setIsSubmittingCall(false)
   }, [sessionId])
 
@@ -179,9 +200,17 @@ export function useCallingSession(campaignId: string, sessionId: string) {
           }
           startSession(sessionId, callListId, claimed.map(toCallingEntry))
         })
-        .catch(() => {
+        .catch((error) => {
           toast.error("Couldn't load voters. The call list may not be ready yet.")
           setClaimError(true)
+          setClaimFailure({
+            title: "Couldn’t load your next calls",
+            detail: toVolunteerSafeMessage(
+              error,
+              "Your assignment is still reserved for you, but we couldn’t load the voter list. Retry from this screen or head back to the hub if the issue keeps happening.",
+            ),
+            actionLabel: "Retry loading calls",
+          })
         })
 
     checkIn.mutate(undefined, {
@@ -263,10 +292,16 @@ export function useCallingSession(campaignId: string, sessionId: string) {
       }
 
       setIsSubmittingCall(true)
+      setSaveFailure(null)
 
       try {
         const response = await recordCall.mutateAsync(payload)
         if (!isRecordCallResponse(response)) {
+          setSaveFailure({
+            title: "Couldn’t save this call yet",
+            detail: "The server response was incomplete, so nothing was advanced. Review the call and retry from the same voter.",
+            actionLabel: "Retry save",
+          })
           toast.error("The call save response was invalid. Please review and try again.")
           return false
         }
@@ -274,7 +309,15 @@ export function useCallingSession(campaignId: string, sessionId: string) {
         recordOutcome(payload.call_list_entry_id, payload.result_code)
         advanceEntry()
         return true
-      } catch {
+      } catch (error) {
+        setSaveFailure({
+          title: "Couldn’t save this call yet",
+          detail: toVolunteerSafeMessage(
+            error,
+            "Your call notes are still here so you can retry from the same voter without losing context.",
+          ),
+          actionLabel: "Retry save",
+        })
         toast.error("Failed to record call. Your draft is still here so you can retry.")
         return false
       } finally {
@@ -303,6 +346,16 @@ export function useCallingSession(campaignId: string, sessionId: string) {
     [setCallStarted],
   )
 
+  const retryLoad = useCallback(() => {
+    setClaimError(false)
+    setClaimFailure(null)
+    initRef.current = false
+    prefetchRef.current = false
+    noEntriesRef.current = false
+    setNoEntries(false)
+    void sessionQuery.refetch()
+  }, [sessionQuery])
+
   return {
     currentEntry,
     completedCount,
@@ -320,6 +373,9 @@ export function useCallingSession(campaignId: string, sessionId: string) {
       ),
     isError: sessionQuery.isError || sessionDetailMalformed || claimError,
     error: sessionQuery.error,
+    claimFailure,
+    saveFailure,
+    retryLoad,
     scriptId,
     selectedPhoneNumber,
     callStartedAt,

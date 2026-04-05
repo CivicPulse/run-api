@@ -18,7 +18,7 @@ import { useAuthStore } from "@/stores/authStore"
 import { useTourStore, tourKey } from "@/stores/tourStore"
 import { canvassingSteps } from "@/components/field/tour/tourSteps"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, List, LocateFixed, ListOrdered } from "lucide-react"
 import { toast } from "sonner"
@@ -45,7 +45,9 @@ function Canvassing() {
     isComplete,
     isLoading,
     isError,
+    isSavingDoorKnock,
     handleOutcome,
+    handleSubmitContact,
     handlePostSurveyAdvance,
     handleSkipAddress,
     handleBulkNotHome,
@@ -87,11 +89,18 @@ function Canvassing() {
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: walkListDetail } = useWalkList(campaignId, walkListId)
-  const scriptId = walkListDetail?.script_id
+  const scriptId = walkListDetail?.script_id ?? ""
 
   const [surveyOpen, setSurveyOpen] = useState(false)
-  const [surveyVoterId, setSurveyVoterId] = useState<string | null>(null)
+  const [draftEntryId, setDraftEntryId] = useState<string | null>(null)
+  const [draftVoterId, setDraftVoterId] = useState<string | null>(null)
+  const [draftOutcome, setDraftOutcome] = useState<Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused"> | null>(null)
   const [listViewOpen, setListViewOpen] = useState(false)
+  const [saveFailure, setSaveFailure] = useState<{
+    title: string
+    detail: string
+    actionLabel: string
+  } | null>(null)
 
   const navigationKey = `${currentAddressIndex}:${activeEntryId ?? ""}:${isComplete ? 1 : 0}`
   const [outcomeAnnouncement, setOutcomeAnnouncement] = useState<{
@@ -109,6 +118,17 @@ function Canvassing() {
         .join(" ") || "Unknown Voter"
     )
   }, [currentHousehold, activeEntryId])
+
+  const draftVoterName = useMemo(() => {
+    if (!currentHousehold || !draftEntryId) return ""
+    const entry = currentHousehold.entries.find((e) => e.id === draftEntryId)
+    if (!entry) return ""
+    return (
+      [entry.voter.first_name, entry.voter.last_name]
+        .filter(Boolean)
+        .join(" ") || "Unknown Voter"
+    )
+  }, [currentHousehold, draftEntryId])
 
   useResumePrompt({
     walkListId: walkListId || null,
@@ -144,21 +164,36 @@ function Canvassing() {
     checkMilestone(completedAddresses, totalAddresses, key)
   }, [completedAddresses, totalAddresses, walkListId])
 
-  const handleSurveyComplete = useCallback(() => {
+  const closeDraft = useCallback(() => {
     setSurveyOpen(false)
-    setSurveyVoterId(null)
+    setDraftEntryId(null)
+    setDraftVoterId(null)
+    setDraftOutcome(null)
+    setSaveFailure(null)
+  }, [])
+
+  const handleSurveyComplete = useCallback(() => {
+    closeDraft()
     handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+  }, [closeDraft, handlePostSurveyAdvance])
 
   const handleSurveySkip = useCallback(() => {
-    setSurveyOpen(false)
-    setSurveyVoterId(null)
-    handlePostSurveyAdvance()
-  }, [handlePostSurveyAdvance])
+    closeDraft()
+  }, [closeDraft])
 
   const handleOutcomeWithBulk = useCallback(
-    (entryId: string, voterId: string, result: string) => {
-      handleOutcome(entryId, voterId, result as DoorKnockResultCode)
+    async (entryId: string, voterId: string, result: string) => {
+      const outcome = result as DoorKnockResultCode
+      const outcomeResult = await handleOutcome(entryId, voterId, outcome)
+
+      if (outcomeResult.surveyTrigger) {
+        setDraftEntryId(entryId)
+        setDraftVoterId(voterId)
+        setDraftOutcome(outcome as Extract<DoorKnockResultCode, "supporter" | "undecided" | "opposed" | "refused">)
+        setSaveFailure(null)
+        setSurveyOpen(true)
+        return
+      }
 
       const voterEntry = currentHousehold?.entries.find(
         (e) => e.id === entryId,
@@ -170,31 +205,32 @@ function Canvassing() {
             .join(" ") || "Unknown Voter"
         setOutcomeAnnouncement({
           key: navigationKey,
-          message: `${OUTCOME_LABELS[result as DoorKnockResultCode]} recorded for ${voterName}.`,
+          message: `${OUTCOME_LABELS[outcome]} recorded for ${voterName}.`,
         })
       }
 
-      if (
-        result === "not_home" &&
-        currentHousehold &&
-        currentHousehold.entries.length > 1
-      ) {
+      if (outcomeResult.bulkPrompt && currentHousehold) {
         const remaining = currentHousehold.entries.filter(
           (e) =>
             e.id !== entryId &&
             completedEntries[e.id] === undefined &&
             !skippedEntries.includes(e.id),
         )
-        const previouslyCompleted = currentHousehold.entries.filter(
-          (e) => e.id !== entryId && completedEntries[e.id] !== undefined,
-        )
-        if (remaining.length > 0 && previouslyCompleted.length === 0) {
+        if (remaining.length > 0) {
           toast(
             `Apply to all ${remaining.length + 1} voters at this address?`,
             {
               action: {
                 label: "Yes",
-                onClick: () => handleBulkNotHome(remaining),
+                onClick: async () => {
+                  const bulkSaved = await handleBulkNotHome(remaining)
+                  if (bulkSaved) {
+                    setOutcomeAnnouncement({
+                      key: navigationKey,
+                      message: `Not Home recorded for ${remaining.length + 1} voters at ${currentHousehold.address}.`,
+                    })
+                  }
+                },
               },
               cancel: {
                 label: "No",
@@ -204,12 +240,6 @@ function Canvassing() {
             },
           )
         }
-        return
-      }
-
-      if (SURVEY_TRIGGER_OUTCOMES.has(result as DoorKnockResultCode) && scriptId) {
-        setSurveyVoterId(voterId)
-        setSurveyOpen(true)
       }
     },
     [
@@ -218,10 +248,39 @@ function Canvassing() {
       handleBulkNotHome,
       handleOutcome,
       navigationKey,
-      scriptId,
       skippedEntries,
     ],
   )
+
+  const handleSubmitContactDraft = useCallback(async (
+    draft: {
+      notes: string
+      surveyResponses: Array<{ question_id: string; answer_value: string }>
+      surveyComplete: boolean
+    },
+  ) => {
+    if (!draftEntryId || !draftVoterId || !draftOutcome) return
+
+    setSaveFailure(null)
+    const submission = await handleSubmitContact({
+      entryId: draftEntryId,
+      voterId: draftVoterId,
+      result: draftOutcome,
+      notes: draft.notes,
+      surveyResponses: draft.surveyResponses,
+      surveyComplete: draft.surveyComplete,
+    })
+    if (!submission.saved) {
+      setSaveFailure(submission.failure)
+      return
+    }
+
+    setOutcomeAnnouncement({
+      key: navigationKey,
+      message: `${OUTCOME_LABELS[draftOutcome]} recorded for ${draftVoterName || "Unknown Voter"}.`,
+    })
+    closeDraft()
+  }, [closeDraft, draftEntryId, draftOutcome, draftVoterId, draftVoterName, handleSubmitContact, navigationKey])
 
   const requestDistanceOrder = useCallback(
     (refreshLocation = false) => {
@@ -383,6 +442,31 @@ function Canvassing() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
+        {saveFailure && draftEntryId && draftVoterId && draftOutcome && (
+          <Card className="border-destructive/40 bg-destructive/5" data-testid="canvassing-save-failure-card">
+            <CardHeader className="gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                {saveFailure.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>{saveFailure.detail}</p>
+              <p>
+                You&apos;re still on {draftVoterName || activeVoterName || "this voter"}. Review the answers below and retry when you&apos;re ready.
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={handleSurveySkip}>
+                Back to hub
+              </Button>
+              <Button type="button" onClick={() => setSaveFailure(null)}>
+                {saveFailure.actionLabel}
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
         {currentHousehold && (
           <>
             <CanvassingMap
@@ -460,6 +544,7 @@ function Canvassing() {
                 household={currentHousehold}
                 activeEntryId={activeEntryId}
                 completedEntries={completedEntries}
+                skippedEntries={skippedEntries}
                 currentDoorNumber={currentAddressIndex + 1}
                 totalDoors={totalAddresses}
                 sortMode={sortMode}
@@ -471,15 +556,17 @@ function Canvassing() {
         )}
       </div>
 
-      {scriptId && surveyVoterId && (
+      {draftEntryId && draftVoterId && draftOutcome && (
         <InlineSurvey
+          mode="controlled"
           campaignId={campaignId}
           scriptId={scriptId}
-          voterId={surveyVoterId}
           open={surveyOpen}
-          onComplete={handleSurveyComplete}
           onSkip={handleSurveySkip}
-          voterName={activeVoterName}
+          voterName={draftVoterName || activeVoterName}
+          onSubmitDraft={handleSubmitContactDraft}
+          isSubmitting={isSavingDoorKnock}
+          submitLabel="Save Door Knock"
         />
       )}
 

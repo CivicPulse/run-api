@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Navigate, useParams, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -239,6 +239,14 @@ function DangerZone() {
   )
 }
 
+function GuardedDangerZone() {
+  return (
+    <RequireRole minimum="owner" fallback={<Navigate to="/" />}>
+      <DangerZone />
+    </RequireRole>
+  )
+}
+
 export const Route = createFileRoute("/campaigns/$campaignId/settings/danger")({
-  component: DangerZone,
+  component: GuardedDangerZone,
 })

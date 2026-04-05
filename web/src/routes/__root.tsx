@@ -1,6 +1,7 @@
 import {
   createRootRoute,
   Link,
+  Navigate,
   Outlet,
   useNavigate,
   useRouterState,
@@ -240,9 +241,18 @@ function RootLayout() {
     )
   }
 
-  // Public routes don't need the sidebar shell
   const isPublicRoute = PUBLIC_ROUTES.some((r) => location.pathname.startsWith(r))
-  if (!isAuthenticated || isPublicRoute) {
+
+  // Unauthenticated user hitting a non-public route → instant redirect to
+  // /login with the original path preserved in the redirect query param
+  // (SEC-07 / C7 fix, D-01).
+  if (!isAuthenticated && !isPublicRoute) {
+    const target = location.pathname + (location.searchStr ?? "")
+    return <Navigate to="/login" search={{ redirect: target }} />
+  }
+
+  // Public routes render the minimal shell (no sidebar/layout)
+  if (isPublicRoute) {
     return (
       <div className="min-h-svh bg-background text-foreground">
         <main id="main-content" className="flex-1">

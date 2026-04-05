@@ -25,22 +25,44 @@ function getHouseholdStatus(
   household: Household,
   completedEntries: Record<string, string>,
   skippedEntries: string[],
-): { label: string; className: string } {
-  const allVisited = household.entries.every(
+): { label: string; className: string; detail: string } {
+  const visitedCount = household.entries.filter(
     (e) => completedEntries[e.id] !== undefined,
-  )
-  if (allVisited) {
-    return { label: "Visited", className: "bg-status-success text-status-success-foreground border-transparent" }
-  }
-
-  const allSkipped = household.entries.every((e) =>
+  ).length
+  const skippedCount = household.entries.filter((e) =>
     skippedEntries.includes(e.id),
-  )
-  if (allSkipped) {
-    return { label: "Skipped", className: "bg-status-neutral text-status-neutral-foreground border-transparent" }
+  ).length
+  const pendingCount = household.entries.length - visitedCount - skippedCount
+
+  if (visitedCount === household.entries.length) {
+    return {
+      label: "Visited",
+      className: "bg-status-success text-status-success-foreground border-transparent",
+      detail: "Everyone at this address is recorded.",
+    }
   }
 
-  return { label: "Pending", className: "" }
+  if (skippedCount === household.entries.length) {
+    return {
+      label: "Skipped",
+      className: "bg-status-neutral text-status-neutral-foreground border-transparent",
+      detail: "Skipped for now and kept in your queue.",
+    }
+  }
+
+  if (visitedCount > 0 || skippedCount > 0) {
+    return {
+      label: `${pendingCount} left`,
+      className: "bg-status-warning text-status-warning-foreground border-transparent",
+      detail: `${visitedCount} visited, ${skippedCount} skipped, ${pendingCount} still pending.`,
+    }
+  }
+
+  return {
+    label: "Pending",
+    className: "",
+    detail: "No one at this address has been handled yet.",
+  }
 }
 
 export function DoorListView({
@@ -93,41 +115,48 @@ export function DoorListView({
                 aria-label={`Jump to door ${index + 1}, ${household.address}, ${status.label}`}
                 data-testid={`door-list-item-${index + 1}`}
                 className={cn(
-                  "flex items-center w-full px-4 py-3 min-h-11 text-left border-b gap-2",
+                  "flex items-start w-full px-4 py-3 min-h-11 text-left border-b gap-2",
                   isCurrent && "bg-accent",
                 )}
               >
-                <span className="text-sm font-medium min-w-8">{index + 1}.</span>
-                <span className="flex-1 text-sm truncate">
-                  {household.address}
-                </span>
-                {isCurrent && (
-                  <Badge variant="secondary" className="text-xs">
-                    Current
-                  </Badge>
-                )}
-                <Badge
-                  variant={status.label === "Pending" ? "outline" : "default"}
-                  className={cn("text-xs", status.className)}
-                >
-                  {status.label}
-                </Badge>
-                {hasAddress(household.entries[0].voter) ? (
-                  <a
-                    href={getGoogleMapsUrl(household.entries[0].voter)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 shrink-0"
-                    aria-label={`Navigate to ${household.address}`}
-                  >
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                ) : (
-                  <span className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 shrink-0" aria-hidden="true">
-                    <MapPin className="h-4 w-4 text-muted-foreground/30" />
+                <span className="text-sm font-medium min-w-8 pt-0.5">{index + 1}.</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm truncate">
+                    {household.address}
                   </span>
-                )}
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    {status.detail}
+                  </span>
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isCurrent && (
+                    <Badge variant="secondary" className="text-xs">
+                      Current
+                    </Badge>
+                  )}
+                  <Badge
+                    variant={status.label === "Pending" ? "outline" : "default"}
+                    className={cn("text-xs", status.className)}
+                  >
+                    {status.label}
+                  </Badge>
+                  {hasAddress(household.entries[0].voter) ? (
+                    <a
+                      href={getGoogleMapsUrl(household.entries[0].voter)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 shrink-0"
+                      aria-label={`Navigate to ${household.address}`}
+                    >
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 shrink-0" aria-hidden="true">
+                      <MapPin className="h-4 w-4 text-muted-foreground/30" />
+                    </span>
+                  )}
+                </div>
               </button>
             )
           })}

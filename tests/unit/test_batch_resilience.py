@@ -600,6 +600,16 @@ def test_settings_has_orphan_threshold():
     assert s.import_orphan_threshold_minutes == 30
 
 
+def test_settings_has_chunk_defaults():
+    """Chunk settings expose conservative defaults while chunks stay internal."""
+    from app.core.config import Settings
+
+    s = Settings()
+    assert s.import_chunk_size_default == 10000
+    assert s.import_max_chunks_per_import == 4
+    assert s.import_serial_threshold == 10000
+
+
 def test_response_schema_has_last_committed_row():
     """ImportJobResponse schema includes last_committed_row field."""
     from app.schemas.import_job import ImportJobResponse
@@ -621,6 +631,28 @@ def test_model_has_recovery_metadata_fields():
         assert hasattr(ImportJob, field)
 
 
+def test_import_chunk_model_has_durable_fields():
+    """ImportChunk model exposes durable state needed for later fan-out phases."""
+    from app.models.import_job import ImportChunk
+
+    for field in (
+        "campaign_id",
+        "import_job_id",
+        "row_start",
+        "row_end",
+        "status",
+        "imported_rows",
+        "skipped_rows",
+        "last_committed_row",
+        "error_report_key",
+        "error_message",
+        "last_progress_at",
+        "created_at",
+        "updated_at",
+    ):
+        assert hasattr(ImportChunk, field)
+
+
 def test_response_schema_has_recovery_metadata_fields():
     """ImportJobResponse schema exposes recovery metadata fields."""
     from app.schemas.import_job import ImportJobResponse
@@ -631,6 +663,7 @@ def test_response_schema_has_recovery_metadata_fields():
         "orphaned_reason",
         "source_exhausted_at",
         "recovery_started_at",
+        "error_report_url",
     ):
         assert field in ImportJobResponse.model_fields
 

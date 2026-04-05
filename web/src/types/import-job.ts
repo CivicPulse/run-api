@@ -6,6 +6,7 @@ export type ImportStatus =
   | "cancelling"
   | "cancelled"
   | "completed"
+  | "completed_with_errors"
   | "failed"
 
 export interface ImportJob {
@@ -17,14 +18,21 @@ export interface ImportJob {
   imported_rows: number
   skipped_rows: number
   error_report_key: string | null
+  error_report_url: string | null
   error_message: string | null
   cancelled_at: string | null
   phones_created: number | null
   source_type: string
   field_mapping: Record<string, string> | null
   created_by: string
+  last_committed_row?: number | null
+  processing_started_at?: string | null
+  last_progress_at?: string | null
   created_at: string
   updated_at: string
+  detected_columns: string[] | null
+  suggested_mapping: Record<string, FieldMapping> | null
+  format_detected: "l2" | "generic" | null
 }
 
 export interface ImportUploadResponse {

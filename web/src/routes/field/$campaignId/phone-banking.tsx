@@ -11,7 +11,7 @@ import { useFieldMe } from "@/hooks/useFieldMe"
 import { CALL_OUTCOME_CONFIGS } from "@/types/calling"
 import { buildRecordCallPayload } from "@/types/phone-bank-session"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +55,9 @@ function PhoneBanking() {
     handleEndSession,
     handleCallStarted,
     noEntriesAvailable,
+    claimFailure,
+    saveFailure,
+    retryLoad,
   } = useCallingSession(campaignId, sessionId)
 
   // Tour auto-trigger
@@ -234,13 +237,26 @@ function PhoneBanking() {
     return (
       <div className="flex flex-col h-full">
         <div className="flex flex-1 items-center justify-center p-4">
-          <Card className="p-6 text-center max-w-sm">
-            <AlertCircle className="h-10 w-10 mx-auto mb-3 text-destructive" />
-            <h2 className="text-lg font-semibold mb-2">Something Went Wrong</h2>
-            <p className="text-sm text-muted-foreground">
-              Couldn&apos;t load your calling session. Check your connection and
-              try again.
-            </p>
+          <Card className="max-w-sm p-0 text-center">
+            <CardHeader className="items-center gap-3">
+              <AlertCircle className="h-10 w-10 text-destructive" />
+              <CardTitle className="text-lg font-semibold">
+                {claimFailure?.title ?? "Couldn’t load your calling session"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                {claimFailure?.detail ?? "Check your connection and retry loading this assignment. If the problem keeps happening, go back to the field hub and ask an organizer to confirm your phone-banking assignment."}
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Button type="button" variant="outline" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
+                Back to Hub
+              </Button>
+              <Button type="button" onClick={retryLoad}>
+                {claimFailure?.actionLabel ?? "Retry session load"}
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </div>
@@ -280,6 +296,33 @@ function PhoneBanking() {
   // Main calling layout
   return (
     <div className="flex flex-col h-full">
+      {saveFailure && currentEntry && (
+        <div className="px-4 pt-4">
+          <Card className="border-destructive/40 bg-destructive/5" data-testid="phone-banking-save-failure-card">
+            <CardHeader className="gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                {saveFailure.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>{saveFailure.detail}</p>
+              <p>
+                You&apos;re still on {currentEntry.voter_name || "this voter"}. Review the call details below and retry when you&apos;re ready.
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
+                Back to Hub
+              </Button>
+              <Button type="button" onClick={() => setSurveyOpen(true)}>
+                {saveFailure.actionLabel}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
       {/* Custom header with back arrow that opens end session dialog */}
       <nav aria-label="Field navigation">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background px-4">
