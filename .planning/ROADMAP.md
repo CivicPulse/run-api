@@ -212,11 +212,12 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. Duplicate `Settings` fields (`trusted_proxy_cidrs`, `rate_limit_unauthenticated`) are removed and the docker-compose default is `DISABLE_RATE_LIMIT=false`
   4. Request-logging middleware only resolves client IP via the trusted-proxy CIDR check
   5. DNC CSV uploads enforce a max file size before reading, and import filenames are sanitized before use in S3 object keys
-**Plans**: 4 plans
-- [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
-- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
-- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
-- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
+**Plans**: 5 plans
+- [ ] 76-01-PLAN.md — Wave 0 failing test stubs for all 7 REL fixes (Wave 0)
+- [ ] 76-02-PLAN.md — Config hygiene: Settings dedup + docker-compose rate-limit default + alembic.ini interpolation (Wave 1)
+- [ ] 76-03-PLAN.md — Timeouts: ZitadelService 10s + DB engine pool/statement timeouts (Wave 1)
+- [ ] 76-04-PLAN.md — Upload safety: DNC 10MB cap + import filename sanitization (Wave 1)
+- [ ] 76-05-PLAN.md — Request-logging trusted-proxy IP check (Wave 2)
 
 ### Phase 77: Quality, Accessibility & Test Coverage
 **Goal**: Field users get self-hosted assets, screen readers get proper labels, auth/logout paths are correct, and critical auth/data hooks have unit test coverage.
