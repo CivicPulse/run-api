@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
+import { AlertCircle } from "lucide-react"
 import { useAuthStore } from "@/stores/authStore"
 import { api } from "@/api/client"
 import { getConfig } from "@/config"
 import { getHighestRoleFromClaims } from "@/lib/auth-claims"
 import { isSafeRedirect } from "@/lib/safeRedirect"
 import { POST_LOGIN_REDIRECT_KEY } from "@/routes/login"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import type { UserCampaign } from "@/types/user"
 
 // Module-level flag prevents signinRedirectCallback() from being called
@@ -23,9 +26,11 @@ export function __resetCallbackProcessedForTests() {
 function CallbackPage() {
   const handleCallback = useAuthStore((state) => state.handleCallback)
   const navigate = useNavigate()
-  const { code, state } = Route.useSearch()
+  const { code, state, error, error_description } = Route.useSearch()
+  const hasError = Boolean(error || error_description)
 
   useEffect(() => {
+    if (hasError) return
     if (callbackProcessed) return
     callbackProcessed = true
 
@@ -80,7 +85,43 @@ function CallbackPage() {
         console.error("OIDC callback failed:", err)
         navigate({ to: "/login" })
       })
-  }, [handleCallback, navigate, code, state])
+  }, [handleCallback, navigate, code, state, hasError])
+
+  if (hasError) {
+    const primary = error_description
+      ? error_description
+      : error
+        ? `Sign-in error: ${error}`
+        : "Something went wrong during sign-in. Please try again."
+    const showSecondary = Boolean(error_description && error)
+
+    return (
+      <div className="flex h-svh items-center justify-center">
+        <div className="max-w-sm w-full mx-auto px-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Sign-in failed</AlertTitle>
+            <AlertDescription>
+              <p className="text-sm">{primary}</p>
+              {showSecondary && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Error code: {error}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="default"
+            className="w-full mt-4"
+            autoFocus
+            onClick={() => navigate({ to: "/login" })}
+          >
+            Back to login
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-svh items-center justify-center">
@@ -96,5 +137,7 @@ export const Route = createFileRoute("/callback")({
   validateSearch: (search: Record<string, unknown>) => ({
     code: (search.code as string) ?? "",
     state: (search.state as string) ?? "",
+    error: (search.error as string) ?? "",
+    error_description: (search.error_description as string) ?? "",
   }),
 })
