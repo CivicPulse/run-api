@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 75-04-PLAN.md
-last_updated: "2026-04-05T01:33:58.428Z"
+stopped_at: Completed 76-01-PLAN.md
+last_updated: "2026-04-05T01:52:21.306Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 25
+  completed_plans: 21
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 75 — Reliability — Frontend State & PII Hygiene
+**Current focus:** Phase 76 — Reliability — Backend Infrastructure
 
 ## Current Position
 
-Phase: 75 (Reliability — Frontend State & PII Hygiene) — EXECUTING
-Plan: 4 of 4
+Phase: 76 (Reliability — Backend Infrastructure) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 74]: C10: ON CONFLICT DO NOTHING over DO UPDATE — import semantics leave existing rows intact
 - [Phase 74]: C11 invite/transfer compensation: each inverse ZITADEL op isolated in its own try/except; original commit exception always propagates
 - [Phase 75]: D-H29 implementation: import canonical *Keys from dedicated hook files into useFieldOps (preserves single source of truth)
+- [Phase 76]: Wave 0 test scaffold: source-text assertions + direct ASGI middleware drive pattern established for reliability hardening tests
 
 ### Blockers/Concerns
 
@@ -70,7 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 75-04-PLAN.md
+Stopped at: Completed 76-01-PLAN.md
 Resume file: None
 
 ## Performance Metrics

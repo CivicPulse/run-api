@@ -213,7 +213,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. Request-logging middleware only resolves client IP via the trusted-proxy CIDR check
   5. DNC CSV uploads enforce a max file size before reading, and import filenames are sanitized before use in S3 object keys
 **Plans**: 5 plans
-- [ ] 76-01-PLAN.md — Wave 0 failing test stubs for all 7 REL fixes (Wave 0)
+- [x] 76-01-PLAN.md — Wave 0 failing test stubs for all 7 REL fixes (Wave 0)
 - [ ] 76-02-PLAN.md — Config hygiene: Settings dedup + docker-compose rate-limit default + alembic.ini interpolation (Wave 1)
 - [ ] 76-03-PLAN.md — Timeouts: ZitadelService 10s + DB engine pool/statement timeouts (Wave 1)
 - [ ] 76-04-PLAN.md — Upload safety: DNC 10MB cap + import filename sanitization (Wave 1)
@@ -258,5 +258,5 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
 | 74 | v1.12 | 4/4 | Complete   | 2026-04-05 |
 | 75 | v1.12 | 4/4 | Complete   | 2026-04-05 |
-| 76 | v1.12 | 0/0 | Not started | - |
+| 76 | v1.12 | 1/5 | In Progress|  |
 | 77 | v1.12 | 0/0 | Not started | - |
