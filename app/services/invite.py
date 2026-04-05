@@ -226,9 +226,31 @@ class InviteService:
             org_id=zitadel_org_id,
         )
 
-        invite.accepted_at = utcnow()
-        await db.commit()
-        await db.refresh(invite)
+        try:
+            invite.accepted_at = utcnow()
+            await db.commit()
+            await db.refresh(invite)
+        except Exception as commit_exc:
+            logger.error(
+                "DB commit failed for invite accept (invite_id={}): {}",
+                invite.id,
+                commit_exc,
+            )
+            await db.rollback()
+            try:
+                await zitadel.remove_project_role(
+                    settings.zitadel_project_id,
+                    user.id,
+                    invite.role,
+                    org_id=zitadel_org_id,
+                )
+            except Exception as cleanup_exc:
+                logger.error(
+                    "Failed to remove orphaned ZITADEL role after "
+                    "invite commit failure: {}",
+                    cleanup_exc,
+                )
+            raise
         logger.info(
             "Invite accepted by {} for campaign {} with role {}",
             user.id,
