@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 73-06-PLAN.md
-last_updated: "2026-04-05T00:15:38.816Z"
+stopped_at: Completed 74-01-PLAN.md
+last_updated: "2026-04-05T00:46:21.796Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 16
+  completed_plans: 13
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 73 — Frontend Auth Guards & OIDC Error Surfacing
+**Current focus:** Phase 74 — Data Integrity & Concurrency
 
 ## Current Position
 
-Phase: 73 (Frontend Auth Guards & OIDC Error Surfacing) — EXECUTING
-Plan: 6 of 6
+Phase: 74 (Data Integrity & Concurrency) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -54,6 +54,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 73]: Plan 73-05: removed manager -> org_admin auto-promotion in app/api/deps.py; manager is campaign-scoped only and should not bypass org_admin gates
 - [Phase 73]: 73-06: Guard wrapper + inner component split to keep hook order stable when gating ActiveCallingPage on server check-in
 - [Phase 73]: 73-06: 404 from callers/me modeled as notAssigned flag (not error); isError also redirects as fail-safe
+- [Phase 74]: Partial unique index via raw op.execute (matches procrastinate 017 pattern)
+- [Phase 74]: Duplicate backfill inside migration (DELETE USING self-join, keep MIN(id)) — dev-only DB
 
 ### Blockers/Concerns
 
@@ -64,7 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 73-06-PLAN.md
+Stopped at: Completed 74-01-PLAN.md
 Resume file: None
 
 ## Performance Metrics

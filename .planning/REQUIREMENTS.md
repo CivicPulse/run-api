@@ -34,11 +34,11 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 - [ ] **DATA-01**: Shift signup is race-free under concurrency: two concurrent signups at capacity never both succeed (C9)
 - [ ] **DATA-02**: DNC bulk import handles concurrent imports without raising IntegrityError to the client (C10)
 - [ ] **DATA-03**: `accept_invite` rolls back ZITADEL project-role grant if DB commit fails, leaving no orphaned grants (C11)
-- [ ] **DATA-04**: `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)` (C12)
-- [ ] **DATA-05**: Invite uniqueness on `(email, campaign_id)` only applies to pending invites (not-yet-accepted and not-revoked) (C13)
-- [ ] **DATA-06**: `VoterEmail` has a unique constraint on `(campaign_id, voter_id, value)` matching peer `VoterPhone` (H18)
-- [ ] **DATA-07**: `VolunteerTag` has a unique constraint on `(campaign_id, name)` matching peer `VoterTag` (H19)
-- [ ] **DATA-08**: `transfer_ownership` is atomic: ZITADEL role swap and DB member-role updates either all succeed or all roll back (H3)
+- [x] **DATA-04**: `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)` (C12)
+- [x] **DATA-05**: Invite uniqueness on `(email, campaign_id)` only applies to pending invites (not-yet-accepted and not-revoked) (C13)
+- [x] **DATA-06**: `VoterEmail` has a unique constraint on `(campaign_id, voter_id, value)` matching peer `VoterPhone` (H18)
+- [x] **DATA-07**: `VolunteerTag` has a unique constraint on `(campaign_id, name)` matching peer `VoterTag` (H19)
+- [x] **DATA-08**: `transfer_ownership` is atomic: ZITADEL role swap and DB member-role updates either all succeed or all roll back (H3)
 
 ### Reliability & Infrastructure
 
@@ -105,11 +105,11 @@ Each requirement maps to a finding in the 2026-04-04 review. Finding IDs (e.g. C
 | DATA-01 | Phase 74 | Pending |
 | DATA-02 | Phase 74 | Pending |
 | DATA-03 | Phase 74 | Pending |
-| DATA-04 | Phase 74 | Pending |
-| DATA-05 | Phase 74 | Pending |
-| DATA-06 | Phase 74 | Pending |
-| DATA-07 | Phase 74 | Pending |
-| DATA-08 | Phase 74 | Pending |
+| DATA-04 | Phase 74 | Complete |
+| DATA-05 | Phase 74 | Complete |
+| DATA-06 | Phase 74 | Complete |
+| DATA-07 | Phase 74 | Complete |
+| DATA-08 | Phase 74 | Complete |
 | REL-01 | Phase 75 | Pending |
 | REL-02 | Phase 75 | Pending |
 | REL-03 | Phase 75 | Pending |
