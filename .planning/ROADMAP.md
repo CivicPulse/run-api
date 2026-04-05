@@ -229,11 +229,12 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. Unit tests cover `authStore` (token storage, OIDC events, `switchOrg`, logout), `api/client.ts` (auth header, 401/403), `useOrgPermissions`, and OIDC callback error/null-user/no-campaigns paths
   4. `authStore.logout()` calls `removeUser()` and resets the store before `signoutRedirect()` so cleanup always runs
   5. `useOrgCampaigns` narrows its catch to `PermissionError` and 404 instead of swallowing all errors
-**Plans**: 4 plans
-- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
-- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
-- [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
-- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
+**Plans**: 5 plans
+- [ ] 77-01-PLAN.md — Leaflet self-host + 3-dialog a11y label fixes (Wave 1)
+- [ ] 77-02-PLAN.md — authStore.logout() reorder + authStore unit tests (Wave 1)
+- [ ] 77-03-PLAN.md — useOrgCampaigns catch narrowing + useOrg tests (Wave 1)
+- [ ] 77-04-PLAN.md — api/client.ts unit tests (Wave 2)
+- [ ] 77-05-PLAN.md — useOrgPermissions tests + callback.tsx error/null-user/no-campaigns tests (Wave 2)
 **UI hint**: yes
 
 ### Backlog / Parking Lot
