@@ -148,7 +148,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. Integration tests prove cross-org reads of organizations and memberships return no rows
 **Plans**: 4 plans
 - [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
-- [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
+- [x] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
 - [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
 - [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
 
@@ -182,7 +182,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   4. `voter_interactions` has composite indexes on `(campaign_id, voter_id)` and `(campaign_id, created_at)`; the same email/invite can be re-invited to a campaign once the previous invite is accepted or revoked
   5. `VoterEmail` has a unique `(campaign_id, voter_id, value)` constraint and `VolunteerTag` has a unique `(campaign_id, name)` constraint matching their peer models
 **Plans**: 4 plans
-- [ ] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
+- [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
 - [ ] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
 - [ ] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
 - [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
@@ -255,7 +255,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 | 71 | v1.12 | 3/3 | Complete   | 2026-04-04 |
 | 72 | v1.12 | 2/3 | In Progress|  |
 | 73 | v1.12 | 6/6 | Complete   | 2026-04-05 |
-| 74 | v1.12 | 1/4 | In Progress|  |
+| 74 | v1.12 | 2/4 | In Progress|  |
 | 75 | v1.12 | 0/0 | Not started | - |
 | 76 | v1.12 | 0/0 | Not started | - |
 | 77 | v1.12 | 0/0 | Not started | - |

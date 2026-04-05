@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Hardening & Remediation
 status: executing
-stopped_at: Completed 74-01-PLAN.md
-last_updated: "2026-04-05T00:46:21.796Z"
+stopped_at: Completed 74-02-PLAN.md
+last_updated: "2026-04-05T00:50:19.314Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 74 (Data Integrity & Concurrency) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -56,6 +56,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 73]: 73-06: 404 from callers/me modeled as notAssigned flag (not error); isError also redirects as fail-safe
 - [Phase 74]: Partial unique index via raw op.execute (matches procrastinate 017 pattern)
 - [Phase 74]: Duplicate backfill inside migration (DELETE USING self-join, keep MIN(id)) — dev-only DB
+- [Phase 74]: C9: Lock at _get_shift_raw (single chokepoint) — all 8 callers are write paths
+- [Phase 74]: C10: ON CONFLICT DO NOTHING over DO UPDATE — import semantics leave existing rows intact
 
 ### Blockers/Concerns
 
@@ -66,7 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last activity: 2026-04-04 — Roadmap created for v1.12 (phases 71-77)
-Stopped at: Completed 74-01-PLAN.md
+Stopped at: Completed 74-02-PLAN.md
 Resume file: None
 
 ## Performance Metrics
