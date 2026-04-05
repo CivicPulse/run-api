@@ -197,10 +197,10 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
   3. `callingStore` never persists voter PII to sessionStorage (either partialized or sanitized on rehydrate, matching `canvassingStore`)
   4. `useFieldOps` hooks share query keys with their dedicated hook files so mutations invalidate all consumers
 **Plans**: 4 plans
-- [x] 74-01-PLAN.md — Migration 027 + model __table_args__ + integration test scaffold (Wave 1)
-- [x] 74-02-PLAN.md — C9 shift signup SELECT FOR UPDATE + C10 DNC ON CONFLICT (Wave 2)
-- [x] 74-03-PLAN.md — C11 accept_invite + transfer_ownership compensating tx (Wave 2, parallel with 02)
-- [ ] 74-04-PLAN.md — Unit test repairs + phase summary (Wave 3)
+- [ ] 75-01-PLAN.md — Failing Vitest test stubs for C14/C15/C16/H29 (Wave 0)
+- [ ] 75-02-PLAN.md — Sync engine try/finally lock + continue + MAX_RETRY removal+toast (Wave 1)
+- [ ] 75-03-PLAN.md — callingStore PII sanitizer (partialize + rehydrate merge) (Wave 1)
+- [ ] 75-04-PLAN.md — useFieldOps query key alignment with dedicated hook files (Wave 2)
 
 ### Phase 76: Reliability — Backend Infrastructure
 **Goal**: HTTP clients, DB connections, rate limits, uploads, and log IP resolution have the defaults and safeguards needed for production.
