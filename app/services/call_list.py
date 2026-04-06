@@ -215,6 +215,7 @@ class CallListService:
         call_list_id: uuid.UUID,
         caller_id: str,
         batch_size: int = 5,
+        campaign_id: uuid.UUID | None = None,
     ) -> list[CallListEntry]:
         """Claim a batch of entries using FOR UPDATE SKIP LOCKED.
 
@@ -225,6 +226,7 @@ class CallListService:
             call_list_id: The call list UUID.
             caller_id: The caller user ID.
             batch_size: Number of entries to claim.
+            campaign_id: Campaign UUID for tenant isolation.
 
         Returns:
             List of claimed CallListEntry objects.
@@ -232,10 +234,11 @@ class CallListService:
         Raises:
             ValueError: If call list not found or not active.
         """
-        # Load call list
-        cl_result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
-        )
+        # Load call list (scoped to campaign for tenant isolation)
+        query = select(CallList).where(CallList.id == call_list_id)
+        if campaign_id is not None:
+            query = query.where(CallList.campaign_id == campaign_id)
+        cl_result = await session.execute(query)
         call_list = cl_result.scalar_one_or_none()
         if call_list is None:
             msg = f"Call list {call_list_id} not found"
@@ -303,6 +306,7 @@ class CallListService:
         session: AsyncSession,
         call_list_id: uuid.UUID,
         new_status: str,
+        campaign_id: uuid.UUID | None = None,
     ) -> CallList:
         """Update call list status with forward-only lifecycle enforcement.
 
@@ -310,6 +314,7 @@ class CallListService:
             session: Async database session.
             call_list_id: The call list UUID.
             new_status: Target status.
+            campaign_id: Campaign UUID for tenant isolation.
 
         Returns:
             The updated CallList.
@@ -317,9 +322,10 @@ class CallListService:
         Raises:
             ValueError: If call list not found or invalid transition.
         """
-        cl_result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
-        )
+        query = select(CallList).where(CallList.id == call_list_id)
+        if campaign_id is not None:
+            query = query.where(CallList.campaign_id == campaign_id)
+        cl_result = await session.execute(query)
         call_list = cl_result.scalar_one_or_none()
         if call_list is None:
             msg = f"Call list {call_list_id} not found"
@@ -366,6 +372,7 @@ class CallListService:
         call_list_id: uuid.UUID,
         update: CallListUpdate,
         new_status: str | None = None,
+        campaign_id: uuid.UUID | None = None,
     ) -> CallList:
         """Update call list name, voter_list_id, and/or status.
 
@@ -374,6 +381,7 @@ class CallListService:
             call_list_id: The call list UUID.
             update: CallListUpdate schema with optional name/voter_list_id.
             new_status: Optional new status for transition.
+            campaign_id: Campaign UUID for tenant isolation.
 
         Returns:
             The updated CallList.
@@ -381,9 +389,10 @@ class CallListService:
         Raises:
             ValueError: If call list not found or invalid status transition.
         """
-        cl_result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
-        )
+        query = select(CallList).where(CallList.id == call_list_id)
+        if campaign_id is not None:
+            query = query.where(CallList.campaign_id == campaign_id)
+        cl_result = await session.execute(query)
         call_list = cl_result.scalar_one_or_none()
         if call_list is None:
             raise ValueError(f"Call list {call_list_id} not found")
@@ -405,19 +414,23 @@ class CallListService:
         self,
         session: AsyncSession,
         call_list_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> CallList | None:
-        """Get a call list by ID.
+        """Get a call list by ID, optionally scoped to a campaign.
 
         Args:
             session: Async database session.
             call_list_id: The call list UUID.
+            campaign_id: Campaign UUID for tenant isolation. When provided,
+                only returns the call list if it belongs to this campaign.
 
         Returns:
             CallList or None if not found.
         """
-        result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
-        )
+        query = select(CallList).where(CallList.id == call_list_id)
+        if campaign_id is not None:
+            query = query.where(CallList.campaign_id == campaign_id)
+        result = await session.execute(query)
         return result.scalar_one_or_none()
 
     async def list_call_lists(
@@ -465,9 +478,12 @@ class CallListService:
         Raises:
             ValueError: If call list or voter list is not found.
         """
-        # Load the call list
+        # Load the call list (scoped to campaign for tenant isolation)
         cl_result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
+            select(CallList).where(
+                CallList.id == call_list_id,
+                CallList.campaign_id == campaign_id,
+            )
         )
         call_list = cl_result.scalar_one_or_none()
         if call_list is None:
@@ -613,19 +629,22 @@ class CallListService:
         self,
         session: AsyncSession,
         call_list_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> None:
         """Delete a call list and its entries.
 
         Args:
             session: Async database session.
             call_list_id: The call list UUID.
+            campaign_id: Campaign UUID for tenant isolation.
 
         Raises:
             ValueError: If call list not found.
         """
-        cl_result = await session.execute(
-            select(CallList).where(CallList.id == call_list_id)
-        )
+        query = select(CallList).where(CallList.id == call_list_id)
+        if campaign_id is not None:
+            query = query.where(CallList.campaign_id == campaign_id)
+        cl_result = await session.execute(query)
         call_list = cl_result.scalar_one_or_none()
         if call_list is None:
             msg = f"Call list {call_list_id} not found"

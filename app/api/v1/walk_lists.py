@@ -113,7 +113,7 @@ async def get_walk_list(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    walk_list = await _walk_list_service.get_walk_list(db, walk_list_id)
+    walk_list = await _walk_list_service.get_walk_list(db, walk_list_id, campaign_id)
     if walk_list is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -381,7 +381,7 @@ async def delete_walk_list(
     """
     await ensure_user_synced(user, db)
     try:
-        await _walk_list_service.delete_walk_list(db, walk_list_id)
+        await _walk_list_service.delete_walk_list(db, walk_list_id, campaign_id)
     except ValueError:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,

@@ -102,7 +102,7 @@ async def get_call_list(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    call_list = await _call_list_service.get_call_list(db, call_list_id)
+    call_list = await _call_list_service.get_call_list(db, call_list_id, campaign_id)
     if call_list is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -134,7 +134,7 @@ async def update_call_list_status(
     await ensure_user_synced(user, db)
     try:
         call_list = await _call_list_service.update_call_list(
-            db, call_list_id, body or CallListUpdate(), new_status
+            db, call_list_id, body or CallListUpdate(), new_status, campaign_id
         )
     except ValueError as exc:
         return problem.ProblemResponse(
@@ -224,7 +224,7 @@ async def delete_call_list(
     """
     await ensure_user_synced(user, db)
     try:
-        await _call_list_service.delete_call_list(db, call_list_id)
+        await _call_list_service.delete_call_list(db, call_list_id, campaign_id)
     except ValueError:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -256,7 +256,7 @@ async def claim_entries(
     await ensure_user_synced(user, db)
     try:
         entries = await _call_list_service.claim_entries(
-            db, call_list_id, user.id, body.batch_size
+            db, call_list_id, user.id, body.batch_size, campaign_id
         )
     except ValueError as exc:
         return problem.ProblemResponse(

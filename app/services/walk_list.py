@@ -124,19 +124,23 @@ class WalkListService:
         self,
         session: AsyncSession,
         walk_list_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> WalkList | None:
-        """Get a walk list by ID.
+        """Get a walk list by ID, optionally scoped to a campaign.
 
         Args:
             session: Async database session.
             walk_list_id: Walk list UUID.
+            campaign_id: Campaign UUID for tenant isolation. When provided,
+                only returns the walk list if it belongs to this campaign.
 
         Returns:
             The WalkList or None.
         """
-        result = await session.execute(
-            select(WalkList).where(WalkList.id == walk_list_id)
-        )
+        query = select(WalkList).where(WalkList.id == walk_list_id)
+        if campaign_id is not None:
+            query = query.where(WalkList.campaign_id == campaign_id)
+        result = await session.execute(query)
         return result.scalar_one_or_none()
 
     async def rename_walk_list(
@@ -399,17 +403,19 @@ class WalkListService:
         self,
         session: AsyncSession,
         walk_list_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> None:
         """Delete a walk list (CASCADE on entries and canvassers).
 
         Args:
             session: Async database session.
             walk_list_id: Walk list UUID.
+            campaign_id: Campaign UUID for tenant isolation.
 
         Raises:
             ValueError: If walk list not found.
         """
-        walk_list = await self.get_walk_list(session, walk_list_id)
+        walk_list = await self.get_walk_list(session, walk_list_id, campaign_id)
         if walk_list is None:
             msg = f"Walk list {walk_list_id} not found"
             raise ValueError(msg)
