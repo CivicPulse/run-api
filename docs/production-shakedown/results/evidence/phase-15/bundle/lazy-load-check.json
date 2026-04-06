@@ -1,0 +1,9 @@
+{
+  "initialJSChunks": 36,
+  "postLoginJSChunks": 51,
+  "preNavJSChunks": 51,
+  "postNavJSChunks": 71,
+  "newChunksOnNav": 20,
+  "lazyLoadingEvidence": true,
+  "pass": true
+}

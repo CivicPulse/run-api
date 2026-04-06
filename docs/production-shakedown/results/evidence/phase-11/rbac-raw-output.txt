@@ -1,0 +1,488 @@
+>>> SECTION 1: CAMPAIGNS
+=== RBAC-CAMP-01 GET /campaigns ===
+viewer=200
+volunteer=200
+manager=200
+admin=200
+owner=200
+
+=== RBAC-CAMP-02 GET /campaigns/{id} ===
+viewer=200
+volunteer=200
+manager=200
+admin=200
+owner=200
+
+=== RBAC-CAMP-03 POST /campaigns ===
+viewer=500
+volunteer=500
+manager=500
+admin=500
+owner=500
+
+=== RBAC-CAMP-04 PATCH /campaigns/{id} ===
+viewer=403
+volunteer=403
+manager=403
+admin=200
+owner=200
+
+=== RBAC-CAMP-05 DELETE /campaigns/{id} ===
+viewer=403
+volunteer=403
+manager=403
+admin=403
+owner=422 (throwaway=null)
+
+>>> SECTION 2: VOTERS
+=== RBAC-VTR-01 GET /voters ===
+viewer=403
+volunteer=200
+manager=200
+admin=200
+owner=200
+
+=== RBAC-VTR-02 GET /voters/{id} ===
+viewer=403
+volunteer=200
+manager=200
+admin=200
+owner=200
+
+=== RBAC-VTR-03 POST /voters ===
+viewer=403
+volunteer=403
+manager=201
+admin=201
+owner=201
+
+=== RBAC-VTR-04 PATCH /voters/{id} ===
+viewer=403
+volunteer=403
+manager=200
+admin=200
+owner=200
+
+=== RBAC-VTR-05 DELETE /voters ===
+viewer=403
+volunteer=403
+manager=204
+admin=204
+owner=204
+
+>>> SECTION 3: VOTER SUB-RESOURCES
+=== RBAC-VTR-06 Voter contacts ===
+--- viewer
+  GET phones=404
+  GET emails=404
+  GET addresses=404
+--- volunteer
+  GET phones=404
+  GET emails=404
+  GET addresses=404
+--- manager
+  GET phones=404
+  GET emails=404
+  GET addresses=404
+--- admin
+  GET phones=404
+  GET emails=404
+  GET addresses=404
+--- owner
+  GET phones=404
+  GET emails=404
+  GET addresses=404
+
+=== RBAC-VTR-07 Voter tags ===
+--- viewer
+  GET tags=404
+  POST tag=405
+  PATCH tag=405
+--- volunteer
+  GET tags=404
+  POST tag=405
+  PATCH tag=405
+--- manager
+  GET tags=404
+  POST tag=405
+  PATCH tag=405
+--- admin
+  GET tags=404
+  POST tag=405
+  PATCH tag=405
+--- owner
+  GET tags=404
+  POST tag=405
+  PATCH tag=405
+
+=== RBAC-VTR-08 Voter lists ===
+--- viewer
+  GET list=404
+  POST=405
+--- volunteer
+  GET list=404
+  POST=405
+--- manager
+  GET list=404
+  POST=405
+--- admin
+  GET list=404
+  POST=405
+--- owner
+  GET list=404
+  POST=405
+
+=== RBAC-VTR-09 Voter interactions ===
+--- viewer
+  GET=403
+  POST=403
+--- volunteer
+  GET=200
+  POST=201
+  PATCH=422
+  DELETE=204
+--- manager
+  GET=200
+  POST=201
+  PATCH=422
+  DELETE=204
+--- admin
+  GET=200
+  POST=201
+  PATCH=422
+  DELETE=204
+--- owner
+  GET=200
+  POST=201
+  PATCH=422
+  DELETE=204
+
+>>> SECTION 4: CANVASSING
+=== RBAC-CANV-01 Turfs ===
+--- viewer
+  GETlist=403
+  GETdetail=403
+  GETvoters=403
+  GETstats=404
+  PATCH=403
+--- volunteer
+  GETlist=200
+  GETdetail=200
+  GETvoters=200
+  GETstats=404
+  PATCH=403
+--- manager
+  GETlist=200
+  GETdetail=200
+  GETvoters=200
+  GETstats=404
+  PATCH=200
+--- admin
+  GETlist=200
+  GETdetail=200
+  GETvoters=200
+  GETstats=404
+  PATCH=200
+--- owner
+  GETlist=200
+  GETdetail=200
+  GETvoters=200
+  GETstats=404
+  PATCH=200
+
+=== RBAC-CANV-02 Walk lists ===
+--- viewer
+  GETlist=403
+  GETdetail=403
+  GETentries=403
+  PATCH=403
+  GETcanvass=403
+--- volunteer
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  PATCH=403
+  GETcanvass=200
+--- manager
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  PATCH=400
+  GETcanvass=200
+--- admin
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  PATCH=400
+  GETcanvass=200
+--- owner
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  PATCH=400
+  GETcanvass=200
+
+>>> SECTION 5: PHONE BANKING
+=== RBAC-PB-01 Call lists ===
+--- viewer
+  GETlist=403
+  GETdetail=403
+  GETentries=403
+  GETstats=404
+  PATCH=403
+--- volunteer
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  GETstats=404
+  PATCH=403
+--- manager
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  GETstats=404
+  PATCH=200
+--- admin
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  GETstats=404
+  PATCH=200
+--- owner
+  GETlist=200
+  GETdetail=200
+  GETentries=200
+  GETstats=404
+  PATCH=200
+
+=== RBAC-PB-02 Phone banks ===
+--- viewer
+  GET=404
+  POST=405
+--- volunteer
+  GET=404
+  POST=405
+--- manager
+  GET=404
+  POST=405
+--- admin
+  GET=404
+  POST=405
+--- owner
+  GET=404
+  POST=405
+
+=== RBAC-PB-03 DNC ===
+--- viewer
+  GET=403
+  CHECK=403
+--- volunteer
+  GET=403
+  CHECK=422
+--- manager
+  GET=200
+  CHECK=422
+--- admin
+  GET=200
+  CHECK=422
+--- owner
+  GET=200
+  CHECK=422
+
+>>> SECTION 6: SURVEYS
+=== RBAC-SRV-01 Surveys ===
+--- viewer
+  GET=403
+  GETone=403
+  GETresp=404
+  PATCH=403
+--- volunteer
+  GET=200
+  GETone=200
+  GETresp=404
+  PATCH=403
+--- manager
+  GET=200
+  GETone=200
+  GETresp=404
+  PATCH=400
+--- admin
+  GET=200
+  GETone=200
+  GETresp=404
+  PATCH=400
+--- owner
+  GET=200
+  GETone=200
+  GETresp=404
+  PATCH=400
+
+>>> SECTION 7: VOLUNTEERS & SHIFTS
+=== RBAC-VOL-01 Volunteers ===
+--- viewer
+  GETvols=403
+  GETone=403
+  PATCHvol=403
+  GETtags=403
+  POSTtag=403
+--- volunteer
+  GETvols=200
+  GETone=200
+  PATCHvol=403
+  GETtags=200
+  POSTtag=403
+--- manager
+  GETvols=200
+  GETone=200
+  PATCHvol=200
+  GETtags=200
+  POSTtag=201
+--- admin
+  GETvols=200
+  GETone=200
+  PATCHvol=200
+  GETtags=200
+  POSTtag=201
+--- owner
+  GETvols=200
+  GETone=200
+  PATCHvol=200
+  GETtags=200
+  POSTtag=201
+
+=== RBAC-VOL-02 Shifts ===
+--- viewer
+  GET=403
+  GETone=403
+  PATCH=403
+--- volunteer
+  GET=200
+  GETone=404
+  PATCH=403
+--- manager
+  GET=200
+  GETone=404
+  PATCH=422
+--- admin
+  GET=200
+  GETone=404
+  PATCH=422
+--- owner
+  GET=200
+  GETone=404
+  PATCH=422
+
+>>> SECTION 8: DASHBOARD
+=== RBAC-DASH-01 Dashboard ===
+--- viewer
+  overview=403
+  canvassing/summary=404
+  phone-banking/summary=404
+  volunteers/summary=404
+  surveys/summary=404
+--- volunteer
+  overview=403
+  canvassing/summary=404
+  phone-banking/summary=404
+  volunteers/summary=404
+  surveys/summary=404
+--- manager
+  overview=200
+  canvassing/summary=404
+  phone-banking/summary=404
+  volunteers/summary=404
+  surveys/summary=404
+--- admin
+  overview=200
+  canvassing/summary=404
+  phone-banking/summary=404
+  volunteers/summary=404
+  surveys/summary=404
+--- owner
+  overview=200
+  canvassing/summary=404
+  phone-banking/summary=404
+  volunteers/summary=404
+  surveys/summary=404
+
+>>> SECTION 9: ORG-LEVEL
+=== RBAC-ORG-01 GET /org ===
+viewer=403
+volunteer=403
+manager=403
+admin=200
+owner=200
+
+=== RBAC-ORG-02 PATCH /org ===
+viewer=403
+volunteer=403
+manager=403
+admin=403
+owner=200
+
+=== RBAC-ORG-03 GET /org/campaigns ===
+viewer=403
+volunteer=403
+manager=403
+admin=200
+owner=200
+
+=== RBAC-ORG-04 GET /org/members ===
+viewer=403
+volunteer=403
+manager=403
+admin=200
+owner=200
+
+=== RBAC-ORG-05 POST /org/members ===
+viewer=405
+volunteer=405
+manager=405
+admin=405
+owner=405
+
+>>> SECTION 10: IMPORTS
+=== RBAC-IMP-01 Imports ===
+--- viewer
+  GETlist=403
+--- volunteer
+  GETlist=403
+--- manager
+  GETlist=403
+--- admin
+  GETlist=200
+--- owner
+  GETlist=200
+
+>>> SECTION 11: MEMBERS
+=== RBAC-MEM-01 Members ===
+--- viewer
+  GET=200
+--- volunteer
+  GET=200
+--- manager
+  GET=200
+--- admin
+  GET=200
+--- owner
+  GET=200
+
+>>> SECTION 12: INVITES
+=== RBAC-INV-01 Invites ===
+--- viewer
+  GET=403
+  POST=403
+--- volunteer
+  GET=403
+  POST=403
+--- manager
+  GET=403
+  POST=403
+--- admin
+  GET=200
+  POST=201
+--- owner
+  GET=200
+  POST=201
+
+DONE

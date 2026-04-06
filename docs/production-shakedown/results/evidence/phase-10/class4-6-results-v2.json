@@ -1,0 +1,26 @@
+{
+  "FIELD-PB-01": {
+    "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banking",
+    "contains": true
+  },
+  "FIELD-PB-04": {
+    "telLinks": []
+  },
+  "FIELD-PB-03": {
+    "hasVoterCard": true,
+    "callButtons": 0
+  },
+  "FIELD-PB-02": {
+    "startButton": 0
+  },
+  "FIELD-EDGE-05": {
+    "crashed": false,
+    "readyState": "complete"
+  },
+  "FIELD-EDGE-07": {
+    "quotaHandled": true
+  },
+  "FIELD-EDGE-08": {
+    "persisted": false
+  }
+}

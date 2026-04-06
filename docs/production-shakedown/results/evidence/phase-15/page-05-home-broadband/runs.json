@@ -1,40 +1,40 @@
 {
   "runs": [
     {
-      "loadMs": 853,
-      "lcp": 340,
-      "ttfb": 47.59999990463257,
-      "domContentLoaded": 130.19999980926514,
-      "loadEvent": 131.19999980926514,
-      "fcp": 172,
-      "transferBytes": 949
-    },
-    {
-      "loadMs": 975,
-      "lcp": 452,
-      "ttfb": 50.700000047683716,
-      "domContentLoaded": 132.29999995231628,
-      "loadEvent": 133.20000004768372,
+      "loadMs": 1109,
+      "lcp": 584,
+      "ttfb": 46.59999990463257,
+      "domContentLoaded": 120.5,
+      "loadEvent": 121.39999985694885,
       "fcp": 176,
-      "transferBytes": 949
+      "transferBytes": 947
     },
     {
-      "loadMs": 873,
-      "lcp": 340,
-      "ttfb": 40.700000047683716,
-      "domContentLoaded": 122.70000004768372,
-      "loadEvent": 123.70000004768372,
-      "fcp": 168,
-      "transferBytes": 949
+      "loadMs": 1159,
+      "lcp": 624,
+      "ttfb": 42.89999985694885,
+      "domContentLoaded": 124.5,
+      "loadEvent": 125.5,
+      "fcp": 172,
+      "transferBytes": 947
+    },
+    {
+      "loadMs": 1114,
+      "lcp": 596,
+      "ttfb": 53,
+      "domContentLoaded": 136.29999995231628,
+      "loadEvent": 137.40000009536743,
+      "fcp": 184,
+      "transferBytes": 947
     }
   ],
   "median": {
-    "loadMs": 873,
-    "lcp": 340,
-    "ttfb": 40.700000047683716,
-    "domContentLoaded": 122.70000004768372,
-    "loadEvent": 123.70000004768372,
-    "fcp": 168,
-    "transferBytes": 949
+    "loadMs": 1114,
+    "lcp": 596,
+    "ttfb": 53,
+    "domContentLoaded": 136.29999995231628,
+    "loadEvent": 137.40000009536743,
+    "fcp": 184,
+    "transferBytes": 947
   }
 }

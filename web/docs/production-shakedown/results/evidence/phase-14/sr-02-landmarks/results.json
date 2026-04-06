@@ -1,0 +1,20 @@
+{
+  "home": {
+    "banner": true,
+    "nav": false,
+    "main": true,
+    "contentinfo": false
+  },
+  "dashboard": {
+    "banner": true,
+    "nav": true,
+    "main": true,
+    "contentinfo": false
+  },
+  "voters": {
+    "banner": true,
+    "nav": true,
+    "main": true,
+    "contentinfo": false
+  }
+}

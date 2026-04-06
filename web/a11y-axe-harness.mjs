@@ -24,10 +24,13 @@ try {
     await page.goto('https://run.civpulse.org/');
     await page.waitForSelector('input', { timeout: 30000 });
     await page.locator('input').first().fill(process.env.EMAIL);
-    await page.getByRole('button', { name: /continue|next|sign in|log in/i }).first().click();
+    // Wait briefly for submit button to become enabled, then click
+    await page.waitForTimeout(1000);
+    await page.locator('button[type=submit]').click({ force: true });
     await page.waitForSelector('input[type=password]', { timeout: 30000 });
     await page.locator('input[type=password]').fill(process.env.PASSWORD);
-    await page.getByRole('button', { name: /continue|next|sign in|log in/i }).first().click();
+    await page.waitForTimeout(500);
+    await page.locator('button[type=submit]').click({ force: true });
     await page.waitForURL(/run\.civpulse\.org\/($|campaigns|field|org)/, { timeout: 45000 });
   }
 

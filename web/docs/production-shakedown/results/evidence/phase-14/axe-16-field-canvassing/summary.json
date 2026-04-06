@@ -1,0 +1,18 @@
+{
+  "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+  "label": "axe-16-field-canvassing",
+  "viewport": {
+    "width": 375,
+    "height": 667
+  },
+  "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [],
+  "seriousIds": [],
+  "moderateIds": [],
+  "minorIds": []
+}

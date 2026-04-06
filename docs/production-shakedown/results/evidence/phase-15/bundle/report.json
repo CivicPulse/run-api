@@ -1,15 +1,62 @@
 {
-  "initialJsCount": 29,
-  "afterLoginJsCount": 42,
-  "navJsCount": 20,
+  "totalUncompressed": 1480884,
+  "totalGzipped": 1480884,
+  "fileCount": 36,
   "mainBundle": {
-    "url": "https://run.civpulse.org/assets/index-DvWHxoRd.js",
-    "gzipped": 0,
-    "uncompressed": 741768
+    "url": "https://run.civpulse.org/assets/index-83OiUQoC.js",
+    "uncompressed": 694001,
+    "gzipped": 0
   },
-  "mainBundleGzipped": 0,
-  "mainBundleGzippedMB": "0.000",
-  "totalInitialGzipped": 0,
-  "totalInitialUncompressed": 3277182,
-  "largeLibHits": []
+  "files": [
+    {
+      "url": "https://run.civpulse.org/assets/index-83OiUQoC.js",
+      "gzipped": 0,
+      "uncompressed": 694001
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/97168a4c-9d95a5d4d3b07321.js",
+      "gzipped": 0,
+      "uncompressed": 173019
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/8941-3cd4d4cf3c0d76ba.js",
+      "gzipped": 0,
+      "uncompressed": 172032
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/3719-5b8be8f352658bb4.js",
+      "gzipped": 0,
+      "uncompressed": 67586
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/1103-703a4974952979db.js",
+      "gzipped": 0,
+      "uncompressed": 52976
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/8582-c015e4b9d1885f92.js",
+      "gzipped": 0,
+      "uncompressed": 51232
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/5356-d06634391c2146c9.js",
+      "gzipped": 0,
+      "uncompressed": 47259
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/1031-7bed1f660da91ad7.js",
+      "gzipped": 0,
+      "uncompressed": 31355
+    },
+    {
+      "url": "https://run.civpulse.org/assets/dropdown-menu-C4ycSiSu.js",
+      "gzipped": 0,
+      "uncompressed": 21497
+    },
+    {
+      "url": "https://auth.civpulse.org/ui/v2/login/_next/static/chunks/6404-3da1b38b3ac27b6f.js",
+      "gzipped": 0,
+      "uncompressed": 21398
+    }
+  ]
 }

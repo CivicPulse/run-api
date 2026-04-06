@@ -1,0 +1,15 @@
+{
+  "id": "492a8ee5-b3cb-4dc7-b93d-4f9f615c8d14",
+  "name": "QA Call TestB",
+  "status": "draft",
+  "total_entries": 0,
+  "completed_entries": 0,
+  "max_attempts": 3,
+  "claim_timeout_minutes": 30,
+  "cooldown_minutes": 60,
+  "voter_list_id": "67d8fbcd-cf2a-492b-9255-337de0405add",
+  "script_id": null,
+  "created_by": "367294460482027589",
+  "created_at": "2026-04-05T20:29:03.820503",
+  "updated_at": "2026-04-05T20:29:03.820508"
+}

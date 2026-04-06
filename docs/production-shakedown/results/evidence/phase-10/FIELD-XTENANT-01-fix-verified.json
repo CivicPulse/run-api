@@ -1,0 +1,37 @@
+{
+  "test_id": "FIELD-XTENANT-01",
+  "prior_result": "FAIL (P0) - Org A volunteer token could access Org B field/me returning 200 with campaign_name leak",
+  "current_result": "PASS (FIXED) - Returns 403 Forbidden",
+  "deployed_sha": "sha-76920d6",
+  "timestamp": "2026-04-06T18:12:00Z",
+  "tests": [
+    {
+      "description": "Org A volunteer -> Org B field/me",
+      "volunteer_org": "Org A",
+      "target_campaign": "1729cac1-e802-4bd2-8b8d-20fbc07bbfb4 (Org B)",
+      "http_status": 403,
+      "response": {"type":"about:blank","title":"Forbidden","status":403,"detail":"Insufficient permissions"}
+    },
+    {
+      "description": "Org B volunteer -> Org A field/me",
+      "volunteer_org": "Org B",
+      "target_campaign": "06d710c8-32ce-44ae-bbab-7fcc72aab248 (Org A)",
+      "http_status": 403,
+      "response": {"type":"about:blank","title":"Forbidden","status":403,"detail":"Insufficient permissions"}
+    },
+    {
+      "description": "Org B volunteer -> Org A door-knocks POST",
+      "volunteer_org": "Org B",
+      "target_campaign": "06d710c8-32ce-44ae-bbab-7fcc72aab248 (Org A)",
+      "http_status": 403,
+      "response": {"type":"about:blank","title":"Forbidden","status":403,"detail":"Insufficient permissions"}
+    },
+    {
+      "description": "Org A volunteer -> Org A field/me (own campaign, should succeed)",
+      "volunteer_org": "Org A",
+      "target_campaign": "06d710c8-32ce-44ae-bbab-7fcc72aab248 (Org A)",
+      "http_status": 200,
+      "response": {"volunteer_name":"QA Volunteer","campaign_name":"QA Test Campaign","canvassing":{"walk_list_id":"8c68bed3-b9b0-4ae1-9378-634703032286","name":"QA Walk List A","total":6,"completed":0},"phone_banking":{"session_id":"56099b8f-2436-4711-bda2-725f9574f0ee","name":"PB-retest-sess","total":24,"completed":0}}
+    }
+  ]
+}

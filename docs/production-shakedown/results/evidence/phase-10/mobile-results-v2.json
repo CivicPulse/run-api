@@ -1,0 +1,24 @@
+{
+  "FIELD-MOBILE-01": {
+    "viewportWidth": 375,
+    "scrollWidth": 375,
+    "noHorizontalScroll": true
+  },
+  "FIELD-MOBILE-04": {
+    "hamburgerFound": false
+  },
+  "FIELD-MOBILE-02": {
+    "viewportWidth": 414,
+    "scrollWidth": 414,
+    "noHorizontalScroll": true
+  },
+  "FIELD-MOBILE-03": {
+    "tooSmall": [
+      {
+        "text": "Skip to main content",
+        "width": 1,
+        "height": 1
+      }
+    ]
+  }
+}

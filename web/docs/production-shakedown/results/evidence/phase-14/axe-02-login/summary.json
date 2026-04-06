@@ -1,0 +1,20 @@
+{
+  "url": "https://run.civpulse.org/login",
+  "label": "axe-02-login",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "counts": {
+    "critical": 0,
+    "serious": 1,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [],
+  "seriousIds": [
+    "html-has-lang"
+  ],
+  "moderateIds": [],
+  "minorIds": []
+}

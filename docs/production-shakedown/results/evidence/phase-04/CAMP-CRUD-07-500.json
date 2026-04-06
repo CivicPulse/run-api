@@ -1,0 +1,7 @@
+{
+  "type": "internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "Internal server error",
+  "request_id": "d0988846126144d9b0e7098ee4be043f"
+}

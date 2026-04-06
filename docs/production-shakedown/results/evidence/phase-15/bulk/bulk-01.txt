@@ -1,2 +1,1 @@
-PERF-BULK-01: pagination
-page=1 items=12 elapsed_ms=144
+page=1 items=74 elapsed=149ms

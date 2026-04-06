@@ -1,0 +1,13 @@
+{
+  "FIELD-EDGE-01": {
+    "count": 100
+  },
+  "FIELD-EDGE-03": {
+    "finalQueue": 0,
+    "totalPosts": 20
+  },
+  "FIELD-EDGE-04": {
+    "droppedAfterMaxRetry": true,
+    "totalPosts": 20
+  }
+}

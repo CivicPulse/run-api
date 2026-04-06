@@ -1,8 +1,8 @@
 # Phase 02 Results — Organization Lifecycle
 
-**Executed:** 2026-04-05 (rerun 2026-04-06)
-**Executor:** Claude Code (Opus 4.6)
-**Target:** https://run.civpulse.org
+**Executed:** 2026-04-05 (rerun 2026-04-06, re-validated 2026-04-06)
+**Executor:** Claude Code (Opus 4.6 1M)
+**Target:** https://run.civpulse.org (sha-a9007e3)
 
 ## Summary
 

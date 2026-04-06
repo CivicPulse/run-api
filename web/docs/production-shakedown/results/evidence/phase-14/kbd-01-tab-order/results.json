@@ -1,0 +1,245 @@
+{
+  "order": [
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Skip to main content",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CivicPulse RunCampaign Manager",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "All Campaigns",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Members",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Settings",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Open sidebar",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "User menu",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Create Campaign",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test BallotActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test LocalActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test StateActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test FederalActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "QA Test CampaignActive6 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "BODY",
+      "role": null,
+      "label": "Skip to main contentCivicPulse RunCampaign ManagerOrganizati",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Skip to main content",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CivicPulse RunCampaign Manager",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "All Campaigns",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Members",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Settings",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Open sidebar",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "User menu",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Create Campaign",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test BallotActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test LocalActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test StateActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CAMP Test FederalActive5 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "QA Test CampaignActive6 members",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "role": null,
+      "label": "Campaign actions",
+      "visible": true
+    },
+    {
+      "tag": "BODY",
+      "role": null,
+      "label": "Skip to main contentCivicPulse RunCampaign ManagerOrganizati",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "Skip to main content",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "role": null,
+      "label": "CivicPulse RunCampaign Manager",
+      "visible": true
+    }
+  ],
+  "allVisible": true
+}

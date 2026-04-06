@@ -1,0 +1,19 @@
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: /continue|next|sign in|log in/i }).first()[22m
+[2m    - locator resolved to <button disabled type="submit" data-testid="submit-button" class="box-border leading-36px text-14px inline-flex items-center focus:outline-none transition-colors transition-shadow duration-300 disabled:border-none disabled:bg-gray-300 disabled:text-gray-600 disabled:shadow-none disabled:cursor-not-allowed disabled:dark:bg-gray-800 disabled:dark:text-gray-900 bg-primary-light-500 dark:bg-primary-dark-500 hover:bg-primary-light-400 hover:dark:bg-primary-dark-400 text-primary-light-contrast-500 dark:text…>…</button>[22m
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not enabled[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not enabled[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    58 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is not enabled[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+    at /home/kwhatcher/projects/civicpulse/run-api/web/a11y-axe-harness.mjs:27:87

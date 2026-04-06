@@ -1,0 +1,15 @@
+{
+  "badges": [
+    {
+      "text": "CivicPulse RunCampaign Manager",
+      "color": "oklch(0.155 0.01 240)",
+      "bg": "rgba(0, 0, 0, 0)"
+    },
+    {
+      "text": "All Campaigns",
+      "color": "oklch(0.21 0.01 240)",
+      "bg": "oklch(0.955 0.008 240)"
+    }
+  ],
+  "count": 2
+}

@@ -1,0 +1,10 @@
+{
+  "callRecordsQueued": 0,
+  "finalQueue": 0,
+  "postReqs": [
+    {
+      "url": "https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-bank-sessions/56099b8f-2436-4711-bda2-725f9574f0ee/calls",
+      "status": 201
+    }
+  ]
+}

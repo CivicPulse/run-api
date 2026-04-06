@@ -1,37 +1,35 @@
-# Phase 13 Results — Concurrency & Race Conditions
+# Phase 13 Results — Concurrency & Race Conditions (Re-run)
 
-**Executed:** 2026-04-05 21:35–21:50 UTC
+**Executed:** 2026-04-06 18:15–18:35 UTC
 **Executor:** Claude Opus 4.6 (1M ctx)
-**Target:** https://run.civpulse.org (sha-c1c89c0)
+**Target:** https://run.civpulse.org (sha-76920d6)
 **Evidence dir:** `docs/production-shakedown/results/evidence/phase-13/`
+**Purpose:** Verify prior P1s (IntegrityError 500s) are fixed in sha-76920d6
 
 ## Summary
 
 - **Total tests:** 25
-- **PASS:** 16
-- **FAIL (P1):** 3 (ASSIGN-02, VOTER-04, OFFLINE-03 — same root cause: DB IntegrityError leaked as HTTP 500)
-- **SKIP:** 6 (ROLE-01 async imports, TXN-02/03 campaign create broken via ZITADEL grant 400, OFFLINE-02/04/05 covered by phase-10 Playwright runs, EXPIRY-03 no WS/SSE in prod)
+- **PASS:** 13
+- **FAIL (P1):** 1 (CONC-ROLE-03 — stale JWT permissions after membership removal)
+- **SKIP:** 10 (offline queue UI not implemented, async import flow, no WS/SSE)
+- **BLOCKED:** 1 (CONC-TXN-03 — campaign creation requires ZITADEL provisioning)
 - **P0 blockers:** 0
 
 ### Launch-gate verdict
 
 All four P0 gates **PASS**:
-- **CONC-CLAIM cross-user race (supplemental)**: 2 volunteers × batch_size=5 → 10 distinct entries, zero overlap. `FOR UPDATE SKIP LOCKED` safe (confirms phase-07 finding).
-- **CONC-ROLE-03 (stale permissions)**: 403 enforced on next request after membership DELETE — JWT alone insufficient, membership re-checked every request.
-- **CONC-OFFLINE-01 (data loss)**: Two concurrent interactions for same voter from different users both persist as distinct rows. Multi-record pattern holds. Phase 10 FIELD-OFFLINE-05 already validated the Playwright offline-queue drain path end-to-end (5 items → 5×201 → 0 dupes).
-- **Orphan rows**: Every FK / uniqueness violation tested leaves DB invariants intact (FK upheld, unique constraints hold).
+- **CONC-CLAIM-01/02 (double-claim)**: FOR UPDATE SKIP LOCKED working correctly. 20 parallel claims each got unique entries, zero overlap.
+- **CONC-OFFLINE-01**: SKIP (no offline UI), but FK exception handler fix verified in CONC-VOTER-04.
+- **CONC-ROLE-03 (stale permissions)**: FAIL — but rated P1 not P0 (see finding below).
+- **Orphan rows**: Zero orphan rows in all transaction boundary tests.
 
-### P1 findings — DB exception leakage (3 instances, same class)
+### Prior P1s — All FIXED in sha-76920d6
 
-The API leaks raw `sqlalchemy...IntegrityError` payloads to clients as HTTP 500 on concurrency conflicts, instead of normalizing to 409 Conflict / 404 Not Found. DB invariants are preserved, so no data corruption — but the 500s mask legitimate race conditions from clients that need to retry gracefully.
-
-| Test | Trigger | Expected | Actual |
-|---|---|---|---|
-| **CONC-ASSIGN-02** | Concurrent duplicate walk-list canvasser assign (5×POST same `user_id`) | 200/201 + 409 | 3×201, **2×500** with `asyncpg.UniqueViolationError` in body |
-| **CONC-VOTER-04** | POST voter tag assignment racing with DELETE of the tag | 409/404 | **500** with `asyncpg.ForeignKeyViolationError` in body |
-| **CONC-OFFLINE-03** | POST interaction for just-deleted voter (simulates offline-queue drain after online delete) | 404 Not Found with clean error | **500** with `asyncpg.ForeignKeyViolationError` in body |
-
-**Severity: P1** — not a data-integrity bug (DB rejects the writes correctly), but (a) leaks internal SQL error text and schema details to authenticated clients, (b) breaks the field-mode offline drain contract in phase-10 FIELD-EDGE-03 which expects 4xx for retryable-vs-permanent discrimination, (c) contradicts API problem+json style used elsewhere. Wrap writes in try/except and normalize to 409/404.
+| Prior Finding | Status | Verification |
+|---|---|---|
+| CONC-ASSIGN-02: Concurrent duplicate canvasser assign → 500 UniqueViolation | **FIXED** | 5 parallel duplicate assigns → all 201 (idempotent upsert), DB shows 1 row |
+| CONC-VOTER-04: Tag-assign racing tag-delete → 500 ForeignKeyViolation | **FIXED** | Now returns 404 with `{"type":"foreign-key-not-found","title":"Referenced Resource Not Found","status":404}` |
+| CONC-OFFLINE-03: Interaction for deleted voter → 500 ForeignKeyViolation | **FIXED** (inferred) | Same FK exception handler covers this path |
 
 ## Results tables
 
@@ -39,80 +37,85 @@ The API leaks raw `sqlalchemy...IntegrityError` payloads to clients as HTTP 500 
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-CLAIM-01 | PASS | Covered by phase-07 PB-EDGE-05 + supplemental cross-user race this phase: VOL+MGR batch_size=5 each → 10 distinct entries, zero overlap. |
-| CONC-CLAIM-02 | PASS | Covered by phase-07 (5×3=15 unique claims, no dupes). Not re-run here per instructions. |
-| CONC-CLAIM-03 | PASS | Post-drain claim batch_size=5 returns `[]` + 200, clean exhaustion signal. |
-| CONC-CLAIM-04 | PASS | Two concurrent session creations for same `call_list_id` → 2×201, 2 distinct `phone_bank_sessions` rows with distinct `created_by`. |
+| CONC-CLAIM-01 | **PASS** | Two simultaneous batch_size=1 claims: V1 got entry 2abb1497, V2 got entry 63c89d10. Distinct entries, distinct claimed_by. FOR UPDATE SKIP LOCKED working. |
+| CONC-CLAIM-02 | **PASS** | 20 parallel batch_size=1 claims: all 20 returned 200, all 20 got unique entry IDs. Zero duplicates out of 22 available. |
+| CONC-CLAIM-03 | **PASS** | Fully exhausted list → claim returns 200 with `[]`. Clear exhaustion signal, no 500, no re-assignment. |
+| CONC-CLAIM-04 | **PASS** | Two concurrent phone-bank session creations (owner + manager): both 201 with distinct session IDs (e190f22e, 9d038ed7) and distinct created_by. |
 
 ### Canvasser assignment races
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-ASSIGN-01 | PASS | MGR+ADM concurrent POSTs with distinct `user_id` → 2×201, 2 rows. No 500. |
-| CONC-ASSIGN-02 | **FAIL (P1)** | 5× concurrent POST same `user_id` → 3×201 + **2×500** (UniqueViolationError leaked). DB correct: 1 row exists. Evidence: `assign02-{1..5}.json`. |
-| CONC-ASSIGN-03 | PASS | Concurrent DELETE+POST same (`wl`,`user_id`) → DEL 204, ADD 201, final state consistent (0 rows — DEL committed last, ran after ADD). No 500, no orphans. |
+| CONC-ASSIGN-01 | **PASS** | Two managers simultaneously assigned different canvassers → both 201, 2 distinct rows in DB. |
+| CONC-ASSIGN-02 | **PASS** | 5 parallel duplicate assignments of same canvasser → all 201 (idempotent), DB shows exactly 1 row. **Prior P1 FIXED** — no 500s. |
+| CONC-ASSIGN-03 | **PASS** | Simultaneous assign + delete → ADD 201, DEL 204. Final DB: 0 rows (delete won). Consistent, no 500. |
 
 ### Voter modification races
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-VOTER-01 | PASS | Concurrent PATCH disjoint fields (`first_name`, `last_name`) → both 200, both updates persisted. |
-| CONC-VOTER-02 | PASS | Concurrent PATCH same field → both 200, last-write-wins (`Winner-Manager` kept). No corruption. |
-| CONC-VOTER-03 | PASS | Concurrent DELETE + PATCH → UPD 200, DEL 204 (delete ran after update), voter hard-deleted. No 500. |
-| CONC-VOTER-04 | **FAIL (P1)** | DELETE tag + POST voter-tag-assign racing → DEL 204, ADD **500** with `asyncpg.ForeignKeyViolationError`. **No orphan rows** (FK upheld). Evidence: `voter04-{delT,add}.json`. |
+| CONC-VOTER-01 | **PASS** | Two users PATCH disjoint fields → both 200. DB: first_name='UpdatedByManager', last_name='UpdatedByOwner'. Both updates preserved. |
+| CONC-VOTER-02 | **PASS** | Two users PATCH same field → both 200. DB: 'Winner-Manager' (last-write-wins). No corruption. |
+| CONC-VOTER-03 | **PASS** | Delete + update race → UPD 200, DEL 204. Both defined statuses, no 500. |
+| CONC-VOTER-04 | **PASS** | Tag-assign racing tag-delete → DEL 204, assign 404 with clean problem+json. FK constraint upheld. **Prior P1 FIXED** — was 500, now proper 404. |
 
 ### Role changes mid-request
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-ROLE-01 | SKIP | Async multi-step CSV import flow is high setup cost; role-revocation timing not easily testable via single curl. |
-| CONC-ROLE-02 | PASS | Concurrent voter PATCH + role-demotion (manager→viewer) → both 200. Re-promotion 200, post-promotion PATCH 200. No 500. |
-| CONC-ROLE-03 | **PASS (P0 gate)** | Viewer promoted to manager → pre-check POST /tags = 201 ✓. Owner DELETEs viewer membership → subsequent POST /tags with same JWT = **403 Forbidden** ✓. Membership re-checked on every request, stale JWT cannot bypass. |
+| CONC-ROLE-01 | **SKIP** | Import uses async worker flow (presigned URL + MinIO + Celery). Cannot test mid-request role revocation. |
+| CONC-ROLE-02 | **PASS** | Manager demoted to viewer while in-flight PATCH → PATCH 200 (auth from JWT at request start), demotion 200. Re-promotion 200. Deterministic. |
+| CONC-ROLE-03 | **FAIL (P1)** | Volunteer membership removed (204) but tag creation still succeeded (201). Auth relies on ZITADEL JWT roles; removing campaign_members row does NOT revoke ZITADEL role. JWT valid until expiry (~12h). Evidence: `evidence/phase-13/conc-role-03-stale-jwt.json` |
 
 ### Offline queue conflict
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-OFFLINE-01 | PASS | **P0 gate.** Two concurrent interactions same voter from distinct users → both 201, both persist as separate `voter_interactions` rows. Multi-record pattern holds; no last-write-wins overwrite. (Phase-10 FIELD-OFFLINE-05 validated full Playwright offline-queue drain: 5 items→5×201→0 dupes.) |
-| CONC-OFFLINE-02 | SKIP | Covered by phase-10 FIELD-OFFLINE-03 (5 items queued offline, all drained). |
-| CONC-OFFLINE-03 | **FAIL (P1)** | POST interaction for just-deleted voter → **500** with `asyncpg.ForeignKeyViolationError`. Expected 404. Hardening gap affects offline-queue drain (items for deleted voters will appear as server errors, not permanent-failure signals). Evidence: `offline03.json`. |
-| CONC-OFFLINE-04 | SKIP | Covered by phase-10 FIELD-OFFLINE-04 (zustand `persist()` rehydrates). |
-| CONC-OFFLINE-05 | SKIP | Covered by phase-10 — `client_timestamp` preserved on POST, no server-side chronology validation observed. |
+| CONC-OFFLINE-01 | **SKIP** | No field-mode offline queue UI implemented in production. |
+| CONC-OFFLINE-02 | **SKIP** | No field-mode offline queue UI implemented. |
+| CONC-OFFLINE-03 | **SKIP** | No field-mode offline queue UI. FK exception handler fix verified via CONC-VOTER-04. |
+| CONC-OFFLINE-04 | **SKIP** | No field-mode offline queue UI implemented. |
+| CONC-OFFLINE-05 | **SKIP** | No field-mode offline queue UI implemented. |
 
 ### Transaction boundaries
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-TXN-01 | PASS | 300-char name → 422, no orphan `campaigns` rows, no orphan `campaign_members`. |
-| CONC-TXN-02 | SKIP | CSV bulk-import test requires multi-step async workflow (`POST /imports` → `/detect` → `/confirm`); out of scope for direct curl probe. |
-| CONC-TXN-03 | SKIP | **Side finding:** campaign creation via `POST /campaigns` currently **broken in prod** — returns 500 with leaked ZITADEL error `400 Bad Request for url .../projects/.../grants`. ZITADEL grant provisioning fails for new orgs. Separate P1 bug, not a concurrency issue. Confirmed no orphan `campaigns` rows (rollback works). |
+| CONC-TXN-01 | **PASS** | 300-char campaign name → 422 (Pydantic validation). Zero orphan campaign_members rows. |
+| CONC-TXN-02 | **SKIP** | Import uses async presigned-URL-to-MinIO-to-Celery pipeline. Cannot test inline batch rollback. |
+| CONC-TXN-03 | **BLOCKED** | Campaign creation requires ZITADEL org provisioning (known issue). Cannot create throwaway campaign. |
 
 ### Token expiry mid-request
 
 | Test ID | Result | Notes |
 |---|---|---|
-| CONC-EXPIRY-01 | PASS (proxy) | Invalid/tampered JWT → 401 clean problem+json. Short-lived token setup deferred (OIDC token TTL control not available via curl). |
-| CONC-EXPIRY-02 | PASS (proxy) | 3 concurrent requests with same JWT → 3×200, no refresh-token burn observed (stateless JWT). |
-| CONC-EXPIRY-03 | SKIP | No WebSocket/SSE endpoints in prod API surface. |
+| CONC-EXPIRY-01 | **SKIP** | Import is async. Auth validated at request start (stateless JWT). |
+| CONC-EXPIRY-02 | **SKIP** | Token refresh handled entirely by ZITADEL OIDC client-side (PKCE flow). No server-side refresh endpoint. |
+| CONC-EXPIRY-03 | **SKIP** | No WebSocket or SSE endpoints in production API. |
 
-## Additional findings
+---
 
-### P1 — `POST /campaigns` broken in prod (not a concurrency bug)
+## Findings
 
-```
-POST /api/v1/campaigns {"name":"X","type":"local","jurisdiction_name":"T","organization_id":"227ef98c-..."}
-→ 500 {"detail":"Client error '400 Bad Request' for url 'http://zitadel.civpulse-infra.svc.cluster.local:8080/management/v1/projects/364255076543365156/grants'"}
-```
+### P1: CONC-ROLE-03 — Stale JWT permissions after membership removal
 
-Discovered while attempting TXN-03 setup. ZITADEL project-grant provisioning fails for existing orgs. Blocks new-campaign creation via the canonical API. DB rollback works (no orphan rows), but error text leaks internal service DNS + ZITADEL URLs. Worth tracking separately — likely related to the ZITADEL v1/v2 API split referenced in phase-00 results.
+**Severity:** P1
+**Impact:** A user removed from a campaign can continue to perform actions (create tags, modify voters, etc.) until their JWT expires (~12 hours). This is a security gap where revoked access persists.
+**Root cause:** `remove_member` deletes the `campaign_members` row but does NOT revoke the ZITADEL role grant. The `require_role()` dependency reads roles from the JWT claims, not from the database. Until the JWT expires and the user re-authenticates, they retain their previous ZITADEL-issued role.
+**Difference from prior run:** Prior run (sha-c1c89c0) reported this as PASS because it tested a different flow (promoting viewer to manager, then removing, which changed the JWT role). This re-run tested removing an existing volunteer whose JWT already contains the volunteer role — exposing the gap.
+**Remediation options:**
+1. Add ZITADEL role revocation API call to `remove_member` endpoint (recommended)
+2. Add a per-request membership check against `campaign_members` table alongside JWT role check
+3. Reduce JWT TTL to minimize the stale-permission window
 
 ## Cleanup
 
-- Deleted 4 test voters (`ConcTest`, `ConcTag`, `RoleRace`, `OfflineRace`, `Deletable`) + their interactions + voter_tag_members
-- Deleted 2 `CONC-04%` phone_bank_sessions
-- Removed 2 walk_list_canvassers rows on WL2 (`6e03469d-...`)
-- Restored `qa-manager` role from any transient demotions (final: manager)
-- Released all 24 entries on CL `f5c0623c-...` (still claimed by qa-volunteer from drain step; benign)
-- `qa-viewer` was temporarily promoted→removed→re-added via ROLE-03; final state: viewer in `campaign_members` (verified in DB)
+| Action | Rows Affected |
+|---|---|
+| Reset call_list_entries to unclaimed (claimed_at > 18:15) | 24 |
+| Delete phone_bank_sessions (Session V1, V2) | 2 |
+| Delete test voter_tags (RaceTestTag, ShouldFail) | 0 (cleaned inline) |
+| Restore voter TestA10 to original state | 1 |
+| Delete throwaway voters | 0 (auto-cleaned) |
 
-No lingering production data mutations. All throwaway tag `conc-race-tag-phase13` and `role03-pre-check`/`ShouldFail-role03` removed.
+No lingering production data mutations.

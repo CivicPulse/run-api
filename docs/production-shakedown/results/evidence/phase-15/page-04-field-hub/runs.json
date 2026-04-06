@@ -1,40 +1,40 @@
 {
   "runs": [
     {
-      "loadMs": 2935,
-      "lcp": 2780,
-      "ttfb": 50.5,
-      "domContentLoaded": 1731.5,
-      "loadEvent": 1732.2000000476837,
-      "fcp": 2084,
-      "transferBytes": 949
+      "loadMs": 3458,
+      "lcp": 3288,
+      "ttfb": 57.299999952316284,
+      "domContentLoaded": 1629.1999998092651,
+      "loadEvent": 1629.2999999523163,
+      "fcp": 2596,
+      "transferBytes": 947
     },
     {
-      "loadMs": 2950,
-      "lcp": 2788,
-      "ttfb": 40.200000047683716,
-      "domContentLoaded": 1730.2999999523163,
-      "loadEvent": 1731,
-      "fcp": 2084,
-      "transferBytes": 949
+      "loadMs": 2936,
+      "lcp": 2756,
+      "ttfb": 50.60000014305115,
+      "domContentLoaded": 1639.5,
+      "loadEvent": 1640.2999999523163,
+      "fcp": 2056,
+      "transferBytes": 947
     },
     {
-      "loadMs": 2957,
-      "lcp": 2788,
-      "ttfb": 58.80000019073486,
-      "domContentLoaded": 1740.4000000953674,
-      "loadEvent": 1740.9000000953674,
-      "fcp": 2100,
-      "transferBytes": 949
+      "loadMs": 2913,
+      "lcp": 2724,
+      "ttfb": 44.60000014305115,
+      "domContentLoaded": 1638.5,
+      "loadEvent": 1639.2999999523163,
+      "fcp": 2056,
+      "transferBytes": 947
     }
   ],
   "median": {
-    "loadMs": 2950,
-    "lcp": 2788,
-    "ttfb": 40.200000047683716,
-    "domContentLoaded": 1730.2999999523163,
-    "loadEvent": 1731,
-    "fcp": 2084,
-    "transferBytes": 949
+    "loadMs": 2936,
+    "lcp": 2756,
+    "ttfb": 50.60000014305115,
+    "domContentLoaded": 1639.5,
+    "loadEvent": 1640.2999999523163,
+    "fcp": 2056,
+    "transferBytes": 947
   }
 }
