@@ -20,6 +20,7 @@ from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import init_error_handlers
 from app.core.middleware.request_logging import StructlogMiddleware
+from app.core.middleware.security_headers import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.core.sentry import init_sentry
 
@@ -89,9 +90,13 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     init_sentry()
 
+    docs_enabled = settings.environment != "production"
     app = FastAPI(
         title=settings.app_name,
         lifespan=lifespan,
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
     )
 
     app.add_middleware(
@@ -101,6 +106,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(StructlogMiddleware)
 
     app.state.limiter = limiter
