@@ -138,14 +138,16 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-v1.13 Production Shakedown Remediation shipped on 2026-04-06. The milestone closed 6 phases, 18 plans, eliminating all 7 P0 cross-tenant isolation breaches and resolving the remaining P1 launch blockers from the 2026-04-05 production shakedown. The shakedown verdict moved from NO-GO to **GO with conditions**.
+**Shipped:** v1.13 Production Shakedown Remediation (2026-04-06)
 
-**Conditions remaining:**
-1. Campaign creation 500 — ZITADEL service connectivity in production (code fix deployed, ops investigation needed)
+The platform is production-ready and launch-cleared. v1.13 closed 6 phases (18 plans), eliminating all 7 P0 cross-tenant isolation breaches, sanitizing all error responses, deploying security headers, restoring broken workflows, and achieving 0 critical axe violations. The production shakedown verdict moved from NO-GO to **GO with conditions**.
+
+**Ops conditions (not code gaps):**
+1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
 2. HSTS header — Cloudflare edge configuration
-3. kubectl cleanup of QA Test Campaign and Org B test data
+3. QA test data — kubectl cleanup documented
 
-The platform provides a production-ready, launch-cleared multi-tenant campaign field operations API with full web UI. All cross-tenant isolation breaches eliminated, security headers deployed, error handling sanitized, accessibility verified (0 critical axe violations), and field hub mobile performance rebaselined.
+**13 milestones shipped** across 83 phases from 2026-03-08 to 2026-04-06.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
@@ -213,4 +215,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after v1.13 Production Shakedown Remediation milestone*
+*Last updated: 2026-04-06 after v1.13 Production Shakedown Remediation milestone shipped*

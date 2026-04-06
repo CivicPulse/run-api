@@ -2,11 +2,28 @@
 
 ## v1.13 Production Shakedown Remediation (Shipped: 2026-04-06)
 
-**Phases completed:** 6 phases, 18 plans, 0 tasks
+**Phases completed:** 6 phases, 18 plans
+**Timeline:** 2 days (2026-04-05 → 2026-04-06)
+**Commits:** 25 | **Files modified:** 490
+**Git range:** `v1.12..HEAD`
+**Shakedown verdict:** GO with conditions (from NO-GO)
 
 **Key accomplishments:**
 
-- (none recorded)
+1. Eliminated all 7 P0 cross-tenant isolation breaches — body injection, spatial join, UUID lookup, and field/me gate all fail-closed with campaign-scoped guards
+2. Sanitized all error responses via FastAPI exception handler mapping — no stack traces, SQL, constraint names, or infrastructure details leaked to clients
+3. Deployed production security headers (CSP, X-Frame-Options, X-Content-Type-Options) and HTTPS redirect middleware
+4. Restored broken campaign creation (ZITADEL grant idempotency), CSV import (pre-signed upload URL workflow), and phone bank validation flows
+5. Cleared all critical accessibility violations — 0 axe failures across 16 production pages, accessible names on all affected surfaces
+6. Tightened schema validation for WGS84 coordinates, null-byte payloads, future birth dates, negative call durations, and oversized string fields
+7. Achieved production shakedown GO verdict with full reverification across all 15 shakedown phases
+
+**Conditions (ops/infrastructure, not code gaps):**
+- Campaign creation 500 — ZITADEL pod connectivity investigation needed
+- HSTS — Cloudflare edge configuration
+- QA test data — kubectl cleanup documented
+
+**Audit:** .planning/milestones/v1.13-MILESTONE-AUDIT.md (status: passed, 23/23 requirements satisfied)
 
 ---
 

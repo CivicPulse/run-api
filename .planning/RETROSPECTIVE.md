@@ -347,6 +347,53 @@
 
 ---
 
+## Milestone: v1.13 — Production Shakedown Remediation
+
+**Shipped:** 2026-04-06
+**Phases:** 6 | **Plans:** 18
+
+### What Was Built
+- Closed all 7 P0 cross-tenant isolation breaches: body FK injection, spatial join, UUID lookup, field/me gate — all fail-closed with campaign-scoped guards
+- FastAPI exception handler mapping DB errors to safe 4xx responses with no stack traces, SQL, or infrastructure details
+- Production security headers middleware (CSP, X-Frame-Options, X-Content-Type-Options) and HTTPS redirect
+- ZITADEL grant idempotency for campaign creation, CSV import pre-scan restore, phone bank validation, survey reorder rejection
+- Accessible names on all axe-reported surfaces (SelectTrigger, icon controls, routed card overlays), touch targets raised, field tour lazy-loaded
+- Schema validation tightening: WGS84 bounds, null-byte rejection, future birth dates, negative call durations, oversized strings
+- Full production reverification: 15 shakedown phases re-run, 0 critical axe violations across 16 pages, GO verdict achieved
+
+### What Worked
+- Shakedown-driven milestone scoping was highly effective — verified production failures are unambiguous requirements, no scope debates
+- Phase sequencing (isolation → errors → workflows → a11y → validation → reverification) naturally layered fixes so later phases built on earlier ones
+- Squash-merge PR (#22) for the bulk fix followed by targeted commits for the post-deployment P0 fix kept the git history clean
+- Milestone audit with 3-source cross-reference (VERIFICATION.md, SUMMARY frontmatter, REQUIREMENTS.md) caught the stale REQUIREMENTS.md checkboxes
+- Separating "code is correct" from "ops condition" in the audit prevented false negatives — ZITADEL connectivity and HSTS are infrastructure issues, not code gaps
+
+### What Was Inefficient
+- Phase 81 checkbox in ROADMAP.md left unchecked (`[ ]`) despite all 3 plans having SUMMARY.md files — cosmetic but confusing for tooling
+- REQUIREMENTS.md traceability table showed all 23 items as "Pending" despite being satisfied — stale from never being updated during execution
+- Two production deploys needed (sha-5865734 for bulk fix, sha-76920d6 for the P0 walk-list/call-list scoping fix found post-deploy)
+- The 490-file diff is inflated by shakedown evidence documents (screenshots, test results) — actual code changes were much smaller
+
+### Patterns Established
+- Production shakedown as milestone driver: verified failures in deployed code set remediation scope
+- Ops conditions documented separately from code gaps in audit — prevents blocking code milestones on infrastructure work
+- Targeted shakedown reruns as formal verification method — re-run specific phases with evidence collection
+- Product sign-off with explicit budget rebaseline for performance targets that can't meet original spec
+
+### Key Lessons
+1. Production shakedowns are the most effective way to discover cross-tenant isolation gaps — unit tests missed spatial join and transitive scoping issues that only appear with real multi-tenant data
+2. Squash-merge + targeted follow-up commits is the right pattern for remediation milestones — keeps the PR reviewable while allowing post-deploy hotfixes
+3. REQUIREMENTS.md checkboxes should be updated during execution, not just at archival — the stale "Pending" state confused the audit
+4. Separate code correctness from ops conditions in audit verdicts — blocking a milestone on Cloudflare config or pod connectivity wastes developer time
+5. Error sanitization is a cross-cutting concern — the FastAPI exception handler pattern (catching IntegrityError, DataError, etc.) should have been in place before production
+
+### Cost Observations
+- Model mix: Opus for planning/auditing/milestone, sonnet for execution
+- Timeline: 2 days (2026-04-05 → 2026-04-06) — fastest remediation milestone
+- Notable: 25 commits, 6 phases, 18 plans; shakedown verdict moved from NO-GO to GO
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -360,6 +407,10 @@
 | v1.4 | 9 | 26 | Mobile-first field mode, offline queue + sync, driver.js tours, WCAG AA, shared component reuse across domains |
 | v1.5 | 10 | 36 | Production hardening (RLS fix, Sentry, rate limiting), org management, map editor, WCAG compliance scan, E2E test coverage |
 | v1.6 | 7 | 16 | Durable background imports (Procrastinate), per-batch crash resilience, streaming CSV, L2 auto-mapping, cancellation |
+| v1.10 | 3 | 3 | Import recovery with orphan detection, advisory-lock protection, crash-resume |
+| v1.11 | 15 | 31 | Chunk parallelization, parent fan-out/fan-in, cancellation finalization, wizard flow recovery |
+| v1.12 | 7 | 30 | Service/route tenant scoping, FORCE RLS, frontend auth guards, concurrency/integrity hardening, a11y/test backfill |
+| v1.13 | 6 | 18 | Production shakedown remediation: P0 isolation fixes, error sanitization, security headers, workflow recovery, GO verdict |
 
 ### Cumulative Quality
 
@@ -372,6 +423,10 @@
 | v1.4 | 300+ (frontend) | 284+ (backend) | ~34K Python + ~58K TS | +23,659 lines (304 files) |
 | v1.5 | 300+ (frontend) | 300+ (backend) | ~22K Python + ~43K TS | +37,350 lines (348 files) |
 | v1.6 | 300+ (frontend) | 350+ (backend) | ~22K Python + ~43K TS | +5,214 lines (44 files) |
+| v1.10 | 300+ (frontend) | 380+ (backend) | ~22K Python + ~43K TS | — (backend only) |
+| v1.11 | 300+ (frontend) | 400+ (backend) | ~22K Python + ~43K TS | +3,400 lines (24 files) |
+| v1.12 | 300+ (frontend) | 450+ (backend) | ~22K Python + ~43K TS | security/a11y/test backfill |
+| v1.13 | 300+ (frontend) | 470+ (backend) | ~22K Python + ~43K TS | remediation across 490 files |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -389,3 +444,6 @@
 12. AST-based guard tests catch infrastructure compliance gaps (rate limiting, decorators) at CI time without import side effects
 13. RLS context resets on COMMIT in PostgreSQL — any per-batch commit pattern must re-set campaign context (v1.6 critical lesson)
 14. Use timestamps (cancelled_at) over status enums for cancellation signals to avoid lost-update races between concurrent actors
+15. Production shakedowns are the most effective tenant isolation audit — they find cross-tenant leaks that unit tests miss (spatial joins, transitive scoping)
+16. Separate code correctness from ops/infrastructure conditions in audit verdicts — don't block code milestones on Cloudflare config or pod connectivity
+17. Error sanitization (exception handler mapping) should be built in from the start, not added during production remediation
