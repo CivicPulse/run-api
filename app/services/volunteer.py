@@ -135,6 +135,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> Volunteer | None:
         """Fetch a volunteer by ID.
 
@@ -145,15 +146,17 @@ class VolunteerService:
         Returns:
             Volunteer or None.
         """
-        result = await session.execute(
-            select(Volunteer).where(Volunteer.id == volunteer_id)
-        )
+        stmt = select(Volunteer).where(Volunteer.id == volunteer_id)
+        if campaign_id is not None:
+            stmt = stmt.where(Volunteer.campaign_id == campaign_id)
+        result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_volunteer_detail(
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> dict | None:
         """Fetch a volunteer with tags and availability included.
 
@@ -164,7 +167,7 @@ class VolunteerService:
         Returns:
             Dict with volunteer data plus tags and availability, or None.
         """
-        volunteer = await self.get_volunteer(session, volunteer_id)
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
         if volunteer is None:
             return None
 
@@ -197,6 +200,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         data: VolunteerUpdate,
     ) -> Volunteer:
         """Partial update of volunteer profile.
@@ -212,7 +216,7 @@ class VolunteerService:
         Raises:
             ValueError: If volunteer not found.
         """
-        volunteer = await self.get_volunteer(session, volunteer_id)
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
         if volunteer is None:
             msg = f"Volunteer {volunteer_id} not found"
             raise ValueError(msg)
@@ -231,6 +235,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         new_status: str,
     ) -> Volunteer:
         """Update volunteer status with transition enforcement.
@@ -249,7 +254,7 @@ class VolunteerService:
         Raises:
             ValueError: If volunteer not found or invalid transition.
         """
-        volunteer = await self.get_volunteer(session, volunteer_id)
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
         if volunteer is None:
             msg = f"Volunteer {volunteer_id} not found"
             raise ValueError(msg)
@@ -384,6 +389,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         name: str,
     ) -> VolunteerTag:
         """Rename a campaign-scoped volunteer tag.
@@ -400,7 +406,10 @@ class VolunteerService:
             ValueError: If tag not found.
         """
         result = await session.execute(
-            select(VolunteerTag).where(VolunteerTag.id == tag_id)
+            select(VolunteerTag).where(
+                VolunteerTag.id == tag_id,
+                VolunteerTag.campaign_id == campaign_id,
+            )
         )
         tag = result.scalar_one_or_none()
         if tag is None:
@@ -414,6 +423,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Delete a campaign-scoped volunteer tag and its member associations.
 
@@ -425,7 +435,10 @@ class VolunteerService:
             ValueError: If tag not found.
         """
         result = await session.execute(
-            select(VolunteerTag).where(VolunteerTag.id == tag_id)
+            select(VolunteerTag).where(
+                VolunteerTag.id == tag_id,
+                VolunteerTag.campaign_id == campaign_id,
+            )
         )
         tag = result.scalar_one_or_none()
         if tag is None:
@@ -443,6 +456,7 @@ class VolunteerService:
         session: AsyncSession,
         volunteer_id: uuid.UUID,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> VolunteerTagMember:
         """Add a tag to a volunteer.
 
@@ -454,6 +468,19 @@ class VolunteerService:
         Returns:
             The created VolunteerTagMember.
         """
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
+        if volunteer is None:
+            msg = f"Volunteer {volunteer_id} not found"
+            raise ValueError(msg)
+        result = await session.execute(
+            select(VolunteerTag).where(
+                VolunteerTag.id == tag_id,
+                VolunteerTag.campaign_id == campaign_id,
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            msg = f"Volunteer tag {tag_id} not found"
+            raise ValueError(msg)
         tag_member = VolunteerTagMember(
             volunteer_id=volunteer_id,
             tag_id=tag_id,
@@ -466,6 +493,7 @@ class VolunteerService:
         session: AsyncSession,
         volunteer_id: uuid.UUID,
         tag_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> None:
         """Remove a tag from a volunteer.
 
@@ -477,10 +505,17 @@ class VolunteerService:
         Raises:
             ValueError: If tag assignment not found.
         """
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
+        if volunteer is None:
+            msg = f"Volunteer {volunteer_id} not found"
+            raise ValueError(msg)
         result = await session.execute(
-            select(VolunteerTagMember).where(
+            select(VolunteerTagMember)
+            .join(VolunteerTag, VolunteerTag.id == VolunteerTagMember.tag_id)
+            .where(
                 VolunteerTagMember.volunteer_id == volunteer_id,
                 VolunteerTagMember.tag_id == tag_id,
+                VolunteerTag.campaign_id == campaign_id,
             )
         )
         tag_member = result.scalar_one_or_none()
@@ -497,6 +532,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         data: AvailabilityCreate,
     ) -> VolunteerAvailability:
         """Add an availability time slot for a volunteer.
@@ -516,6 +552,11 @@ class VolunteerService:
             msg = "end_at must be after start_at"
             raise ValueError(msg)
 
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
+        if volunteer is None:
+            msg = f"Volunteer {volunteer_id} not found"
+            raise ValueError(msg)
+
         availability = VolunteerAvailability(
             id=uuid.uuid4(),
             volunteer_id=volunteer_id,
@@ -528,6 +569,8 @@ class VolunteerService:
     async def delete_availability(
         self,
         session: AsyncSession,
+        volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
         availability_id: uuid.UUID,
     ) -> None:
         """Remove an availability slot.
@@ -540,8 +583,12 @@ class VolunteerService:
             ValueError: If availability not found.
         """
         result = await session.execute(
-            select(VolunteerAvailability).where(
-                VolunteerAvailability.id == availability_id
+            select(VolunteerAvailability)
+            .join(Volunteer, Volunteer.id == VolunteerAvailability.volunteer_id)
+            .where(
+                VolunteerAvailability.id == availability_id,
+                VolunteerAvailability.volunteer_id == volunteer_id,
+                Volunteer.campaign_id == campaign_id,
             )
         )
         availability = result.scalar_one_or_none()
@@ -554,6 +601,7 @@ class VolunteerService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID,
     ) -> list[VolunteerAvailability]:
         """List all availability slots for a volunteer.
 
@@ -564,6 +612,9 @@ class VolunteerService:
         Returns:
             List of VolunteerAvailability objects.
         """
+        volunteer = await self.get_volunteer(session, volunteer_id, campaign_id)
+        if volunteer is None:
+            return []
         result = await session.execute(
             select(VolunteerAvailability)
             .where(VolunteerAvailability.volunteer_id == volunteer_id)

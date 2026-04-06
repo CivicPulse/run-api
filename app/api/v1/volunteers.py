@@ -154,7 +154,9 @@ async def get_volunteer_detail(
     Requires volunteer+ role (manager+ or self).
     """
     await ensure_user_synced(user, db)
-    detail = await _volunteer_service.get_volunteer_detail(db, volunteer_id)
+    detail = await _volunteer_service.get_volunteer_detail(
+        db, volunteer_id, campaign_id
+    )
     if detail is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -210,7 +212,9 @@ async def update_volunteer(
     """
     await ensure_user_synced(user, db)
     try:
-        volunteer = await _volunteer_service.update_volunteer(db, volunteer_id, body)
+        volunteer = await _volunteer_service.update_volunteer(
+            db, volunteer_id, campaign_id, body
+        )
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -242,9 +246,16 @@ async def update_volunteer_status(
     await ensure_user_synced(user, db)
     try:
         volunteer = await _volunteer_service.update_status(
-            db, volunteer_id, body.status
+            db, volunteer_id, campaign_id, body.status
         )
     except ValueError as exc:
+        if "not found" in str(exc):
+            return problem.ProblemResponse(
+                status=status.HTTP_404_NOT_FOUND,
+                title="Volunteer Not Found",
+                detail=str(exc),
+                type="volunteer-not-found",
+            )
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Status Update Failed",
@@ -280,8 +291,17 @@ async def add_availability(
     """
     await ensure_user_synced(user, db)
     try:
-        availability = await _volunteer_service.add_availability(db, volunteer_id, body)
+        availability = await _volunteer_service.add_availability(
+            db, volunteer_id, campaign_id, body
+        )
     except ValueError as exc:
+        if "not found" in str(exc):
+            return problem.ProblemResponse(
+                status=status.HTTP_404_NOT_FOUND,
+                title="Volunteer Not Found",
+                detail=str(exc),
+                type="volunteer-not-found",
+            )
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid Availability",
@@ -311,7 +331,9 @@ async def delete_availability(
     """
     await ensure_user_synced(user, db)
     try:
-        await _volunteer_service.delete_availability(db, availability_id)
+        await _volunteer_service.delete_availability(
+            db, volunteer_id, campaign_id, availability_id
+        )
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -340,7 +362,15 @@ async def list_availability(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    slots = await _volunteer_service.list_availability(db, volunteer_id)
+    volunteer = await _volunteer_service.get_volunteer(db, volunteer_id, campaign_id)
+    if volunteer is None:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Volunteer Not Found",
+            detail=f"Volunteer {volunteer_id} not found",
+            type="volunteer-not-found",
+        )
+    slots = await _volunteer_service.list_availability(db, volunteer_id, campaign_id)
     return [AvailabilityResponse.model_validate(s) for s in slots]
 
 
@@ -411,7 +441,7 @@ async def update_tag(
     """
     await ensure_user_synced(user, db)
     try:
-        tag = await _volunteer_service.update_tag(db, tag_id, body.name)
+        tag = await _volunteer_service.update_tag(db, tag_id, campaign_id, body.name)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -441,7 +471,7 @@ async def delete_tag(
     """
     await ensure_user_synced(user, db)
     try:
-        await _volunteer_service.delete_tag(db, tag_id)
+        await _volunteer_service.delete_tag(db, tag_id, campaign_id)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -471,7 +501,15 @@ async def add_tag_to_volunteer(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    await _volunteer_service.add_tag(db, volunteer_id, tag_id)
+    try:
+        await _volunteer_service.add_tag(db, volunteer_id, tag_id, campaign_id)
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Volunteer or Tag Not Found",
+            detail=str(exc),
+            type="volunteer-tag-not-found",
+        )
     await db.commit()
     return {"status": "ok"}
 
@@ -495,7 +533,7 @@ async def remove_tag_from_volunteer(
     """
     await ensure_user_synced(user, db)
     try:
-        await _volunteer_service.remove_tag(db, volunteer_id, tag_id)
+        await _volunteer_service.remove_tag(db, volunteer_id, tag_id, campaign_id)
     except ValueError as exc:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -532,4 +570,12 @@ async def get_volunteer_hours(
     from app.services.shift import ShiftService
 
     shift_service = ShiftService()
-    return await shift_service.get_volunteer_hours(db, volunteer_id, campaign_id)
+    try:
+        return await shift_service.get_volunteer_hours(db, volunteer_id, campaign_id)
+    except ValueError as exc:
+        return problem.ProblemResponse(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Volunteer Not Found",
+            detail=str(exc),
+            type="volunteer-not-found",
+        )

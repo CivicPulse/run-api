@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Select, and_, delete, exists, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import InvalidCursorError
 from app.core.time import utcnow
 from app.models.call_list import CallListEntry
 from app.models.survey import SurveyResponse
@@ -62,21 +63,24 @@ def encode_cursor(item: object, sort_by: str | None) -> str:
 
 def decode_cursor(cursor: str, sort_by: str | None) -> tuple:
     """Decode a cursor string into ``(sort_value, id)``."""
-    val_str, id_str = cursor.split("|", 1)
-    cursor_id = uuid.UUID(id_str)
-    col = sort_by or "created_at"
+    try:
+        val_str, id_str = cursor.split("|", 1)
+        cursor_id = uuid.UUID(id_str)
+        col = sort_by or "created_at"
 
-    if val_str == "None":
-        return None, cursor_id
+        if val_str == "None":
+            return None, cursor_id
 
-    if col in _DATETIME_SORT_COLUMNS:
-        cursor_val = datetime.fromisoformat(val_str)
-    elif col in _INT_SORT_COLUMNS:
-        cursor_val = int(val_str)
-    else:
-        cursor_val = val_str
+        if col in _DATETIME_SORT_COLUMNS:
+            cursor_val = datetime.fromisoformat(val_str)
+        elif col in _INT_SORT_COLUMNS:
+            cursor_val = int(val_str)
+        else:
+            cursor_val = val_str
 
-    return cursor_val, cursor_id
+        return cursor_val, cursor_id
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise InvalidCursorError() from exc
 
 
 def _sync_voter_geom_stmt(voter_id: uuid.UUID):

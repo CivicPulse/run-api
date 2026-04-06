@@ -8,6 +8,7 @@ from datetime import datetime
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import VoterNotFoundError
 from app.core.time import utcnow
 from app.models.voter import Voter
 from app.models.voter_list import ListType, VoterList, VoterListMember
@@ -210,6 +211,17 @@ class VoterListService:
         if voter_list.list_type != ListType.STATIC:
             msg = "Can only add members to static lists"
             raise ValueError(msg)
+
+        result = await db.execute(
+            select(Voter.id).where(
+                Voter.campaign_id == campaign_id,
+                Voter.id.in_(voter_ids),
+            )
+        )
+        found_ids = set(result.scalars().all())
+        missing_ids = [vid for vid in voter_ids if vid not in found_ids]
+        if missing_ids:
+            raise VoterNotFoundError(missing_ids[0])
 
         for vid in voter_ids:
             member = VoterListMember(voter_list_id=list_id, voter_id=vid)

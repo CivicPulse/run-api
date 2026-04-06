@@ -175,7 +175,7 @@ async def get_turf_voters(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    turf = await _service.get_turf(db, turf_id)
+    turf = await _service.get_turf(db, turf_id, campaign_id)
     if turf is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,
@@ -191,6 +191,7 @@ async def get_turf_voters(
         Voter.first_name,
         Voter.last_name,
     ).where(
+        Voter.campaign_id == campaign_id,
         Voter.geom.is_not(None),
         func.ST_Contains(turf.boundary, Voter.geom),
     )
@@ -223,7 +224,7 @@ async def get_turf(
     Requires volunteer+ role.
     """
     await ensure_user_synced(user, db)
-    turf = await _service.get_turf(db, turf_id)
+    turf = await _service.get_turf(db, turf_id, campaign_id)
     if turf is None:
         return problem.ProblemResponse(
             status=status.HTTP_404_NOT_FOUND,

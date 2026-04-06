@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.models.turf import Turf, TurfStatus
 from app.schemas.turf import TurfCreate, TurfUpdate
+from app.services.turf import _validate_polygon
 
 VALID_POLYGON = {
     "type": "Polygon",
@@ -46,6 +49,23 @@ class TestTurfService:
         # The schema accepts it (type-level validation only).
         # Service layer will reject non-Polygon types.
         assert schema.boundary["type"] == "Point"
+
+    def test_validate_polygon_rejects_out_of_range_wgs84_coordinates(self) -> None:
+        with pytest.raises(ValueError, match="Longitude must be between -180 and 180"):
+            _validate_polygon(
+                {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [500, 38.8951],
+                            [500, 38.9051],
+                            [501, 38.9051],
+                            [501, 38.8951],
+                            [500, 38.8951],
+                        ]
+                    ],
+                }
+            )
 
     def test_list_turfs_by_campaign(self) -> None:
         """CANV-01: TurfStatus enum values for campaign listing filters."""

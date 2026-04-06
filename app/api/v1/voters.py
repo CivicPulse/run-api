@@ -32,6 +32,7 @@ async def list_voters(
     campaign_id: uuid.UUID,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
+    page_size: int | None = Query(None, ge=1, le=200, alias="page_size"),
     search: str | None = Query(None),
     party: str | None = Query(None),
     city: str | None = Query(None),
@@ -58,12 +59,13 @@ async def list_voters(
         registration_county=county,
         has_phone=has_phone,
     )
+    effective_limit = page_size if page_size is not None else limit
     return await _service.search_voters(
         db,
         campaign_id,
         filters,
         cursor=cursor,
-        limit=limit,
+        limit=effective_limit,
     )
 
 
