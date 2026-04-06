@@ -133,7 +133,7 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
 - [x] **Phase 80: Workflow Recovery** - Restore the broken launch-critical product flows exposed by the shakedown — completed 2026-04-05
 - [ ] **Phase 81: Field, Accessibility, and Mobile Launch Readiness** - Close the remaining user-facing P1 blockers on field/mobile surfaces and core accessibility paths
 - [x] **Phase 82: Contract Drift, Validation, and Documentation Decisions** - Resolve the remaining P2/P3 findings by either fixing behavior or recording explicit supported behavior — completed 2026-04-06
-- [ ] **Phase 83: Reverification and Shakedown Cleanup** - Prove the remediation works in production and remove temporary shakedown residue
+- [x] **Phase 83: Reverification and Shakedown Cleanup** - Prove the remediation works in production and remove temporary shakedown residue (completed 2026-04-06)
 
 ## Active Phase Details
 
@@ -223,9 +223,9 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   5. Temporary shakedown campaigns, volunteers, voters, walk-list entries, call-list entries, interactions, import jobs, PerfTest rows, local scripts, and expired token artifacts are removed or intentionally archived
   6. The milestone closes with an updated shakedown summary and explicit disposition for any accepted non-blocking drift
 **Plans**: 3 plans
-- [ ] 83-01-PLAN.md — Targeted shakedown reruns and regression probes
-- [ ] 83-02-PLAN.md — Cleanup of data, scripts, tokens, and QA residue
-- [ ] 83-03-PLAN.md — Closeout summary and final disposition report
+- [x] 83-01-PLAN.md — Targeted shakedown reruns and regression probes
+- [x] 83-02-PLAN.md — Cleanup of data, scripts, tokens, and QA residue
+- [x] 83-03-PLAN.md — Closeout summary and final disposition report
 
 ### Backlog / Parking Lot
 
