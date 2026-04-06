@@ -492,8 +492,9 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
     ]
     assert [chunk.import_job_id for chunk in added_chunks] == [mock_job.id] * 3
     assert [chunk.campaign_id for chunk in added_chunks] == [mock_job.campaign_id] * 3
-    assert [call.args for call in mock_defer.await_args_list] == [
-        (str(chunk_id), campaign_id) for chunk_id in generated_chunk_ids[:2]
+    assert [call.kwargs for call in mock_defer.await_args_list] == [
+        {"chunk_id": str(chunk_id), "campaign_id": campaign_id}
+        for chunk_id in generated_chunk_ids[:2]
     ]
     mock_storage.get_object_size.assert_awaited_once_with("imports/file.csv")
     mock_service.process_import_file.assert_not_awaited()
@@ -1187,7 +1188,9 @@ async def test_process_import_chunk_promotes_next_pending_chunk(campaign_id: str
         await process_import_chunk(chunk_id, campaign_id)
 
     session.execute.assert_awaited_once()
-    mock_defer.assert_awaited_once_with(str(next_chunk.id), campaign_id)
+    mock_defer.assert_awaited_once_with(
+        chunk_id=str(next_chunk.id), campaign_id=campaign_id
+    )
     assert next_chunk.status == ImportChunkStatus.QUEUED
     mock_service.maybe_complete_chunk_after_secondary_tasks.assert_awaited_once()
 

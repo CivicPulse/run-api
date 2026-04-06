@@ -68,7 +68,9 @@ async def _promote_next_pending_chunk(
         return None
 
     try:
-        await process_import_chunk.defer_async(str(next_chunk.id), campaign_id)
+        await process_import_chunk.defer_async(
+            chunk_id=str(next_chunk.id), campaign_id=campaign_id
+        )
     except Exception:
         await session.rollback()
         await set_campaign_context(session, campaign_id)
@@ -217,7 +219,9 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
                     len(chunks),
                 )
                 for chunk in chunks[:initial_limit]:
-                    await process_import_chunk.defer_async(str(chunk.id), campaign_id)
+                    await process_import_chunk.defer_async(
+                        chunk_id=str(chunk.id), campaign_id=campaign_id
+                    )
                     chunk.status = ImportChunkStatus.QUEUED
                     chunk.last_progress_at = utcnow()
                 job.last_progress_at = utcnow()
@@ -328,14 +332,14 @@ async def process_import_chunk(chunk_id: str, campaign_id: str) -> None:
                 )
                 if chunk.phone_manifest:
                     await process_import_chunk_phones.defer_async(
-                        str(chunk.id), campaign_id
+                        chunk_id=str(chunk.id), campaign_id=campaign_id
                     )
                     chunk.phone_task_status = ImportChunkTaskStatus.QUEUED
                 else:
                     chunk.phone_task_status = ImportChunkTaskStatus.COMPLETED
                 if chunk.geometry_manifest:
                     await process_import_chunk_geometry.defer_async(
-                        str(chunk.id), campaign_id
+                        chunk_id=str(chunk.id), campaign_id=campaign_id
                     )
                     chunk.geometry_task_status = ImportChunkTaskStatus.QUEUED
                 else:
