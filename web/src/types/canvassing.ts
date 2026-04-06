@@ -89,10 +89,10 @@ export const OUTCOME_COLORS: Record<DoorKnockResultCode, { bg: string; text: str
   come_back_later: { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" },
   refused:         { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" },
   opposed:         { bg: "bg-status-error", text: "text-status-error-foreground", border: "border-status-error-foreground/30" },
-  not_home:        { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
-  moved:           { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
-  deceased:        { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
-  inaccessible:    { bg: "bg-status-neutral", text: "text-status-neutral-foreground", border: "border-status-neutral-foreground/30" },
+  not_home:        { bg: "bg-status-neutral", text: "text-foreground", border: "border-border" },
+  moved:           { bg: "bg-status-neutral", text: "text-foreground", border: "border-border" },
+  deceased:        { bg: "bg-status-neutral", text: "text-foreground", border: "border-border" },
+  inaccessible:    { bg: "bg-status-neutral", text: "text-foreground", border: "border-border" },
 }
 
 export const OUTCOME_LABELS: Record<DoorKnockResultCode, string> = {
@@ -200,18 +200,18 @@ export function getGoogleMapsUrl(voter: HasRegistrationAddress): string {
 }
 
 export function getPropensityDisplay(score: number | null): { label: string; color: string } {
-  if (score == null) return { label: "N/A", color: "bg-status-neutral text-status-neutral-foreground" }
+  if (score == null) return { label: "N/A", color: "bg-status-neutral text-foreground" }
   if (score >= 70) return { label: `${score}%`, color: "bg-status-success text-status-success-foreground" }
   if (score >= 40) return { label: `${score}%`, color: "bg-status-warning text-status-warning-foreground" }
   return { label: `${score}%`, color: "bg-status-error text-status-error-foreground" }
 }
 
 export function getPartyColor(party: string | null): { bg: string; text: string } {
-  if (!party) return { bg: "bg-status-neutral", text: "text-status-neutral-foreground" }
+  if (!party) return { bg: "bg-status-neutral", text: "text-foreground" }
   const lower = party.toLowerCase()
   if (lower.includes("democrat")) return { bg: "bg-status-info", text: "text-status-info-foreground" }
   if (lower.includes("republican")) return { bg: "bg-status-error", text: "text-status-error-foreground" }
-  return { bg: "bg-status-neutral", text: "text-status-neutral-foreground" }
+  return { bg: "bg-status-neutral", text: "text-foreground" }
 }
 
 export function isMappableEntry(entry: EnrichedWalkListEntry): entry is EnrichedWalkListEntry & CoordinatePoint {

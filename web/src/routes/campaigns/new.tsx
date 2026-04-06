@@ -367,8 +367,10 @@ function NewCampaignPage() {
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger
+                        id="type"
                         className="w-full"
                         aria-invalid={!!errors.type}
+                        aria-label="Campaign type"
                       >
                         <SelectValue placeholder="Select a type" />
                       </SelectTrigger>
@@ -559,7 +561,10 @@ function NewCampaignPage() {
                               handleMemberRoleChange(member.user_id, role)
                             }
                           >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger
+                              className="w-32"
+                              aria-label={`Role for ${member.display_name || member.email || "selected member"}`}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

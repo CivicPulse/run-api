@@ -7,7 +7,6 @@ import { useFieldMe } from "@/hooks/useFieldMe"
 import { useAuthStore } from "@/stores/authStore"
 import { useTour } from "@/hooks/useTour"
 import { tourKey } from "@/stores/tourStore"
-import { welcomeSteps, canvassingSteps, phoneBankingSteps } from "@/components/field/tour/tourSteps"
 
 function FieldLayout() {
   const { campaignId } = Route.useParams()
@@ -26,13 +25,17 @@ function FieldLayout() {
   const handleHelpClick = useCallback(() => {
     if (!key) return
     const pathname = location.pathname
-    if (pathname.includes("/canvassing")) {
-      startSegment("canvassing", canvassingSteps)
-    } else if (pathname.includes("/phone-banking")) {
-      startSegment("phoneBanking", phoneBankingSteps)
-    } else {
-      startSegment("welcome", welcomeSteps)
-    }
+    void import("@/components/field/tour/tourSteps").then(
+      ({ welcomeSteps, canvassingSteps, phoneBankingSteps }) => {
+        if (pathname.includes("/canvassing")) {
+          void startSegment("canvassing", canvassingSteps)
+        } else if (pathname.includes("/phone-banking")) {
+          void startSegment("phoneBanking", phoneBankingSteps)
+        } else {
+          void startSegment("welcome", welcomeSteps)
+        }
+      },
+    )
   }, [key, location.pathname, startSegment])
 
   // Hub is when there's no sub-path after the campaignId

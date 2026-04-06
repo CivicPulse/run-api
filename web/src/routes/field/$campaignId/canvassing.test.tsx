@@ -45,6 +45,7 @@ vi.mock("@/hooks/useCanvassingWizard", () => ({
 
 vi.mock("@/hooks/useTour", () => ({
   useTour: () => ({ startSegment: vi.fn() }),
+  shouldAutoStartTour: () => false,
 }))
 
 vi.mock("@/stores/authStore", () => ({
@@ -261,7 +262,7 @@ describe("field canvassing route", () => {
     expect(screen.getByTestId("canvassing-save-failure-card")).toBeInTheDocument()
     expect(screen.getByText("boom")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Retry save" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Back to hub" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Back to Hub" })).toBeInTheDocument()
   })
 
   it("prompts for household-wide not-home handling and records the bulk action", async () => {

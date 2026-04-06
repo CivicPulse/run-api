@@ -98,6 +98,7 @@ function SurveysIndex() {
               <Link
                 to={`/campaigns/${campaignId}/surveys/${script.id}` as string}
                 className="absolute inset-0 z-10"
+                aria-label={`Open survey ${script.title}`}
               />
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -118,6 +119,7 @@ function SurveysIndex() {
                   variant="ghost"
                   size="icon"
                   className="relative z-20"
+                  aria-label={`Delete survey ${script.title}`}
                   onClick={(e) => {
                     e.preventDefault()
                     setDeleteId(script.id)

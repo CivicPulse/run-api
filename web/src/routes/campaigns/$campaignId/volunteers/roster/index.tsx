@@ -259,7 +259,10 @@ function RosterPage() {
             setStatusFilter(val === "all" ? undefined : val)
           }
         >
-          <SelectTrigger className="md:w-40">
+          <SelectTrigger
+            className="md:w-40"
+            aria-label="Filter volunteers by status"
+          >
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

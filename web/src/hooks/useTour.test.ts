@@ -25,10 +25,10 @@ describe("useTour (TOUR-02)", () => {
   })
 
   describe("startSegment", () => {
-    test("creates driver.js instance with provided steps", () => {
+    test("creates driver.js instance with provided steps", async () => {
       const { result } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
@@ -36,20 +36,20 @@ describe("useTour (TOUR-02)", () => {
       expect(mockDrive).toHaveBeenCalled()
     })
 
-    test("calls setRunning(true) on start", () => {
+    test("calls setRunning(true) on start", async () => {
       const { result } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
       expect(useTourStore.getState().isRunning).toBe(true)
     })
 
-    test("calls markComplete on destroy", () => {
+    test("calls markComplete on destroy", async () => {
       const { result } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
@@ -64,10 +64,10 @@ describe("useTour (TOUR-02)", () => {
       ).toBe(true)
     })
 
-    test("calls setRunning(false) on destroy", () => {
+    test("calls setRunning(false) on destroy", async () => {
       const { result } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
@@ -82,10 +82,10 @@ describe("useTour (TOUR-02)", () => {
   })
 
   describe("cleanup", () => {
-    test("destroys active driver instance on unmount", () => {
+    test("destroys active driver instance on unmount", async () => {
       const { result, unmount } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
@@ -93,10 +93,10 @@ describe("useTour (TOUR-02)", () => {
       expect(mockDestroy).toHaveBeenCalled()
     })
 
-    test("sets isRunning to false on unmount", () => {
+    test("sets isRunning to false on unmount", async () => {
       const { result, unmount } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
@@ -107,15 +107,15 @@ describe("useTour (TOUR-02)", () => {
   })
 
   describe("replacement", () => {
-    test("destroys previous driver instance when starting new segment", () => {
+    test("destroys previous driver instance when starting new segment", async () => {
       const { result } = renderHook(() => useTour("test-key"))
-      act(() => {
-        result.current.startSegment("welcome", [
+      await act(async () => {
+        await result.current.startSegment("welcome", [
           { element: "#a", popover: { title: "Hi" } },
         ])
       })
-      act(() => {
-        result.current.startSegment("canvassing", [
+      await act(async () => {
+        await result.current.startSegment("canvassing", [
           { element: "#b", popover: { title: "Go" } },
         ])
       })

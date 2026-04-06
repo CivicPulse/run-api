@@ -27,8 +27,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { Loader2, AlertCircle, ArrowLeft, SkipForward, HelpCircle } from "lucide-react"
 import { useAuthStore } from "@/stores/authStore"
 import { useTourStore, tourKey } from "@/stores/tourStore"
-import { useTour } from "@/hooks/useTour"
-import { phoneBankingSteps } from "@/components/field/tour/tourSteps"
+import { shouldAutoStartTour, useTour } from "@/hooks/useTour"
 import { QuickStartCard } from "@/components/field/QuickStartCard"
 
 function PhoneBanking() {
@@ -75,12 +74,35 @@ function PhoneBanking() {
 
   useEffect(() => {
     if (!key || !currentEntry) return
+    if (!shouldAutoStartTour()) return
     const { isSegmentComplete } = useTourStore.getState()
     if (isSegmentComplete(key, "phoneBanking")) return
-    const timer = setTimeout(() => {
-      startSegment("phoneBanking", phoneBankingSteps)
-    }, 200)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    let idleId: number | null = null
+    const timer = window.setTimeout(() => {
+      const launchTour = () => {
+        if (cancelled) return
+        void import("@/components/field/tour/tourSteps").then(({ phoneBankingSteps }) => {
+          if (!cancelled) {
+            void startSegment("phoneBanking", phoneBankingSteps)
+          }
+        })
+      }
+
+      if ("requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(launchTour, { timeout: 1500 })
+        return
+      }
+
+      launchTour()
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
   }, [key, currentEntry, startSegment])
 
   useEffect(() => {
@@ -223,7 +245,7 @@ function PhoneBanking() {
               You haven&apos;t been assigned a calling session yet. Check back
               later or contact your campaign organizer.
             </p>
-            <Button asChild>
+            <Button asChild className="min-h-11">
               <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
@@ -250,7 +272,7 @@ function PhoneBanking() {
               </p>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Button type="button" variant="outline" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
                 Back to Hub
               </Button>
               <Button type="button" onClick={retryLoad}>
@@ -275,7 +297,7 @@ function PhoneBanking() {
               All voters in this call list have been contacted or claimed by
               other callers. Head back to the hub.
             </p>
-            <Button asChild>
+            <Button asChild className="min-h-11">
               <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
@@ -312,7 +334,7 @@ function PhoneBanking() {
               </p>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate({ to: "/field/$campaignId", params: { campaignId } })}>
                 Back to Hub
               </Button>
               <Button type="button" onClick={() => setSurveyOpen(true)}>
@@ -344,7 +366,12 @@ function PhoneBanking() {
           className="min-h-11 min-w-11"
           aria-label="Help"
           data-tour="help-button"
-          onClick={() => key && startSegment("phoneBanking", phoneBankingSteps)}
+          onClick={() => {
+            if (!key) return
+            void import("@/components/field/tour/tourSteps").then(({ phoneBankingSteps }) => {
+              void startSegment("phoneBanking", phoneBankingSteps)
+            })
+          }}
         >
           <HelpCircle className="h-5 w-5 text-muted-foreground" />
         </Button>

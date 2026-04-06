@@ -10,6 +10,7 @@ import { POST_LOGIN_REDIRECT_KEY } from "@/routes/login"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { UserCampaign } from "@/types/user"
+import type { FieldMeResponse } from "@/types/field"
 
 // Module-level flag prevents signinRedirectCallback() from being called
 // more than once. This is critical because:
@@ -21,6 +22,25 @@ let callbackProcessed = false
 
 export function __resetCallbackProcessedForTests() {
   callbackProcessed = false
+}
+
+async function resolveVolunteerCampaign(campaigns: UserCampaign[]) {
+  if (campaigns.length === 0) return null
+
+  for (const campaign of campaigns) {
+    try {
+      const fieldMe = await api
+        .get(`api/v1/campaigns/${campaign.campaign_id}/field/me`)
+        .json<FieldMeResponse>()
+      if (fieldMe.canvassing || fieldMe.phone_banking) {
+        return campaign.campaign_id
+      }
+    } catch {
+      // Ignore per-campaign field probes and continue checking others.
+    }
+  }
+
+  return campaigns[0]?.campaign_id ?? null
 }
 
 function CallbackPage() {
@@ -64,14 +84,24 @@ function CallbackPage() {
           getConfig().zitadel_project_id,
         )
 
-        // Volunteer-only users go directly to field mode
-        if (highestRole === "volunteer") {
+        const roleClaims = ((user as unknown as { profile: Record<string, unknown> }).profile[
+          `urn:zitadel:iam:org:project:${getConfig().zitadel_project_id}:roles`
+        ] ?? {}) as Record<string, unknown>
+        const hasVolunteerRole = Object.prototype.hasOwnProperty.call(
+          roleClaims,
+          "volunteer",
+        )
+
+        // Any user with volunteer scope should prefer the campaign that
+        // actually has a live field assignment after login.
+        if (highestRole === "volunteer" || hasVolunteerRole) {
           try {
             const campaigns = await api
               .get("api/v1/me/campaigns")
               .json<UserCampaign[]>()
-            if (campaigns.length > 0) {
-              navigate({ to: `/field/${campaigns[0].campaign_id}` })
+            const campaignId = await resolveVolunteerCampaign(campaigns)
+            if (campaignId) {
+              navigate({ to: `/field/${campaignId}` })
               return
             }
           } catch {

@@ -83,8 +83,25 @@ describe("Callback route", () => {
     }
     mockGetConfig.mockReturnValue({ zitadel_project_id: "project-runtime" })
     mockHandleCallback.mockResolvedValue(undefined)
-    mockApiGet.mockReturnValue({
-      json: vi.fn().mockResolvedValue([{ campaign_id: "campaign-1" }]),
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "api/v1/me/campaigns") {
+        return {
+          json: vi.fn().mockResolvedValue([{ campaign_id: "campaign-1" }]),
+        }
+      }
+      if (url === "api/v1/campaigns/campaign-1/field/me") {
+        return {
+          json: vi.fn().mockResolvedValue({
+            volunteer_name: "Volunteer One",
+            campaign_name: "Campaign One",
+            canvassing: { walk_list_id: "walk-1", name: "Walk 1", total: 10, completed: 2 },
+            phone_banking: null,
+          }),
+        }
+      }
+      return {
+        json: vi.fn().mockResolvedValue([]),
+      }
     })
   })
 
@@ -104,6 +121,72 @@ describe("Callback route", () => {
         expect.stringContaining("/callback?code=code-123&state=state-123"),
       )
     })
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/field/campaign-1" })
+    })
+  })
+
+  it("prefers the first campaign with an actual field assignment", async () => {
+    state.user = {
+      profile: {
+        "urn:zitadel:iam:org:project:project-runtime:roles": {
+          volunteer: { "org-1": "org-1" },
+        },
+      },
+    }
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "api/v1/me/campaigns") {
+        return {
+          json: vi.fn().mockResolvedValue([
+            { campaign_id: "campaign-1" },
+            { campaign_id: "campaign-2" },
+          ]),
+        }
+      }
+      if (url === "api/v1/campaigns/campaign-1/field/me") {
+        return {
+          json: vi.fn().mockResolvedValue({
+            volunteer_name: "Volunteer One",
+            campaign_name: "Campaign One",
+            canvassing: null,
+            phone_banking: null,
+          }),
+        }
+      }
+      if (url === "api/v1/campaigns/campaign-2/field/me") {
+        return {
+          json: vi.fn().mockResolvedValue({
+            volunteer_name: "Volunteer One",
+            campaign_name: "Campaign Two",
+            canvassing: null,
+            phone_banking: { session_id: "session-2", name: "Calls", total: 8, completed: 0 },
+          }),
+        }
+      }
+      return {
+        json: vi.fn().mockResolvedValue([]),
+      }
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/field/campaign-2" })
+    })
+  })
+
+  it("still routes mixed-role users to field mode when volunteer scope is present", async () => {
+    state.user = {
+      profile: {
+        "urn:zitadel:iam:org:project:project-runtime:roles": {
+          admin: { "org-1": "org-1" },
+          volunteer: { "org-1": "org-1" },
+        },
+      },
+    }
+
+    renderPage()
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/field/campaign-1" })
@@ -140,7 +223,10 @@ describe("Callback route", () => {
     expect(mockHandleCallback).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole("button", { name: /back to login/i }))
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/login" })
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/login",
+      search: { redirect: undefined },
+    })
   })
 
   it("navigates home when callback resolves but authStore has no user", async () => {

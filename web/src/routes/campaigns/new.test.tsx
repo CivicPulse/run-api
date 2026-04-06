@@ -21,6 +21,7 @@ vi.mock("@tanstack/react-router", () => ({
     _store.component = opts.component
     return { options: opts }
   },
+  Navigate: ({ to }: { to: string }) => <div data-testid="mock-navigate">{to}</div>,
   useBlocker: vi.fn(),
   useNavigate: () => mockNavigate,
 }))
@@ -191,6 +192,8 @@ vi.mock("@/hooks/useOrg", () => ({
 vi.mock("@/hooks/useOrgPermissions", () => ({
   useOrgPermissions: () => ({
     currentOrg: mockCurrentOrg,
+    isLoading: false,
+    hasOrgRole: () => true,
   }),
 }))
 

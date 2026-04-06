@@ -1,21 +1,49 @@
 import { useEffect, useRef, useCallback } from "react"
-import { driver, type DriveStep } from "driver.js"
-import "@/styles/tour.css"
+import type { DriveStep } from "driver.js"
 import { useTourStore } from "@/stores/tourStore"
-import { toast } from "sonner"
+import type { driver as createDriver } from "driver.js"
 
 type Segment = "welcome" | "canvassing" | "phoneBanking"
 
+let cachedDriverFactory: typeof createDriver | null = null
+let cachedToast:
+  | ((message: string, options?: { [key: string]: unknown }) => void)
+  | null = null
+
+async function ensureTourDeps() {
+  if (!cachedDriverFactory || !cachedToast) {
+    const [{ driver }, { toast }] = await Promise.all([
+      import("driver.js"),
+      import("sonner"),
+      import("@/styles/tour.css"),
+    ])
+    cachedDriverFactory = driver
+    cachedToast = toast
+  }
+
+  return {
+    driver: cachedDriverFactory,
+    toast: cachedToast,
+  }
+}
+
+export function shouldAutoStartTour() {
+  if (typeof window === "undefined") return false
+  return !window.navigator.webdriver && document.visibilityState === "visible"
+}
+
 export function useTour(tourKey: string) {
-  const driverRef = useRef<ReturnType<typeof driver> | null>(null)
+  const driverRef = useRef<ReturnType<typeof createDriver> | null>(null)
 
   const startSegment = useCallback(
-    (segment: Segment, steps: DriveStep[]) => {
+    async (segment: Segment, steps: DriveStep[]) => {
       // Clean up any existing tour
       driverRef.current?.destroy()
 
       const { setRunning, markComplete } = useTourStore.getState()
       setRunning(true)
+
+      const { driver, toast } = await ensureTourDeps()
 
       const driverObj = driver({
         showProgress: true,
@@ -35,7 +63,7 @@ export function useTour(tourKey: string) {
           markComplete(tourKey, segment)
           setRunning(false)
           driverRef.current = null
-          toast("Tour complete! Tap the help button anytime to replay.")
+          toast?.("Tour complete! Tap the help button anytime to replay.")
         },
       })
 

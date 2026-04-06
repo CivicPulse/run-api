@@ -12,11 +12,10 @@ import { CanvassingCompletionSummary } from "@/components/field/CanvassingComple
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useWalkList } from "@/hooks/useWalkLists"
-import { useTour } from "@/hooks/useTour"
+import { shouldAutoStartTour, useTour } from "@/hooks/useTour"
 import { useCanvassingStore } from "@/stores/canvassingStore"
 import { useAuthStore } from "@/stores/authStore"
 import { useTourStore, tourKey } from "@/stores/tourStore"
-import { canvassingSteps } from "@/components/field/tour/tourSteps"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -73,12 +72,35 @@ function Canvassing() {
 
   useEffect(() => {
     if (!key || !currentHousehold) return
+    if (!shouldAutoStartTour()) return
     const { isSegmentComplete } = useTourStore.getState()
     if (isSegmentComplete(key, "canvassing")) return
-    const timer = setTimeout(() => {
-      startSegment("canvassing", canvassingSteps)
-    }, 200)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    let idleId: number | null = null
+    const timer = window.setTimeout(() => {
+      const launchTour = () => {
+        if (cancelled) return
+        void import("@/components/field/tour/tourSteps").then(({ canvassingSteps }) => {
+          if (!cancelled) {
+            void startSegment("canvassing", canvassingSteps)
+          }
+        })
+      }
+
+      if ("requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(launchTour, { timeout: 1500 })
+        return
+      }
+
+      launchTour()
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
   }, [key, currentHousehold, startSegment])
 
   useEffect(() => {
@@ -351,7 +373,7 @@ function Canvassing() {
               You haven&apos;t been assigned a walk list yet. Check back later
               or contact your campaign organizer.
             </p>
-            <Button asChild>
+            <Button asChild className="min-h-11">
               <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
             </Button>
           </Card>
@@ -451,8 +473,8 @@ function Canvassing() {
               </p>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={handleSurveySkip}>
-                Back to hub
+              <Button type="button" variant="outline" className="min-h-11" onClick={handleSurveySkip}>
+                Back to Hub
               </Button>
               <Button type="button" onClick={() => setSaveFailure(null)}>
                 {saveFailure.actionLabel}
