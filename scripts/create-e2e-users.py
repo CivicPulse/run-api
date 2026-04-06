@@ -848,7 +848,6 @@ def _find_target_campaigns(cur) -> list[tuple[str, str]]:
     return [(row[0], row[1])] if row else []
 
 
-
 def ensure_campaign_membership(user_zitadel_id: str, campaign_role: str) -> None:
     """Insert campaign_members rows with explicit roles for seeded dev campaigns.
 

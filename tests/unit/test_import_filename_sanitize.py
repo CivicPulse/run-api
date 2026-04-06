@@ -108,9 +108,7 @@ async def _post_with_mocks(original_filename: str) -> dict:
     mock_db.add = MagicMock(side_effect=lambda job: setattr(job, "id", uuid.uuid4()))
     mock_db.commit = AsyncMock()
     mock_db.execute = AsyncMock(
-        return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=local_user)
-        )
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=local_user))
     )
 
     with (
@@ -154,8 +152,7 @@ async def test_initiate_import_strips_path_traversal(_disable_rate_limit) -> Non
         f"file_key must not contain '..' path traversal: {file_key!r}"
     )
     assert "/etc/passwd" not in file_key, (
-        f"file_key must not contain the traversal target '/etc/passwd': "
-        f"{file_key!r}"
+        f"file_key must not contain the traversal target '/etc/passwd': {file_key!r}"
     )
 
 
@@ -164,9 +161,7 @@ async def test_initiate_import_strips_null_bytes(_disable_rate_limit) -> None:
     """Null bytes must be stripped from the filename before S3 key use."""
     data = await _post_with_mocks("foo\x00.csv")
     file_key = data["file_key"]
-    assert "\x00" not in file_key, (
-        f"file_key must not contain null bytes: {file_key!r}"
-    )
+    assert "\x00" not in file_key, f"file_key must not contain null bytes: {file_key!r}"
 
 
 @pytest.mark.asyncio
@@ -174,9 +169,7 @@ async def test_initiate_import_strips_backslashes(_disable_rate_limit) -> None:
     """Windows-style backslash paths must be stripped from S3 keys."""
     data = await _post_with_mocks("C:\\Windows\\evil.csv")
     file_key = data["file_key"]
-    assert "\\" not in file_key, (
-        f"file_key must not contain backslashes: {file_key!r}"
-    )
+    assert "\\" not in file_key, f"file_key must not contain backslashes: {file_key!r}"
 
 
 @pytest.mark.asyncio
@@ -189,7 +182,4 @@ async def test_initiate_import_prepends_uuid_to_basename(_disable_rate_limit) ->
         r"^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}"
         r"[-_].+$",
         basename,
-    ), (
-        f"file_key basename must start with a UUID prefix, got: "
-        f"{basename!r}"
-    )
+    ), f"file_key basename must start with a UUID prefix, got: {basename!r}"

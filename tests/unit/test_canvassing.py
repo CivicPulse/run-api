@@ -91,7 +91,9 @@ class TestCanvassService:
             assert result.attempt_number == 1
 
     @pytest.mark.asyncio
-    async def test_record_door_knock_with_survey_responses_uses_batch_service(self) -> None:
+    async def test_record_door_knock_with_survey_responses_uses_batch_service(
+        self,
+    ) -> None:
         """CANV-04: Contact payload saves ordered survey responses in the same flow."""
         from app.services.canvass import CanvassService
 
@@ -128,7 +130,12 @@ class TestCanvassService:
         mock_count_result.scalar_one.return_value = 2
 
         session.execute = AsyncMock(
-            side_effect=[mock_entry_result, mock_wl_result, mock_script_result, mock_count_result]
+            side_effect=[
+                mock_entry_result,
+                mock_wl_result,
+                mock_script_result,
+                mock_count_result,
+            ]
         )
 
         now = utcnow()

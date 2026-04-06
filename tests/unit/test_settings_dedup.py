@@ -23,8 +23,7 @@ def test_trusted_proxy_cidrs_default_is_cloudflare_list() -> None:
         f"list (>= 22 entries), got {len(settings.trusted_proxy_cidrs)}."
     )
     assert "173.245.48.0/20" in settings.trusted_proxy_cidrs, (
-        "trusted_proxy_cidrs default must include Cloudflare CIDR "
-        "173.245.48.0/20."
+        "trusted_proxy_cidrs default must include Cloudflare CIDR 173.245.48.0/20."
     )
 
 

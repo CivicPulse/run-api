@@ -109,9 +109,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON import_chunks TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON import_chunks TO app_user")
 
 
 def downgrade() -> None:

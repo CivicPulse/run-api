@@ -131,8 +131,7 @@ async def two_campaigns_with_voter_data(superuser_session):
     for vid, tid in [(voter_a_id, tag_a_id), (voter_b_id, tag_b_id)]:
         await session.execute(
             text(
-                "INSERT INTO voter_tag_members (voter_id, tag_id) "
-                "VALUES (:vid, :tid)"
+                "INSERT INTO voter_tag_members (voter_id, tag_id) VALUES (:vid, :tid)"
             ),
             {"vid": vid, "tid": tid},
         )

@@ -73,7 +73,10 @@ def _rewrite_presigned_url_for_browser_origin(upload_url: str, request: Request)
         return upload_url
     if not browser_parts.scheme or not browser_parts.netloc:
         return upload_url
-    if upload_parts.netloc == browser_parts.netloc and upload_parts.scheme == browser_parts.scheme:
+    if (
+        upload_parts.netloc == browser_parts.netloc
+        and upload_parts.scheme == browser_parts.scheme
+    ):
         return upload_url
 
     return urlunsplit(
@@ -240,8 +243,7 @@ async def detect_columns(
     if template_id is not None:
         template = await db.get(FieldMappingTemplate, template_id)
         if template is None or (
-            template.campaign_id is not None
-            and template.campaign_id != campaign_id
+            template.campaign_id is not None and template.campaign_id != campaign_id
         ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

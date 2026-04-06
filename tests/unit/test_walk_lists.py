@@ -234,9 +234,10 @@ class TestWalkListService:
 
         assert enriched[0]["latitude"] == pytest.approx(42.3601)
         assert enriched[0]["longitude"] == pytest.approx(-71.0589)
-        assert enriched[0]["prior_interactions"][
-            "last_date"
-        ] == "2026-01-02T03:04:00+00:00"
+        assert (
+            enriched[0]["prior_interactions"]["last_date"]
+            == "2026-01-02T03:04:00+00:00"
+        )
         assert enriched[1]["latitude"] is None
         assert enriched[1]["longitude"] is None
         assert enriched[1]["prior_interactions"]["attempt_count"] == 0

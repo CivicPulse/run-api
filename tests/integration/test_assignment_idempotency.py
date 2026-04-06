@@ -34,7 +34,11 @@ async def phone_bank_data(superuser_session):
     # Create users
     for uid, name, email in [
         (user_id, "Idempotent Owner", f"idem-owner-{uuid.uuid4().hex[:6]}@test.com"),
-        (caller_id, "Idempotent Caller", f"idem-caller-{uuid.uuid4().hex[:6]}@test.com"),
+        (
+            caller_id,
+            "Idempotent Caller",
+            f"idem-caller-{uuid.uuid4().hex[:6]}@test.com",
+        ),
     ]:
         await session.execute(
             text(
@@ -295,7 +299,9 @@ async def test_phone_bank_assign_different_callers(superuser_session, phone_bank
 
 
 @pytest.mark.asyncio
-async def test_phone_bank_assign_caller_not_found_session(superuser_session, phone_bank_data):
+async def test_phone_bank_assign_caller_not_found_session(
+    superuser_session, phone_bank_data
+):
     """Assigning to a nonexistent session raises ValueError."""
     service = PhoneBankService()
     with pytest.raises(ValueError, match="not found"):
@@ -315,14 +321,18 @@ async def test_walk_list_assign_canvasser_idempotent(superuser_session, walk_lis
     canvasser_id = walk_list_data["canvasser_id"]
 
     # First assignment
-    canv1 = await service.assign_canvasser(superuser_session, walk_list_id, canvasser_id)
+    canv1 = await service.assign_canvasser(
+        superuser_session, walk_list_id, canvasser_id
+    )
     await superuser_session.commit()
 
     assert canv1.walk_list_id == walk_list_id
     assert canv1.user_id == canvasser_id
 
     # Second assignment — same canvasser, same walk list — should succeed
-    canv2 = await service.assign_canvasser(superuser_session, walk_list_id, canvasser_id)
+    canv2 = await service.assign_canvasser(
+        superuser_session, walk_list_id, canvasser_id
+    )
     await superuser_session.commit()
 
     assert canv2.walk_list_id == walk_list_id
@@ -340,7 +350,9 @@ async def test_walk_list_assign_different_canvassers(superuser_session, walk_lis
     canvasser_id = walk_list_data["canvasser_id"]
     user_id = walk_list_data["user_id"]
 
-    canv1 = await service.assign_canvasser(superuser_session, walk_list_id, canvasser_id)
+    canv1 = await service.assign_canvasser(
+        superuser_session, walk_list_id, canvasser_id
+    )
     canv2 = await service.assign_canvasser(superuser_session, walk_list_id, user_id)
     await superuser_session.commit()
 

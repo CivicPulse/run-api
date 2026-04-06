@@ -31,12 +31,12 @@ def _attach_rls_reset(engine):
     def _reset_rls(dbapi_conn, rec, proxy):
         cur = dbapi_conn.cursor()
         cur.execute(
-            "SELECT set_config('app.current_campaign_id',"
-            f" '{_NULL_UUID}', false)"
+            f"SELECT set_config('app.current_campaign_id', '{_NULL_UUID}', false)"
         )
         cur.close()
 
     return engine
+
 
 # app_user connection — RLS enforced
 _DB_PORT = os.environ.get("TEST_DB_PORT", "5433")
@@ -56,9 +56,9 @@ class TestRLSPoolIsolation:
         data = two_campaigns
 
         # Create a pool with max 1 connection to force reuse
-        engine = _attach_rls_reset(create_async_engine(
-            APP_USER_URL, echo=False, pool_size=1, max_overflow=0
-        ))
+        engine = _attach_rls_reset(
+            create_async_engine(APP_USER_URL, echo=False, pool_size=1, max_overflow=0)
+        )
         factory = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )

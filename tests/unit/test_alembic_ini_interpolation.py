@@ -34,9 +34,7 @@ def test_alembic_ini_does_not_hardcode_local_postgres_url() -> None:
         for line in content.splitlines()
         if line.strip().startswith("sqlalchemy.url")
     ]
-    assert sqlalchemy_url_lines, (
-        "alembic.ini must declare a sqlalchemy.url line."
-    )
+    assert sqlalchemy_url_lines, "alembic.ini must declare a sqlalchemy.url line."
     for line in sqlalchemy_url_lines:
         assert HARDCODED_URL not in line, (
             f"alembic.ini sqlalchemy.url must not hardcode "

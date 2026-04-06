@@ -47,4 +47,7 @@ def test_find_target_campaigns_falls_back_to_first_campaign_when_named_targets_m
 
     assert campaigns == [("fallback-campaign", "Some Other Campaign")]
     assert cur.execute.call_count == 2
-    assert "SELECT id::text, name FROM campaigns LIMIT 1" in cur.execute.call_args_list[1].args[0]
+    assert (
+        "SELECT id::text, name FROM campaigns LIMIT 1"
+        in cur.execute.call_args_list[1].args[0]
+    )

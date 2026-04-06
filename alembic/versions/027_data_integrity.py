@@ -75,9 +75,7 @@ def upgrade() -> None:
     # --- DATA-05: Invite partial unique index (C13) ---
     # Drop the unconditional UQ and replace with a partial unique index
     # that only constrains *pending* invites (not accepted/revoked).
-    op.drop_constraint(
-        "uq_pending_invite_email_campaign", "invites", type_="unique"
-    )
+    op.drop_constraint("uq_pending_invite_email_campaign", "invites", type_="unique")
     op.execute(
         "CREATE UNIQUE INDEX uq_pending_invite_email_campaign "
         "ON invites (email, campaign_id) "
