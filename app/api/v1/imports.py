@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced, get_campaign_db
+from app.core.config import settings
 from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, require_role
 from app.core.time import utcnow
@@ -54,11 +55,18 @@ def _rewrite_presigned_url_for_browser_origin(upload_url: str, request: Request)
     `/voter-imports`. The signature must match the host that the browser sends to
     the proxy, not an internal/default host like `localhost:5173`.
 
+    When ``s3_presign_endpoint_url`` is configured, the presigned URL already
+    targets a browser-accessible endpoint (e.g. files.civpulse.org) and must
+    not be rewritten — doing so would break the S3 signature.
+
     Because `/api` requests are proxied to the backend with `changeOrigin: true`,
     `request.base_url` is not a reliable browser origin. Prefer the browser's
     `Origin` header (falling back to `Referer`) and only rewrite the scheme/netloc,
     preserving the signed path and query string exactly.
     """
+    if settings.s3_presign_endpoint_url:
+        return upload_url
+
     browser_origin = request.headers.get("origin") or request.headers.get("referer")
     if not browser_origin:
         return upload_url
