@@ -13,7 +13,7 @@
     "orientationAngle": 0,
     "orientationType": "landscape-primary"
   },
-  "timestamp": "2026-04-05T23:50:00.933Z",
+  "timestamp": "2026-04-06T13:41:46.153Z",
   "url": "https://run.civpulse.org/campaigns/new",
   "toolOptions": {
     "runOnly": {
@@ -982,9 +982,9 @@
             }
           ],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         },
         {
@@ -1188,9 +1188,9 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         },
         {
@@ -1296,9 +1296,9 @@
             }
           ],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         }
       ]
@@ -1772,9 +1772,9 @@
             }
           ],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         },
         {
@@ -1880,9 +1880,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         }
       ]
@@ -2026,9 +2026,9 @@
             }
           ],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         }
       ]
@@ -2300,9 +2300,9 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         },
         {
@@ -2512,9 +2512,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
           "target": [
-            ".justify-between"
+            "#type"
           ]
         },
         {
@@ -2620,7 +2620,7 @@
     },
     {
       "id": "button-name",
-      "impact": "critical",
+      "impact": null,
       "tags": [
         "cat.name-role-value",
         "wcag2a",
@@ -2748,6 +2748,40 @@
           "html": "<button class=\"inline-flex items-center justify-center min-h-11 min-w-11 p-1\" aria-label=\"More info\" aria-describedby=\"_r_3_\" type=\"button\" aria-haspopup=\"dialog\" aria-expanded=\"false\" aria-controls=\"radix-_r_4_\" data-state=\"closed\" data-slot=\"popover-trigger\">",
           "target": [
             ".min-h-11"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            },
+            {
+              "id": "explicit-label",
+              "data": {
+                "explicitLabel": "Campaign Type *"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<label data-slot=\"label\" class=\"flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70\" for=\"type\">Campaign Type *</label>",
+                  "target": [
+                    "label[for=\"type\"]"
+                  ]
+                }
+              ],
+              "impact": "critical",
+              "message": "Element has an explicit <label>"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
+          "target": [
+            "#type"
           ]
         },
         {
@@ -3729,6 +3763,24 @@
           "html": "<input data-slot=\"input\" class=\"h-9 w-full min-w-0 r...\" id=\"name\" placeholder=\"e.g. Smith for Senat...\" aria-invalid=\"false\" name=\"name\">",
           "target": [
             "#name"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "duplicate-id-aria",
+              "data": "type",
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "Document has no elements referenced with ARIA or labels that share the same id attribute"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" id=\"type\" aria-invalid=\"false\" aria-label=\"Campaign type\">",
+          "target": [
+            "#type"
           ]
         },
         {
@@ -4865,92 +4917,5 @@
       ]
     }
   ],
-  "violations": [
-    {
-      "id": "button-name",
-      "impact": "critical",
-      "tags": [
-        "cat.name-role-value",
-        "wcag2a",
-        "wcag412",
-        "section508",
-        "section508.22.a",
-        "TTv5",
-        "TT6.a",
-        "EN-301-549",
-        "EN-9.4.1.2",
-        "ACT",
-        "RGAAv4",
-        "RGAA-11.9.1"
-      ],
-      "description": "Ensure buttons have discernible text",
-      "help": "Buttons must have discernible text",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button type=\"button\" role=\"combobox\" aria-controls=\"radix-_r_5_\" aria-expanded=\"false\" aria-autocomplete=\"none\" dir=\"ltr\" data-state=\"closed\" data-placeholder=\"\" data-slot=\"select-trigger\" data-size=\"default\" class=\"flex items-center ju...\" aria-invalid=\"false\">",
-          "target": [
-            ".justify-between"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        }
-      ]
-    }
-  ]
+  "violations": []
 }

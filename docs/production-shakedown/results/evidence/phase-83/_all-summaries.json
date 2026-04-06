@@ -1,0 +1,230 @@
+[
+  {
+    "label": "axe-02-login",
+    "url": "https://auth.civpulse.org/ui/v2/login/loginname?requestId=oidc_V2_367399235622010949",
+    "counts": {
+      "critical": 0,
+      "serious": 1,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [
+      "html-has-lang"
+    ],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-01-home",
+    "url": "https://run.civpulse.org/",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-03-campaign-dashboard",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+    "counts": {
+      "critical": 0,
+      "serious": 1,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [
+      "aria-hidden-focus"
+    ],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-04-voter-list",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-05-voter-detail",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-06-canvassing",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-07-phone-banking",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banking/call-lists",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-08-surveys",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-09-volunteers",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteers/roster",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-10-campaign-settings",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/settings/general",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-11-wizard-step-1",
+    "url": "https://run.civpulse.org/campaigns/new",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-18-org-members",
+    "url": "https://run.civpulse.org/org/members",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-19-org-settings",
+    "url": "https://run.civpulse.org/org/settings",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-15-field-hub",
+    "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-16-field-canvassing",
+    "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  },
+  {
+    "label": "axe-17-field-phone-banking",
+    "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banking",
+    "counts": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "criticalIds": [],
+    "seriousIds": [],
+    "moderateIds": [],
+    "minorIds": []
+  }
+]

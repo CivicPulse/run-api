@@ -1,7 +1,7 @@
 [
   {
     "label": "axe-02-login",
-    "url": "https://auth.civpulse.org/ui/v2/login/loginname?requestId=oidc_V2_367315239030489157",
+    "url": "https://auth.civpulse.org/ui/v2/login/loginname?requestId=oidc_V2_367398961431969861",
     "counts": {
       "critical": 0,
       "serious": 1,
@@ -78,14 +78,12 @@
     "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
     "counts": {
       "critical": 0,
-      "serious": 1,
+      "serious": 0,
       "moderate": 0,
       "minor": 0
     },
     "criticalIds": [],
-    "seriousIds": [
-      "link-name"
-    ],
+    "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
   },
@@ -107,17 +105,13 @@
     "label": "axe-08-surveys",
     "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys",
     "counts": {
-      "critical": 1,
-      "serious": 1,
+      "critical": 0,
+      "serious": 0,
       "moderate": 0,
       "minor": 0
     },
-    "criticalIds": [
-      "button-name"
-    ],
-    "seriousIds": [
-      "link-name"
-    ],
+    "criticalIds": [],
+    "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
   },
@@ -125,14 +119,12 @@
     "label": "axe-09-volunteers",
     "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteers/roster",
     "counts": {
-      "critical": 1,
+      "critical": 0,
       "serious": 0,
       "moderate": 0,
       "minor": 0
     },
-    "criticalIds": [
-      "button-name"
-    ],
+    "criticalIds": [],
     "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
@@ -155,14 +147,12 @@
     "label": "axe-11-wizard-step-1",
     "url": "https://run.civpulse.org/campaigns/new",
     "counts": {
-      "critical": 1,
+      "critical": 0,
       "serious": 0,
       "moderate": 0,
       "minor": 0
     },
-    "criticalIds": [
-      "button-name"
-    ],
+    "criticalIds": [],
     "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
@@ -200,14 +190,12 @@
     "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/",
     "counts": {
       "critical": 0,
-      "serious": 1,
+      "serious": 0,
       "moderate": 0,
       "minor": 0
     },
     "criticalIds": [],
-    "seriousIds": [
-      "aria-progressbar-name"
-    ],
+    "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
   },
@@ -215,18 +203,13 @@
     "label": "axe-16-field-canvassing",
     "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
     "counts": {
-      "critical": 1,
-      "serious": 2,
+      "critical": 0,
+      "serious": 0,
       "moderate": 0,
       "minor": 0
     },
-    "criticalIds": [
-      "aria-allowed-attr"
-    ],
-    "seriousIds": [
-      "aria-progressbar-name",
-      "color-contrast"
-    ],
+    "criticalIds": [],
+    "seriousIds": [],
     "moderateIds": [],
     "minorIds": []
   },

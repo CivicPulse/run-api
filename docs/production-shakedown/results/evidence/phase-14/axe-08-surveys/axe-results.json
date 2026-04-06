@@ -13,7 +13,7 @@
     "orientationAngle": 0,
     "orientationType": "landscape-primary"
   },
-  "timestamp": "2026-04-05T23:49:48.856Z",
+  "timestamp": "2026-04-06T13:41:33.036Z",
   "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys",
   "toolOptions": {
     "runOnly": {
@@ -988,6 +988,422 @@
             }
           ],
           "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
@@ -1117,6 +1533,294 @@
           "html": "<a class=\"flex shrink-0 items-...\" href=\"/campaigns/06d710c8-...\" data-status=\"active\" aria-current=\"page\">",
           "target": [
             ".active"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
           ]
         },
         {
@@ -1904,7 +2608,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(1) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         },
         {
@@ -1968,7 +2672,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(3) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            "button[aria-label=\"Delete survey SRV Owner Script\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         },
         {
@@ -2032,7 +2736,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         },
         {
@@ -2064,7 +2768,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         },
         {
@@ -2096,7 +2800,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         },
         {
@@ -2128,7 +2832,7 @@
           "impact": null,
           "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-trash2 lucide-trash-2 h-4 w-4 text-destructive\" aria-hidden=\"true\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(8) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20 > .lucide-trash2.lucide-trash-2.text-destructive"
+            "button[aria-label=\"Delete survey QA Survey TestA\"] > .lucide-trash2.lucide-trash-2.text-destructive"
           ]
         }
       ]
@@ -2237,6 +2941,294 @@
           "html": "<a class=\"flex shrink-0 items-...\" href=\"/campaigns/06d710c8-...\" data-status=\"active\" aria-current=\"page\">",
           "target": [
             ".active"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
           ]
         },
         {
@@ -2680,6 +3672,518 @@
           ],
           "none": [],
           "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
@@ -2824,6 +4328,294 @@
           "all": [],
           "none": [],
           "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
@@ -2882,7 +4674,7 @@
     },
     {
       "id": "button-name",
-      "impact": "critical",
+      "impact": null,
       "tags": [
         "cat.name-role-value",
         "wcag2a",
@@ -2992,6 +4784,150 @@
           "html": "<button data-slot=\"button\" data-variant=\"default\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
             ".hover\\:bg-primary\\/90"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
+          "target": [
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
+          "target": [
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
           ]
         }
       ]
@@ -3891,7 +5827,7 @@
     },
     {
       "id": "link-name",
-      "impact": "serious",
+      "impact": null,
       "tags": [
         "cat.name-role-value",
         "wcag2a",
@@ -4379,6 +6315,214 @@
           "target": [
             ".border-b-2.transition-colors.hover\\:text-foreground:nth-child(6)"
           ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Resp Fixture\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Resp Fixture\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV zero-questions\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV zero-questions\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Owner Script\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey SRV Owner Script\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey SRV Test Script 1 (renamed)\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey rbac-probe\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute[aria-label=\"Open survey rbac-probe\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "focusable-no-name",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element is not in tab order or has accessible text"
+            }
+          ],
+          "impact": null,
+          "html": "<a aria-label=\"Open survey QA Survey TestA\" href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
+          "target": [
+            "a[aria-label=\"Open survey QA Survey TestA\"]"
+          ]
         }
       ]
     },
@@ -4828,9 +6972,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Re...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(1) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            "button[aria-label=\"Delete survey SRV Resp Fixture\"]"
           ]
         },
         {
@@ -4846,7 +6990,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV ze...\">",
           "target": [
             ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
           ]
@@ -4864,9 +7008,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Ow...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(3) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            "button[aria-label=\"Delete survey SRV Owner Script\"]"
           ]
         },
         {
@@ -4882,7 +7026,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey SRV Te...\">",
           "target": [
             ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
           ]
@@ -4900,9 +7044,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
           ]
         },
         {
@@ -4918,9 +7062,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
           ]
         },
         {
@@ -4936,9 +7080,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey rbac-p...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11[aria-label=\"Delete survey rbac-probe\"]"
           ]
         },
         {
@@ -4954,9 +7098,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
+          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\" aria-label=\"Delete survey QA Sur...\">",
           "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(8) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
+            "button[aria-label=\"Delete survey QA Survey TestA\"]"
           ]
         }
       ]
@@ -5704,958 +7848,5 @@
       ]
     }
   ],
-  "violations": [
-    {
-      "id": "button-name",
-      "impact": "critical",
-      "tags": [
-        "cat.name-role-value",
-        "wcag2a",
-        "wcag412",
-        "section508",
-        "section508.22.a",
-        "TTv5",
-        "TT6.a",
-        "EN-301-549",
-        "EN-9.4.1.2",
-        "ACT",
-        "RGAAv4",
-        "RGAA-11.9.1"
-      ],
-      "description": "Ensure buttons have discernible text",
-      "help": "Buttons must have discernible text",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(1) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(3) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(7) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has no title attribute"
-            },
-            {
-              "id": "implicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an implicit (wrapped) <label>"
-            },
-            {
-              "id": "explicit-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element does not have an explicit <label>"
-            },
-            {
-              "id": "presentational-role",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "critical",
-          "html": "<button data-slot=\"button\" data-variant=\"ghost\" data-size=\"icon\" class=\"inline-flex shrink-0...\">",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(8) > .px-6.justify-between[data-slot=\"card-content\"] > .md\\:size-9.size-11.z-20"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
-        }
-      ]
-    },
-    {
-      "id": "link-name",
-      "impact": "serious",
-      "tags": [
-        "cat.name-role-value",
-        "wcag2a",
-        "wcag244",
-        "wcag412",
-        "section508",
-        "section508.22.a",
-        "TTv5",
-        "TT6.a",
-        "EN-301-549",
-        "EN-9.2.4.4",
-        "EN-9.4.1.2",
-        "ACT",
-        "RGAAv4",
-        "RGAA-6.2.1"
-      ],
-      "description": "Ensure links have discernible text",
-      "help": "Links must have discernible text",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/link-name?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/2b612630-02bc-48b8-9fe9-a62974ce14e6\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(1) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/c9625ac9-2c8b-4de9-b58a-fc3b69130600\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(2) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/4fce86c0-c661-412f-ba39-a26b9714476f\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(3) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d3df7828-9645-4182-aa88-6a13c5f9c50b\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(4) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/d77cfecf-8e2e-46e2-a152-1ec2289f777a\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(5) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8915a0ea-af15-4726-8368-987515a22696\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(6) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8dbf2bb4-9845-49f4-add2-53b323339580\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(7) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [
-            {
-              "id": "focusable-no-name",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element is in tab order and does not have accessible text"
-            }
-          ],
-          "impact": "serious",
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d\" class=\"absolute inset-0 z-10\"></a>",
-          "target": [
-            ".gap-6.rounded-xl.bg-card:nth-child(8) > .inset-0.absolute.z-10"
-          ],
-          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        }
-      ]
-    }
-  ]
+  "violations": []
 }

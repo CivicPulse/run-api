@@ -13,7 +13,7 @@
     "orientationAngle": 0,
     "orientationType": "landscape-primary"
   },
-  "timestamp": "2026-04-05T23:49:23.606Z",
+  "timestamp": "2026-04-06T13:41:05.246Z",
   "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters",
   "toolOptions": {
     "runOnly": {
@@ -13024,7 +13024,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]"
+            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background"
           ]
         },
         {
@@ -14212,7 +14212,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\" disabled=\"\">",
           "target": [
-            ".mt-4 > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]:nth-child(1)"
+            ".mt-4 > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background:nth-child(1)"
           ]
         },
         {
@@ -14230,7 +14230,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]:nth-child(2)"
+            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background:nth-child(2)"
           ]
         }
       ]
@@ -15142,7 +15142,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]"
+            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background"
           ]
         },
         {
@@ -15740,7 +15740,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cf6f87ae-489c-412c-9534-176cfe0ee819\" class=\"font-medium hover:underline\">DuringDemotion PostPromote</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/43f68b32-0b52-450f-a9c1-dc74b944b021\" class=\"font-medium hover:underline\">TestA10 Voter</a>",
           "target": [
             "tr:nth-child(1) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15753,6 +15753,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(1) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15765,7 +15790,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/fabddc90-5def-497b-8677-aec928fec321\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tbody > tr:nth-child(1) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/5077bde3-f1c5-44cd-a87c-253fcb80e24a\" class=\"font-medium hover:underline\">TestA9 Voter</a>",
           "target": [
             "tr:nth-child(2) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15778,6 +15828,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(2) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15790,7 +15865,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bf0dc3c6-5f62-434a-9630-0ea1ee845eea\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(2) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6719bfa8-1c73-4ca7-ae3a-3f0f8ef2537d\" class=\"font-medium hover:underline\">TestA8 Voter</a>",
           "target": [
             "tr:nth-child(3) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15803,6 +15903,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(3) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15815,7 +15940,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/056277c4-5232-41a4-9ab8-00c8a6085bef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(3) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/be95d2ef-5947-45e2-9889-e68a20e28925\" class=\"font-medium hover:underline\">TestA7 Voter</a>",
           "target": [
             "tr:nth-child(4) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15828,6 +15978,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(4) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15840,7 +16015,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/194f988c-d4de-418a-99ea-033892137975\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(4) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/a9be1977-1826-46ea-809a-b9ac97d7e67c\" class=\"font-medium hover:underline\">TestA6 Voter</a>",
           "target": [
             "tr:nth-child(5) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15853,6 +16053,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(5) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15865,7 +16090,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/67232f92-fce3-4cf7-a6fa-105780b87481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(5) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/99db69a4-cef0-468f-990e-927afd37084c\" class=\"font-medium hover:underline\">TestA5 Voter</a>",
           "target": [
             "tr:nth-child(6) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15878,6 +16128,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(6) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15890,7 +16165,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/aed5a1c5-5d4f-421f-ab4d-c72ab43f0481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(6) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/610b692d-e6e9-4e3e-a6f6-896caeb034ee\" class=\"font-medium hover:underline\">TestA4 Voter</a>",
           "target": [
             "tr:nth-child(7) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15903,6 +16203,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(7) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15915,7 +16240,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/03e694b9-0e0d-484f-8eab-d43b21bc148e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(7) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/780bca7b-6cd0-4831-ae29-c7a8586e30fe\" class=\"font-medium hover:underline\">TestA3 Voter</a>",
           "target": [
             "tr:nth-child(8) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15928,6 +16278,31 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(8) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
                 "fontSize": "10.5pt (14px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
@@ -15940,7 +16315,32 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1af2163b-9e7e-4953-8852-dbdee92c429a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(8) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/39b08236-3c42-42d7-bd46-96bd23b9fcd3\" class=\"font-medium hover:underline\">TestA2 Voter</a>",
           "target": [
             "tr:nth-child(9) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -15953,7 +16353,7 @@
                 "fgColor": "#080d10",
                 "bgColor": "#fcfeff",
                 "contrastRatio": 19.3,
-                "fontSize": "10.5pt (14px)",
+                "fontSize": "9.0pt (12px)",
                 "fontWeight": "normal",
                 "expectedContrastRatio": "4.5:1"
               },
@@ -15965,9 +16365,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6752fabc-23d1-4496-93d2-c0052cd9411c\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
           "target": [
-            "tr:nth-child(10) > td:nth-child(1) > .hover\\:underline"
+            "tr:nth-child(9) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
           ]
         },
         {
@@ -15990,7 +16390,107 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1a90472c-6885-4a87-a6a0-c1a6a7ae2b01\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(9) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cac22748-ec6b-4690-8bba-2c6d98278096\" class=\"font-medium hover:underline\">TestA1 Voter</a>",
+          "target": [
+            "tr:nth-child(10) > td:nth-child(1) > .hover\\:underline"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"badge\" data-variant=\"outline\" class=\"inline-flex w-fit sh...\">",
+          "target": [
+            "tr:nth-child(10) > td:nth-child(2) > .w-fit.py-0\\.5.\\[\\&\\>svg\\]\\:pointer-events-none"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<td data-slot=\"table-cell\" class=\"p-2 align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] py-3 hidden md:table-cell\">46</td>",
+          "target": [
+            "tr:nth-child(10) > .md\\:table-cell.hidden:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cf6f87ae-489c-412c-9534-176cfe0ee819\" class=\"font-medium hover:underline\">DuringDemotion PostPromote</a>",
           "target": [
             "tr:nth-child(11) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16015,7 +16515,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/42a67f93-141a-4a15-bc83-e17b2e4d825a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/fabddc90-5def-497b-8677-aec928fec321\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(12) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16040,7 +16540,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6081f9cb-b8c1-45f2-b298-2a0b50dff13e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bf0dc3c6-5f62-434a-9630-0ea1ee845eea\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(13) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16065,7 +16565,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/36ae9d40-9717-49e1-8e71-b372ae0483c4\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/056277c4-5232-41a4-9ab8-00c8a6085bef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(14) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16090,7 +16590,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/74b272b2-05ee-4378-9eb6-5a9646b0484a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/194f988c-d4de-418a-99ea-033892137975\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(15) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16115,7 +16615,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9c558f2b-eec5-4af5-ab1c-1693b8378a33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/67232f92-fce3-4cf7-a6fa-105780b87481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(16) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16140,7 +16640,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/551116da-aa23-4ed8-9eda-efb9fa7aea15\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/aed5a1c5-5d4f-421f-ab4d-c72ab43f0481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(17) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16165,7 +16665,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/07bda0e0-779f-4578-9e36-4ab9151ee9ff\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/03e694b9-0e0d-484f-8eab-d43b21bc148e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(18) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16190,7 +16690,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d2560440-4973-42a7-9238-95db006f41c6\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1af2163b-9e7e-4953-8852-dbdee92c429a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(19) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16215,7 +16715,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32f3a912-1c83-434e-b2cb-d2bac033ca62\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6752fabc-23d1-4496-93d2-c0052cd9411c\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(20) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16240,7 +16740,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6386793-9ba2-409a-976e-f13e45c0fd4e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1a90472c-6885-4a87-a6a0-c1a6a7ae2b01\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(21) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16265,7 +16765,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dedd7b14-a23d-49f2-b6f9-78ea067bc7c7\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/42a67f93-141a-4a15-bc83-e17b2e4d825a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(22) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16290,7 +16790,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/365b44b4-78dc-4f1a-a3c9-2ac900671f8b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6081f9cb-b8c1-45f2-b298-2a0b50dff13e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(23) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16315,7 +16815,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/435bc75d-781a-4761-a285-9c2fa516ad33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/36ae9d40-9717-49e1-8e71-b372ae0483c4\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(24) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16340,7 +16840,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df62edf3-6447-4da3-8bcd-18eac9994ad5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/74b272b2-05ee-4378-9eb6-5a9646b0484a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(25) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16365,7 +16865,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c8e6be14-51dc-4756-acb7-44146dfa5478\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9c558f2b-eec5-4af5-ab1c-1693b8378a33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(26) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16390,7 +16890,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/b8abf74d-3cb9-4291-aa68-345b640c1ff0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/551116da-aa23-4ed8-9eda-efb9fa7aea15\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(27) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16415,7 +16915,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/59796dde-5e98-4272-bdc5-595c4bd3dfe5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/07bda0e0-779f-4578-9e36-4ab9151ee9ff\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(28) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16440,7 +16940,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/95b5bafb-8dd0-4123-92d2-ba690fe25b06\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d2560440-4973-42a7-9238-95db006f41c6\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(29) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16465,7 +16965,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32aa0772-ecbf-414e-83cd-5288d5343dda\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32f3a912-1c83-434e-b2cb-d2bac033ca62\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(30) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16490,7 +16990,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/3a7554d3-0841-417b-b3d7-be67b57260a9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6386793-9ba2-409a-976e-f13e45c0fd4e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(31) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16515,7 +17015,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c6c790bf-f504-4be8-aabb-097b67332e6a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dedd7b14-a23d-49f2-b6f9-78ea067bc7c7\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(32) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16540,7 +17040,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bdeb723a-41d1-4f4e-b511-03126d9257fa\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/365b44b4-78dc-4f1a-a3c9-2ac900671f8b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(33) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16565,7 +17065,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/71b69520-48ac-4803-8416-3036491b4ce9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/435bc75d-781a-4761-a285-9c2fa516ad33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(34) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16590,7 +17090,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7997b57d-b584-4ac6-9706-acba2156b38a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df62edf3-6447-4da3-8bcd-18eac9994ad5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(35) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16615,7 +17115,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7b69aa24-eb15-4d23-b19d-cb38b8dcbbfd\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c8e6be14-51dc-4756-acb7-44146dfa5478\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(36) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16640,7 +17140,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/70a22273-1c14-43c4-b8b9-ee1398544811\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/b8abf74d-3cb9-4291-aa68-345b640c1ff0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(37) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16665,7 +17165,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/4a9ea137-a6d1-48a1-aecf-b1f2e055127b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/59796dde-5e98-4272-bdc5-595c4bd3dfe5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(38) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16690,7 +17190,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/0c90740e-de03-410e-aafe-4a605cf5a580\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/95b5bafb-8dd0-4123-92d2-ba690fe25b06\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(39) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16715,7 +17215,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d006f572-f7eb-43dc-a146-398c50d89339\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32aa0772-ecbf-414e-83cd-5288d5343dda\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(40) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16740,7 +17240,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/a64a3981-c97e-4dc0-b825-0b671b1e9681\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/3a7554d3-0841-417b-b3d7-be67b57260a9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(41) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16765,7 +17265,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/706b169f-98ed-437b-b7fd-02cde6f41096\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c6c790bf-f504-4be8-aabb-097b67332e6a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(42) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16790,7 +17290,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/f43688fc-0ce1-4cb8-9ed6-4ad02372fd28\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bdeb723a-41d1-4f4e-b511-03126d9257fa\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(43) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16815,7 +17315,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/362a3468-573e-4b2e-a2eb-4e0e04e2eae0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/71b69520-48ac-4803-8416-3036491b4ce9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(44) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16840,7 +17340,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/156c46b0-62a6-46d9-af84-772489c5e8ef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7997b57d-b584-4ac6-9706-acba2156b38a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(45) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16865,7 +17365,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9487a597-dc6b-43d3-857c-ec6a6bf11c34\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7b69aa24-eb15-4d23-b19d-cb38b8dcbbfd\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(46) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16890,7 +17390,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df2649c5-1ebf-4bb6-bf91-9ac6c40545ab\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/70a22273-1c14-43c4-b8b9-ee1398544811\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(47) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16915,7 +17415,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/f8c5a322-7711-498a-84ac-316c5bf8b87e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/4a9ea137-a6d1-48a1-aecf-b1f2e055127b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(48) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16940,7 +17440,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6758c2c-c4cb-4011-9336-e8b351a4bae5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/0c90740e-de03-410e-aafe-4a605cf5a580\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(49) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16965,7 +17465,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d4994217-f2e5-4477-b572-5178efc9f403\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d006f572-f7eb-43dc-a146-398c50d89339\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(50) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -16992,7 +17492,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]:nth-child(2)"
+            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background:nth-child(2)"
           ]
         }
       ]
@@ -18103,7 +18603,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cf6f87ae-489c-412c-9534-176cfe0ee819\" class=\"font-medium hover:underline\">DuringDemotion PostPromote</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/43f68b32-0b52-450f-a9c1-dc74b944b021\" class=\"font-medium hover:underline\">TestA10 Voter</a>",
           "target": [
             "tr:nth-child(1) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18129,7 +18629,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/fabddc90-5def-497b-8677-aec928fec321\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/5077bde3-f1c5-44cd-a87c-253fcb80e24a\" class=\"font-medium hover:underline\">TestA9 Voter</a>",
           "target": [
             "tr:nth-child(2) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18155,7 +18655,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bf0dc3c6-5f62-434a-9630-0ea1ee845eea\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6719bfa8-1c73-4ca7-ae3a-3f0f8ef2537d\" class=\"font-medium hover:underline\">TestA8 Voter</a>",
           "target": [
             "tr:nth-child(3) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18181,7 +18681,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/056277c4-5232-41a4-9ab8-00c8a6085bef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/be95d2ef-5947-45e2-9889-e68a20e28925\" class=\"font-medium hover:underline\">TestA7 Voter</a>",
           "target": [
             "tr:nth-child(4) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18207,7 +18707,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/194f988c-d4de-418a-99ea-033892137975\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/a9be1977-1826-46ea-809a-b9ac97d7e67c\" class=\"font-medium hover:underline\">TestA6 Voter</a>",
           "target": [
             "tr:nth-child(5) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18233,7 +18733,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/67232f92-fce3-4cf7-a6fa-105780b87481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/99db69a4-cef0-468f-990e-927afd37084c\" class=\"font-medium hover:underline\">TestA5 Voter</a>",
           "target": [
             "tr:nth-child(6) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18259,7 +18759,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/aed5a1c5-5d4f-421f-ab4d-c72ab43f0481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/610b692d-e6e9-4e3e-a6f6-896caeb034ee\" class=\"font-medium hover:underline\">TestA4 Voter</a>",
           "target": [
             "tr:nth-child(7) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18285,7 +18785,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/03e694b9-0e0d-484f-8eab-d43b21bc148e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/780bca7b-6cd0-4831-ae29-c7a8586e30fe\" class=\"font-medium hover:underline\">TestA3 Voter</a>",
           "target": [
             "tr:nth-child(8) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18311,7 +18811,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1af2163b-9e7e-4953-8852-dbdee92c429a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/39b08236-3c42-42d7-bd46-96bd23b9fcd3\" class=\"font-medium hover:underline\">TestA2 Voter</a>",
           "target": [
             "tr:nth-child(9) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18337,7 +18837,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6752fabc-23d1-4496-93d2-c0052cd9411c\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cac22748-ec6b-4690-8bba-2c6d98278096\" class=\"font-medium hover:underline\">TestA1 Voter</a>",
           "target": [
             "tr:nth-child(10) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18363,7 +18863,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1a90472c-6885-4a87-a6a0-c1a6a7ae2b01\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/cf6f87ae-489c-412c-9534-176cfe0ee819\" class=\"font-medium hover:underline\">DuringDemotion PostPromote</a>",
           "target": [
             "tr:nth-child(11) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18389,7 +18889,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/42a67f93-141a-4a15-bc83-e17b2e4d825a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/fabddc90-5def-497b-8677-aec928fec321\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(12) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18415,7 +18915,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6081f9cb-b8c1-45f2-b298-2a0b50dff13e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bf0dc3c6-5f62-434a-9630-0ea1ee845eea\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(13) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18441,7 +18941,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/36ae9d40-9717-49e1-8e71-b372ae0483c4\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/056277c4-5232-41a4-9ab8-00c8a6085bef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(14) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18467,7 +18967,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/74b272b2-05ee-4378-9eb6-5a9646b0484a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/194f988c-d4de-418a-99ea-033892137975\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(15) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18493,7 +18993,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9c558f2b-eec5-4af5-ab1c-1693b8378a33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/67232f92-fce3-4cf7-a6fa-105780b87481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(16) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18519,7 +19019,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/551116da-aa23-4ed8-9eda-efb9fa7aea15\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/aed5a1c5-5d4f-421f-ab4d-c72ab43f0481\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(17) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18545,7 +19045,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/07bda0e0-779f-4578-9e36-4ab9151ee9ff\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/03e694b9-0e0d-484f-8eab-d43b21bc148e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(18) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18571,7 +19071,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d2560440-4973-42a7-9238-95db006f41c6\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1af2163b-9e7e-4953-8852-dbdee92c429a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(19) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18597,7 +19097,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32f3a912-1c83-434e-b2cb-d2bac033ca62\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6752fabc-23d1-4496-93d2-c0052cd9411c\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(20) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18623,7 +19123,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6386793-9ba2-409a-976e-f13e45c0fd4e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/1a90472c-6885-4a87-a6a0-c1a6a7ae2b01\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(21) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18649,7 +19149,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dedd7b14-a23d-49f2-b6f9-78ea067bc7c7\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/42a67f93-141a-4a15-bc83-e17b2e4d825a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(22) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18675,7 +19175,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/365b44b4-78dc-4f1a-a3c9-2ac900671f8b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/6081f9cb-b8c1-45f2-b298-2a0b50dff13e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(23) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18701,7 +19201,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/435bc75d-781a-4761-a285-9c2fa516ad33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/36ae9d40-9717-49e1-8e71-b372ae0483c4\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(24) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18727,7 +19227,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df62edf3-6447-4da3-8bcd-18eac9994ad5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/74b272b2-05ee-4378-9eb6-5a9646b0484a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(25) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18753,7 +19253,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c8e6be14-51dc-4756-acb7-44146dfa5478\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9c558f2b-eec5-4af5-ab1c-1693b8378a33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(26) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18779,7 +19279,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/b8abf74d-3cb9-4291-aa68-345b640c1ff0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/551116da-aa23-4ed8-9eda-efb9fa7aea15\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(27) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18805,7 +19305,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/59796dde-5e98-4272-bdc5-595c4bd3dfe5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/07bda0e0-779f-4578-9e36-4ab9151ee9ff\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(28) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18831,7 +19331,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/95b5bafb-8dd0-4123-92d2-ba690fe25b06\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d2560440-4973-42a7-9238-95db006f41c6\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(29) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18857,7 +19357,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32aa0772-ecbf-414e-83cd-5288d5343dda\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32f3a912-1c83-434e-b2cb-d2bac033ca62\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(30) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18883,7 +19383,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/3a7554d3-0841-417b-b3d7-be67b57260a9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6386793-9ba2-409a-976e-f13e45c0fd4e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(31) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18909,7 +19409,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c6c790bf-f504-4be8-aabb-097b67332e6a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dedd7b14-a23d-49f2-b6f9-78ea067bc7c7\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(32) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18935,7 +19435,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bdeb723a-41d1-4f4e-b511-03126d9257fa\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/365b44b4-78dc-4f1a-a3c9-2ac900671f8b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(33) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18961,7 +19461,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/71b69520-48ac-4803-8416-3036491b4ce9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/435bc75d-781a-4761-a285-9c2fa516ad33\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(34) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -18987,7 +19487,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7997b57d-b584-4ac6-9706-acba2156b38a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df62edf3-6447-4da3-8bcd-18eac9994ad5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(35) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19013,7 +19513,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7b69aa24-eb15-4d23-b19d-cb38b8dcbbfd\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c8e6be14-51dc-4756-acb7-44146dfa5478\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(36) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19039,7 +19539,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/70a22273-1c14-43c4-b8b9-ee1398544811\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/b8abf74d-3cb9-4291-aa68-345b640c1ff0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(37) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19065,7 +19565,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/4a9ea137-a6d1-48a1-aecf-b1f2e055127b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/59796dde-5e98-4272-bdc5-595c4bd3dfe5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(38) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19091,7 +19591,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/0c90740e-de03-410e-aafe-4a605cf5a580\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/95b5bafb-8dd0-4123-92d2-ba690fe25b06\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(39) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19117,7 +19617,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d006f572-f7eb-43dc-a146-398c50d89339\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/32aa0772-ecbf-414e-83cd-5288d5343dda\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(40) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19143,7 +19643,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/a64a3981-c97e-4dc0-b825-0b671b1e9681\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/3a7554d3-0841-417b-b3d7-be67b57260a9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(41) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19169,7 +19669,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/706b169f-98ed-437b-b7fd-02cde6f41096\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/c6c790bf-f504-4be8-aabb-097b67332e6a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(42) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19195,7 +19695,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/f43688fc-0ce1-4cb8-9ed6-4ad02372fd28\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/bdeb723a-41d1-4f4e-b511-03126d9257fa\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(43) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19221,7 +19721,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/362a3468-573e-4b2e-a2eb-4e0e04e2eae0\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/71b69520-48ac-4803-8416-3036491b4ce9\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(44) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19247,7 +19747,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/156c46b0-62a6-46d9-af84-772489c5e8ef\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7997b57d-b584-4ac6-9706-acba2156b38a\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(45) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19273,7 +19773,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/9487a597-dc6b-43d3-857c-ec6a6bf11c34\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/7b69aa24-eb15-4d23-b19d-cb38b8dcbbfd\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(46) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19299,7 +19799,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/df2649c5-1ebf-4bb6-bf91-9ac6c40545ab\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/70a22273-1c14-43c4-b8b9-ee1398544811\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(47) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19325,7 +19825,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/f8c5a322-7711-498a-84ac-316c5bf8b87e\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/4a9ea137-a6d1-48a1-aecf-b1f2e055127b\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(48) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19351,7 +19851,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/e6758c2c-c4cb-4011-9336-e8b351a4bae5\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/0c90740e-de03-410e-aafe-4a605cf5a580\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(49) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19377,7 +19877,7 @@
             }
           ],
           "impact": null,
-          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d4994217-f2e5-4477-b572-5178efc9f403\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/d006f572-f7eb-43dc-a146-398c50d89339\" class=\"font-medium hover:underline\">PerfTest Voter</a>",
           "target": [
             "tr:nth-child(50) > td:nth-child(1) > .hover\\:underline"
           ]
@@ -19904,7 +20404,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]"
+            ".justify-between > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background"
           ]
         },
         {
@@ -21038,7 +21538,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\" disabled=\"\">",
           "target": [
-            ".mt-4 > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]:nth-child(1)"
+            ".mt-4 > .gap-2 > .dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background:nth-child(1)"
           ]
         },
         {
@@ -21056,7 +21556,7 @@
           "impact": null,
           "html": "<button data-slot=\"button\" data-variant=\"outline\" data-size=\"sm\" class=\"inline-flex shrink-0...\">",
           "target": [
-            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50[data-variant=\"outline\"]:nth-child(2)"
+            ".dark\\:border-input.dark\\:hover\\:bg-input\\/50.bg-background:nth-child(2)"
           ]
         }
       ]

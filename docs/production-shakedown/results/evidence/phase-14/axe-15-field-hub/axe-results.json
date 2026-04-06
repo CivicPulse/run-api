@@ -13,7 +13,7 @@
     "orientationAngle": 0,
     "orientationType": "landscape-primary"
   },
-  "timestamp": "2026-04-05T23:50:46.284Z",
+  "timestamp": "2026-04-06T13:42:31.301Z",
   "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/",
   "toolOptions": {
     "runOnly": {
@@ -264,6 +264,23 @@
       "description": "Ensure <dt> and <dd> elements are contained by a <dl>",
       "help": "<dt> and <dd> elements must be contained by a <dl>",
       "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/dlitem?application=playwright",
+      "nodes": []
+    },
+    {
+      "id": "duplicate-id-aria",
+      "impact": null,
+      "tags": [
+        "cat.parsing",
+        "wcag2a",
+        "wcag412",
+        "EN-301-549",
+        "EN-9.4.1.2",
+        "RGAAv4",
+        "RGAA-8.2.1"
+      ],
+      "description": "Ensure every id attribute value used in ARIA and in labels is unique",
+      "help": "IDs used in ARIA and labels must be unique",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/duplicate-id-aria?application=playwright",
       "nodes": []
     },
     {
@@ -936,33 +953,7 @@
             }
           ],
           "impact": null,
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
-          "target": [
-            ".mb-4"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-allowed-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attributes are used correctly for the defined role"
-            }
-          ],
-          "none": [
-            {
-              "id": "aria-unsupported-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute is supported"
-            }
-          ],
-          "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -988,7 +979,7 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1017,58 +1008,6 @@
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-allowed-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attributes are used correctly for the defined role"
-            }
-          ],
-          "none": [
-            {
-              "id": "aria-unsupported-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute is supported"
-            }
-          ],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-allowed-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attributes are used correctly for the defined role"
-            }
-          ],
-          "none": [
-            {
-              "id": "aria-unsupported-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute is supported"
-            }
-          ],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
           ]
         }
       ]
@@ -1174,25 +1113,7 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
-          "target": [
-            ".mb-4"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-conditional-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1210,7 +1131,7 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1231,42 +1152,6 @@
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-conditional-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-conditional-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
           ]
         }
       ]
@@ -1300,7 +1185,7 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1318,27 +1203,9 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ]
-        },
-        {
-          "any": [],
-          "all": [],
-          "none": [
-            {
-              "id": "deprecatedrole",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "minor",
-              "message": "ARIA role is not deprecated"
-            }
-          ],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
           ]
         }
       ]
@@ -1374,7 +1241,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<body class=\"driver-active driver-fade\">",
+          "html": "<body>",
           "target": [
             "body"
           ]
@@ -1562,6 +1429,60 @@
       ]
     },
     {
+      "id": "aria-progressbar-name",
+      "impact": null,
+      "tags": [
+        "cat.aria",
+        "wcag2a",
+        "wcag111",
+        "EN-301-549",
+        "EN-9.1.1.1",
+        "RGAAv4",
+        "RGAA-11.1.1"
+      ],
+      "description": "Ensure every ARIA progressbar node has an accessible name",
+      "help": "ARIA progressbar nodes must have an accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-progressbar-name?application=playwright",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
+          "target": [
+            ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
+          "target": [
+            ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
+          ]
+        }
+      ]
+    },
+    {
       "id": "aria-prohibited-attr",
       "impact": null,
       "tags": [
@@ -1662,25 +1583,7 @@
             }
           ],
           "impact": null,
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
-          "target": [
-            ".mb-4"
-          ]
-        },
-        {
-          "any": [],
-          "all": [],
-          "none": [
-            {
-              "id": "aria-prohibited-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1698,7 +1601,7 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1719,42 +1622,6 @@
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
-          ]
-        },
-        {
-          "any": [],
-          "all": [],
-          "none": [
-            {
-              "id": "aria-prohibited-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [],
-          "all": [],
-          "none": [
-            {
-              "id": "aria-prohibited-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "ARIA attribute is allowed"
-            }
-          ],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
           ]
         }
       ]
@@ -1788,7 +1655,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1806,27 +1673,9 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "aria-required-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "All required ARIA attributes are present"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
           ]
         }
       ]
@@ -1874,7 +1723,7 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -1906,48 +1755,16 @@
             }
           ],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ]
-        },
-        {
-          "any": [],
-          "all": [],
-          "none": [
-            {
-              "id": "invalidrole",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA role is valid"
-            },
-            {
-              "id": "abstractrole",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Abstract roles are not used"
-            },
-            {
-              "id": "unsupportedrole",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA role is supported"
-            }
-          ],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
           ]
         }
       ]
     },
     {
       "id": "aria-valid-attr-value",
-      "impact": "critical",
+      "impact": null,
       "tags": [
         "cat.aria",
         "wcag2a",
@@ -2116,7 +1933,7 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -2148,7 +1965,7 @@
           ],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -2183,70 +2000,6 @@
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-valid-attr-value",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute values are valid"
-            },
-            {
-              "id": "aria-errormessage",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
-            },
-            {
-              "id": "aria-level",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-level values are valid"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-valid-attr-value",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute values are valid"
-            },
-            {
-              "id": "aria-errormessage",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
-            },
-            {
-              "id": "aria-level",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-level values are valid"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
           ]
         }
       ]
@@ -2352,25 +2105,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
-          "target": [
-            ".mb-4"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "aria-valid-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute name is valid"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -2388,7 +2123,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -2409,42 +2144,6 @@
           "html": "<section aria-label=\"Notifications alt+T\" tabindex=\"-1\" aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\"></section>",
           "target": [
             "section"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "aria-valid-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute name is valid"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "aria-valid-attr",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "ARIA attribute name is valid"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
           ]
         }
       ]
@@ -2491,297 +2190,41 @@
           ],
           "none": [],
           "impact": null,
+          "html": "<div data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress-indicator\" class=\"h-full w-full flex-1 bg-primary transition-all\" style=\"transform: translateX(-50%);\"></div>",
+          "target": [
+            ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"] > .h-full.bg-primary[data-slot=\"progress-indicator\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "important-letter-spacing",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
+            },
+            {
+              "id": "important-word-spacing",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
+            },
+            {
+              "id": "important-line-height",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
+            }
+          ],
+          "none": [],
+          "impact": null,
           "html": "<div data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress-indicator\" class=\"h-full w-full flex-1 bg-primary transition-all\" style=\"transform: translateX(0%);\"></div>",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"] > .h-full.bg-primary[data-slot=\"progress-indicator\"]"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<header id=\"driver-popover-title\" class=\"driver-popover-title\" style=\"display: block;\">Welcome!</header>",
-          "target": [
-            "#driver-popover-title"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<div id=\"driver-popover-description\" class=\"driver-popover-description\" style=\"display: block;\">This is your home base. You'll find all your assignments right here.</div>",
-          "target": [
-            "#driver-popover-description"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<footer class=\"driver-popover-footer\" style=\"display: flex;\">",
-          "target": [
-            "footer"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<span class=\"driver-popover-progress-text\" style=\"display: block;\">Step 1 of 4</span>",
-          "target": [
-            ".driver-popover-progress-text"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-next-btn\" style=\"display: block;\">Next</button>",
-          "target": [
-            ".driver-popover-next-btn"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<svg class=\"driver-overlay drive...\" viewBox=\"0 0 375 667\" xmlSpace=\"preserve\" xmlnsXlink=\"http://www.w3.org/19...\" version=\"1.1\" preserveAspectRatio=\"xMinYMin slice\" style=\"fill-rule: evenodd; ...\">",
-          "target": [
-            ".driver-overlay"
-          ]
-        },
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "important-letter-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Letter-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-word-spacing",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "word-spacing in the style attribute is not set to !important, or meets the minimum"
-            },
-            {
-              "id": "important-line-height",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "line-height in the style attribute is not set to !important, or meets the minimum"
-            }
-          ],
-          "none": [],
-          "impact": null,
-          "html": "<path d=\"M375,0L0,0L0,667L375,667L375,0Z\n    M14,62 h347 a8,8 0 0 1 8,8 v40 a8,8 0 0 1 -8,8 h-347 a8,8 0 0 1 -8,-8 v-40 a8,8 0 0 1 8,-8 z\" style=\"fill: black; opacity: 0.5; pointer-events: auto; cursor: auto;\"></path>",
-          "target": [
-            ".driver-overlay > path"
           ]
         }
       ]
@@ -2849,49 +2292,6 @@
           "target": [
             "#radix-_r_0_"
           ]
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has inner text that is visible to screen readers"
-            },
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "aria-label attribute exists and is not empty"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "button-has-visible-text",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Element has inner text that is visible to screen readers"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-next-btn\" style=\"display: block;\">Next</button>",
-          "target": [
-            ".driver-popover-next-btn"
-          ]
         }
       ]
     },
@@ -2935,7 +2335,7 @@
                   ]
                 },
                 {
-                  "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
+                  "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300\">Hey QA!</h1>",
                   "target": [
                     ".mb-4"
                   ]
@@ -2971,7 +2371,7 @@
     },
     {
       "id": "color-contrast",
-      "impact": "serious",
+      "impact": null,
       "tags": [
         "cat.color",
         "wcag2aa",
@@ -3058,7 +2458,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
+          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300\">Hey QA!</h1>",
           "target": [
             ".mb-4"
           ]
@@ -3108,7 +2508,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<p class=\"text-sm font-medium tabular-nums text-muted-foreground\">6 of 0 doors</p>",
+          "html": "<p class=\"text-sm font-medium tabular-nums text-muted-foreground\">6 of 12 doors</p>",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .tabular-nums"
           ]
@@ -3212,81 +2612,6 @@
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .text-right.text-primary"
           ]
-        },
-        {
-          "any": [
-            {
-              "id": "color-contrast",
-              "data": {
-                "fgColor": "#4e5358",
-                "bgColor": "#fcfeff",
-                "contrastRatio": 7.68,
-                "fontSize": "13.5pt (18px)",
-                "fontWeight": "normal",
-                "expectedContrastRatio": "4.5:1"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has sufficient color contrast of 7.68"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "color-contrast",
-              "data": {
-                "fgColor": "#080d10",
-                "bgColor": "#fcfeff",
-                "contrastRatio": 19.3,
-                "fontSize": "12.0pt (16px)",
-                "fontWeight": "normal",
-                "expectedContrastRatio": "4.5:1"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has sufficient color contrast of 19.3"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<header id=\"driver-popover-title\" class=\"driver-popover-title\" style=\"display: block;\">Welcome!</header>",
-          "target": [
-            "#driver-popover-title"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "color-contrast",
-              "data": {
-                "fgColor": "#4e5358",
-                "bgColor": "#fcfeff",
-                "contrastRatio": 7.68,
-                "fontSize": "9.0pt (12px)",
-                "fontWeight": "normal",
-                "expectedContrastRatio": "4.5:1"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has sufficient color contrast of 7.68"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<span class=\"driver-popover-progress-text\" style=\"display: block;\">Step 1 of 4</span>",
-          "target": [
-            ".driver-popover-progress-text"
-          ]
         }
       ]
     },
@@ -3325,78 +2650,6 @@
           "html": "<html lang=\"en\">",
           "target": [
             "html"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "duplicate-id-aria",
-      "impact": null,
-      "tags": [
-        "cat.parsing",
-        "wcag2a",
-        "wcag412",
-        "EN-301-549",
-        "EN-9.4.1.2",
-        "RGAAv4",
-        "RGAA-8.2.1"
-      ],
-      "description": "Ensure every id attribute value used in ARIA and in labels is unique",
-      "help": "IDs used in ARIA and labels must be unique",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/duplicate-id-aria?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "duplicate-id-aria",
-              "data": "driver-popover-content",
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Document has no elements referenced with ARIA or labels that share the same id attribute"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<div class=\"driver-popover\" id=\"driver-popover-content\" role=\"dialog\" aria-labelledby=\"driver-popover-title\" aria-describedby=\"driver-popover-description\" style=\"display: block; inset: auto auto 374.284px 27.5px; transform: translateY(0px);\">",
-          "target": [
-            "#driver-popover-content"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "duplicate-id-aria",
-              "data": "driver-popover-title",
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Document has no elements referenced with ARIA or labels that share the same id attribute"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<header id=\"driver-popover-title\" class=\"driver-popover-title\" style=\"display: block;\">Welcome!</header>",
-          "target": [
-            "#driver-popover-title"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "duplicate-id-aria",
-              "data": "driver-popover-description",
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Document has no elements referenced with ARIA or labels that share the same id attribute"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<div id=\"driver-popover-description\" class=\"driver-popover-description\" style=\"display: block;\">This is your home base. You'll find all your assignments right here.</div>",
-          "target": [
-            "#driver-popover-description"
           ]
         }
       ]
@@ -3686,7 +2939,7 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"CANV Walk List (renamed) progress: 6 of 12 doors completed\">",
           "target": [
             ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
           ]
@@ -3704,247 +2957,14 @@
           "all": [],
           "none": [],
           "impact": null,
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
+          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\" aria-label=\"PB Shakedown Session (renamed) progress: 4 of 4 calls completed\">",
           "target": [
             ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "no-focusable-content",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have focusable descendants"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-close-btn\" aria-label=\"Close\" style=\"display: block;\">×</button>",
-          "target": [
-            ".driver-popover-close-btn"
-          ]
-        },
-        {
-          "any": [
-            {
-              "id": "no-focusable-content",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element does not have focusable descendants"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": null,
-          "html": "<button type=\"button\" class=\"driver-popover-next-btn\" style=\"display: block;\">Next</button>",
-          "target": [
-            ".driver-popover-next-btn"
           ]
         }
       ]
     }
   ],
-  "incomplete": [
-    {
-      "id": "aria-valid-attr-value",
-      "impact": "critical",
-      "tags": [
-        "cat.aria",
-        "wcag2a",
-        "wcag412",
-        "EN-301-549",
-        "EN-9.4.1.2",
-        "RGAAv4",
-        "RGAA-7.1.1"
-      ],
-      "description": "Ensure all ARIA attributes have valid values",
-      "help": "ARIA attributes must conform to valid values",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=playwright",
-      "nodes": [
-        {
-          "any": [],
-          "all": [
-            {
-              "id": "aria-valid-attr-value",
-              "data": {
-                "messageKey": "controlsWithinPopup",
-                "needsReview": "aria-controls=\"driver-popover-content\""
-              },
-              "relatedNodes": [],
-              "impact": "critical",
-              "message": "Unable to determine if aria-controls referenced ID exists on the page while using aria-haspopup: aria-controls=\"driver-popover-content\""
-            }
-          ],
-          "none": [],
-          "impact": "critical",
-          "html": "<h1 data-tour=\"hub-greeting\" class=\"mb-4 text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-300 driver-active-element\" aria-haspopup=\"dialog\" aria-expanded=\"true\" aria-controls=\"driver-popover-content\">Hey QA!</h1>",
-          "target": [
-            ".mb-4"
-          ],
-          "failureSummary": "Fix all of the following:\n  Unable to determine if aria-controls referenced ID exists on the page while using aria-haspopup: aria-controls=\"driver-popover-content\""
-        }
-      ]
-    },
-    {
-      "id": "color-contrast",
-      "impact": "serious",
-      "tags": [
-        "cat.color",
-        "wcag2aa",
-        "wcag143",
-        "TTv5",
-        "TT13.c",
-        "EN-301-549",
-        "EN-9.1.4.3",
-        "ACT",
-        "RGAAv4",
-        "RGAA-3.2.1"
-      ],
-      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
-      "help": "Elements must meet minimum color contrast ratio thresholds",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "color-contrast",
-              "data": {
-                "contrastRatio": 0,
-                "fontSize": "10.5pt (14px)",
-                "fontWeight": "normal",
-                "messageKey": "elmPartiallyObscuring",
-                "expectedContrastRatio": "4.5:1"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element's background color could not be determined because it partially overlaps other elements"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "serious",
-          "html": "<div id=\"driver-popover-description\" class=\"driver-popover-description\" style=\"display: block;\">This is your home base. You'll find all your assignments right here.</div>",
-          "target": [
-            "#driver-popover-description"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
-        },
-        {
-          "any": [
-            {
-              "id": "color-contrast",
-              "data": {
-                "messageKey": "complexTextShadows"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element's contrast could not be determined because it uses complex text shadows"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "serious",
-          "html": "<button type=\"button\" class=\"driver-popover-next-btn\" style=\"display: block;\">Next</button>",
-          "target": [
-            ".driver-popover-next-btn"
-          ],
-          "failureSummary": "Fix any of the following:\n  Element's contrast could not be determined because it uses complex text shadows"
-        }
-      ]
-    }
-  ],
-  "violations": [
-    {
-      "id": "aria-progressbar-name",
-      "impact": "serious",
-      "tags": [
-        "cat.aria",
-        "wcag2a",
-        "wcag111",
-        "EN-301-549",
-        "EN-9.1.1.1",
-        "RGAAv4",
-        "RGAA-11.1.1"
-      ],
-      "description": "Ensure every ARIA progressbar node has an accessible name",
-      "help": "ARIA progressbar nodes must have an accessible name",
-      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-progressbar-name?application=playwright",
-      "nodes": [
-        {
-          "any": [
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "serious",
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
-          "target": [
-            ".animate-in.fade-in.slide-in-from-bottom-4:nth-child(1) > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ],
-          "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        },
-        {
-          "any": [
-            {
-              "id": "aria-label",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-label attribute does not exist or is empty"
-            },
-            {
-              "id": "aria-labelledby",
-              "data": null,
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
-            },
-            {
-              "id": "non-empty-title",
-              "data": {
-                "messageKey": "noAttr"
-              },
-              "relatedNodes": [],
-              "impact": "serious",
-              "message": "Element has no title attribute"
-            }
-          ],
-          "all": [],
-          "none": [],
-          "impact": "serious",
-          "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" data-slot=\"progress\" class=\"relative w-full overflow-hidden rounded-full bg-primary/20 h-2.5\">",
-          "target": [
-            ".delay-100 > .block.min-h-\\[100px\\].rounded-xl > .flex-col.gap-2.flex > .bg-primary\\/20.h-2\\.5[aria-valuemax=\"100\"]"
-          ],
-          "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
-        }
-      ]
-    }
-  ]
+  "incomplete": [],
+  "violations": []
 }

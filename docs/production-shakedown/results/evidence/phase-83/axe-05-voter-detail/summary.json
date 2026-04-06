@@ -1,0 +1,14 @@
+{
+  "label": "axe-05-voter-detail",
+  "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202",
+  "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [],
+  "seriousIds": [],
+  "moderateIds": [],
+  "minorIds": []
+}
