@@ -47,7 +47,7 @@ Progress: [##########] 100%
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260406-mgu | Reset prod to empty state with Vote Hatcher org only | 2026-04-06 | pending | Verified | [260406-mgu-reset-prod-to-empty-state-with-vote-hatc](./quick/260406-mgu-reset-prod-to-empty-state-with-vote-hatc/) |
+| 260406-mgu | Reset prod to empty state with Vote Hatcher org only | 2026-04-06 | 15b1be0 | Verified | [260406-mgu-reset-prod-to-empty-state-with-vote-hatc](./quick/260406-mgu-reset-prod-to-empty-state-with-vote-hatc/) |
 
 ## Session Continuity
 
