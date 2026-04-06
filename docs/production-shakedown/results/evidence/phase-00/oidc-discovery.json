@@ -1,0 +1,6 @@
+{
+  "issuer": "https://auth.civpulse.org",
+  "authorization_endpoint": "https://auth.civpulse.org/oauth/v2/authorize",
+  "token_endpoint": "https://auth.civpulse.org/oauth/v2/token",
+  "jwks_uri": "https://auth.civpulse.org/oauth/v2/keys"
+}
