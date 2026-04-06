@@ -344,7 +344,7 @@ class ShiftService:
             msg = f"Shift {shift_id} not found"
             raise ValueError(msg)
 
-        volunteer = await self._get_volunteer(session, volunteer_id)
+        volunteer = await self._get_volunteer(session, volunteer_id, shift.campaign_id)
 
         # Gate: volunteer must be ACTIVE
         if volunteer.status != VolunteerStatus.ACTIVE:
@@ -442,7 +442,7 @@ class ShiftService:
         shift_vol = await self._get_shift_volunteer(session, shift_id, volunteer_id)
 
         # Check if volunteer resolves to requester (self-cancel check)
-        volunteer = await self._get_volunteer(session, volunteer_id)
+        volunteer = await self._get_volunteer(session, volunteer_id, shift.campaign_id)
         is_self = volunteer.user_id == requester_id
 
         if (
@@ -489,7 +489,7 @@ class ShiftService:
             msg = f"Shift {shift_id} not found"
             raise ValueError(msg)
 
-        volunteer = await self._get_volunteer(session, volunteer_id)
+        volunteer = await self._get_volunteer(session, volunteer_id, shift.campaign_id)
 
         if volunteer.status != VolunteerStatus.ACTIVE:
             msg = f"Volunteer must be ACTIVE, current status: {volunteer.status}"
@@ -584,7 +584,7 @@ class ShiftService:
         shift_vol.status = SignupStatus.CHECKED_IN
 
         shift = await self._get_shift_raw(session, shift_id)
-        volunteer = await self._get_volunteer(session, volunteer_id)
+        volunteer = await self._get_volunteer(session, volunteer_id, shift.campaign_id)
 
         # Side effect: canvassing shift -> WalkListCanvasser
         if shift.type == ShiftType.CANVASSING and shift.turf_id:
@@ -673,7 +673,7 @@ class ShiftService:
         shift_vol.status = SignupStatus.CHECKED_OUT
 
         shift = await self._get_shift_raw(session, shift_id)
-        volunteer = await self._get_volunteer(session, volunteer_id)
+        volunteer = await self._get_volunteer(session, volunteer_id, shift.campaign_id)
 
         # Update SessionCaller check_out_at if phone banking
         if (
@@ -749,6 +749,8 @@ class ShiftService:
         Returns:
             Dict with total_hours, shifts_worked, and per-shift details.
         """
+        volunteer = await self._get_volunteer(session, volunteer_id, campaign_id)
+
         # Get completed shifts (checked out or with adjusted hours)
         stmt = (
             select(
@@ -795,7 +797,8 @@ class ShiftService:
             )
 
         return {
-            "volunteer_id": volunteer_id,
+            "volunteer_id": volunteer.id,
+            "campaign_id": volunteer.campaign_id,
             "total_hours": round(total_hours, 2),
             "shifts_worked": shifts_worked,
             "shifts": shifts,
@@ -830,11 +833,13 @@ class ShiftService:
         self,
         session: AsyncSession,
         volunteer_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> Volunteer:
         """Get volunteer or raise ValueError."""
-        result = await session.execute(
-            select(Volunteer).where(Volunteer.id == volunteer_id)
-        )
+        stmt = select(Volunteer).where(Volunteer.id == volunteer_id)
+        if campaign_id is not None:
+            stmt = stmt.where(Volunteer.campaign_id == campaign_id)
+        result = await session.execute(stmt)
         volunteer = result.scalar_one_or_none()
         if volunteer is None:
             msg = f"Volunteer {volunteer_id} not found"

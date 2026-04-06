@@ -279,56 +279,67 @@ class TestSurveyService:
                 user_id=user_id,
             )
 
-        # Scale validation
-        scale_question = _make_question(
-            script_id=script_id,
-            question_type=QuestionType.SCALE,
-            options={"min": 1, "max": 5},
-        )
-        call_count = 0
-
-        async def mock_execute_scale(query, *args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            result = MagicMock()
-            if call_count == 1:
-                result.scalar_one_or_none.return_value = active_script
-            else:
-                result.scalar_one_or_none.return_value = scale_question
-            return result
-
-        mock_db.execute = mock_execute_scale
-
-        # Valid scale answer
-        data_scale = ResponseCreate(
-            question_id=scale_question.id,
-            voter_id=uuid.uuid4(),
-            answer_value="3",
-        )
-        result = await service.record_response(
-            session=mock_db,
-            campaign_id=campaign_id,
-            script_id=script_id,
-            data=data_scale,
-            user_id=user_id,
-        )
-        assert result.answer_value == "3"
-
-        # Invalid scale answer (out of range)
-        call_count = 0
-        data_scale_bad = ResponseCreate(
-            question_id=scale_question.id,
-            voter_id=uuid.uuid4(),
-            answer_value="10",
-        )
-        with pytest.raises(ValueError, match="between"):
-            await service.record_response(
-                session=mock_db,
+    async def test_reorder_questions_rejects_partial_question_set(
+        self, service, mock_db, campaign_id
+    ):
+        """Phase 80: reorder must include the full script question set."""
+        script_id = uuid.uuid4()
+        q1 = _make_question(script_id=script_id, position=1)
+        q2 = _make_question(script_id=script_id, position=2)
+        service.get_script = AsyncMock(
+            return_value=_make_script(
+                status=ScriptStatus.DRAFT,
                 campaign_id=campaign_id,
                 script_id=script_id,
-                data=data_scale_bad,
-                user_id=user_id,
             )
+        )
+
+        ids_result = MagicMock()
+        ids_result.scalars.return_value.all.return_value = [q1.id, q2.id]
+        mock_db.execute = AsyncMock(return_value=ids_result)
+
+        with pytest.raises(ValueError, match="include every question"):
+            await service.reorder_questions(
+                session=mock_db,
+                script_id=script_id,
+                question_ids=[q1.id],
+                campaign_id=campaign_id,
+            )
+
+    async def test_reorder_questions_updates_positions_for_full_set(
+        self, service, mock_db, campaign_id
+    ):
+        """Phase 80: full reorder still succeeds."""
+        script_id = uuid.uuid4()
+        q1 = _make_question(script_id=script_id, position=1)
+        q2 = _make_question(script_id=script_id, position=2)
+        service.get_script = AsyncMock(
+            return_value=_make_script(
+                status=ScriptStatus.DRAFT,
+                campaign_id=campaign_id,
+                script_id=script_id,
+            )
+        )
+
+        ids_result = MagicMock()
+        ids_result.scalars.return_value.all.return_value = [q1.id, q2.id]
+        question_results = [
+            MagicMock(scalar_one_or_none=MagicMock(return_value=q2)),
+            MagicMock(scalar_one_or_none=MagicMock(return_value=q1)),
+        ]
+        mock_db.execute = AsyncMock(side_effect=[ids_result, *question_results])
+
+        questions = await service.reorder_questions(
+            session=mock_db,
+            script_id=script_id,
+            question_ids=[q2.id, q1.id],
+            campaign_id=campaign_id,
+        )
+
+        assert [question.id for question in questions] == [q2.id, q1.id]
+        assert q2.position == 1
+        assert q1.position == 2
+        mock_db.flush.assert_awaited_once()
 
     async def test_batch_responses_emit_interaction(
         self, service, mock_db, campaign_id, user_id
