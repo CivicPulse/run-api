@@ -1,5 +1,15 @@
 # Milestones
 
+## v1.13 Production Shakedown Remediation (Shipped: 2026-04-06)
+
+**Phases completed:** 6 phases, 18 plans, 0 tasks
+
+**Key accomplishments:**
+
+- (none recorded)
+
+---
+
 ## v1.12 Hardening & Remediation (Shipped: 2026-04-05)
 
 **Phases completed:** 7 phases, 30 plans, 30 tasks
