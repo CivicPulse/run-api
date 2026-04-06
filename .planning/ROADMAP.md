@@ -128,11 +128,11 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** Resolve the 2026-04-05 production shakedown `NO-GO` by closing all 6 P0 cross-tenant breaches, all 20 P1 launch blockers, and the remaining documented findings or plan-drift decisions before launch.
 
-- [ ] **Phase 78: Tenant Isolation Containment** - Eliminate every confirmed cross-tenant read/write path and close the ownership-check gap class behind them
-- [ ] **Phase 79: Error Handling and Edge Security** - Remove the P1 security hardening blockers and make failure modes safe for clients and operators
-- [ ] **Phase 80: Workflow Recovery** - Restore the broken launch-critical product flows exposed by the shakedown
+- [x] **Phase 78: Tenant Isolation Containment** - Eliminate every confirmed cross-tenant read/write path and close the ownership-check gap class behind them — completed 2026-04-06
+- [x] **Phase 79: Error Handling and Edge Security** - Remove the P1 security hardening blockers and make failure modes safe for clients and operators — completed 2026-04-06
+- [x] **Phase 80: Workflow Recovery** - Restore the broken launch-critical product flows exposed by the shakedown — completed 2026-04-05
 - [ ] **Phase 81: Field, Accessibility, and Mobile Launch Readiness** - Close the remaining user-facing P1 blockers on field/mobile surfaces and core accessibility paths
-- [ ] **Phase 82: Contract Drift, Validation, and Documentation Decisions** - Resolve the remaining P2/P3 findings by either fixing behavior or recording explicit supported behavior
+- [x] **Phase 82: Contract Drift, Validation, and Documentation Decisions** - Resolve the remaining P2/P3 findings by either fixing behavior or recording explicit supported behavior — completed 2026-04-06
 - [ ] **Phase 83: Reverification and Shakedown Cleanup** - Prove the remediation works in production and remove temporary shakedown residue
 
 ## Active Phase Details
@@ -148,9 +148,9 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   4. `GET /campaigns/{foreign}/field/me` is denied for non-members and leaks no foreign campaign metadata
   5. A service-level ownership audit covers remaining tenant-scoped UUID lookups so the same bug class is not left latent elsewhere
 **Plans**: 3 plans
-- [ ] 78-01-PLAN.md — Repro tests for all six P0 cases and ownership-audit checklist
-- [ ] 78-02-PLAN.md — Service and route fixes for body-FK, transitive, turf, volunteer, and field-mode scoping
-- [ ] 78-03-PLAN.md — Tenant-lookup audit sweep and regression coverage
+- [x] 78-01-PLAN.md — Repro tests for all six P0 cases and ownership-audit checklist
+- [x] 78-02-PLAN.md — Service and route fixes for body-FK, transitive, turf, volunteer, and field-mode scoping
+- [x] 78-03-PLAN.md — Tenant-lookup audit sweep and regression coverage
 
 ### Phase 79: Error Handling and Edge Security
 **Goal**: Remove the P1 security hardening blockers and make failure modes safe for clients and operators.
@@ -162,9 +162,9 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   3. HTTPS requests emit CSP, `X-Frame-Options`, `X-Content-Type-Options`, and HSTS headers
   4. HTTP on port 80 redirects to HTTPS rather than serving the SPA
 **Plans**: 3 plans
-- [ ] 79-01-PLAN.md — Exception normalization design and failing regression tests
-- [ ] 79-02-PLAN.md — Backend exception sanitization and safe domain responses
-- [ ] 79-03-PLAN.md — Edge security headers, HTTPS redirect, and HSTS enforcement
+- [x] 79-01-PLAN.md — Exception normalization design and failing regression tests
+- [x] 79-02-PLAN.md — Backend exception sanitization and safe domain responses
+- [x] 79-03-PLAN.md — Edge security headers, HTTPS redirect, and HSTS enforcement
 
 ### Phase 80: Workflow Recovery
 **Goal**: Restore the broken launch-critical product flows exposed by the shakedown.
@@ -177,9 +177,9 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   4. Phone-banking session creation rejects nonexistent `call_list_id` cleanly, and invalid `result_code` values are rejected with `422`
   5. Survey question reorder rejects partial ID sets with `400` and preserves valid full reorder behavior
 **Plans**: 3 plans
-- [ ] 80-01-PLAN.md — ZITADEL grant idempotency fix and campaign-create regression coverage
-- [ ] 80-02-PLAN.md — CSV import pre-scan/confirm recovery and worker regression coverage
-- [ ] 80-03-PLAN.md — Volunteer, phone-bank, and survey workflow validation fixes
+- [x] 80-01-PLAN.md — ZITADEL grant idempotency fix and campaign-create regression coverage
+- [x] 80-02-PLAN.md — CSV import pre-scan/confirm recovery and worker regression coverage
+- [x] 80-03-PLAN.md — Volunteer, phone-bank, and survey workflow validation fixes
 
 ### Phase 81: Field, Accessibility, and Mobile Launch Readiness
 **Goal**: Close the remaining user-facing P1 blockers on field/mobile surfaces and core accessibility paths.
@@ -191,9 +191,9 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   3. A volunteer with an assignment lands on the correct field entry point after login rather than the generic org home
   4. Field hub mobile cold-load performance returns within the launch budget, or the team explicitly resets the budget with fresh evidence and product sign-off
 **Plans**: 3 plans
-- [ ] 81-01-PLAN.md — Accessible names and route-entry fixes on affected UI surfaces
-- [ ] 81-02-PLAN.md — Field/mobile target-size and routing corrections
-- [ ] 81-03-PLAN.md — Field hub performance investigation and optimization
+- [x] 81-01-PLAN.md — Accessible names and route-entry fixes on affected UI surfaces
+- [x] 81-02-PLAN.md — Field/mobile target-size and routing corrections
+- [x] 81-03-PLAN.md — Field hub performance investigation and optimization
 **UI hint**: yes
 
 ### Phase 82: Contract Drift, Validation, and Documentation Decisions
@@ -206,19 +206,22 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
   3. Empty survey question text, negative call durations, stale `field/me` totals, and DNC handling ambiguity are resolved by code or explicit product decision
   4. Remaining prod-surface questions such as Swagger exposure, debug-route catch-all behavior, home landmarks, table header semantics, desktop-first mobile expectations, rate-limit posture, and `pg_stat_statements` follow-up are explicitly decided and recorded
 **Plans**: 3 plans
-- [ ] 82-01-PLAN.md — Validation hardening for remaining edge-case inputs
-- [ ] 82-02-PLAN.md — Lifecycle/data-integrity fixes and supported-contract decisions
-- [ ] 82-03-PLAN.md — Documentation and observability disposition sweep
+- [x] 82-01-PLAN.md — Validation hardening for remaining edge-case inputs
+- [x] 82-02-PLAN.md — Lifecycle/data-integrity fixes and supported-contract decisions
+- [x] 82-03-PLAN.md — Documentation and observability disposition sweep
 
 ### Phase 83: Reverification and Shakedown Cleanup
 **Goal**: Prove the remediation works in production and remove temporary shakedown residue.
 **Depends on**: Phase 82
-**Requirements**: VRF-01, VRF-02
+**Requirements**: VRF-01, VRF-02, UI-01, UI-02, UI-03, PERF-01
+**Gap Closure**: Closes all 6 unsatisfied requirements from v1.13 audit (2026-04-05)
 **Success Criteria** (what must be TRUE):
   1. Targeted reruns for phases 03, 04, 05, 06, 07, 08, 09, 10, 12, 13, 14, and 15 pass for all previously failed blocker scenarios
   2. Regression probes confirm zero cross-tenant leaks, safe 4xx/409 error contracts, restored campaign creation/import flows, and resolved field/a11y/perf launch gates
-  3. Temporary shakedown campaigns, volunteers, voters, walk-list entries, call-list entries, interactions, import jobs, PerfTest rows, local scripts, and expired token artifacts are removed or intentionally archived
-  4. The milestone closes with an updated shakedown summary and explicit disposition for any accepted non-blocking drift
+  3. Production axe reruns confirm Phase 81 a11y fixes (UI-01 button-name, UI-02 link-name, UI-03 touch targets) are cleared on all affected surfaces
+  4. PERF-01 field-hub mobile cold-load is explicitly rebaselined with evidence and product sign-off (accepted-budget decision)
+  5. Temporary shakedown campaigns, volunteers, voters, walk-list entries, call-list entries, interactions, import jobs, PerfTest rows, local scripts, and expired token artifacts are removed or intentionally archived
+  6. The milestone closes with an updated shakedown summary and explicit disposition for any accepted non-blocking drift
 **Plans**: 3 plans
 - [ ] 83-01-PLAN.md — Targeted shakedown reruns and regression probes
 - [ ] 83-02-PLAN.md — Cleanup of data, scripts, tokens, and QA residue
@@ -242,4 +245,4 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
 | 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71-77 | v1.12 | 30/30 | Complete | 2026-04-05 |
-| 78-83 | v1.13 | 0/18 | Planned | — |
+| 78-83 | v1.13 | 15/18 | In Progress | — |

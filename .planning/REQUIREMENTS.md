@@ -80,10 +80,10 @@ Requirements for milestone `v1.13 Production Shakedown Remediation`. Source of t
 | OPS-03 | Phase 80 | Pending |
 | OPS-04 | Phase 80 | Pending |
 | OPS-05 | Phase 80 | Pending |
-| UI-01 | Phase 81 | Pending |
-| UI-02 | Phase 81 | Pending |
-| UI-03 | Phase 81 | Pending |
-| PERF-01 | Phase 81 | Pending |
+| UI-01 | Phase 81 → Phase 83 (production rerun) | Pending |
+| UI-02 | Phase 81 → Phase 83 (production rerun) | Pending |
+| UI-03 | Phase 81 → Phase 83 (production rerun) | Pending |
+| PERF-01 | Phase 81 → Phase 83 (rebaselined) | Pending |
 | VAL-01 | Phase 82 | Pending |
 | VAL-02 | Phase 82 | Pending |
 | VAL-03 | Phase 82 | Pending |
