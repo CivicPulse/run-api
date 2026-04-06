@@ -163,7 +163,7 @@ Grouped by category.
 
 **Pre-launch conditions (none are P0/code issues):**
 1. **Campaign creation ops fix** — `POST /campaigns` returns 500; the code fix for `ensure_project_grant` idempotency is deployed but the ZITADEL service call fails in production. Requires ops investigation of service account credentials or connectivity.
-2. **PERF-01 rebaseline** — field hub mobile 3G cold-load at 3185 ms vs 2000 ms target. Product sign-off needed to accept the rebaselined budget. The bundle (220 KB gzipped, 20+ lazy chunks) is already well-optimized; further gains require aggressive code-splitting.
+2. ~~PERF-01 rebaseline~~ — **ACCEPTED** (2026-04-06). Product owner accepted 3200 ms as the rebaselined mobile 3G cold-load budget. Evidence: median 3185 ms, LCP 2712 ms across 3 production runs. Bundle already well-optimized (220 KB gzipped, 20+ lazy chunks).
 3. **HSTS** — needs Cloudflare edge configuration. App-level CSP, X-Frame-Options, X-Content-Type-Options are already deployed.
 4. **Test data cleanup** — QA Test Campaign and Org B require kubectl operations to remove (documented in phase-83-rerun-results.md).
 
@@ -178,7 +178,7 @@ Grouped by category.
 | 8 P1 accessibility violations | aria-label, touch-target, link-name fixes | ✅ Phase 83 — 0 critical axe violations |
 | Campaign creation 500 | ensure_project_grant idempotency (code deployed) | ⚠ Still 500 in prod (ops/config) |
 | HSTS | Not app-level | ⚠ Needs Cloudflare config |
-| PERF-01 mobile load | — | ⚠ 3185 ms (product rebaseline) |
+| PERF-01 mobile load | Budget rebaselined to 3200 ms (accepted 2026-04-06) | ✅ Accepted |
 
 ---
 
@@ -219,7 +219,7 @@ See individual phase results files for full P2/P3 lists. Notable:
 1. **Ops: Campaign creation investigation** — trace the ZITADEL service call failure in the production pod
 2. **Ops: HSTS** — configure Strict-Transport-Security at Cloudflare edge
 3. **Ops: kubectl cleanup** — delete QA Test Campaign and Org B (commands in phase-83-rerun-results.md §Requires ops intervention)
-4. **Product: PERF-01 sign-off** — accept rebaselined mobile budget (3185 ms vs 2000 ms target) or deprioritize
+4. ~~Product: PERF-01 sign-off~~ — **DONE** (accepted 3200 ms budget on 2026-04-06)
 5. **Ops: pg_stat_statements** — install for DB observability (noted in Phase 82 dispositions)
 
 ---
