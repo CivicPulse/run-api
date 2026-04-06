@@ -41,7 +41,6 @@ import os
 import subprocess
 import sys
 import uuid
-from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import text
@@ -56,7 +55,7 @@ from app.models.user import User
 # ---------------------------------------------------------------------------
 
 ORG_NAME = "Vote Hatcher"
-OWNER_EMAIL = "kerry@kerryhatcher.com"
+OWNER_EMAIL = "admin@civpulse.org"
 
 # ZITADEL project roles that get granted to the org
 PROJECT_ROLES = ["owner", "admin", "manager", "volunteer", "viewer"]
@@ -145,12 +144,13 @@ class ZitadelAdmin:
     async def deactivate_org(self, org_id: str) -> None:
         token = await self._get_token()
         async with httpx.AsyncClient(verify=self._verify_tls, timeout=10.0) as client:
+            # Try management API first, fall back to just logging
             resp = await client.post(
                 f"{self.base_url}/management/v1/orgs/{org_id}/_deactivate",
                 headers=self._headers(token, org_id=org_id),
             )
-            # 412 = already deactivated, which is fine
-            if resp.status_code not in (200, 412):
+            # 412 = already deactivated, 404 = already gone
+            if resp.status_code not in (200, 404, 412):
                 resp.raise_for_status()
 
     async def delete_org(self, org_id: str) -> None:
@@ -207,10 +207,35 @@ class ZitadelAdmin:
             return ""  # unreachable
 
     async def search_user_by_email(self, email: str) -> dict | None:
-        """Search for a ZITADEL user by email. Returns user dict or None."""
+        """Search for a ZITADEL user by email.
+
+        Tries v2 API first, then falls back to management v1 API.
+        Returns user dict or None.
+        """
         token = await self._get_token()
         async with httpx.AsyncClient(verify=self._verify_tls, timeout=10.0) as client:
+            # Try global admin user search first
             resp = await client.post(
+                f"{self.base_url}/admin/v1/users/_search",
+                headers=self._headers(token),
+                json={
+                    "queries": [
+                        {
+                            "emailQuery": {
+                                "emailAddress": email,
+                                "method": "TEXT_QUERY_METHOD_EQUALS",
+                            }
+                        }
+                    ]
+                },
+            )
+            if resp.status_code == 200:
+                results = resp.json().get("result", [])
+                if results:
+                    return results[0]
+
+            # Fallback: try v2 API
+            resp2 = await client.post(
                 f"{self.base_url}/v2/users",
                 headers=self._headers(token),
                 json={
@@ -224,9 +249,32 @@ class ZitadelAdmin:
                     ]
                 },
             )
-            resp.raise_for_status()
-            results = resp.json().get("result", [])
-            return results[0] if results else None
+            if resp2.status_code == 200:
+                results = resp2.json().get("result", [])
+                if results:
+                    return results[0]
+
+            # Last resort: try management v1 within Vote Hatcher org
+            resp3 = await client.post(
+                f"{self.base_url}/management/v1/users/_search",
+                headers=self._headers(token),
+                json={
+                    "queries": [
+                        {
+                            "emailQuery": {
+                                "emailAddress": email,
+                                "method": "TEXT_QUERY_METHOD_EQUALS",
+                            }
+                        }
+                    ]
+                },
+            )
+            if resp3.status_code == 200:
+                results = resp3.json().get("result", [])
+                if results:
+                    return results[0]
+
+            return None
 
     async def assign_role(self, user_id: str, role: str, org_id: str) -> None:
         """Assign a project role to a user within an org."""
@@ -252,22 +300,61 @@ class ZitadelAdmin:
 
 def drop_and_migrate() -> None:
     """Drop all tables and re-run Alembic migrations."""
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, inspect
 
     sync_url = os.environ.get("DATABASE_URL_SYNC")
     if not sync_url:
         print("ERROR: DATABASE_URL_SYNC not set")
         sys.exit(1)
 
-    print("  Dropping schema...")
+    print("  Dropping all tables...")
     engine = create_engine(sync_url)
     with engine.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        # Drop alembic version table first so migrations run fresh
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+        # Drop procrastinate tables (separate schema)
+        conn.execute(text("DROP SCHEMA IF EXISTS procrastinate CASCADE"))
+        # Get all user tables and drop them
+        inspector = inspect(conn)
+        # Exclude PostGIS system tables (owned by superuser)
+        postgis_tables = {"spatial_ref_sys", "geometry_columns", "geography_columns"}
+        tables = [
+            t
+            for t in inspector.get_table_names(schema="public")
+            if t not in postgis_tables
+        ]
+        if tables:
+            # Drop all tables in one CASCADE statement
+            table_list = ", ".join(f'"{t}"' for t in tables)
+            conn.execute(text(f"DROP TABLE IF EXISTS {table_list} CASCADE"))
+        # Drop custom types (enums etc) that alembic may have created
+        conn.execute(
+            text(
+                "DO $$ DECLARE r RECORD; BEGIN "
+                "FOR r IN (SELECT typname FROM pg_type t "
+                "JOIN pg_namespace n ON t.typnamespace = n.oid "
+                "WHERE n.nspname = 'public' AND t.typtype = 'e') "
+                "LOOP EXECUTE 'DROP TYPE IF EXISTS ' "
+                "|| quote_ident(r.typname) || ' CASCADE'; "
+                "END LOOP; END $$;"
+            )
+        )
         conn.commit()
     engine.dispose()
-    print("  Schema dropped.")
+    print(f"  Dropped {len(tables)} tables.")
+
+    # Pre-create alembic_version with wider column (default is VARCHAR(32)
+    # but our revision IDs exceed that — see memory note on #19)
+    engine2 = create_engine(sync_url)
+    with engine2.connect() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS alembic_version "
+                "(version_num VARCHAR(128) NOT NULL)"
+            )
+        )
+        conn.commit()
+    engine2.dispose()
 
     print("  Running alembic upgrade head...")
     result = subprocess.run(
@@ -293,15 +380,13 @@ async def seed_org(zitadel_org_id: str, user_id: str, grant_id: str) -> None:
         engine, class_=AsyncSession, expire_on_commit=False
     )
 
-    now = datetime.now(UTC)
     async with session_factory() as session, session.begin():
-        # Create user record
+        # Create user record (let server_default handle timestamps —
+        # columns are TIMESTAMP WITHOUT TIME ZONE, asyncpg rejects tz-aware)
         user = User(
             id=user_id,
             display_name="Kerry Hatcher",
             email=OWNER_EMAIL,
-            created_at=now,
-            updated_at=now,
         )
         session.add(user)
         await session.flush()
@@ -314,8 +399,6 @@ async def seed_org(zitadel_org_id: str, user_id: str, grant_id: str) -> None:
             zitadel_project_grant_id=grant_id,
             name=ORG_NAME,
             created_by=user_id,
-            created_at=now,
-            updated_at=now,
         )
         session.add(org)
         await session.flush()
@@ -326,7 +409,7 @@ async def seed_org(zitadel_org_id: str, user_id: str, grant_id: str) -> None:
             user_id=user_id,
             organization_id=org.id,
             role="org_owner",
-            joined_at=now,
+            joined_at=None,
         )
         session.add(member)
         await session.flush()
