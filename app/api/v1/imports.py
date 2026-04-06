@@ -13,7 +13,7 @@ import uuid
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -446,6 +446,23 @@ async def get_import_status(
         )
 
     response = ImportJobResponse.model_validate(job)
+
+    # For chunked imports still processing, aggregate progress from chunks
+    # since the parent row is only updated at finalization.
+    if job.status == ImportStatus.PROCESSING and job.imported_rows is None:
+        chunk_agg = (
+            await db.execute(
+                select(
+                    func.coalesce(func.sum(ImportChunk.imported_rows), 0),
+                    func.coalesce(func.sum(ImportChunk.skipped_rows), 0),
+                    func.coalesce(func.sum(ImportChunk.phones_created), 0),
+                ).where(ImportChunk.import_job_id == import_id)
+            )
+        ).one_or_none()
+        if chunk_agg is not None:
+            response.imported_rows = int(chunk_agg[0])
+            response.skipped_rows = int(chunk_agg[1])
+            response.phones_created = int(chunk_agg[2])
 
     # Generate pre-signed download URL for error report if it exists
     if job.error_report_key:
