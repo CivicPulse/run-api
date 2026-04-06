@@ -11,20 +11,19 @@ export function uploadToMinIO(
   file: File,
   onProgress: (percent: number) => void,
 ): Promise<void> {
-  // Fix URLs that Cloudflare may have rewritten.  When upload_base_url is
-  // configured (e.g. https://files.civpulse.org), presigned URLs should target
-  // that host.  Cloudflare sometimes rewrites the host in JSON response bodies
-  // to match the site domain; undo that here.
+  // Fix URLs that Cloudflare may have rewritten in the JSON response body.
+  // Cloudflare rewrites R2 API endpoint URLs to the custom domain, breaking
+  // presigned signatures. The config provides the correct upload_host (just
+  // the hostname, not a full URL — Cloudflare won't rewrite bare hostnames).
   let url = uploadUrl
   try {
-    const { upload_base_url } = getConfig()
-    if (upload_base_url) {
-      const uploadParts = new URL(uploadUrl)
-      const baseParts = new URL(upload_base_url)
-      if (uploadParts.host !== baseParts.host) {
-        uploadParts.protocol = baseParts.protocol
-        uploadParts.host = baseParts.host
-        url = uploadParts.toString()
+    const { upload_host } = getConfig()
+    if (upload_host) {
+      const parsed = new URL(uploadUrl)
+      if (parsed.host !== upload_host) {
+        parsed.host = upload_host
+        parsed.protocol = "https:"
+        url = parsed.toString()
       }
     }
   } catch {

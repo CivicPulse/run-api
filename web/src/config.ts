@@ -2,7 +2,7 @@ interface AppConfig {
   zitadel_issuer: string
   zitadel_client_id: string
   zitadel_project_id: string
-  upload_base_url: string
+  upload_host: string
 }
 
 let _config: AppConfig | null = null
