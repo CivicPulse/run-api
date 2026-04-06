@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: ghcr.io/civicpulse/run-api:sha-76920d6
+          image: ghcr.io/civicpulse/run-api:sha-15b1be0
           command: ["python", "scripts/worker.py"]
           env:
             - name: ENVIRONMENT
