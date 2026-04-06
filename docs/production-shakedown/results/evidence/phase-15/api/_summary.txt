@@ -1,0 +1,12 @@
+Starting API SLA measurements (50 seq requests, drop first 5)...
+01-health-live            p50=0.060s p95=0.068s max=0.072s n=45
+02-health-ready           p50=0.062s p95=0.071s max=0.073s n=45
+03-campaigns              p50=0.156s p95=0.198s max=0.230s n=45
+04-voters-25              p50=0.183s p95=0.200s max=0.310s n=45
+05-voters-100             p50=0.119s p95=0.201s max=0.210s n=45
+06-voters-search          p50=0.126s p95=0.206s max=0.213s n=45
+07-dashboard-overview     p50=0.131s p95=0.219s max=0.245s n=45
+08-walk-lists             p50=0.119s p95=0.208s max=0.214s n=45
+09-call-lists             p50=0.120s p95=0.196s max=0.383s n=45
+10-create-voter           p50=0.181s p95=0.198s max=0.212s n=45
+done

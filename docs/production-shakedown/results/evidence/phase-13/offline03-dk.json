@@ -1,0 +1,1 @@
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"missing","loc":["body","walk_list_entry_id"],"msg":"Field required","input":{"voter_id":"3a5a8db0-67a2-4fe4-9953-d540d281232b","result_code":"not_home"}}]}

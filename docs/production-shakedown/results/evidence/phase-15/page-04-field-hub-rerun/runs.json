@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "loadMs": 2944,
+      "lcp": 2484,
+      "ttfb": 60.5,
+      "domContentLoaded": 1735.0999999046326,
+      "loadEvent": 1735.7999999523163,
+      "fcp": 2092,
+      "transferBytes": 949
+    },
+    {
+      "loadMs": 2944,
+      "lcp": 2488,
+      "ttfb": 42.59999990463257,
+      "domContentLoaded": 1736.2999999523163,
+      "loadEvent": 1737.0999999046326,
+      "fcp": 2092,
+      "transferBytes": 949
+    },
+    {
+      "loadMs": 2944,
+      "lcp": 2476,
+      "ttfb": 55.09999990463257,
+      "domContentLoaded": 1733.2999999523163,
+      "loadEvent": 1734.0999999046326,
+      "fcp": 2092,
+      "transferBytes": 949
+    }
+  ],
+  "median": {
+    "loadMs": 2944,
+    "lcp": 2488,
+    "ttfb": 42.59999990463257,
+    "domContentLoaded": 1736.2999999523163,
+    "loadEvent": 1737.0999999046326,
+    "fcp": 2092,
+    "transferBytes": 949
+  }
+}

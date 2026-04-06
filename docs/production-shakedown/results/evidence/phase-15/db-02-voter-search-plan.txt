@@ -1,0 +1,11 @@
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..8.01 rows=1 width=30) (actual time=0.038..0.243 rows=25 loops=1)
+   ->  Index Scan using ix_voters_campaign_mailing_state on voters  (cost=0.42..8.01 rows=1 width=30) (actual time=0.037..0.238 rows=25 loops=1)
+         Index Cond: (campaign_id = '06d710c8-32ce-44ae-bbab-7fcc72aab248'::uuid)
+         Filter: (((first_name)::text ~~* '%Test%'::text) OR ((last_name)::text ~~* '%Test%'::text))
+         Rows Removed by Filter: 2
+ Planning Time: 1.443 ms
+ Execution Time: 0.274 ms
+(7 rows)
+

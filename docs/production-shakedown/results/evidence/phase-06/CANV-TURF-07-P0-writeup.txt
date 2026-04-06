@@ -1,0 +1,29 @@
+P0: Cross-tenant voter leak via GET /campaigns/{id}/turfs/{turf_id}/voters
+
+Requesting user: qa-volunteer@civpulse.org (Org A, CivPulse Platform, org id 227ef98c-bf29-47d2-b6ea-b904507f50de)
+Target campaign in URL: 06d710c8-32ce-44ae-bbab-7fcc72aab248 (QA Test Campaign)
+Target turf: a70f707b-0021-4b05-9061-6fe917c828f3
+Turf boundary: [[-83.6350,32.8400],[-83.6350,32.8550],[-83.6200,32.8550],[-83.6200,32.8400],[-83.6350,32.8400]]
+
+Response: 2415 voters returned
+
+Sample voter IDs and their actual campaign_id in DB:
+   aa1cde10-91ff-4dba-b775-64f904095814 -> campaign=7e38897a-4fdf-4ed2-962c-9f1548527810
+
+   6229332c-35f1-46c2-bf82-62d358521edb -> campaign=7e38897a-4fdf-4ed2-962c-9f1548527810
+
+   d656f6f0-e179-4bb5-aa36-07e48386c2bb -> campaign=7e38897a-4fdf-4ed2-962c-9f1548527810
+
+   ca426dab-c709-48fd-a699-0431cb468ef6 -> campaign=7e38897a-4fdf-4ed2-962c-9f1548527810
+
+   cf2cd7ef-132b-407f-b522-f7f9f70fe480 -> campaign=7e38897a-4fdf-4ed2-962c-9f1548527810
+
+
+All 5 sample voters belong to campaign 7e38897a-4fdf-4ed2-962c-9f1548527810 ('Riverside Parks Initiative 2026') in org 'Vote Hatcher' — a DIFFERENT TENANT.
+
+Direct access test (should be 403, and is):
+  GET /campaigns/7e38897a-.../voters as qa-volunteer -> 403 (correctly blocked)
+
+But via turf.voters endpoint in qa-volunteer's own campaign, all 2415 cross-tenant voters (names + geo) are exposed.
+
+Conclusion: the spatial query against the voters table does NOT filter by campaign_id, exposing all voters in any other tenant whose coordinates fall inside the turf polygon's bounding box.

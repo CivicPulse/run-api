@@ -1,0 +1,16 @@
+{
+  "label": "axe-11-wizard-step-1",
+  "url": "https://run.civpulse.org/campaigns/new",
+  "counts": {
+    "critical": 1,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [
+    "button-name"
+  ],
+  "seriousIds": [],
+  "moderateIds": [],
+  "minorIds": []
+}

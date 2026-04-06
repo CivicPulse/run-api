@@ -1,0 +1,1378 @@
+{
+  "testEngine": {
+    "name": "axe-core",
+    "version": "4.11.1"
+  },
+  "testRunner": {
+    "name": "axe"
+  },
+  "testEnvironment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "windowWidth": 1440,
+    "windowHeight": 900,
+    "orientationAngle": 0,
+    "orientationType": "landscape-primary"
+  },
+  "timestamp": "2026-04-05T20:40:49.460Z",
+  "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+  "toolOptions": {
+    "runOnly": {
+      "type": "rule",
+      "values": [
+        "color-contrast"
+      ]
+    },
+    "reporter": "v1"
+  },
+  "inapplicable": [],
+  "passes": [
+    {
+      "id": "color-contrast",
+      "impact": null,
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span class=\"font-semibold\">CivicPulse Run</span>",
+          "target": [
+            ".gap-0\\.5 > .font-semibold"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 7.21,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.21"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span class=\"text-xs text-muted-foreground\">Campaign Manager</span>",
+          "target": [
+            ".gap-0\\.5 > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4f5356",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 7.2,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.2"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"sidebar-group-label\" data-sidebar=\"group-label\" class=\"flex h-8 shrink-0 it...\">",
+          "target": [
+            ".min-w-0[data-slot=\"sidebar-group\"][data-sidebar=\"group\"]:nth-child(1) > .text-sidebar-foreground\\/70.transition-\\[margin\\,opacity\\].group-data-\\[collapsible\\=icon\\]\\:-mt-8"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#14191c",
+                "bgColor": "#ecf1f5",
+                "contrastRatio": 15.57,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 15.57"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Dashboard</span>",
+          "target": [
+            "a[data-active=\"true\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Voters</span>",
+          "target": [
+            ".min-w-0[data-slot=\"sidebar-group\"][data-sidebar=\"group\"]:nth-child(1) > .w-full[data-slot=\"sidebar-group-content\"][data-sidebar=\"group-content\"] > ul > li:nth-child(2) > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Canvassing</span>",
+          "target": [
+            ".min-w-0[data-slot=\"sidebar-group\"][data-sidebar=\"group\"]:nth-child(1) > .w-full[data-slot=\"sidebar-group-content\"][data-sidebar=\"group-content\"] > ul > li:nth-child(3) > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Phone Banking</span>",
+          "target": [
+            "li:nth-child(4) > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Volunteers</span>",
+          "target": [
+            "li:nth-child(5) > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Field Operations</span>",
+          "target": [
+            "li:nth-child(6) > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4f5356",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 7.2,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.2"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"sidebar-group-label\" data-sidebar=\"group-label\" class=\"flex h-8 shrink-0 it...\">",
+          "target": [
+            ".min-w-0[data-slot=\"sidebar-group\"][data-sidebar=\"group\"]:nth-child(2) > .text-sidebar-foreground\\/70.transition-\\[margin\\,opacity\\].group-data-\\[collapsible\\=icon\\]\\:-mt-8"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>All Campaigns</span>",
+          "target": [
+            ".group-data-\\[collapsible\\=icon\\]\\:p-2\\![href=\"/\"][data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Members</span>",
+          "target": [
+            "a[href$=\"members\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Settings</span>",
+          "target": [
+            "li:nth-child(3) > a[href$=\"settings\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#f3f7fa",
+                "contrastRatio": 18.12,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 18.12"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span>Settings</span>",
+          "target": [
+            "div[data-slot=\"sidebar-footer\"] > ul > li > .group-data-\\[collapsible\\=icon\\]\\:p-2\\!.peer\\/menu-button[data-active=\"false\"] > span"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span class=\"text-sm font-medium\">CivPulse Platform</span>",
+          "target": [
+            "header > .font-medium:nth-child(3)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#f1f4f6",
+                "contrastRatio": 7.03,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.03"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<span data-slot=\"avatar-fallback\" class=\"flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs\">QO</span>",
+          "target": [
+            ".size-full"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "bold",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<h1 class=\"text-2xl font-bold\">QA Test Campaign</h1>",
+          "target": [
+            ".font-bold"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-sm text-muted-foreground\">RBAC probe</p>",
+          "target": [
+            ".space-y-4 > div:nth-child(1) > div > p"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a class=\"flex shrink-0 items-...\" href=\"/campaigns/06d710c8-...\" data-status=\"active\" aria-current=\"page\">",
+          "target": [
+            "nav > .active[data-status=\"active\"][aria-current=\"page\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters\" class=\"flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground\">",
+          "target": [
+            ".border-b-2.transition-colors.\\[\\&\\.active\\]\\:border-primary:nth-child(2)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing\" class=\"flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground\">",
+          "target": [
+            ".border-b-2.transition-colors.\\[\\&\\.active\\]\\:border-primary:nth-child(3)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-...\" class=\"flex shrink-0 items-...\">",
+          "target": [
+            ".border-b-2.transition-colors.\\[\\&\\.active\\]\\:border-primary:nth-child(4)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys\" class=\"flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground\">",
+          "target": [
+            ".border-b-2.transition-colors.\\[\\&\\.active\\]\\:border-primary:nth-child(5)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteers\" class=\"flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:border-primary [&.active]:text-foreground\">",
+          "target": [
+            ".border-b-2.transition-colors.\\[\\&\\.active\\]\\:border-primary:nth-child(6)"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "13.5pt (18px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<h1 class=\"text-lg font-semibold\">Dashboard</h1>",
+          "target": [
+            ".text-lg"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-sm text-muted-foreground\">Campaign overview and statistics</p>",
+          "target": [
+            ".space-y-6 > div:nth-child(1) > p"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Doors Knocked</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(1) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(1) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">Total doors visited by canvassers</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(1) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Contacts Made</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">Successful door contacts</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Canvass Contact Rate</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(3) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0.0%</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(3) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">Percentage of knocks resulting in contact</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(3) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Calls Made</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">Total phone bank calls</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(4) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Contacts Reached</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">Successful phone contacts</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(5) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Active Volunteers</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "18.0pt (24px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"font-semibold text-2xl\">0</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .pb-2.\\@container\\/card-header.auto-rows-min > .text-2xl.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-xs text-muted-foreground\">6 total volunteers</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(6) > .px-6[data-slot=\"card-content\"] > .text-xs"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button type=\"button\" role=\"tab\" aria-selected=\"true\" aria-controls=\"radix-_r_3_-content-...\" data-state=\"active\" id=\"radix-_r_3_-trigger-...\" data-slot=\"tabs-trigger\" class=\"relative inline-flex...\" tabindex=\"-1\" data-orientation=\"horizontal\" data-radix-collectio...=\"\">",
+          "target": [
+            "#radix-_r_3_-trigger-canvassing"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#65696c",
+                "bgColor": "#f1f4f6",
+                "contrastRatio": 5.01,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 5.01"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"radix-_r_3_-content-...\" data-state=\"inactive\" id=\"radix-_r_3_-trigger-...\" data-slot=\"tabs-trigger\" class=\"relative inline-flex...\" tabindex=\"-1\" data-orientation=\"horizontal\" data-radix-collectio...=\"\">",
+          "target": [
+            "#radix-_r_3_-trigger-phone-banking"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#65696c",
+                "bgColor": "#f1f4f6",
+                "contrastRatio": 5.01,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 5.01"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"radix-_r_3_-content-...\" data-state=\"inactive\" id=\"radix-_r_3_-trigger-...\" data-slot=\"tabs-trigger\" class=\"relative inline-flex...\" tabindex=\"-1\" data-orientation=\"horizontal\" data-radix-collectio...=\"\">",
+          "target": [
+            "#radix-_r_3_-trigger-volunteers"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "12.0pt (16px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"leading-none font-semibold\">Top Canvassers</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(1) > .\\@container\\/card-header.auto-rows-min.grid-rows-\\[auto_auto\\] > .leading-none.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Doors knocked by canvasser (top 10)</div>",
+          "target": [
+            ".space-y-6 > .gap-6.rounded-xl.bg-card:nth-child(1) > .\\@container\\/card-header.auto-rows-min.grid-rows-\\[auto_auto\\] > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-sm text-muted-foreground py-8 text-center\">No canvassing data yet</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(1) > .px-6[data-slot=\"card-content\"] > .py-8.text-center"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#080d10",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 19.3,
+                "fontSize": "12.0pt (16px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 19.3"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-title\" class=\"leading-none font-semibold\">Turf Performance</div>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .\\@container\\/card-header.auto-rows-min.grid-rows-\\[auto_auto\\] > .leading-none.font-semibold[data-slot=\"card-title\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<div data-slot=\"card-description\" class=\"text-sm text-muted-foreground\">Breakdown by turf assignment</div>",
+          "target": [
+            ".space-y-6 > .gap-6.rounded-xl.bg-card:nth-child(2) > .\\@container\\/card-header.auto-rows-min.grid-rows-\\[auto_auto\\] > .text-muted-foreground.text-sm[data-slot=\"card-description\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#4e5358",
+                "bgColor": "#fcfeff",
+                "contrastRatio": 7.68,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 7.68"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<p class=\"text-sm text-muted-foreground py-8 text-center\">No turf data yet</p>",
+          "target": [
+            ".gap-6.rounded-xl.bg-card:nth-child(2) > .px-6[data-slot=\"card-content\"] > .py-8.text-center"
+          ]
+        }
+      ]
+    }
+  ],
+  "incomplete": [],
+  "violations": []
+}

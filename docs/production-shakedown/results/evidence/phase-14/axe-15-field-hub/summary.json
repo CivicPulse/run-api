@@ -1,0 +1,16 @@
+{
+  "label": "axe-15-field-hub",
+  "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/",
+  "counts": {
+    "critical": 0,
+    "serious": 1,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [],
+  "seriousIds": [
+    "aria-progressbar-name"
+  ],
+  "moderateIds": [],
+  "minorIds": []
+}

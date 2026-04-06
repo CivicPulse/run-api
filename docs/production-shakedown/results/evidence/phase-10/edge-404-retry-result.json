@@ -1,0 +1,60 @@
+{
+  "lastState": {
+    "len": 0,
+    "retries": []
+  },
+  "postSummary": {
+    "422": 20
+  },
+  "totalPosts": 20,
+  "log": [
+    {
+      "t": 3214,
+      "m": "logged in"
+    },
+    {
+      "t": 9142,
+      "m": "seeded 5 bogus items"
+    },
+    {
+      "t": 19146,
+      "m": "state: {\"len\":5,\"retries\":[1,1,1,1,1]}  posts=5"
+    },
+    {
+      "t": 29149,
+      "m": "state: {\"len\":5,\"retries\":[1,1,1,1,1]}  posts=5"
+    },
+    {
+      "t": 39151,
+      "m": "state: {\"len\":5,\"retries\":[2,2,2,2,2]}  posts=10"
+    },
+    {
+      "t": 49152,
+      "m": "state: {\"len\":5,\"retries\":[2,2,2,2,2]}  posts=10"
+    },
+    {
+      "t": 59154,
+      "m": "state: {\"len\":5,\"retries\":[2,2,2,2,2]}  posts=10"
+    },
+    {
+      "t": 69156,
+      "m": "state: {\"len\":5,\"retries\":[3,3,3,3,3]}  posts=15"
+    },
+    {
+      "t": 79158,
+      "m": "state: {\"len\":5,\"retries\":[3,3,3,3,3]}  posts=15"
+    },
+    {
+      "t": 89159,
+      "m": "state: {\"len\":5,\"retries\":[3,3,3,3,3]}  posts=15"
+    },
+    {
+      "t": 99162,
+      "m": "state: {\"len\":0,\"retries\":[]}  posts=20"
+    },
+    {
+      "t": 99162,
+      "m": "posts by status: {\"422\":20}, total=20"
+    }
+  ]
+}

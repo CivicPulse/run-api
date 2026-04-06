@@ -1,0 +1,65 @@
+VOL-CRUD-01	201	alice=11a74167-b323-411d-80ae-61219cd61e3f
+VOL-CRUD-02	201	bob=96a65eb6-5029-4a78-8f90-dc380c76841b
+VOL-CRUD-03	403	expect 403
+VOL-CRUD-04	422	expect 422
+VOL-CRUD-05	200	items=8
+VOL-CRUD-06	200	unique=[]
+VOL-CRUD-07	200	alice_found=1
+VOL-CRUD-08	200	names=["Alice"]
+VOL-CRUD-09	403	expect 403
+VOL-CRUD-10	200	tags=[] avail=[]
+VOL-CRUD-11	404	expect 404
+VOL-CRUD-12	200	phone=478-555-0999 notes=Prefers evenings
+VOL-CRUD-13	403	expect 403
+VOL-CRUD-14	200	status=inactive
+VOL-CRUD-15	422	expect 422
+VOL-REG-01	201	self=99ff8dd7-1d3e-4b11-ba0e-65eaa76f8631 user_id=367278371970744389
+VOL-REG-02	409	User 367278371970744389 already registered as volunteer for campaign 06d710c8-32
+VOL-REG-03	403	expect 403
+VOL-TAG-01	201	tag=983a0163-a4d6-4837-a926-63d27a9d1418 name=captain
+VOL-TAG-02	200	tags=2
+VOL-TAG-03	403	expect 403
+VOL-TAG-04	200	name=Team Captain
+VOL-TAG-05	201	attach; expect 201/204
+VOL-TAG-06	200	tags=
+VOL-TAG-07	204	expect 204
+VOL-TAG-08	204	delete=204 tags_after=[]
+VOL-AVAIL-01	201	id=23898854-5821-4321-a984-1a2a8c980f5d
+VOL-AVAIL-02	422	end<start; end_at must be after start_at
+VOL-AVAIL-03	200	slots=1
+VOL-AVAIL-04	204	expect 204
+VOL-AVAIL-05	404	expect 404
+VOL-SHIFT-01	201	shift_a=066a1906-d0ec-42f5-8b05-81d0c16411e6 status=scheduled
+VOL-SHIFT-02	201	shift_b=1574a4e2-56c9-4ef1-9385-0c9d154e13fd
+VOL-SHIFT-03	403	expect 403
+VOL-SHIFT-04	422	expect 422
+VOL-SHIFT-05	200	shifts=2
+VOL-SHIFT-06	200	unique_types=["phone_banking"]
+VOL-SHIFT-07	200	signed_up=0 max=2
+VOL-SHIFT-08	200	loc=West HQ
+VOL-SHIFT-09	403	expect 403
+VOL-SIGNUP-01	422	{"type":"shift-signup-failed","title":"Signup Failed","status":422,"detail":"Volunteer must be ACTIVE to sign up, current status: pending"}
+VOL-SIGNUP-02	422	{"type":"shift-assignment-failed","title":"Assignment Failed","status":422,"detail":"Volunteer must be ACTIVE, current status: pending"}
+VOL-SIGNUP-03	200	signed_up=0/2
+VOL-SIGNUP-04	422	{"type":"shift-assignment-failed","title":"Assignment Failed","status":422,"detail":"Volunteer must be ACTIVE, current status: inactive"}
+VOL-SIGNUP-05	200	volunteers=0
+VOL-SIGNUP-06	422	duplicate; expect 422
+VOL-SIGNUP-07	422	expect 204
+VOL-SIGNUP-08	404	expect 204
+VOL-SIGNUP-09	404	owner-no-vol-rec; volunteer-not-registered
+VOL-SIGNUP-10	403	expect 403
+VOL-CHECK-01	422	check_in=
+VOL-CHECK-02	422	check_out= hours=
+VOL-CHECK-03	422	Volunteer 96a65eb6-5029-4a78-8f90-dc380c76841b not signed up for shift 066a1906-
+VOL-CHECK-04	403	expect 403
+VOL-CHECK-05	422	adj=Volunteer 11a74167-b323-411d-80ae-61219cd61e3f not signed up for shift 066a1906-d0ec-42f5-8b05-81d0c16411e6
+VOL-CHECK-06	403	expect 403
+VOL-CHECK-07	200	{"total_hours":0,"shifts_worked":0}
+VOL-LIFE-01	422	status=422
+VOL-LIFE-02	200	update in_progress
+VOL-LIFE-03	204	
+VOL-LIFE-04	422	Shift 066a1906-d0ec-42f5-8b05-81d0c16411e6 not found
+VOL-LIFE-05	204	expect 204
+VOL-ISO-01	200	cross-read 
+VOL-ISO-02	403	expect 403
+VOL-ISO-03	422	cross-assign Volunteer must be ACTIVE, current status: pending

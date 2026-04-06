@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "loadMs": 3457,
+      "lcp": 2936,
+      "ttfb": 58.40000009536743,
+      "domContentLoaded": 1732.2999999523163,
+      "loadEvent": 1732.4000000953674,
+      "fcp": 2320,
+      "transferBytes": 949
+    },
+    {
+      "loadMs": 3342,
+      "lcp": 2840,
+      "ttfb": 51.90000009536743,
+      "domContentLoaded": 1734.2999999523163,
+      "loadEvent": 1734.4000000953674,
+      "fcp": 2320,
+      "transferBytes": 949
+    },
+    {
+      "loadMs": 3330,
+      "lcp": 2888,
+      "ttfb": 46.5,
+      "domContentLoaded": 1728.2999999523163,
+      "loadEvent": 1728.5,
+      "fcp": 2312,
+      "transferBytes": 949
+    }
+  ],
+  "median": {
+    "loadMs": 3342,
+    "lcp": 2840,
+    "ttfb": 51.90000009536743,
+    "domContentLoaded": 1734.2999999523163,
+    "loadEvent": 1734.4000000953674,
+    "fcp": 2320,
+    "transferBytes": 949
+  }
+}

@@ -1,0 +1,99 @@
+[
+  {
+    "label": "home",
+    "url": "https://run.civpulse.org/",
+    "unnamedCount": 0,
+    "unnamed": [],
+    "iconBtnsCount": 0,
+    "iconBtns": [],
+    "landmarks": {
+      "banner": true,
+      "nav": false,
+      "main": true,
+      "contentinfo": false
+    },
+    "orphanInputsCount": 0,
+    "orphanInputs": [],
+    "liveRegions": [
+      {
+        "live": "polite",
+        "role": null
+      }
+    ],
+    "roleStatus": 0
+  },
+  {
+    "label": "dashboard",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+    "unnamedCount": 0,
+    "unnamed": [],
+    "iconBtnsCount": 0,
+    "iconBtns": [],
+    "landmarks": {
+      "banner": true,
+      "nav": true,
+      "main": true,
+      "contentinfo": false
+    },
+    "orphanInputsCount": 0,
+    "orphanInputs": [],
+    "liveRegions": [
+      {
+        "live": "polite",
+        "role": null
+      }
+    ],
+    "roleStatus": 0
+  },
+  {
+    "label": "voters",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters",
+    "unnamedCount": 0,
+    "unnamed": [],
+    "iconBtnsCount": 0,
+    "iconBtns": [],
+    "landmarks": {
+      "banner": true,
+      "nav": true,
+      "main": true,
+      "contentinfo": false
+    },
+    "orphanInputsCount": 0,
+    "orphanInputs": [],
+    "liveRegions": [
+      {
+        "live": "polite",
+        "role": null
+      }
+    ],
+    "roleStatus": 0
+  },
+  {
+    "label": "canvassing",
+    "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+    "unnamedCount": 1,
+    "unnamed": [
+      {
+        "tag": "A",
+        "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing/turfs/062eaaf7-3ac3-4190-9528-94a96f252065\" class=\"absolute inset-0 z-10\"></a>"
+      }
+    ],
+    "iconBtnsCount": 0,
+    "iconBtns": [],
+    "landmarks": {
+      "banner": true,
+      "nav": true,
+      "main": true,
+      "contentinfo": false
+    },
+    "orphanInputsCount": 0,
+    "orphanInputs": [],
+    "liveRegions": [
+      {
+        "live": "polite",
+        "role": null
+      }
+    ],
+    "roleStatus": 0
+  }
+]

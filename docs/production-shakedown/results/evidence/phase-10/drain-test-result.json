@@ -1,0 +1,155 @@
+{
+  "seeded": 5,
+  "offlineQueueLen": 0,
+  "persistedAcrossReload": false,
+  "drainedTo": 0,
+  "drainMs": 2002,
+  "replayPosts": 5,
+  "replayCalls": [
+    {
+      "method": "POST",
+      "url": "/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "url": "/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "url": "/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "url": "/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "url": "/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks",
+      "status": 201
+    }
+  ],
+  "testEntryIds": [
+    "8a725065-767d-40df-acfd-5ec0d5afeb00",
+    "9909239a-eb76-4de7-bcb8-e87a5a415529",
+    "5b15a521-6081-43a9-b807-e02a0feedb21",
+    "f092de3a-4469-411d-b799-f3d8b0bc91d5",
+    "2a8543d3-f462-44c8-98dc-e60acd74f67b"
+  ],
+  "testVoterIds": [
+    "07bda0e0-779f-4578-9e36-4ab9151ee9ff",
+    "0c90740e-de03-410e-aafe-4a605cf5a580",
+    "156c46b0-62a6-46d9-af84-772489c5e8ef",
+    "194f988c-d4de-418a-99ea-033892137975",
+    "1a90472c-6885-4a87-a6a0-c1a6a7ae2b01"
+  ],
+  "log": [
+    {
+      "t": 75,
+      "msg": "LOGIN"
+    },
+    {
+      "t": 3059,
+      "msg": "post-login url: https://run.civpulse.org/"
+    },
+    {
+      "t": 6971,
+      "msg": "canvassing url: https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing"
+    },
+    {
+      "t": 6971,
+      "msg": "Fetching real walk list entries via API"
+    },
+    {
+      "t": 7085,
+      "msg": "got 12 entries"
+    },
+    {
+      "t": 7085,
+      "msg": "test entries: 5"
+    },
+    {
+      "t": 7089,
+      "msg": "seed: {\"ok\":true,\"count\":5}"
+    },
+    {
+      "t": 7089,
+      "msg": "reloading to rehydrate zustand persist from seeded localStorage"
+    },
+    {
+      "t": 8159,
+      "msg": "REQ POST /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8254,
+      "msg": "RESP POST 201 /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8255,
+      "msg": "REQ POST /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8338,
+      "msg": "RESP POST 201 /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8339,
+      "msg": "REQ POST /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8429,
+      "msg": "RESP POST 201 /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8431,
+      "msg": "REQ POST /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8520,
+      "msg": "RESP POST 201 /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8521,
+      "msg": "REQ POST /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 8606,
+      "msg": "RESP POST 201 /api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/1bb3282d-98b1-4e4f-ab2d-ca1d0951d9e7/door-knocks"
+    },
+    {
+      "t": 10996,
+      "msg": "after reload, localStorage items: 0"
+    },
+    {
+      "t": 10996,
+      "msg": "OFFLINE → verify queue persists"
+    },
+    {
+      "t": 12497,
+      "msg": "queue while offline: 0"
+    },
+    {
+      "t": 12497,
+      "msg": "ONLINE → drain queue"
+    },
+    {
+      "t": 13000,
+      "msg": "dispatched online event"
+    },
+    {
+      "t": 15002,
+      "msg": "poll: {\"len\":0,\"online\":true,\"retries\":[]}"
+    },
+    {
+      "t": 15002,
+      "msg": "drain finished: remaining=0 in 2002ms"
+    },
+    {
+      "t": 15002,
+      "msg": "successful door-knock POSTs: 5"
+    }
+  ]
+}

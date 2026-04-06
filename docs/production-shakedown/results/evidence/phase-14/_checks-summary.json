@@ -1,0 +1,533 @@
+{
+  "KBD_01": {
+    "stops": 25,
+    "firstLabel": "Skip to main content",
+    "order": [
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Skip to main content",
+        "href": "#main-content",
+        "visible": true,
+        "x": 16,
+        "y": 16,
+        "w": 199,
+        "h": 40
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "CivicPulse RunCampaign Manager",
+        "href": "/",
+        "visible": true,
+        "x": 8,
+        "y": 8,
+        "w": 239,
+        "h": 48
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "All Campaigns",
+        "href": "/",
+        "visible": true,
+        "x": 8,
+        "y": 105,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Members",
+        "href": "/org/members",
+        "visible": true,
+        "x": 8,
+        "y": 141,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Settings",
+        "href": "/org/settings",
+        "visible": true,
+        "x": 8,
+        "y": 177,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Open sidebar",
+        "visible": true,
+        "x": 268,
+        "y": 18,
+        "w": 28,
+        "h": 28
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "User menu",
+        "visible": true,
+        "x": 1392,
+        "y": 16,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Create Campaign",
+        "href": "/campaigns/new",
+        "visible": true,
+        "x": 1246,
+        "y": 80,
+        "w": 178,
+        "h": 36
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "CAMP Test LocalActive5 members",
+        "href": "/campaigns/49a19019-988b-4932-9595-59d09e5d4365/dashboard",
+        "visible": true,
+        "x": 272,
+        "y": 228,
+        "w": 373,
+        "h": 146
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Campaign actions",
+        "visible": true,
+        "x": 576,
+        "y": 253,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "CAMP Test StateActive5 members",
+        "href": "/campaigns/faf90649-06a8-45c3-bb70-aaeb81dce989/dashboard",
+        "visible": true,
+        "x": 661,
+        "y": 228,
+        "w": 373,
+        "h": 146
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Campaign actions",
+        "visible": true,
+        "x": 966,
+        "y": 253,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "CAMP Test FederalActive4 members",
+        "href": "/campaigns/216cf0d9-7944-4ab4-9258-c43ff588cb16/dashboard",
+        "visible": true,
+        "x": 1051,
+        "y": 228,
+        "w": 373,
+        "h": 146
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Campaign actions",
+        "visible": true,
+        "x": 1355,
+        "y": 253,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "QA Test CampaignActive6 members",
+        "href": "/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+        "visible": true,
+        "x": 272,
+        "y": 390,
+        "w": 373,
+        "h": 146
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Campaign actions",
+        "visible": true,
+        "x": 576,
+        "y": 415,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Archived (1)",
+        "visible": true,
+        "x": 272,
+        "y": 560,
+        "w": 130,
+        "h": 36
+      },
+      {
+        "tag": "BODY",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Skip to main content",
+        "href": "#main-content",
+        "visible": true,
+        "x": 16,
+        "y": 16,
+        "w": 199,
+        "h": 40
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "CivicPulse RunCampaign Manager",
+        "href": "/",
+        "visible": true,
+        "x": 8,
+        "y": 8,
+        "w": 239,
+        "h": 48
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "All Campaigns",
+        "href": "/",
+        "visible": true,
+        "x": 8,
+        "y": 105,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Members",
+        "href": "/org/members",
+        "visible": true,
+        "x": 8,
+        "y": 141,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "A",
+        "role": null,
+        "label": "Settings",
+        "href": "/org/settings",
+        "visible": true,
+        "x": 8,
+        "y": 177,
+        "w": 239,
+        "h": 32
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "Open sidebar",
+        "visible": true,
+        "x": 268,
+        "y": 18,
+        "w": 28,
+        "h": 28
+      },
+      {
+        "tag": "BUTTON",
+        "role": null,
+        "label": "User menu",
+        "visible": true,
+        "x": 1392,
+        "y": 16,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "KBD_02": {
+    "checked": 14,
+    "missing": 0,
+    "missingSamples": []
+  },
+  "KBD_08": {
+    "first": {
+      "tag": "A",
+      "text": "Skip to main content",
+      "href": "#main-content"
+    },
+    "isSkip": true
+  },
+  "SR": [
+    {
+      "label": "home",
+      "url": "https://run.civpulse.org/",
+      "unnamedCount": 0,
+      "unnamed": [],
+      "iconBtnsCount": 0,
+      "iconBtns": [],
+      "landmarks": {
+        "banner": true,
+        "nav": false,
+        "main": true,
+        "contentinfo": false
+      },
+      "orphanInputsCount": 0,
+      "orphanInputs": [],
+      "liveRegions": [
+        {
+          "live": "polite",
+          "role": null
+        }
+      ],
+      "roleStatus": 0
+    },
+    {
+      "label": "dashboard",
+      "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+      "unnamedCount": 0,
+      "unnamed": [],
+      "iconBtnsCount": 0,
+      "iconBtns": [],
+      "landmarks": {
+        "banner": true,
+        "nav": true,
+        "main": true,
+        "contentinfo": false
+      },
+      "orphanInputsCount": 0,
+      "orphanInputs": [],
+      "liveRegions": [
+        {
+          "live": "polite",
+          "role": null
+        }
+      ],
+      "roleStatus": 0
+    },
+    {
+      "label": "voters",
+      "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters",
+      "unnamedCount": 0,
+      "unnamed": [],
+      "iconBtnsCount": 0,
+      "iconBtns": [],
+      "landmarks": {
+        "banner": true,
+        "nav": true,
+        "main": true,
+        "contentinfo": false
+      },
+      "orphanInputsCount": 0,
+      "orphanInputs": [],
+      "liveRegions": [
+        {
+          "live": "polite",
+          "role": null
+        }
+      ],
+      "roleStatus": 0
+    },
+    {
+      "label": "canvassing",
+      "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+      "unnamedCount": 1,
+      "unnamed": [
+        {
+          "tag": "A",
+          "html": "<a href=\"/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing/turfs/062eaaf7-3ac3-4190-9528-94a96f252065\" class=\"absolute inset-0 z-10\"></a>"
+        }
+      ],
+      "iconBtnsCount": 0,
+      "iconBtns": [],
+      "landmarks": {
+        "banner": true,
+        "nav": true,
+        "main": true,
+        "contentinfo": false
+      },
+      "orphanInputsCount": 0,
+      "orphanInputs": [],
+      "liveRegions": [
+        {
+          "live": "polite",
+          "role": null
+        }
+      ],
+      "roleStatus": 0
+    }
+  ],
+  "SR_06": {
+    "hasTable": true,
+    "hasThead": true,
+    "hasTbody": true,
+    "thCount": 6,
+    "thWithScope": 0
+  },
+  "CONTRAST": {
+    "violations": []
+  },
+  "CONTRAST_dashboard": {
+    "violations": []
+  },
+  "CONTRAST_voters": {
+    "violations": []
+  },
+  "CONTRAST_dark": {
+    "mode": {
+      "htmlClass": "",
+      "hasDark": false,
+      "bg": "oklch(0.995 0.003 240)"
+    },
+    "violations": []
+  },
+  "TOUCH_field": [
+    {
+      "label": "field-hub",
+      "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/",
+      "smallCount": 1,
+      "samples": [
+        {
+          "tag": "A",
+          "w": 1,
+          "h": 1,
+          "label": "Skip to main content"
+        }
+      ]
+    },
+    {
+      "label": "field-canvassing",
+      "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+      "smallCount": 2,
+      "samples": [
+        {
+          "tag": "A",
+          "w": 1,
+          "h": 1,
+          "label": "Skip to main content"
+        },
+        {
+          "tag": "A",
+          "w": 261,
+          "h": 36,
+          "label": "Back to Hub"
+        }
+      ]
+    },
+    {
+      "label": "field-phone-banking",
+      "url": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banking",
+      "smallCount": 2,
+      "samples": [
+        {
+          "tag": "A",
+          "w": 1,
+          "h": 1,
+          "label": "Skip to main content"
+        },
+        {
+          "tag": "A",
+          "w": 261,
+          "h": 36,
+          "label": "Back to Hub"
+        }
+      ]
+    }
+  ],
+  "TOUCH_voters": {
+    "smallCount": 41,
+    "samples": [
+      {
+        "tag": "A",
+        "w": 1,
+        "h": 1,
+        "label": "Skip to main content"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 32,
+        "h": 32,
+        "label": "User menu"
+      },
+      {
+        "tag": "A",
+        "w": 132,
+        "h": 38,
+        "label": "Dashboard"
+      },
+      {
+        "tag": "A",
+        "w": 100,
+        "h": 38,
+        "label": "Voters"
+      },
+      {
+        "tag": "A",
+        "w": 136,
+        "h": 38,
+        "label": "Canvassing"
+      },
+      {
+        "tag": "A",
+        "w": 161,
+        "h": 38,
+        "label": "Phone Banking"
+      },
+      {
+        "tag": "A",
+        "w": 112,
+        "h": 38,
+        "label": "Surveys"
+      },
+      {
+        "tag": "A",
+        "w": 130,
+        "h": 38,
+        "label": "Volunteers"
+      },
+      {
+        "tag": "A",
+        "w": 90,
+        "h": 24,
+        "label": "All Voters"
+      },
+      {
+        "tag": "A",
+        "w": 56,
+        "h": 24,
+        "label": "Lists"
+      }
+    ]
+  },
+  "MOTION_01": {
+    "total": 152,
+    "running": 0,
+    "samples": []
+  },
+  "FORM": {
+    "formOpened": true,
+    "requiredInputs": [],
+    "ariaRequired": [],
+    "fieldsets": [],
+    "radioGroups": []
+  }
+}

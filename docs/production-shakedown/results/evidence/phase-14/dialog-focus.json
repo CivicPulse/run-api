@@ -1,0 +1,19 @@
+{
+  "triggered": null,
+  "afterOpen": {
+    "insideDialog": false,
+    "activeTag": "DIV",
+    "activeLabel": "QA Ownerqa-owner@civpulse.orgSign out",
+    "dialogExists": false
+  },
+  "routeChange": {
+    "before": {
+      "tag": "BODY"
+    },
+    "after": {
+      "tag": "A",
+      "isBody": false,
+      "inMain": false
+    }
+  }
+}

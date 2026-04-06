@@ -1,0 +1,10 @@
+logged in: https://run.civpulse.org/
+After voter list: {}
+Dialogs fired: 0
+After voter 6ded6bc1-3fe0-4cbb-b517-1b4d1a006447: {}
+After voter d6856ae0-b6cc-4668-9b2d-7355129e82c9: {}
+rawScriptTag: false escapedOrAsText: false
+Dialogs total: 0 []
+CSP: NONE
+X-Frame-Options: NONE
+X-Content-Type-Options: NONE
