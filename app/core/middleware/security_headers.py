@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from starlette.datastructures import Headers
-from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import settings
@@ -37,17 +36,10 @@ class SecurityHeadersMiddleware:
         forwarded_proto = headers.get("x-forwarded-proto")
         scheme = forwarded_proto or scope.get("scheme", "http")
 
-        if settings.environment == "production" and forwarded_proto == "http":
-            host = headers.get("host")
-            if host:
-                query = scope.get("query_string", b"").decode()
-                path = scope.get("raw_path", scope.get("path", "/")).decode()
-                url = f"https://{host}{path}"
-                if query:
-                    url = f"{url}?{query}"
-                response = RedirectResponse(url=url, status_code=307)
-                await response(scope, receive, send)
-                return
+        # NOTE: HTTPS redirect is handled by Cloudflare at the edge.
+        # Do NOT redirect here — Cloudflare connects to origin via HTTP
+        # (flexible mode), so x-forwarded-proto is always "http" and
+        # redirecting would cause an infinite 307 loop.
 
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
