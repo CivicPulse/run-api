@@ -144,9 +144,7 @@ class CanvassService:
         """
         script_id = walk_list.script_id
         if script_id is None:
-            msg = (
-                "Survey responses require a walk list with an attached survey script"
-            )
+            msg = "Survey responses require a walk list with an attached survey script"
             raise ValueError(msg)
 
         script_result = await session.execute(

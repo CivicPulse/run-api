@@ -66,7 +66,9 @@ async def test_create_campaign_inserts_owner_as_member():
     mock_zitadel.assign_project_role = AsyncMock()
 
     # --- Mock _generate_unique_slug ---
-    with patch.object(svc, "_generate_unique_slug", new=AsyncMock(return_value="test-campaign")):
+    with patch.object(
+        svc, "_generate_unique_slug", new=AsyncMock(return_value="test-campaign")
+    ):
         campaign = await svc.create_campaign(
             db=mock_session,
             name="Test Campaign",
@@ -82,7 +84,9 @@ async def test_create_campaign_inserts_owner_as_member():
         f"Expected exactly 1 CampaignMember to be added, got {len(member_adds)}"
     )
     member = member_adds[0]
-    assert member.role == "owner", f"CampaignMember role should be 'owner', got '{member.role}'"
+    assert member.role == "owner", (
+        f"CampaignMember role should be 'owner', got '{member.role}'"
+    )
     assert member.user_id == "user-creator-001", (
         f"CampaignMember user_id should match creator, got '{member.user_id}'"
     )
@@ -144,9 +148,9 @@ class TestFrontendSourcePresence:
         with no way to navigate back.
         """
         source = _read_source("web/src/routes/campaigns/$campaignId.tsx")
-        assert "Campaign not found" in source or "campaign not found" in source.lower(), (
-            "$campaignId.tsx layout must handle campaign-not-found error state"
-        )
+        assert (
+            "Campaign not found" in source or "campaign not found" in source.lower()
+        ), "$campaignId.tsx layout must handle campaign-not-found error state"
 
     def test_r014_calculate_age_usage(self):
         """R014 regression: Voter views must use calculateAge for age display.
@@ -154,8 +158,12 @@ class TestFrontendSourcePresence:
         Without this, voter ages are either missing or hard-coded
         instead of computed from date_of_birth.
         """
-        voters_index = _read_source("web/src/routes/campaigns/$campaignId/voters/index.tsx")
-        voter_detail = _read_source("web/src/routes/campaigns/$campaignId/voters/$voterId.tsx")
+        voters_index = _read_source(
+            "web/src/routes/campaigns/$campaignId/voters/index.tsx"
+        )
+        voter_detail = _read_source(
+            "web/src/routes/campaigns/$campaignId/voters/$voterId.tsx"
+        )
         assert "calculateAge" in voters_index or "calculateAge" in voter_detail, (
             "Voter index or detail view must use calculateAge for age computation"
         )
@@ -169,6 +177,6 @@ class TestFrontendSourcePresence:
         # Check in type definitions and components
         types_source = _read_source("web/src/types/voter.ts")
         history_source = _read_source("web/src/components/voters/HistoryTab.tsx")
-        assert "created_by_name" in types_source or "created_by_name" in history_source, (
-            "Frontend must reference created_by_name in voter types or history component"
-        )
+        assert (
+            "created_by_name" in types_source or "created_by_name" in history_source
+        ), "Frontend must reference created_by_name in voter types or history component"

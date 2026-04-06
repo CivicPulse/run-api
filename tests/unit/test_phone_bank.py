@@ -18,6 +18,7 @@ from app.models.call_list import (
 )
 from app.models.dnc import DNCReason
 from app.models.phone_bank import PhoneBankSession, SessionCaller, SessionStatus
+from app.schemas.phone_bank import CallRecordCreate
 from app.services.phone_bank import PhoneBankService
 
 # ---------------------------------------------------------------------------
@@ -165,6 +166,9 @@ class TestPhoneBankSession:
             name="Evening Calls",
             call_list_id=uuid.uuid4(),
         )
+        db.execute.return_value = _mock_scalar_result(
+            _make_call_list(id=data.call_list_id, campaign_id=campaign_id)
+        )
 
         result = await svc.create_session(db, campaign_id, data, "user-1")
 
@@ -172,6 +176,40 @@ class TestPhoneBankSession:
         assert result.status == SessionStatus.DRAFT
         assert result.campaign_id == campaign_id
         db.add.assert_called_once()
+
+    def test_call_record_rejects_negative_duration(self) -> None:
+        now = utcnow()
+        with pytest.raises(
+            ValueError,
+            match="call_ended_at must be greater than or equal to call_started_at",
+        ):
+            CallRecordCreate(
+                call_list_entry_id=uuid.uuid4(),
+                result_code=CallResultCode.ANSWERED,
+                phone_number_used="5551234567",
+                call_started_at=now,
+                call_ended_at=now.replace(minute=max(now.minute - 1, 0)),
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_session_rejects_missing_call_list(self) -> None:
+        """Missing call_list_id fails cleanly before hitting FK constraints."""
+        db = _mock_db()
+        svc = PhoneBankService()
+        campaign_id = uuid.uuid4()
+
+        from app.schemas.phone_bank import PhoneBankSessionCreate
+
+        data = PhoneBankSessionCreate(
+            name="Evening Calls",
+            call_list_id=uuid.uuid4(),
+        )
+        db.execute.return_value = _mock_scalar_result(None)
+
+        with pytest.raises(ValueError, match="Call list .* not found"):
+            await svc.create_session(db, campaign_id, data, "user-1")
+
+        db.add.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_session_status_lifecycle(self) -> None:
@@ -321,7 +359,10 @@ class TestCallerManagement:
         db = _mock_db()
         svc = PhoneBankService()
         session_obj = _make_session_obj()
-        db.execute.return_value = _mock_scalar_result(session_obj)
+        db.execute.side_effect = [
+            _mock_scalar_result(session_obj),
+            _mock_scalar_result(None),
+        ]
 
         result = await svc.assign_caller(db, session_obj.id, "caller-1")
 

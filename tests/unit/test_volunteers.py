@@ -212,7 +212,9 @@ class TestVolunteerCRUD:
 
         data = VolunteerUpdate(phone="5550000000", email="new@example.com")
 
-        result = await svc.update_volunteer(db, volunteer.id, data)
+        result = await svc.update_volunteer(
+            db, volunteer.id, volunteer.campaign_id, data
+        )
 
         assert result.phone == "5550000000"
         assert result.email == "new@example.com"
@@ -226,20 +228,26 @@ class TestVolunteerCRUD:
         # pending -> active: allowed
         vol1 = _make_volunteer(status=VolunteerStatus.PENDING)
         db.execute.return_value = _mock_scalar_result(vol1)
-        result = await svc.update_status(db, vol1.id, VolunteerStatus.ACTIVE)
+        result = await svc.update_status(
+            db, vol1.id, vol1.campaign_id, VolunteerStatus.ACTIVE
+        )
         assert result.status == VolunteerStatus.ACTIVE
 
         # active -> inactive: allowed
         vol2 = _make_volunteer(status=VolunteerStatus.ACTIVE)
         db.execute.return_value = _mock_scalar_result(vol2)
-        result = await svc.update_status(db, vol2.id, VolunteerStatus.INACTIVE)
+        result = await svc.update_status(
+            db, vol2.id, vol2.campaign_id, VolunteerStatus.INACTIVE
+        )
         assert result.status == VolunteerStatus.INACTIVE
 
         # inactive -> active: NOT allowed
         vol3 = _make_volunteer(status=VolunteerStatus.INACTIVE)
         db.execute.return_value = _mock_scalar_result(vol3)
         with pytest.raises(ValueError, match="Invalid status transition"):
-            await svc.update_status(db, vol3.id, VolunteerStatus.ACTIVE)
+            await svc.update_status(
+                db, vol3.id, vol3.campaign_id, VolunteerStatus.ACTIVE
+            )
 
     @pytest.mark.asyncio
     async def test_add_volunteer_skills(self) -> None:
@@ -253,7 +261,9 @@ class TestVolunteerCRUD:
 
         data = VolunteerUpdate(skills=["canvassing", "phone_banking", "driving"])
 
-        result = await svc.update_volunteer(db, volunteer.id, data)
+        result = await svc.update_volunteer(
+            db, volunteer.id, volunteer.campaign_id, data
+        )
 
         assert result.skills == ["canvassing", "phone_banking", "driving"]
 
@@ -269,7 +279,14 @@ class TestVolunteerTags:
         volunteer_id = uuid.uuid4()
         tag_id = uuid.uuid4()
 
-        result = await svc.add_tag(db, volunteer_id, tag_id)
+        volunteer = _make_volunteer(id=volunteer_id)
+        tag = _make_tag(id=tag_id, campaign_id=volunteer.campaign_id)
+        db.execute.side_effect = [
+            _mock_scalar_result(volunteer),
+            _mock_scalar_result(tag),
+        ]
+
+        result = await svc.add_tag(db, volunteer_id, tag_id, volunteer.campaign_id)
 
         assert result.volunteer_id == volunteer_id
         assert result.tag_id == tag_id
@@ -283,10 +300,14 @@ class TestVolunteerTags:
         volunteer_id = uuid.uuid4()
         tag_id = uuid.uuid4()
 
+        volunteer = _make_volunteer(id=volunteer_id)
         tag_member = MagicMock(spec=VolunteerTagMember)
-        db.execute.return_value = _mock_scalar_result(tag_member)
+        db.execute.side_effect = [
+            _mock_scalar_result(volunteer),
+            _mock_scalar_result(tag_member),
+        ]
 
-        await svc.remove_tag(db, volunteer_id, tag_id)
+        await svc.remove_tag(db, volunteer_id, tag_id, volunteer.campaign_id)
 
         db.delete.assert_called_once_with(tag_member)
 
@@ -295,10 +316,19 @@ class TestVolunteerTags:
         """Removing a tag not assigned raises ValueError."""
         db = _mock_db()
         svc = VolunteerService()
-        db.execute.return_value = _mock_scalar_result(None)
+        volunteer = _make_volunteer()
+        db.execute.side_effect = [
+            _mock_scalar_result(volunteer),
+            _mock_scalar_result(None),
+        ]
 
         with pytest.raises(ValueError, match="not assigned"):
-            await svc.remove_tag(db, uuid.uuid4(), uuid.uuid4())
+            await svc.remove_tag(
+                db,
+                volunteer.id,
+                uuid.uuid4(),
+                volunteer.campaign_id,
+            )
 
 
 class TestVolunteerAvailability:
@@ -310,6 +340,9 @@ class TestVolunteerAvailability:
         db = _mock_db()
         svc = VolunteerService()
         volunteer_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
+        volunteer = _make_volunteer(id=volunteer_id, campaign_id=campaign_id)
+        db.execute.return_value = _mock_scalar_result(volunteer)
 
         from app.schemas.volunteer import AvailabilityCreate
 
@@ -319,7 +352,7 @@ class TestVolunteerAvailability:
             end_at=now + timedelta(hours=4),
         )
 
-        result = await svc.add_availability(db, volunteer_id, data)
+        result = await svc.add_availability(db, volunteer_id, campaign_id, data)
 
         assert result.volunteer_id == volunteer_id
         assert result.start_at == now
@@ -330,6 +363,8 @@ class TestVolunteerAvailability:
         """end_at must be after start_at."""
         db = _mock_db()
         svc = VolunteerService()
+        volunteer_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
 
         from app.schemas.volunteer import AvailabilityCreate
 
@@ -340,7 +375,7 @@ class TestVolunteerAvailability:
         )
 
         with pytest.raises(ValueError, match="end_at must be after start_at"):
-            await svc.add_availability(db, uuid.uuid4(), data)
+            await svc.add_availability(db, volunteer_id, campaign_id, data)
 
     @pytest.mark.asyncio
     async def test_delete_availability_slot(self) -> None:
@@ -348,9 +383,12 @@ class TestVolunteerAvailability:
         db = _mock_db()
         svc = VolunteerService()
         availability = _make_availability()
+        volunteer = _make_volunteer(id=availability.volunteer_id)
         db.execute.return_value = _mock_scalar_result(availability)
 
-        await svc.delete_availability(db, availability.id)
+        await svc.delete_availability(
+            db, availability.volunteer_id, volunteer.campaign_id, availability.id
+        )
 
         db.delete.assert_called_once_with(availability)
 
@@ -360,9 +398,11 @@ class TestVolunteerAvailability:
         db = _mock_db()
         svc = VolunteerService()
         db.execute.return_value = _mock_scalar_result(None)
+        volunteer_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
 
         with pytest.raises(ValueError, match="not found"):
-            await svc.delete_availability(db, uuid.uuid4())
+            await svc.delete_availability(db, volunteer_id, campaign_id, uuid.uuid4())
 
 
 class TestVolunteerSearch:
@@ -400,7 +440,7 @@ class TestVolunteerSearch:
             _mock_scalars_result(availability),
         ]
 
-        result = await svc.get_volunteer_detail(db, volunteer.id)
+        result = await svc.get_volunteer_detail(db, volunteer.id, volunteer.campaign_id)
 
         assert result is not None
         assert result["volunteer"] == volunteer
@@ -414,7 +454,7 @@ class TestVolunteerSearch:
         svc = VolunteerService()
         db.execute.return_value = _mock_scalar_result(None)
 
-        result = await svc.get_volunteer_detail(db, uuid.uuid4())
+        result = await svc.get_volunteer_detail(db, uuid.uuid4(), uuid.uuid4())
 
         assert result is None
 

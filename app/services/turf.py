@@ -42,6 +42,25 @@ def _validate_polygon(geojson: dict[str, Any]) -> WKBElement:
     Raises:
         ValueError: If geometry is not a valid polygon.
     """
+    coordinates = geojson.get("coordinates")
+    if not isinstance(coordinates, list):
+        raise ValueError("Polygon coordinates are required")
+    for ring in coordinates:
+        if not isinstance(ring, list):
+            raise ValueError("Polygon coordinates must contain linear rings")
+        for point in ring:
+            if not isinstance(point, (list, tuple)) or len(point) < 2:
+                raise ValueError("Polygon points must be [longitude, latitude]")
+            longitude, latitude = point[0], point[1]
+            if not isinstance(longitude, (int, float)) or not isinstance(
+                latitude, (int, float)
+            ):
+                raise ValueError("Polygon coordinates must be numeric")
+            if not (-180 <= float(longitude) <= 180):
+                raise ValueError("Longitude must be between -180 and 180")
+            if not (-90 <= float(latitude) <= 90):
+                raise ValueError("Latitude must be between -90 and 90")
+
     geom = shape(geojson)
     if geom.geom_type != "Polygon":
         msg = f"Expected Polygon, got {geom.geom_type}"
@@ -150,6 +169,7 @@ class TurfService:
         self,
         session: AsyncSession,
         turf_id: uuid.UUID,
+        campaign_id: uuid.UUID | None = None,
     ) -> Turf | None:
         """Get a turf by ID.
 
@@ -160,7 +180,10 @@ class TurfService:
         Returns:
             The Turf or None.
         """
-        result = await session.execute(select(Turf).where(Turf.id == turf_id))
+        stmt = select(Turf).where(Turf.id == turf_id)
+        if campaign_id is not None:
+            stmt = stmt.where(Turf.campaign_id == campaign_id)
+        result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_turfs(
@@ -306,7 +329,9 @@ class TurfService:
             )
             .outerjoin(
                 Voter,
-                (Voter.geom.is_not(None)) & func.ST_Contains(Turf.boundary, Voter.geom),
+                (Voter.geom.is_not(None))
+                & (Voter.campaign_id == Turf.campaign_id)
+                & func.ST_Contains(Turf.boundary, Voter.geom),
             )
             .where(Turf.id.in_(turf_ids))
             .group_by(Turf.id)
@@ -333,6 +358,8 @@ class TurfService:
         )
         query = select(func.count(Voter.id)).where(
             Voter.geom.is_not(None),
+            Voter.campaign_id
+            == select(Turf.campaign_id).where(Turf.id == turf_id).scalar_subquery(),
             func.ST_Contains(turf_boundary, Voter.geom),
         )
         result = await session.execute(query)

@@ -46,7 +46,11 @@ export function AssignmentCard({
           {completed} of {total} {unit}
         </p>
 
-        <Progress value={progressValue} className="h-2.5" />
+        <Progress
+          value={progressValue}
+          className="h-2.5"
+          aria-label={`${name} progress: ${completed} of ${total} ${unit} completed`}
+        />
 
         <p className="text-right text-sm font-medium text-primary">Tap to start</p>
       </div>

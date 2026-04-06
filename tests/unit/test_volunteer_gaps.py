@@ -32,8 +32,9 @@ class TestUpdateTag:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = tag
         db.execute = AsyncMock(return_value=mock_result)
+        campaign_id = uuid.uuid4()
 
-        result = await service.update_tag(db, tag_id, "New Name")
+        result = await service.update_tag(db, tag_id, campaign_id, "New Name")
 
         assert result.name == "New Name"
         assert result is tag
@@ -49,8 +50,9 @@ class TestUpdateTag:
         db.execute = AsyncMock(return_value=mock_result)
 
         tag_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
         with pytest.raises(ValueError, match=str(tag_id)):
-            await service.update_tag(db, tag_id, "New Name")
+            await service.update_tag(db, tag_id, campaign_id, "New Name")
 
 
 class TestDeleteTag:
@@ -73,8 +75,9 @@ class TestDeleteTag:
         mock_delete_result = MagicMock()
 
         db.execute = AsyncMock(side_effect=[mock_tag_result, mock_delete_result])
+        campaign_id = uuid.uuid4()
 
-        await service.delete_tag(db, tag_id)
+        await service.delete_tag(db, tag_id, campaign_id)
 
         # Should have called session.delete(tag)
         db.delete.assert_called_once_with(tag)
@@ -90,8 +93,9 @@ class TestDeleteTag:
         db.execute = AsyncMock(return_value=mock_result)
 
         tag_id = uuid.uuid4()
+        campaign_id = uuid.uuid4()
         with pytest.raises(ValueError, match=str(tag_id)):
-            await service.delete_tag(db, tag_id)
+            await service.delete_tag(db, tag_id, campaign_id)
 
 
 class TestSelfRegister409Enrichment:

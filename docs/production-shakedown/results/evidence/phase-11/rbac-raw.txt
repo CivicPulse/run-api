@@ -1,0 +1,402 @@
+=== RBAC-CAMP-01 [GET https://run.civpulse.org/api/v1/campaigns?limit=1]
+  viewer     200
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CAMP-02 [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248]
+  viewer     200
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CAMP-04 [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-CAMP-05 [DELETE https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      403
+  owner      403
+=== RBAC-VTR-01 [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters?limit=1]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-02 [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-04 [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-05-DENY [DELETE https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202]
+  viewer     403
+  volunteer  403
+  manager    204
+  admin      404
+  owner      404
+=== RBAC-VTR-06-GETphones [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/phones]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-GETemails [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/emails]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-GETaddrs [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/addresses]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-POSTphone [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/phones]
+  viewer     403
+  volunteer  403
+  manager    422
+  admin      422
+  owner      422
+=== RBAC-VTR-07-GETtags [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/tags]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-07-POSTtag [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/tags]
+  viewer     403
+  volunteer  201
+  manager    500
+  admin      500
+  owner      500
+=== RBAC-VTR-08-GETlists [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/lists]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-08-POSTlist [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/lists]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      201
+  owner      201
+=== RBAC-VTR-08-PATCHlist [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/lists/4186d781-3a90-420b-a265-ef0420cc5589]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-09-GETint [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/interactions]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VTR-09-POSTint [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/102a7c36-de39-4f35-a356-e7b590af7202/interactions]
+  viewer     403
+  volunteer  500
+  manager    500
+  admin      500
+  owner      500
+=== RBAC-CANV-01-GETlist [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/turfs]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CANV-01-GETdetail [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/turfs/062eaaf7-3ac3-4190-9528-94a96f252065]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CANV-01-PATCH [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/turfs/062eaaf7-3ac3-4190-9528-94a96f252065]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CANV-02-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CANV-02-GETdetail [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/b425354d-5d9b-4819-9e2d-2b72d4e3b34f]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-CANV-02-PATCH [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/walk-lists/b425354d-5d9b-4819-9e2d-2b72d4e3b34f]
+  viewer     403
+  volunteer  403
+  manager    400
+  admin      400
+  owner      400
+=== RBAC-PB-01-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/call-lists]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-01-GETdetail [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/call-lists/caf5ca1a-5c4a-40d9-966e-e452de25185a]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-01-PATCH [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/call-lists/caf5ca1a-5c4a-40d9-966e-e452de25185a]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-02-GETbanks [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banks]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-PB-02-POSTbank [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-banks]
+  viewer     405
+  volunteer  405
+  manager    405
+  admin      405
+  owner      405
+=== RBAC-PB-03-GETdnc [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dnc]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-03-POSTdnc [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dnc]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      201
+  owner      201
+=== RBAC-PB-03-CHECK [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dnc/check]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-SRV-01-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-SRV-01-GETone [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-SRV-01-PATCH [PATCH https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys/8a278958-275e-4444-8054-b4b68aee881d]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-SRV-01-POST [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      201
+  owner      201
+=== RBAC-VOL-01-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteers]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VOL-01-POST [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteers]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      201
+  owner      201
+=== RBAC-VOL-01-GETtags [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteer-tags]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-VOL-01-POSTtag [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/volunteer-tags]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      500
+  owner      500
+=== RBAC-VOL-02-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/shifts]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-DASH-01-overview [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/overview]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-DASH-01-canvassing [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/canvassing/summary]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-DASH-01-pb [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/phone-banking/summary]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-DASH-01-vols [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/volunteers/summary]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-DASH-01-surveys [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/surveys/summary]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-ORG-01 [GET https://run.civpulse.org/api/v1/org]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-ORG-02 [PATCH https://run.civpulse.org/api/v1/org]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      403
+  owner      200
+=== RBAC-ORG-03 [GET https://run.civpulse.org/api/v1/org/campaigns]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-ORG-04 [GET https://run.civpulse.org/api/v1/org/members]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-ORG-05 [POST https://run.civpulse.org/api/v1/org/members]
+  viewer     405
+  volunteer  405
+  manager    405
+  admin      405
+  owner      405
+=== RBAC-IMP-01 [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/imports]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-MEM-01-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/members]
+  viewer     200
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-INV-01-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/invites]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      200
+  owner      200
+=== RBAC-INV-01-POST [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/invites]
+  viewer     403
+  volunteer  403
+  manager    403
+  admin      201
+  owner      409
+=== RBAC-VTR-06-GETphones [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dfda7084-19f3-4f66-94b5-95c3ced2d70b/phones]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-GETemails [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dfda7084-19f3-4f66-94b5-95c3ced2d70b/emails]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-GETaddrs [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dfda7084-19f3-4f66-94b5-95c3ced2d70b/addresses]
+  viewer     404
+  volunteer  404
+  manager    404
+  admin      404
+  owner      404
+=== RBAC-VTR-06-POSTphone [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dfda7084-19f3-4f66-94b5-95c3ced2d70b/phones]
+  viewer     403
+  volunteer  403
+  manager    422
+  admin      422
+  owner      422
+=== RBAC-VTR-09-POSTint [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/voters/dfda7084-19f3-4f66-94b5-95c3ced2d70b/interactions]
+  viewer     403
+  volunteer  201
+  manager    201
+  admin      201
+  owner      201
+=== RBAC-DASH-canvassing [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/canvassing]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-DASH-phone-banking [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/phone-banking]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-DASH-volunteers [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/volunteers]
+  viewer     403
+  volunteer  403
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-DASH-my-stats [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard/my-stats]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-sessions-GET [GET https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-bank-sessions]
+  viewer     403
+  volunteer  200
+  manager    200
+  admin      200
+  owner      200
+=== RBAC-PB-sessions-POST [POST https://run.civpulse.org/api/v1/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/phone-bank-sessions]
+  viewer     403
+  volunteer  403
+  manager    201
+  admin      201
+  owner      201

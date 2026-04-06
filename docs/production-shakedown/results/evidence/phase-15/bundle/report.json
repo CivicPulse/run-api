@@ -1,0 +1,15 @@
+{
+  "initialJsCount": 29,
+  "afterLoginJsCount": 42,
+  "navJsCount": 20,
+  "mainBundle": {
+    "url": "https://run.civpulse.org/assets/index-DvWHxoRd.js",
+    "gzipped": 0,
+    "uncompressed": 741768
+  },
+  "mainBundleGzipped": 0,
+  "mainBundleGzippedMB": "0.000",
+  "totalInitialGzipped": 0,
+  "totalInitialUncompressed": 3277182,
+  "largeLibHits": []
+}

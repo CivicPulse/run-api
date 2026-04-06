@@ -15,6 +15,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      toastOptions={{
+        actionButtonStyle: {
+          minHeight: "44px",
+          paddingInline: "16px",
+        },
+        cancelButtonStyle: {
+          minHeight: "44px",
+          paddingInline: "16px",
+        },
+      }}
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

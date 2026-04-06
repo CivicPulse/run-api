@@ -46,9 +46,7 @@ async def _drive_middleware(
 
     logger_mock = MagicMock()
     logger_mock.info = MagicMock(side_effect=_capture)
-    monkeypatch.setattr(
-        "app.core.middleware.request_logging._logger", logger_mock
-    )
+    monkeypatch.setattr("app.core.middleware.request_logging._logger", logger_mock)
 
     middleware = StructlogMiddleware(_noop_app)
     scope = {

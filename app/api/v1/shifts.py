@@ -381,6 +381,8 @@ async def cancel_self_signup(
             db, shift_id, volunteer.id, user.id, user.role
         )
     except ValueError as exc:
+        if "not signed up" in str(exc).lower():
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
         return problem.ProblemResponse(
             status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Cancel Failed",

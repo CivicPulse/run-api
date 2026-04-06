@@ -49,9 +49,7 @@ def _build_app_with_overrides():
     mock_db = AsyncMock()
     mock_db.commit = AsyncMock()
     mock_db.execute = AsyncMock(
-        return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=local_user)
-        )
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=local_user))
     )
 
     app = create_app()
@@ -80,9 +78,7 @@ def _disable_rate_limit():
 
 async def _post_dnc_import(app, *, payload: bytes):
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         return await client.post(
             f"/api/v1/campaigns/{CAMPAIGN_ID}/dnc/import",
             files={"file": ("dnc.csv", payload, "text/csv")},
@@ -111,9 +107,7 @@ async def test_dnc_bulk_import_rejects_over_10mb(_disable_rate_limit) -> None:
     ):
         app = _build_app_with_overrides()
         # 11 MB of CSV-ish content
-        oversize = b"phone_number\n" + (
-            b"5551234567\n" * ((11 * 1024 * 1024) // 11)
-        )
+        oversize = b"phone_number\n" + (b"5551234567\n" * ((11 * 1024 * 1024) // 11))
         resp = await _post_dnc_import(app, payload=oversize)
 
     assert resp.status_code == 413, (

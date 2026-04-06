@@ -45,7 +45,7 @@ function getHouseholdStatus(
   if (skippedCount === household.entries.length) {
     return {
       label: "Skipped",
-      className: "bg-status-neutral text-status-neutral-foreground border-transparent",
+      className: "bg-status-neutral text-foreground border-border",
       detail: "Skipped for now and kept in your queue.",
     }
   }

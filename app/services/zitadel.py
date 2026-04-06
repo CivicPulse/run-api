@@ -479,6 +479,15 @@ class ZitadelService:
         Returns:
             The project grant ID (existing or newly created).
         """
+
+        def _looks_like_existing_grant_conflict(exc: httpx.HTTPStatusError) -> bool:
+            if exc.response.status_code == 409:
+                return True
+            if exc.response.status_code != 400:
+                return False
+            body = (exc.response.text or "").lower()
+            return "grant already exists" in body or "already exists" in body
+
         # Try creating first — most calls will be for new orgs
         try:
             result = await self.create_project_grant(
@@ -486,12 +495,14 @@ class ZitadelService:
             )
             return result["grantId"]
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code != 409:
+            if not _looks_like_existing_grant_conflict(exc):
                 raise
             # Grant already exists — search for it
             logger.debug(
-                "Project grant creation returned {}, searching for existing grant",
+                "Project grant creation returned {} for org {},"
+                " searching for existing grant",
                 exc.response.status_code,
+                granted_org_id,
             )
 
         # Fall back to listing all grants and filtering client-side

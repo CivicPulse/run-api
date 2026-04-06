@@ -264,9 +264,7 @@ async def test_dnc_concurrent_import(superuser_engine):
         # Total rows in DB should equal the union of phone sets (7)
         async with factory() as session:
             count_result = await session.execute(
-                text(
-                    "SELECT COUNT(*) FROM do_not_call WHERE campaign_id = :cid"
-                ),
+                text("SELECT COUNT(*) FROM do_not_call WHERE campaign_id = :cid"),
                 {"cid": campaign_id},
             )
             total = count_result.scalar_one()

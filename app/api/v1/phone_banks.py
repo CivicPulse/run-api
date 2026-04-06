@@ -57,9 +57,33 @@ async def create_session(
     Requires manager+ role.
     """
     await ensure_user_synced(user, db)
-    pb_session = await _phone_bank_service.create_session(
-        db, campaign_id, body, user.id
-    )
+    try:
+        pb_session = await _phone_bank_service.create_session(
+            db, campaign_id, body, user.id
+        )
+    except ValueError as exc:
+        error_text = str(exc)
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in error_text.lower()
+            else status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+        title = (
+            "Call List Not Found"
+            if status_code == status.HTTP_404_NOT_FOUND
+            else "Session Create Failed"
+        )
+        problem_type = (
+            "call-list-not-found"
+            if status_code == status.HTTP_404_NOT_FOUND
+            else "session-create-failed"
+        )
+        return problem.ProblemResponse(
+            status=status_code,
+            title=title,
+            detail=error_text,
+            type=problem_type,
+        )
     await db.commit()
     return PhoneBankSessionResponse.model_validate(pb_session)
 

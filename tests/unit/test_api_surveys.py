@@ -138,7 +138,9 @@ async def test_create_script_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.post(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys",
                     json={"title": "Door Knock Script"},
@@ -158,7 +160,9 @@ async def test_create_script_requires_manager() -> None:
 
     sync_patch = _sync_patches()
     with sync_patch:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
             resp = await c.post(
                 f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys",
                 json={"title": "Script"},
@@ -183,7 +187,9 @@ async def test_list_scripts_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys")
         assert resp.status_code == 200
         assert len(resp.json()["items"]) == 1
@@ -207,7 +213,9 @@ async def test_list_scripts_invalid_status() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.get(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys",
                     params={"status_filter": "bogus"},
@@ -236,8 +244,12 @@ async def test_get_script_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                resp = await c.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}")
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
+                resp = await c.get(
+                    f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}"
+                )
         assert resp.status_code == 200
         data = resp.json()
         assert data["title"] == "Door Knock Script"
@@ -263,9 +275,44 @@ async def test_get_script_not_found() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                resp = await c.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}")
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
+                resp = await c.get(
+                    f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}"
+                )
         assert resp.status_code == 404
+    finally:
+        m._service = orig
+
+
+async def test_reorder_questions_returns_400_for_partial_sets() -> None:
+    db = AsyncMock()
+    svc = AsyncMock()
+    svc.reorder_questions.side_effect = ValueError(
+        "Question reorder must include every question in the script exactly once"
+    )
+
+    user = _make_user()
+    app = _override_app(user, db)
+    _setup_user_sync_queries(db, user)
+    _setup_role_resolution(db, "manager")
+
+    import app.api.v1.surveys as m
+
+    orig = m._service
+    m._service = svc
+    try:
+        sync_patch = _sync_patches()
+        with sync_patch:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
+                resp = await c.put(
+                    f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}/questions/order",
+                    json=[str(QUESTION_ID)],
+                )
+        assert resp.status_code == 400
     finally:
         m._service = orig
 
@@ -289,7 +336,9 @@ async def test_update_script_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.patch(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}",
                     json={"title": "Updated Script"},
@@ -317,7 +366,9 @@ async def test_update_script_bad_transition() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.patch(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}",
                     json={"status": "active"},
@@ -344,8 +395,12 @@ async def test_delete_script_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                resp = await c.delete(f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}")
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
+                resp = await c.delete(
+                    f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}"
+                )
         assert resp.status_code == 204
     finally:
         m._service = orig
@@ -368,8 +423,12 @@ async def test_delete_script_not_draft() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                resp = await c.delete(f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}")
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
+                resp = await c.delete(
+                    f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}"
+                )
         assert resp.status_code == 400
     finally:
         m._service = orig
@@ -392,7 +451,9 @@ async def test_add_question_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.post(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}/questions",
                     json={
@@ -423,7 +484,9 @@ async def test_delete_question_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.delete(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}/questions/{QUESTION_ID}"
                 )
@@ -449,7 +512,9 @@ async def test_get_voter_responses_success() -> None:
     try:
         sync_patch = _sync_patches()
         with sync_patch:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as c:
                 resp = await c.get(
                     f"/api/v1/campaigns/{CAMPAIGN_ID}/surveys/{SCRIPT_ID}/voters/{VOTER_ID}/responses"
                 )

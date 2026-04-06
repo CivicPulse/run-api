@@ -1,0 +1,45 @@
+SRV-SCRIPT-01	201	script=d3df7828-9645-4182-aa88-6a13c5f9c50b status=draft
+SRV-SCRIPT-02	201	id=4fce86c0-c661-412f-ba39-a26b9714476f
+SRV-SCRIPT-03	403	expect 403
+SRV-SCRIPT-04	403	expect 403
+SRV-SCRIPT-05	422	expect 422
+SRV-SCRIPT-06	200	items=6
+SRV-SCRIPT-07	403	expect 403
+SRV-SCRIPT-08	200	unique_statuses=["draft"]
+SRV-SCRIPT-09	400	expect 400
+SRV-SCRIPT-10	200	questions=0 status=draft
+SRV-SCRIPT-11	404	expect 404
+SRV-SCRIPT-12	200	title=SRV Test Script 1 (renamed)
+SRV-SCRIPT-13	403	expect 403
+SRV-QUES-01	201	id=20a01dd1-ed8d-4e5e-9282-c016ccf3130e
+SRV-QUES-02	201	id=1fb240d5-f605-41e0-adaf-8eac2f49d6a9
+SRV-QUES-03	201	id=f360a899-4497-48f6-82c2-06edb7f093a1
+SRV-QUES-04	422	expect 422
+SRV-QUES-05	201	empty text; resp=97907360-abcf-48fb-9ea0-a2fed45092e7
+SRV-QUES-06	403	expect 403
+SRV-QUES-07	200	[{"position":1,"question_type":"multiple_choice"},{"position":2,"question_type":"scale"},{"position":3,"question_type":"free_text"},{"position":4,"question_type":"free_text"}]
+SRV-QUES-08	200	text=Which issue matters MOST to you?
+SRV-QUES-09	200	choices=5
+SRV-QUES-10	200	[{"id":"f360a899-4497-48f6-82c2-06edb7f093a1","position":1},{"id":"1fb240d5-f605-41e0-adaf-8eac2f49d6a9","position":2},{"id":"20a01dd1-ed8d-4e5e-9282-c016ccf3130e","position":3}]
+SRV-QUES-11	200	expect 400
+SRV-QUES-12	204	expect 204
+SRV-QUES-13	404	expect 404
+SRV-STATUS-01	200	status=active
+SRV-STATUS-02	400	resp=Questions can only be edited on draft scripts
+SRV-STATUS-03	200	active_match=1
+SRV-STATUS-04	200	status=archived
+SRV-STATUS-05	400	status=400
+SRV-STATUS-06	204/400	draft=204 active=400
+SRV-RESP-01	400	responses=0
+SRV-RESP-02	200	responses=0
+SRV-RESP-03	403	expect 403
+SRV-RESP-04	400	unknown q; Responses can only be recorded against active scripts
+SRV-RESP-05	400	unknown voter; Responses can only be recorded against active scripts
+SRV-RESP-06	201	empty batch; count=0
+SRV-RESP-07	DB	rows=0
+SRV-EDGE-01	200	empty activate=active
+SRV-EDGE-02	400	Questions can only be added to draft scripts
+SRV-EDGE-03	400	Questions can only be added to draft scripts
+SRV-EDGE-04	400	archived response; Responses can only be recorded against active scripts
+SRV-EDGE-05	400/400	duplicate same q+voter
+SRV-EDGE-06	403	cross-campaign Insufficient permissions

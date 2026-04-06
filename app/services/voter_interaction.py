@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from app.core.errors import VoterNotFoundError
 from app.core.time import utcnow
+from app.models.voter import Voter
 from app.models.voter_interaction import InteractionType, VoterInteraction
 
 if TYPE_CHECKING:
@@ -34,6 +36,21 @@ class VoterInteractionService:
     the original event ID in the payload.
     """
 
+    async def _ensure_voter_in_campaign(
+        self,
+        session: AsyncSession,
+        campaign_id: uuid.UUID,
+        voter_id: uuid.UUID,
+    ) -> None:
+        result = await session.execute(
+            select(Voter.id).where(
+                Voter.id == voter_id,
+                Voter.campaign_id == campaign_id,
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise VoterNotFoundError(voter_id)
+
     async def record_interaction(
         self,
         session: AsyncSession,
@@ -56,6 +73,7 @@ class VoterInteractionService:
         Returns:
             The created VoterInteraction record.
         """
+        await self._ensure_voter_in_campaign(session, campaign_id, voter_id)
         interaction = VoterInteraction(
             id=uuid.uuid4(),
             campaign_id=campaign_id,

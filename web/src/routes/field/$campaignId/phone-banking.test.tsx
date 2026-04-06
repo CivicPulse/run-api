@@ -48,6 +48,7 @@ vi.mock("@/hooks/useSurveys", () => ({
 
 vi.mock("@/hooks/useTour", () => ({
   useTour: () => ({ startSegment: vi.fn() }),
+  shouldAutoStartTour: () => false,
 }))
 
 vi.mock("@/stores/authStore", () => ({

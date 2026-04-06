@@ -32,6 +32,7 @@ export function FieldProgress({
       <Progress
         value={pct}
         className={`h-2.5 animate-field-progress-fill ${nearComplete ? "[&_[data-slot=progress-indicator]]:bg-status-success-foreground" : ""}`}
+        aria-label={`${current} of ${total} ${unit} completed`}
       />
     </div>
   )

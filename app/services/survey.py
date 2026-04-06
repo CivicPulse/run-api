@@ -403,6 +403,19 @@ class SurveyService:
             msg = "Questions can only be reordered on draft scripts"
             raise ValueError(msg)
 
+        existing_result = await session.execute(
+            select(SurveyQuestion.id).where(SurveyQuestion.script_id == script_id)
+        )
+        existing_ids = list(existing_result.scalars().all())
+        if len(question_ids) != len(existing_ids) or set(question_ids) != set(
+            existing_ids
+        ):
+            msg = (
+                "Question reorder must include every "
+                "question in the script exactly once"
+            )
+            raise ValueError(msg)
+
         questions = []
         for idx, qid in enumerate(question_ids, start=1):
             result = await session.execute(

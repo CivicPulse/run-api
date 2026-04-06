@@ -48,7 +48,7 @@ def _setup_role_resolution(db: AsyncMock, role: str = "manager") -> None:
     campaign = MagicMock()
     campaign.organization_id = None
     campaign.zitadel_org_id = "org-test-123"
-    db.scalar = AsyncMock(side_effect=[member, campaign])
+    db.scalar = AsyncMock(side_effect=["", member, campaign, ""])
 
 
 def _setup_user_sync_queries(db: AsyncMock, user: AuthenticatedUser) -> None:
@@ -106,6 +106,58 @@ async def test_delete_session_returns_204_on_success() -> None:
     assert resp.status_code == 204
     service_mock.delete_session.assert_awaited_once_with(db, SESSION_ID)
     db.commit.assert_awaited_once()
+
+
+async def test_create_session_returns_404_when_call_list_missing() -> None:
+    db = AsyncMock()
+    db.commit = AsyncMock()
+    service_mock = AsyncMock()
+    service_mock.create_session.side_effect = ValueError("Call list missing not found")
+
+    user = _make_user()
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="manager")
+    _setup_user_sync_queries(db, user)
+    import app.api.v1.phone_banks as phone_banks_module
+
+    original_service = phone_banks_module._phone_bank_service
+    phone_banks_module._phone_bank_service = service_mock
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/phone-bank-sessions",
+                json={"name": "PB Session", "call_list_id": str(uuid.uuid4())},
+            )
+    finally:
+        phone_banks_module._phone_bank_service = original_service
+
+    assert resp.status_code == 404
+    assert resp.json()["title"] == "Call List Not Found"
+    db.commit.assert_not_awaited()
+
+
+async def test_record_call_rejects_invalid_result_code() -> None:
+    db = AsyncMock()
+    user = _make_user(role=CampaignRole.VOLUNTEER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="volunteer")
+    _setup_user_sync_queries(db, user)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            f"/api/v1/campaigns/{CAMPAIGN_ID}/phone-bank-sessions/{SESSION_ID}/calls",
+            json={
+                "call_list_entry_id": str(uuid.uuid4()),
+                "result_code": "BOGUS",
+                "phone_number_used": "4785551212",
+                "call_started_at": "2026-04-05T09:00:00Z",
+                "call_ended_at": "2026-04-05T09:05:00Z",
+            },
+        )
+
+    assert resp.status_code == 422
 
 
 async def test_delete_session_returns_422_when_active() -> None:

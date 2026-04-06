@@ -123,9 +123,7 @@ class DNCService:
             stmt = (
                 pg_insert(DoNotCallEntry)
                 .values(rows)
-                .on_conflict_do_nothing(
-                    index_elements=["campaign_id", "phone_number"]
-                )
+                .on_conflict_do_nothing(index_elements=["campaign_id", "phone_number"])
             )
             result = await session.execute(stmt)
             added = result.rowcount or 0

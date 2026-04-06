@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.models.call_list import CallListStatus
 from app.services.field import FieldService
 
 
@@ -45,6 +46,7 @@ def _make_call_list(*, total: int = 100, completed: int = 25) -> MagicMock:
     cl = MagicMock()
     cl.total_entries = total
     cl.completed_entries = completed
+    cl.status = CallListStatus.ACTIVE
     return cl
 
 
@@ -53,6 +55,12 @@ def _make_campaign(name: str = "Johnson for Mayor") -> MagicMock:
     c = MagicMock()
     c.name = name
     return c
+
+
+def _make_counts_result(total: int, visited: int) -> MagicMock:
+    result = MagicMock()
+    result.one.return_value = (total, visited)
+    return result
 
 
 class TestFieldService:
@@ -93,8 +101,15 @@ class TestFieldService:
         call_list_result = MagicMock()
         call_list_result.scalar_one_or_none.return_value = call_list
 
+        counts_result = _make_counts_result(47, 12)
+
         db.execute = AsyncMock(
-            side_effect=[canvassing_result, phone_result, call_list_result]
+            side_effect=[
+                canvassing_result,
+                phone_result,
+                call_list_result,
+                counts_result,
+            ]
         )
         db.scalar = AsyncMock(return_value=campaign)
 
@@ -130,7 +145,11 @@ class TestFieldService:
         phone_result = MagicMock()
         phone_result.scalar_one_or_none.return_value = None
 
-        db.execute = AsyncMock(side_effect=[canvassing_result, phone_result])
+        counts_result = _make_counts_result(47, 12)
+
+        db.execute = AsyncMock(
+            side_effect=[canvassing_result, phone_result, counts_result]
+        )
         db.scalar = AsyncMock(return_value=campaign)
 
         result = await service.get_field_me(

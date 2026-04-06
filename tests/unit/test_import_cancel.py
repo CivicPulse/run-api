@@ -432,9 +432,7 @@ async def test_delete_chunked_import_removes_child_rows_and_artifacts(
         f"imports/{CAMPAIGN_ID}/{IMPORT_ID}/chunks/chunk-a/errors/report.csv",
     ]
     delete_stmt = mock_db.execute.await_args_list[1].args[0]
-    assert str(
-        delete_stmt.compile(compile_kwargs={"literal_binds": True})
-    ) == str(
+    assert str(delete_stmt.compile(compile_kwargs={"literal_binds": True})) == str(
         delete(ImportChunk)
         .where(ImportChunk.import_job_id == job.id)
         .compile(compile_kwargs={"literal_binds": True})
@@ -763,17 +761,9 @@ async def test_queued_only_cancellation_finalizes_parent():
     ):
         from app.tasks.import_task import process_import_chunk
 
-        await process_import_chunk(
-            str(chunk_id), str(CAMPAIGN_ID)
-        )
+        await process_import_chunk(str(chunk_id), str(CAMPAIGN_ID))
 
     assert chunk.status == ImportChunkStatus.CANCELLED
-    assert (
-        chunk.phone_task_status
-        == ImportChunkTaskStatus.CANCELLED
-    )
-    assert (
-        chunk.geometry_task_status
-        == ImportChunkTaskStatus.CANCELLED
-    )
+    assert chunk.phone_task_status == ImportChunkTaskStatus.CANCELLED
+    assert chunk.geometry_task_status == ImportChunkTaskStatus.CANCELLED
     service.maybe_finalize_chunked_import.assert_awaited()

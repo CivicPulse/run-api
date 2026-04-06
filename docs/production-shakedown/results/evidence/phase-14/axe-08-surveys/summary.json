@@ -1,0 +1,18 @@
+{
+  "label": "axe-08-surveys",
+  "url": "https://run.civpulse.org/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/surveys",
+  "counts": {
+    "critical": 1,
+    "serious": 1,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [
+    "button-name"
+  ],
+  "seriousIds": [
+    "link-name"
+  ],
+  "moderateIds": [],
+  "minorIds": []
+}

@@ -26,6 +26,7 @@ from app.services.import_recovery import (
 )
 from app.services.import_service import (
     ImportService,
+    count_csv_data_rows,
     plan_chunk_ranges,
     should_use_serial_import,
 )
@@ -146,9 +147,7 @@ async def process_import(import_job_id: str, campaign_id: str) -> None:
             total_rows = getattr(job, "total_rows", None)
             if total_rows is None:
                 try:
-                    total_rows = await service.count_csv_data_rows(
-                        storage, job.file_key
-                    )
+                    total_rows = await count_csv_data_rows(storage, job.file_key)
                 except Exception as exc:
                     raise RuntimeError(
                         "Import orchestration failed during CSV pre-scan"

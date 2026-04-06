@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision = "024_phase63_secondary_work_state"
 down_revision = "023_phase61_chunk_aggregation_contracts"
@@ -46,7 +46,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "import_chunks",
-        sa.Column("phone_manifest", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "phone_manifest", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
     )
     op.add_column(
         "import_chunks",

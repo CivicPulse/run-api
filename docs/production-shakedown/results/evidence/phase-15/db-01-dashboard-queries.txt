@@ -1,0 +1,3 @@
+ERROR:  relation "pg_stat_statements" does not exist
+LINE 1: ...umeric, 2) AS mean_ms, LEFT(query, 100) AS q FROM pg_stat_st...
+                                                             ^

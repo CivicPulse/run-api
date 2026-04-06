@@ -1,0 +1,48 @@
+{
+  "loggedInUrl": "https://run.civpulse.org/field/06d710c8-32ce-44ae-bbab-7fcc72aab248/canvassing",
+  "onlineClickPosts": 0,
+  "offlineClicks": 0,
+  "queuedOffline": 0,
+  "remainingAfterDrain": 0,
+  "totalPosts": 0,
+  "postStatuses": [],
+  "sampleQueue": [],
+  "log": [
+    {
+      "t": 3118,
+      "m": "logged in → https://run.civpulse.org/"
+    },
+    {
+      "t": 7014,
+      "m": "online: click Not Home"
+    },
+    {
+      "t": 7016,
+      "m": "Not Home button count=0"
+    },
+    {
+      "t": 7016,
+      "m": "after online click: posts=0"
+    },
+    {
+      "t": 7016,
+      "m": "OFFLINE"
+    },
+    {
+      "t": 8020,
+      "m": "no outcome btn at iter 0"
+    },
+    {
+      "t": 8054,
+      "m": "after 0 offline clicks: queue=0"
+    },
+    {
+      "t": 8054,
+      "m": "ONLINE → drain"
+    },
+    {
+      "t": 10057,
+      "m": "drain done: remaining=0, totalPosts=0"
+    }
+  ]
+}

@@ -5,12 +5,17 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 
 from app.models.call_list import CallList, CallListStatus
 from app.models.campaign import Campaign
 from app.models.phone_bank import PhoneBankSession, SessionCaller
-from app.models.walk_list import WalkList, WalkListCanvasser
+from app.models.walk_list import (
+    WalkList,
+    WalkListCanvasser,
+    WalkListEntry,
+    WalkListEntryStatus,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,11 +101,29 @@ class FieldService:
         # Build canvassing data
         canvassing_data = None
         if walk_list is not None:
+            counts_result = await db.execute(
+                select(
+                    func.count(WalkListEntry.id),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    WalkListEntry.status == WalkListEntryStatus.VISITED,
+                                    1,
+                                ),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                ).where(WalkListEntry.walk_list_id == walk_list.id)
+            )
+            total_entries, visited_entries = counts_result.one()
             canvassing_data = {
                 "walk_list_id": walk_list.id,
                 "name": walk_list.name,
-                "total": walk_list.total_entries,
-                "completed": walk_list.visited_entries,
+                "total": int(total_entries),
+                "completed": int(visited_entries),
             }
 
         # Volunteer name fallback: display_name -> email -> "Volunteer"

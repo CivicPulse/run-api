@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_campaign_db
 from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
@@ -16,7 +17,11 @@ from app.main import create_app
 
 CAMPAIGN_ID = uuid.uuid4()
 VOTER_ID = uuid.uuid4()
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+class UniqueViolationError(Exception):
+    """Test double matching asyncpg unique-violation naming."""
 
 
 def _make_user(
@@ -51,7 +56,7 @@ def _setup_role_resolution(db: AsyncMock, role: str = "manager") -> None:
     campaign = MagicMock()
     campaign.organization_id = None
     campaign.zitadel_org_id = "org-test-123"
-    db.scalar = AsyncMock(side_effect=[member, campaign])
+    db.scalar = AsyncMock(side_effect=["", member, campaign, ""])
 
 
 def _setup_user_sync_queries(db: AsyncMock, user: AuthenticatedUser) -> None:
@@ -71,8 +76,12 @@ def _setup_user_sync_queries(db: AsyncMock, user: AuthenticatedUser) -> None:
 
     db.execute = AsyncMock(
         side_effect=[
-            user_row, org_row, campaigns_row,
-            user_row, org_row, campaigns_row,
+            user_row,
+            org_row,
+            campaigns_row,
+            user_row,
+            org_row,
+            campaigns_row,
         ]
     )
 
@@ -174,6 +183,55 @@ async def test_list_voters_success() -> None:
         m._service = orig
 
 
+async def test_list_voters_invalid_cursor_is_normalized() -> None:
+    db = AsyncMock()
+    user = _make_user(role=CampaignRole.VOLUNTEER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="volunteer")
+    _setup_user_sync_queries(db, user)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        resp = await c.get(
+            f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+            params={"cursor": "bogus"},
+        )
+
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Invalid cursor"
+
+
+async def test_list_voters_accepts_validated_page_size_alias() -> None:
+    db = AsyncMock()
+    service_mock = AsyncMock()
+    service_mock.search_voters.return_value = {
+        "items": [_make_voter()],
+        "pagination": {"next_cursor": None, "has_more": False},
+    }
+
+    user = _make_user(role=CampaignRole.VOLUNTEER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="volunteer")
+    _setup_user_sync_queries(db, user)
+
+    import app.api.v1.voters as m
+
+    orig = _swap_service(m, service_mock)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.get(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+                params={"page_size": 25},
+            )
+        assert resp.status_code == 200
+        assert service_mock.search_voters.await_args.kwargs["limit"] == 25
+    finally:
+        m._service = orig
+
+
 # ---------------------------------------------------------------------------
 # get_voter
 # ---------------------------------------------------------------------------
@@ -196,9 +254,7 @@ async def test_get_voter_success() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as c:
-            resp = await c.get(
-                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}"
-            )
+            resp = await c.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}")
         assert resp.status_code == 200
         assert resp.json()["first_name"] == "Jane"
     finally:
@@ -222,9 +278,7 @@ async def test_get_voter_not_found() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as c:
-            resp = await c.get(
-                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}"
-            )
+            resp = await c.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}")
         assert resp.status_code == 404
     finally:
         m._service = orig
@@ -258,6 +312,121 @@ async def test_create_voter_success() -> None:
             )
         assert resp.status_code == 201
         assert resp.json()["first_name"] == "Jane"
+    finally:
+        m._service = orig
+
+
+async def test_create_voter_rejects_future_birth_date_alias() -> None:
+    db = AsyncMock()
+    service_mock = AsyncMock()
+
+    user = _make_user(role=CampaignRole.MANAGER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="manager")
+    _setup_user_sync_queries(db, user)
+
+    import app.api.v1.voters as m
+
+    orig = _swap_service(m, service_mock)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+                json={
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "birth_date": "2099-12-31",
+                },
+            )
+        assert resp.status_code == 422
+        service_mock.create_voter.assert_not_called()
+    finally:
+        m._service = orig
+
+
+async def test_create_voter_rejects_null_bytes() -> None:
+    db = AsyncMock()
+    service_mock = AsyncMock()
+
+    user = _make_user(role=CampaignRole.MANAGER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="manager")
+    _setup_user_sync_queries(db, user)
+
+    import app.api.v1.voters as m
+
+    orig = _swap_service(m, service_mock)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+                json={"first_name": "Ja\u0000ne", "last_name": "Doe"},
+            )
+        assert resp.status_code == 422
+        service_mock.create_voter.assert_not_called()
+    finally:
+        m._service = orig
+
+
+async def test_create_voter_rejects_oversized_first_name() -> None:
+    db = AsyncMock()
+    service_mock = AsyncMock()
+
+    user = _make_user(role=CampaignRole.MANAGER)
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="manager")
+    _setup_user_sync_queries(db, user)
+
+    import app.api.v1.voters as m
+
+    orig = _swap_service(m, service_mock)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+                json={"first_name": "J" * 256, "last_name": "Doe"},
+            )
+        assert resp.status_code == 422
+        service_mock.create_voter.assert_not_called()
+    finally:
+        m._service = orig
+
+
+async def test_create_voter_unique_violation_is_sanitized() -> None:
+    db = AsyncMock()
+    service_mock = AsyncMock()
+    service_mock.create_voter.side_effect = IntegrityError(
+        "INSERT INTO voters VALUES (...)",
+        {},
+        UniqueViolationError("uq_voters_campaign_id_external_id"),
+    )
+
+    user = _make_user()
+    app = _override_app(user=user, db=db)
+    _setup_role_resolution(db, role="manager")
+    _setup_user_sync_queries(db, user)
+
+    import app.api.v1.voters as m
+
+    orig = _swap_service(m, service_mock)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters",
+                json={"first_name": "Jane", "last_name": "Doe"},
+            )
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == "Request conflicts with existing data"
+        assert "uq_voters" not in resp.text.lower()
+        assert "insert into" not in resp.text.lower()
     finally:
         m._service = orig
 
@@ -362,9 +531,7 @@ async def test_delete_voter_success() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as c:
-            resp = await c.delete(
-                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}"
-            )
+            resp = await c.delete(f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}")
         assert resp.status_code == 204
     finally:
         m._service = orig
@@ -387,9 +554,7 @@ async def test_delete_voter_not_found() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as c:
-            resp = await c.delete(
-                f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}"
-            )
+            resp = await c.delete(f"/api/v1/campaigns/{CAMPAIGN_ID}/voters/{VOTER_ID}")
         assert resp.status_code == 404
     finally:
         m._service = orig

@@ -1,0 +1,175 @@
+=== Section 1: SQL Injection ===
+--- SEC-SQLI-01: OR 1=1 in search
+code=200
+items: 0
+--- baseline empty search
+code=200
+baseline items: 9
+--- SEC-SQLI-02: DROP TABLE in search
+code=200
+--- SEC-SQLI-03: UNION SELECT
+code=200
+{"items":[],"pagination":{"next_cursor":null,"has_more":false}}
+--- SEC-SQLI-04: time-based pg_sleep
+duration: 0s
+--- SEC-SQLI-05: quote escape in first_name POST
+code=201
+{"id":"971e167d-26ef-475f-88a7-63f3ccaf6db2","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","source_type":"manual","source_id":null,"first_name":"Robert'); DROP TABLE voters;--","middle_name":null,"last_name":"Tables","suffix":null,"date_of_birth":null,"gender":null,"registration_line1":null,"registration_line2":null,"registration_city":null,"registration_state":null,"registration_zip":null,"registration_zip4":null,"registration_county":null,"registration_apartment_type":null,"mailing_line
+--- SEC-SQLI-06: UUID injection in path
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"uuid_parsing","loc":["path","voter_id"],"msg":"Input should be a valid UUID, 
+--- SEC-SQLI-07: UUID injection in campaign path
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"uuid_parsing","loc":["path","campaign_id"],"msg":"Input should be a valid UUI
+--- SEC-SQLI-08: cursor injection
+code=500
+{"type":"about:blank","title":"Internal Server Error","status":500,"detail":"not enough values to unpack (expected 2, got 1)"}
+--- SEC-SQLI-09: tag name filter injection
+code=200
+[{"id":"49bfc012-a43a-42b9-90b5-40a588b12db3","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","name":"HighPropensity"},{"id":"16c2bc2d-3d71-40d0-8ea7-ed6546eb567d","campaign_id":"06d710c8-32ce-44
+--- SEC-SQLI-10: sort injection
+code=200
+{"items":[{"id":"971e167d-26ef-475f-88a7-63f3ccaf6db2","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","source_type":"manual","source_id":null,"first_name":"Robert'); DROP TABLE voters;--","middl
+--- SEC-SQLI-11: DB error leak on bad UUID
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"uuid_parsing","loc":["path","campaign_id"],"msg":"Input should be a valid UUID, invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `n` at 1","input":"not-a-uuid","ctx":{"error":"invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `n` at 1"}},{"type":"uuid_parsing","loc":["path","campaign_id"],"msg":"Input should be a valid UUID, invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `n` at 1","input":"not-a-uuid","ctx":{"error":"invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `n` at 1"}}]}
+
+=== Section 3: CSRF / CORS ===
+--- SEC-CSRF-01: forged Origin
+code=201
+{"id":"e36a5e68-f9a5-4e99-a861-6f72a5f67b0c","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","name":"CSRFTag2913929"}
+--- SEC-CSRF-02: CORS preflight evil
+HTTP/2 400 
+--- SEC-CSRF-03: CORS preflight legit
+HTTP/2 200 
+access-control-allow-origin: https://run.civpulse.org
+
+=== Section 4: Input validation ===
+--- SEC-INPUT-01: 10MB body
+pyenv: version `3.13' is not installed (set by /home/kwhatcher/projects/civicpulse/run-api/.python-version)
+code=422 size=0
+--- SEC-INPUT-02: null byte
+code=500
+{"type":"about:blank","title":"Internal Server Error","status":500,"detail":"(sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.CharacterNotInRepertoireError'>: invalid byte seq
+--- SEC-INPUT-03: unicode RTL/zero-width/emoji
+code=201
+{"id":"af6c9dca-7021-4d59-9ce3-0a482b83cd43","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","source_type":"manual","source_id":null,"first_name":"Jo‮hn​ 😀","middle_name":null,"last_name":
+--- SEC-INPUT-04: negative page_size
+code=200
+--- SEC-INPUT-05: integer overflow page_size
+code=200
+--- SEC-INPUT-06: future birth_date
+code=201
+{"id":"a81d0336-8bb4-49b8-92e8-8f52859bd7af","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","source_type":"manual","source_id":null,"first_name":"Fut","middle_name":null,"last_name":"Ure","suffi
+--- SEC-INPUT-07: 500-char first_name
+pyenv: version `3.13' is not installed (set by /home/kwhatcher/projects/civicpulse/run-api/.python-version)
+code=201
+{"id":"f8134c83-6b97-4b78-a50b-d584d6c0dda3","campaign_id":"06d710c8-32ce-44ae-bbab-7fcc72aab248","source_type":"manual","source_id":null,"first_name":"","middle_name":null,"last_name":"Long","suffix"
+--- SEC-INPUT-10: malformed JSON
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"json_invalid","loc":["body",33],"msg":"JSON decode error","input":{},"ctx":{"
+--- SEC-INPUT-11: single-quoted JSON
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"json_invalid","loc":["body",1],"msg":"JSON decode error","input":{},"ctx":{"e
+--- SEC-INPUT-12: wrong Content-Type
+code=422
+{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Request validation failed","errors":[{"type":"model_attributes_type","loc":["body"],"msg":"Input should be a valid dictiona
+--- SEC-INPUT-13: extra JSON keys (mass assignment)
+code=201
+{
+  "id": "585ff4db-4e40-41bc-8b5c-c30ff9459fc3",
+  "campaign_id": "06d710c8-32ce-44ae-bbab-7fcc72aab248",
+  "first_name": "MassAssign"
+}
+
+--- SEC-INPUT-14: deeply nested JSON bomb
+pyenv: version `3.13' is not installed (set by /home/kwhatcher/projects/civicpulse/run-api/.python-version)
+code=422
+
+=== Section 5: Auth Bypass ===
+--- SEC-AUTH-01: alg:none JWT
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Invalid or expired token"}
+--- SEC-AUTH-02: forged kid
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Invalid or expired token"}
+--- SEC-AUTH-07: empty Authorization
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Not authenticated"}
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Not authenticated"}
+--- SEC-AUTH-garbage: bogus token
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Invalid or expired token"}
+--- SEC-AUTH-tampered: valid token with flipped signature
+code=401
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Invalid or expired token"}
+
+=== Section 7: Rate limiting ===
+--- SEC-RATE-01: burst 100 requests
+    100 200
+
+=== Section 8: Info disclosure ===
+--- SEC-INFO-01: 500 errors leak stack traces (triggering FK violation)
+code=500
+{"type":"about:blank","title":"Internal Server Error","status":500,"detail":"(sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table \"voter_interactions\" violates foreign key constraint \"voter_interactions_voter_id_fkey\"\nDETAIL:  Key (voter_id)=(00000000-0000-0000-0000-000000000001) is not present in table \"vote
+--- SEC-INFO-01b: null byte in path
+code=400
+<html>
+<head><title>400 Bad Request</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<hr><center>cloudflare</center>
+</body>
+</html>
+
+--- SEC-INFO-02: cross-tenant 404 vs 403
+non-existent UUID: 403
+Org B's UUID: 403
+--- SEC-INFO-03: API docs exposure
+/docs -> 200
+/redoc -> 200
+/api/docs -> 404
+/swagger -> 200
+/openapi.json -> 200
+--- SEC-INFO-04: framework headers
+server: cloudflare
+--- SEC-INFO-05: health endpoint
+{
+  "status": "ok",
+  "database": "connected",
+  "git_sha": "c1c89c034d0b0183a968c7d257720e7880eb0494",
+  "build_timestamp": "2026-04-05T16:31:35Z"
+}
+--- SEC-INFO-06: 401 echoes token?
+{"type":"about:blank","title":"Unauthorized","status":401,"detail":"Invalid or expired token"}
+--- SEC-INFO-07: debug endpoints
+/debug -> 200
+/debug/vars -> 200
+/metrics -> 200
+/admin -> 200
+/console -> 200
+/.env -> 200
+/.git/config -> 200
+
+=== Section 9: Open Redirect ===
+--- SEC-REDIR-01: callback redirect param
+405 loc=
+
+=== Section 10: TLS ===
+--- SEC-TLS-01: HTTP redirects
+405 loc=
+--- SEC-TLS-02: HSTS
+--- SEC-TLS-03: TLS versions
+curl: (35) error:0A0000BF:SSL routines::no protocols available
+TLS1.0: 000
+TLS1.0: rejected
+curl: (35) error:0A0000BF:SSL routines::no protocols available
+TLS1.1: 000
+TLS1.1: rejected
+TLS1.2: 200
+--- SEC-TLS-04: Cert
+issuer=C = US, O = Google Trust Services, CN = WE1
+notBefore=Feb 14 22:37:53 2026 GMT
+notAfter=May 15 23:28:34 2026 GMT
+subject=CN = civpulse.org

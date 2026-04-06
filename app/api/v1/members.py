@@ -372,9 +372,7 @@ async def transfer_ownership(
                 org_id=zitadel_org_id,
             )
         except Exception as e:
-            logger.error(
-                "Compensation step 1 (remove owner from target) failed: {}", e
-            )
+            logger.error("Compensation step 1 (remove owner from target) failed: {}", e)
         # Inverse of op 3 (removed target_old_role): re-grant it to target
         try:
             await zitadel.assign_project_role(
@@ -384,9 +382,7 @@ async def transfer_ownership(
                 org_id=zitadel_org_id,
             )
         except Exception as e:
-            logger.error(
-                "Compensation step 2 (restore target old role) failed: {}", e
-            )
+            logger.error("Compensation step 2 (restore target old role) failed: {}", e)
         # Inverse of op 2 (assigned admin to current user): remove admin
         try:
             await zitadel.remove_project_role(
@@ -408,9 +404,7 @@ async def transfer_ownership(
                 org_id=zitadel_org_id,
             )
         except Exception as e:
-            logger.error(
-                "Compensation step 4 (restore current owner) failed: {}", e
-            )
+            logger.error("Compensation step 4 (restore current owner) failed: {}", e)
         raise
 
     return {

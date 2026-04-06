@@ -41,8 +41,14 @@ def test_ensure_dev_org_creates_smoke_campaign_and_owner_membership():
     assert any("INSERT INTO campaigns" in sql for sql in executed_sql)
     assert any("INSERT INTO campaign_members" in sql for sql in executed_sql)
 
-    campaign_call = next(call for call in executed_calls if "INSERT INTO campaigns" in call.args[0])
-    membership_call = next(call for call in executed_calls if "INSERT INTO campaign_members" in call.args[0])
+    campaign_call = next(
+        call for call in executed_calls if "INSERT INTO campaigns" in call.args[0]
+    )
+    membership_call = next(
+        call
+        for call in executed_calls
+        if "INSERT INTO campaign_members" in call.args[0]
+    )
 
     assert module.ADMIN_SMOKE_CAMPAIGN_NAME in campaign_call.args[1]
     assert "admin-smoke-test-campaign" in campaign_call.args[1]

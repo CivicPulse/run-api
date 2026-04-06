@@ -85,9 +85,7 @@ class TestVoterTagOperations:
         voter_found = MagicMock()
         voter_found.scalar_one_or_none.return_value = MagicMock()
         delete_result = MagicMock()
-        mock_db.execute = AsyncMock(
-            side_effect=[tag_found, voter_found, delete_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[tag_found, voter_found, delete_result])
 
         await service.remove_tag_from_voter(mock_db, voter_id, tag_id, campaign_id)
         mock_db.execute.assert_awaited()

@@ -279,9 +279,7 @@ async def critical_path_data(superuser_session):
     await session.execute(
         text("DELETE FROM walk_lists WHERE id = :id"), {"id": walk_list_id}
     )
-    await session.execute(
-        text("DELETE FROM turfs WHERE id = :id"), {"id": turf_id}
-    )
+    await session.execute(text("DELETE FROM turfs WHERE id = :id"), {"id": turf_id})
     await session.execute(
         text("DELETE FROM phone_bank_sessions WHERE id = :id"), {"id": pb_session_id}
     )
@@ -289,15 +287,15 @@ async def critical_path_data(superuser_session):
         text("DELETE FROM call_lists WHERE id = :id"), {"id": call_list_id}
     )
     await session.execute(
-        text("DELETE FROM voter_list_members WHERE voter_list_id = :vlid AND voter_id = :vid"),
+        text(
+            "DELETE FROM voter_list_members WHERE voter_list_id = :vlid AND voter_id = :vid"
+        ),
         {"vlid": voter_list_id, "vid": voter_id},
     )
     await session.execute(
         text("DELETE FROM voter_lists WHERE id = :id"), {"id": voter_list_id}
     )
-    await session.execute(
-        text("DELETE FROM voters WHERE id = :id"), {"id": voter_id}
-    )
+    await session.execute(text("DELETE FROM voters WHERE id = :id"), {"id": voter_id})
     await session.execute(
         text("DELETE FROM import_jobs WHERE id = :id"), {"id": import_job_id}
     )
@@ -310,9 +308,7 @@ async def critical_path_data(superuser_session):
     await session.execute(
         text("DELETE FROM organizations WHERE id = :id"), {"id": org_id}
     )
-    await session.execute(
-        text("DELETE FROM users WHERE id = :id"), {"id": user_id}
-    )
+    await session.execute(text("DELETE FROM users WHERE id = :id"), {"id": user_id})
     await session.commit()
 
 
@@ -322,7 +318,9 @@ async def critical_path_data(superuser_session):
 
 
 @pytest.mark.asyncio
-async def test_critical_path_all_entities_created(superuser_session, critical_path_data):
+async def test_critical_path_all_entities_created(
+    superuser_session, critical_path_data
+):
     """Every INSERT across the 12-table critical path succeeds and each record exists."""
     session = superuser_session
     ids = critical_path_data
@@ -388,9 +386,7 @@ async def test_critical_path_cascade_integrity(superuser_session, critical_path_
     # Campaign member → campaign + user
     row = (
         await session.execute(
-            text(
-                "SELECT user_id, campaign_id FROM campaign_members WHERE id = :id"
-            ),
+            text("SELECT user_id, campaign_id FROM campaign_members WHERE id = :id"),
             {"id": ids["member_id"]},
         )
     ).one()
@@ -481,8 +477,7 @@ async def test_critical_path_cascade_integrity(superuser_session, critical_path_
     row = (
         await session.execute(
             text(
-                "SELECT campaign_id, turf_id, created_by "
-                "FROM walk_lists WHERE id = :id"
+                "SELECT campaign_id, turf_id, created_by FROM walk_lists WHERE id = :id"
             ),
             {"id": ids["walk_list_id"]},
         )

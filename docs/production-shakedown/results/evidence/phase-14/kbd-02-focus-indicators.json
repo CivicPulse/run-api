@@ -1,0 +1,142 @@
+[
+  {
+    "tag": "A",
+    "label": "Create Campaign",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "CAMP Test LocalActive5 members",
+    "outline": "oklch(0.52 0.1 240) solid 2px",
+    "outlineWidth": "2px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "solid",
+    "boxShadow": "none",
+    "hasIndicator": true
+  },
+  {
+    "tag": "BUTTON",
+    "label": "Campaign actions",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "CAMP Test StateActive5 members",
+    "outline": "oklch(0.52 0.1 240) solid 2px",
+    "outlineWidth": "2px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "solid",
+    "boxShadow": "none",
+    "hasIndicator": true
+  },
+  {
+    "tag": "BUTTON",
+    "label": "Campaign actions",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "CAMP Test FederalActive4 members",
+    "outline": "oklch(0.52 0.1 240) solid 2px",
+    "outlineWidth": "2px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "solid",
+    "boxShadow": "none",
+    "hasIndicator": true
+  },
+  {
+    "tag": "BUTTON",
+    "label": "Campaign actions",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "QA Test CampaignActive6 members",
+    "outline": "oklch(0.52 0.1 240) solid 2px",
+    "outlineWidth": "2px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "solid",
+    "boxShadow": "none",
+    "hasIndicator": true
+  },
+  {
+    "tag": "BUTTON",
+    "label": "Campaign actions",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "BUTTON",
+    "label": "Archived (1)",
+    "outline": "oklab(0.52 -0.05 -0.0866025 / 0.5) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklab(0.52 -0.05 -0.0866025 / 0.5)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "Skip to main content",
+    "outline": "oklch(0.52 0.1 240) solid 2px",
+    "outlineWidth": "2px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "solid",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.52 0.1 240) 0px 0px 0px 2px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "CivicPulse RunCampaign Manager",
+    "outline": "oklch(0.52 0.1 240) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.52 0.1 240) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "All Campaigns",
+    "outline": "oklch(0.52 0.1 240) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.52 0.1 240) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  },
+  {
+    "tag": "A",
+    "label": "Members",
+    "outline": "oklch(0.52 0.1 240) none 0px",
+    "outlineWidth": "0px",
+    "outlineColor": "oklch(0.52 0.1 240)",
+    "outlineStyle": "none",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.52 0.1 240) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+    "hasIndicator": true
+  }
+]

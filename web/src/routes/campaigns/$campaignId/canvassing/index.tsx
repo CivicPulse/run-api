@@ -109,9 +109,10 @@ function CanvassingIndex() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {turfs.map((turf) => (
               <Card key={turf.id} className="group relative">
-                <Link
+              <Link
                   to={`/campaigns/${campaignId}/canvassing/turfs/${turf.id}` as string}
                   className="absolute inset-0 z-10"
+                  aria-label={`Open turf ${turf.name}`}
                 />
                 <CardHeader>
                   <div className="flex items-center justify-between">

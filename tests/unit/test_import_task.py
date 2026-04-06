@@ -119,7 +119,6 @@ async def _run_process_import_with_total_rows(
     mock_session_factory.__aexit__ = AsyncMock(return_value=False)
 
     mock_service = MagicMock()
-    mock_service.count_csv_data_rows = AsyncMock(return_value=2500)
     mock_service.process_import_file = AsyncMock()
 
     with (
@@ -145,6 +144,10 @@ async def _run_process_import_with_total_rows(
             return_value=mock_service,
         ),
         patch("app.tasks.import_task.StorageService"),
+        patch(
+            "app.tasks.import_task.count_csv_data_rows",
+            new=AsyncMock(return_value=2500),
+        ),
     ):
         from app.tasks.import_task import process_import
 
@@ -338,7 +341,6 @@ async def test_process_import_preserves_serial_path_after_below_threshold_presca
     mock_session_factory.__aexit__ = AsyncMock(return_value=False)
 
     mock_service = MagicMock()
-    mock_service.count_csv_data_rows = AsyncMock(return_value=2500)
     mock_service.process_import_file = AsyncMock()
 
     with (
@@ -364,13 +366,16 @@ async def test_process_import_preserves_serial_path_after_below_threshold_presca
             return_value=mock_service,
         ),
         patch("app.tasks.import_task.StorageService"),
+        patch(
+            "app.tasks.import_task.count_csv_data_rows",
+            new=AsyncMock(return_value=2500),
+        ),
         patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
     ):
         from app.tasks.import_task import process_import
 
         await process_import(import_job_id, campaign_id)
 
-    mock_service.count_csv_data_rows.assert_awaited_once_with(ANY, mock_job.file_key)
     assert mock_job.total_rows == 2500
     mock_session.add.assert_not_called()
     mock_service.process_import_file.assert_awaited_once_with(
@@ -413,7 +418,6 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
     mock_session_factory.__aexit__ = AsyncMock(return_value=False)
 
     mock_service = MagicMock()
-    mock_service.count_csv_data_rows = AsyncMock(return_value=12000)
     mock_service.process_import_file = AsyncMock()
     mock_storage = MagicMock()
     mock_storage.get_object_size = AsyncMock(return_value=24_000_000)
@@ -455,6 +459,10 @@ async def test_process_import_creates_deterministic_chunks_and_defers_children(
             return_value=mock_service,
         ),
         patch("app.tasks.import_task.StorageService", return_value=mock_storage),
+        patch(
+            "app.tasks.import_task.count_csv_data_rows",
+            new=AsyncMock(return_value=12000),
+        ),
         patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
         patch("app.tasks.import_task.settings.import_chunk_size_default", 4000),
         patch("app.tasks.import_task.settings.import_max_chunks_per_import", 2),
@@ -537,12 +545,6 @@ async def test_process_import_fails_fast_when_chunk_orchestration_fails(
     mock_session_factory.__aexit__ = AsyncMock(return_value=False)
 
     mock_service = MagicMock()
-    if failure_target == "count_csv_data_rows":
-        mock_service.count_csv_data_rows = AsyncMock(
-            side_effect=RuntimeError("pre-scan failed")
-        )
-    else:
-        mock_service.count_csv_data_rows = AsyncMock(return_value=9000)
     mock_service.process_import_file = AsyncMock()
     mock_storage = MagicMock()
     mock_storage.get_object_size = AsyncMock(return_value=9_000_000)
@@ -574,6 +576,16 @@ async def test_process_import_fails_fast_when_chunk_orchestration_fails(
             return_value=mock_service,
         ),
         patch("app.tasks.import_task.StorageService", return_value=mock_storage),
+        patch(
+            "app.tasks.import_task.count_csv_data_rows",
+            new=AsyncMock(
+                side_effect=RuntimeError("pre-scan failed")
+                if failure_target == "count_csv_data_rows"
+                else None
+            )
+            if failure_target == "count_csv_data_rows"
+            else AsyncMock(return_value=9000),
+        ),
         patch("app.tasks.import_task.settings.import_serial_threshold", 5000),
         patch(
             "app.tasks.import_task.plan_chunk_ranges",

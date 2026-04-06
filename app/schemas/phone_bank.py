@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import computed_field, field_validator
+from pydantic import computed_field, field_validator, model_validator
 
+from app.models.call_list import CallResultCode
 from app.schemas.common import BaseSchema
 
 
@@ -88,7 +89,7 @@ class CallRecordCreate(BaseSchema):
     """Schema for recording a call outcome."""
 
     call_list_entry_id: uuid.UUID
-    result_code: str
+    result_code: CallResultCode
     phone_number_used: str
     call_started_at: datetime
     call_ended_at: datetime
@@ -96,12 +97,27 @@ class CallRecordCreate(BaseSchema):
     survey_responses: list | None = None
     survey_complete: bool = True
 
+    @field_validator("call_started_at", "call_ended_at", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime) -> datetime:
+        normalized = _to_naive_utc(v)
+        assert normalized is not None
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_duration(self):
+        if self.call_ended_at < self.call_started_at:
+            raise ValueError(
+                "call_ended_at must be greater than or equal to call_started_at"
+            )
+        return self
+
 
 class CallRecordResponse(BaseSchema):
     """Schema for call record API responses."""
 
     id: uuid.UUID
-    result_code: str
+    result_code: CallResultCode
     phone_number_used: str
     call_started_at: datetime
     call_ended_at: datetime

@@ -97,6 +97,57 @@ class TestZitadelService:
         ):
             await zitadel_service.create_organization("Test Campaign")
 
+    async def test_ensure_project_grant_recovers_from_existing_grant_400(
+        self, zitadel_service
+    ):
+        """ensure_project_grant treats legacy 400 already-exists
+        responses as idempotent."""
+        import httpx
+
+        conflict_response = MagicMock()
+        conflict_response.status_code = 400
+        conflict_response.text = "project grant already exists"
+        request = httpx.Request(
+            "POST",
+            "https://auth.civpulse.org/management/v1/projects/project-1/grants",
+        )
+        conflict_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "grant exists",
+            request=request,
+            response=conflict_response,
+        )
+
+        token_response = MagicMock()
+        token_response.status_code = 200
+        token_response.json.return_value = {
+            "access_token": "svc-token",
+            "expires_in": 3600,
+        }
+        token_response.raise_for_status = MagicMock()
+
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
+            "result": [{"grantId": "grant-existing", "grantedOrgId": "org-123"}]
+        }
+        search_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=[token_response, conflict_response, search_response]
+        )
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.zitadel.httpx.AsyncClient", return_value=mock_client):
+            grant_id = await zitadel_service.ensure_project_grant(
+                "project-1",
+                "org-123",
+                ["owner"],
+            )
+
+        assert grant_id == "grant-existing"
+
 
 # ---------------------------------------------------------------------------
 # CampaignService tests

@@ -5,8 +5,7 @@ import { RefreshCw } from "lucide-react"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useAuthStore } from "@/stores/authStore"
 import { useTourStore, tourKey } from "@/stores/tourStore"
-import { useTour } from "@/hooks/useTour"
-import { welcomeSteps } from "@/components/field/tour/tourSteps"
+import { shouldAutoStartTour, useTour } from "@/hooks/useTour"
 import { AssignmentCard } from "@/components/field/AssignmentCard"
 import { AssignmentCardSkeleton } from "@/components/field/AssignmentCardSkeleton"
 import { FieldEmptyState } from "@/components/field/FieldEmptyState"
@@ -27,12 +26,35 @@ function FieldHub() {
 
   useEffect(() => {
     if (!key || !data || isLoading) return
+    if (!shouldAutoStartTour()) return
     const { isSegmentComplete } = useTourStore.getState()
     if (isSegmentComplete(key, "welcome")) return
-    const timer = setTimeout(() => {
-      startSegment("welcome", welcomeSteps)
-    }, 200)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    let idleId: number | null = null
+    const timer = window.setTimeout(() => {
+      const launchTour = () => {
+        if (cancelled) return
+        void import("@/components/field/tour/tourSteps").then(({ welcomeSteps }) => {
+          if (!cancelled) {
+            void startSegment("welcome", welcomeSteps)
+          }
+        })
+      }
+
+      if ("requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(launchTour, { timeout: 1500 })
+        return
+      }
+
+      launchTour()
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
   }, [key, data, isLoading, startSegment])
 
   // Pull-to-refresh state

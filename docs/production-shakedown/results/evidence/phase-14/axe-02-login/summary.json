@@ -1,0 +1,16 @@
+{
+  "label": "axe-02-login",
+  "url": "https://auth.civpulse.org/ui/v2/login/loginname?requestId=oidc_V2_367315239030489157",
+  "counts": {
+    "critical": 0,
+    "serious": 1,
+    "moderate": 0,
+    "minor": 0
+  },
+  "criticalIds": [],
+  "seriousIds": [
+    "html-has-lang"
+  ],
+  "moderateIds": [],
+  "minorIds": []
+}

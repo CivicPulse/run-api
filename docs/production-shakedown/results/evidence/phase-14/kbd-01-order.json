@@ -1,0 +1,261 @@
+[
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Skip to main content",
+    "href": "#main-content",
+    "visible": true,
+    "x": 16,
+    "y": 16,
+    "w": 199,
+    "h": 40
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "CivicPulse RunCampaign Manager",
+    "href": "/",
+    "visible": true,
+    "x": 8,
+    "y": 8,
+    "w": 239,
+    "h": 48
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "All Campaigns",
+    "href": "/",
+    "visible": true,
+    "x": 8,
+    "y": 105,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Members",
+    "href": "/org/members",
+    "visible": true,
+    "x": 8,
+    "y": 141,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Settings",
+    "href": "/org/settings",
+    "visible": true,
+    "x": 8,
+    "y": 177,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Open sidebar",
+    "visible": true,
+    "x": 268,
+    "y": 18,
+    "w": 28,
+    "h": 28
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "User menu",
+    "visible": true,
+    "x": 1392,
+    "y": 16,
+    "w": 32,
+    "h": 32
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Create Campaign",
+    "href": "/campaigns/new",
+    "visible": true,
+    "x": 1246,
+    "y": 80,
+    "w": 178,
+    "h": 36
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "CAMP Test LocalActive5 members",
+    "href": "/campaigns/49a19019-988b-4932-9595-59d09e5d4365/dashboard",
+    "visible": true,
+    "x": 272,
+    "y": 228,
+    "w": 373,
+    "h": 146
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Campaign actions",
+    "visible": true,
+    "x": 576,
+    "y": 253,
+    "w": 44,
+    "h": 44
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "CAMP Test StateActive5 members",
+    "href": "/campaigns/faf90649-06a8-45c3-bb70-aaeb81dce989/dashboard",
+    "visible": true,
+    "x": 661,
+    "y": 228,
+    "w": 373,
+    "h": 146
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Campaign actions",
+    "visible": true,
+    "x": 966,
+    "y": 253,
+    "w": 44,
+    "h": 44
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "CAMP Test FederalActive4 members",
+    "href": "/campaigns/216cf0d9-7944-4ab4-9258-c43ff588cb16/dashboard",
+    "visible": true,
+    "x": 1051,
+    "y": 228,
+    "w": 373,
+    "h": 146
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Campaign actions",
+    "visible": true,
+    "x": 1355,
+    "y": 253,
+    "w": 44,
+    "h": 44
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "QA Test CampaignActive6 members",
+    "href": "/campaigns/06d710c8-32ce-44ae-bbab-7fcc72aab248/dashboard",
+    "visible": true,
+    "x": 272,
+    "y": 390,
+    "w": 373,
+    "h": 146
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Campaign actions",
+    "visible": true,
+    "x": 576,
+    "y": 415,
+    "w": 44,
+    "h": 44
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Archived (1)",
+    "visible": true,
+    "x": 272,
+    "y": 560,
+    "w": 130,
+    "h": 36
+  },
+  {
+    "tag": "BODY",
+    "visible": false
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Skip to main content",
+    "href": "#main-content",
+    "visible": true,
+    "x": 16,
+    "y": 16,
+    "w": 199,
+    "h": 40
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "CivicPulse RunCampaign Manager",
+    "href": "/",
+    "visible": true,
+    "x": 8,
+    "y": 8,
+    "w": 239,
+    "h": 48
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "All Campaigns",
+    "href": "/",
+    "visible": true,
+    "x": 8,
+    "y": 105,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Members",
+    "href": "/org/members",
+    "visible": true,
+    "x": 8,
+    "y": 141,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "A",
+    "role": null,
+    "label": "Settings",
+    "href": "/org/settings",
+    "visible": true,
+    "x": 8,
+    "y": 177,
+    "w": 239,
+    "h": 32
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "Open sidebar",
+    "visible": true,
+    "x": 268,
+    "y": 18,
+    "w": 28,
+    "h": 28
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "label": "User menu",
+    "visible": true,
+    "x": 1392,
+    "y": 16,
+    "w": 32,
+    "h": 32
+  }
+]

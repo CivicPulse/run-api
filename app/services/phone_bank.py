@@ -88,6 +88,17 @@ class PhoneBankService:
         Returns:
             The created PhoneBankSession.
         """
+        call_list_result = await session.execute(
+            select(CallList).where(
+                CallList.id == data.call_list_id,
+                CallList.campaign_id == campaign_id,
+            )
+        )
+        call_list = call_list_result.scalar_one_or_none()
+        if call_list is None:
+            msg = f"Call list {data.call_list_id} not found"
+            raise ValueError(msg)
+
         now = utcnow()
         pb_session = PhoneBankSession(
             id=uuid.uuid4(),
@@ -480,7 +491,7 @@ class PhoneBankService:
 
         # Build interaction payload
         payload = {
-            "result_code": result_code,
+            "result_code": result_code.value,
             "call_list_id": str(entry.call_list_id),
             "session_id": str(session_id),
             "phone_number_used": data.phone_number_used,
@@ -514,7 +525,7 @@ class PhoneBankService:
             # Mark only this phone number
             phone_attempts = entry.phone_attempts or {}
             phone_attempts[data.phone_number_used] = {
-                "result": result_code,
+                "result": result_code.value,
                 "at": now.isoformat(),
             }
             entry.phone_attempts = phone_attempts
@@ -534,7 +545,7 @@ class PhoneBankService:
             # Update phone_attempts for tracking
             phone_attempts = entry.phone_attempts or {}
             phone_attempts[data.phone_number_used] = {
-                "result": result_code,
+                "result": result_code.value,
                 "at": now.isoformat(),
             }
             entry.phone_attempts = phone_attempts

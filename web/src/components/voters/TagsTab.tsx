@@ -113,9 +113,13 @@ export function TagsTab({ campaignId, voterId }: TagsTabProps) {
           ) : (
             <div className="flex items-end gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Select tag</Label>
+                <Label htmlFor="tag-selector" className="text-xs">Select tag</Label>
                 <Select value={selectedTagId} onValueChange={setSelectedTagId} disabled={addTag.isPending}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger
+                    id="tag-selector"
+                    className="w-48"
+                    aria-label="Select a tag to add"
+                  >
                     <SelectValue placeholder="Choose a tag..." />
                   </SelectTrigger>
                   <SelectContent>

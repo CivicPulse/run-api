@@ -81,9 +81,15 @@ class CallListService:
         if data.voter_list_id is not None:
             # Look up the voter list and its members
             vl_result = await session.execute(
-                select(VoterList).where(VoterList.id == data.voter_list_id)
+                select(VoterList).where(
+                    VoterList.id == data.voter_list_id,
+                    VoterList.campaign_id == campaign_id,
+                )
             )
             voter_list = vl_result.scalar_one_or_none()
+            if voter_list is None:
+                msg = f"Voter list {data.voter_list_id} not found"
+                raise ValueError(msg)
 
             if voter_list is not None and voter_list.list_type == "static":
                 # Static list: get member voter IDs

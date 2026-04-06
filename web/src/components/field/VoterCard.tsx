@@ -68,16 +68,16 @@ export function VoterCard({
     <div
       className={
         isSkipped
-          ? "opacity-40 py-2"
+          ? "rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2"
           : isCompleted
-            ? "opacity-50 py-2"
+            ? "rounded-lg border border-status-success-foreground/20 bg-status-success/10 px-3 py-2"
             : isActive && !isCompleted && !isSkipped
               ? "py-2 border-l-4 border-primary pl-3"
               : "py-2"
       }
     >
       {/* Voter name */}
-      <p className="text-lg font-semibold">{voterName}</p>
+      <p className="text-lg font-semibold text-foreground">{voterName}</p>
 
       {/* Badges row */}
       <div className="flex items-center gap-2 mt-1">
@@ -92,14 +92,14 @@ export function VoterCard({
           {propensity.label}
         </Badge>
         {voter.age && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-foreground/80">
             Age {voter.age}
           </span>
         )}
       </div>
 
       {/* Prior interactions */}
-      <p className="text-xs text-muted-foreground mt-1">{interactionText}</p>
+      <p className="mt-1 text-xs text-foreground/80">{interactionText}</p>
 
       {/* Active state: show outcome grid */}
       {isActive && !isCompleted && !isSkipped && onOutcomeSelect && (
@@ -120,7 +120,7 @@ export function VoterCard({
 
       {/* Skipped state */}
       {isSkipped && (
-        <p className="text-xs text-muted-foreground mt-1">Skipped</p>
+        <p className="mt-1 text-xs text-foreground/80">Skipped</p>
       )}
     </div>
   )

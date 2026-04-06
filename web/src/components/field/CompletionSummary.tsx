@@ -49,7 +49,7 @@ export function CompletionSummary({ stats, campaignId }: CompletionSummaryProps)
           </div>
         </div>
 
-        <Button asChild size="lg" className="w-full animate-in fade-in duration-300 delay-[600ms]">
+        <Button asChild size="lg" className="min-h-11 w-full animate-in fade-in duration-300 delay-[600ms]">
           <Link to="/field/$campaignId" params={{ campaignId }}>Back to Hub</Link>
         </Button>
       </Card>
