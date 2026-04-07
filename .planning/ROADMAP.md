@@ -164,7 +164,7 @@ See: `.planning/milestones/v1.14-ROADMAP.md` for full phase details.
 
 - [x] **Phase 88: Org Twilio Credentials & Encryption Foundation** - Establish encrypted org-scoped Twilio configuration, secret-handling guardrails, and the initial settings surface without exposing credentials. (completed 2026-04-07)
 - [x] **Phase 89: Phone Number Inventory & Provisioning** - Let org admins register BYO Twilio numbers, inspect capability metadata, and manage default voice and SMS numbers. (completed 2026-04-07)
-- [ ] **Phase 90: Webhook Security & Routing Infrastructure** - Add Twilio webhook routes, public-URL signature validation, idempotent callback handling, and org-safe routing for future voice and SMS events.
+- [x] **Phase 90: Webhook Security & Routing Infrastructure** - Add Twilio webhook routes, public-URL signature validation, idempotent callback handling, and org-safe routing for future voice and SMS events. (completed 2026-04-07)
 - [ ] **Phase 91: Browser Voice Calling** - Replace configured phone-bank `tel:` flows with Twilio Voice SDK click-to-call while preserving fallback behavior and call logging.
 - [ ] **Phase 92: Two-Way SMS & Opt-Out Handling** - Add individual and bulk SMS sends, threaded reply inbox behavior, and STOP/START unsubscribe enforcement.
 - [ ] **Phase 93: Spend Controls & Communication Telemetry** - Surface Twilio spend, enforce soft budgets, and persist billable communication metadata for later reporting.
@@ -212,8 +212,8 @@ Plans:
   3. New Twilio campaign-scoped data paths respect the existing RLS isolation model and org routing boundaries.
 **Plans**: 2 plans
 Plans:
-- [ ] 90-01-PLAN.md — Data foundation: webhook_events table, phone uniqueness, config setting
-- [ ] 90-02-PLAN.md — Service layer: signature validation, org resolution, webhook routes
+- [x] 90-01-PLAN.md — Data foundation: webhook_events table, phone uniqueness, config setting
+- [x] 90-02-PLAN.md — Service layer: signature validation, org resolution, webhook routes
 
 ### Phase 91: Browser Voice Calling
 **Goal**: Phone bankers can place browser-based Twilio calls with the existing workflow while preserving fallback and compliance protections.
