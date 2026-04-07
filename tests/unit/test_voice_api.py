@@ -391,3 +391,175 @@ async def test_twiml_rejects_outside_calling_hours():
     body = result.body.decode()
     assert "<Dial" not in body
     assert "<Hangup" in body or "blocked" in body.lower() or "<Say" in body
+
+
+# ===========================================================================
+# Task 2 tests: Webhook status callback
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Test 8: voice_status_callback updates call_record to "completed"
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_webhook_updates_call_record_completed():
+    """voice_status_callback updates call_record with completed status."""
+    from app.api.v1.webhooks import voice_status_callback
+
+    mock_org = _make_org(configured=True)
+    mock_record = SimpleNamespace(
+        twilio_sid="CA12345",
+        status="completed",
+        duration_seconds=120,
+    )
+
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+    request.state = MagicMock()
+
+    async def _form():
+        return {
+            "CallSid": "CA12345",
+            "CallStatus": "completed",
+            "CallDuration": "120",
+            "From": "+15551111111",
+            "To": "+15552222222",
+        }
+
+    request.form = _form
+
+    mock_db = AsyncMock()
+
+    with (
+        patch(
+            "app.api.v1.webhooks.check_idempotency",
+            new_callable=AsyncMock,
+            return_value=False,  # Not a duplicate
+        ),
+        patch(
+            "app.api.v1.webhooks._voice_service.update_call_record_from_webhook",
+            new_callable=AsyncMock,
+            return_value=mock_record,
+        ) as mock_update,
+    ):
+        result = await voice_status_callback(
+            request=request,
+            org=mock_org,
+            db=mock_db,
+        )
+
+    assert result == ""
+    mock_update.assert_awaited_once()
+    call_kwargs = mock_update.call_args.kwargs
+    assert call_kwargs["twilio_sid"] == "CA12345"
+    assert call_kwargs["status"] == "completed"
+    assert call_kwargs["duration_seconds"] == 120
+
+
+# ---------------------------------------------------------------------------
+# Test 9: voice_status_callback is idempotent
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_webhook_idempotent_duplicate():
+    """voice_status_callback ignores duplicate webhook delivery."""
+    from app.api.v1.webhooks import voice_status_callback
+
+    mock_org = _make_org(configured=True)
+
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+    request.state = MagicMock()
+
+    async def _form():
+        return {
+            "CallSid": "CA12345",
+            "CallStatus": "completed",
+            "CallDuration": "120",
+        }
+
+    request.form = _form
+
+    mock_db = AsyncMock()
+
+    with (
+        patch(
+            "app.api.v1.webhooks.check_idempotency",
+            new_callable=AsyncMock,
+            return_value=True,  # Is a duplicate
+        ),
+        patch(
+            "app.api.v1.webhooks._voice_service.update_call_record_from_webhook",
+            new_callable=AsyncMock,
+        ) as mock_update,
+    ):
+        result = await voice_status_callback(
+            request=request,
+            org=mock_org,
+            db=mock_db,
+        )
+
+    assert result == ""
+    mock_update.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Test 10: voice_status_callback handles terminal statuses
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "call_status",
+    ["busy", "no-answer", "failed", "canceled"],
+)
+async def test_webhook_handles_terminal_statuses(call_status):
+    """voice_status_callback handles non-completed terminal statuses."""
+    from app.api.v1.webhooks import voice_status_callback
+
+    mock_org = _make_org(configured=True)
+
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+    request.state = MagicMock()
+
+    async def _form():
+        return {
+            "CallSid": "CA99999",
+            "CallStatus": call_status,
+        }
+
+    request.form = _form
+
+    mock_db = AsyncMock()
+
+    with (
+        patch(
+            "app.api.v1.webhooks.check_idempotency",
+            new_callable=AsyncMock,
+            return_value=False,
+        ),
+        patch(
+            "app.api.v1.webhooks._voice_service.update_call_record_from_webhook",
+            new_callable=AsyncMock,
+            return_value=None,
+        ) as mock_update,
+    ):
+        result = await voice_status_callback(
+            request=request,
+            org=mock_org,
+            db=mock_db,
+        )
+
+    assert result == ""
+    mock_update.assert_awaited_once()
+    call_kwargs = mock_update.call_args.kwargs
+    assert call_kwargs["status"] == call_status
+    # Terminal statuses should set ended_at
+    assert call_kwargs["ended_at"] is not None
