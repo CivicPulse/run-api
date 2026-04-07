@@ -10,6 +10,7 @@ import { CanvassingMap } from "@/components/field/CanvassingMap"
 import { checkMilestone } from "@/lib/milestones"
 import { CanvassingCompletionSummary } from "@/components/field/CanvassingCompletionSummary"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
+import { useGeolocationWatch } from "@/hooks/useGeolocationWatch"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useWalkList } from "@/hooks/useWalkLists"
 import { shouldAutoStartTour, useTour } from "@/hooks/useTour"
@@ -58,6 +59,17 @@ function Canvassing() {
   const setLocationState = useCanvassingStore((s) => s.setLocationState)
 
   const [isCapturingLocation, setIsCapturingLocation] = useState(false)
+
+  useGeolocationWatch({
+    active: sortMode === "distance",
+    onPosition: (point) => {
+      setLocationState("ready", point)
+    },
+    onError: (status) => {
+      setLocationState(status)
+      setSortMode("sequence")
+    },
+  })
 
   const user = useAuthStore((state) => state.user)
   const userId = user?.profile?.sub
