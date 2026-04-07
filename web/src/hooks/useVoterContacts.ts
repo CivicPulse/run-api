@@ -159,6 +159,9 @@ export function useDeleteAddress(campaignId: string, voterId: string) {
   return useMutation({
     mutationFn: (addressId: string) =>
       api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}/addresses/${addressId}`).json(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }

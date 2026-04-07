@@ -17,7 +17,7 @@
 4. Shipped a search-first voter page with abort-aware queries, preserved prior data, explicit search states, and richer row-level disambiguation
 5. Verified campaign isolation and production-scale performance with focused backend, frontend, and DB-backed reruns
 
-**Audit:** .planning/milestones/v1.14-MILESTONE-AUDIT.md (status: passed, 15/15 requirements satisfied)
+**Audit:** .planning/milestones/v1.14-MILESTONE-AUDIT.md (status: passed, 15/15 requirements satisfied; re-audit closed SRCH-04 address-delete freshness seam)
 
 ---
 

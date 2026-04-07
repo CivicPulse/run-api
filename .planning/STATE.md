@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.14
 milestone_name: Voter Search & Lookup
 status: ready_for_next_milestone
-stopped_at: v1.14 shipped; next milestone definition pending
-last_updated: "2026-04-07T02:53:58.000Z"
-last_activity: 2026-04-07 — Completed v1.14 audit, archive, and cleanup lifecycle
+stopped_at: v1.14 shipped and re-audit passed after closing the SRCH-04 address-delete freshness seam
+last_updated: "2026-04-07T04:45:38.000Z"
+last_activity: 2026-04-07 — Closed SRCH-04 by invalidating voter queries after address deletion and reran the v1.14 audit to passed
 progress:
   total_phases: 4
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Define the next milestone
+**Current focus:** Define the next milestone from a clean v1.14 baseline
 
 ## Current Position
 
-Phase: Milestone complete
+Phase: Milestone audit follow-up
 Plan: No active plans
-Status: Ready for next milestone definition
-Last activity: 2026-04-07 — Archived v1.14 planning artifacts and phase directories
+Status: Ready for next milestone
+Last activity: 2026-04-07 — Closed the address-delete freshness seam and reran the v1.14 audit to passed
 
 Progress: [██████████] 100%
 
@@ -73,7 +73,7 @@ None yet.
 
 - Campaign creation 500 in production — ZITADEL pod connectivity investigation remains an ops follow-up, not milestone scope.
 - HSTS header — requires Cloudflare edge configuration outside this code milestone.
-- No active milestone requirements are defined yet.
+- No active milestone blockers in code scope.
 
 ## Session Continuity
 
