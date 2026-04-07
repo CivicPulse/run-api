@@ -1,5 +1,9 @@
 # Roadmap: CivicPulse Run API
 
+## Overview
+
+v1.14 turns voter lookup into the default voter-page workflow without weakening deterministic filters, campaign isolation, or operational trust. The milestone is organized as four phases that first lock the search contract and safety boundary, then add campaign-scoped search data, ranked lookup behavior, and finally the interactive voter-page experience.
+
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-7 (shipped 2026-03-10)
@@ -13,6 +17,7 @@
 - ✅ **v1.11 Faster Imports** — Phases 59-70 (shipped 2026-04-04)
 - ✅ **v1.12 Hardening & Remediation** — Phases 71-77 (shipped 2026-04-05)
 - ✅ **v1.13 Production Shakedown Remediation** — Phases 78-83 (shipped 2026-04-06)
+- 📋 **v1.14 Voter Search & Lookup** — Phases 84-87 (planned)
 
 ## Phases
 
@@ -138,6 +143,60 @@ See: `.planning/milestones/v1.13-ROADMAP.md` for full phase details.
 
 </details>
 
+### 📋 v1.14 Voter Search & Lookup (Planned)
+
+**Milestone Goal:** Make voter lookup the default workflow on the voter page with ranked, typo-tolerant, campaign-scoped search that still composes cleanly with deterministic filters.
+
+- [ ] **Phase 84: Search Contract & Composition** - Add free-text lookup to the existing voter search flow without breaking filter behavior or stable pagination.
+- [ ] **Phase 85: Campaign-Scoped Search Data & Freshness** - Build the search data surface so ranked lookup stays isolated, fresh, and fast on real campaign datasets.
+- [ ] **Phase 86: Ranked Multi-Field Lookup** - Implement cross-field partial and typo-tolerant ranking with exact-match boosts and automated trust coverage.
+- [ ] **Phase 87: Search-First Voter Page UX** - Make the voter page default to lookup-first interaction with clear states and row-level disambiguation.
+
+## Phase Details
+
+### Phase 84: Search Contract & Composition
+**Goal**: Users can start voter lookup from one box and combine it with existing structured filters through the current voter search flow without losing stable result behavior.
+**Depends on**: Phase 83
+**Requirements**: LOOK-01, LOOK-05, SRCH-01, SRCH-03, INT-03
+**Success Criteria** (what must be TRUE):
+  1. User can enter a free-text query on the voter page and search current-campaign voters without opening the advanced filter builder first.
+  2. User can combine a free-text query with existing structured filters and get one refined result set.
+  3. User can page through the same query and filter combination in stable relevance order without duplicate or disappearing voters.
+  4. User can clear the free-text query and return cleanly to the prior voter-page browsing and filtering state.
+**Plans**: TBD
+
+### Phase 85: Campaign-Scoped Search Data & Freshness
+**Goal**: Ranked lookup runs on a campaign-scoped search surface that stays fresh after edits and imports and remains performant on production-scale data.
+**Depends on**: Phase 84
+**Requirements**: SRCH-02, SRCH-04, TRST-01
+**Success Criteria** (what must be TRUE):
+  1. User only sees results from the active campaign, including fuzzy and ranked matches.
+  2. User sees lookup results reflect voter and contact edits plus import changes within the milestone's freshness boundary.
+  3. User gets acceptable voter-page lookup performance on production-scale campaign datasets.
+**Plans**: TBD
+
+### Phase 86: Ranked Multi-Field Lookup
+**Goal**: Users can find the intended voter from incomplete or imperfect information because lookup searches the right fields and ranks likely matches first.
+**Depends on**: Phase 85
+**Requirements**: LOOK-02, LOOK-03, LOOK-04, TRST-02
+**Success Criteria** (what must be TRUE):
+  1. User can find a voter from partial name, phone, email, address, city, ZIP, or stable imported identifier fragments.
+  2. User sees likely exact or high-confidence matches ranked above weaker partial matches for the same query.
+  3. User can still find the intended voter when the query contains minor misspellings in names or address text.
+  4. Automated tests cover ranking, typo tolerance, search-plus-filter composition, and campaign isolation.
+**Plans**: TBD
+
+### Phase 87: Search-First Voter Page UX
+**Goal**: The voter page presents lookup as the default path while preserving trust through responsive interactions, clear states, and result-row context.
+**Depends on**: Phase 86
+**Requirements**: LOOK-06, INT-01, INT-02
+**Success Criteria** (what must be TRUE):
+  1. User can type into the voter-page search box without stale or out-of-order responses replacing the current query's results.
+  2. User sees distinct loading, empty, and no-match states that make it clear whether the app is still searching or nothing matched.
+  3. User can distinguish between duplicate or similar voter names from the result list using enough identifying context in each row.
+**Plans**: TBD
+**UI hint**: yes
+
 ### Backlog / Parking Lot
 
 - [ ] Phase 999.1: Update Zitadel to v3 or v4 — parked backlog item, not part of the active milestone sequence
@@ -157,3 +216,7 @@ See: `.planning/milestones/v1.13-ROADMAP.md` for full phase details.
 | 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
 | 71-77 | v1.12 | 30/30 | Complete | 2026-04-05 |
 | 78-83 | v1.13 | 18/18 | Complete | 2026-04-06 |
+| 84. Search Contract & Composition | v1.14 | 0/TBD | Not started | - |
+| 85. Campaign-Scoped Search Data & Freshness | v1.14 | 0/TBD | Not started | - |
+| 86. Ranked Multi-Field Lookup | v1.14 | 0/TBD | Not started | - |
+| 87. Search-First Voter Page UX | v1.14 | 0/TBD | Not started | - |

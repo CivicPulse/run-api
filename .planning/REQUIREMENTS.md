@@ -64,26 +64,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOOK-01 | Unmapped | Pending |
-| LOOK-02 | Unmapped | Pending |
-| LOOK-03 | Unmapped | Pending |
-| LOOK-04 | Unmapped | Pending |
-| LOOK-05 | Unmapped | Pending |
-| LOOK-06 | Unmapped | Pending |
-| SRCH-01 | Unmapped | Pending |
-| SRCH-02 | Unmapped | Pending |
-| SRCH-03 | Unmapped | Pending |
-| SRCH-04 | Unmapped | Pending |
-| INT-01 | Unmapped | Pending |
-| INT-02 | Unmapped | Pending |
-| INT-03 | Unmapped | Pending |
-| TRST-01 | Unmapped | Pending |
-| TRST-02 | Unmapped | Pending |
+| LOOK-01 | Phase 84 | Pending |
+| LOOK-02 | Phase 86 | Pending |
+| LOOK-03 | Phase 86 | Pending |
+| LOOK-04 | Phase 86 | Pending |
+| LOOK-05 | Phase 84 | Pending |
+| LOOK-06 | Phase 87 | Pending |
+| SRCH-01 | Phase 84 | Pending |
+| SRCH-02 | Phase 85 | Pending |
+| SRCH-03 | Phase 84 | Pending |
+| SRCH-04 | Phase 85 | Pending |
+| INT-01 | Phase 87 | Pending |
+| INT-02 | Phase 87 | Pending |
+| INT-03 | Phase 84 | Pending |
+| TRST-01 | Phase 85 | Pending |
+| TRST-02 | Phase 86 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
