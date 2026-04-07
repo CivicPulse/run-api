@@ -223,7 +223,11 @@ Plans:
   1. Configured orgs can place Twilio Voice SDK calls from the phone banking flow without leaving the product.
   2. Unsupported clients or unconfigured orgs still fall back cleanly to the current `tel:` behavior.
   3. Call logging captures status, timing, and outcome while enforcing DNC and calling-hours guardrails before dialing.
-**Plans**: 0/0 plans complete
+**Plans**: 3 plans
+Plans:
+- [ ] 91-01-PLAN.md — Data foundation: call_records table, campaign calling hours, org API key columns, VoiceService
+- [ ] 91-02-PLAN.md — API layer: voice token endpoint, TwiML handler, webhook status processing
+- [ ] 91-03-PLAN.md — Frontend: Twilio Voice SDK integration, inline call UI, compliance banners
 **UI hint**: yes
 
 ### Phase 92: Two-Way SMS & Opt-Out Handling
