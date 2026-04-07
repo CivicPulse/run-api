@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Navigate, useParams } from "@tanstack/react-router"
 import { Loader2 } from "lucide-react"
 import { formatPhoneDisplay } from "@/types/calling"
-import { useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
@@ -15,10 +15,14 @@ import { useCallerCheckInStatus } from "@/hooks/useCallerCheckInStatus"
 import { OUTCOME_GROUPS } from "@/types/phone-bank-session"
 import { buildRecordCallPayload, type RecordCallPayload } from "@/types/phone-bank-session"
 import type { CallListEntry } from "@/types/call-list"
+import type { DNCCheckResult, CallingHoursCheck } from "@/types/voice"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { PhoneNumberList } from "@/components/field/PhoneNumberList"
+import { useVoiceCapability } from "@/hooks/useVoiceCapability"
+import { useTwilioDevice } from "@/hooks/useTwilioDevice"
 import { api } from "@/api/client"
 
 export const Route = createFileRoute(
@@ -51,10 +55,26 @@ function VoterInfoPanel({
   entry,
   selectedPhone,
   onPhoneSelect,
+  campaignId,
+  twilioDevice,
+  callMode,
+  activeCallNumber,
+  dncStatus,
+  callingHoursCheck,
+  onBrowserCall,
+  onCallStarted,
 }: {
   entry: CallListEntry
   selectedPhone: string
   onPhoneSelect: (phone: string) => void
+  campaignId: string
+  twilioDevice: ReturnType<typeof useTwilioDevice>
+  callMode: "browser" | "tel"
+  activeCallNumber: string | null
+  dncStatus: Record<string, DNCCheckResult>
+  callingHoursCheck: CallingHoursCheck | null
+  onBrowserCall: (e164: string) => void
+  onCallStarted: (e164: string) => void
 }) {
   return (
     <div className="space-y-4">
@@ -72,23 +92,28 @@ function VoterInfoPanel({
         {entry.phone_numbers.length === 0 ? (
           <p className="text-sm text-muted-foreground">No phone numbers on file.</p>
         ) : (
-          <div className="flex flex-col gap-2">
-            {entry.phone_numbers.map((phone) => (
-              <Button
-                key={phone.phone_id}
-                variant={selectedPhone === phone.value ? "default" : "outline"}
-                size="sm"
-                className="justify-start font-mono"
-                onClick={() => onPhoneSelect(phone.value)}
-              >
-                {formatPhoneDisplay(phone.value)}
-                <span className="ml-2 text-xs opacity-70 capitalize">{phone.type}</span>
-                {phone.is_primary && (
-                  <span className="ml-auto text-xs opacity-70">Primary</span>
-                )}
-              </Button>
-            ))}
-          </div>
+          <PhoneNumberList
+            phones={entry.phone_numbers}
+            attempts={entry.phone_attempts}
+            voterName={entry.voter_name ?? "Unknown Voter"}
+            onCallStarted={(e164) => {
+              onPhoneSelect(e164)
+              onCallStarted(e164)
+            }}
+            callMode={callMode}
+            callStatus={twilioDevice.callStatus}
+            activeCallNumber={activeCallNumber}
+            isMuted={twilioDevice.isMuted}
+            duration={twilioDevice.duration}
+            onBrowserCall={(e164) => {
+              onPhoneSelect(e164)
+              onBrowserCall(e164)
+            }}
+            onHangUp={twilioDevice.disconnect}
+            onToggleMute={twilioDevice.toggleMute}
+            dncStatus={dncStatus}
+            callingHoursCheck={callingHoursCheck}
+          />
         )}
       </div>
 
@@ -296,9 +321,88 @@ function ActiveCallingPageInner({
   const recordCall = useRecordCall(campaignId, sessionId)
   const selfRelease = useSelfReleaseEntry(campaignId, sessionId)
 
+  // Voice calling hooks
+  const { mode: callMode } = useVoiceCapability(campaignId)
+  const twilioDevice = useTwilioDevice(campaignId, callMode === "browser")
+
   const [state, setState] = useState<CallingState>({ phase: "idle" })
   const [surveyResponses, setSurveyResponses] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState("")
+  const [activeCallNumber, setActiveCallNumber] = useState<string | null>(null)
+  const [dncStatus, setDncStatus] = useState<Record<string, DNCCheckResult>>({})
+  const [callingHoursCheck, setCallingHoursCheck] = useState<CallingHoursCheck | null>(null)
+
+  // Track previous call status for auto-advance detection
+  const prevCallStatusRef = useRef(twilioDevice.callStatus)
+
+  // Auto-advance to recording phase when browser call ends (500ms delay)
+  useEffect(() => {
+    const prevStatus = prevCallStatusRef.current
+    const currStatus = twilioDevice.callStatus
+
+    prevCallStatusRef.current = currStatus
+
+    // Detect transition to "closed" from an active call state
+    if (
+      currStatus === "closed" &&
+      prevStatus !== "closed" &&
+      prevStatus !== "idle" &&
+      state.phase === "claimed"
+    ) {
+      const timer = setTimeout(() => {
+        // Auto-advance to recording/outcome phase
+        setState((s) => {
+          if (s.phase === "claimed") {
+            return {
+              phase: "recording" as const,
+              entry: s.entry,
+              startedAt: s.startedAt,
+              selectedPhone: s.selectedPhone,
+            }
+          }
+          return s
+        })
+        setActiveCallNumber(null)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [twilioDevice.callStatus, state.phase])
+
+  // Fetch DNC status and calling hours when a voter is claimed
+  const fetchComplianceChecks = useCallback(
+    async (entry: CallListEntry) => {
+      // DNC checks for each phone number
+      const dncResults: Record<string, DNCCheckResult> = {}
+      await Promise.all(
+        entry.phone_numbers.map(async (phone) => {
+          try {
+            const result = await api
+              .post(`api/v1/campaigns/${campaignId}/voice/dnc-check`, {
+                json: { phone_number: phone.value },
+              })
+              .json<DNCCheckResult>()
+            dncResults[phone.value] = result
+          } catch {
+            // If DNC check fails, allow the call (server-side TwiML will still block)
+            dncResults[phone.value] = { blocked: false, message: null }
+          }
+        }),
+      )
+      setDncStatus(dncResults)
+
+      // Calling hours check
+      try {
+        const hours = await api
+          .get(`api/v1/campaigns/${campaignId}/voice/calling-hours`)
+          .json<CallingHoursCheck>()
+        setCallingHoursCheck(hours)
+      } catch {
+        // If hours check fails, allow calling (server-side TwiML will still block)
+        setCallingHoursCheck(null)
+      }
+    },
+    [campaignId],
+  )
 
   // call_started_at is set when entry is claimed; call_ended_at is set when outcome button clicked
   async function handleClaim() {
@@ -323,20 +427,42 @@ function ActiveCallingPageInner({
       })
       setSurveyResponses({})
       setNotes("")
+      setActiveCallNumber(null)
+      setDncStatus({})
+      setCallingHoursCheck(null)
+
+      // Fire compliance checks in background (non-blocking)
+      fetchComplianceChecks(entry)
     } catch {
       setState({ phase: "idle" })
       toast.error("Failed to claim next voter")
     }
   }
 
+  function handleBrowserCall(e164: string) {
+    setActiveCallNumber(e164)
+    twilioDevice.connect(e164, campaignId)
+  }
+
+  function handleHangUp() {
+    twilioDevice.disconnect()
+  }
+
+  function handleCallStarted(e164: string) {
+    // For tel: mode, just track which number was called
+    setActiveCallNumber(e164)
+  }
+
   async function handleOutcome(resultCode: string) {
-    if (state.phase !== "claimed") return
+    // Accept outcomes from both "claimed" and "recording" phases
+    const currentState = state
+    if (currentState.phase !== "claimed" && currentState.phase !== "recording") return
     const endedAt = new Date().toISOString()
     const payload: RecordCallPayload = buildRecordCallPayload({
-      call_list_entry_id: state.entry.id,
+      call_list_entry_id: currentState.entry.id,
       result_code: resultCode,
-      phone_number_used: state.selectedPhone,
-      call_started_at: state.startedAt,
+      phone_number_used: currentState.selectedPhone,
+      call_started_at: currentState.startedAt,
       call_ended_at: endedAt,
       notes,
       survey_responses: resultCode === "answered"
@@ -350,17 +476,19 @@ function ActiveCallingPageInner({
     })
     try {
       await recordCall.mutateAsync(payload)
-      setState({ phase: "recorded", entry: state.entry, resultCode })
+      setState({ phase: "recorded", entry: currentState.entry, resultCode })
+      setActiveCallNumber(null)
     } catch {
       toast.error("Failed to record call")
     }
   }
 
   async function handleSkip() {
-    if (state.phase !== "claimed") return
+    if (state.phase !== "claimed" && state.phase !== "recording") return
     try {
       await selfRelease.mutateAsync(state.entry.id)
       setState({ phase: "idle" })
+      setActiveCallNumber(null)
       toast.success("Entry released")
     } catch {
       toast.error("Failed to skip entry")
@@ -402,7 +530,7 @@ function ActiveCallingPageInner({
         </div>
       )}
 
-      {/* State: claimed — two-panel layout */}
+      {/* State: claimed -- two-panel layout */}
       {state.phase === "claimed" && (
         <div className="flex gap-6 min-h-[500px]">
           {/* Left panel: voter info */}
@@ -413,6 +541,14 @@ function ActiveCallingPageInner({
               onPhoneSelect={(phone) =>
                 setState({ ...state, selectedPhone: phone })
               }
+              campaignId={campaignId}
+              twilioDevice={twilioDevice}
+              callMode={callMode}
+              activeCallNumber={activeCallNumber}
+              dncStatus={dncStatus}
+              callingHoursCheck={callingHoursCheck}
+              onBrowserCall={handleBrowserCall}
+              onCallStarted={handleCallStarted}
             />
           </div>
           {/* Right panel: survey + outcomes */}
@@ -436,7 +572,49 @@ function ActiveCallingPageInner({
         </div>
       )}
 
-      {/* State: recorded — confirmation */}
+      {/* State: recording -- same layout, auto-advanced from browser call end */}
+      {state.phase === "recording" && (
+        <div className="flex gap-6 min-h-[500px]">
+          {/* Left panel: voter info (read-only) */}
+          <div className="w-80 shrink-0 space-y-4 border-r pr-6">
+            <VoterInfoPanel
+              entry={state.entry}
+              selectedPhone={state.selectedPhone}
+              onPhoneSelect={(phone) =>
+                setState({ ...state, selectedPhone: phone })
+              }
+              campaignId={campaignId}
+              twilioDevice={twilioDevice}
+              callMode={callMode}
+              activeCallNumber={activeCallNumber}
+              dncStatus={dncStatus}
+              callingHoursCheck={callingHoursCheck}
+              onBrowserCall={handleBrowserCall}
+              onCallStarted={handleCallStarted}
+            />
+          </div>
+          {/* Right panel: survey + outcomes */}
+          <div className="flex-1 space-y-6">
+            <SurveyPanel
+              campaignId={campaignId}
+              scriptId={scriptId}
+              surveyResponses={surveyResponses}
+              notes={notes}
+              onResponseChange={(qId, val) =>
+                setSurveyResponses((r) => ({ ...r, [qId]: val }))
+              }
+              onNotesChange={setNotes}
+            />
+            <OutcomePanel
+              onOutcome={handleOutcome}
+              onSkip={handleSkip}
+              isPending={recordCall.isPending || selfRelease.isPending}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* State: recorded -- confirmation */}
       {state.phase === "recorded" && (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="text-center space-y-2">
