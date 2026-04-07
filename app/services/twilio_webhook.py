@@ -27,7 +27,7 @@ from app.db.session import get_db
 from app.models.org_phone_number import OrgPhoneNumber
 from app.models.organization import Organization
 from app.models.webhook_event import WebhookEvent
-from app.services.twilio_config import TwilioConfigService
+from app.services.twilio_config import TwilioConfigError, TwilioConfigService
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -59,12 +59,17 @@ async def resolve_org_from_phone(
 ) -> Organization:
     """Resolve the owning organization from the To/Called phone number.
 
+    Caches parsed form data on ``request.state.twilio_form`` so the
+    signature validator reads the identical dict (CR-01).
+
     Raises:
         HTTPException 404: No target number in request, unknown number,
             or organization not found.
     """
     form_data = await request.form()
-    to_number = form_data.get("To") or form_data.get("Called")
+    params = dict(form_data)
+    request.state.twilio_form = params
+    to_number = params.get("To") or params.get("Called")
     if not to_number:
         raise HTTPException(status_code=404, detail="No target number in request")
 
@@ -100,7 +105,13 @@ async def verify_twilio_signature(
 
     public_url = _reconstruct_public_url(request)
 
-    creds = TwilioConfigService().credentials_for_org(org)
+    try:
+        creds = TwilioConfigService().credentials_for_org(org)
+    except TwilioConfigError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail="Twilio not configured for organization",
+        ) from exc
     if creds is None:
         raise HTTPException(
             status_code=403,
@@ -108,8 +119,9 @@ async def verify_twilio_signature(
         )
 
     validator = RequestValidator(creds.auth_token)
-    form_data = await request.form()
-    params = dict(form_data)
+    params = getattr(request.state, "twilio_form", None) or dict(
+        await request.form()
+    )
 
     if not validator.validate(public_url, params, signature):
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
@@ -146,4 +158,6 @@ async def check_idempotency(
         .on_conflict_do_nothing(constraint="uq_webhook_events_sid_type")
     )
     result = await db.execute(stmt)
-    return result.rowcount == 0
+    is_duplicate = result.rowcount == 0
+    await db.commit()
+    return is_duplicate
