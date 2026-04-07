@@ -3,15 +3,28 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time import utcnow
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
 from app.models.user import User
+from app.schemas.org import OrgResponse, OrgUpdate, TwilioOrgStatus
+from app.services.twilio_config import TwilioConfigService
+
+
+@dataclass(slots=True)
+class OrgUpdateResult:
+    """Updated org plus any changed field markers."""
+
+    org: Organization
+    name_changed: bool = False
+    twilio_changed: bool = False
 
 
 class OrgService:
@@ -27,8 +40,73 @@ class OrgService:
     All queries filter by organization_id explicitly as defense-in-depth.
     """
 
+    def __init__(self) -> None:
+        self._twilio = TwilioConfigService()
+
     async def get_org(self, db: AsyncSession, org_id: uuid.UUID) -> Organization | None:
         return await db.scalar(select(Organization).where(Organization.id == org_id))
+
+    def build_org_response(self, org: Organization) -> OrgResponse:
+        """Build the org response including redacted Twilio status."""
+        return OrgResponse(
+            id=org.id,
+            name=org.name,
+            zitadel_org_id=org.zitadel_org_id,
+            created_at=org.created_at,
+            twilio=TwilioOrgStatus(
+                account_sid=org.twilio_account_sid,
+                account_sid_configured=bool(org.twilio_account_sid),
+                account_sid_updated_at=org.twilio_account_sid_updated_at,
+                auth_token_configured=bool(org.twilio_auth_token_encrypted),
+                auth_token_hint=self._twilio.auth_token_hint(
+                    org.twilio_auth_token_last4
+                ),
+                auth_token_updated_at=org.twilio_auth_token_updated_at,
+                ready=self._twilio.readiness(
+                    account_sid=org.twilio_account_sid,
+                    auth_token_encrypted=org.twilio_auth_token_encrypted,
+                ),
+            ),
+        )
+
+    async def update_org_details(
+        self,
+        db: AsyncSession,
+        org: Organization,
+        body: OrgUpdate,
+    ) -> OrgUpdateResult:
+        """Apply org metadata and partial Twilio config updates safely."""
+        result = OrgUpdateResult(org=org)
+        now = utcnow()
+
+        if body.name is not None and body.name != org.name:
+            org.name = body.name
+            result.name_changed = True
+
+        if body.twilio is not None:
+            twilio_fields = body.twilio.model_fields_set
+            if "account_sid" in twilio_fields and body.twilio.account_sid is not None:
+                new_sid = body.twilio.account_sid.strip()
+                if new_sid != org.twilio_account_sid:
+                    org.twilio_account_sid = new_sid
+                    org.twilio_account_sid_updated_at = now
+                    result.twilio_changed = True
+
+            if "auth_token" in twilio_fields and body.twilio.auth_token is not None:
+                encrypted = self._twilio.encrypt_auth_token(
+                    body.twilio.auth_token.get_secret_value()
+                )
+                org.twilio_auth_token_encrypted = encrypted.ciphertext
+                org.twilio_auth_token_key_id = encrypted.key_id
+                org.twilio_auth_token_last4 = encrypted.last4
+                org.twilio_auth_token_updated_at = now
+                result.twilio_changed = True
+
+        if result.name_changed or result.twilio_changed:
+            await db.commit()
+            await db.refresh(org)
+
+        return result
 
     async def list_campaigns(self, db: AsyncSession, org_id: uuid.UUID) -> list[dict]:
         """List campaigns with member counts for an org."""

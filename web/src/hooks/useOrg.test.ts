@@ -12,15 +12,17 @@ vi.mock("@/api/client", async () => {
     ...actual,
     api: {
       get: vi.fn(),
+      patch: vi.fn(),
     },
   }
 })
 
-import { useOrgCampaigns } from "./useOrg"
+import { useOrg, useOrgCampaigns, useUpdateOrg } from "./useOrg"
 import { api, PermissionError, AuthenticationError } from "@/api/client"
 
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
+  patch: ReturnType<typeof vi.fn>
 }
 
 function makeWrapper() {
@@ -60,6 +62,22 @@ const orgCampaigns = [
     status: "active",
   },
 ]
+
+const orgDetail = {
+  id: "org-1",
+  name: "Test Org",
+  zitadel_org_id: "zit-org-1",
+  created_at: "2026-04-07T00:00:00Z",
+  twilio: {
+    account_sid: "AC123",
+    account_sid_configured: true,
+    account_sid_updated_at: "2026-04-07T00:00:00Z",
+    auth_token_configured: true,
+    auth_token_hint: "••••6789",
+    auth_token_updated_at: "2026-04-07T00:00:00Z",
+    ready: true,
+  },
+}
 
 const fallbackListResponse = {
   items: [
@@ -170,5 +188,50 @@ describe("useOrgCampaigns", () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error).toBe(httpErr)
     expect(mockApi.get).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("useOrg", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns org detail including nested twilio status", async () => {
+    mockApi.get.mockReturnValueOnce({
+      json: vi.fn().mockResolvedValue(orgDetail),
+    })
+
+    const { result } = renderHook(() => useOrg(), {
+      wrapper: makeWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.twilio?.auth_token_hint).toBe("••••6789")
+    expect(mockApi.get).toHaveBeenCalledWith("api/v1/org")
+  })
+})
+
+describe("useUpdateOrg", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("sends partial twilio payloads and invalidates org queries", async () => {
+    mockApi.patch.mockReturnValueOnce({
+      json: vi.fn().mockResolvedValue(orgDetail),
+    })
+
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useUpdateOrg(), {
+      wrapper,
+    })
+
+    await result.current.mutateAsync({
+      twilio: { auth_token: "super-secret-token" },
+    })
+
+    expect(mockApi.patch).toHaveBeenCalledWith("api/v1/org", {
+      json: { twilio: { auth_token: "super-secret-token" } },
+    })
   })
 })

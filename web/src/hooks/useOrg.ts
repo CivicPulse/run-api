@@ -5,7 +5,20 @@ import {
 } from "@tanstack/react-query"
 import { HTTPError } from "ky"
 import { api, PermissionError } from "@/api/client"
-import type { OrgCampaign, OrgMember, UserOrg } from "@/types/org"
+import type {
+  OrgCampaign,
+  OrgDetail,
+  OrgMember,
+  OrgUpdateRequest,
+  UserOrg,
+} from "@/types/org"
+
+export function useOrg() {
+  return useQuery({
+    queryKey: ["org"],
+    queryFn: () => api.get("api/v1/org").json<OrgDetail>(),
+  })
+}
 
 export function useOrgCampaigns() {
   return useQuery({
@@ -106,7 +119,7 @@ export function useUnarchiveCampaign() {
 export function useUpdateOrg() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { name: string }) =>
+    mutationFn: (data: OrgUpdateRequest) =>
       api.patch("api/v1/org", { json: data }).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org"] })

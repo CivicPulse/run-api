@@ -5,9 +5,21 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 
 from app.schemas.common import BaseSchema
+
+
+class TwilioOrgStatus(BaseSchema):
+    """Redacted org-level Twilio configuration status."""
+
+    account_sid: str | None = None
+    account_sid_configured: bool = False
+    account_sid_updated_at: datetime | None = None
+    auth_token_configured: bool = False
+    auth_token_hint: str | None = None
+    auth_token_updated_at: datetime | None = None
+    ready: bool = False
 
 
 class OrgResponse(BaseSchema):
@@ -17,12 +29,21 @@ class OrgResponse(BaseSchema):
     name: str
     zitadel_org_id: str
     created_at: datetime
+    twilio: TwilioOrgStatus | None = None
+
+
+class TwilioOrgUpdate(BaseSchema):
+    """Write-only partial Twilio configuration update."""
+
+    account_sid: str | None = Field(None, min_length=1, max_length=64)
+    auth_token: SecretStr | None = Field(None, repr=False)
 
 
 class OrgUpdate(BaseSchema):
     """Schema for updating organization details."""
 
     name: str | None = Field(None, min_length=1, max_length=200)
+    twilio: TwilioOrgUpdate | None = None
 
 
 class CampaignRoleEntry(BaseSchema):

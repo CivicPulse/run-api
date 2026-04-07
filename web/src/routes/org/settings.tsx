@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -16,37 +15,56 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DangerZone } from "@/components/org/DangerZone"
-import { useUpdateOrg } from "@/hooks/useOrg"
+import { useOrg, useUpdateOrg } from "@/hooks/useOrg"
 import { useOrgPermissions } from "@/hooks/useOrgPermissions"
-import { api } from "@/api/client"
-
-interface OrgDetail {
-  id: string
-  name: string
-  zitadel_org_id: string
-  created_at: string
-}
 
 function OrgSettingsPage() {
   const { hasOrgRole } = useOrgPermissions()
   const isOwner = hasOrgRole("org_owner")
   const updateOrg = useUpdateOrg()
-
-  const { data: org, isLoading } = useQuery({
-    queryKey: ["org"],
-    queryFn: () => api.get("api/v1/org").json<OrgDetail>(),
-  })
+  const { data: org, isLoading } = useOrg()
 
   const [name, setName] = useState<string | null>(null)
+  const [accountSid, setAccountSid] = useState<string | null>(null)
+  const [authToken, setAuthToken] = useState("")
   const currentName = name ?? org?.name ?? ""
+  const currentAccountSid = accountSid ?? org?.twilio?.account_sid ?? ""
   const isDirty = name !== null && name !== org?.name
+  const twilioDirty =
+    (accountSid !== null && accountSid !== org?.twilio?.account_sid) ||
+    authToken.trim().length > 0
 
   async function handleSave() {
-    if (!isDirty) return
+    if (!isDirty && !twilioDirty) return
+    const payload: {
+      name?: string
+      twilio?: {
+        account_sid?: string
+        auth_token?: string
+      }
+    } = {}
+    if (isDirty) {
+      payload.name = currentName
+    }
+    const twilio: {
+      account_sid?: string
+      auth_token?: string
+    } = {}
+    if (accountSid !== null && accountSid !== org?.twilio?.account_sid) {
+      twilio.account_sid = currentAccountSid
+    }
+    if (authToken.trim()) {
+      twilio.auth_token = authToken.trim()
+    }
+    if (Object.keys(twilio).length > 0) {
+      payload.twilio = twilio
+    }
     try {
-      await updateOrg.mutateAsync({ name: currentName })
+      await updateOrg.mutateAsync(payload)
       toast("Organization updated.")
       setName(null)
+      setAccountSid(null)
+      setAuthToken("")
     } catch {
       toast.error("Failed to update organization. Please try again.")
     }
@@ -72,6 +90,7 @@ function OrgSettingsPage() {
           </CardContent>
         </Card>
         <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-56 w-full" />
       </div>
     )
   }
@@ -111,10 +130,60 @@ function OrgSettingsPage() {
               Read-only identifier from your identity provider.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Twilio Communications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              Status: {org?.twilio?.ready ? "Ready" : "Needs configuration"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Org admins can inspect readiness. Only org owners can update write-only credentials.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="twilio-account-sid">Twilio Account SID</Label>
+            <Input
+              id="twilio-account-sid"
+              placeholder="AC..."
+              value={currentAccountSid}
+              onChange={(e) => setAccountSid(e.target.value)}
+              readOnly={!isOwner}
+              className={!isOwner ? "bg-muted" : undefined}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="twilio-auth-token">Twilio Auth Token</Label>
+            <Input
+              id="twilio-auth-token"
+              type="password"
+              placeholder={org?.twilio?.auth_token_hint ?? "Write-only secret"}
+              value={authToken}
+              onChange={(e) => setAuthToken(e.target.value)}
+              readOnly={!isOwner}
+              className={!isOwner ? "bg-muted" : undefined}
+            />
+            <p className="text-xs text-muted-foreground">
+              Stored secrets are never returned to the browser. Leave blank to keep the current token.
+            </p>
+          </div>
+          <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
+            <p>
+              Account SID configured: {org?.twilio?.account_sid_configured ? "Yes" : "No"}
+            </p>
+            <p>
+              Auth token: {org?.twilio?.auth_token_hint ?? "Not configured"}
+            </p>
+          </div>
           {isOwner && (
             <div className="flex justify-end">
               <Button
-                disabled={!isDirty || updateOrg.isPending}
+                disabled={(!isDirty && !twilioDirty) || updateOrg.isPending}
                 onClick={handleSave}
               >
                 {updateOrg.isPending && (

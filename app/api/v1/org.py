@@ -45,7 +45,12 @@ async def get_org(
     org = await db.scalar(
         select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
-    return OrgResponse.model_validate(org)
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+    return _service.build_org_response(org)
 
 
 @router.patch("", response_model=OrgResponse)
@@ -65,11 +70,8 @@ async def update_org(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
         )
-    if body.name is not None:
-        org.name = body.name
-    await db.commit()
-    await db.refresh(org)
-    return OrgResponse.model_validate(org)
+    updated = await _service.update_org_details(db, org, body)
+    return _service.build_org_response(updated.org)
 
 
 @router.get("/campaigns", response_model=list[OrgCampaignResponse])

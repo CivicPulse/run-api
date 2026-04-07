@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.main import create_app
 from app.models.campaign import Campaign, CampaignStatus, CampaignType
 from app.models.organization import Organization
+from app.schemas.org import OrgUpdate
 
 # Patch ensure_user_synced for all org API tests — user sync is tested
 # separately in test_user_sync.py. Org API tests mock db.scalar() sequences
@@ -59,6 +60,10 @@ def _make_org(
         id=org_id,
         zitadel_org_id=zitadel_org_id,
         name="Test Organization",
+        twilio_account_sid="AC1234567890",
+        twilio_auth_token_encrypted="encrypted-token",
+        twilio_auth_token_key_id="primary",
+        twilio_auth_token_last4="7890",
         created_by="user-1",
         created_at=now,
         updated_at=now,
@@ -117,6 +122,9 @@ class TestGetOrg:
         data = resp.json()
         assert data["name"] == "Test Organization"
         assert data["zitadel_org_id"] == ZITADEL_ORG_ID
+        assert data["twilio"]["account_sid"] == "AC1234567890"
+        assert data["twilio"]["auth_token_configured"] is True
+        assert data["twilio"]["auth_token_hint"] == "••••7890"
 
     @pytest.mark.asyncio
     async def test_returns_403_for_non_member(self):
@@ -240,3 +248,74 @@ class TestListOrgMembers:
         assert len(data) >= 1
         assert data[0]["user_id"] == "user-1"
         assert data[0]["role"] == "org_admin"
+
+
+class TestPatchOrg:
+    """Tests for PATCH /api/v1/org."""
+
+    @pytest.mark.asyncio
+    async def test_updates_name_and_twilio_without_echoing_secret(self):
+        app = create_app()
+        user = _make_user(role=CampaignRole.OWNER)
+        org = _make_org()
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(side_effect=[org, "org_owner", org])
+
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_db] = lambda: mock_db
+
+        patch_target = "app.api.v1.org._service.update_org_details"
+        with patch(patch_target, new=AsyncMock()) as mock_update:
+            mock_update.return_value = MagicMock(org=org)
+            transport = ASGITransport(app=app)
+            async with AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                resp = await client.patch(
+                    "/api/v1/org",
+                    json={
+                        "name": "Updated Org",
+                        "twilio": {
+                            "account_sid": "AC9999999999",
+                            "auth_token": "super-secret-token",
+                        },
+                    },
+                    headers={"Authorization": "Bearer fake"},
+                )
+
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["twilio"]["auth_token_hint"] == "••••7890"
+        assert "super-secret-token" not in resp.text
+
+        called_body = mock_update.await_args.args[2]
+        assert isinstance(called_body, OrgUpdate)
+        assert called_body.twilio is not None
+        assert called_body.twilio.account_sid == "AC9999999999"
+        assert called_body.twilio.auth_token is not None
+        assert (
+            called_body.twilio.auth_token.get_secret_value() == "super-secret-token"
+        )
+
+    @pytest.mark.asyncio
+    async def test_patch_requires_org_owner(self):
+        app = create_app()
+        user = _make_user(role=CampaignRole.ADMIN)
+        org = _make_org()
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(side_effect=[org, "org_admin"])
+
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_db] = lambda: mock_db
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.patch(
+                "/api/v1/org",
+                json={"twilio": {"auth_token": "super-secret-token"}},
+                headers={"Authorization": "Bearer fake"},
+            )
+
+        assert resp.status_code == 403

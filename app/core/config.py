@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from functools import cached_property
+
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
@@ -33,6 +36,11 @@ class Settings(BaseSettings):
     # ZITADEL SPA (public OIDC client for browser)
     zitadel_spa_client_id: str = ""
 
+    # Twilio secret encryption
+    twilio_encryption_current_key_id: str = "dev"
+    twilio_encryption_current_key: str = ""
+    twilio_encryption_keys_json: str = ""
+
     # CORS
     cors_allowed_origins: list[str] = [
         "http://localhost:5173",
@@ -57,10 +65,6 @@ class Settings(BaseSettings):
     import_max_chunks_per_import: int = 4
     import_orphan_threshold_minutes: int = 30
     import_serial_threshold: int = 10000
-
-    # Twilio encryption (org-scoped credential storage)
-    twilio_encryption_keys: dict[str, str] = {}
-    twilio_encryption_current_key_id: str = "primary"
 
     # Observability
     sentry_dsn: str = ""
@@ -95,6 +99,19 @@ class Settings(BaseSettings):
     rate_limit_unauthenticated: str = "60/minute"
     rate_limit_authenticated_per_user: str = "300/minute"
     rate_limit_authenticated_per_ip: str = "600/minute"
+
+    @cached_property
+    def twilio_encryption_keys(self) -> dict[str, str]:
+        """Resolved Twilio encryption keyring keyed by configured key id."""
+        if self.twilio_encryption_keys_json:
+            data = json.loads(self.twilio_encryption_keys_json)
+            if not isinstance(data, dict):
+                raise ValueError("TWILIO_ENCRYPTION_KEYS_JSON must decode to an object")
+            return {str(key): str(value) for key, value in data.items()}
+        if self.twilio_encryption_current_key:
+            key_id = self.twilio_encryption_current_key_id
+            return {key_id: self.twilio_encryption_current_key}
+        return {}
 
 
 settings = Settings()

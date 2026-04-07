@@ -1,5 +1,33 @@
 export type OrgRole = "org_owner" | "org_admin"
 
+export interface TwilioOrgStatus {
+  account_sid: string | null
+  account_sid_configured: boolean
+  account_sid_updated_at: string | null
+  auth_token_configured: boolean
+  auth_token_hint: string | null
+  auth_token_updated_at: string | null
+  ready: boolean
+}
+
+export interface TwilioOrgUpdate {
+  account_sid?: string
+  auth_token?: string
+}
+
+export interface OrgDetail {
+  id: string
+  name: string
+  zitadel_org_id: string
+  created_at: string
+  twilio: TwilioOrgStatus | null
+}
+
+export interface OrgUpdateRequest {
+  name?: string
+  twilio?: TwilioOrgUpdate
+}
+
 export interface OrgCampaign {
   id: string
   name: string

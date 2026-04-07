@@ -52,6 +52,24 @@ class TestOrganizationMemberModel:
         assert expected.issubset(columns), f"Missing columns: {expected - columns}"
 
 
+class TestOrganizationModel:
+    """Tests for Twilio-ready organization fields."""
+
+    def test_has_twilio_config_fields(self):
+        from app.models.organization import Organization
+
+        columns = {c.name for c in Organization.__table__.columns}
+        expected = {
+            "twilio_account_sid",
+            "twilio_auth_token_encrypted",
+            "twilio_auth_token_key_id",
+            "twilio_auth_token_last4",
+            "twilio_account_sid_updated_at",
+            "twilio_auth_token_updated_at",
+        }
+        assert expected.issubset(columns), f"Missing columns: {expected - columns}"
+
+
 class TestOrgRole:
     """Tests for OrgRole StrEnum."""
 
