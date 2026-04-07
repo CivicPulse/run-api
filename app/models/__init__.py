@@ -1,4 +1,5 @@
 from app.models.call_list import CallList, CallListEntry
+from app.models.call_record import CallRecord
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.dnc import DoNotCallEntry
@@ -29,6 +30,7 @@ from app.models.webhook_event import WebhookEvent
 __all__ = [
     "CallList",
     "CallListEntry",
+    "CallRecord",
     "Campaign",
     "CampaignMember",
     "DoNotCallEntry",

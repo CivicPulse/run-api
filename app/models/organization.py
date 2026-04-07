@@ -28,9 +28,7 @@ class Organization(Base):
     )
     name: Mapped[str] = mapped_column(String(255))
     twilio_account_sid: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    twilio_auth_token_encrypted: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    twilio_auth_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     twilio_auth_token_key_id: Mapped[str | None] = mapped_column(
         String(100), nullable=True
     )
@@ -43,6 +41,14 @@ class Organization(Base):
     twilio_auth_token_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    twilio_api_key_sid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    twilio_api_key_secret_encrypted: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    twilio_api_key_secret_key_id: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    twilio_twiml_app_sid: Mapped[str | None] = mapped_column(String(64), nullable=True)
     default_voice_number_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("org_phone_numbers.id", use_alter=True, ondelete="SET NULL"),
         nullable=True,

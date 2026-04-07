@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 
-from sqlalchemy import Enum, ForeignKey, String, func
+from sqlalchemy import Enum, ForeignKey, String, Time, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -56,6 +56,11 @@ class Campaign(Base):
     )
     candidate_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     party_affiliation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    calling_hours_start: Mapped[time] = mapped_column(Time, default=time(9, 0))
+    calling_hours_end: Mapped[time] = mapped_column(Time, default=time(21, 0))
+    calling_hours_timezone: Mapped[str] = mapped_column(
+        String(64), default="America/New_York"
+    )
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
