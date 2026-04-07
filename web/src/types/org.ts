@@ -66,3 +66,18 @@ export interface AddMemberRequest {
   user_id: string
   role: string
 }
+
+export interface OrgPhoneNumber {
+  id: string
+  phone_number: string
+  friendly_name: string | null
+  phone_type: string
+  voice_capable: boolean
+  sms_capable: boolean
+  mms_capable: boolean
+  twilio_sid: string
+  capabilities_synced_at: string | null
+  created_at: string
+  is_default_voice: boolean
+  is_default_sms: boolean
+}
