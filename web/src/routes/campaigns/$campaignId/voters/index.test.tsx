@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import React from "react"
 
@@ -172,5 +172,39 @@ describe("VotersPage", () => {
     expect(screen.getByText(/your session expired while loading voters/i)).toBeInTheDocument()
     expect(screen.getByText(/no voters yet/i)).toBeInTheDocument()
     expect(screen.queryByText("Mary Hoskins")).not.toBeInTheDocument()
+  })
+
+  it("sends lookup through the existing voter search flow and clears it cleanly", async () => {
+    mockUseVoterSearch.mockReturnValue({
+      data: {
+        items: [],
+        pagination: { has_more: false, next_cursor: null },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    renderPage()
+
+    const lookup = screen.getByLabelText(/find voters/i)
+    fireEvent.change(lookup, { target: { value: "Jane" } })
+
+    expect(mockUseVoterSearch).toHaveBeenLastCalledWith(
+      "campaign-b",
+      expect.objectContaining({
+        filters: expect.objectContaining({ search: "Jane" }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /clear search/i }))
+
+    expect(lookup).toHaveValue("")
+    expect(mockUseVoterSearch).toHaveBeenLastCalledWith(
+      "campaign-b",
+      expect.objectContaining({
+        filters: {},
+      }),
+    )
   })
 })

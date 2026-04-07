@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.14 Voter Search & Lookup (Shipped: 2026-04-07)
+
+**Phases completed:** 4 phases, 6 plans
+**Timeline:** 2 days (2026-04-06 → 2026-04-07)
+**Files modified:** 17
+**Git range:** `9c9ac70..WORKTREE`
+**Freshness SLA:** immediate after direct voter/contact edits; within 5 minutes after import completion
+**Performance evidence:** DB-backed 10k-row lookup returned the intended result in about 115.54 ms
+
+**Key accomplishments:**
+
+1. Added free-text lookup to the existing voter search flow without splitting the contract from deterministic filters or stable pagination
+2. Built a campaign-scoped PostgreSQL search surface refreshed from voter, contact, and import write paths
+3. Added ranked cross-field lookup across names, phones, emails, addresses, city, ZIP, and source identifiers with typo tolerance
+4. Shipped a search-first voter page with abort-aware queries, preserved prior data, explicit search states, and richer row-level disambiguation
+5. Verified campaign isolation and production-scale performance with focused backend, frontend, and DB-backed reruns
+
+**Audit:** .planning/milestones/v1.14-MILESTONE-AUDIT.md (status: passed, 15/15 requirements satisfied)
+
+---
+
 ## v1.13 Production Shakedown Remediation (Shipped: 2026-04-06)
 
 **Phases completed:** 6 phases, 18 plans

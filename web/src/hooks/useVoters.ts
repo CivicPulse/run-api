@@ -8,11 +8,12 @@ import type { PaginatedResponse } from "@/types/common"
 export function useVoterSearch(campaignId: string, body: VoterSearchBody) {
   return useQuery({
     queryKey: ["voters", campaignId, "search", body],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api
-        .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: body })
+        .post(`api/v1/campaigns/${campaignId}/voters/search`, { json: body, signal })
         .json<PaginatedResponse<Voter>>(),
     enabled: !!campaignId,
+    placeholderData: (previousData) => previousData,
   })
 }
 

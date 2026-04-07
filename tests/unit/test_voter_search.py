@@ -78,7 +78,30 @@ class TestBuildVoterQuery:
         """build_voter_query with search produces ILIKE on name."""
         q = self._build_query(VoterFilter(search="John Smith"))
         sql = self._compiled_sql(q)
-        assert "ilike" in sql.lower() or "like" in sql.lower()
+        assert "voter_search_records" in sql.lower()
+        assert "like" in sql.lower()
+
+    def test_search_filter_phone_fragment_uses_search_surface(self):
+        """Phone/ZIP fragments flow through the denormalized search contract."""
+        q = self._build_query(VoterFilter(search="415-555"))
+        sql = self._compiled_sql(q)
+        assert "voter_search_records" in sql.lower()
+        assert "phone_digits" in sql.lower()
+
+    def test_search_filter_tokenizes_multi_word_typos(self):
+        """Multi-word lookup adds token-aware fallback for minor typos."""
+        q = self._build_query(VoterFilter(search="Jnae Smith"))
+        sql = self._compiled_sql(q)
+        assert "jnae" in sql.lower()
+        assert "smith" in sql.lower()
+        assert "name_first % " in sql.lower()
+
+    def test_search_filter_normalizes_whitespace(self):
+        """Whitespace-only differences do not change the search contract."""
+        from app.services.voter import _normalize_search_query
+
+        assert _normalize_search_query("  Jane   Doe  ") == "Jane Doe"
+        assert _normalize_search_query("   ") is None
 
     def test_or_logic(self):
         """build_voter_query with logic='OR' produces OR combination."""
@@ -680,6 +703,26 @@ class TestDynamicCursor:
         assert val is None
         assert cid == item.id
 
+    def test_encode_decode_search_cursor_roundtrip(self):
+        """Search cursors roundtrip the stable lookup ordering payload."""
+        from app.services.voter import decode_search_cursor, encode_search_cursor
+
+        voter_id = uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789")
+        cursor = encode_search_cursor(
+            rank=0,
+            penalty=0,
+            last_name="Smith",
+            first_name="Jane",
+            voter_id=voter_id,
+        )
+        rank, penalty, last_name, first_name, cursor_id = decode_search_cursor(cursor)
+
+        assert rank == 0
+        assert penalty == 0
+        assert last_name == "smith"
+        assert first_name == "jane"
+        assert cursor_id == voter_id
+
 
 class TestVoterServiceCRUD:
     """Tests for VoterService CRUD operations."""
@@ -699,6 +742,7 @@ class TestVoterServiceCRUD:
         from app.services.voter import VoterService
 
         service = VoterService()
+        service._search_index.refresh_records = AsyncMock()
         campaign_id = uuid.uuid4()
         voter_id = uuid.uuid4()
         mock_voter = MagicMock(spec=Voter)
@@ -710,6 +754,97 @@ class TestVoterServiceCRUD:
 
         result = await service.get_voter(mock_db, campaign_id, voter_id)
         assert result.id == voter_id
+
+    async def test_search_voters_uses_search_cursor_for_default_lookup_order(
+        self, mock_db
+    ):
+        """Default lookup ordering emits the stable search cursor payload."""
+        from app.services.voter import VoterService, decode_search_cursor
+
+        service = VoterService()
+        campaign_id = uuid.uuid4()
+
+        first = MagicMock()
+        first.id = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+        first.first_name = "Jane"
+        first.last_name = "Smith"
+        first.campaign_id = campaign_id
+        first.source_type = "manual"
+        first.source_id = None
+        first.middle_name = None
+        first.suffix = None
+        first.date_of_birth = None
+        first.gender = None
+        first.registration_line1 = None
+        first.registration_line2 = None
+        first.registration_city = None
+        first.registration_state = None
+        first.registration_zip = None
+        first.registration_zip4 = None
+        first.registration_county = None
+        first.registration_apartment_type = None
+        first.mailing_line1 = None
+        first.mailing_line2 = None
+        first.mailing_city = None
+        first.mailing_state = None
+        first.mailing_zip = None
+        first.mailing_zip4 = None
+        first.mailing_country = None
+        first.mailing_type = None
+        first.party = None
+        first.precinct = None
+        first.congressional_district = None
+        first.state_senate_district = None
+        first.state_house_district = None
+        first.registration_date = None
+        first.voting_history = None
+        first.propensity_general = None
+        first.propensity_primary = None
+        first.propensity_combined = None
+        first.ethnicity = None
+        first.age = None
+        first.spoken_language = None
+        first.marital_status = None
+        first.military_status = None
+        first.party_change_indicator = None
+        first.cell_phone_confidence = None
+        first.latitude = None
+        first.longitude = None
+        first.household_id = None
+        first.household_party_registration = None
+        first.household_size = None
+        first.family_id = None
+        first.extra_data = None
+        first.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        first.updated_at = datetime(2026, 1, 1, tzinfo=UTC)
+
+        second = MagicMock()
+        second.id = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+        second.first_name = "Janet"
+        second.last_name = "Smith"
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            (first, "smith", "jane", 0, 0),
+            (second, "smith", "janet", 1, 0),
+        ]
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = await service.search_voters(
+            mock_db,
+            campaign_id,
+            VoterFilter(search="  Jane   Smith "),
+            limit=1,
+        )
+
+        rank, penalty, last_name, first_name, cursor_id = decode_search_cursor(
+            response.pagination.next_cursor
+        )
+        assert rank == 0
+        assert penalty == 0
+        assert last_name == "smith"
+        assert first_name == "jane"
+        assert cursor_id == first.id
 
     async def test_get_voter_raises_when_not_found(self, mock_db):
         """get_voter raises ValueError when voter not found."""
@@ -729,6 +864,7 @@ class TestVoterServiceCRUD:
         from app.services.voter import VoterService
 
         service = VoterService()
+        service._search_index.refresh_records = AsyncMock()
         data = MagicMock()
         data.model_dump.return_value = {
             "first_name": "John",
@@ -742,10 +878,10 @@ class TestVoterServiceCRUD:
         await service.create_voter(mock_db, campaign_id, data)
         mock_db.add.assert_called_once()
         mock_db.flush.assert_awaited_once()
-        mock_db.execute.assert_awaited_once()
-        stmt, params = mock_db.execute.await_args.args
+        stmt, params = mock_db.execute.await_args_list[0].args
         assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(stmt)
         assert params["voter_id"]
+        service._search_index.refresh_records.assert_awaited_once()
         mock_db.commit.assert_awaited_once()
 
     async def test_update_voter_syncs_geom_after_coordinate_change(self, mock_db):
@@ -753,6 +889,7 @@ class TestVoterServiceCRUD:
         from app.services.voter import VoterService
 
         service = VoterService()
+        service._search_index.refresh_records = AsyncMock()
         campaign_id = uuid.uuid4()
         voter_id = uuid.uuid4()
         mock_voter = MagicMock(spec=Voter)
@@ -767,8 +904,8 @@ class TestVoterServiceCRUD:
 
         assert mock_voter.latitude == 32.84
         assert mock_voter.longitude == -83.63
-        mock_db.execute.assert_awaited_once()
-        stmt, params = mock_db.execute.await_args.args
+        stmt, params = mock_db.execute.await_args_list[0].args
         assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(stmt)
         assert params == {"voter_id": voter_id}
+        service._search_index.refresh_records.assert_awaited_once_with(mock_db, [voter_id])
         mock_db.commit.assert_awaited_once()

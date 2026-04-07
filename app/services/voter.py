@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import re
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Select, and_, delete, exists, func, or_, select, text
+from sqlalchemy import (
+    Integer,
+    Select,
+    and_,
+    case,
+    cast,
+    delete,
+    exists,
+    false,
+    func,
+    or_,
+    select,
+    text,
+    tuple_,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import InvalidCursorError
@@ -18,10 +34,12 @@ from app.models.voter import Voter, VoterTag, VoterTagMember
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import VoterInteraction
 from app.models.voter_list import VoterListMember
+from app.models.voter_search import VoterSearchRecord
 from app.models.walk_list import WalkListEntry
 from app.schemas.common import PaginatedResponse, PaginationResponse
 from app.schemas.voter import VoterResponse
 from app.schemas.voter_filter import VoterFilter
+from app.services.voter_search import VoterSearchIndexService
 
 if TYPE_CHECKING:
     pass
@@ -41,6 +59,225 @@ _INT_SORT_COLUMNS = frozenset(
 
 # Columns that are stored as datetimes and need fromisoformat() parsing.
 _DATETIME_SORT_COLUMNS = frozenset({"created_at", "updated_at"})
+_SEARCH_CURSOR_MODE = "search"
+_SEARCH_CURSOR_VERSION = 1
+_PHONE_DIGIT_RE = re.compile(r"\D+")
+
+
+def _normalize_search_query(query: str | None) -> str | None:
+    """Normalize free-text lookup terms for consistent filtering and ranking."""
+    if query is None:
+        return None
+    normalized = " ".join(query.split())
+    return normalized or None
+
+
+def _normalize_lookup_name(value: str | None) -> str:
+    """Normalize cursor text components for stable ordering."""
+    if value is None:
+        return ""
+    return value.strip().lower()
+
+
+def _normalize_search_digits(query: str | None) -> str | None:
+    """Normalize numeric lookup fragments for phone/ZIP matching."""
+    if query is None:
+        return None
+    digits = _PHONE_DIGIT_RE.sub("", query)
+    return digits or None
+
+
+def _tokenize_search_query(query: str | None) -> list[str]:
+    """Split normalized lookup text into lowercase word tokens."""
+    if query is None:
+        return []
+    return [token for token in query.lower().split(" ") if token]
+
+
+def _build_search_filter_expr(normalized_search: str, search_digits: str | None):
+    """Return the lookup filter against the denormalized search surface."""
+    lookup_key = normalized_search.lower()
+    contains_term = f"%{lookup_key}%"
+    conditions = [
+        VoterSearchRecord.name_full.like(contains_term),
+        VoterSearchRecord.name_first.like(contains_term),
+        VoterSearchRecord.name_last.like(contains_term),
+        VoterSearchRecord.city.like(contains_term),
+        VoterSearchRecord.zip_code.like(contains_term),
+        VoterSearchRecord.address_text.like(contains_term),
+        VoterSearchRecord.email_values.like(contains_term),
+        VoterSearchRecord.source_ids.like(contains_term),
+        VoterSearchRecord.document.op("%")(lookup_key),
+    ]
+    if search_digits:
+        conditions.extend(
+            [
+                VoterSearchRecord.phone_digits.like(f"%{search_digits}%"),
+                VoterSearchRecord.zip_code.like(f"%{search_digits}%"),
+            ]
+        )
+
+    token_filters = []
+    for token in _tokenize_search_query(normalized_search):
+        token_contains = f"%{token}%"
+        token_conditions = [
+            VoterSearchRecord.name_full.like(token_contains),
+            VoterSearchRecord.name_first.like(token_contains),
+            VoterSearchRecord.name_last.like(token_contains),
+            VoterSearchRecord.city.like(token_contains),
+            VoterSearchRecord.address_text.like(token_contains),
+            VoterSearchRecord.email_values.like(token_contains),
+            VoterSearchRecord.source_ids.like(token_contains),
+        ]
+        if len(token) >= 3:
+            token_conditions.extend(
+                [
+                    VoterSearchRecord.name_full.op("%")(token),
+                    VoterSearchRecord.name_first.op("%")(token),
+                    VoterSearchRecord.name_last.op("%")(token),
+                    VoterSearchRecord.document.op("%")(token),
+                    func.similarity(VoterSearchRecord.name_full, token) >= 0.1,
+                    func.similarity(VoterSearchRecord.name_first, token) >= 0.1,
+                    func.similarity(VoterSearchRecord.name_last, token) >= 0.1,
+                ]
+            )
+        token_filters.append(or_(*token_conditions))
+
+    if len(token_filters) > 1:
+        conditions.append(and_(*token_filters))
+    return or_(*conditions)
+
+
+def _build_search_rank_exprs(normalized_search: str, search_digits: str | None):
+    """Return stable lookup rank expressions for cross-field voter search."""
+    lookup_key = normalized_search.lower()
+    prefix_term = f"{lookup_key}%"
+    contains_term = f"%{lookup_key}%"
+
+    exact_match = or_(
+        VoterSearchRecord.name_full == lookup_key,
+        VoterSearchRecord.name_first == lookup_key,
+        VoterSearchRecord.name_last == lookup_key,
+        VoterSearchRecord.email_values.like(contains_term),
+        VoterSearchRecord.source_ids.like(contains_term),
+    )
+    prefix_match = or_(
+        VoterSearchRecord.name_full.like(prefix_term),
+        VoterSearchRecord.name_first.like(prefix_term),
+        VoterSearchRecord.name_last.like(prefix_term),
+        VoterSearchRecord.city.like(prefix_term),
+        VoterSearchRecord.zip_code.like(prefix_term),
+        VoterSearchRecord.address_text.like(prefix_term),
+        VoterSearchRecord.email_values.like(prefix_term),
+        VoterSearchRecord.source_ids.like(prefix_term),
+    )
+    contains_match = or_(
+        VoterSearchRecord.name_full.like(contains_term),
+        VoterSearchRecord.name_first.like(contains_term),
+        VoterSearchRecord.name_last.like(contains_term),
+        VoterSearchRecord.city.like(contains_term),
+        VoterSearchRecord.zip_code.like(contains_term),
+        VoterSearchRecord.address_text.like(contains_term),
+        VoterSearchRecord.email_values.like(contains_term),
+        VoterSearchRecord.source_ids.like(contains_term),
+    )
+    fuzzy_match = or_(
+        VoterSearchRecord.name_full.op("%")(lookup_key),
+        VoterSearchRecord.address_text.op("%")(lookup_key),
+        VoterSearchRecord.email_values.op("%")(lookup_key),
+        VoterSearchRecord.source_ids.op("%")(lookup_key),
+        VoterSearchRecord.document.op("%")(lookup_key),
+    )
+
+    if search_digits:
+        digit_contains = VoterSearchRecord.phone_digits.like(f"%{search_digits}%")
+        exact_match = or_(
+            exact_match,
+            digit_contains if len(search_digits) >= 7 else false(),
+            VoterSearchRecord.zip_code == search_digits,
+        )
+        prefix_match = or_(
+            prefix_match,
+            VoterSearchRecord.phone_digits.like(f"{search_digits}%"),
+            VoterSearchRecord.zip_code.like(f"{search_digits}%"),
+        )
+        contains_match = or_(
+            contains_match,
+            digit_contains,
+            VoterSearchRecord.zip_code.like(f"%{search_digits}%"),
+        )
+
+    best_similarity = func.greatest(
+        func.similarity(VoterSearchRecord.name_full, lookup_key),
+        func.similarity(VoterSearchRecord.address_text, lookup_key),
+        func.similarity(VoterSearchRecord.email_values, lookup_key),
+        func.similarity(VoterSearchRecord.source_ids, lookup_key),
+        func.similarity(VoterSearchRecord.document, lookup_key),
+    )
+    rank_expr = case(
+        (exact_match, 0),
+        (prefix_match, 1),
+        (contains_match, 2),
+        (fuzzy_match, 3),
+        else_=4,
+    )
+    penalty_expr = case(
+        (rank_expr == 0, 0),
+        (rank_expr == 1, 0),
+        (rank_expr == 2, 0),
+        else_=1000 - cast(func.round(best_similarity * 1000), Integer),
+    )
+    return rank_expr, penalty_expr
+
+
+def encode_search_cursor(
+    *,
+    rank: int,
+    penalty: int,
+    last_name: str,
+    first_name: str,
+    voter_id: uuid.UUID,
+) -> str:
+    """Encode a stable lookup cursor for the denormalized search order."""
+    payload = {
+        "v": _SEARCH_CURSOR_VERSION,
+        "mode": _SEARCH_CURSOR_MODE,
+        "rank": rank,
+        "penalty": penalty,
+        "last_name": _normalize_lookup_name(last_name),
+        "first_name": _normalize_lookup_name(first_name),
+        "id": str(voter_id),
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    ).decode("utf-8")
+    return encoded.rstrip("=")
+
+
+def decode_search_cursor(cursor: str) -> tuple[int, int, str, str, uuid.UUID]:
+    """Decode a stable lookup cursor for the denormalized search order."""
+    try:
+        padding = "=" * (-len(cursor) % 4)
+        payload = json.loads(
+            base64.urlsafe_b64decode((cursor + padding).encode("utf-8")).decode(
+                "utf-8"
+            )
+        )
+        if (
+            payload.get("mode") != _SEARCH_CURSOR_MODE
+            or payload.get("v") != _SEARCH_CURSOR_VERSION
+        ):
+            raise ValueError("unexpected cursor mode")
+
+        return (
+            int(payload["rank"]),
+            int(payload.get("penalty", 0)),
+            str(payload.get("last_name", "")),
+            str(payload.get("first_name", "")),
+            uuid.UUID(payload["id"]),
+        )
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise InvalidCursorError() from exc
 
 
 def encode_cursor(item: object, sort_by: str | None) -> str:
@@ -271,14 +508,18 @@ def build_voter_query(campaign_id: uuid.UUID, filters: VoterFilter) -> Select:
             conditions.append(~exists(phone_subquery))
 
     # Free-text search on name
-    if filters.search is not None:
-        search_term = f"%{filters.search}%"
-        name_expr = func.concat(
-            func.coalesce(Voter.first_name, ""),
-            " ",
-            func.coalesce(Voter.last_name, ""),
+    normalized_search = _normalize_search_query(filters.search)
+    if normalized_search is not None:
+        search_digits = _normalize_search_digits(normalized_search)
+        search_subquery = (
+            select(VoterSearchRecord.voter_id)
+            .where(
+                VoterSearchRecord.campaign_id == campaign_id,
+                _build_search_filter_expr(normalized_search, search_digits),
+            )
+            .correlate(Voter)
         )
-        conditions.append(name_expr.ilike(search_term))
+        conditions.append(Voter.id.in_(search_subquery))
 
     # Combine conditions
     if conditions:
@@ -292,6 +533,9 @@ def build_voter_query(campaign_id: uuid.UUID, filters: VoterFilter) -> Select:
 
 class VoterService:
     """Voter CRUD operations, search, and tag management."""
+
+    def __init__(self) -> None:
+        self._search_index = VoterSearchIndexService()
 
     async def search_voters(
         self,
@@ -316,53 +560,131 @@ class VoterService:
         Returns:
             PaginatedResponse with VoterResponse items.
         """
+        normalized_search = _normalize_search_query(filters.search)
+        search_digits = _normalize_search_digits(normalized_search)
         query = build_voter_query(campaign_id, filters)
+        use_lookup_order = normalized_search is not None and sort_by is None
 
-        # Dynamic sort column with tiebreaker on id
-        sort_col = getattr(Voter, sort_by) if sort_by else Voter.created_at
-        is_desc = (sort_dir or "desc") == "desc"
-
-        if is_desc:
-            query = query.order_by(sort_col.desc(), Voter.id.desc())
+        if use_lookup_order:
+            query = query.join(
+                VoterSearchRecord,
+                VoterSearchRecord.voter_id == Voter.id,
+            )
+            lookup_rank, lookup_penalty = _build_search_rank_exprs(
+                normalized_search,
+                search_digits,
+            )
+            query = query.order_by(
+                lookup_rank.asc(),
+                lookup_penalty.asc(),
+                VoterSearchRecord.name_last.asc(),
+                VoterSearchRecord.name_first.asc(),
+                Voter.id.asc(),
+            )
+            query = query.add_columns(
+                VoterSearchRecord.name_last.label("search_name_last"),
+                VoterSearchRecord.name_first.label("search_name_first"),
+                lookup_rank.label("search_rank"),
+                lookup_penalty.label("search_penalty"),
+            )
         else:
-            query = query.order_by(sort_col.asc().nullslast(), Voter.id.asc())
+            # Dynamic sort column with tiebreaker on id
+            sort_col = getattr(Voter, sort_by) if sort_by else Voter.created_at
+            is_desc = (sort_dir or "desc") == "desc"
+
+            if is_desc:
+                query = query.order_by(sort_col.desc(), Voter.id.desc())
+            else:
+                query = query.order_by(sort_col.asc().nullslast(), Voter.id.asc())
 
         # Cursor-based pagination with dynamic column
         if cursor:
-            cursor_val, cursor_id = decode_cursor(cursor, sort_by)
-
-            if cursor_val is None:
-                # NULL sort value: only compare by id among NULL rows
-                if is_desc:
-                    query = query.where(
-                        (sort_col.is_not(None))
-                        | ((sort_col.is_(None)) & (Voter.id < cursor_id))
+            if use_lookup_order:
+                (
+                    cursor_rank,
+                    cursor_penalty,
+                    cursor_last_name,
+                    cursor_first_name,
+                    cursor_id,
+                ) = (
+                    decode_search_cursor(cursor)
+                )
+                lookup_rank, lookup_penalty = _build_search_rank_exprs(
+                    normalized_search,
+                    search_digits,
+                )
+                query = query.where(
+                    tuple_(
+                        lookup_rank,
+                        lookup_penalty,
+                        VoterSearchRecord.name_last,
+                        VoterSearchRecord.name_first,
+                        Voter.id,
                     )
-                else:
-                    query = query.where((sort_col.is_(None)) & (Voter.id > cursor_id))
+                    > tuple_(
+                        cursor_rank,
+                        cursor_penalty,
+                        cursor_last_name,
+                        cursor_first_name,
+                        cursor_id,
+                    )
+                )
             else:
-                if is_desc:
-                    query = query.where(
-                        (sort_col < cursor_val)
-                        | ((sort_col == cursor_val) & (Voter.id < cursor_id))
-                    )
+                cursor_val, cursor_id = decode_cursor(cursor, sort_by)
+
+                if cursor_val is None:
+                    # NULL sort value: only compare by id among NULL rows
+                    if is_desc:
+                        query = query.where(
+                            (sort_col.is_not(None))
+                            | ((sort_col.is_(None)) & (Voter.id < cursor_id))
+                        )
+                    else:
+                        query = query.where(
+                            (sort_col.is_(None)) & (Voter.id > cursor_id)
+                        )
                 else:
-                    query = query.where(
-                        (sort_col > cursor_val)
-                        | ((sort_col == cursor_val) & (Voter.id > cursor_id))
-                    )
+                    if is_desc:
+                        query = query.where(
+                            (sort_col < cursor_val)
+                            | ((sort_col == cursor_val) & (Voter.id < cursor_id))
+                        )
+                    else:
+                        query = query.where(
+                            (sort_col > cursor_val)
+                            | ((sort_col == cursor_val) & (Voter.id > cursor_id))
+                        )
 
         query = query.limit(limit + 1)
         result = await db.execute(query)
-        items = list(result.scalars().all())
+        if use_lookup_order:
+            rows = list(result.all())
+            items = [row[0] for row in rows]
+        else:
+            items = list(result.scalars().all())
+            rows = []
 
         has_more = len(items) > limit
         if has_more:
             items = items[:limit]
+            if use_lookup_order:
+                rows = rows[:limit]
 
         next_cursor = None
         if has_more and items:
-            next_cursor = encode_cursor(items[-1], sort_by)
+            if use_lookup_order:
+                _, cursor_last_name, cursor_first_name, cursor_rank, cursor_penalty = rows[
+                    -1
+                ]
+                next_cursor = encode_search_cursor(
+                    rank=cursor_rank,
+                    penalty=cursor_penalty,
+                    last_name=cursor_last_name,
+                    first_name=cursor_first_name,
+                    voter_id=items[-1].id,
+                )
+            else:
+                next_cursor = encode_cursor(items[-1], sort_by)
 
         return PaginatedResponse[VoterResponse](
             items=[VoterResponse.model_validate(v) for v in items],
@@ -463,6 +785,7 @@ class VoterService:
         await db.flush()
         stmt, params = _sync_voter_geom_stmt(voter.id)
         await db.execute(stmt, params)
+        await self._search_index.refresh_records(db, [voter.id])
         await db.commit()
         await db.refresh(voter)
         return voter
@@ -494,6 +817,7 @@ class VoterService:
         voter.updated_at = utcnow()
         stmt, params = _sync_voter_geom_stmt(voter.id)
         await db.execute(stmt, params)
+        await self._search_index.refresh_records(db, [voter.id])
         await db.commit()
         await db.refresh(voter)
         return voter
@@ -534,6 +858,7 @@ class VoterService:
                 delete(child_model).where(child_model.voter_id == voter_id)
             )
 
+        await self._search_index.delete_records(db, [voter_id])
         await db.delete(voter)
         await db.flush()
 
