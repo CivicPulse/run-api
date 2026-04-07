@@ -151,9 +151,17 @@ The platform is production-ready and launch-cleared. v1.13 closed 6 phases (18 p
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
-## Next Milestone Goals
+## Current Milestone: v1.14 Voter Search & Lookup
 
-(Not yet defined — run `/gsd:new-milestone` to plan)
+**Goal:** Make voter lookup the default workflow on the voter page by adding a broad free-text search that helps users find the right voter quickly without building filters first.
+
+**Target features:**
+- Free-text search box on the voter page
+- Search across useful voter-record fields, not just name
+- Search-first experience, with filters as optional refinement after the initial lookup
+- Partial-match support
+- Ranked results so the most likely voter appears near the top
+- Typo tolerance
 
 ## Context
 
@@ -215,4 +223,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after v1.13 Production Shakedown Remediation milestone shipped*
+*Last updated: 2026-04-06 after v1.14 Voter Search & Lookup milestone started*
