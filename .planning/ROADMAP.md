@@ -165,7 +165,7 @@ See: `.planning/milestones/v1.14-ROADMAP.md` for full phase details.
 - [x] **Phase 88: Org Twilio Credentials & Encryption Foundation** - Establish encrypted org-scoped Twilio configuration, secret-handling guardrails, and the initial settings surface without exposing credentials. (completed 2026-04-07)
 - [x] **Phase 89: Phone Number Inventory & Provisioning** - Let org admins register BYO Twilio numbers, inspect capability metadata, and manage default voice and SMS numbers. (completed 2026-04-07)
 - [x] **Phase 90: Webhook Security & Routing Infrastructure** - Add Twilio webhook routes, public-URL signature validation, idempotent callback handling, and org-safe routing for future voice and SMS events. (completed 2026-04-07)
-- [ ] **Phase 91: Browser Voice Calling** - Replace configured phone-bank `tel:` flows with Twilio Voice SDK click-to-call while preserving fallback behavior and call logging.
+- [x] **Phase 91: Browser Voice Calling** - Replace configured phone-bank `tel:` flows with Twilio Voice SDK click-to-call while preserving fallback behavior and call logging. (completed 2026-04-07)
 - [ ] **Phase 92: Two-Way SMS & Opt-Out Handling** - Add individual and bulk SMS sends, threaded reply inbox behavior, and STOP/START unsubscribe enforcement.
 - [ ] **Phase 93: Spend Controls & Communication Telemetry** - Surface Twilio spend, enforce soft budgets, and persist billable communication metadata for later reporting.
 - [ ] **Phase 94: Twilio Lookup Validation** - Add cached phone-validation intelligence to contact flows so staff can tell which numbers are SMS-capable and trustworthy.
@@ -225,9 +225,9 @@ Plans:
   3. Call logging captures status, timing, and outcome while enforcing DNC and calling-hours guardrails before dialing.
 **Plans**: 3 plans
 Plans:
-- [ ] 91-01-PLAN.md — Data foundation: call_records table, campaign calling hours, org API key columns, VoiceService
-- [ ] 91-02-PLAN.md — API layer: voice token endpoint, TwiML handler, webhook status processing
-- [ ] 91-03-PLAN.md — Frontend: Twilio Voice SDK integration, inline call UI, compliance banners
+- [x] 91-01-PLAN.md — Data foundation: call_records table, campaign calling hours, org API key columns, VoiceService
+- [x] 91-02-PLAN.md — API layer: voice token endpoint, TwiML handler, webhook status processing
+- [x] 91-03-PLAN.md — Frontend: Twilio Voice SDK integration, inline call UI, compliance banners
 **UI hint**: yes
 
 ### Phase 92: Two-Way SMS & Opt-Out Handling
