@@ -1,4 +1,7 @@
-"""Unit tests for Twilio webhook service — signature validation, org resolution, idempotency."""
+"""Unit tests for Twilio webhook service.
+
+Covers signature validation, org resolution, and idempotency.
+"""
 
 from __future__ import annotations
 
@@ -8,13 +11,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.models.organization import Organization
 from app.models.org_phone_number import OrgPhoneNumber
-
+from app.models.organization import Organization
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_request(
     path: str = "/api/v1/webhooks/twilio/voice/status",
@@ -170,8 +173,8 @@ class TestOrgResolution:
         phone_record.org_id = org_id
 
         db = AsyncMock()
-        # scalars().first() returns the phone record
-        db.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=phone_record)))
+        scalars_result = MagicMock(first=MagicMock(return_value=phone_record))
+        db.scalars = AsyncMock(return_value=scalars_result)
         db.get = AsyncMock(return_value=org)
 
         request = _make_request(form_data={"To": "+15551234567"})
@@ -188,7 +191,8 @@ class TestOrgResolution:
         phone_record.org_id = org_id
 
         db = AsyncMock()
-        db.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=phone_record)))
+        scalars_result = MagicMock(first=MagicMock(return_value=phone_record))
+        db.scalars = AsyncMock(return_value=scalars_result)
         db.get = AsyncMock(return_value=org)
 
         request = _make_request(form_data={"Called": "+15551234567"})
@@ -199,7 +203,8 @@ class TestOrgResolution:
         from app.services.twilio_webhook import resolve_org_from_phone
 
         db = AsyncMock()
-        db.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=None)))
+        scalars_result = MagicMock(first=MagicMock(return_value=None))
+        db.scalars = AsyncMock(return_value=scalars_result)
 
         request = _make_request(form_data={"To": "+10000000000"})
         with pytest.raises(HTTPException) as exc_info:
