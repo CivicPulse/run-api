@@ -1,4 +1,8 @@
-"""Unit tests for voice API endpoints — token, TwiML, capability, compliance."""
+"""Unit tests for voice API endpoints -- token, TwiML, capability, compliance.
+
+Tests endpoint handler functions directly with mocked dependencies,
+bypassing FastAPI dependency injection for unit-level isolation.
+"""
 
 from __future__ import annotations
 
@@ -7,17 +11,20 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
+from app.core.rate_limit import limiter
 from app.schemas.voice import (
     CallingHoursCheck,
     DNCCheckResult,
     VoiceCapabilityResponse,
+    VoiceTokenResponse,
 )
 
+# Disable rate limiter for unit tests
+limiter.enabled = False
+
 # ---------------------------------------------------------------------------
-# Fixtures
+# Constants
 # ---------------------------------------------------------------------------
 
 CAMPAIGN_ID = uuid.uuid4()
@@ -55,6 +62,9 @@ def _mock_user():
         id=USER_ID,
         org_id="org-zitadel-123",
         sub=USER_ID,
+        role="volunteer",
+        display_name="Test User",
+        email="test@example.com",
     )
 
 
@@ -65,16 +75,13 @@ def _mock_campaign():
     )
 
 
-@pytest.fixture()
-def app_client():
-    """Build a test app with voice routes and mocked dependencies."""
-    from app.api.v1 import voice
-
-    app = FastAPI()
-    app.include_router(voice.campaign_router, prefix="/api/v1/campaigns")
-    app.include_router(voice.twiml_router, prefix="/api/v1/voice")
-
-    return TestClient(app)
+def _mock_request():
+    """Build a minimal mock Request for rate limiter."""
+    req = MagicMock()
+    req.client.host = "127.0.0.1"
+    req.headers = {}
+    req.state = MagicMock()
+    return req
 
 
 # ---------------------------------------------------------------------------
@@ -82,20 +89,16 @@ def app_client():
 # ---------------------------------------------------------------------------
 
 
-def test_voice_token_returns_200_when_configured(app_client):
-    """POST /campaigns/{id}/voice/token returns 200 with token."""
+@pytest.mark.asyncio
+async def test_voice_token_returns_200_when_configured():
+    """generate_voice_token endpoint returns VoiceTokenResponse."""
+    from app.api.v1.voice import generate_voice_token
+
     mock_db = AsyncMock()
     mock_org = _make_org(configured=True)
     mock_campaign = _mock_campaign()
 
     with (
-        patch(
-            "app.api.v1.voice.require_role",
-            return_value=lambda: _mock_user(),
-        ),
-        patch(
-            "app.api.v1.voice.get_campaign_db",
-        ) as mock_get_db,
         patch(
             "app.api.v1.voice._voice_service.generate_voice_token",
             return_value="fake.jwt.token",
@@ -106,14 +109,15 @@ def test_voice_token_returns_200_when_configured(app_client):
             return_value=(mock_campaign, mock_org),
         ),
     ):
-        mock_get_db.return_value = mock_db
+        result = await generate_voice_token(
+            request=_mock_request(),
+            campaign_id=CAMPAIGN_ID,
+            user=_mock_user(),
+            db=mock_db,
+        )
 
-        resp = app_client.post(f"/api/v1/campaigns/{CAMPAIGN_ID}/voice/token")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "token" in data
-    assert data["token"] == "fake.jwt.token"
+    assert isinstance(result, VoiceTokenResponse)
+    assert result.token == "fake.jwt.token"
 
 
 # ---------------------------------------------------------------------------
@@ -121,8 +125,12 @@ def test_voice_token_returns_200_when_configured(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_voice_token_returns_404_when_unconfigured(app_client):
-    """POST /campaigns/{id}/voice/token returns 404 when not configured."""
+@pytest.mark.asyncio
+async def test_voice_token_returns_404_when_unconfigured():
+    """generate_voice_token raises 404 when org not configured."""
+    from fastapi import HTTPException
+
+    from app.api.v1.voice import generate_voice_token
     from app.services.twilio_config import TwilioConfigError
 
     mock_db = AsyncMock()
@@ -130,11 +138,6 @@ def test_voice_token_returns_404_when_unconfigured(app_client):
     mock_org = _make_org(configured=False)
 
     with (
-        patch(
-            "app.api.v1.voice.require_role",
-            return_value=lambda: _mock_user(),
-        ),
-        patch("app.api.v1.voice.get_campaign_db") as mock_get_db,
         patch(
             "app.api.v1.voice._voice_service.generate_voice_token",
             side_effect=TwilioConfigError("Not configured"),
@@ -144,13 +147,17 @@ def test_voice_token_returns_404_when_unconfigured(app_client):
             new_callable=AsyncMock,
             return_value=(mock_campaign, mock_org),
         ),
+        pytest.raises(HTTPException) as exc_info,
     ):
-        mock_get_db.return_value = mock_db
+        await generate_voice_token(
+            request=_mock_request(),
+            campaign_id=CAMPAIGN_ID,
+            user=_mock_user(),
+            db=mock_db,
+        )
 
-        resp = app_client.post(f"/api/v1/campaigns/{CAMPAIGN_ID}/voice/token")
-
-    assert resp.status_code == 404
-    assert "not configured" in resp.json()["detail"].lower()
+    assert exc_info.value.status_code == 404
+    assert "not configured" in exc_info.value.detail.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -158,18 +165,16 @@ def test_voice_token_returns_404_when_unconfigured(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_voice_capability_returns_available(app_client):
-    """GET /campaigns/{id}/voice/capability returns browser_call_available."""
+@pytest.mark.asyncio
+async def test_voice_capability_returns_available():
+    """check_voice_capability returns VoiceCapabilityResponse."""
+    from app.api.v1.voice import check_voice_capability
+
     mock_db = AsyncMock()
     mock_campaign = _mock_campaign()
     mock_org = _make_org(configured=True)
 
     with (
-        patch(
-            "app.api.v1.voice.require_role",
-            return_value=lambda: _mock_user(),
-        ),
-        patch("app.api.v1.voice.get_campaign_db") as mock_get_db,
         patch(
             "app.api.v1.voice._voice_service.check_voice_capability",
             new_callable=AsyncMock,
@@ -183,13 +188,14 @@ def test_voice_capability_returns_available(app_client):
             return_value=(mock_campaign, mock_org),
         ),
     ):
-        mock_get_db.return_value = mock_db
+        result = await check_voice_capability(
+            request=_mock_request(),
+            campaign_id=CAMPAIGN_ID,
+            user=_mock_user(),
+            db=mock_db,
+        )
 
-        resp = app_client.get(f"/api/v1/campaigns/{CAMPAIGN_ID}/voice/capability")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["browser_call_available"] is True
+    assert result.browser_call_available is True
 
 
 # ---------------------------------------------------------------------------
@@ -197,21 +203,31 @@ def test_voice_capability_returns_available(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_twiml_returns_dial_xml_when_to_provided(app_client):
-    """POST /voice/twiml returns TwiML XML with Dial element."""
+@pytest.mark.asyncio
+async def test_twiml_returns_dial_xml_when_to_provided():
+    """twiml_voice_handler returns TwiML XML with Dial element."""
+    from app.api.v1.voice import twiml_voice_handler
+
     mock_db = AsyncMock()
     mock_org = _make_org(configured=True)
     mock_campaign = _mock_campaign()
 
-    # Mock the phone number lookup for caller ID
-    mock_phone = SimpleNamespace(phone_number="+15551111111")
+    # Build a mock request with form data
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+
+    async def _form():
+        return {
+            "To": "+15552222222",
+            "From": "client:user_abc_123",
+            "CallSid": "CA12345",
+            "CampaignId": str(CAMPAIGN_ID),
+        }
+
+    request.form = _form
 
     with (
-        patch(
-            "app.api.v1.voice.verify_twilio_signature",
-            return_value=mock_org,
-        ),
-        patch("app.api.v1.voice.get_db") as mock_get_db_dep,
         patch(
             "app.api.v1.voice._resolve_twiml_context",
             new_callable=AsyncMock,
@@ -236,21 +252,11 @@ def test_twiml_returns_dial_xml_when_to_provided(app_client):
             return_value="+15551111111",
         ),
     ):
-        mock_get_db_dep.return_value = mock_db
+        result = await twiml_voice_handler(request=request, db=mock_db)
 
-        resp = app_client.post(
-            "/api/v1/voice/twiml",
-            data={
-                "To": "+15552222222",
-                "From": "client:user_abc_123",
-                "CallSid": "CA12345",
-                "CampaignId": str(CAMPAIGN_ID),
-            },
-        )
-
-    assert resp.status_code == 200
-    assert "text/xml" in resp.headers.get("content-type", "")
-    body = resp.text
+    assert result.status_code == 200
+    assert "text/xml" in result.media_type
+    body = result.body.decode()
     assert "<Dial" in body
     assert "+15552222222" in body
 
@@ -260,31 +266,29 @@ def test_twiml_returns_dial_xml_when_to_provided(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_twiml_returns_hangup_when_no_to(app_client):
-    """POST /voice/twiml returns hangup TwiML when To param missing."""
+@pytest.mark.asyncio
+async def test_twiml_returns_hangup_when_no_to():
+    """twiml_voice_handler returns hangup TwiML when To param missing."""
+    from app.api.v1.voice import twiml_voice_handler
+
     mock_db = AsyncMock()
-    mock_org = _make_org(configured=True)
 
-    with (
-        patch(
-            "app.api.v1.voice.verify_twilio_signature",
-            return_value=mock_org,
-        ),
-        patch("app.api.v1.voice.get_db") as mock_get_db_dep,
-    ):
-        mock_get_db_dep.return_value = mock_db
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
 
-        resp = app_client.post(
-            "/api/v1/voice/twiml",
-            data={
-                "From": "client:user_abc_123",
-                "CallSid": "CA12345",
-            },
-        )
+    async def _form():
+        return {
+            "From": "client:user_abc_123",
+            "CallSid": "CA12345",
+        }
 
-    assert resp.status_code == 200
-    assert "text/xml" in resp.headers.get("content-type", "")
-    body = resp.text
+    request.form = _form
+
+    result = await twiml_voice_handler(request=request, db=mock_db)
+
+    assert result.status_code == 200
+    body = result.body.decode()
     assert "<Hangup" in body or "<Say" in body
 
 
@@ -293,18 +297,30 @@ def test_twiml_returns_hangup_when_no_to(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_twiml_rejects_dnc_number(app_client):
-    """POST /voice/twiml rejects call when destination is on DNC."""
+@pytest.mark.asyncio
+async def test_twiml_rejects_dnc_number():
+    """twiml_voice_handler rejects call when destination is on DNC."""
+    from app.api.v1.voice import twiml_voice_handler
+
     mock_db = AsyncMock()
     mock_org = _make_org(configured=True)
     mock_campaign = _mock_campaign()
 
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+
+    async def _form():
+        return {
+            "To": "+15552222222",
+            "From": "client:user_abc_123",
+            "CallSid": "CA12345",
+            "CampaignId": str(CAMPAIGN_ID),
+        }
+
+    request.form = _form
+
     with (
-        patch(
-            "app.api.v1.voice.verify_twilio_signature",
-            return_value=mock_org,
-        ),
-        patch("app.api.v1.voice.get_db") as mock_get_db_dep,
         patch(
             "app.api.v1.voice._resolve_twiml_context",
             new_callable=AsyncMock,
@@ -317,26 +333,13 @@ def test_twiml_rejects_dnc_number(app_client):
         patch(
             "app.api.v1.voice._voice_service.check_dnc",
             new_callable=AsyncMock,
-            return_value=DNCCheckResult(
-                blocked=True, message="Number is on DNC list"
-            ),
+            return_value=DNCCheckResult(blocked=True, message="Number is on DNC list"),
         ),
     ):
-        mock_get_db_dep.return_value = mock_db
+        result = await twiml_voice_handler(request=request, db=mock_db)
 
-        resp = app_client.post(
-            "/api/v1/voice/twiml",
-            data={
-                "To": "+15552222222",
-                "From": "client:user_abc_123",
-                "CallSid": "CA12345",
-                "CampaignId": str(CAMPAIGN_ID),
-            },
-        )
-
-    assert resp.status_code == 200
-    body = resp.text
-    # Should contain rejection/hangup, not Dial
+    assert result.status_code == 200
+    body = result.body.decode()
     assert "<Dial" not in body
     assert "<Hangup" in body or "blocked" in body.lower() or "<Say" in body
 
@@ -346,18 +349,30 @@ def test_twiml_rejects_dnc_number(app_client):
 # ---------------------------------------------------------------------------
 
 
-def test_twiml_rejects_outside_calling_hours(app_client):
-    """POST /voice/twiml rejects call when outside calling hours."""
+@pytest.mark.asyncio
+async def test_twiml_rejects_outside_calling_hours():
+    """twiml_voice_handler rejects call when outside calling hours."""
+    from app.api.v1.voice import twiml_voice_handler
+
     mock_db = AsyncMock()
     mock_org = _make_org(configured=True)
     mock_campaign = _mock_campaign()
 
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers = {}
+
+    async def _form():
+        return {
+            "To": "+15552222222",
+            "From": "client:user_abc_123",
+            "CallSid": "CA12345",
+            "CampaignId": str(CAMPAIGN_ID),
+        }
+
+    request.form = _form
+
     with (
-        patch(
-            "app.api.v1.voice.verify_twilio_signature",
-            return_value=mock_org,
-        ),
-        patch("app.api.v1.voice.get_db") as mock_get_db_dep,
         patch(
             "app.api.v1.voice._resolve_twiml_context",
             new_callable=AsyncMock,
@@ -370,20 +385,9 @@ def test_twiml_rejects_outside_calling_hours(app_client):
             ),
         ),
     ):
-        mock_get_db_dep.return_value = mock_db
+        result = await twiml_voice_handler(request=request, db=mock_db)
 
-        resp = app_client.post(
-            "/api/v1/voice/twiml",
-            data={
-                "To": "+15552222222",
-                "From": "client:user_abc_123",
-                "CallSid": "CA12345",
-                "CampaignId": str(CAMPAIGN_ID),
-            },
-        )
-
-    assert resp.status_code == 200
-    body = resp.text
-    # Should contain rejection, not Dial
+    assert result.status_code == 200
+    body = result.body.decode()
     assert "<Dial" not in body
     assert "<Hangup" in body or "blocked" in body.lower() or "<Say" in body
