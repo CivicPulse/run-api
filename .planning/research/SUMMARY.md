@@ -1,173 +1,168 @@
 # Project Research Summary
 
-**Project:** CivicPulse Run API — v1.11 Chunked Parallel Import Pipeline
-**Domain:** Parallel CSV import processing with fan-out/fan-in job orchestration
-**Researched:** 2026-04-01
+**Project:** CivicPulse Run API
+**Domain:** Multi-tenant voter CRM free-text lookup and ranked search
+**Researched:** 2026-04-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-V1.11 upgrades the existing v1.6 serial CSV import pipeline into a parallel, chunked system without introducing any new library dependencies. The existing stack — Procrastinate for job orchestration, SQLAlchemy async for session management, PostgreSQL for upserts and advisory locks, and MinIO for CSV storage — is fully capable of supporting the parent/child job fan-out pattern. The primary architectural addition is a new `ImportChunk` model and table that tracks per-chunk state (row range, status, progress counters, crash-resume row), enabling N chunk tasks to run independently and concurrently while the parent `ImportJob` aggregates their results via SQL SUM queries.
+This milestone is not a greenfield search product. It is a lookup upgrade inside an existing FastAPI/PostgreSQL voter CRM where campaign-scoped isolation, deterministic filters, and operational trust matter more than novelty. The research consistently points to a PostgreSQL-native search design: keep the current monolith, extend the existing voter search endpoint, and add ranked free-text lookup across names, contact fields, addresses, ZIP/city, and stable IDs without introducing Elasticsearch, Meilisearch, or Python-side fuzzy matching.
 
-The recommended approach is a phased build: (A) schema and model foundation with no behavior change, (B) core parallel processing with split task, chunk tasks, and progress aggregation, (C) cancellation propagation and crash-resume integration, and (D) test coverage. Each phase builds on the previous, and the system can be deployed behind a feature flag (`import_parallel_enabled`) so existing serial imports continue to work throughout development. Files below a configurable threshold (e.g., 10,000 rows) bypass chunking entirely, preserving simplicity for small imports.
+The recommended approach is to keep structured filters deterministic and separate from fuzzy lookup semantics. Experts would implement this as a hybrid search layer backed by PostgreSQL `pg_trgm`, `unaccent`, weighted full-text search, and a denormalized per-voter search projection that flattens voter plus contact data into an indexed, campaign-scoped search surface. The UI should become search-first on the voter page, but only after the API contract, projection sync, relevance cursoring, and RLS protections are in place.
 
-The key risks are all well-understood concurrent-systems problems with known solutions already present in the codebase or in PostgreSQL. Deadlocks from parallel upserts are prevented by sorting rows by `source_id` before INSERT. RLS context isolation between chunk sessions is preserved by the existing `reset_rls_context` pool checkout handler and the established `set_campaign_context` / `commit_and_restore_rls` pattern. Progress aggregation races are prevented by storing counters per chunk and computing parent totals via SQL SUM rather than distributed increment. Every critical pitfall resolves to "follow the existing pattern, but per-chunk."
+The main risks are not feature gaps; they are trust failures. The highest-risk failures are cross-campaign leakage through a new search surface, stale denormalized search data, naive `%term%` expansion that collapses under real voter-file size, and unstable relevance pagination. Mitigation is straightforward but must be front-loaded: secure the projection table with campaign-aware isolation, define a deterministic ranking contract, refresh the projection on every relevant write/import path, and verify with representative query plans plus end-to-end search/filter interaction tests.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new libraries are needed. Procrastinate's `defer_async` can be called from within a running task to fan out child chunk tasks — the project already uses this mechanism from the API layer. SQLAlchemy async session isolation (one session per task, `async_session_factory()`) handles concurrent worker coordination. PostgreSQL advisory locks (`pg_try_advisory_xact_lock`) serialize the race-prone finalization step where multiple chunks may complete simultaneously.
+The stack recommendation is conservative on purpose. PostgreSQL 17 already covers typo tolerance, partial matching, ranking, and exact-match boosting while preserving the existing RLS model and async SQLAlchemy service layer. No new backend or frontend package is required for the core milestone; the work is mostly schema design, query design, sync ownership, and UI contract changes.
 
 **Core technologies:**
-- **Procrastinate** (>=3.7.3, installed): Parent/child job fan-out via `defer_async` from within a running task — no new primitives needed
-- **SQLAlchemy async** (installed): Per-chunk independent sessions; existing `async_session_factory()` pattern is correct
-- **PostgreSQL** (16+, deployed): Advisory locks for finalization races, `INSERT ON CONFLICT` for idempotent upserts, RLS for tenant isolation
-- **Python `csv` stdlib**: Row-count pre-scan and chunk row-range seeking; no byte-offset complexity needed
-- **MinIO/S3** (deployed): Unchanged; each chunk streams the full file and skips to its start row
-
-**New application code (not libraries):** `ImportChunk` model, `split_import` task, `process_chunk` task, Alembic migration, and three new config settings (`import_chunk_size`, `import_chunk_threshold`, `import_parallel_enabled`).
+- PostgreSQL 17.x: primary search engine using `pg_trgm`, `unaccent`, full-text search, and GIN/GiST indexes — keeps search inside the existing tenant-safe database model.
+- SQLAlchemy 2.0.48+: builds PostgreSQL-native ranking and search expressions from the current async service layer — avoids adding a search abstraction library.
+- FastAPI 0.135.1+: exposes ranked lookup through the existing voter search endpoint — no framework shift needed.
+- Alembic 1.18.4+: rolls out extensions, projection table, and indexes safely — required for controlled schema evolution.
+- TanStack Query 5.90.21 + `ky`: supports debounced search-first UX in the current web app — enough for request cancellation, caching, and stale-request handling.
 
 ### Expected Features
 
+The launch bar is clear: users expect one-box, campaign-scoped lookup that can find a voter from partial known information and rank likely matches first. The differentiators are not flashy AI search features; they are mixed-token cross-field matching and query-aware ranking that reflect organizer intent without breaking trust.
+
 **Must have (table stakes):**
-- **Parent/child job model** — users see one import job; chunks are an implementation detail invisible to the UI
-- **Unified progress reporting** — parent `ImportJob.imported_rows` = SUM of chunk counters; existing frontend poll endpoint needs no changes
-- **Chunk failure isolation** — one bad chunk does not kill the import; other chunks proceed independently
-- **Merged error reports** — per-chunk error CSVs merged into a single downloadable report at finalization
-- **Cancellation propagation** — cancel sets `cancelled_at` on parent; chunk tasks poll it between batches (same cooperative mechanism as today)
-- **Per-campaign concurrency lock preserved** — `queueing_lock=campaign_id` on parent split task only; chunk tasks have no lock
-- **Crash resume per chunk** — `last_committed_row` per chunk; v1.10 orphan detection applies at chunk granularity
-- **Deterministic chunk boundaries** — row-range splitting (not byte-offset) guarantees no gaps or overlaps
-- **Small file fast path** — files below threshold skip chunking and use existing serial path unchanged
+- One-box lookup across name, phone, email, address fragments, city/ZIP, and stable identifiers.
+- Partial matching on high-intent fields with normalized phone/email/address handling.
+- Deterministic ranking that boosts exact identifier and exact-name hits above fuzzy candidates.
+- Typo tolerance limited mainly to names and address text.
+- Search-first plus existing filter refinement in one result set.
+- Result rows with enough context to disambiguate duplicate names.
 
-**Should have (competitive differentiators):**
-- **Secondary work offloading** — PostGIS geometry updates as post-chunk tasks (reduces chunk critical-path latency ~20-40%); VoterPhone stays inline
-- **`COMPLETED_WITH_ERRORS` status** — semantically clearer when some chunks fail but others succeed
-- **Throughput metrics** — rows/second and ETA for large imports (pure frontend calculation from timestamps)
+**Should have (competitive):**
+- Mixed-token cross-field matching such as `maria 30309` or `smith 1212`.
+- Query-aware ranking that treats emails, phone-like queries, and ZIP-like queries differently from names.
+- Search-to-filter handoff with a removable query chip.
+- Keyboard-first lookup flow once ranking is stable.
 
-**Defer to later milestones:**
-- Adaptive chunk sizing based on column count and file size (start with fixed 25K rows; optimize with real data)
-- Configurable parallelism per campaign (hardcode cap initially; make configurable when multi-tenant contention is observed)
-- Byte-offset S3 range seeking for very large files (skip overhead is negligible vs DB I/O time for realistic file sizes)
-- Per-chunk retry UI, import rollback, WebSocket/SSE progress, chunk-level UI visibility
+**Defer (v2+):**
+- Saved/recent searches and ranking controls.
+- Alias handling beyond straightforward normalization.
+- Semantic or AI-assisted search.
 
 ### Architecture Approach
 
-The architecture replaces the single `process_import` task with a two-level task hierarchy: a `split_import` task that counts rows, creates `ImportChunk` records, and fans out to N `process_chunk` tasks; and N `process_chunk` tasks that each independently stream the CSV (seeking to their row range), execute the existing batch upsert loop, and trigger finalization when they are the last chunk to complete. The parent `ImportJob` is updated at each batch commit via SQL SUM aggregation over chunk counters, keeping the polling endpoint compatible with the existing frontend. Finalization races (multiple chunks completing simultaneously) are serialized with `pg_try_advisory_xact_lock`.
+The architecture recommendation is explicit: keep `VoterFilter` deterministic, add a separate `lookup` contract for fuzzy search semantics, and implement ranked lookup in a dedicated `VoterSearchService` backed by a denormalized `voter_search_documents` table. That projection should store a weighted `tsvector`, flattened search text, and normalized phone/email/name fields keyed by `voter_id` and `campaign_id`, with RLS-aligned isolation and dedicated relevance cursoring. This isolates lookup complexity from stable list filtering and avoids turning the existing query builder into an unreadable pile of fuzzy OR clauses.
 
 **Major components:**
-1. **`ImportChunk` model** — per-chunk state: row range, status, counters, `last_committed_row`, error file key; one row per chunk; separate table (not JSONB on parent) to allow concurrent independent updates
-2. **`split_import` task** — streams CSV to count rows, creates `ImportChunk` rows, defers N `process_chunk` tasks, holds `queueing_lock=campaign_id`; small-file fast path falls through to existing serial task
-3. **`process_chunk` task** — own session, RLS context, batch loop identical to today, polls parent `cancelled_at`, updates chunk counters, triggers finalization on last completion
-4. **`maybe_finalize_parent` function** — SQL SUM aggregation over chunk table, `pg_try_advisory_xact_lock` for race safety, error CSV merge, parent status derivation
-5. **Modified `ImportService`** — extracts `process_chunk_range(start_row, end_row)` entry point while keeping existing batch logic unchanged; batch size calculation extracted to shared utility
-
-**Files inventory:** 5 new files, 6 modified files, 4 unchanged files. See ARCHITECTURE.md for full list.
+1. API contract extension on the existing voter search endpoint — accepts `lookup`, `relevance` sorting, and returns match metadata.
+2. `VoterSearchService` — builds hybrid FTS + trigram candidate sets, deterministic boosts, and relevance pagination.
+3. `voter_search_documents` projection table — precomputes cross-table searchable data with campaign-scoped indexes and sync ownership.
+4. Voter/contact/import write-path refresh hooks — keep the projection fresh after edits, upserts, and bulk imports.
+5. Search-first voter page and shared hooks — debounce input, preserve filter composition, and surface ranked results predictably.
 
 ### Critical Pitfalls
 
-1. **Deadlock from parallel upserts on overlapping keys** — sort `valid_voters` by `(source_type, source_id)` before every batch INSERT to guarantee consistent lock acquisition order; also sort `VoterPhone` records by `(voter_id, value)` for the same reason; add catch for psycopg `DeadlockDetected` (`40P01`) with retry + jitter as defense-in-depth
-
-2. **RLS context isolation between concurrent chunk sessions** — each chunk task must create its own `async_session_factory()` session and call `set_campaign_context` before any query; never pass a session from parent to child; existing `reset_rls_context` pool checkout handler is the primary defense against connection pool reuse with stale context
-
-3. **Progress aggregation lost updates** — never update `ImportJob.imported_rows` directly from chunk tasks (read-modify-write races cause lost updates); each chunk updates only its own `ImportChunk` row; parent totals derived exclusively via `SELECT SUM(...) FROM import_chunks WHERE import_job_id = :id`
-
-4. **Cancellation not propagated to chunk jobs** — chunk tasks poll `SELECT cancelled_at FROM import_jobs WHERE id = :parent_id` between batches and at startup; cooperative check is sufficient and matches the existing proven pattern; no need to delete Procrastinate jobs from the queue
-
-5. **queueing_lock accidentally blocks all chunks** — apply `queueing_lock=str(campaign_id)` to `split_import` task only; chunk tasks use NO queueing lock; if chunks share the campaign lock, Procrastinate's `AlreadyEnqueued` behavior serializes them instead of running in parallel
+1. **Search surface bypasses tenant isolation** — secure the projection layer itself with campaign-aware storage/query design and dedicated cross-tenant tests, not just endpoint checks.
+2. **Naive `%term%` expansion across many fields** — do not scale the current `ILIKE` pattern; use indexed normalized expressions, FTS, trigram, and a precomputed projection.
+3. **Denormalized search data goes stale** — define one owner for projection refresh and cover voter CRUD, contact CRUD, imports, and merge-like flows.
+4. **Ranking is unstable for pagination** — design a deterministic relevance tuple and a dedicated cursor format before UI rollout.
+5. **Search-first UI causes request storms** — debounce, cancel stale requests, gate fuzzy search for very short input, and revisit rate limits with real typing behavior.
 
 ## Implications for Roadmap
 
-Based on combined research, the natural build order follows data-model-first then behavior, exactly matching the existing codebase's layer conventions. The dependency graph is strict: schema must precede all behavior; core processing must precede correctness features (cancel/resume); tests require the full implementation.
+Based on research, suggested phase structure:
 
-### Phase A: Schema and Model Foundation
+### Phase 1: Search Contract and Safety Boundary
+**Rationale:** This must come first because the biggest failure mode is not low relevance quality; it is leaking fuzzy search semantics into the wrong layers or weakening campaign isolation.
+**Delivers:** Separate `lookup` request contract, `relevance` sort mode, response metadata, and explicit semantics for how free-text composes with deterministic filters.
+**Addresses:** Search-first plus filter refinement, deterministic ranking expectations, disambiguation context.
+**Avoids:** Tenant-isolation bypass, search/filter semantic drift, unstable pagination contracts.
 
-**Rationale:** Every other component depends on the `ImportChunk` table existing. Schema changes first means all subsequent phases develop against real models with no behavior change to existing imports — zero regression risk.
-**Delivers:** `ImportChunk` model + `ChunkStatus` enum, `ImportJob` additions (`total_chunks`, `completed_chunks`, `is_chunked`), Alembic migration, config settings (`import_chunk_size=25000`, `import_chunk_threshold=10000`, `import_parallel_enabled=False`), Pydantic schema additions
-**Addresses:** Foundational table stakes — parent/child job model structure, crash resume per chunk (data design)
-**Avoids:** Progress aggregation race (Pitfall 4) and crash resume breakage (Pitfall 7) — both prevented structurally by the schema design before any behavior is written
+### Phase 2: Search Projection and Database Primitives
+**Rationale:** Ranked lookup across voter plus contact fields is not credible without an indexed projection and database-native search primitives.
+**Delivers:** `pg_trgm` and `unaccent`, `voter_search_documents`, campaign-scoped indexes/RLS, and backfill/rebuild tooling.
+**Uses:** PostgreSQL 17, Alembic, SQLAlchemy PostgreSQL functions.
+**Implements:** Denormalized search storage, exact/prefix/fuzzy-safe field normalization.
+**Avoids:** Naive multi-join `%term%` search, stale data ownership confusion, production-only performance collapse.
 
-### Phase B: Core Parallel Processing
+### Phase 3: Ranked Backend Read/Write Path
+**Rationale:** Once the projection exists, the backend can safely implement the actual lookup planner and keep it fresh.
+**Delivers:** `VoterSearchService`, hybrid FTS + trigram candidate retrieval, deterministic score formula, relevance cursoring, and projection refresh hooks for voter/contact/import updates.
+**Addresses:** One-box cross-field lookup, partial matching, typo tolerance, exact-match boosting.
+**Avoids:** Duplicate rows from live joins, unstable ranking, freshness drift after imports or edits.
 
-**Rationale:** The split task and chunk task are tightly coupled and must be built together. Progress aggregation is inseparable from chunk processing — without it, the frontend immediately regresses. This is the highest-complexity phase and the core value delivery of the milestone.
-**Delivers:** `split_import` task (row count, chunk creation, fan-out, small-file fast path), `process_chunk` task (own session, RLS, batch loop, chunk status), SQL SUM progress aggregation per batch commit, finalization with advisory lock, `confirm_mapping` wired to `split_import`, `import_parallel_enabled` feature flag for gradual rollout
-**Uses:** `defer_async` from within Procrastinate task (verified from installed source), `pg_try_advisory_xact_lock`, `async_session_factory()` per chunk
-**Implements:** Full parent/child architecture; existing frontend zero-change for progress polling
-**Avoids:** Deadlock (Pitfall 1) via sort-before-upsert, RLS leak (Pitfall 2) via per-chunk sessions, queueing lock paralysis (Pitfall 6), naming collision (Pitfall 11), shared session anti-pattern, JSONB chunk state anti-pattern
+### Phase 4: Search-First Voter Page UX
+**Rationale:** The UI should land after the backend contract and ranking behavior are stable enough to support interactive use.
+**Delivers:** Search box on the voter page, debounce/cancellation, default relevance sort when a query exists, result-row disambiguation, and preserved filter refinement flow.
+**Uses:** TanStack Query, existing `ky` hooks, current voter page route/data table patterns.
+**Implements:** Search-first plus filter refinement, clear loading/empty states, optional query chip behavior.
+**Avoids:** Request storms, stale-result flicker, confusing state resets, user mistrust from opaque matches.
 
-### Phase C: Cancellation and Crash Resume Integration
-
-**Rationale:** Correctness-critical but builds on the operational pipeline from Phase B. Cannot be meaningfully tested until the full pipeline exists. Integrates with v1.10 recovery engine for chunk-level orphan detection.
-**Delivers:** Chunk-level cancellation (polls parent `cancelled_at`, marks chunk CANCELLED), split task crash-resume (re-defer only PENDING chunks on re-execution), chunk-level crash-resume (skip to `last_committed_row` within chunk range), per-chunk error CSV writing + merge on finalization, parent status derivation rules (all complete, any failed, all failed, cancelled)
-**Avoids:** Cancel propagation failure (Pitfall 3), parent status non-triviality (Pitfall 9), error merge ordering (Pitfall 12)
-
-### Phase D: Tests
-
-**Rationale:** Tests require the full implementation to exercise meaningful concurrent scenarios. Each earlier phase includes smoke tests during development; comprehensive coverage finalizes here including race condition scenarios that require the full system.
-**Delivers:** Unit tests for chunk boundary calculation and progress SQL, integration tests for full chunked import end-to-end, cancel mid-import with active chunks, crash-resume within a chunk, regression for no duplicate voters, race condition test for advisory lock finalization
-
-### Phase E: Secondary Work Offloading (differentiator)
-
-**Rationale:** Independent track; does not block Phases A-D. PostGIS geometry offloading reduces chunk critical-path latency but imports are functionally correct without it. `COMPLETED_WITH_ERRORS` is a pure additive status change.
-**Delivers:** `update_voter_geometry` post-chunk Procrastinate task, `COMPLETED_WITH_ERRORS` ImportStatus enum value, frontend badge update for new status, VoterPhone phone creation kept inline (fast, users expect immediate availability)
-**Avoids:** VoterPhone positional-index conflict under concurrent conditions (Pitfall 8) — geometry offloading isolates the heaviest per-row secondary work onto a separate task
+### Phase 5: Secondary Consumers, Tuning, and Rollout Hardening
+**Rationale:** Reuse and tuning should happen only after the primary voter page proves stable.
+**Delivers:** Add Voters dialog adoption, EXPLAIN-based tuning, import/write throughput verification, staged backfill/index rollout, and production monitoring for relevance and freshness.
+**Addresses:** Secondary lookup surfaces, query-aware ranking tuning, operational readiness.
+**Avoids:** Rollout regressions, import slowdowns, hidden freshness lag, support-only discovery of bad ranking.
 
 ### Phase Ordering Rationale
 
-- Schema must precede all behavior because models are imported everywhere; no task or service can reference `ImportChunk` until the table and model exist
-- Core processing (Phase B) must precede correctness features (Phase C) because cancellation and crash-resume testing require an operational parallel pipeline
-- Tests (Phase D) finalize after Phase C because edge cases like finalization races require the complete implementation; each phase includes smoke tests during development
-- Secondary offloading (Phase E) is decoupled and can run concurrently with Phase D or be deferred to a follow-on milestone without blocking the core feature
+- The order follows hard dependencies: contract and semantics first, storage/indexing second, lookup implementation third, interactive UX fourth, reuse and tuning last.
+- The grouping matches the architecture pattern from research: deterministic filters remain stable while lookup-specific complexity is isolated behind a new service and projection table.
+- This order front-loads the highest-risk pitfalls: tenant isolation, projection freshness, query-plan performance, and relevance pagination all get solved before the search-first UI increases traffic.
 
 ### Research Flags
 
-Phases with well-documented patterns (standard — skip additional research):
-- **Phase A (Schema):** Alembic migrations and SQLAlchemy model additions are standard patterns with no novel territory
-- **Phase B (Core processing):** Procrastinate `defer_async` from within a task verified from installed source code; RLS per-session pattern verified from `app/db/rls.py`; advisory lock pattern is documented PostgreSQL behavior and used in v1.10
+Phases likely needing deeper research during planning:
+- **Phase 2:** projection-table design and RLS policy details need careful validation against the current schema and import/write paths.
+- **Phase 3:** relevance cursor encoding and deterministic score tuning need implementation-level design review before coding.
+- **Phase 5:** rollout strategy needs operational validation for concurrent index builds, backfill sequencing, and import throughput.
 
-Phases that may benefit from targeted research during planning:
-- **Phase B (Finalization advisory lock):** The exact interaction between `pg_try_advisory_xact_lock` and SQLAlchemy's transaction commit lifecycle should be verified against the installed Procrastinate connector before writing the finalization function
-- **Phase C (v1.10 crash resume integration):** Depends on v1.10 recovery engine design in `IMPORT-RECOVERY-PLAN.md`; implementation details of how orphan detection surfaces chunk-level staleness require coordination with the v1.10 design decisions
+Phases with standard patterns (skip research-phase):
+- **Phase 1:** API contract split between deterministic filters and lookup is already strongly supported by the research and current architecture.
+- **Phase 4:** frontend debounce, stale-request suppression, and query-driven relevance sort are standard patterns in the current React Query stack.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | No new dependencies; existing Procrastinate, SQLAlchemy, and PostgreSQL patterns verified from installed source code and direct codebase analysis |
-| Features | MEDIUM-HIGH | Table stakes patterns well-established in distributed systems; Procrastinate-specific fan-out validated from source; Procrastinate docs were inaccessible during research (Cloudflare block) but installed source covered the gaps |
-| Architecture | HIGH | Derived from direct codebase analysis + PostgreSQL concurrency semantics + verified RLS behavior; all component boundaries confirmed against actual file line numbers |
-| Pitfalls | HIGH | Most pitfalls verified against specific line numbers in the existing codebase; PostgreSQL concurrency behavior is well-documented with multiple cited sources |
+| Stack | HIGH | Strongly grounded in current repo state plus official PostgreSQL and SQLAlchemy documentation; recommendation is conservative and low-novelty. |
+| Features | HIGH | Table stakes and differentiators align across campaign CRM examples and the stated milestone scope; low ambiguity about launch requirements. |
+| Architecture | HIGH | Fits existing seams in the codebase and uses well-understood PostgreSQL patterns; the main choices are opinionated but defensible. |
+| Pitfalls | HIGH | Risks are concrete, domain-specific, and consistent with this repo’s known RLS/history and the operational realities of indexed search. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Procrastinate docs inaccessibility:** Research was partially blocked by Cloudflare. The installed source at `.venv/lib/python3.13/site-packages/procrastinate/` fills this gap for implementation details, but edge cases in `defer_async` behavior under worker restart should be verified during Phase B implementation by reading the installed source directly.
-- **S3 skip overhead at scale:** The estimate that skipping 90K rows takes ~0.2 seconds is based on I/O characteristics, not benchmarked against actual MinIO. Accept the row-range approach now; add profiling instrumentation in Phase D tests to validate.
-- **Worker concurrency under load:** Procrastinate's per-worker `concurrency` parameter behavior with heavy I/O (DB sessions + S3 streams) is estimated but not load-tested. Start conservatively at 1-2 concurrent tasks per worker; tune with production data after initial rollout.
+- **Projection contents:** Final searchable field list needs a deliberate cut so write amplification stays acceptable while user value stays high.
+- **Ranking weights:** Exact boost thresholds and trigram/FTS weights should be tuned against representative real campaign queries, not guessed once.
+- **Freshness model during imports:** Planning must decide whether projection refresh is synchronous per batch or intentionally delayed with explicit rebuild tooling.
+- **Persistability of free-text search:** The roadmap should decide whether `lookup` is strictly ephemeral UI state or can ever participate in saved views/list definitions.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Existing codebase: `app/services/import_service.py` (upsert lines 962-988, batch loop, cancellation check line 1304), `app/tasks/import_task.py` (RLS setup line 34, cancel pre-check line 55), `app/db/rls.py` (transaction-scoped `set_config` line 28, `commit_and_restore_rls` line 33), `app/models/import_job.py` (status enum lines 16-25), `app/api/v1/imports.py` (queueing_lock line 264)
-- Procrastinate v3.7.3 installed source: `.venv/lib/python3.13/site-packages/procrastinate/` — `defer_async`, queueing_lock behavior, worker configuration
-- [PostgreSQL explicit locking documentation](https://www.postgresql.org/docs/current/explicit-locking.html) — advisory locks, deadlock prevention via consistent lock ordering
-- [PostgreSQL INSERT ON CONFLICT documentation](https://www.postgresql.org/docs/current/sql-insert.html) — ON CONFLICT atomicity guarantees
-- `docs/import-parallelization-options.md` — user's options analysis (recommends Options 1+2: chunked parallel + secondary offloading)
-- `IMPORT-RECOVERY-PLAN.md` — v1.10 recovery engine design (sibling milestone, crash-resume integration)
+- [STACK.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/STACK.md) — stack and version recommendations grounded in repo state and official PostgreSQL/SQLAlchemy docs.
+- [FEATURES.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/FEATURES.md) — table stakes, differentiators, and anti-features for voter CRM lookup.
+- [ARCHITECTURE.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/ARCHITECTURE.md) — component boundaries, data flow, projection-table pattern, and build order.
+- [PITFALLS.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/PITFALLS.md) — domain-specific failure modes, operational warnings, and verification targets.
+- [PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md) — milestone scope, constraints, and current product context.
+- PostgreSQL `pg_trgm` docs: https://www.postgresql.org/docs/17/pgtrgm.html
+- PostgreSQL `unaccent` docs: https://www.postgresql.org/docs/17/unaccent.html
+- PostgreSQL text search controls: https://www.postgresql.org/docs/17/textsearch-controls.html
+- PostgreSQL text search tables/indexes: https://www.postgresql.org/docs/current/textsearch-tables.html
+- SQLAlchemy PostgreSQL dialect docs: https://docs.sqlalchemy.org/en/20/dialects/postgresql.html
 
 ### Secondary (MEDIUM confidence)
-- [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) — INSERT deadlock mechanics with concurrent upserts
-- [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02) — lock acquisition order in bulk INSERT
-- [Fan-out/Fan-in Pattern (Microsoft Durable Functions)](https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-cloud-backup) — canonical pattern applicable to any task queue
-- [Procrastinate documentation](https://procrastinate.readthedocs.io/) — queueing_lock behavior, API reference (partially accessible during research)
-- [Parallel CSV ingestion to CloudSQL (Google Cloud)](https://medium.com/google-cloud/parallel-serverless-csv-ingestion-to-cloudsql-using-cloud-dataflow-6c5899cf8d58) — chunk-based parallel CSV import architecture
+- NationBuilder quick search docs: https://support.nationbuilder.com/en/articles/2306501-find-people-and-pages-with-quick-search
+- NationBuilder filters docs: https://support.nationbuilder.com/en/articles/3055676-use-filters-to-target-your-audience
+- The Official Vanual (VAN training guide PDF): https://www.deldems.org/sites/default/files/2024-04/The%20Official%20Vanual.pdf
+- Algolia typo tolerance docs: https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance
+- Typesense search API docs: https://typesense.org/docs/29.0/api/search.html
 
-### Tertiary (LOW confidence — validate during implementation)
-- S3 skip overhead estimates (~0.2s per 90K rows) — based on I/O characteristics, not measured against this environment
-- Worker concurrency recommendations (1-2 concurrent tasks per worker) — based on resource model analysis, not load-tested
+### Tertiary (LOW confidence)
+- RLS planner/search interaction discussion: https://jfagoagas.github.io/blog/posts/psql-rls-ts/ — useful cautionary context, but not required for the core recommendation.
 
 ---
-*Research completed: 2026-04-01*
+*Research completed: 2026-04-06*
 *Ready for roadmap: yes*
