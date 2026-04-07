@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     twilio_encryption_current_key: str = ""
     twilio_encryption_keys_json: str = ""
 
+    # Webhook infrastructure
+    webhook_base_url: str = "http://localhost:8000"  # Public URL Twilio signs against
+
     # CORS
     cors_allowed_origins: list[str] = [
         "http://localhost:5173",

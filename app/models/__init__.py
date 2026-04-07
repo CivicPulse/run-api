@@ -24,6 +24,7 @@ from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import VoterInteraction
 from app.models.voter_list import VoterList, VoterListMember
 from app.models.voter_search import VoterSearchRecord
+from app.models.webhook_event import WebhookEvent
 
 __all__ = [
     "CallList",
@@ -53,6 +54,8 @@ __all__ = [
     "VoterList",
     "VoterListMember",
     "VoterPhone",
+    "VoterSearchRecord",
     "VoterTag",
     "VoterTagMember",
+    "WebhookEvent",
 ]
