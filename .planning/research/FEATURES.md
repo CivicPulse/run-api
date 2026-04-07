@@ -1,160 +1,147 @@
-# Feature Landscape: v1.11 Chunked Parallel Import Pipeline
+# Feature Research
 
-**Domain:** Parallel CSV import processing with fan-out/fan-in job orchestration
-**Researched:** 2026-04-01
-**Overall confidence:** MEDIUM-HIGH (patterns well-established in distributed systems; Procrastinate-specific implementation needs validation since docs were inaccessible)
+**Domain:** Voter-page free-text lookup and refinement for campaign CRM workflows
+**Researched:** 2026-04-06
+**Confidence:** HIGH
 
----
+## Feature Landscape
 
-## Table Stakes
+### Table Stakes (Users Expect These)
 
-Features users expect when a serial import becomes parallel. Missing any of these and the parallelization feels broken or regressed from v1.6.
+Features users assume exist in a modern voter CRM lookup flow. Missing these makes the voter page feel slower than paper turf sheets or legacy campaign tools.
 
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| Parent/child job model | Users see one import, not N chunk jobs. The parent ImportJob is the single source of truth for "how is my import doing?" | Medium | New ImportChunk model/table with FK to ImportJob | Parent ImportJob stores overall state; ImportChunk rows track per-chunk progress (start_row, end_row, status, imported_rows, skipped_rows, last_committed_row, error_report_key). |
-| Unified progress reporting | Current UI polls one job and shows imported_rows/total_rows. Parallelization must not break this contract. | Medium | Parent/child model, aggregation query | Parent job's imported_rows = SUM(chunk.imported_rows). Frontend polls parent only -- zero UI changes needed if aggregation is correct. The existing `ImportJobResponse` schema stays identical. |
-| Chunk failure isolation | One bad chunk (malformed rows, transient DB error) must not kill the entire import. Other chunks proceed independently. | Medium | Per-chunk status tracking, error storage per chunk | Each chunk has its own status lifecycle. Parent status derived: all completed = completed, any failed with others completed = completed_with_errors, all failed = failed. Partial results preserved. |
-| Per-chunk error reports merged into one download | Users already expect downloadable error CSVs. With chunks, errors from each chunk must merge into one report. | Low | Existing MinIO error storage pattern | Already have per-batch error files merged at end of serial import (batch_error_keys pattern in process_import_file). Same approach: each chunk writes errors, finalization merges across all chunks. |
-| Cancellation propagates to all chunks | User clicks cancel once, all in-flight chunks stop. No orphaned chunk jobs continue processing after cancel. | Medium | cancelled_at timestamp on parent, cooperative check in chunk workers | Chunk workers check parent.cancelled_at between batches (identical to current cancellation pattern). Additionally: queued-but-not-started chunks must check cancelled_at on startup and exit immediately. |
-| Per-campaign concurrency lock preserved | Current Procrastinate queueing lock prevents two imports on same campaign. This must still work -- one parallel import at a time per campaign, not one chunk at a time. | Low | Queueing lock on parent dispatch task only | Parent orchestrator task holds the per-campaign queueing lock. Child chunk tasks use a different queue or task name without queueing lock. Children are scoped to one parent anyway. |
-| Crash resume per chunk | If a worker dies mid-chunk, that chunk resumes from its last_committed_row within the chunk range. Other chunks unaffected. | Medium | last_committed_row per chunk, v1.10 orphan detection integration | Builds directly on v1.10 recovery engine (last_progress_at, staleness detection). Each chunk is independently resumable. Parent re-derives its state from children on recovery. |
-| Existing L2 auto-mapping preserved | Field mapping, format detection, 217 aliases -- all happen before chunking during upload/confirm wizard. | Low | None | No change to mapping flow. Chunks inherit the already-confirmed field_mapping from parent ImportJob. Chunking is a processing concern, not a mapping concern. |
-| Deterministic chunk boundaries | Chunks must not overlap or have gaps. Every source row processed exactly once. | Medium | Row-range calculation requiring pre-scan of total rows | Row-range approach (rows 1-25000, 25001-50000) is simpler and fits existing streaming model. Requires a fast pre-scan to count total lines. Alternative: byte-offset approach is faster but complicates the streaming CSV reader and risks splitting multi-byte characters or quoted fields. |
-| Idempotent upsert within chunks | If two chunks contain the same source_id (shouldn't happen with proper boundaries, but defense-in-depth), the ON CONFLICT DO UPDATE upsert must produce correct results. | Low | Existing upsert logic | Already handled by the existing `INSERT ... ON CONFLICT (campaign_id, source_id) DO UPDATE` pattern. No change needed. |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| One-box lookup across core identity fields | VAN Quick Look Up and NationBuilder quick search both center fast person lookup from a single box instead of forcing filter construction first. | MEDIUM | Search should cover voter name, phone, email, street/address fragments, city/ZIP, and stable identifiers already present in imported data. Depends on existing campaign-scoped isolation and voter list API. |
+| Partial-match support on high-intent fields | Organizers often only know part of a last name, house number, phone suffix, or email fragment. | MEDIUM | Prefix/substring matching is table stakes for names, address text, email, and phone digits. Should reuse existing normalized contact/address data where possible instead of inventing new UI concepts. |
+| Typo tolerance for human-entered fields | Mobile use, volunteer data entry, and street/name misspellings are common. Modern search products treat this as baseline. | MEDIUM | Apply typo tolerance to names and address text, not blindly to numeric identifiers, full phone numbers, or exact IDs. Depends on clear field weighting so fuzzy matches do not outrank exact hits. |
+| Deterministic ranking with exact-match boost | Users expect the most likely voter to appear first, especially when the query is a full phone, email, or exact name. | HIGH | Ranking should prefer exact identifier matches, then exact full-name/address matches, then prefix/partial matches, then fuzzy matches. Must stay explainable enough for support/debugging. |
+| Search-first plus filter refinement | Existing voter filters already exist; users expect search to narrow the starting set and filters to refine it. | LOW-MEDIUM | Free-text query should compose with current filter behavior, chips, pagination, and sorting instead of replacing them. This is the key dependency for roadmap sequencing. |
+| Result rows with enough disambiguation context | Voter databases contain many duplicate names. Users need to distinguish “which Maria Garcia” without opening multiple profiles. | LOW | Each result should show the same identity signals users already trust: age or DOB when available, address, phone/email snippets, tags/lists or recent interaction context if already present in list rows. |
+| Stable empty/ambiguous-result behavior | Search often fails because the data is incomplete, not because the voter does not exist. | LOW | Empty states should suggest broadening the query or adding filters, not imply deletion or offer risky cross-campaign fallback. |
 
-## Differentiators
+### Differentiators (Competitive Advantage)
 
-Features that go beyond baseline expectations. Not required for correctness but materially improve the experience or throughput.
+Features that are valuable but not required to make the milestone successful.
 
-| Feature | Value Proposition | Complexity | Dependencies | Notes |
-|---------|-------------------|------------|--------------|-------|
-| Secondary work offloading | VoterPhone creation, PostGIS geometry point updates, and derived-field computation run as separate post-batch or post-import tasks instead of inline with voter upsert | Medium | New task types (process_voter_phones, update_voter_geometry), eventual consistency handling | Reduces per-batch latency by ~20-40%. Phone normalization + VoterPhone INSERT currently runs inline in _process_single_batch. Moving to a separate task means voters appear in search faster; phones populate shortly after. Trade-off: brief window where voter exists without phone records. |
-| Completed-with-errors status | Distinct from COMPLETED and FAILED. "8 of 10 chunks succeeded, 2 had errors, here is the report." | Low | New ImportStatus enum value (COMPLETED_WITH_ERRORS), parent status derivation logic | Users currently get COMPLETED (possibly with error_report_key) or FAILED. A middle status is semantically clearer when parallelism makes partial success the norm rather than the exception. Frontend can show "Import completed with errors in 2 chunks" vs generic "completed". |
-| Throughput metrics | rows/second, estimated time remaining, displayed in import progress UI | Low | Timestamps on chunk progress updates, frontend calculation | Straightforward: track started_at per chunk, compute rows_per_second = imported_rows / elapsed_seconds, estimate remaining = (total_rows - imported_rows) / rows_per_second. High user value for large imports ("43 minutes remaining" vs just a percentage bar). |
-| Adaptive chunk sizing | Chunk row count adjusts based on column count (asyncpg 32,767 bind-parameter limit), file size, and worker count | Low-Medium | Dynamic calculation at fan-out time | Current code already computes effective_batch_size dynamically per import. Chunk count could similarly adapt: small files (under 10K rows) skip chunking entirely; medium files get 2-4 chunks; large files get more. Start with fixed 25K-row chunks; optimize with data later. |
-| Configurable parallelism | Campaign admin or system setting for max concurrent chunks per import | Low | Setting in app config, cap on fan-out dispatch | Default to min(chunk_count, worker_count, 4). Prevents one import from starving the entire worker pool. Simple but important for multi-tenant fairness. |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Mixed-token cross-field matching | Lets users find a voter from fragments like `maria 30309`, `smith 1212`, or `john peachtree` without knowing which field is which. | HIGH | Strong differentiator because it turns search into a real lookup workflow, not just “search first_name or last_name.” Depends on weighted matching across existing voter/contact/address fields. |
+| Query-aware ranking tuned for organizer intent | Improves trust by ranking phone/email/address exact hits above fuzzy name hits when the query looks like a number, email, or ZIP. | HIGH | This is where the product can beat generic CRM search. Requires token classification and field-specific boosts, but no new user-facing concepts. |
+| Search-to-filter handoff | After a lookup, users can keep refining with the existing filter builder without re-entering work. | MEDIUM | Examples: preserve the query while applying tags/lists/contactability filters; show the query as a removable chip next to current filter chips. Depends directly on existing filter state model. |
+| Normalized alias handling | Helps with nicknames, punctuation-stripped phones, apartment/unit formatting, and vendor-specific address inconsistencies. | MEDIUM-HIGH | Valuable for real voter-file messiness. Should focus on deterministic normalization already available from imported fields before introducing nickname dictionaries or third-party identity enrichment. |
+| Keyboard-first lookup flow | Power users can search, arrow through results, and open voter detail without leaving the keyboard. | LOW-MEDIUM | High usability payoff for call-time and clerk workflows, but not required for the first release. Depends on stable ranking and predictable result ordering. |
 
-## Anti-Features
+### Anti-Features (Commonly Requested, Often Problematic)
 
-Features to explicitly NOT build for this milestone.
+Features that sound attractive but are likely to create noise, scope creep, or trust problems for this milestone.
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Generic workflow/DAG engine | Procrastinate (v3.7.3) has no built-in fan-out/fan-in, job dependencies, or result aggregation. Building a general-purpose workflow engine is a project unto itself and unnecessary for a single use case. | Implement fan-out/fan-in manually with parent/child job records and status aggregation queries. Purpose-built, no framework overhead. The pattern is: parent task creates chunk records, defers chunk tasks, last-completing chunk triggers finalization. |
-| WebSocket/SSE for real-time progress | Current 3-second polling works fine and is simple. WebSocket adds connection management, reconnection, scaling complexity for marginal improvement on a batch operation that takes minutes. | Keep polling. The import takes minutes; polling every 2-3 seconds is perfectly adequate. Parallelism makes it faster, not more interactive. |
-| Chunk-level UI with individual chunk visibility | Exposing chunk internals to users creates confusion ("Why did chunk 7 fail? What rows are in chunk 7?"). Campaign staff should not need to understand chunking. | Single cancel button, single progress bar, single error report. Chunks are an implementation detail. The parent job is the only user-facing entity. |
-| Per-chunk retry from UI | If chunk 3 of 10 fails, let user retry just that chunk from the UI. | Too complex for v1.11. Automatic retry via Procrastinate task retry is simpler. If a chunk persistently fails, the whole import shows COMPLETED_WITH_ERRORS and the error report explains which rows failed. Manual re-import of the full file handles the rest (upsert is idempotent). |
-| Database COPY / staging table approach | Largest behavior change: shifts validation to SQL, makes per-row error reporting much harder, requires fundamentally different import architecture. | Stay with Python-side CSV parsing and batch INSERT. The current approach handles 113K rows. Parallelism addresses speed; COPY addresses throughput at a scale we do not need yet. |
-| Producer-consumer with intermediate queue | Separating CSV parsing from DB writing adds durable intermediate state, complicates resume semantics, and is architecturally overkill. | Chunked child jobs with direct DB writes. Each chunk task does its own streaming parse + batch upsert. Simpler, fewer moving parts, same streaming memory model. |
-| Horizontal auto-scaling of workers | K8s HPA based on queue depth. Premature optimization -- we do not have production import volume data yet. | Fixed worker replica count in K8s manifests (start with 2-3 replicas). Scale manually if needed after observing real workloads. |
-| Cross-chunk transaction coordination | Ensuring all chunks commit atomically (2PC or similar). Massive complexity for no user benefit. | Each chunk commits independently. Partial results are expected and acceptable -- the upsert model means a re-import corrects any inconsistencies. |
-| Import rollback (undo a parallel import) | Even harder with parallel chunks than serial. Voters from completed chunks may already have interactions, tags, walk list assignments. | Provide clear error reports. Re-import corrected file (upsert deduplicates). Or delete voters via existing UI. |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| “Search everything fuzzily” across all fields equally | Sounds simpler: one fuzzy engine over every column. | It produces bad ranking, false positives, and poor performance, especially for numeric IDs, phones, ZIPs, and campaign-import junk fields. | Use field-specific matching modes: exact for IDs, normalized exact/partial for phones and emails, fuzzy mainly for names/address text. |
+| AI / semantic / natural-language voter search | Feels modern and promises “smart” lookup. | It is hard to explain, expensive, unnecessary for known-item lookup, and risky for campaign operations where users need deterministic results. | Ship weighted lexical lookup first; revisit semantic helpers only if future user research shows real unmet needs. |
+| Replacing advanced filters with search | Search-first can tempt teams to de-prioritize the existing filter builder. | It would regress list-building workflows that need precise targeting, not just known-person lookup. | Keep filters as refinement and bulk-targeting tools; free-text search should narrow the universe, not replace query composition. |
+| Cross-campaign or org-wide search expansion | Users may ask to “search everything” when they cannot find a person. | It directly conflicts with campaign-scoped data isolation and creates severe privacy/compliance risk. | Keep search strictly campaign-scoped and improve empty-state guidance about data quality or missing imports. |
+| Instant backend search on every keystroke with no controls | Feels fast in demos. | It can create noisy ranking churn and unnecessary backend load on large voter files. | Use debounced typeahead or submit-driven search with request cancellation and stable result sets. |
 
 ## Feature Dependencies
 
-```
-Pre-scan row count (fast line count of CSV in MinIO)
-  --> Deterministic chunk boundaries (need total to divide)
-    --> Parent/child job model (parent stores chunk definitions)
-      --> Fan-out dispatch (parent task defers N chunk tasks)
-        --> Chunk processing (each chunk = mini serial import)
-          --> Per-chunk batch commits with RLS restore
-          --> Per-chunk cancellation check (reads parent.cancelled_at)
-          --> Per-chunk error writes to MinIO
-          --> Per-chunk crash resume (last_committed_row per chunk)
-        --> Progress aggregation (parent.imported_rows = SUM(chunks))
-        --> Completion detection (last chunk triggers finalization)
-          --> Error report merge (combine chunk error files)
-          --> Parent status derivation (completed / completed_with_errors / failed)
+```text
+Free-text query
+    └──requires──> Campaign-scoped voter search endpoint
+                         └──requires──> Existing RLS / campaign isolation
 
-v1.10 orphan detection
-  --> Chunk-level crash resume (recovery engine detects stale chunks)
+Free-text query
+    └──composes with──> Existing filter builder
+                             └──drives──> Shared chips / pagination / sorting state
 
-Secondary work offloading (independent track):
-  --> New task types: process_voter_phones, update_voter_geometry
-  --> Enqueued after each committed batch or after chunk completion
-  --> Completed-with-errors status (secondary failures non-blocking)
+Deterministic ranking
+    └──requires──> Field normalization + field-specific match modes
 
-Per-campaign queueing lock
-  --> Applied to parent orchestrator task only
-  --> Chunk tasks use separate queue without queueing lock
+Typo tolerance
+    └──depends on──> Ranking guardrails
+                           └──prevents──> Fuzzy false positives outranking exact matches
+
+Disambiguated result rows
+    └──reuses──> Existing voter CRM list/detail context
+
+Cross-campaign search ──conflicts──> Campaign-scoped isolation
+Search-only workflow ──conflicts──> Existing advanced targeting/filter workflows
 ```
 
-## MVP Recommendation
+### Dependency Notes
 
-### Phase 1: Core parallel infrastructure (all table stakes)
+- **Free-text query requires the existing campaign-scoped voter search contract:** This milestone should extend the current voter search/list API, not create a second parallel lookup system with different permissions or pagination behavior.
+- **Free-text query composes with the existing filter builder:** The highest-value UX is search first, then refine with tags, lists, contactability, geography, or interaction filters already shipped.
+- **Deterministic ranking requires field normalization:** Phone digits, email casing, address punctuation, and whitespace normalization must be settled before ranking feels trustworthy.
+- **Typo tolerance depends on ranking guardrails:** Fuzzy matches are useful only if exact phone/email/ID and exact-name matches still win.
+- **Disambiguated result rows reuse current CRM context:** Existing list/detail flows already expose tags, contact info, and interaction history. Search results should leverage that context instead of inventing a separate voter-preview model.
+- **Cross-campaign search conflicts with campaign isolation:** This is a hard product boundary, not a future nice-to-have.
+- **Search-only workflows conflict with advanced targeting:** Users still need filters to build universes and operational lists; search should not collapse those capabilities.
 
-Implement in this order -- each step builds on the previous:
+## MVP Definition
 
-1. **ImportChunk model + migration** -- New table: id, import_job_id (FK), chunk_index, start_row, end_row, status, imported_rows, skipped_rows, last_committed_row, error_report_key, started_at, completed_at. This is the foundation.
+### Launch With (v1)
 
-2. **Pre-scan row count** -- Fast streaming line count of CSV from MinIO (no parsing, just count newlines). Store total_rows on parent ImportJob before fan-out. Required for chunk boundary calculation.
+- [ ] One-box campaign-scoped voter lookup across name, phone, email, and address fragments — core milestone value
+- [ ] Partial matching with normalized phone/email/address handling — necessary for real organizer input quality
+- [ ] Deterministic ranking that boosts exact and likely matches first — necessary for trust
+- [ ] Typo tolerance limited to names/address text — necessary for usability without flooding results
+- [ ] Search + existing filters working together in one result set — required to avoid regressing current voter workflows
+- [ ] Result rows with enough identity context to disambiguate duplicate names — required for quick opening of the correct voter
 
-3. **Chunk boundary calculation + fan-out** -- Parent orchestrator task: create ImportChunk records with row ranges, defer one `process_import_chunk` task per chunk. Parent task then exits (it does not wait -- fire and forget).
+### Add After Validation (v1.x)
 
-4. **process_import_chunk task** -- New task that processes a single chunk range. Reuses existing batch processing logic from ImportService (stream_csv_lines with skip-to-start-row, _process_single_batch, commit_and_restore_rls). Each chunk is a mini serial import within its row range.
+- [ ] Mixed-token cross-field ranking improvements — add once baseline search logs show common ambiguous query patterns
+- [ ] Query chip integrated with existing filter chips — add once the base composition model is stable
+- [ ] Keyboard-first result navigation — add after ranking and result layout are stable
+- [ ] Alias/normalization expansions for messy vendor data — add when real miss cases are observed in production
 
-5. **Progress aggregation** -- Parent ImportJob's progress fields (imported_rows, skipped_rows, total_rows) updated by aggregation query: `SELECT SUM(imported_rows), SUM(skipped_rows) FROM import_chunks WHERE import_job_id = ?`. Run this on each poll request or update parent after each chunk batch commit.
+### Future Consideration (v2+)
 
-6. **Cancellation propagation** -- Chunk workers check parent.cancelled_at between batches. Queued chunks check on startup. Cancel endpoint unchanged (sets cancelled_at on parent).
+- [ ] Saved recent searches or suggested lookups — useful only after heavy repeat usage is confirmed
+- [ ] Admin-tunable ranking controls — defer until actual campaign needs diverge
+- [ ] Semantic/helper search — defer unless lexical search fails real user tasks
 
-7. **Completion detection + error merge** -- After each chunk completes, check if all sibling chunks are done. If yes, merge error reports across chunks, derive parent status, finalize. Use a simple query: `SELECT COUNT(*) FROM import_chunks WHERE import_job_id = ? AND status NOT IN ('completed', 'failed')`. If zero remaining, finalize.
+## Feature Prioritization Matrix
 
-8. **Crash resume integration** -- Each chunk has last_committed_row. v1.10 orphan detection applies at chunk level. Stale chunks get re-queued; they resume from their last_committed_row within their row range.
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| One-box cross-field lookup | HIGH | MEDIUM | P1 |
+| Partial matching on names/phones/emails/addresses | HIGH | MEDIUM | P1 |
+| Deterministic ranking with exact-match boost | HIGH | HIGH | P1 |
+| Limited typo tolerance | HIGH | MEDIUM | P1 |
+| Search + filter composition | HIGH | LOW-MEDIUM | P1 |
+| Disambiguated result rows | HIGH | LOW | P1 |
+| Mixed-token cross-field matching | HIGH | HIGH | P2 |
+| Query-aware ranking by token type | HIGH | HIGH | P2 |
+| Keyboard-first lookup flow | MEDIUM | LOW-MEDIUM | P2 |
+| Alias handling beyond normalization | MEDIUM | MEDIUM-HIGH | P3 |
 
-### Phase 2: Secondary work offloading (differentiator)
+**Priority key:**
+- P1: Must have for launch
+- P2: Should have, add when possible
+- P3: Nice to have, future consideration
 
-9. **VoterPhone creation as post-batch task** -- After each committed voter batch, enqueue a lightweight task that creates VoterPhone records for voters in that batch. Decouples phone normalization from the critical path.
+## Competitor Feature Analysis
 
-10. **Geometry/derived-field tasks** -- PostGIS point creation (`ST_SetSRID(ST_MakePoint(lng, lat), 4326)`) runs as a post-import task across all newly imported voters. Currently inline in the upsert; moving it out reduces batch INSERT complexity.
-
-### Defer to later milestones
-
-- **Throughput metrics in UI** -- Can add without schema changes; pure frontend calculation from existing timestamps.
-- **Adaptive chunk sizing** -- Start with fixed 25K rows. Optimize after collecting real throughput data.
-- **Configurable parallelism** -- Start with a hardcoded cap (e.g., 4 concurrent chunks). Make configurable when multi-tenant contention is observed.
-
-## Key Implementation Notes
-
-### Procrastinate has no built-in fan-out/fan-in
-
-Procrastinate v3.7.3 is a task queue, not a workflow engine. There is no native parent/child relationship, no job dependency graph, no result aggregation primitive. The fan-out/fan-in pattern must be implemented manually in application code:
-
-- **Fan-out:** Parent orchestrator task creates ImportChunk records in the database, then calls `process_import_chunk.defer_async(chunk_id=str(chunk.id), campaign_id=campaign_id)` for each chunk. Parent task then completes (it does not block waiting for children).
-- **Progress aggregation:** Computed at query time: `SELECT SUM(imported_rows) FROM import_chunks WHERE import_job_id = ?`. The existing poll endpoint (`GET /imports/{id}`) runs this aggregation and returns it as the parent's imported_rows.
-- **Fan-in / completion detection:** Each chunk task, after completing, runs a sibling check query. If all siblings are in terminal status (completed/failed), that chunk triggers finalization (error merge, parent status derivation). To prevent race conditions where two chunks finalize simultaneously, use `SELECT ... FOR UPDATE SKIP LOCKED` on the parent ImportJob row or a pg_advisory_lock.
-
-**Confidence:** MEDIUM on Procrastinate specifics (docs blocked by Cloudflare during research). HIGH on the manual fan-out/fan-in pattern itself -- this is the standard approach in Celery, Dramatiq, and other task queues when built-in workflow primitives are insufficient.
-
-### Chunk boundary strategy: row-count based
-
-**Recommended:** Pre-scan the CSV to count total lines (fast streaming count via MinIO, no CSV parsing needed -- just count newlines). Divide into N chunks of ~25K rows each. Each chunk task skips to its start row via the existing `rows_skipped < rows_to_skip` pattern in process_import_file.
-
-**Why not byte-offset:** Byte-offset splitting risks cutting a row in half, splitting multi-byte UTF-8 characters, or landing inside a quoted CSV field containing newlines. Row-count is slower to pre-scan (must read entire file once) but eliminates all edge cases.
-
-**Pre-scan cost:** For a 113K-row file, streaming line count takes ~1-2 seconds. For a 1M-row file, ~5-10 seconds. Acceptable overhead given the import itself takes minutes.
-
-### Progress reporting backward compatibility
-
-The existing frontend polls `GET /api/v1/campaigns/{id}/imports/{job_id}` and reads `imported_rows`, `total_rows`, `skipped_rows`, `status` from `ImportJobResponse`. If the endpoint returns aggregated values from chunks, **the frontend needs zero changes** for basic progress. This is critical -- parallel infrastructure should be invisible to the existing UI for table stakes functionality.
-
-The only potential UI change: displaying `COMPLETED_WITH_ERRORS` status differently from `COMPLETED`. This is a minor frontend addition (conditional badge color/text) if the differentiator status is implemented.
-
-### Small file optimization
-
-Files under a configurable threshold (e.g., 10K rows) should skip chunking entirely and process serially as today. The overhead of creating chunk records, deferring tasks, and running completion detection is not worth it for small files. The parent orchestrator task should detect this and fall through to direct serial processing.
+| Feature | Competitor A | Competitor B | Our Approach |
+|---------|--------------|--------------|--------------|
+| Fast one-box person lookup | VAN Quick Look Up searches known info like name, phone, address, and VANID. | NationBuilder quick search searches phone, email, first name, last name, and ID with inline dropdown results. | Match the one-box expectation, but tailor fields to voter CRM usage and existing imported voter/contact/address data. |
+| Filters vs. quick lookup | VAN separates quick lookup from deeper list creation/filtering. | NationBuilder explicitly directs broader targeting to filters. | Keep the same mental model: search for known-person lookup, filters for refinement and bulk targeting. |
+| Partial / contains behavior | Legacy campaign tools commonly support finding a person from partial known info. | NationBuilder explicitly supports contains-style lookup such as email-domain fragments and name fragments. | Support partials where users actually have fragments, especially name, address, email, and phone suffixes. |
+| Ranked, typo-tolerant results | Commercial search platforms treat typo tolerance and exact-first ranking as default relevance behavior. | Same. | Use explainable, field-weighted lexical ranking rather than opaque “smart search.” |
 
 ## Sources
 
-- [Procrastinate GitHub (v3.7.3)](https://github.com/procrastinate-org/procrastinate) -- PostgreSQL-native task queue; no built-in workflow orchestration confirmed via repo review
-- [Fan-out/Fan-in Pattern (Microsoft Durable Functions)](https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-cloud-backup) -- canonical pattern description applicable to any task queue
-- [UI Patterns for Async Workflows (LogRocket)](https://blog.logrocket.com/ux-design/ui-patterns-for-async-workflows-background-jobs-and-data-pipelines/) -- progress visibility, cancellation, partial failure UX best practices
-- [Bulk Upload UX Case Study (Medium)](https://medium.com/design-bootcamp/ux-case-study-bulk-upload-feature-785803089328) -- summary reports, progress, error handling patterns
-- [Data Pipeline Design Patterns (Dagster)](https://dagster.io/guides/data-pipeline-architecture-5-design-patterns-with-examples) -- chunked processing, aggregation consistency concerns
-- [Parallel CSV Ingestion to CloudSQL (Google Cloud)](https://medium.com/google-cloud/parallel-serverless-csv-ingestion-to-cloudsql-using-cloud-dataflow-6c5899cf8d58) -- chunk-based parallel CSV import architecture
-- Internal: `docs/import-parallelization-options.md` -- options analysis, recommended sequence (Options 1+2 selected)
-- Internal: `app/services/import_service.py` -- current serial batch processing, streaming CSV, RLS restoration, dynamic batch sizing
-- Internal: `app/models/import_job.py` -- current ImportJob model, ImportStatus enum, field_mapping storage
-- Internal: `app/tasks/import_task.py` -- current single-task import with crash resume and cancellation
-- Internal: `app/tasks/procrastinate_app.py` -- Procrastinate app configuration, PsycopgConnector setup
+- PostgreSQL `pg_trgm` docs: https://www.postgresql.org/docs/current/pgtrgm.html
+- PostgreSQL text search ranking docs: https://www.postgresql.org/docs/current/textsearch-controls.html
+- Typesense search API docs: https://typesense.org/docs/29.0/api/search.html
+- Algolia typo tolerance docs, last modified March 12, 2026: https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance
+- NationBuilder quick search docs: https://support.nationbuilder.com/en/articles/2306501-find-people-and-pages-with-quick-search
+- NationBuilder filters docs: https://support.nationbuilder.com/en/articles/3055676-use-filters-to-target-your-audience
+- The Official Vanual (VAN training guide PDF), pages 9-12 and glossary: https://www.deldems.org/sites/default/files/2024-04/The%20Official%20Vanual.pdf
+
+---
+*Feature research for: voter-page free-text lookup and refinement*
+*Researched: 2026-04-06*

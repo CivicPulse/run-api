@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
-import { useSetPrimaryContact } from "./useVoterContacts"
+import { useDeleteAddress, useSetPrimaryContact } from "./useVoterContacts"
 import type { VoterFilter } from "@/types/voter"
 
 // Mock api client
@@ -148,5 +148,45 @@ describe("VoterFilter type completeness", () => {
     expect(filter.not_voted_in).toEqual(["2022-primary"])
     expect(filter.parties).toEqual(["DEM", "REP"])
     expect(filter.logic).toBe("AND")
+  })
+})
+
+describe("useDeleteAddress", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("invalidates contact and voter queries on success", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+    mockApi.delete.mockReturnValue({ json: vi.fn().mockResolvedValue(undefined) })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(
+      () => useDeleteAddress("campaign-1", "voter-1"),
+      { wrapper }
+    )
+
+    result.current.mutate("address-1")
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      "api/v1/campaigns/campaign-1/voters/voter-1/addresses/address-1"
+    )
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["voters", "campaign-1", "voter-1", "contacts"],
+    })
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["voters", "campaign-1"],
+    })
   })
 })

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. Organization-level management enables multi-campaign oversight with org admin roles, campaign creation wizards, member directories, and org switching. An interactive map-based turf editor provides polygon drawing, GeoJSON import/export, address search, and overlap detection. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips. A dedicated mobile-first volunteer field mode provides zero-training canvassing and phone banking experiences with offline support, guided onboarding, and WCAG AA accessibility. Production hardening includes Sentry error tracking, structlog request telemetry, trusted-proxy rate limiting on all endpoints, and Playwright E2E test coverage.
+A multi-tenant, nonpartisan platform for managing political campaign field operations. The system provides a REST API with full web UI covering authentication, voter CRM with CSV import wizard (including L2 voter file support with propensity scores, demographics, mailing address, household data, and auto-phone creation), canvassing management (PostGIS turf cutting, walk lists, door-knock tracking), phone banking (call lists, DNC management, active calling experience with survey integration), volunteer coordination (self-registration, shift scheduling, check-in/out, hours tracking), and operational dashboards — all with role-based permission gating and row-level security isolation between campaigns. Organization-level management enables multi-campaign oversight with org admin roles, campaign creation wizards, member directories, and org switching. An interactive map-based turf editor provides polygon drawing, GeoJSON import/export, address search, and overlap detection. The voter search system supports 32+ composable filter dimensions with category-colored dismissible chips plus ranked, typo-tolerant voter lookup across names, contacts, addresses, city, ZIP, and source identifiers. A dedicated mobile-first volunteer field mode provides zero-training canvassing and phone banking experiences with offline support, guided onboarding, and WCAG AA accessibility. Production hardening includes Sentry error tracking, structlog request telemetry, trusted-proxy rate limiting on all endpoints, and Playwright E2E test coverage.
 
 ## Core Value
 
@@ -107,6 +107,10 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Accessibility: 0 critical axe violations across 16 production pages — v1.13
 - ✓ Field hub mobile 3G cold-load rebaselined to 3200 ms budget (product sign-off 2026-04-06) — v1.13
 - ✓ Production shakedown verdict: GO with conditions (from NO-GO) — v1.13
+- ✓ Search-first voter lookup in the existing voter search flow — v1.14 (LOOK-01, LOOK-05, SRCH-01, SRCH-03, INT-03)
+- ✓ Campaign-scoped PostgreSQL search surface with edit/import freshness guarantees — v1.14 (SRCH-02, SRCH-04, TRST-01)
+- ✓ Ranked multi-field lookup across name, phone, email, address, city, ZIP, and source identifiers with typo tolerance — v1.14 (LOOK-02, LOOK-03, LOOK-04, TRST-02)
+- ✓ Search-first voter page states, stale-response protection, and richer row disambiguation — v1.14 (LOOK-06, INT-01, INT-02)
 
 ### Active
 
@@ -138,22 +142,23 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current State
 
-**Shipped:** v1.13 Production Shakedown Remediation (2026-04-06)
+**Shipped:** v1.14 Voter Search & Lookup (2026-04-07)
 
-The platform is production-ready and launch-cleared. v1.13 closed 6 phases (18 plans), eliminating all 7 P0 cross-tenant isolation breaches, sanitizing all error responses, deploying security headers, restoring broken workflows, and achieving 0 critical axe violations. The production shakedown verdict moved from NO-GO to **GO with conditions**.
+The platform now ships a search-first voter lookup experience. v1.14 closed 4 phases (6 plans), added free-text lookup to the existing voter search flow, introduced a campaign-scoped PostgreSQL search surface refreshed on voter/contact/import writes, shipped ranked cross-field matching with typo tolerance, and verified DB-backed campaign isolation plus 10k-row lookup performance at about 115.54 ms.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
 2. HSTS header — Cloudflare edge configuration
 3. QA test data — kubectl cleanup documented
 
-**13 milestones shipped** across 83 phases from 2026-03-08 to 2026-04-06.
+Search freshness boundary: direct voter/contact edits are immediate; import completion is expected to become visible within 5 minutes.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-(Not yet defined — run `/gsd:new-milestone` to plan)
+- Define the next milestone from fresh requirements before opening new phase work.
+- Decide whether the next milestone should target remaining ops follow-ups, product expansion, or both.
 
 ## Context
 
@@ -195,6 +200,8 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | cancelled_at timestamp over status enum | Race-safe cancellation signal independent of status transitions | ✓ Good — avoids lost-update race between worker and API |
 | format_detected as transient (not persisted) | L2 detection computed at detect time, no schema change needed | ✓ Good — simple, no migration required |
 | Production shakedown drives v1.13 scope | Verified failures in deployed behavior should set remediation priority over new feature work | ✓ Good — all P0s fixed, GO verdict achieved |
+| Keep lookup inside `POST /voters/search` | Avoid split query semantics and preserve composition with deterministic filters | ✓ Good — one voter-search contract now powers browse, filters, and ranked lookup |
+| PostgreSQL-native search surface over external search infra | Lower operational risk while preserving campaign scoping and freshness | ✓ Good — `voter_search_records` supports DB-backed 10k-row lookup in about 116 ms |
 
 ---
 ## Evolution
@@ -215,4 +222,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after v1.13 Production Shakedown Remediation milestone shipped*
+*Last updated: 2026-04-07 after v1.14 Voter Search & Lookup milestone completion*

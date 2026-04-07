@@ -35,7 +35,10 @@ export function useAddPhone(campaignId: string, voterId: string) {
       api
         .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/phones`, { json: data })
         .json<PhoneContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -46,7 +49,10 @@ export function useUpdatePhone(campaignId: string, voterId: string) {
       api
         .patch(`api/v1/campaigns/${campaignId}/voters/${voterId}/phones/${phoneId}`, { json: data })
         .json<PhoneContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -55,7 +61,10 @@ export function useDeletePhone(campaignId: string, voterId: string) {
   return useMutation({
     mutationFn: (phoneId: string) =>
       api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}/phones/${phoneId}`).json(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -66,7 +75,10 @@ export function useSetPrimaryContact(campaignId: string, voterId: string) {
       api
         .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/contacts/${contactType}/${contactId}/set-primary`)
         .json(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -79,7 +91,10 @@ export function useAddEmail(campaignId: string, voterId: string) {
       api
         .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/emails`, { json: data })
         .json<EmailContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -90,7 +105,10 @@ export function useUpdateEmail(campaignId: string, voterId: string) {
       api
         .patch(`api/v1/campaigns/${campaignId}/voters/${voterId}/emails/${emailId}`, { json: data })
         .json<EmailContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -99,7 +117,10 @@ export function useDeleteEmail(campaignId: string, voterId: string) {
   return useMutation({
     mutationFn: (emailId: string) =>
       api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}/emails/${emailId}`).json(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -112,7 +133,10 @@ export function useAddAddress(campaignId: string, voterId: string) {
       api
         .post(`api/v1/campaigns/${campaignId}/voters/${voterId}/addresses`, { json: data })
         .json<AddressContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -123,7 +147,10 @@ export function useUpdateAddress(campaignId: string, voterId: string) {
       api
         .patch(`api/v1/campaigns/${campaignId}/voters/${voterId}/addresses/${addressId}`, { json: data })
         .json<AddressContact>(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
 
@@ -132,7 +159,9 @@ export function useDeleteAddress(campaignId: string, voterId: string) {
   return useMutation({
     mutationFn: (addressId: string) =>
       api.delete(`api/v1/campaigns/${campaignId}/voters/${voterId}/addresses/${addressId}`).json(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
   })
 }
-

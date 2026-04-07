@@ -35,6 +35,7 @@ from app.models.import_job import (
 from app.models.voter import Voter
 from app.models.voter_contact import VoterPhone
 from app.services.import_recovery import advisory_lock_key
+from app.services.voter_search import VoterSearchIndexService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -857,6 +858,9 @@ class ImportService:
     to the voters table, and full import file orchestration.
     """
 
+    def __init__(self) -> None:
+        self._search_index = VoterSearchIndexService()
+
     @staticmethod
     def _mark_progress(job: ImportJob) -> None:
         """Persist the latest durable progress timestamp on the import job."""
@@ -1175,6 +1179,7 @@ class ImportService:
                 await session.execute(phone_stmt)
                 await session.flush()
 
+            await self._search_index.refresh_records(session, voter_ids)
             phones_created = len(phone_records)
 
         return len(valid_voters), errors, phones_created
@@ -1268,6 +1273,7 @@ class ImportService:
             if voter.get("latitude") is not None and voter.get("longitude") is not None:
                 geometry_manifest.append(voter_id)
 
+        await self._search_index.refresh_records(session, voter_ids)
         return len(valid_voters), errors, phone_manifest, geometry_manifest
 
     async def _apply_phone_manifest(
@@ -1288,6 +1294,10 @@ class ImportService:
         )
         await session.execute(phone_stmt)
         await session.flush()
+        await self._search_index.refresh_records(
+            session,
+            [record["voter_id"] for record in phone_records],
+        )
         return len(phone_records)
 
     async def _apply_geometry_manifest(

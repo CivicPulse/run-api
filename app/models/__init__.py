@@ -23,6 +23,7 @@ from app.models.voter import Voter, VoterTag, VoterTagMember
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import VoterInteraction
 from app.models.voter_list import VoterList, VoterListMember
+from app.models.voter_search import VoterSearchRecord
 
 __all__ = [
     "CallList",

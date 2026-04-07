@@ -1,448 +1,437 @@
 # Architecture Patterns
 
-**Domain:** Chunked parallel CSV import pipeline for multi-tenant campaign platform
-**Researched:** 2026-04-01
+**Domain:** Voter-page free-text lookup for a multi-tenant campaign CRM
+**Researched:** 2026-04-06
+**Confidence:** HIGH
 
-## Current Architecture (Baseline)
+## Recommended Architecture
 
-```
-Frontend           API                    Procrastinate Queue        Worker
-  |                  |                          |                      |
-  |--POST /confirm-->|                          |                      |
-  |                  |--defer(process_import)--->|                      |
-  |                  |  queueing_lock=campaign   |                      |
-  |<--202 QUEUED-----|                          |                      |
-  |                  |                          |---process_import----->|
-  |                  |                          |                      |
-  |                  |                          |  stream_csv_lines()   |
-  |                  |                          |  for each batch:      |
-  |                  |                          |    upsert voters      |
-  |                  |                          |    create phones      |
-  |                  |                          |    update geom        |
-  |                  |                          |    COMMIT + RLS       |
-  |                  |                          |    check cancelled_at |
-  |                  |                          |  merge error files    |
-  |                  |                          |  set COMPLETED        |
-```
+Keep the existing FastAPI + async SQLAlchemy + PostgreSQL monolith and add a dedicated voter lookup layer inside it. Do not create a separate search service. The new feature fits the current architecture if search remains campaign-scoped, database-native, and exposed through the existing `POST /campaigns/{campaign_id}/voters/search` flow.
 
-**Key characteristics:**
-- One Procrastinate task per import, serial batch loop
-- Per-batch COMMIT with RLS restore (`commit_and_restore_rls`)
-- Crash-resume from `last_committed_row` (skip already-processed rows)
-- Per-campaign `queueing_lock` prevents concurrent imports
-- Cancellation via `cancelled_at` timestamp, checked between batches
-- Phones, geometry, and derived fields computed inline per-batch
-- Batch size dynamically capped by asyncpg 32,767 bind-parameter limit
-- Default `import_batch_size = 1000`
+The key architectural choice is to separate **deterministic filters** from **discovery-style lookup**:
 
-## Recommended Architecture: Parent/Child Chunk Model
+- Keep `VoterFilter` for stable, composable filters used by voter lists and filter chips.
+- Add a separate lookup payload for free-text search, ranking, and typo tolerance.
+- Back that lookup with a denormalized PostgreSQL search projection plus indexes, instead of expanding the current name-only `ILIKE`.
 
-```
-                         confirm_mapping()
-                               |
-                    defer(split_import)
-                    queueing_lock=campaign_id
-                               |
-                      +--------v--------+
-                      |  split_import   |  (Phase 1 task: the "splitter")
-                      |  task           |
-                      +--------+--------+
-                               |
-               count CSV rows via stream_csv_lines()
-               create ImportChunk rows in DB
-               defer N process_chunk tasks
-               set parent status = PROCESSING
-                               |
-            +------------------+------------------+
-            |                  |                  |
-   +--------v------+  +-------v-------+  +-------v-------+
-   | process_chunk |  | process_chunk |  | process_chunk |
-   | chunk_id=A    |  | chunk_id=B    |  | chunk_id=C    |
-   | rows 1-10000  |  | rows 10001-   |  | rows 20001-   |
-   +--------+------+  +-------+-------+  +-------+-------+
-            |                  |                  |
-            |  Each chunk:     |                  |
-            |  - open own session                 |
-            |  - set RLS context                  |
-            |  - seek to start_row                |
-            |  - batch loop (same as today)       |
-            |  - update chunk status              |
-            |  - on last chunk done:              |
-            |    aggregate into parent            |
-            +------------------+------------------+
-                               |
-                     Parent marked COMPLETED
-                     (or COMPLETED_WITH_ERRORS)
+This avoids leaking fuzzy semantics into dynamic lists, preserves existing filter behavior, and keeps ranking logic isolated to the voter page and other lookup UIs.
+
+### System Overview
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                            React Web UI                             │
+├──────────────────────────────────────────────────────────────────────┤
+│ Voter page search box │ Filter builder │ DataTable │ Add-to-list UI │
+└───────────────┬───────────────────────────────┬──────────────────────┘
+                │                               │
+                │ POST /campaigns/:id/voters/search
+                │ body = { filters, lookup, cursor, sort_by, sort_dir }
+                ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                         FastAPI voter API                            │
+├──────────────────────────────────────────────────────────────────────┤
+│ Request schema │ auth/RLS deps │ VoterSearchService │ serializers    │
+└───────────────┬───────────────────────────────────────┬───────────────┘
+                │                                       │
+                │ structured filters                    │ ranked lookup
+                ▼                                       ▼
+┌──────────────────────────────┐      ┌────────────────────────────────┐
+│ Existing voter filter query  │      │ New voter lookup query planner │
+│ exact/range/tag predicates   │      │ FTS + trigram + boost rules    │
+└───────────────┬──────────────┘      └───────────────┬────────────────┘
+                │                                     │
+                └──────────────────┬──────────────────┘
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                           PostgreSQL                                 │
+├──────────────────────────────────────────────────────────────────────┤
+│ voters │ voter_phones │ voter_emails │ voter_search_documents        │
+│ RLS    │ RLS          │ RLS          │ RLS + GIN/GiST trigram/text   │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Boundaries
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `ImportJob` model (modified) | Parent job lifecycle, aggregate progress, user-facing status | API endpoints, frontend polling |
-| `ImportChunk` model (NEW) | Per-chunk state: row range, status, counters, error key | Chunk tasks, aggregation logic |
-| `split_import` task (NEW) | Count rows, create chunks, defer chunk tasks | Procrastinate queue, ImportChunk model |
-| `process_chunk` task (NEW) | Process one row range, update chunk status, trigger aggregation | ImportChunk, ImportJob, ImportService |
-| `ImportService` (modified) | Batch processing logic (mostly unchanged), new chunk-aware entry point | DB session, StorageService |
-| API endpoints (modified) | Confirm triggers splitter instead of processor; cancel propagates to chunks | ImportJob, Procrastinate |
+| Component | Status | Responsibility | Communicates With |
+|-----------|--------|----------------|-------------------|
+| `app/api/v1/voters.py` | Modified | Keep current endpoint; accept lookup payload; dispatch to ranked query path when present | Schemas, search service |
+| `app/schemas/voter_filter.py` or split `voter_search.py` | Modified/New | Separate stable filters from fuzzy lookup contract | API, frontend types |
+| `app/services/voter.py` | Modified | Continue owning CRUD and deterministic filter composition | Existing voter flows |
+| `app/services/voter_search.py` | New | Build candidate set, rank matches, paginate relevance results | Voter API, SQLAlchemy |
+| `app/models/voter_search_document.py` | New | Denormalized per-voter search projection including cross-table fields | Migration, write paths |
+| `alembic` migration | New | Enable `pg_trgm`, add search table/indexes/RLS/backfill | PostgreSQL |
+| Voter/contact write paths | Modified | Refresh search projection after voter/contact/import changes | Search document table |
+| `web/src/routes/campaigns/$campaignId/voters/index.tsx` | Modified | Search-first UX; query + filters + relevance sort behavior | Hook, DataTable |
+| `web/src/hooks/useVoters.ts` | Modified | Carry lookup payload and relevance cursor | Voter API |
+| `web/src/components/voters/AddVotersDialog.tsx` | Modified | Reuse lookup API with a simpler UI mode | Hook |
 
-## New Model: ImportChunk
+## Why This Fits The Existing App
 
-```python
-class ChunkStatus(enum.StrEnum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+### Existing seam to preserve
 
-class ImportChunk(Base):
-    __tablename__ = "import_chunks"
+The current voter page already routes all server-side search through `POST /voters/search`, and the backend already centralizes filter construction in `build_voter_query()` and `VoterService.search_voters()`. That is the correct seam to extend.
 
-    id: Mapped[uuid.UUID]           # PK
-    import_job_id: Mapped[uuid.UUID]  # FK -> import_jobs.id
-    campaign_id: Mapped[uuid.UUID]    # FK -> campaigns.id (for RLS)
-    chunk_index: Mapped[int]          # 0-based ordering
-    start_row: Mapped[int]            # inclusive, 1-based row offset
-    end_row: Mapped[int]              # inclusive
-    status: Mapped[ChunkStatus]       # lifecycle
-    imported_rows: Mapped[int | None]
-    skipped_rows: Mapped[int | None]
-    phones_created: Mapped[int | None]
-    last_committed_row: Mapped[int | None]  # for crash-resume within chunk
-    error_report_key: Mapped[str | None]    # per-chunk error CSV in MinIO
-    error_message: Mapped[str | None]
-    started_at: Mapped[datetime | None]
-    completed_at: Mapped[datetime | None]
-    created_at: Mapped[datetime]
+### Existing seam to avoid overloading
+
+`VoterFilter.search` is currently a name substring match, but `VoterFilter` is also reused for dynamic lists and other deterministic filtering flows. If fuzzy cross-field lookup is pushed into that field, list definitions become unstable and hard to reason about.
+
+**Recommendation:** keep fuzzy lookup out of stored `VoterFilter`. Introduce a separate contract such as:
+
+```ts
+type VoterSearchBody = {
+  filters: VoterFilter
+  lookup?: {
+    query: string
+    mode?: "broad" | "name_only"
+  }
+  cursor?: string
+  limit?: number
+  sort_by?: "relevance" | existingSortableColumns
+  sort_dir?: "asc" | "desc"
+}
 ```
 
-**RLS note:** `import_chunks` MUST have a `campaign_id` column with an RLS policy identical to `import_jobs`. Without this, chunk queries from the worker would fail or leak data. The FK to `import_jobs.id` alone is insufficient because RLS filters require `campaign_id` on every table.
+## Search Storage Pattern
 
-**Why a separate table, not JSONB on ImportJob:** Concurrent chunk workers updating JSONB on the same parent row creates write contention and lost-update races. Separate rows allow independent, lock-free updates. Aggregation reads (SUM/COUNT) are cheap.
+### Recommended pattern: denormalized search projection table
 
-## Modified Model: ImportJob
+Add a new table, for example `voter_search_documents`, keyed by `voter_id`, with its own `campaign_id` for RLS and index locality.
 
-Add to existing `ImportJob`:
+Suggested contents:
 
-```python
-# New columns
-total_chunks: Mapped[int | None]       # how many chunks were created
-completed_chunks: Mapped[int | None]   # aggregated count for fast polling
-is_chunked: Mapped[bool]               # False for legacy/small imports
+| Column | Purpose |
+|--------|---------|
+| `voter_id` | One row per voter |
+| `campaign_id` | RLS and query scoping |
+| `document` (`tsvector`) | Weighted full-text document |
+| `search_text` (`text`) | Flattened text for trigram / substring matching |
+| `name_text` (`text`) | Name-specific lookup and exact/prefix boosts |
+| `phone_text` (`text`) | Normalized joined phone digits |
+| `email_text` (`text`) | Joined emails if included |
+| `updated_at` | Operational visibility |
+
+### Why a projection table instead of only columns on `voters`
+
+- Cross-field lookup wants data from `voters` plus related contact tables.
+- Generated columns on `voters` are good for same-row data, but do not solve phone/email joins cleanly.
+- A projection table keeps search-specific write logic and indexes isolated from the canonical voter model.
+- It makes rebuild/backfill possible without risking voter CRUD semantics.
+
+### Recommended indexed search strategy
+
+Use a **hybrid** query:
+
+1. Full-text search for broad cross-field retrieval and stemming.
+2. Trigram similarity for typo tolerance and partial-name recovery.
+3. Explicit boosts for exact and prefix matches.
+
+Suggested PostgreSQL primitives:
+
+- `document @@ websearch_to_tsquery('english', :query)` for forgiving raw user input.
+- `ts_rank_cd(document, tsquery, 32)` for relevance ranking.
+- `pg_trgm` similarity / word similarity against `name_text`, `search_text`, and normalized phone fragments.
+- GIN index on `document`.
+- GIN trigram indexes on `name_text` and `search_text`.
+
+### Recommended rank formula
+
+Treat ranking as a deterministic composite score, not a single opaque function:
+
+```text
+score =
+  exact_name_boost +
+  prefix_name_boost +
+  phone_exact_boost +
+  source_id_exact_boost +
+  (ts_rank_cd * fts_weight) +
+  (greatest(name_similarity, search_similarity) * trigram_weight)
 ```
 
-`is_chunked` distinguishes between the new parallel path and the existing serial path. Small files (below a threshold, e.g., 10,000 rows) skip chunking entirely and use the current serial `process_import` task unchanged. This preserves backward compatibility and avoids overhead for small imports.
+Recommended ordering:
 
-## Data Flow: Split Phase
+1. Exact identifier / phone matches
+2. Exact full-name matches
+3. Prefix name matches
+4. Strong FTS matches
+5. Trigram fallback matches
+6. Stable tiebreakers: `last_name`, `first_name`, `id`
 
-The `split_import` task runs as a single serial step before any parallel work begins:
+This is more explainable to users and easier to tune than pure `ts_rank_cd`.
 
-1. **Open session, set RLS context** for `campaign_id`
-2. **Count total CSV rows** by streaming through `stream_csv_lines()` and counting lines (header excluded). This is I/O only, no parsing. For a 114K-row file this takes seconds.
-3. **Compute chunk boundaries**: `chunk_size = settings.import_chunk_size` (default 25,000 rows). Divide total rows into chunks with `(start_row, end_row)` ranges.
-4. **Insert ImportChunk rows** in a single batch INSERT.
-5. **Update parent**: `total_rows`, `total_chunks`, `is_chunked = True`, `status = PROCESSING`.
-6. **COMMIT** (single transaction for all chunk rows + parent update).
-7. **Defer chunk tasks**: one `process_chunk.defer_async(chunk_id=..., campaign_id=...)` per chunk. NO queueing_lock on chunk tasks -- they must run in parallel.
+## Data Flow
 
-**Why count first, not split on the fly:** Row counting gives deterministic chunk boundaries before any processing starts. This makes crash-resume trivial (each chunk knows its exact row range) and avoids the complexity of a producer-consumer pipeline. The count pass is fast because it only reads bytes and counts newlines.
+### Read path: voter page lookup
 
-**Queueing lock design:** The `split_import` task uses `queueing_lock=str(campaign_id)` (same as today's `process_import`), preserving the per-campaign concurrency prevention. Individual `process_chunk` tasks use NO queueing lock, so Procrastinate schedules them concurrently across workers.
+```text
+User types query
+    ↓
+Debounced route/page state updates
+    ↓
+TanStack Query posts { filters, lookup, cursor, sort_by }
+    ↓
+FastAPI endpoint validates request and sets campaign-scoped DB context
+    ↓
+VoterSearchService builds:
+  - base campaign scope
+  - deterministic filter predicates
+  - ranked lookup candidate CTE
+    ↓
+PostgreSQL returns voters + optional score/match metadata
+    ↓
+API serializes results
+    ↓
+DataTable renders ranked voters; filters remain active as refinements
+```
 
-## Data Flow: Chunk Processing
+### Write path: maintaining the search projection
 
-Each `process_chunk` task:
+```text
+Voter/contact/import write completes
+    ↓
+Refresh search document for affected voter_ids
+    ↓
+Projection row recomputed from voters + phones/emails
+    ↓
+Indexes updated transactionally
+```
 
-1. **Open its own session** via `async_session_factory()`.
-2. **Set RLS context** for `campaign_id`.
-3. **Load the ImportChunk** and parent ImportJob (for `field_mapping`, `file_key`, `source_type`).
-4. **Check cancellation**: if parent `cancelled_at IS NOT NULL`, mark chunk CANCELLED and return.
-5. **Resume detection**: if chunk `status = PROCESSING` and `last_committed_row > start_row`, this is crash recovery. Skip to `last_committed_row`.
-6. **Stream CSV** via `stream_csv_lines()`, skip rows before `start_row`, process rows until `end_row`.
-7. **Batch loop** (identical to current `_process_single_batch`): upsert voters, create phones, update geom, COMMIT + RLS restore, check parent `cancelled_at`.
-8. **Update chunk counters** after each batch commit: `imported_rows`, `skipped_rows`, `phones_created`, `last_committed_row`.
-9. **On completion**: mark chunk `COMPLETED`, write chunk error CSV to MinIO if any.
-10. **Trigger aggregation** (see below).
+### Batch/import path
 
-**Each chunk opens its own DB session.** This is critical. Chunks run as independent Procrastinate tasks, potentially on different worker pods. They cannot share a session. Each session gets its own RLS context via `set_campaign_context`.
+Do not rebuild the projection one voter at a time during large imports if it materially slows ingestion. Add a bulk refresh helper for imported voter IDs per committed batch, so the import pipeline preserves its current bounded-commit model.
 
-**Row seeking:** `stream_csv_lines()` yields lines sequentially. Each chunk must skip lines before its `start_row`. This means every chunk reads from the beginning of the file. For a 3-chunk file, chunk 3 skips 2/3 of the lines before processing. This is acceptable because:
-- S3 streaming is fast (network I/O, not disk)
-- Skipping is just counting newlines, no CSV parsing
-- The alternative (byte-offset seeking with S3 Range headers) requires a pre-pass to find newline positions, adding complexity for marginal gain
+## API and Query Contract Changes
 
-**Optimization note:** If skip overhead becomes measurable for very large files (1M+ rows), a future enhancement can store byte offsets during the count pass and use S3 Range requests. This is not needed for the initial implementation.
+### Recommended request contract
 
-## Progress Aggregation
+- Keep `filters` exactly as the deterministic refinement layer.
+- Add `lookup.query` as the free-text entry point.
+- Add `"relevance"` as a first-class sort mode.
+- When `lookup.query` is present and no explicit sort is supplied, default to `relevance desc`.
 
-Two strategies, use both:
+### Recommended response additions
 
-### 1. Per-batch incremental update (for polling responsiveness)
+Return optional metadata alongside each voter:
 
-After each batch commit within a chunk, execute:
+| Field | Purpose |
+|------|---------|
+| `search_score` | Debuggable relevance score |
+| `match_reason` | Short explanation such as `exact_name`, `phone`, `address`, `typo_name` |
+
+This is useful for UI trust and for test assertions, even if the first UI version does not display it prominently.
+
+### Pagination change
+
+The current cursor scheme assumes a single physical sort column. Relevance search needs a separate cursor format, based on the relevance tuple. Keep cursor pagination, but branch the encoding when `sort_by == "relevance"`:
+
+```text
+cursor = score|match_bucket|last_name|first_name|id
+```
+
+The backend should reject reusing a relevance cursor with a different query.
+
+## Recommended Project Structure
+
+```text
+app/
+├── api/v1/voters.py                  # extend search endpoint contract
+├── models/
+│   ├── voter.py                      # existing canonical voter
+│   └── voter_search_document.py      # new search projection model
+├── schemas/
+│   ├── voter_filter.py               # stable filters
+│   └── voter_search.py               # new lookup request/response metadata
+├── services/
+│   ├── voter.py                      # existing deterministic query builder
+│   └── voter_search.py               # hybrid lookup planner + ranking
+└── db/ or utils/                     # normalization helpers if needed
+
+web/src/
+├── hooks/useVoters.ts                # extend request typing
+├── routes/campaigns/$campaignId/voters/index.tsx
+│                                     # search-first page state + relevance UX
+├── components/voters/                # search input / result affordances
+└── types/voter.ts                    # request and response metadata
+```
+
+### Structure rationale
+
+- `services/voter.py` should remain the home of stable voter CRUD and filter logic.
+- `services/voter_search.py` should own ranking and lookup-specific SQL so filter logic does not become unreadable.
+- A separate schema module helps prevent accidental reuse of fuzzy lookup fields in dynamic list storage.
+
+## Architectural Patterns
+
+### Pattern 1: Hybrid candidate retrieval
+
+**What:** build a candidate set from full-text matches and trigram matches, union them, then rank once.
+
+**When to use:** default voter-page lookup and add-to-list lookup.
+
+**Trade-offs:** slightly more SQL complexity, but much better recall than FTS-only and much better precision than trigram-only.
+
+**Example:**
 
 ```sql
-UPDATE import_jobs
-SET imported_rows = (SELECT COALESCE(SUM(imported_rows), 0) FROM import_chunks WHERE import_job_id = :job_id),
-    skipped_rows  = (SELECT COALESCE(SUM(skipped_rows), 0)  FROM import_chunks WHERE import_job_id = :job_id),
-    phones_created = (SELECT COALESCE(SUM(phones_created), 0) FROM import_chunks WHERE import_job_id = :job_id),
-    last_committed_row = (SELECT COALESCE(SUM(last_committed_row - start_row + 1), 0) FROM import_chunks WHERE import_job_id = :job_id AND status != 'pending')
-WHERE id = :job_id;
+WITH q AS (
+  SELECT websearch_to_tsquery('english', :query) AS tsq
+),
+candidates AS (
+  SELECT d.voter_id
+  FROM voter_search_documents d, q
+  WHERE d.campaign_id = :campaign_id
+    AND d.document @@ q.tsq
+  UNION
+  SELECT d.voter_id
+  FROM voter_search_documents d
+  WHERE d.campaign_id = :campaign_id
+    AND d.name_text % :query
+)
+SELECT ...
 ```
 
-This runs inside the same transaction as the batch commit, so it is consistent. The subqueries read committed data from other chunks (READ COMMITTED isolation, which is PostgreSQL's default).
+### Pattern 2: Projection-table refresh on write
 
-**Cost:** One extra query per batch commit. The `import_chunks` table has at most ~50 rows per import (1M rows / 25K chunk size), so the SUM is trivial.
+**What:** keep search state denormalized and refresh it whenever canonical voter or contact data changes.
 
-### 2. Chunk completion aggregation (for status transitions)
+**When to use:** any write path that touches searchable fields.
 
-When a chunk completes, check if ALL chunks are done:
+**Trade-offs:** extra write work, but dramatically simpler and faster reads.
 
-```python
-async def maybe_finalize_parent(session, job_id, campaign_id):
-    result = await session.execute(
-        text("""
-            SELECT
-                COUNT(*) FILTER (WHERE status = 'completed') AS done,
-                COUNT(*) FILTER (WHERE status = 'failed') AS failed,
-                COUNT(*) AS total
-            FROM import_chunks
-            WHERE import_job_id = :job_id
-        """),
-        {"job_id": str(job_id)},
-    )
-    row = result.one()
-    if row.done + row.failed == row.total:
-        # All chunks finished -- try to claim finalization lock
-        lock_result = await session.execute(
-            text("SELECT pg_try_advisory_xact_lock(:lock_key)"),
-            {"lock_key": hash(str(job_id)) & 0x7FFFFFFFFFFFFFFF},
-        )
-        if not lock_result.scalar():
-            return  # Another chunk is finalizing
+### Pattern 3: Search-first plus filter refinement
 
-        job = await session.get(ImportJob, job_id)
-        # Final aggregation
-        agg = await session.execute(text("""
-            SELECT SUM(imported_rows), SUM(skipped_rows), SUM(phones_created)
-            FROM import_chunks WHERE import_job_id = :job_id
-        """), {"job_id": str(job_id)})
-        sums = agg.one()
-        job.imported_rows = sums[0] or 0
-        job.skipped_rows = sums[1] or 0
-        job.phones_created = sums[2] or 0
-        # Merge per-chunk error CSVs into single error report
-        # ...
-        if job.cancelled_at is not None:
-            job.status = ImportStatus.CANCELLED
-        elif row.failed > 0:
-            job.status = ImportStatus.COMPLETED
-            job.error_message = f"{row.failed} of {row.total} chunks failed"
-        else:
-            job.status = ImportStatus.COMPLETED
-        await commit_and_restore_rls(session, campaign_id)
-```
+**What:** lookup query narrows the universe first; filter builder remains optional refinement.
 
-**Race condition prevention:** Multiple chunks may complete near-simultaneously. `pg_try_advisory_xact_lock` serializes finalization attempts. Only one chunk task wins the lock and performs finalization; others see the lock is held and exit cleanly. The lock is transaction-scoped (released on COMMIT), so it cannot be held permanently.
+**When to use:** voter page default experience.
 
-## Cancellation Design
+**Trade-offs:** users get faster lookup, but UI must clearly distinguish free-text lookup from structured filters.
 
-Cancellation must propagate from parent to all active chunks.
+## Anti-Patterns
 
-**Current mechanism preserved:** `cancelled_at` timestamp on ImportJob, set by the cancel endpoint.
+### Anti-Pattern 1: Reusing `filters.search` for fuzzy global lookup
 
-**Chunk cancellation flow:**
-1. User hits `POST /cancel` -> sets `cancelled_at` on ImportJob, status = CANCELLING.
-2. Each chunk task checks `parent.cancelled_at IS NOT NULL` between batches (same cooperative check as today).
-3. When a chunk detects cancellation, it marks itself CANCELLED and exits.
-4. The finalization logic (above) sees all chunks either COMPLETED or CANCELLED and finalizes the parent as CANCELLED.
+**What people do:** replace the current name `ILIKE` with a huge fuzzy cross-field query inside `VoterFilter.search`.
 
-**Chunks not yet started:** Pending chunk tasks in the Procrastinate queue will start, immediately check `cancelled_at`, see it is set, mark themselves CANCELLED, and return. This is fast (one DB read + one status update per chunk).
+**Why it’s wrong:** dynamic lists and stored filters inherit unstable fuzzy semantics, and the shared query builder becomes unmaintainable.
 
-**No need to delete queued Procrastinate jobs:** Procrastinate does not support deleting queued jobs easily. The cooperative check is simpler and already proven.
+**Do this instead:** keep `VoterFilter` deterministic and add a separate lookup object / service.
 
-## Crash-Resume Design
+### Anti-Pattern 2: Joining phones/emails directly into every lookup query
 
-Each chunk is independently crash-resumable using the same mechanism as today:
+**What people do:** build one giant live join from `voters` to contacts for every search request.
 
-- `ImportChunk.last_committed_row` tracks progress within the chunk's row range.
-- If a chunk task crashes mid-processing, the v1.10 recovery engine (being built in the sibling milestone) detects the orphaned Procrastinate job and re-queues it.
-- On re-execution, the chunk task sees `status = PROCESSING` and `last_committed_row > start_row`, skips to `last_committed_row`, and continues.
+**Why it’s wrong:** ranking queries become expensive, duplicates are easy to introduce, and indexes become less effective.
 
-**Parent recovery:** If the `split_import` task crashes after creating chunks but before deferring all chunk tasks, the recovery engine re-queues it. On re-execution, `split_import` checks if chunks already exist for this job. If they do, it only defers tasks for chunks still in PENDING status.
+**Do this instead:** query a pre-flattened search projection.
 
-**Idempotency:** Chunk tasks are idempotent because:
-- Voter upsert uses `ON CONFLICT DO UPDATE` (same source_id + campaign_id + source_type)
-- Phone upsert uses `ON CONFLICT DO UPDATE` (same campaign_id + voter_id + value)
-- Re-processing already-committed rows produces the same result
+### Anti-Pattern 3: Adding Elasticsearch/OpenSearch immediately
 
-## RLS Context with Parallel Chunks
+**What people do:** introduce a separate search cluster for typo tolerance.
 
-**Critical constraint:** PostgreSQL `set_config('app.current_campaign_id', ..., true)` is transaction-scoped. Each COMMIT resets it. This is already handled by `commit_and_restore_rls()`.
+**Why it’s wrong:** this milestone’s requirements are well within PostgreSQL capability, and an external search system adds indexing lag, ops overhead, and multi-tenant consistency risk.
 
-**With parallel chunks:** Each chunk task runs in its own session on potentially different worker processes/pods. Each session independently calls `set_campaign_context()` before any query and `commit_and_restore_rls()` after each batch. There is no shared state between chunks.
+**Do this instead:** use PostgreSQL FTS + `pg_trgm` first. Revisit only if later requirements include facets, multilingual analyzers, or cross-campaign global search.
 
-**No change needed to RLS helpers.** The existing `set_campaign_context` and `commit_and_restore_rls` work correctly because each chunk has its own session and transaction.
+## Integration Points
 
-**Defense-in-depth:** The `checkout` event on the engine (`reset_rls_context`) already resets to a null campaign UUID on every pool checkout. This protects against cross-campaign leaks even if a chunk task somehow fails to set context.
+### Internal boundaries
 
-## Patterns to Follow
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| voter page → voter search API | HTTP JSON | Preserve existing endpoint path; extend body |
+| voter API → search service | direct function call | New ranked path only when `lookup.query` present |
+| search service → existing filter builder | direct call / composed predicates | Filters remain reusable |
+| voter/contact writes → search projection refresh | direct service call | Must happen for CRUD and import writes |
+| import pipeline → projection bulk refresh | direct service call | Refresh affected voter IDs per committed batch |
+| dynamic lists → filter builder only | direct call | Do not use fuzzy lookup contract in stored lists |
 
-### Pattern 1: Small File Fast Path
-**What:** Files below a threshold (e.g., 10,000 rows) bypass chunking entirely and use the current serial `process_import` task.
-**When:** `total_rows < settings.import_chunk_threshold`
-**Why:** Chunking overhead (count pass + chunk row creation + per-chunk S3 seeking) is not worth it for small files. The serial path is simpler and likely faster.
+### External services
 
-Implementation: `split_import` counts rows, and if below threshold, calls `process_import_file()` directly (or defers a single `process_import` task) instead of creating chunks.
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| PostgreSQL full-text search | native SQL functions | `websearch_to_tsquery`, `ts_rank_cd`, weighted `tsvector` |
+| PostgreSQL trigram | extension + indexes | `pg_trgm` supports similarity and indexed `LIKE`/`ILIKE` |
 
-### Pattern 2: One Session Per Chunk
-**What:** Each chunk task creates its own `async_session_factory()` session.
-**When:** Always, for all chunk tasks.
-**Why:** Chunks may run on different worker pods. Even on the same pod, shared sessions between concurrent tasks would corrupt RLS context.
+## New vs Modified Pieces
 
-### Pattern 3: Aggregation via SQL, Not In-Memory
-**What:** Parent job counters are computed via `SUM()` over chunk rows, not by accumulating in Python.
-**When:** On every batch commit (for polling) and on chunk completion (for finalization).
-**Why:** SQL aggregation is atomic and correct even with concurrent chunk updates. In-memory accumulation across tasks is impossible (different processes).
+### New
 
-### Pattern 4: Advisory Lock for Finalization
-**What:** Use `pg_try_advisory_xact_lock()` when finalizing the parent job.
-**When:** A chunk completes and checks if all chunks are done.
-**Why:** Multiple chunks completing near-simultaneously could race to finalize. The advisory lock serializes this safely.
+- `voter_search_documents` table and model
+- `pg_trgm` extension migration
+- search-specific indexes
+- `VoterSearchService`
+- lookup request/response schema types
+- relevance cursor encoder/decoder
 
-## Anti-Patterns to Avoid
+### Modified
 
-### Anti-Pattern 1: Shared Session Across Chunks
-**What:** Passing one DB session to multiple concurrent chunk processors.
-**Why bad:** RLS context is per-transaction. Concurrent transactions on the same session corrupt each other's campaign context.
-**Instead:** One session per chunk task, always.
-
-### Anti-Pattern 2: JSONB Chunk State on Parent
-**What:** Storing chunk progress as a JSONB array on the ImportJob row.
-**Why bad:** Multiple chunks writing to the same JSONB column creates lost-update races (last writer wins). Even with JSONB merge operators, this is fragile under concurrency.
-**Instead:** Separate `import_chunks` table with one row per chunk.
-
-### Anti-Pattern 3: Byte-Offset Seeking Without Pre-Pass
-**What:** Trying to seek to byte offsets in S3 for each chunk without first mapping newline positions.
-**Why bad:** CSV rows are variable-length. Seeking to an arbitrary byte offset lands mid-row, producing corrupt data.
-**Instead:** Line-based seeking (skip N lines from start), or pre-pass that records byte offsets per chunk boundary.
-
-### Anti-Pattern 4: Deleting Procrastinate Jobs for Cancellation
-**What:** Trying to remove queued chunk tasks from the Procrastinate queue on cancel.
-**Why bad:** Procrastinate does not expose a clean job deletion API. Manipulating queue rows directly is fragile.
-**Instead:** Cooperative cancellation via `cancelled_at` check at chunk task startup and between batches.
-
-### Anti-Pattern 5: Using queueing_lock on Chunk Tasks
-**What:** Setting `queueing_lock` on individual `process_chunk` tasks.
-**Why bad:** Procrastinate's queueing_lock prevents jobs with the same lock from being enqueued simultaneously. If all chunks share a lock, only one chunk would be queued at a time -- defeating parallelism entirely.
-**Instead:** Only the parent `split_import` task uses `queueing_lock=campaign_id`. Chunk tasks have no queueing lock.
-
-## File Inventory: New vs Modified
-
-### New Files
-
-| File | Purpose |
-|------|---------|
-| `alembic/versions/xxxx_add_import_chunks.py` | Migration: create `import_chunks` table, add columns to `import_jobs` |
-| `app/models/import_chunk.py` | `ImportChunk` model and `ChunkStatus` enum |
-| `app/schemas/import_chunk.py` | Pydantic schemas for chunk responses (if exposed to API) |
-| `app/tasks/split_import_task.py` | `split_import` task: count rows, create chunks, defer chunk tasks |
-| `app/tasks/process_chunk_task.py` | `process_chunk` task: process one row range |
-
-### Modified Files
-
-| File | Changes |
-|------|---------|
-| `app/models/import_job.py` | Add `total_chunks`, `completed_chunks`, `is_chunked` columns |
-| `app/schemas/import_job.py` | Add new fields to `ImportJobResponse` |
-| `app/api/v1/imports.py` | `confirm_mapping` defers `split_import` instead of `process_import`; cancel endpoint unchanged (cooperative check) |
-| `app/services/import_service.py` | Extract chunk-aware entry point; batch processing logic mostly unchanged |
-| `app/tasks/procrastinate_app.py` | Add `import_paths` for new task modules |
-| `app/core/config.py` | Add `import_chunk_size` and `import_chunk_threshold` settings |
-
-### Unchanged Files
-
-| File | Why Unchanged |
-|------|---------------|
-| `app/db/rls.py` | RLS helpers work as-is; each chunk uses them independently |
-| `app/services/storage.py` | S3 streaming unchanged; each chunk streams the full file |
-| `app/models/voter.py` | Voter upsert logic unchanged |
-| Frontend polling | Polls `ImportJob` status and counters, which are aggregated from chunks transparently |
+- voter search endpoint
+- voter/contact/import write paths
+- voter page route state and hook payload
+- Add Voters dialog search behavior
+- tests for search ranking, typo tolerance, and tenant isolation
 
 ## Suggested Build Order
 
-### Phase A: Schema and Models (foundation, no behavior change)
-1. Create `ImportChunk` model with `ChunkStatus` enum
-2. Add `total_chunks`, `completed_chunks`, `is_chunked` to `ImportJob`
-3. Write and run Alembic migration
-4. Add `import_chunk_size` (default 25,000) and `import_chunk_threshold` (default 10,000) to settings
-5. Add chunk-related fields to Pydantic schemas
+1. **Define the contract boundary**
+   - Add `lookup` to the request schema.
+   - Add `relevance` sort mode and response metadata.
+   - Keep `VoterFilter` deterministic.
 
-**Rationale:** Models and migration first because everything depends on them. No behavior change means existing imports continue to work.
+2. **Add database primitives**
+   - Enable `pg_trgm`.
+   - Create `voter_search_documents`.
+   - Add RLS policy and indexes.
+   - Backfill from existing voter/contact data.
 
-### Phase B: Split Task and Chunk Processing
-1. Implement `split_import` task (count rows, create chunks, defer chunk tasks, small-file fast path)
-2. Extract chunk-aware processing from `ImportService` (new method `process_chunk_range` that takes start_row/end_row)
-3. Implement `process_chunk` task (own session, RLS, batch loop, chunk status updates)
-4. Implement progress aggregation (per-batch SQL SUM + chunk completion check)
-5. Implement parent finalization with advisory lock
-6. Wire `confirm_mapping` to defer `split_import` instead of `process_import`
+3. **Implement backend read path**
+   - Create `VoterSearchService`.
+   - Compose deterministic filters with ranked lookup.
+   - Add relevance cursor pagination.
 
-**Rationale:** This is the core parallel processing logic. Split task and chunk processing are tightly coupled and should be built together. Progress aggregation is essential for the frontend to work.
+4. **Implement backend write-path sync**
+   - Refresh projection on voter CRUD.
+   - Refresh projection on phone/email changes.
+   - Add bulk refresh hook for import batches.
 
-**Dependency:** Phase A (models must exist).
+5. **Switch the voter page to search-first**
+   - Add free-text input.
+   - Default to relevance sort when query exists.
+   - Keep filter panel as optional refinement.
 
-### Phase C: Cancel and Resume Integration
-1. Verify cancellation propagation (parent `cancelled_at` -> chunk cooperative check)
-2. Implement chunk-level crash-resume (skip to `last_committed_row` within chunk range)
-3. Handle split task crash-resume (re-defer only PENDING chunks)
-4. Implement per-chunk error CSV merging on parent finalization
+6. **Expand to secondary consumers**
+   - Update Add Voters dialog.
+   - Decide whether other list/member pickers should opt in.
 
-**Rationale:** Cancel and resume are correctness-critical but build on the core processing from Phase B. Testing them requires the full pipeline to be functional.
+7. **Tune and verify**
+   - Add ranking tests.
+   - Add typo-tolerance tests.
+   - Add EXPLAIN-based performance checks on representative campaign sizes.
+   - Add RLS coverage for the new search table.
 
-**Dependency:** Phase B.
+## Scaling Considerations
 
-### Phase D: Tests
-1. Unit tests for chunk boundary calculation
-2. Unit tests for progress aggregation SQL
-3. Unit tests for finalization race (advisory lock)
-4. Integration test: full chunked import end-to-end
-5. Integration test: cancel mid-import with active chunks
-6. Integration test: crash-resume within a chunk
-7. Regression: no duplicate voters after chunked import
+| Scale | Architecture Adjustment |
+|-------|--------------------------|
+| 0-100k voters per campaign | PostgreSQL-only hybrid search is enough |
+| 100k-1M voters per campaign | Tune weights, keep projection table lean, verify index selectivity |
+| 1M+ voters per campaign or multi-region search pressure | Consider partitioning by `campaign_id` or a dedicated search system only if PostgreSQL tuning is exhausted |
 
-**Rationale:** Tests last because they need the full implementation. However, each phase should include basic smoke testing during development.
+### What breaks first
 
-**Dependency:** Phase C.
+1. **Read performance on poorly indexed fuzzy queries**
+   - Fix with projection indexes and candidate-set narrowing.
 
-## Scalability Considerations
-
-| Concern | 10K rows (1 chunk) | 100K rows (4 chunks) | 1M rows (40 chunks) |
-|---------|--------------------|-----------------------|----------------------|
-| Processing | Serial fast path | 4 parallel chunks | 40 parallel chunks, limited by worker count |
-| Memory per worker | ~2 batches + 1 S3 chunk (~200KB) | Same per chunk | Same per chunk |
-| DB connections | 1 session | 4 concurrent sessions | Bounded by worker pool size (not 40) |
-| S3 reads | 1 full file read | 4 full file reads (skip overhead) | 40 reads with significant skip for later chunks |
-| Row seeking overhead | None | Chunk 4 skips 75K rows (~2s) | Chunk 40 skips 975K rows (~15s) |
-| Parent row contention | None | Low (aggregation every 1000 rows) | Moderate but acceptable (advisory lock on finalize) |
-
-**Worker scaling:** The real speedup comes from running multiple worker pods. With 4 worker pods and 40 chunks, ~4 chunks process concurrently (one per pod, assuming 1 concurrent task per worker). Procrastinate workers can be configured for concurrency, but each concurrent task needs its own DB session and S3 stream, so memory scales linearly.
-
-**Future optimization:** If S3 skip overhead becomes a bottleneck for very large files, store byte offsets during the count pass and use S3 Range requests. This is a targeted optimization, not needed for the initial implementation.
+2. **Projection freshness during heavy imports**
+   - Fix with batch refresh strategy and explicit rebuild tooling.
 
 ## Sources
 
-- Procrastinate v3.7.3 source code (installed at `.venv/lib/python3.13/site-packages/procrastinate/`)
-- [Procrastinate documentation](https://procrastinate.readthedocs.io/) -- queueing_lock prevents duplicate enqueue, lock prevents concurrent execution
-- [Procrastinate PyPI](https://pypi.org/project/procrastinate/) -- latest release 3.7.3
-- Existing codebase: `app/services/import_service.py`, `app/tasks/import_task.py`, `app/db/rls.py`
-- `docs/import-parallelization-options.md` -- user's analysis of parallelization strategies
-- `IMPORT-RECOVERY-PLAN.md` -- v1.10 recovery engine design (sibling milestone)
+- Local codebase: `app/services/voter.py`, `app/api/v1/voters.py`, `app/schemas/voter_filter.py`, `web/src/routes/campaigns/$campaignId/voters/index.tsx`, `web/src/components/voters/AddVotersDialog.tsx`
+- PostgreSQL full-text search docs: https://www.postgresql.org/docs/current/textsearch-controls.html
+- PostgreSQL full-text indexing docs: https://www.postgresql.org/docs/current/textsearch-tables.html
+- PostgreSQL trigram docs: https://www.postgresql.org/docs/current/pgtrgm.html
 
-**Confidence levels:**
-- Architecture pattern: HIGH (derived from existing codebase analysis + PostgreSQL concurrency semantics)
-- RLS behavior with parallel sessions: HIGH (verified from `app/db/rls.py` -- transaction-scoped `set_config` is well-documented PostgreSQL behavior)
-- Procrastinate queueing_lock behavior: HIGH (verified from installed source code `tasks.py` line 181-184)
-- S3 streaming skip overhead: MEDIUM (estimate based on I/O characteristics, not benchmarked)
-- Advisory lock for finalization: HIGH (standard PostgreSQL pattern for serializing concurrent updates)
+---
+*Architecture research for: voter-page free-text search and lookup*
+*Researched: 2026-04-06*

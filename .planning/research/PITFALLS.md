@@ -1,292 +1,327 @@
-# Domain Pitfalls: Chunked Parallel Import Pipeline
+# Pitfalls Research
 
-**Domain:** Adding parallel chunk processing to an existing serial CSV import pipeline
-**System:** CivicPulse Run API (FastAPI, SQLAlchemy async, PostgreSQL + RLS, Procrastinate job queue)
-**Researched:** 2026-04-01
-**Overall confidence:** HIGH (based on direct codebase analysis + PostgreSQL concurrency documentation)
-
-**Context:** The v1.6 serial pipeline already works: Procrastinate job queue with per-campaign queueing lock, per-batch commits with `commit_and_restore_rls`, crash resume from `last_committed_row`, streaming CSV from MinIO, cooperative cancellation via `cancelled_at`, and upsert on `(campaign_id, source_type, source_id)`. This document covers pitfalls specific to adding parallel chunk processing on top of that working system.
-
----
+**Domain:** Adding free-text voter lookup to an existing multi-tenant voter CRM
+**Researched:** 2026-04-06
+**Confidence:** HIGH
 
 ## Critical Pitfalls
 
-Mistakes that cause deadlocks, data corruption, silent data loss, or require rewrites.
+### Pitfall 1: Search Surface Bypasses Tenant Isolation
 
-### Pitfall 1: Deadlock from Parallel Upserts on Overlapping Keys
+**What goes wrong:**
+Teams add a denormalized search table, materialized view, or background-indexed document and assume the existing voter-table RLS protections still apply. Search starts returning records, snippets, or counts from the wrong campaign because the new search surface is not protected the same way as the primary tables.
 
-**What goes wrong:** Two chunk jobs process batches containing the same `source_id` (same voter appearing in different chunks -- duplicate rows in the CSV, or overlapping chunk boundaries). Both execute `INSERT ... ON CONFLICT DO UPDATE` targeting the `(campaign_id, source_type, source_id)` unique index. PostgreSQL acquires row-level locks sequentially during a bulk INSERT. If chunk A locks voter X then tries to lock voter Y, while chunk B already holds Y and tries X, a classic deadlock occurs.
+**Why it happens:**
+This codebase already had to harden transaction-scoped RLS because pool reuse caused cross-campaign leakage. Retrofitting search creates a second path to the same data, and it is easy to secure the API endpoint while forgetting to secure the underlying projection, refresh job, or backfill query.
 
-**Why it happens:** The current upsert in `process_csv_batch` (import_service.py lines 962-988) does not sort rows before inserting. With a single serial task, lock ordering is irrelevant because no other transaction competes for the same rows. The moment two chunk tasks run concurrently against the same campaign, non-deterministic lock acquisition order creates deadlock potential.
+**How to avoid:**
+- Keep tenant scoping in the database path, not only in application code.
+- If search stays inside PostgreSQL, ensure every search query still runs under the same campaign-scoped DB session used elsewhere.
+- If you introduce a projection table or materialized search document, include `campaign_id` in the primary key/index strategy and enforce RLS or equivalent isolation on that object too.
+- Add explicit cross-tenant tests for search hits, hit counts, ranked ordering, and typo-tolerant matches.
+- Treat reindex/backfill jobs as security-sensitive code: they must preserve campaign boundaries end to end.
 
-**Consequences:** PostgreSQL detects the deadlock and kills one transaction with `ERROR: deadlock detected`. The killed chunk fails. If retry logic is naive, the same deadlock repeats. Even if transient, it causes batch-level retries that slow the import and produce confusing error reports.
+**Warning signs:**
+- Search passes normal happy-path tests but has no dedicated isolation tests.
+- Search documents or helper tables are keyed only by `voter_id` or text fields, not by `campaign_id`.
+- Engineers describe tenant safety as “the endpoint already filters by campaign.”
+- Ranking/debug output includes records from other campaigns in staging logs or explain samples.
 
-**Prevention:**
-1. **Ensure chunks contain disjoint key sets.** This is the primary defense. During chunk splitting, if the CSV is pre-sorted by `source_id` (L2 files typically are, sorted by `lalvoterid`), splitting by row ranges naturally produces disjoint sets. If not pre-sorted, use hash-partitioning: `hash(source_id) % num_chunks` assigns each voter to exactly one chunk.
-2. **Sort rows by `source_id` within each batch before upserting.** Sort the `valid_voters` list by `(source_type, source_id)` before building the INSERT statement. This guarantees all concurrent transactions acquire locks in the same order -- the canonical PostgreSQL deadlock prevention strategy.
-3. **Add retry with backoff for deadlock errors.** Even with sorting, edge cases exist (duplicate `source_id` values across chunk boundaries in unsorted files). Catch `DeadlockDetected` (psycopg error code `40P01`) and retry the batch up to 3 times with jittered backoff.
-
-**Detection:** Monitor PostgreSQL logs for `deadlock detected` errors. Add structured log fields for `chunk_id` and `batch_number` so deadlocks can be correlated to specific chunk pairs.
-
-**Phase assignment:** Phase 1 (chunk splitting design). The partitioning strategy determines whether this pitfall is structurally possible.
-
-**Confidence:** HIGH -- PostgreSQL deadlock behavior with concurrent INSERT ON CONFLICT is extensively documented. See [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) and [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02).
-
----
-
-### Pitfall 2: RLS Context Isolation Between Concurrent Chunk Jobs
-
-**What goes wrong:** Chunk jobs run as separate Procrastinate tasks, each creating their own session via `async_session_factory()`. If two chunk tasks happen to acquire the same physical connection from the asyncpg pool (one finishes and returns it, the other picks it up), and the sequence is: chunk A commits (clearing transaction-scoped `set_config`), returns connection to pool, chunk B acquires that connection and issues a query before calling `set_campaign_context` -- chunk B operates with no RLS context.
-
-**Why it happens:** The current system correctly uses `set_config('app.current_campaign_id', :id, true)` with transaction-scoped lifetime (third param `true`). COMMIT resets the config. `commit_and_restore_rls` immediately restores it. But this safety depends on each task managing its own session lifecycle. The risk is in error paths: if a chunk task crashes after COMMIT but before `set_campaign_context` restores context, and the pool recycles that connection.
-
-**Consequences:** Silent data isolation failure. Voters could be inserted without proper `campaign_id` filtering, or queries return zero rows. This is a security-critical bug.
-
-**Prevention:**
-1. **The existing pool checkout event listener is the primary defense.** The v1.5 `reset_rls_context` handler on pool `checkout` resets `app.current_campaign_id` on every connection acquisition. Verify this fires for worker sessions too.
-2. **Each chunk task must call `set_campaign_context` before ANY query.** The current `process_import` task already does this (import_task.py line 34). Replicate this pattern exactly in chunk tasks.
-3. **Never share a session between chunk tasks.** Each chunk task must create its own session via `async_session_factory()`. Do not pass a session from the parent coordinator to child chunks.
-4. **Wrap commit-then-restore sequences in try/finally.** If `commit_and_restore_rls` raises during `set_campaign_context` after commit, the session is in an undefined RLS state. The outer error handler must catch this and mark the chunk as failed.
-5. **Add an assertion at batch start:** `SELECT current_setting('app.current_campaign_id', true)` and verify it matches expected `campaign_id`. Log CRITICAL if mismatch.
-
-**Phase assignment:** Phase 1 (chunk task implementation). This is a copy-paste concern -- the pattern exists, it just must be replicated faithfully.
-
-**Confidence:** HIGH -- verified `set_config(..., true)` is transaction-scoped in `app/db/rls.py` line 28, and `commit_and_restore_rls` exists at line 33.
+**Phase to address:**
+Search architecture and data-model phase, before any relevance or UI work.
 
 ---
 
-### Pitfall 3: Cancellation Not Propagated to Child Chunk Jobs
+### Pitfall 2: Naive `%term%` Expansion Across Many Fields
 
-**What goes wrong:** User cancels the import via the cancel endpoint, which sets `cancelled_at` on the parent `ImportJob`. Child chunk jobs do not see this because they are separate Procrastinate tasks. Each chunk currently would need to poll a different row (or none at all). Chunks continue processing to completion despite the user requesting cancellation.
+**What goes wrong:**
+The existing name-only `ILIKE '%q%'` search gets expanded to many voter columns and contact joins. On real voter-file volumes this turns into sequential scans, duplicate rows, huge sort costs, and unpredictable latency under production traffic.
 
-**Why it happens:** The current cancellation mechanism is cooperative: the batch loop in `process_import_file` (import_service.py line 1304) refreshes the `ImportJob` row after each batch and checks `cancelled_at`. This works for a single serial task because it is the only task reading that row. With parallel chunks, chunk tasks need to know to check the parent job's `cancelled_at`, not their own chunk record.
+**Why it happens:**
+Substring search feels like the smallest possible change. It works on a small campaign and demo data, so teams keep bolting on more `OR ... ILIKE '%q%'` clauses instead of designing a real search surface with indexes and field weighting.
 
-**Consequences:** Wasted compute (chunks run to completion after cancel). User sees "cancelling" status but import keeps running. If the parent marks itself CANCELLED while chunks are still writing, final progress aggregation is inconsistent.
+**How to avoid:**
+- Do not scale the current concatenated-name `ILIKE` pattern into a general lookup engine.
+- Build an explicit search strategy: exact-match branch for high-signal identifiers, trigram for typo tolerance, and weighted full-text or normalized field matching for broader lookup.
+- Index the exact expressions you query. If you normalize with `lower()` or `unaccent()`, index that normalized expression.
+- Profile with representative campaign sizes and ugly queries, not only “John Smith”.
+- Keep joins out of the hot search path where possible; search against a precomputed projection instead of fan-out joining phones, emails, tags, and addresses on every keystroke.
 
-**Prevention:**
-1. **Chunk tasks must poll the parent job's `cancelled_at` after each batch.** Add a lightweight query: `SELECT cancelled_at FROM import_jobs WHERE id = :parent_id`. Single-row primary key lookup, negligible cost.
-2. **Do NOT rely on Procrastinate's built-in job cancellation** for this. The `cancelled_at` timestamp on `ImportJob` is the authoritative signal, and this must remain true for consistency with the existing cancel endpoint.
-3. **Parent coordinator should not enqueue new chunks after cancel.** If using a two-phase approach (count/split then enqueue), check `cancelled_at` before each `defer_async`.
-4. **On cancellation, mark chunk status** so the parent aggregator knows which chunks were cancelled vs completed vs failed.
-5. **For chunks already queued in Procrastinate but not yet started,** the chunk task should check `cancelled_at` at startup (matching the existing pre-check in import_task.py line 55) and exit immediately.
+**Warning signs:**
+- `EXPLAIN ANALYZE` shows seq scans or wide bitmap heap scans on `voters`.
+- Search latency rises sharply when adding phone/email/address fields.
+- Result rows duplicate the same voter because of one-to-many joins.
+- Engineers are adding more `%...%` clauses but no new index or projection design.
 
-**Detection:** After cancellation, query all child chunk records. If any are still PROCESSING more than a batch-timeout interval after `cancelled_at` was set, log a warning.
-
-**Phase assignment:** Phase 2 (cancellation integration). Can be deferred past basic chunk processing but must be addressed before the feature ships.
-
-**Confidence:** HIGH -- the current cancellation mechanism is verified in `import_service.py` line 1304 and `import_task.py` line 55.
-
----
-
-### Pitfall 4: Progress Aggregation Race Conditions (Lost Updates)
-
-**What goes wrong:** Multiple chunk tasks update progress concurrently. If the parent job's `imported_rows`, `skipped_rows`, and `total_rows` are updated by each chunk directly (read-modify-write on the ORM object), concurrent updates cause lost writes. Chunk A reads `imported_rows=1000`, chunk B reads `imported_rows=1000`, both add their batch count, both write -- one chunk's progress is lost.
-
-**Why it happens:** The current code updates `job.imported_rows` directly on the SQLAlchemy ORM object within the same session (import_service.py lines 1140-1143). This works for serial processing. With parallel chunks, each chunk has its own session and its own stale copy of the parent job row.
-
-**Consequences:** Progress bar jumps backward, shows incorrect totals, or exceeds 100%. Final `imported_rows` count is wrong (less than actual). The `last_committed_row` value becomes meaningless (see Pitfall 7).
-
-**Prevention:**
-1. **Use per-chunk counters, not shared parent counters.** Each chunk should have its own row (in an `import_chunks` table) with `chunk_imported_rows`, `chunk_skipped_rows`, `chunk_total_rows`. Chunks only update their own row -- no contention.
-2. **Aggregate progress via SQL SUM.** The progress polling endpoint computes parent totals as: `SELECT SUM(chunk_imported_rows), SUM(chunk_skipped_rows) FROM import_chunks WHERE parent_job_id = :id`. Always consistent regardless of concurrent updates.
-3. **Do NOT use `UPDATE import_jobs SET imported_rows = imported_rows + :delta`** (atomic increment) as the sole mechanism. While it avoids lost updates for a single counter, it makes crash recovery harder (you cannot re-derive the correct total from chunk state if increments were partially applied).
-4. **The parent job's counters should be denormalized snapshots** updated periodically or at chunk completion, derived from the chunk table SUM.
-
-**Detection:** Compare `SUM(chunk counters)` against `parent counters` in a health check. Divergence indicates an aggregation bug.
-
-**Phase assignment:** Phase 1 (data model design). The chunk state table design determines whether this pitfall is structurally possible.
-
-**Confidence:** HIGH -- classic concurrent counter problem, no PostgreSQL-specific nuance.
+**Phase to address:**
+Search indexing and query-design phase.
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 3: Denormalized Search Data Goes Stale
 
-### Pitfall 5: CSV Chunk Boundaries Split Mid-Row (Quoted Newlines)
+**What goes wrong:**
+Cross-field lookup appears to work, but new phone numbers, edited emails, updated mailing addresses, merges, tag changes, or imports do not show up in search immediately or ever. Users lose trust because the record exists on the detail page but cannot be found from the main voter page.
 
-**What goes wrong:** If splitting a CSV file into byte-offset ranges for parallel processing, a naive split (every N MB) can land in the middle of a quoted field containing a newline. The chunk starting at the split point sees a partial row and either fails to parse or silently drops/corrupts data.
+**Why it happens:**
+Useful lookup fields in this app live across multiple tables. PostgreSQL generated columns cannot use subqueries or reference other rows, so teams cannot solve this cleanly with a single computed column on `voters`. They often ship a trigger or async sync job that updates only some change paths.
 
-**Why it happens:** CSV fields can contain literal newlines inside double quotes (RFC 4180). A byte-offset split cannot distinguish row-separating newlines from in-field newlines without parsing context.
+**How to avoid:**
+- Decide upfront which fields are in the search document and who owns synchronization.
+- Prefer one explicit projection mechanism over scattered “also update search text here” code.
+- Cover every mutation path: voter CRUD, contact CRUD, import upserts, dedupe/merge flows, tag membership changes if tags are searchable.
+- Add drift detection: sample records and compare canonical data to the search projection.
+- Expose freshness expectations in the product. If updates are async, make that delay intentional and bounded.
 
-**Prevention:**
-1. **Split by row count, not byte offset.** The current system uses `stream_csv_lines()` which handles CSV parsing correctly. The coordinator task should stream and count rows, then assign row ranges to chunks (rows 1-10000, 10001-20000, etc.). This is the recommended approach.
-2. **Pre-count rows during the upload/mapping phase.** When the user uploads and columns are detected, also count total rows. Store in `ImportJob.total_rows` before processing begins. This enables row-range chunking without a separate counting pass at processing time.
-3. **Each chunk task receives a row range (start_row, end_row)** and uses `stream_csv_lines()` to stream the file, skipping rows before `start_row` and stopping after `end_row`. This reuses the existing streaming infrastructure.
-4. **If byte-offset splitting is necessary for S3 range-request parallelism,** use a two-pass approach: first pass scans for valid row boundaries (tracking quote state), second pass assigns chunks at verified boundaries. But this adds complexity for marginal gain.
+**Warning signs:**
+- Search projection updates are spread across several services or event handlers.
+- Backfills fix missing results temporarily.
+- Support issues say “editing the voter fixed the search result.”
+- Import-created phones or emails exist in relational tables but are absent from search results.
 
-**Phase assignment:** Phase 1 (chunk splitting strategy). This is a design-time decision.
-
-**Confidence:** HIGH -- CSV quoted newline behavior is defined in RFC 4180 and is a well-known parsing pitfall.
-
----
-
-### Pitfall 6: Procrastinate Queueing Lock Blocks All Chunks
-
-**What goes wrong:** The current import uses `queueing_lock=str(campaign_id)` to prevent concurrent imports for the same campaign (imports.py line 264). If child chunk tasks are deferred with the same queueing lock value, only one chunk can be queued at a time -- the second chunk's `defer_async` raises `AlreadyEnqueued`. Parallelism is accidentally serialized.
-
-**Why it happens:** Procrastinate's queueing lock enforces a unique constraint on the lock value in `procrastinate_jobs` for jobs in `todo` status. All chunk tasks sharing the campaign_id as their queueing lock conflict with each other.
-
-**Prevention:**
-1. **Use chunk-specific queueing locks.** Each chunk task should use `queueing_lock=f"{import_job_id}:chunk:{chunk_index}"`.
-2. **Keep the campaign-level queueing lock on the parent/coordinator task only.** The parent task that splits chunks uses `queueing_lock=str(campaign_id)` to prevent a second import from starting. Child chunk tasks use different locks.
-3. **Alternatively, use no queueing lock on chunk tasks at all.** Since the parent task already prevents concurrent imports per campaign, chunk tasks do not need their own deduplication. They are idempotent by chunk range.
-
-**Phase assignment:** Phase 1 (task registration and deferral).
-
-**Confidence:** HIGH -- verified queueing lock usage in `imports.py` line 264. Procrastinate docs confirm [queueing lock behavior](https://procrastinate.readthedocs.io/en/stable/howto/advanced/queueing_locks.html).
+**Phase to address:**
+Search data-model and synchronization phase, alongside import/update integration.
 
 ---
 
-### Pitfall 7: Crash Resume Logic Breaks with Parallel Chunks
+### Pitfall 4: Ranking Is Not Stable Enough for Pagination
 
-**What goes wrong:** The current crash-resume logic uses `last_committed_row` on the parent `ImportJob` to skip rows on restart (import_service.py line 1217). With parallel chunks, each chunk processes a different row range. If the system crashes and restarts, `last_committed_row` is meaningless -- it was a serial-processing concept. Row 50000 might be committed while row 30000 is still in-flight.
+**What goes wrong:**
+Results look reasonable on page 1 but become inconsistent across refreshes and pagination. The same voter moves between pages, duplicates appear, or likely matches vanish because cursor pagination was designed around deterministic column sorting, not a relevance score that can tie or change as the query changes.
 
-**Why it happens:** `last_committed_row` assumes linear sequential processing. It is a single integer representing "everything before this row is done." Parallel chunks break this assumption.
+**Why it happens:**
+The existing endpoint uses cursor pagination with explicit sortable columns and an `id` tiebreaker. Search ranking introduces computed scores, exact-match boosts, and join-derived signals that are easy to order by informally but hard to paginate deterministically.
 
-**Prevention:**
-1. **Track completion per chunk, not per row on the parent.** Each chunk record should have its own status (pending, processing, completed, failed) and its own `last_committed_row` within its range.
-2. **On crash resume, query the chunk table.** Find chunks not in COMPLETED status. Re-enqueue only those chunks. Completed chunks are skipped entirely.
-3. **Each chunk's `last_committed_row` is relative to its range.** A chunk covering rows 10001-20000 with `last_committed_row=15000` resumes from row 15001 within its range.
-4. **The parent job's `last_committed_row` becomes a derived value** (or simply unused in favor of chunk-level tracking).
+**How to avoid:**
+- Define a ranking contract before implementation: exact ID/phone/email matches first, then strong name+location matches, then fuzzy candidates.
+- Use a deterministic sort key such as `(relevance_score, exactness_bucket, stable secondary fields, id)`.
+- Add pagination tests for repeated queries, ties, inserts during browsing, and mixed exact/fuzzy result sets.
+- Keep a separate search sort mode from the existing generic table sort modes if necessary.
+- Log top-N ranking features during rollout so bad boosts are diagnosable.
 
-**Phase assignment:** Phase 1 (data model). The chunk state table must be designed with resume in mind from the start.
+**Warning signs:**
+- Cursor encoding/decoding has no plan for a computed relevance score.
+- PM feedback is “the right voter is somewhere in the list, but not near the top.”
+- QA sees duplicate voters across pages or different ordering after a refresh.
+- Engineers say “we’ll just sort by similarity desc.”
 
-**Confidence:** HIGH -- verified that `last_committed_row` drives resume in `import_service.py` line 1217.
-
----
-
-### Pitfall 8: VoterPhone Upsert Conflicts Between Chunks
-
-**What goes wrong:** If the same voter appears in multiple chunks (duplicate rows in the CSV), both chunks create VoterPhone records. The `uq_voter_phone_campaign_voter_value` constraint handles this via ON CONFLICT DO UPDATE (import_service.py lines 1024-1033), but the phone_records list correlates `voter_ids[i]` with `phone_values[i]` by position (line 1015). If RETURNING order does not match input order under concurrent upsert conditions, phone records could be associated with wrong voters.
-
-**Why it happens:** The current code relies on positional indexing between the voter INSERT's RETURNING clause and the `phone_values` list built from mapped results. PostgreSQL's RETURNING order for INSERT ON CONFLICT is not contractually guaranteed to match input order in all cases under concurrent modification.
-
-**Prevention:**
-1. **Ensure chunk partitioning produces disjoint voter sets** (see Pitfall 1). This eliminates cross-chunk duplicate voter problems entirely, making this pitfall impossible.
-2. **Defer phone creation to a post-import task.** After all chunks complete, run a single task that creates VoterPhone records for all newly imported voters. This eliminates cross-chunk phone conflicts entirely and aligns with the "parallelize secondary work" strategy from the options doc.
-3. **If phones must be created per-chunk,** use a subquery-based approach instead of positional correlation: join the voter upsert result with the phone data by `source_id` rather than by array index.
-
-**Phase assignment:** Phase 1 if using disjoint partitioning (eliminates the issue), or Phase 2 if deferring phone creation to post-import.
-
-**Confidence:** MEDIUM -- the ON CONFLICT on the phone table handles duplicates correctly, but the positional `voter_ids[i]` / `phone_values[i]` correlation (line 1015) is fragile under concurrent conditions. Disjoint partitioning sidesteps this entirely.
+**Phase to address:**
+Relevance design and API contract phase before frontend rollout.
 
 ---
 
-### Pitfall 9: Parent Job Status Lifecycle Becomes Non-Trivial
+### Pitfall 5: Typo Tolerance Is Too Loose for Civic Data
 
-**What goes wrong:** The current status lifecycle is: PENDING -> UPLOADED -> QUEUED -> PROCESSING -> COMPLETED/FAILED/CANCELLED. With chunks, the parent must derive its status from children's aggregate state. If 3 of 4 chunks complete and 1 fails, is the parent COMPLETED or FAILED? The existing `ImportStatus` enum (import_job.py lines 16-25) has no PARTIAL state.
+**What goes wrong:**
+Typo tolerance helps with names but pollutes results for short tokens, ZIP codes, apartment numbers, house numbers, precincts, and party abbreviations. Users searching `Ann`, `GA`, `303`, or `D` get noisy matches that outrank the intended voter.
 
-**Why it happens:** The serial model has exactly one processing entity that IS the parent job. With chunks, the parent becomes a coordinator whose status is derived.
+**Why it happens:**
+Trigram and fuzzy matching are powerful, but civic data contains many short, code-like fields that should not be fuzzified the same way as names. Teams often apply one threshold globally instead of using field-specific rules.
 
-**Prevention:**
-1. **Define clear aggregation rules:**
-   - All chunks COMPLETED -> parent COMPLETED
-   - Any chunk FAILED + others COMPLETED -> parent COMPLETED (matching existing behavior where per-row errors do not fail the import; chunk failures are reported in error files)
-   - All chunks FAILED -> parent FAILED
-   - `cancelled_at` set -> parent CANCELLED (regardless of chunk states)
-2. **Consider adding `COMPLETED_WITH_ERRORS` status** if distinguishing clean completion from partial failure matters for the frontend. Alternatively, keep using COMPLETED and let `skipped_rows > 0` or `error_report_key IS NOT NULL` signal partial success (matching current behavior).
-3. **A dedicated aggregation step runs after all chunks finish** (or fail). This step computes final totals, merges error reports, and sets the parent status.
+**How to avoid:**
+- Separate fields into fuzzy-safe and exact-first categories.
+- Apply typo tolerance mainly to person-name and free-text-like fields, not every tokenized field.
+- Introduce minimum query-length rules before fuzzy matching engages.
+- Use exact-match boosts for phone suffixes, voter file IDs, ZIPs, precincts, and email prefixes when those are searchable.
+- Validate ranking against real query sets from support, organizers, and imports.
 
-**Phase assignment:** Phase 1 (status lifecycle design).
+**Warning signs:**
+- One similarity threshold governs every field.
+- Very short queries return large noisy candidate sets.
+- Users start adding more characters than necessary to “fight” the search.
+- Exact phone/ZIP/ID lookups lose to fuzzy name matches.
 
-**Confidence:** HIGH -- the current enum is visible in `import_job.py` lines 16-25.
-
----
-
-### Pitfall 10: Procrastinate Has No Built-In Fan-Out/Fan-In
-
-**What goes wrong:** Developers assume Procrastinate has a "job group" or "wait for all children" primitive (like Celery's `chord` or `group`). It does not. Without built-in fan-in, the parent coordinator has no native way to know when all chunks are done. Polling the database for chunk completion status must be implemented manually.
-
-**Why it happens:** Procrastinate is deliberately simple. It provides task deferral, queueing locks, retries, and periodic tasks. It does not provide workflow orchestration primitives.
-
-**Prevention:**
-1. **Implement fan-in via database polling.** After deferring all chunk tasks, the coordinator polls the `import_chunks` table periodically (e.g., every 5 seconds) for all chunks reaching a terminal state (COMPLETED or FAILED).
-2. **Alternative: last-chunk-triggers-aggregation.** Each chunk task, after completing, checks if it is the last chunk to finish (`SELECT COUNT(*) FROM import_chunks WHERE parent_id = :id AND status NOT IN ('completed', 'failed')`). If count is 0, it triggers the aggregation step. Race-safe if the check + aggregation trigger is in a single transaction with a row-level lock on the parent.
-3. **Alternative: defer a separate `aggregate_import` task** with a scheduled delay. It checks if all chunks are done; if not, it re-defers itself with another delay. Simple but adds latency.
-4. **Avoid complex Procrastinate workarounds.** Do not try to simulate Celery's chord. The polling or last-chunk-triggers approach is simpler and fits Procrastinate's design.
-
-**Phase assignment:** Phase 1 (coordinator design).
-
-**Confidence:** HIGH -- Procrastinate's feature set is documented. No fan-in/fan-out primitives found in the [API reference](https://procrastinate.readthedocs.io/en/stable/reference.html) or [discussions](https://procrastinate.readthedocs.io/en/stable/discussions.html).
+**Phase to address:**
+Relevance tuning and query-parsing phase.
 
 ---
 
-## Minor Pitfalls
+### Pitfall 6: Search-First UI Causes Request Storms and Stale Results
 
-### Pitfall 11: Chunk Task Registration Naming Collision
+**What goes wrong:**
+Moving to a search-first voter page increases request volume dramatically. Every keystroke triggers POST `/voters/search`, users hit the existing 30/minute search rate limit, and slower responses race newer ones, causing the UI to briefly show outdated results.
 
-**What goes wrong:** If chunk tasks reuse the `process_import` task name, Procrastinate cannot distinguish between the coordinator task and chunk tasks in its job tables. Monitoring, retries, and queueing locks become confused.
+**Why it happens:**
+The current app already rate-limits the search endpoint, and the React query hook fires directly from the request body. Retrofitting a live-search UX without debounce, cancellation, and stale-response protection turns a backend feature into a frontend reliability problem.
 
-**Prevention:** Register chunk tasks with a distinct name: `process_import_chunk`. Keep `process_import` as the coordinator/parent task (or rename it to `coordinate_import`).
+**How to avoid:**
+- Debounce user input before issuing search requests.
+- Cancel or ignore stale in-flight requests when the query changes.
+- Require a minimum input length before fuzzy search; optionally use exact-only behavior for 1-2 characters.
+- Distinguish “search still loading” from “no results”.
+- Revisit search endpoint rate limits after measuring real interactive behavior, not batch API behavior alone.
 
-**Phase assignment:** Phase 1.
+**Warning signs:**
+- Typing quickly produces flicker or result reordering.
+- Search UIs show intermittent 429s in testing.
+- Network logs show one request per keystroke with no cancellation.
+- Users report “I erased the query but old results stayed for a second.”
 
----
-
-### Pitfall 12: Error Report Merging Order
-
-**What goes wrong:** Each chunk writes per-batch error files to MinIO. The current `_merge_error_files` method assumes error files are ordered by batch number within a single serial process. With parallel chunks, error files from different chunks interleave. The merged error report has rows out of CSV order.
-
-**Prevention:** Include chunk index in the error file key (e.g., `{job_id}/errors/chunk_{idx}_batch_{num}.csv`). Merge errors in chunk order, then batch order within each chunk. Or include the original CSV row number in each error record so users can correlate regardless of file order.
-
-**Phase assignment:** Phase 2 (error report consolidation).
-
----
-
-### Pitfall 13: Dynamic Batch Size Calculation Duplicated
-
-**What goes wrong:** The current batch size calculation in `process_import_file` accounts for asyncpg's 32,767 bind-parameter limit: `batch_size = floor(32767 / num_columns)`. If each chunk task independently calculates this, it works. But if someone changes the batch size in one place and not the other, chunks use different sizes.
-
-**Prevention:** Extract batch size calculation into a shared utility function. Both the coordinator and chunk tasks import the same function.
-
-**Phase assignment:** Phase 1 (refactoring before parallelization).
+**Phase to address:**
+Frontend interaction and API hardening phase.
 
 ---
 
-### Pitfall 14: Row-Range Chunks Require Each Chunk to Re-Stream the File
+### Pitfall 7: Search and Structured Filters Drift Apart
 
-**What goes wrong:** If chunks are defined as row ranges (e.g., rows 1-10000, 10001-20000), each chunk task must stream the CSV from MinIO, parse the header, and skip rows until it reaches its start row. For the last chunk of a 100K-row file, this means streaming and discarding 90K rows before processing 10K.
+**What goes wrong:**
+The product promises “search first, filters refine after lookup,” but the free-text query and structured filters are implemented in different ways. The same voter appears when filtered but not when searched, or combining a search term with filters yields surprising exclusions because the logic model is unclear.
 
-**Why it happens:** CSV is sequential. There is no random access without byte-offset tracking. The current `stream_csv_lines()` streams efficiently but starts from the beginning.
+**Why it happens:**
+This system already has a mature composable filter builder with AND/OR semantics. Teams often bolt on search as an extra clause without redefining how free-text should interact with filters, sorts, chips, saved dynamic lists, and empty states.
 
-**Prevention:**
-1. **Accept the skip overhead for now.** CSV parsing is fast (Python can parse ~500K rows/sec). Skipping 90K rows takes ~0.2 seconds. The actual upsert work (database I/O) dominates processing time by orders of magnitude. The skip overhead is negligible.
-2. **If skip overhead matters at scale,** have the coordinator task record byte offsets of chunk boundaries during the initial row-count pass. Chunks use S3 range requests to start at their byte offset. But this adds complexity and the quoted-newline problem from Pitfall 5.
-3. **Recommended: start with simple row-range skipping.** Optimize only if profiling shows file streaming is a bottleneck (it will not be -- the database is the bottleneck).
+**How to avoid:**
+- Define combination semantics explicitly: free-text narrows within filter results, not a parallel query path.
+- Decide whether free-text participates in saved searches/dynamic lists or remains an ephemeral UI-only lookup layer.
+- Keep one backend contract for all voter-page retrieval, even if the ranking logic is specialized.
+- Add tests for combined search+filters, chip clearing, pagination reset, and sort changes.
 
-**Phase assignment:** Phase 1, but accept the simple approach initially.
+**Warning signs:**
+- Product copy says “search first” but implementation still treats search as just another table filter.
+- Clearing the search box does not restore the prior filtered set cleanly.
+- Saved or shareable views behave differently depending on whether search was used.
+- Engineers debate whether search should obey `logic="OR"` with structured filters.
+
+**Phase to address:**
+Product semantics and endpoint-contract phase.
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 8: Production Rollout Ignores Index Build and Import Side Effects
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|---|---|---|
-| Data model & chunk splitting design | P1 (deadlocks), P4 (progress races), P5 (CSV boundaries), P7 (crash resume) | Design `import_chunks` table with per-chunk status, counters, row ranges. Use row-range splitting. Ensure disjoint key sets or sort before upsert. |
-| Chunk task implementation | P2 (RLS context), P6 (queueing lock), P10 (no fan-in), P11 (naming) | Each chunk gets own session + RLS setup. Chunk-specific queueing lock. Implement manual fan-in via DB polling or last-chunk trigger. |
-| Cancellation & error handling | P3 (cancel propagation), P9 (status lifecycle), P12 (error merge) | Chunk tasks poll parent `cancelled_at`. Define aggregation rules for parent status. Merge errors in chunk-then-batch order. |
-| Progress & frontend integration | P4 (progress aggregation) | Frontend polls parent endpoint. Backend derives totals via SQL SUM over chunk table. |
-| Secondary work (phones, geometry) | P8 (phone conflicts) | Defer phone/geometry creation to post-import task, or ensure disjoint partitioning. |
+**What goes wrong:**
+The search design is correct, but rollout degrades the live system. Index creation blocks writes, GIN pending lists bloat under imports/updates, backfills compete with user traffic, and search freshness regresses during heavy voter-file loads.
 
-## Summary of Prevention Priorities
+**Why it happens:**
+This is an existing production app with import workflows and ongoing writes. Teams focus on query correctness and forget that adding trigram/GIN-heavy search surfaces changes write amplification and deployment risk.
 
-**Decision 1: How chunks are partitioned.** If chunks contain disjoint voter key sets (guaranteed by row-range splitting on a pre-sorted file, or by hash-partitioning on `source_id`), Pitfalls 1 and 8 are structurally eliminated. This should be the first design decision.
+**How to avoid:**
+- Build large indexes concurrently in production.
+- Schedule search backfills and projection rebuilds as operational events with monitoring, not hidden migration side effects.
+- Test imports and bulk updates with the new indexes enabled.
+- Decide whether search freshness is synchronous or eventually consistent during imports, and document that behavior.
+- Capture p95/p99 latency for both search reads and import writes before and after rollout.
 
-**Decision 2: Per-chunk state tracking.** A dedicated `import_chunks` table with per-chunk status, counters, and `last_committed_row` structurally prevents Pitfalls 4 and 7, and simplifies Pitfalls 3 and 9.
+**Warning signs:**
+- Migration plan says “add index” with no concurrency or rollout note.
+- Import throughput drops after enabling search indexes.
+- CPU and I/O spike during backfill while ordinary voter edits slow down.
+- Search results are freshest on newly edited rows but lag after bulk imports.
 
-**Decision 3: Fan-in mechanism.** Since Procrastinate has no built-in fan-out/fan-in (Pitfall 10), the coordinator pattern must be explicitly designed. The "last chunk triggers aggregation" approach is simplest.
+**Phase to address:**
+Migration, rollout, and operational hardening phase.
+
+## Technical Debt Patterns
+
+Shortcuts that seem reasonable but create long-term problems.
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Keep extending `ILIKE '%q%'` with more `OR` clauses | Fastest first demo | Poor latency, poor ranking, fragile SQL, no typo control | Never for production-scale voter lookup |
+| Maintain search text in application code across many services | No schema redesign upfront | Drift, missed update paths, hard debugging | Only for a very short-lived spike |
+| Use one global fuzzy threshold for every field | Simple implementation | Terrible precision on short civic codes and identifiers | Never |
+| Reuse generic table sort/pagination for relevance | Less API work | Duplicates, unstable pages, impossible ranking guarantees | Only if search stays exact-only |
+| Backfill search projection in an ordinary migration step | One deploy artifact | Long locks, rollout risk, hard rollback | Never on production-sized datasets |
+
+## Integration Gotchas
+
+Common mistakes when connecting to existing system components.
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| RLS campaign scoping | Assuming endpoint-level `campaign_id` filtering is sufficient | Keep tenant isolation on every search object and query path, including projections and refresh jobs |
+| Voter contacts tables | Joining phones/emails live into every search query | Precompute searchable contact fields into a projection or dedicated search document |
+| Import pipeline | Updating search only for direct voter edits, not import-created contacts/upserts | Include import upsert paths in search sync ownership and tests |
+| TanStack Query UI | Firing a network request on every keystroke | Debounce, cancel stale requests, and gate fuzzy search on query length |
+| Existing cursor API | Adding `ORDER BY similarity()` without redesigning cursor semantics | Introduce deterministic relevance sort keys and dedicated tests |
+| Dynamic lists / saved filters | Letting ephemeral free-text leak into saved filter semantics accidentally | Decide explicitly whether free-text is persistable; keep contracts separate if not |
+
+## Performance Traps
+
+Patterns that work at small scale but fail as usage grows.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| `%term%` search over many columns | p95 search latency climbs, seq scans, high CPU | Use indexed normalized expressions and a real search projection | Often at tens of thousands of voters per campaign |
+| One-to-many joins in hot search path | Duplicate voters, expensive DISTINCT, unstable ranking | Search a denormalized document keyed by voter | As soon as phone/email fan-out becomes common |
+| Fuzzy matching on 1-2 character queries | Huge candidate sets, noisy rankings | Minimum query length and exact-only mode for short queries | Immediately in interactive UI |
+| Heavy GIN/trigram indexing without write testing | Import throughput drops, VACUUM pressure rises | Benchmark imports and updates with final index set enabled | During large voter-file loads |
+| Production index creation without concurrency planning | Writes stall during deployment | Use `CREATE INDEX CONCURRENTLY` and staged rollout | On any live campaign with active writes |
+
+## Security Mistakes
+
+Domain-specific security issues beyond general web security.
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Securing only the API endpoint, not the search projection | Cross-campaign voter disclosure | Apply tenant isolation to every search storage layer and refresh path |
+| Logging raw search strings with matched personal data for ranking debug | PII exposure in logs and observability tools | Redact or sample safely; avoid logging query plus matched voter payloads together |
+| Making typo-tolerant search too broad on voter identifiers | Easier enumeration of sensitive records inside a campaign | Keep exact-first handling for IDs, phones, emails, and code-like fields |
+| Returning total-hit counts cheaply via unsafe side queries | Side-channel leakage across campaigns or filters | Compute counts inside the same tenant-scoped query path or omit them |
+
+## UX Pitfalls
+
+Common user experience mistakes in this domain.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Search returns “kind of close” results above exact known matches | Users stop trusting lookup and revert to filters | Hard-boost exact email, phone, voter ID, and full-name matches |
+| No indication of why a result matched | Users cannot tell whether search found the right person | Highlight or label match reason at least for exact and strong-field matches |
+| Search wipes out current filter context invisibly | Users think records disappeared | Make search-plus-filter state explicit and easy to clear independently |
+| Empty state treats “still typing” as “no voters found” | Users over-correct queries and blame data quality | Use clear loading, debounced searching, and “keep typing” guidance for short queries |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Cross-field lookup:** Often missing contact-table updates and import paths — verify edited and imported phones/emails become searchable.
+- [ ] **Typo tolerance:** Often missing field-specific guardrails — verify short ZIP/precinct/party-like queries stay precise.
+- [ ] **Ranking:** Often missing deterministic tie-breakers — verify repeated queries return the same page boundaries.
+- [ ] **Search-first UI:** Often missing debounce/cancellation — verify fast typing does not trigger stale results or 429s.
+- [ ] **Tenant safety:** Often missing projection-level isolation tests — verify typo-tolerant and ranked search never leaks cross-campaign hits.
+- [ ] **Rollout:** Often missing operational plan — verify index creation, backfill, and imports are tested against production-scale data.
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Tenant leakage through search surface | HIGH | Disable new search path, revoke/rotate any exported debug data, fix isolation at storage/query layer, rerun cross-tenant verification |
+| Stale search projection | MEDIUM | Rebuild projection from canonical tables, add drift checks, patch missing mutation hooks, communicate freshness expectations |
+| Bad ranking / unstable pagination | MEDIUM | Freeze current boosting, add deterministic secondary sort, capture real query samples, retune against labeled examples |
+| Request storms / 429s | LOW | Add debounce and cancellation, lower eager-query behavior, adjust rate limits after measurement, ship a guarded short-query mode |
+| Import slowdown after index rollout | MEDIUM | Pause nonessential backfills, tune index strategy, rebuild concurrently if needed, benchmark import path before re-enabling |
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Search surface bypasses tenant isolation | Search architecture and data model | Cross-campaign integration tests for exact, fuzzy, ranked, and counted search |
+| Naive `%term%` expansion across many fields | Search indexing and query design | `EXPLAIN ANALYZE` on representative datasets shows indexed plan and bounded latency |
+| Denormalized search data goes stale | Search data sync and import integration | Edit/import/contact CRUD tests prove search freshness or documented async lag |
+| Ranking is not stable enough for pagination | Relevance design and API contract | Repeated-query pagination tests show deterministic order and no duplicates |
+| Typo tolerance is too loose | Relevance tuning and query parsing | Labeled query set shows exact known lookups beat fuzzy candidates |
+| Search-first UI causes request storms | Frontend interaction and API hardening | Browser/network tests show debounce, stale-request suppression, and no 429s under normal typing |
+| Search and structured filters drift apart | Product semantics and endpoint contract | Combined search+filter tests match documented behavior and chip/reset UX |
+| Rollout ignores index/import side effects | Migration, rollout, and operational hardening | Staging rehearsal covers concurrent index builds, backfill, import throughput, and rollback |
 
 ## Sources
 
-- [PostgreSQL unique constraints cause deadlock](https://rcoh.svbtle.com/postgres-unique-constraints-can-cause-deadlock) -- detailed analysis of INSERT deadlock mechanics with concurrent upserts
-- [Analyzing a deadlock caused by batch INSERT](https://medium.com/@chlp8/analyzing-a-deadlock-in-postgresql-caused-by-batch-insert-f7a568e83c02) -- lock acquisition order in bulk INSERT
-- [Deadlocks while bulk updating in PostgreSQL](https://medium.com/@harshiljani2002/deadlocks-while-bulk-updating-in-postgresql-4af4161b7ff8) -- row ordering as deadlock prevention
-- [incident.io: Debugging deadlocks in Postgres](https://incident.io/blog/debugging-deadlocks-in-postgres) -- practical deadlock debugging
-- [PostgreSQL explicit locking documentation](https://www.postgresql.org/docs/current/explicit-locking.html) -- lock ordering best practices: "The best defense against deadlocks is generally to avoid them by being certain that all applications using a database acquire locks on multiple objects in a consistent order"
-- [PostgreSQL INSERT ON CONFLICT documentation](https://www.postgresql.org/docs/current/sql-insert.html) -- ON CONFLICT atomicity guarantees
-- [Why tenant context must be scoped per transaction](https://dev.to/m_zinger_2fc60eb3f3897908/why-tenant-context-must-be-scoped-per-transaction-3aop) -- RLS set_config scoping
-- [Procrastinate queueing locks](https://procrastinate.readthedocs.io/en/stable/howto/advanced/queueing_locks.html) -- queueing lock behavior
-- [Procrastinate API reference](https://procrastinate.readthedocs.io/en/stable/reference.html) -- configure/defer API, no fan-in primitives
-- [Tinybird: Splitting CSV files at 3GB/s](https://www.tinybird.co/blog/simd) -- CSV boundary challenges
-- [Microsoft Research: Speculative distributed CSV parsing](https://microsoft.com/en-us/research/uploads/prod/2019/04/chunker-sigmod19.pdf) -- chunk boundary misprediction
-- Verified against codebase: `app/services/import_service.py` (upsert logic lines 962-988, batch loop, cancellation check line 1304), `app/tasks/import_task.py` (RLS setup line 34, cancel pre-check line 55), `app/db/rls.py` (transaction-scoped set_config line 28, commit_and_restore_rls line 33), `app/models/import_job.py` (status enum lines 16-25, last_committed_row line 54), `app/api/v1/imports.py` (queueing_lock line 264)
+- Project context: [.planning/PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md)
+- Existing search implementation: [app/services/voter.py](/home/kwhatcher/projects/civicpulse/run-api/app/services/voter.py)
+- Existing filter/search contract: [app/schemas/voter_filter.py](/home/kwhatcher/projects/civicpulse/run-api/app/schemas/voter_filter.py)
+- Existing rate-limit expectations: [docs/production-testing-runbook.md](/home/kwhatcher/projects/civicpulse/run-api/docs/production-testing-runbook.md)
+- Existing search endpoint stress test: [web/e2e/cross-cutting.spec.ts](/home/kwhatcher/projects/civicpulse/run-api/web/e2e/cross-cutting.spec.ts)
+- Existing frontend search hook: [web/src/hooks/useVoters.ts](/home/kwhatcher/projects/civicpulse/run-api/web/src/hooks/useVoters.ts)
+- PostgreSQL generated column restrictions: https://www.postgresql.org/docs/current/ddl-generated-columns.html
+- PostgreSQL text search controls and ranking: https://www.postgresql.org/docs/current/textsearch-controls.html
+- PostgreSQL text search tables and indexes: https://www.postgresql.org/docs/current/textsearch-tables.html
+- PostgreSQL `pg_trgm` similarity, thresholds, and index support: https://www.postgresql.org/docs/current/pgtrgm.html
+- PostgreSQL `unaccent` extension: https://www.postgresql.org/docs/current/unaccent.html
+- PostgreSQL `CREATE INDEX`, including `CONCURRENTLY` and GIN storage parameters: https://www.postgresql.org/docs/current/sql-createindex.html
+- RLS planner/search interaction discussion: https://jfagoagas.github.io/blog/posts/psql-rls-ts/ (MEDIUM confidence)
+
+---
+*Pitfalls research for: voter-page free-text search and lookup retrofit in a multi-tenant voter CRM*
+*Researched: 2026-04-06*

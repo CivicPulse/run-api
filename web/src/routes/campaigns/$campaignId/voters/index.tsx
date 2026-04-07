@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useDeferredValue, useMemo, useState } from "react"
 import { createFileRoute, useNavigate, useParams, Link } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -104,7 +104,8 @@ function FilterChip({ label, onDismiss, className, tooltip }: FilterChipProps) {
 
 function buildFilterChips(
   filters: VoterFilter,
-  update: (partial: Partial<VoterFilter>) => void
+  update: (partial: Partial<VoterFilter>) => void,
+  clearLookup: () => void,
 ) {
   const chips: FilterChipProps[] = []
 
@@ -335,7 +336,19 @@ function buildFilterChips(
     })
   }
 
+  if (filters.search) {
+    chips.push({
+      label: `Lookup: ${filters.search}`,
+      className: CATEGORY_CLASSES.other,
+      onDismiss: clearLookup,
+    })
+  }
+
   return chips
+}
+
+function normalizeLookupQuery(value: string): string {
+  return value.trim().replace(/\s+/g, " ")
 }
 
 // ─── VoterCreateForm ──────────────────────────────────────────────────────────
@@ -431,15 +444,27 @@ function buildColumns(
       cell: ({ row }) => {
         const v = row.original
         const name = [v.first_name, v.last_name].filter(Boolean).join(" ") || "Unknown"
+        const cityState = [v.registration_city, v.registration_state].filter(Boolean).join(", ")
+        const location = [cityState, v.registration_zip].filter(Boolean).join(" ")
+        const context = [
+          location || null,
+          v.source_id ? `ID ${v.source_id}` : null,
+          v.party ? `Party ${v.party}` : null,
+        ].filter(Boolean)
         return (
-          <Link
-            to="/campaigns/$campaignId/voters/$voterId"
-            params={{ campaignId, voterId: v.id }}
-            className="font-medium hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {name}
-          </Link>
+          <div className="space-y-1">
+            <Link
+              to="/campaigns/$campaignId/voters/$voterId"
+              params={{ campaignId, voterId: v.id }}
+              className="font-medium hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {name}
+            </Link>
+            <div className="text-xs text-muted-foreground">
+              {context.join(" • ") || "Open voter detail for more context"}
+            </div>
+          </div>
         )
       },
     },
@@ -560,6 +585,8 @@ function VotersPage() {
   // Filter panel state
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [filters, setFilters] = useState<VoterFilter>({})
+  const [lookupTerm, setLookupTerm] = useState("")
+  const deferredLookupTerm = useDeferredValue(lookupTerm)
 
   // Cursor-based pagination state
   const [cursor, setCursor] = useState<string | undefined>(undefined)
@@ -570,15 +597,18 @@ function VotersPage() {
   const sortBy = sorting[0]?.id
   const sortDir = sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined
 
+  const normalizedLookupInput = normalizeLookupQuery(lookupTerm)
+  const activeLookup = normalizeLookupQuery(deferredLookupTerm) || undefined
+  const lookupPending = normalizedLookupInput !== (activeLookup ?? "")
   const mappedSortBy = sortBy ? SORT_COLUMN_MAP[sortBy] ?? (sortBy as SortableColumn) : undefined
   const searchBody: VoterSearchBody = {
-    filters,
+    filters: activeLookup ? { ...filters, search: activeLookup } : filters,
     cursor,
     limit: 50,
     sort_by: mappedSortBy,
     sort_dir: sortDir,
   }
-  const { data, isLoading, isError, error } = useVoterSearch(campaignId, searchBody)
+  const { data, isLoading, isFetching, isError, error } = useVoterSearch(campaignId, searchBody)
 
   const voters = isError ? [] : data?.items ?? []
   const hasNextPage = isError ? false : data?.pagination.has_more ?? false
@@ -591,6 +621,12 @@ function VotersPage() {
   const filterUpdate = (partial: Partial<VoterFilter>) => {
     setFilters((prev) => ({ ...prev, ...partial }))
     // Reset pagination when filters change
+    setCursor(undefined)
+    setPrevCursors([])
+  }
+
+  const clearLookup = () => {
+    setLookupTerm("")
     setCursor(undefined)
     setPrevCursors([])
   }
@@ -633,7 +669,11 @@ function VotersPage() {
 
   const columns = useMemo(() => buildColumns(campaignId, navigate, setDeleteVoter), [campaignId, navigate, setDeleteVoter])
 
-  const filterChips = buildFilterChips(filters, filterUpdate)
+  const filterChips = buildFilterChips(
+    activeLookup ? { ...filters, search: activeLookup } : filters,
+    filterUpdate,
+    clearLookup,
+  )
 
   // + New Voter sheet
   const [createOpen, setCreateOpen] = useState(false)
@@ -644,18 +684,44 @@ function VotersPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">All Voters</h2>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltersOpen((v) => !v)}
-          >
-            Filters {filtersOpen ? "▲" : "▼"}
-          </Button>
           <RequireRole minimum="manager">
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               + New Voter
             </Button>
           </RequireRole>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex-1 space-y-2">
+          <Label htmlFor="voter-lookup">Find voters</Label>
+          <Input
+            id="voter-lookup"
+            placeholder="Search by voter name"
+            value={lookupTerm}
+            onChange={(event) => {
+              setLookupTerm(event.target.value)
+              setCursor(undefined)
+              setPrevCursors([])
+            }}
+          />
+          <p className="text-sm text-muted-foreground">
+            Lookup stays inside the current voter search flow and combines with the filters below.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {lookupTerm && (
+            <Button variant="ghost" size="sm" onClick={clearLookup}>
+              Clear search
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersOpen((value) => !value)}
+          >
+            Filters {filtersOpen ? "▲" : "▼"}
+          </Button>
         </div>
       </div>
 
@@ -683,12 +749,23 @@ function VotersPage() {
             size="sm"
             onClick={() => {
               setFilters({})
+              clearLookup()
               setCursor(undefined)
               setPrevCursors([])
             }}
           >
             Clear all
           </Button>
+        </div>
+      )}
+
+      {activeLookup && (
+        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          {lookupPending || isFetching
+            ? `Searching for "${normalizedLookupInput || activeLookup}"...`
+            : voters.length > 0
+              ? `Showing ${voters.length} lookup result${voters.length === 1 ? "" : "s"} for "${activeLookup}".`
+              : `No lookup results matched "${activeLookup}".`}
         </div>
       )}
 
@@ -702,7 +779,7 @@ function VotersPage() {
       <DataTable
         columns={columns}
         data={voters}
-        isLoading={isLoading}
+        isLoading={isLoading && voters.length === 0}
         sorting={sorting}
         onSortingChange={handleSortingChange}
         hasNextPage={hasNextPage}
@@ -710,8 +787,12 @@ function VotersPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         emptyIcon={Users}
-        emptyTitle="No voters yet"
-        emptyDescription="Import a voter file or add voters manually to get started."
+        emptyTitle={activeLookup ? "No voters match this lookup" : "No voters yet"}
+        emptyDescription={
+          activeLookup
+            ? "Try a different voter name or clear the lookup to return to the full list."
+            : "Import a voter file or add voters manually to get started."
+        }
         onRowClick={(voter) =>
           navigate({
             to: "/campaigns/$campaignId/voters/$voterId",

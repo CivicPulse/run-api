@@ -11,6 +11,7 @@ from app.core.time import utcnow
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import InteractionType
 from app.services.voter_interaction import VoterInteractionService
+from app.services.voter_search import VoterSearchIndexService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,7 @@ class VoterContactService:
 
     def __init__(self) -> None:
         self._interaction_service = VoterInteractionService()
+        self._search_index = VoterSearchIndexService()
 
     # -----------------------------------------------------------------------
     # Phone
@@ -82,6 +84,7 @@ class VoterContactService:
             payload={"action": "added", "contact_type": "phone", "value": value},
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return phone
 
@@ -135,6 +138,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return phone
 
@@ -177,6 +181,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
     # -----------------------------------------------------------------------
     # Email
@@ -234,6 +239,7 @@ class VoterContactService:
             payload={"action": "added", "contact_type": "email", "value": value},
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return email
 
@@ -287,6 +293,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return email
 
@@ -329,6 +336,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
     # -----------------------------------------------------------------------
     # Address
@@ -402,6 +410,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return address
 
@@ -455,6 +464,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
         return address
 
@@ -497,6 +507,7 @@ class VoterContactService:
             },
             user_id=user_id,
         )
+        await self._search_index.refresh_records(session, [voter_id])
 
     # -----------------------------------------------------------------------
     # Shared
