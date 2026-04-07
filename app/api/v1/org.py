@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.org_numbers import numbers_router
 from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import (
     AuthenticatedUser,
@@ -31,6 +32,7 @@ from app.schemas.org import (
 from app.services.org import OrgService
 
 router = APIRouter()
+router.include_router(numbers_router, prefix="/numbers", tags=["org-numbers"])
 _service = OrgService()
 
 
