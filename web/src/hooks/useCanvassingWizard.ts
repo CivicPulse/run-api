@@ -41,14 +41,6 @@ interface ContactDraftSubmit {
   surveyComplete: boolean
 }
 
-function getPinnedCurrentHousehold(
-  sequenceHouseholds: Household[],
-  currentAddressIndex: number,
-): Household | null {
-  if (sequenceHouseholds.length === 0) return null
-  return sequenceHouseholds[currentAddressIndex] ?? sequenceHouseholds[sequenceHouseholds.length - 1]
-}
-
 function toVolunteerSafeMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     const detail = error.message.trim()
