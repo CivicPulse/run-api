@@ -114,15 +114,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+(v1.15 requirements defined in REQUIREMENTS.md — see Current Milestone below)
 
 ### Out of Scope
 
 - Donation management / Stripe integration — FEC compliance extremely complex, defer
 - FEC/state campaign finance compliance — 80+ federal report types, 50 state systems
 - Mobile app — API-only; mobile clients are separate projects
-- Predictive dialer / telephony integration — requires Twilio/TCPA/FCC compliance
-- Email/SMS delivery engine — building deliverability infra is a separate product
+- Predictive dialer / auto-dialer — TCPA auto-dialer compliance; manual click-to-call only
+- Email delivery engine — building deliverability infra is a separate product
 - AI-generated campaign content — client-side concern
 - Voter score prediction — import vendor-provided scores instead
 - Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
@@ -139,6 +139,19 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Custom permission builder — fixed 7-role hierarchy (5 campaign + 2 org) is sufficient
 - Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
 - White-label / custom branding per org
+
+## Current Milestone: v1.15 Twilio Communications
+
+**Goal:** Add browser-based click-to-call and two-way SMS to field ops, backed by org-scoped Twilio credentials, spend controls, and rich call/message metadata for future targeting.
+
+**Target features:**
+- Org-level Twilio config — Account SID, Auth Token, phone numbers (BYO + platform-provisioned)
+- Click-to-call via Twilio Voice SDK (WebRTC) with mobile tel: fallback
+- Two-way SMS — bulk outreach to voter segments + conversational reply inbox
+- Inbound STOP → auto-DNC; self-service opt-out link for web-based unsubscribe
+- Twilio Lookup API — number validation, carrier, line type, deliverability on contact create/edit
+- Call & message metadata logging — answer/delivery/response rates per voter and campaign
+- Spend controls — platform soft limits (daily + total budget) + Twilio account-level surfacing in org settings
 
 ## Current State
 
@@ -157,8 +170,7 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Define the next milestone from fresh requirements before opening new phase work.
-- Decide whether the next milestone should target remaining ops follow-ups, product expansion, or both.
+- v1.15: Twilio Communications — browser click-to-call, two-way SMS, org-scoped credentials, spend limits, Lookup validation, call/message metadata logging.
 
 ## Context
 
@@ -222,4 +234,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after v1.14 Voter Search & Lookup milestone completion*
+*Last updated: 2026-04-07 — v1.15 Twilio Communications milestone started*
