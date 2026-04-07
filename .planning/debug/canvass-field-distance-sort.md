@@ -1,16 +1,30 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "canvass-field-distance-sort: walk list doesn't resort by distance from GPS"
 created: 2026-04-07T00:00:00Z
-updated: 2026-04-07T00:00:00Z
+updated: 2026-04-07T16:15:00Z
+resolved: 2026-04-07T16:15:00Z
 ---
 
-## Current Focus
+## Resolution
 
-hypothesis: CONFIRMED - Fix applied: useGeolocationWatch hook provides continuous GPS updates
-test: TypeScript compiles cleanly, existing canvassing wizard tests pass (5/5)
-expecting: Walk list re-sorts automatically as user moves >50m while in distance mode
-next_action: Await human verification in real field workflow
+**Root cause (3 layers):**
+
+1. **No continuous GPS tracking** — `getCurrentPosition` (one-shot) meant location never updated after the initial button click. Fixed with `useGeolocationWatch` hook using `watchPosition` with 50m movement threshold.
+
+2. **Pinning defeated the initial sort** — The `households` memo pinned the "current" household to `currentAddressIndex` on every render, preventing distance ordering from having any visible effect when the sort mode changed.
+
+3. **Pinning derived from the wrong array** — `pinnedCurrentHousehold` was computed from `sequenceHouseholds[currentAddressIndex]` (the sequence-order array), so in distance mode at index 0 it always resolved to the first-in-sequence door (1521 1st Ave), not the nearest door. Even after clearing the pin on sort-mode transition, the next render re-derived it from sequence order and put the old door back.
+
+**Fix:** Track the actually-displayed household key in a ref (`pinnedHouseholdKeyRef`). On sort mode change, clear the ref inside the `useMemo` (not in a `useLayoutEffect` which runs too late) so the distance-sorted order takes immediate effect. After the transition settles, record the viewed household for future location updates.
+
+**Files changed:**
+- `web/src/hooks/useGeolocationWatch.ts` — new hook (watchPosition with throttle)
+- `web/src/routes/field/$campaignId/canvassing.tsx` — wired useGeolocationWatch
+- `web/src/hooks/useCanvassingWizard.ts` — replaced sequence-derived pinning with ref-based pinning, removed `getPinnedCurrentHousehold`
+- `web/src/hooks/useCanvassingWizard.test.ts` — updated test to verify nearest door jumps to front
+
+**Deployed:** sha-1c5f61d, verified working in production.
 
 ## Symptoms
 
@@ -20,33 +34,24 @@ errors: No errors in browser console or UI
 reproduction: Open field canvassing mode with walk list assignment, move around — order never changes
 started: Has never worked
 
-## Eliminated
-
 ## Evidence
 
 - timestamp: 2026-04-07
-  checked: web/src/routes/field/$campaignId/canvassing.tsx - requestDistanceOrder function (lines 301-351)
-  found: Uses navigator.geolocation.getCurrentPosition (one-shot) only. Zero calls to watchPosition anywhere in the codebase. Location is captured once when user clicks "Use my location" or "Refresh location" and stored as locationSnapshot in the Zustand store.
+  checked: web/src/routes/field/$campaignId/canvassing.tsx - requestDistanceOrder function
+  found: Uses navigator.geolocation.getCurrentPosition (one-shot) only. Zero calls to watchPosition anywhere.
   implication: GPS position is never automatically re-captured as the user moves.
 
 - timestamp: 2026-04-07
-  checked: web/src/stores/canvassingStore.ts - setLocationState and setSortMode actions
-  found: locationSnapshot is set once via setLocationState and persisted in sessionStorage. No mechanism to periodically refresh it. setSortMode guards against distance mode without a snapshot but never triggers a new capture.
-  implication: The store correctly holds and persists a snapshot, but nothing feeds it updated positions.
+  checked: Production database — voters in walk list b01e9d60 have valid lat/lng (32.84x, -83.64x)
+  found: All entries have coordinates; data is not the issue.
+  implication: Sorting algorithm has correct inputs; bug is in the React state flow.
 
 - timestamp: 2026-04-07
-  checked: web/src/hooks/useCanvassingWizard.ts - households useMemo (lines 104-132)
-  found: The households memo correctly branches on sortMode, calling orderHouseholdsByDistance(sequenceHouseholds, locationSnapshot) when mode is "distance". It depends on locationSnapshot in its dependency array, so it WOULD re-sort if locationSnapshot changed. But locationSnapshot never changes after initial capture.
-  implication: The sorting infrastructure is wired correctly; the missing piece is continuous location updates feeding new snapshots.
+  checked: useCanvassingWizard.ts — households useMemo pinning logic
+  found: pinnedCurrentHousehold derived from sequenceHouseholds[currentAddressIndex] always yields the first-in-sequence household regardless of active sort mode.
+  implication: Pinning overrides distance sort on every render after the transition.
 
 - timestamp: 2026-04-07
-  checked: web/src/types/canvassing.ts - orderHouseholdsByDistance function (lines 250-273)
-  found: Pure function that sorts households by haversine distance from a given origin CoordinatePoint. Works correctly for any origin. No bugs in the math or sorting logic.
-  implication: The distance calculation and sorting logic is sound. The problem is upstream - the origin point is stale.
-
-## Resolution
-
-root_cause: The canvassing field UI only captures the user's GPS position once (via navigator.geolocation.getCurrentPosition) when the user manually clicks "Use my location" or "Refresh location". There is no continuous location tracking (no watchPosition call). The locationSnapshot in the Zustand store is set once and never updated automatically. The downstream sorting infrastructure (useCanvassingWizard households memo, orderHouseholdsByDistance) is correctly wired and would re-sort if locationSnapshot changed, but it never does.
-fix: Created useGeolocationWatch hook that calls navigator.geolocation.watchPosition when distance sort is active, with a 50-meter movement threshold to avoid excessive re-renders. Wired the hook into canvassing.tsx to feed continuous position updates into the Zustand store. The existing reactive sorting chain (locationSnapshot dependency in useCanvassingWizard households memo) automatically re-sorts when the snapshot updates. Manual "Use my location" / "Refresh location" buttons preserved as instant triggers.
-verification: TypeScript compiles cleanly (npx tsc --noEmit), all 5 useCanvassingWizard tests pass. Awaiting human field verification.
-files_changed: [web/src/hooks/useGeolocationWatch.ts, web/src/routes/field/$campaignId/canvassing.tsx]
+  checked: React render cycle with sortModeJustChanged flag
+  found: useLayoutEffect clears the flag AFTER the memo computes, so the stale pinned key still applies on the transition render.
+  implication: Must clear the pin inside the memo itself, not in a post-render effect.
