@@ -163,7 +163,7 @@ See: `.planning/milestones/v1.14-ROADMAP.md` for full phase details.
 **Milestone Goal:** Add browser-based click-to-call and two-way SMS to field ops, backed by org-scoped Twilio credentials, spend controls, webhook security, and rich communication metadata for future targeting and reporting.
 
 - [x] **Phase 88: Org Twilio Credentials & Encryption Foundation** - Establish encrypted org-scoped Twilio configuration, secret-handling guardrails, and the initial settings surface without exposing credentials. (completed 2026-04-07)
-- [ ] **Phase 89: Phone Number Inventory & Provisioning** - Let org admins register BYO Twilio numbers, inspect capability metadata, and manage default voice and SMS numbers.
+- [x] **Phase 89: Phone Number Inventory & Provisioning** - Let org admins register BYO Twilio numbers, inspect capability metadata, and manage default voice and SMS numbers. (completed 2026-04-07)
 - [ ] **Phase 90: Webhook Security & Routing Infrastructure** - Add Twilio webhook routes, public-URL signature validation, idempotent callback handling, and org-safe routing for future voice and SMS events.
 - [ ] **Phase 91: Browser Voice Calling** - Replace configured phone-bank `tel:` flows with Twilio Voice SDK click-to-call while preserving fallback behavior and call logging.
 - [ ] **Phase 92: Two-Way SMS & Opt-Out Handling** - Add individual and bulk SMS sends, threaded reply inbox behavior, and STOP/START unsubscribe enforcement.
@@ -182,9 +182,9 @@ See: `.planning/milestones/v1.14-ROADMAP.md` for full phase details.
   3. The codebase has a stable, reusable integration seam for later Twilio API calls.
 **Plans**: 3 plans
 Plans:
-- [ ] 88-01-PLAN.md — Org Twilio persistence and encryption seam
-- [ ] 88-02-PLAN.md — Secret-safe org API and partial rotation backend flows
-- [ ] 88-03-PLAN.md — Organization settings Twilio card and frontend verification
+- [x] 88-01-PLAN.md — Org Twilio persistence and encryption seam
+- [x] 88-02-PLAN.md — Secret-safe org API and partial rotation backend flows
+- [x] 88-03-PLAN.md — Organization settings Twilio card and frontend verification
 **UI hint**: yes
 
 ### Phase 89: Phone Number Inventory & Provisioning
@@ -197,9 +197,9 @@ Plans:
   3. The platform has durable org-phone records ready for webhook, voice, and SMS routing.
 **Plans**: 3 plans
 Plans:
-- [ ] 89-01-PLAN.md — Data foundation: model, migration, schemas, service, Twilio client
-- [ ] 89-02-PLAN.md — API endpoints: 5 routes with role gates, rate limits, error mapping
-- [ ] 89-03-PLAN.md — Frontend: types, hooks, PhoneNumbersCard, settings integration
+- [x] 89-01-PLAN.md — Data foundation: model, migration, schemas, service, Twilio client
+- [x] 89-02-PLAN.md — API endpoints: 5 routes with role gates, rate limits, error mapping
+- [x] 89-03-PLAN.md — Frontend: types, hooks, PhoneNumbersCard, settings integration
 **UI hint**: yes
 
 ### Phase 90: Webhook Security & Routing Infrastructure
@@ -276,4 +276,4 @@ Plans:
 | 71-77 | v1.12 | 30/30 | Complete | 2026-04-05 |
 | 78-83 | v1.13 | 18/18 | Complete | 2026-04-06 |
 | 84-87 | v1.14 | 6/6 | Complete | 2026-04-07 |
-| 88-94 | v1.15 | 0/0 | Planned | - |
+| 88-94 | v1.15 | 6/6 | In Progress | - |
