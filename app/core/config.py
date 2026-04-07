@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     import_orphan_threshold_minutes: int = 30
     import_serial_threshold: int = 10000
 
+    # Twilio encryption (org-scoped credential storage)
+    twilio_encryption_keys: dict[str, str] = {}
+    twilio_encryption_current_key_id: str = "primary"
+
     # Observability
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.1

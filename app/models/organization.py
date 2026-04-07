@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -27,6 +27,30 @@ class Organization(Base):
         String(255), nullable=True
     )
     name: Mapped[str] = mapped_column(String(255))
+    twilio_account_sid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    twilio_auth_token_encrypted: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    twilio_auth_token_key_id: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
+    twilio_auth_token_last4: Mapped[str | None] = mapped_column(
+        String(4), nullable=True
+    )
+    twilio_account_sid_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    twilio_auth_token_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    default_voice_number_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("org_phone_numbers.id", use_alter=True, ondelete="SET NULL"),
+        nullable=True,
+    )
+    default_sms_number_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("org_phone_numbers.id", use_alter=True, ondelete="SET NULL"),
+        nullable=True,
+    )
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
