@@ -210,7 +210,10 @@ Plans:
   1. Twilio webhook requests are validated against the public production URL shape instead of the internal proxy URL.
   2. Callback handling is idempotent on Twilio SID values and safe under retries.
   3. New Twilio campaign-scoped data paths respect the existing RLS isolation model and org routing boundaries.
-**Plans**: 0/0 plans complete
+**Plans**: 2 plans
+Plans:
+- [ ] 90-01-PLAN.md — Data foundation: webhook_events table, phone uniqueness, config setting
+- [ ] 90-02-PLAN.md — Service layer: signature validation, org resolution, webhook routes
 
 ### Phase 91: Browser Voice Calling
 **Goal**: Phone bankers can place browser-based Twilio calls with the existing workflow while preserving fallback and compliance protections.
