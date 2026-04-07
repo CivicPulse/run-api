@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from app.schemas.voice import CallingHoursCheck, DNCCheckResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,13 +91,15 @@ def test_generate_voice_token_raises_when_unconfigured():
     svc = VoiceService()
     org = _make_org(configured=False)
 
-    with patch.object(
-        svc._twilio_config,
-        "voice_credentials_for_org",
-        return_value=None,
+    with (
+        patch.object(
+            svc._twilio_config,
+            "voice_credentials_for_org",
+            return_value=None,
+        ),
+        pytest.raises(TwilioConfigError),
     ):
-        with pytest.raises(TwilioConfigError):
-            svc.generate_voice_token(org, user_id="user-abc")
+        svc.generate_voice_token(org, user_id="user-abc")
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +114,7 @@ def test_check_calling_hours_within_window():
     campaign = _make_campaign(start=time(9, 0), end=time(21, 0), tz="UTC")
 
     # Mock datetime.now to return 14:00 UTC
-    mock_dt = datetime(2026, 4, 7, 14, 0, 0, tzinfo=timezone.utc)
+    mock_dt = datetime(2026, 4, 7, 14, 0, 0, tzinfo=UTC)
     with patch("app.services.voice.datetime") as mock_datetime:
         mock_datetime.now.return_value = mock_dt
         mock_datetime.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -136,7 +135,7 @@ def test_check_calling_hours_outside_window():
     campaign = _make_campaign(start=time(9, 0), end=time(21, 0), tz="UTC")
 
     # Mock datetime.now to return 22:00 UTC (outside 9-21)
-    mock_dt = datetime(2026, 4, 7, 22, 0, 0, tzinfo=timezone.utc)
+    mock_dt = datetime(2026, 4, 7, 22, 0, 0, tzinfo=UTC)
     with patch("app.services.voice.datetime") as mock_datetime:
         mock_datetime.now.return_value = mock_dt
         mock_datetime.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -252,14 +251,14 @@ async def test_update_call_record_from_webhook():
         from_number="+15551111111",
         to_number="+15552222222",
         status="initiated",
-        started_at=datetime.now(tz=timezone.utc),
+        started_at=datetime.now(tz=UTC),
     )
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = existing
     db.execute.return_value = mock_result
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     updated = await svc.update_call_record_from_webhook(
         db,
         twilio_sid="CA123",

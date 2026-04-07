@@ -30,6 +30,16 @@ class TwilioCredentials:
     auth_token: str
 
 
+@dataclass(slots=True)
+class VoiceCredentials:
+    """Resolved Twilio voice calling credentials (API Key based)."""
+
+    account_sid: str
+    api_key_sid: str
+    api_key_secret: str
+    twiml_app_sid: str
+
+
 class TwilioConfigService:
     """Owns Twilio config encryption, decryption, and redaction."""
 
@@ -92,10 +102,50 @@ class TwilioConfigService:
 
         creds = self.credentials_for_org(org)
         if creds is None:
-            raise TwilioConfigError(
-                "Twilio credentials not configured for this org"
-            )
+            raise TwilioConfigError("Twilio credentials not configured for this org")
         return TwilioClient(creds.account_sid, creds.auth_token)
+
+    def encrypt_api_key_secret(self, secret: str) -> EncryptedSecret:
+        """Encrypt a Twilio API Key secret using the current key."""
+        value = secret.strip()
+        if not value:
+            raise TwilioConfigError("Twilio API Key secret cannot be empty")
+        fernet = self._fernet_for_key_id(self._current_key_id)
+        ciphertext = fernet.encrypt(value.encode("utf-8")).decode("utf-8")
+        return EncryptedSecret(
+            ciphertext=ciphertext,
+            key_id=self._current_key_id,
+            last4=value[-4:],
+        )
+
+    def decrypt_api_key_secret(self, ciphertext: str, key_id: str) -> str:
+        """Decrypt an encrypted API Key secret."""
+        fernet = self._fernet_for_key_id(key_id)
+        try:
+            return fernet.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
+        except InvalidToken as exc:
+            raise TwilioConfigError(
+                "Stored Twilio API Key secret could not be decrypted"
+            ) from exc
+
+    def voice_credentials_for_org(self, org: object) -> VoiceCredentials | None:
+        """Resolve voice-calling credentials (API Key based) for an org.
+
+        Returns None if any required field is missing.
+        """
+        account_sid = getattr(org, "twilio_account_sid", None)
+        api_key_sid = getattr(org, "twilio_api_key_sid", None)
+        ciphertext = getattr(org, "twilio_api_key_secret_encrypted", None)
+        key_id = getattr(org, "twilio_api_key_secret_key_id", None)
+        twiml_app_sid = getattr(org, "twilio_twiml_app_sid", None)
+        if not all([account_sid, api_key_sid, ciphertext, key_id, twiml_app_sid]):
+            return None
+        return VoiceCredentials(
+            account_sid=account_sid,
+            api_key_sid=api_key_sid,
+            api_key_secret=self.decrypt_api_key_secret(ciphertext, key_id),
+            twiml_app_sid=twiml_app_sid,
+        )
 
     def _fernet_for_key_id(self, key_id: str) -> Fernet:
         keyring = settings.twilio_encryption_keys
