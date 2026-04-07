@@ -96,6 +96,14 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     [entriesQuery.data],
   )
 
+  // Track sort mode transitions so we can skip pinning when the user just
+  // switched to distance mode (they expect the nearest door to jump to front).
+  const prevSortModeRef = useRef(sortMode)
+  const sortModeJustChanged = prevSortModeRef.current !== sortMode
+  useLayoutEffect(() => {
+    prevSortModeRef.current = sortMode
+  }, [sortMode])
+
   const pinnedCurrentHousehold = useMemo(
     () => getPinnedCurrentHousehold(sequenceHouseholds, currentAddressIndex),
     [sequenceHouseholds, currentAddressIndex],
@@ -105,6 +113,13 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     const orderedHouseholds = sortMode === "distance"
       ? orderHouseholdsByDistance(sequenceHouseholds, locationSnapshot)
       : orderHouseholdsBySequence(sequenceHouseholds)
+
+    // When the user just switched sort modes, let the new ordering take full
+    // effect — jump to index 0 (nearest door in distance mode, first door in
+    // sequence mode) instead of pinning the old current household.
+    if (sortModeJustChanged) {
+      return orderedHouseholds
+    }
 
     if (!pinnedCurrentHousehold) return orderedHouseholds
 
@@ -129,13 +144,18 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     pinnedCurrentHousehold,
     sequenceHouseholds,
     sortMode,
+    sortModeJustChanged,
   ])
 
   useLayoutEffect(() => {
+    if (sortModeJustChanged && households.length > 0 && currentAddressIndex !== 0) {
+      jumpToAddress(0)
+      return
+    }
     if (currentAddressIndex >= households.length && households.length > 0) {
       jumpToAddress(households.length - 1)
     }
-  }, [currentAddressIndex, households.length, jumpToAddress])
+  }, [currentAddressIndex, households.length, jumpToAddress, sortModeJustChanged])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,

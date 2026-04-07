@@ -75,7 +75,7 @@ describe("useCanvassingWizard", () => {
     toastError.mockReset()
   })
 
-  test("keeps the active household pinned while reordering the remaining route by distance", async () => {
+  test("switches to nearest door when enabling distance sort", async () => {
     const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
 
     await waitFor(() => {
@@ -89,6 +89,8 @@ describe("useCanvassingWizard", () => {
     expect(result.current.currentHousehold?.householdKey).toBe("house-a")
     expect(result.current.currentAddressIndex).toBe(0)
 
+    // Set location near house-b and switch to distance sort — the nearest
+    // door (house-b) should become the active household at index 0.
     act(() => {
       useCanvassingStore.getState().setLocationState("ready", {
         latitude: 32.8501,
@@ -99,10 +101,10 @@ describe("useCanvassingWizard", () => {
 
     await waitFor(() => {
       expect(result.current.households.map((household) => household.householdKey)).toEqual([
-        "house-a",
         "house-b",
+        "house-a",
       ])
-      expect(result.current.currentHousehold?.householdKey).toBe("house-a")
+      expect(result.current.currentHousehold?.householdKey).toBe("house-b")
       expect(result.current.currentAddressIndex).toBe(0)
     })
   })
