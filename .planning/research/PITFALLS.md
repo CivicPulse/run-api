@@ -1,327 +1,360 @@
-# Pitfalls Research
+# Domain Pitfalls -- Twilio Communications
 
-**Domain:** Adding free-text voter lookup to an existing multi-tenant voter CRM
-**Researched:** 2026-04-06
-**Confidence:** HIGH
-
-## Critical Pitfalls
-
-### Pitfall 1: Search Surface Bypasses Tenant Isolation
-
-**What goes wrong:**
-Teams add a denormalized search table, materialized view, or background-indexed document and assume the existing voter-table RLS protections still apply. Search starts returning records, snippets, or counts from the wrong campaign because the new search surface is not protected the same way as the primary tables.
-
-**Why it happens:**
-This codebase already had to harden transaction-scoped RLS because pool reuse caused cross-campaign leakage. Retrofitting search creates a second path to the same data, and it is easy to secure the API endpoint while forgetting to secure the underlying projection, refresh job, or backfill query.
-
-**How to avoid:**
-- Keep tenant scoping in the database path, not only in application code.
-- If search stays inside PostgreSQL, ensure every search query still runs under the same campaign-scoped DB session used elsewhere.
-- If you introduce a projection table or materialized search document, include `campaign_id` in the primary key/index strategy and enforce RLS or equivalent isolation on that object too.
-- Add explicit cross-tenant tests for search hits, hit counts, ranked ordering, and typo-tolerant matches.
-- Treat reindex/backfill jobs as security-sensitive code: they must preserve campaign boundaries end to end.
-
-**Warning signs:**
-- Search passes normal happy-path tests but has no dedicated isolation tests.
-- Search documents or helper tables are keyed only by `voter_id` or text fields, not by `campaign_id`.
-- Engineers describe tenant safety as “the endpoint already filters by campaign.”
-- Ranking/debug output includes records from other campaigns in staging logs or explain samples.
-
-**Phase to address:**
-Search architecture and data-model phase, before any relevance or UI work.
+**Domain:** Browser-based calling, two-way SMS, number validation for multi-tenant campaign field operations
+**Researched:** 2026-04-07
+**Confidence:** HIGH (Twilio-specific), HIGH (regulatory -- multiple legal sources cross-referenced)
 
 ---
 
-### Pitfall 2: Naive `%term%` Expansion Across Many Fields
+## Security & Credential Pitfalls
 
-**What goes wrong:**
-The existing name-only `ILIKE '%q%'` search gets expanded to many voter columns and contact joins. On real voter-file volumes this turns into sequential scans, duplicate rows, huge sort costs, and unpredictable latency under production traffic.
+### CRITICAL -- Pitfall 1: Plaintext Auth Token Storage
 
-**Why it happens:**
-Substring search feels like the smallest possible change. It works on a small campaign and demo data, so teams keep bolting on more `OR ... ILIKE '%q%'` clauses instead of designing a real search surface with indexes and field weighting.
+**What goes wrong:** Twilio Auth Tokens stored as plain VARCHAR in PostgreSQL appear in database dumps, `pg_stat_statements`, slow query logs, Sentry breadcrumbs, and backup files. An attacker with any database read access gains full control of every org's Twilio account.
 
-**How to avoid:**
-- Do not scale the current concatenated-name `ILIKE` pattern into a general lookup engine.
-- Build an explicit search strategy: exact-match branch for high-signal identifiers, trigram for typo tolerance, and weighted full-text or normalized field matching for broader lookup.
-- Index the exact expressions you query. If you normalize with `lower()` or `unaccent()`, index that normalized expression.
-- Profile with representative campaign sizes and ugly queries, not only “John Smith”.
-- Keep joins out of the hot search path where possible; search against a precomputed projection instead of fan-out joining phones, emails, tags, and addresses on every keystroke.
+**Why it happens in this codebase:** The Organization model has no encrypted-at-rest columns. Adding `twilio_auth_token` as VARCHAR is the path of least resistance. Error responses had stack-trace leaks fixed in v1.13, but structlog fields or Pydantic serialization could still leak tokens.
 
-**Warning signs:**
-- `EXPLAIN ANALYZE` shows seq scans or wide bitmap heap scans on `voters`.
-- Search latency rises sharply when adding phone/email/address fields.
-- Result rows duplicate the same voter because of one-to-many joins.
-- Engineers are adding more `%...%` clauses but no new index or projection design.
+**Consequences:** Full Twilio account takeover per org. Attacker sends unlimited SMS/calls billed to the org. Voter PII exposure through Twilio call/message logs.
 
-**Phase to address:**
-Search indexing and query-design phase.
+**Prevention:**
+- Encrypt with Fernet (via `cryptography` library) from day one. Never create a plaintext credential column.
+- Use BYTEA columns for encrypted values. Platform encryption key from environment variables only.
+- Exclude credential columns from all Pydantic response schemas. Add a CI grep check: any schema field matching `*_token`, `*_secret`, `*_key` that isn't write-only is a failure.
+- Add `auth_token` to structlog's processor filter list to prevent logging.
+- Rotate Twilio auth tokens quarterly. Twilio supports secondary auth tokens for zero-downtime rotation.
 
----
+**Detection:** Grep response schemas for credential fields. Review Sentry breadcrumbs. Monitor Twilio usage dashboard for unexpected activity.
 
-### Pitfall 3: Denormalized Search Data Goes Stale
+### CRITICAL -- Pitfall 2: Webhook URL Mismatch Behind Reverse Proxy
 
-**What goes wrong:**
-Cross-field lookup appears to work, but new phone numbers, edited emails, updated mailing addresses, merges, tag changes, or imports do not show up in search immediately or ever. Users lose trust because the record exists on the detail page but cannot be found from the main voter page.
+**What goes wrong:** `RequestValidator.validate()` silently returns `False` because the URL constructed from FastAPI's `request.url` differs from the public URL Twilio POSTed to. All webhook processing fails -- no call status updates, no inbound SMS, no STOP handling.
 
-**Why it happens:**
-Useful lookup fields in this app live across multiple tables. PostgreSQL generated columns cannot use subqueries or reference other rows, so teams cannot solve this cleanly with a single computed column on `voters`. They often ship a trigger or async sync job that updates only some change paths.
+**Why it happens in this codebase:** FastAPI behind Traefik sees `http://api:8000/...` while Twilio POSTed to `https://api.civpulse.org/...`. The HMAC-SHA1 signature is computed against the exact public URL including scheme, host, port, and path.
 
-**How to avoid:**
-- Decide upfront which fields are in the search document and who owns synchronization.
-- Prefer one explicit projection mechanism over scattered “also update search text here” code.
-- Cover every mutation path: voter CRUD, contact CRUD, import upserts, dedupe/merge flows, tag membership changes if tags are searchable.
-- Add drift detection: sample records and compare canonical data to the search projection.
-- Expose freshness expectations in the product. If updates are async, make that delay intentional and bounded.
+**Consequences:** Silent failure. Twilio retries, then gives up. No status callbacks processed, no inbound SMS, no STOP/DNC sync.
 
-**Warning signs:**
-- Search projection updates are spread across several services or event handlers.
-- Backfills fix missing results temporarily.
-- Support issues say “editing the voter fixed the search result.”
-- Import-created phones or emails exist in relational tables but are absent from search results.
+**Prevention:**
+- Configure `TWILIO_WEBHOOK_BASE_URL` as an explicit environment setting. Construct validation URL as `base_url + request.url.path + "?" + request.url.query` (if query params exist).
+- Never derive the URL from the incoming request object behind a proxy.
+- For JSON payloads (Event Streams), use `validateRequestWithBody` -- not the form-parameter method.
+- Test signature validation with a real Twilio request before going live. Add structured logging on validation failure that includes the constructed URL.
 
-**Phase to address:**
-Search data-model and synchronization phase, alongside import/update integration.
+### HIGH -- Pitfall 3: Auth Token Used to Sign Access Tokens Instead of API Key
 
----
+**What goes wrong:** Developer uses the master Auth Token to sign Voice SDK Access Tokens instead of a scoped API Key. If the token JWT is intercepted, the signing secret is the account's master credential.
 
-### Pitfall 4: Ranking Is Not Stable Enough for Pagination
+**Why it happens:** Twilio quick-start examples sometimes use Auth Token for simplicity.
 
-**What goes wrong:**
-Results look reasonable on page 1 but become inconsistent across refreshes and pagination. The same voter moves between pages, duplicates appear, or likely matches vanish because cursor pagination was designed around deterministic column sorting, not a relevance score that can tie or change as the query changes.
+**Prevention:**
+- The `AccessToken()` constructor must use `api_key_sid` and `api_key_secret`, never `auth_token`.
+- Store API Key credentials separately from the Auth Token in the twilio_credentials table.
+- Add a code review checklist item. The JWT header's `iss` field contains the API Key SID -- if it contains the Account SID instead, it was signed with the Auth Token.
 
-**Why it happens:**
-The existing endpoint uses cursor pagination with explicit sortable columns and an `id` tiebreaker. Search ranking introduces computed scores, exact-match boosts, and join-derived signals that are easy to order by informally but hard to paginate deterministically.
+### HIGH -- Pitfall 4: Access Token Over-Permissioning
 
-**How to avoid:**
-- Define a ranking contract before implementation: exact ID/phone/email matches first, then strong name+location matches, then fuzzy candidates.
-- Use a deterministic sort key such as `(relevance_score, exactness_bucket, stable secondary fields, id)`.
-- Add pagination tests for repeated queries, ties, inserts during browsing, and mixed exact/fuzzy result sets.
-- Keep a separate search sort mode from the existing generic table sort modes if necessary.
-- Log top-N ranking features during rollout so bad boosts are diagnosable.
+**What goes wrong:** Voice SDK Access Token grants are too broad. A captured token allows calls to any number, not just campaign call list numbers.
 
-**Warning signs:**
-- Cursor encoding/decoding has no plan for a computed relevance score.
-- PM feedback is “the right voter is somewhere in the list, but not near the top.”
-- QA sees duplicate voters across pages or different ordering after a refresh.
-- Engineers say “we’ll just sort by similarity desc.”
-
-**Phase to address:**
-Relevance design and API contract phase before frontend rollout.
+**Prevention:**
+- Set token TTL to 15-30 minutes (not the 1-hour default). Handle `tokenWillExpire` event for refresh.
+- Bind the `identity` to the authenticated user's ID.
+- In the TwiML application handler, validate the destination number exists in the campaign's active call list before connecting. Never trust client-side number input.
 
 ---
 
-### Pitfall 5: Typo Tolerance Is Too Loose for Civic Data
+## Multi-Tenant Pitfalls
 
-**What goes wrong:**
-Typo tolerance helps with names but pollutes results for short tokens, ZIP codes, apartment numbers, house numbers, precincts, and party abbreviations. Users searching `Ann`, `GA`, `303`, or `D` get noisy matches that outrank the intended voter.
+### CRITICAL -- Pitfall 5: Cross-Org Credential Leakage via Webhook Routing
 
-**Why it happens:**
-Trigram and fuzzy matching are powerful, but civic data contains many short, code-like fields that should not be fuzzified the same way as names. Teams often apply one threshold globally instead of using field-specific rules.
+**What goes wrong:** Webhook endpoints receive callbacks for all orgs. If routing doesn't correctly identify which org's auth token to use for signature validation, validation uses the wrong token (always failing) or falls back to a platform-level token that shouldn't exist.
 
-**How to avoid:**
-- Separate fields into fuzzy-safe and exact-first categories.
-- Apply typo tolerance mainly to person-name and free-text-like fields, not every tokenized field.
-- Introduce minimum query-length rules before fuzzy matching engages.
-- Use exact-match boosts for phone suffixes, voter file IDs, ZIPs, precincts, and email prefixes when those are searchable.
-- Validate ranking against real query sets from support, organizers, and imports.
+**Why it happens in this codebase:** RLS is scoped to `campaign_id`, but Twilio credentials are at the `organization` level. Webhooks arrive with a CallSid/MessageSid but no campaign_id. The routing from "Twilio callback" to "which org, which campaign" is a new mapping.
 
-**Warning signs:**
-- One similarity threshold governs every field.
-- Very short queries return large noisy candidate sets.
-- Users start adding more characters than necessary to “fight” the search.
-- Exact phone/ZIP/ID lookups lose to fuzzy name matches.
+**Prevention:**
+- Include `org_id` in the webhook URL path: `/api/v1/webhooks/twilio/{org_id}/voice/status`.
+- Look up the org's decrypted auth token from `org_id`, validate signature, then proceed.
+- Store `call_sid`/`message_sid` with both `org_id` and `campaign_id` at call/SMS creation time. When a status callback arrives, look up by SID to find campaign context.
+- Do NOT use a single platform-level Twilio account for all orgs.
 
-**Phase to address:**
-Relevance tuning and query-parsing phase.
+### HIGH -- Pitfall 6: RLS Gap on New Communication Tables
 
----
+**What goes wrong:** New tables (call_logs, message_logs, sms_conversations) have `campaign_id` but no RLS policy. Cross-campaign data leakage for voter phone numbers and message content.
 
-### Pitfall 6: Search-First UI Causes Request Storms and Stale Results
+**Why it happens:** All 33 existing tables have RLS. The pattern is established but easy to forget when adding 3-4 new tables in one migration.
 
-**What goes wrong:**
-Moving to a search-first voter page increases request volume dramatically. Every keystroke triggers POST `/voters/search`, users hit the existing 30/minute search rate limit, and slower responses race newer ones, causing the UI to briefly show outdated results.
+**Prevention:**
+- Extend the existing AST-based CI guard (rate-limit check pattern) to verify all tables with `campaign_id` have RLS enabled.
+- All new communication endpoints must use `get_campaign_db` dependency.
+- Write explicit RLS isolation tests for communication records (extend v1.5 test pattern).
 
-**Why it happens:**
-The current app already rate-limits the search endpoint, and the React query hook fires directly from the request body. Retrofitting a live-search UX without debounce, cancellation, and stale-response protection turns a backend feature into a frontend reliability problem.
+### HIGH -- Pitfall 7: Phone Number Shared Across Orgs Breaks Opt-Out Isolation
 
-**How to avoid:**
-- Debounce user input before issuing search requests.
-- Cancel or ignore stale in-flight requests when the query changes.
-- Require a minimum input length before fuzzy search; optionally use exact-only behavior for 1-2 characters.
-- Distinguish “search still loading” from “no results”.
-- Revisit search endpoint rate limits after measuring real interactive behavior, not batch API behavior alone.
+**What goes wrong:** If sender numbers are shared across orgs, a voter's STOP to that number opts them out of ALL orgs using it. Twilio's opt-out is per phone-number-pair, not per-org.
 
-**Warning signs:**
-- Typing quickly produces flicker or result reordering.
-- Search UIs show intermittent 429s in testing.
-- Network logs show one request per keystroke with no cancellation.
-- Users report “I erased the query but old results stayed for a second.”
-
-**Phase to address:**
-Frontend interaction and API hardening phase.
+**Prevention:**
+- Each org must own its phone numbers exclusively. BYO numbers are org-scoped.
+- Never pool sender numbers across orgs. Document this constraint in org onboarding.
 
 ---
 
-### Pitfall 7: Search and Structured Filters Drift Apart
+## TCPA & Compliance Pitfalls (Political Campaigns)
 
-**What goes wrong:**
-The product promises “search first, filters refine after lookup,” but the free-text query and structured filters are implemented in different ways. The same voter appears when filtered but not when searched, or combining a search term with filters yields surprising exclusions because the logic model is unclear.
+### CRITICAL -- Pitfall 8: Misunderstanding the Political Campaign TCPA Exemption
 
-**Why it happens:**
-This system already has a mature composable filter builder with AND/OR semantics. Teams often bolt on search as an extra clause without redefining how free-text should interact with filters, sorts, chips, saved dynamic lists, and empty states.
+**What goes wrong:** Developers assume "political calls are exempt from TCPA" and skip consent checks. This is dangerously wrong. The exemption is narrow:
 
-**How to avoid:**
-- Define combination semantics explicitly: free-text narrows within filter results, not a parallel query path.
-- Decide whether free-text participates in saved searches/dynamic lists or remains an ephemeral UI-only lookup layer.
-- Keep one backend contract for all voter-page retrieval, even if the ranking logic is specialized.
-- Add tests for combined search+filters, chip clearing, pagination reset, and sort changes.
+- **Manual dialing to landlines:** Exempt from TCPA restrictions. No PEC needed.
+- **Manual dialing to cell phones:** The TCPA exemption for political calls applies only to manually dialed calls. The Twilio Voice SDK click-to-call qualifies as "manual" if a volunteer initiates each call by clicking.
+- **Auto-dialed or pre-recorded calls to cell phones:** Require Prior Express Consent (PEC). No political exemption.
+- **DNC registry scrubbing:** NOT required for political calls (this IS an actual exemption).
+- **Voter registration phone numbers are NOT consent:** A voter giving their number to register to vote does NOT constitute PEC for campaign calls. The FCC has explicitly ruled this.
+- **AI/pre-recorded voice:** Treated as robocalls requiring PEC. No political exemption.
 
-**Warning signs:**
-- Product copy says “search first” but implementation still treats search as just another table filter.
-- Clearing the search box does not restore the prior filtered set cleanly.
-- Saved or shareable views behave differently depending on whether search was used.
-- Engineers debate whether search should obey `logic="OR"` with structured filters.
+**Consequences:** $500 per violation, trebled to $1,500 for willful violations. Class action lawsuits. Supreme Court in Barr v. American Political Consultants (2020) affirmed TCPA applies to political calls.
 
-**Phase to address:**
-Product semantics and endpoint-contract phase.
+**Why this matters for CivicPulse:** L2 voter file imports include phone numbers given for voter registration, NOT for campaign contact. Using them for automated calling or bulk SMS creates TCPA liability for every campaign on the platform.
+
+**Prevention:**
+- CivicPulse's click-to-call (volunteer initiates) is likely compliant. Document this clearly as "manual dialing."
+- Do NOT add auto-dial or predictive dialing (already Out of Scope -- maintain this boundary).
+- Add `consent_source` field to voter contacts: "voter_provided", "l2_import", "web_form", etc.
+- For SMS: imported L2 phone numbers do NOT have SMS consent. Campaigns must collect opt-in separately.
+- Display a compliance warning in SMS composition UI when targeting voters without explicit opt-in.
+
+### CRITICAL -- Pitfall 9: Calling Hours Violations
+
+**What goes wrong:** TCPA restricts calls to 8 AM - 9 PM in the *called party's* time zone. A campaign in Eastern time calling a Pacific voter at 6 AM ET (3 AM PT) violates TCPA.
+
+**Why it happens:** Voter files include addresses but not time zones. Cell phone numbers don't reliably indicate time zone (portability).
+
+**Prevention:**
+- Derive voter time zone from registered address via ZIP-to-timezone mapping (use Python `zoneinfo` + a ZIP lookup table).
+- Enforce calling hours server-side: API should refuse to return call list entries outside 8 AM - 9 PM in the voter's inferred time zone.
+- Some states have stricter hours (e.g., 9 AM - 8 PM). Consider configurable per-state calling windows.
+- Display a "calling hours" indicator in the phone banking UI showing which voters are currently callable.
+
+### HIGH -- Pitfall 10: Consent Revocation Timing Gap
+
+**What goes wrong:** A voter texts STOP or says "take me off your list" during a call. If the opt-out isn't processed before the next contact (even seconds later in a phone bank session), that subsequent contact is a TCPA violation.
+
+**Prevention:**
+- SMS STOP: Twilio handles this at the carrier/platform level automatically -- further messages are blocked. Sync to local DNC table via webhook for UI visibility.
+- Voice: the existing auto-DNC mechanism on "refused" outcome fires synchronously before the next call is claimed. Verify this remains true with Twilio integration.
+- Add a webhook handler for Twilio opt-out notifications to immediately update DNC. Don't rely on batch sync.
+
+### HIGH -- Pitfall 11: Call Recording Without Consent in Two-Party States
+
+**What goes wrong:** If call recording is enabled, ~12 states require ALL parties to consent (CA, CT, FL, IL, MD, MA, MI, MT, NH, OR, PA, WA). Recording without consent is a criminal offense in some jurisdictions.
+
+**Prevention:**
+- If recording is added, play a consent disclosure via TwiML `<Say>` before recording begins on every call.
+- Better: explicitly exclude audio recording from v1.15 scope. The existing phone banking records outcomes, not audio.
+- If recording is needed later, comply with the strictest standard (two-party consent nationwide).
 
 ---
 
-### Pitfall 8: Production Rollout Ignores Index Build and Import Side Effects
+## SMS / Messaging Pitfalls
 
-**What goes wrong:**
-The search design is correct, but rollout degrades the live system. Index creation blocks writes, GIN pending lists bloat under imports/updates, backfills compete with user traffic, and search freshness regresses during heavy voter-file loads.
+### CRITICAL -- Pitfall 12: A2P 10DLC Registration for Political ISVs
 
-**Why it happens:**
-This is an existing production app with import workflows and ongoing writes. Teams focus on query correctness and forget that adding trigram/GIN-heavy search surfaces changes write amplification and deployment risk.
+**What goes wrong:** Sending SMS from unregistered 10DLC numbers results in carrier filtering (messages silently dropped), additional per-message fees, and potential number blacklisting. For political messaging specifically:
+- IRS 527 Political Organizations MUST register with Campaign Verify AND complete 10DLC with the "Political" special use case.
+- Without this: lowest throughput tier, carrier penalties, potential number suspension.
 
-**How to avoid:**
-- Build large indexes concurrently in production.
-- Schedule search backfills and projection rebuilds as operational events with monitoring, not hidden migration side effects.
-- Test imports and bulk updates with the new indexes enabled.
-- Decide whether search freshness is synchronous or eventually consistent during imports, and document that behavior.
-- Capture p95/p99 latency for both search reads and import writes before and after rollout.
+**Why this is complex for CivicPulse:** As an ISV, CivicPulse must: (1) register itself, (2) register each customer org (KYC), (3) obtain Campaign Verify tokens for 527 orgs, (4) register messaging campaigns with "Political" use case. This is a four-step process per org.
 
-**Warning signs:**
-- Migration plan says “add index” with no concurrency or rollout note.
-- Import throughput drops after enabling search indexes.
-- CPU and I/O spike during backfill while ordinary voter edits slow down.
-- Search results are freshest on newly edited rows but lag after bulk imports.
+**Approval timeline:** Brand: 1-3 business days. Campaign: 2-7 days (currently 10-15 days backlog). New orgs cannot send SMS for 2-3 weeks after signup.
 
-**Phase to address:**
-Migration, rollout, and operational hardening phase.
+**Prevention:**
+- Build A2P 10DLC registration into org onboarding, not as an afterthought.
+- Collect Campaign Verify token during Twilio credential setup.
+- Display registration status in org settings: "SMS: Pending Registration" / "SMS: Active".
+- Block SMS sending until 10DLC is approved. Never send from unregistered numbers.
+- Use Twilio API (not Console) for ISV registration workflows.
+- Start this process early in development -- platform ISV registration alone takes days.
 
-## Technical Debt Patterns
+### HIGH -- Pitfall 13: Twilio Handles STOP but Local DNC Doesn't Know
 
-Shortcuts that seem reasonable but create long-term problems.
+**What goes wrong:** Twilio automatically blocks messages to opted-out numbers, but CivicPulse's DNC table is unaware. Call lists still show the voter as contactable. Volunteers see no indication of SMS opt-out. Twilio silently drops attempted messages with no visible error.
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Keep extending `ILIKE '%q%'` with more `OR` clauses | Fastest first demo | Poor latency, poor ranking, fragile SQL, no typo control | Never for production-scale voter lookup |
-| Maintain search text in application code across many services | No schema redesign upfront | Drift, missed update paths, hard debugging | Only for a very short-lived spike |
-| Use one global fuzzy threshold for every field | Simple implementation | Terrible precision on short civic codes and identifiers | Never |
-| Reuse generic table sort/pagination for relevance | Less API work | Duplicates, unstable pages, impossible ranking guarantees | Only if search stays exact-only |
-| Backfill search projection in an ordinary migration step | One deploy artifact | Long locks, rollout risk, hard rollback | Never on production-sized datasets |
+**Additional (April 2025):** REVOKE and OPTOUT are now additional opt-out keywords per FCC ruling. Toll-Free numbers have carrier-level opt-out outside Twilio's control.
 
-## Integration Gotchas
+**Prevention:**
+- Subscribe to Twilio's opt-out webhook. Sync STOP events to local DNC with reason `SMS_OPT_OUT`.
+- Expand `DNCReason` enum: add `SMS_OPT_OUT` and `TWILIO_STOP` alongside existing REFUSED, VOTER_REQUEST, REGISTRY_IMPORT.
+- Distinguish voice DNC from SMS DNC. Display per-channel opt-out status in voter contact UI.
 
-Common mistakes when connecting to existing system components.
+### MODERATE -- Pitfall 14: Carrier Filtering of Political Content
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| RLS campaign scoping | Assuming endpoint-level `campaign_id` filtering is sufficient | Keep tenant isolation on every search object and query path, including projections and refresh jobs |
-| Voter contacts tables | Joining phones/emails live into every search query | Precompute searchable contact fields into a projection or dedicated search document |
-| Import pipeline | Updating search only for direct voter edits, not import-created contacts/upserts | Include import upsert paths in search sync ownership and tests |
-| TanStack Query UI | Firing a network request on every keystroke | Debounce, cancel stale requests, and gate fuzzy search on query length |
-| Existing cursor API | Adding `ORDER BY similarity()` without redesigning cursor semantics | Introduce deterministic relevance sort keys and dedicated tests |
-| Dynamic lists / saved filters | Letting ephemeral free-text leak into saved filter semantics accidentally | Decide explicitly whether free-text is persistable; keep contracts separate if not |
+**What goes wrong:** Even with proper 10DLC registration, carriers filter messages with political keywords, URL shorteners, or aggressive formatting. Messages are silently dropped with no error returned.
 
-## Performance Traps
+**Prevention:**
+- Provide template guidance in SMS composition UI. Avoid URL shorteners.
+- Include "Reply STOP to opt out" in every message.
+- Monitor delivery rates per campaign. Sudden drops indicate filtering.
+- Use Twilio Messaging Insights to track delivery vs. filter rates.
 
-Patterns that work at small scale but fail as usage grows.
+### MODERATE -- Pitfall 15: Multi-Segment SMS Cost Surprise
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| `%term%` search over many columns | p95 search latency climbs, seq scans, high CPU | Use indexed normalized expressions and a real search projection | Often at tens of thousands of voters per campaign |
-| One-to-many joins in hot search path | Duplicate voters, expensive DISTINCT, unstable ranking | Search a denormalized document keyed by voter | As soon as phone/email fan-out becomes common |
-| Fuzzy matching on 1-2 character queries | Huge candidate sets, noisy rankings | Minimum query length and exact-only mode for short queries | Immediately in interactive UI |
-| Heavy GIN/trigram indexing without write testing | Import throughput drops, VACUUM pressure rises | Benchmark imports and updates with final index set enabled | During large voter-file loads |
-| Production index creation without concurrency planning | Writes stall during deployment | Use `CREATE INDEX CONCURRENTLY` and staged rollout | On any live campaign with active writes |
+**What goes wrong:** Messages over 160 characters are sent as multi-segment SMS, costing 2-4x expected. Campaign staff compose long messages without visibility into cost.
 
-## Security Mistakes
+**Prevention:**
+- Show character count AND segment count in SMS compose UI.
+- Log `num_segments` from Twilio response for spend tracking.
 
-Domain-specific security issues beyond general web security.
+---
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Securing only the API endpoint, not the search projection | Cross-campaign voter disclosure | Apply tenant isolation to every search storage layer and refresh path |
-| Logging raw search strings with matched personal data for ranking debug | PII exposure in logs and observability tools | Redact or sample safely; avoid logging query plus matched voter payloads together |
-| Making typo-tolerant search too broad on voter identifiers | Easier enumeration of sensitive records inside a campaign | Keep exact-first handling for IDs, phones, emails, and code-like fields |
-| Returning total-hit counts cheaply via unsafe side queries | Side-channel leakage across campaigns or filters | Compute counts inside the same tenant-scoped query path or omit them |
+## Voice SDK Pitfalls
 
-## UX Pitfalls
+### HIGH -- Pitfall 16: ICE Negotiation Failure Behind Firewalls
 
-Common user experience mistakes in this domain.
+**What goes wrong:** WebRTC requires UDP connectivity to Twilio media servers. Corporate firewalls, restrictive Wi-Fi (government buildings, libraries, community centers where campaigns operate), and symmetric NATs block UDP. Call connects at signaling level but has no audio.
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Search returns “kind of close” results above exact known matches | Users stop trusting lookup and revert to filters | Hard-boost exact email, phone, voter ID, and full-name matches |
-| No indication of why a result matched | Users cannot tell whether search found the right person | Highlight or label match reason at least for exact and strong-field matches |
-| Search wipes out current filter context invisibly | Users think records disappeared | Make search-plus-filter state explicit and easy to clear independently |
-| Empty state treats “still typing” as “no voters found” | Users over-correct queries and blame data quality | Use clear loading, debounced searching, and “keep typing” guidance for short queries |
+**Why this matters:** Campaign volunteers call from diverse locations with varying network quality.
 
-## "Looks Done But Isn't" Checklist
+**Prevention:**
+- Enable TURN relay fallback (Voice SDK does this automatically if Network Traversal Service is enabled on the account).
+- Add a pre-call network quality check using Twilio's preflight API. Warn if WebRTC is unsupported.
+- Always offer `tel:` link fallback (planned for mobile). On desktop, offer "Call from your phone" option.
+- Document firewall requirements for campaign IT staff.
 
-- [ ] **Cross-field lookup:** Often missing contact-table updates and import paths — verify edited and imported phones/emails become searchable.
-- [ ] **Typo tolerance:** Often missing field-specific guardrails — verify short ZIP/precinct/party-like queries stay precise.
-- [ ] **Ranking:** Often missing deterministic tie-breakers — verify repeated queries return the same page boundaries.
-- [ ] **Search-first UI:** Often missing debounce/cancellation — verify fast typing does not trigger stale results or 429s.
-- [ ] **Tenant safety:** Often missing projection-level isolation tests — verify typo-tolerant and ranked search never leaks cross-campaign hits.
-- [ ] **Rollout:** Often missing operational plan — verify index creation, backfill, and imports are tested against production-scale data.
+### HIGH -- Pitfall 17: Browser Microphone Permission Denial
 
-## Recovery Strategies
+**What goes wrong:** User clicks "Call" but browser blocks microphone access. Voice SDK throws `NotAllowedError` that isn't surfaced to the user. Safari resets permissions more aggressively than Chrome.
 
-When pitfalls occur despite prevention, how to recover.
+**Prevention:**
+- Request microphone permission explicitly before first call, with a clear UI explanation.
+- Handle `NotAllowedError` with specific instructions per browser.
+- Test on Chrome, Firefox, Safari, and mobile Safari.
+- Trigger audio context on user click to avoid autoplay restrictions.
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Tenant leakage through search surface | HIGH | Disable new search path, revoke/rotate any exported debug data, fix isolation at storage/query layer, rerun cross-tenant verification |
-| Stale search projection | MEDIUM | Rebuild projection from canonical tables, add drift checks, patch missing mutation hooks, communicate freshness expectations |
-| Bad ranking / unstable pagination | MEDIUM | Freeze current boosting, add deterministic secondary sort, capture real query samples, retune against labeled examples |
-| Request storms / 429s | LOW | Add debounce and cancellation, lower eager-query behavior, adjust rate limits after measurement, ship a guarded short-query mode |
-| Import slowdown after index rollout | MEDIUM | Pause nonessential backfills, tune index strategy, rebuild concurrently if needed, benchmark import path before re-enabling |
+### MODERATE -- Pitfall 18: Token Expiry During Active Session
 
-## Pitfall-to-Phase Mapping
+**What goes wrong:** Access Token expires mid-session (default 1 hour). `Device` emits `tokenWillExpire` 10 seconds before expiry. If unhandled, subsequent calls fail silently.
 
-How roadmap phases should address these pitfalls.
+**Prevention:**
+- Set token TTL to 2-4 hours for phone bank shifts, but implement refresh via `tokenWillExpire` handler.
+- On refresh failure (network issue), show a clear "Session expired" message.
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Search surface bypasses tenant isolation | Search architecture and data model | Cross-campaign integration tests for exact, fuzzy, ranked, and counted search |
-| Naive `%term%` expansion across many fields | Search indexing and query design | `EXPLAIN ANALYZE` on representative datasets shows indexed plan and bounded latency |
-| Denormalized search data goes stale | Search data sync and import integration | Edit/import/contact CRUD tests prove search freshness or documented async lag |
-| Ranking is not stable enough for pagination | Relevance design and API contract | Repeated-query pagination tests show deterministic order and no duplicates |
-| Typo tolerance is too loose | Relevance tuning and query parsing | Labeled query set shows exact known lookups beat fuzzy candidates |
-| Search-first UI causes request storms | Frontend interaction and API hardening | Browser/network tests show debounce, stale-request suppression, and no 429s under normal typing |
-| Search and structured filters drift apart | Product semantics and endpoint contract | Combined search+filter tests match documented behavior and chip/reset UX |
-| Rollout ignores index/import side effects | Migration, rollout, and operational hardening | Staging rehearsal covers concurrent index builds, backfill, import throughput, and rollback |
+### MODERATE -- Pitfall 19: TwiML Application SID Misconfiguration
+
+**What goes wrong:** TwiML App Voice URL doesn't point to the correct webhook endpoint. Outbound calls from browser fail silently.
+
+**Prevention:**
+- Validate TwiML App URL on org config save (test request to verify endpoint is reachable).
+- Include expected webhook URL in org settings UI.
+- Check Twilio debugger for "HTTP retrieval failure" errors on call failures.
+
+---
+
+## Operational Pitfalls
+
+### HIGH -- Pitfall 20: Lookup API Cost Explosion at Import Scale
+
+**What goes wrong:** Lookup v2 Line Type Intelligence charges ~$0.005-$0.01 per lookup. Basic validation is free. Running carrier lookups on a 50K voter import costs $250-$500. A 500K import: $2,500-$5,000.
+
+**Prevention:**
+- Basic E.164 format validation is free -- always use this.
+- Carrier/line-type lookups should be opt-in, triggered only before SMS send or during call list generation, not on import.
+- Cache results in a `phone_lookup_cache` table with 90-day TTL. Phone carriers don't change frequently.
+- Display cost estimates before bulk lookups: "Looking up 5,000 numbers costs approximately $25-$50."
+- Set daily Lookup spend cap per org.
+- Rate limit: use asyncio.Semaphore (10-20 concurrent) with exponential backoff on 429s.
+
+### HIGH -- Pitfall 21: Webhook Duplicate Processing
+
+**What goes wrong:** Twilio guarantees at-least-once delivery. On timeout or 5xx, Twilio retries. Without idempotency, calls/messages get double-logged, skewing analytics and potentially double-processing DNC entries.
+
+**Prevention:**
+- Use `CallSid`/`MessageSid` + status as deduplication key.
+- Add `twilio_event_log` table with unique constraint on `(sid, status)`. Use `INSERT ... ON CONFLICT DO NOTHING`.
+- Return 200 immediately after validation, process asynchronously via Procrastinate (existing pattern).
+- Ensure webhook handlers respond within 5 seconds (Twilio's connection timeout is 15 seconds).
+
+### HIGH -- Pitfall 22: Spend Limit Race Conditions
+
+**What goes wrong:** Multiple callers in a phone bank session simultaneously initiate calls. The check-then-call-then-update pattern is not atomic. Budget is exceeded before the counter updates.
+
+**Prevention:**
+- Pre-decrement budget: reserve estimated cost with `SELECT FOR UPDATE` before making Twilio API call. Credit back on failure.
+- Use Twilio Usage Triggers as a secondary safety net (but note: they have minutes-to-hours latency, not real-time).
+- For bulk SMS, calculate total estimated cost and reject the batch if it exceeds remaining budget.
+
+### HIGH -- Pitfall 23: Synchronous Twilio API Calls Blocking Event Loop
+
+**What goes wrong:** Using `client.messages.create()` (sync) in an async FastAPI endpoint blocks the event loop, causing timeouts for all concurrent requests.
+
+**Why it happens:** Most Twilio Python examples show sync usage. The async API requires explicitly passing `AsyncTwilioHttpClient`.
+
+**Prevention:**
+- Create the Twilio client with `AsyncTwilioHttpClient` at initialization.
+- Lint rule: any `twilio.rest.Client` call in an `async def` must use async methods.
+
+### MODERATE -- Pitfall 24: Status Callbacks Arrive Out of Order
+
+**What goes wrong:** Twilio does NOT guarantee webhook delivery order. A "completed" callback can arrive before "ringing" or "answered." Sequential state processing overwrites later status with earlier one.
+
+**Prevention:**
+- Design call state as a forward-only state machine (ringing -> in-progress -> completed).
+- Use the `Timestamp` field in callbacks to order events, not arrival order.
+- Store all status transitions for audit trail, not just current status.
+
+### MODERATE -- Pitfall 25: Twilio SMS Rate Limits on Standard Numbers
+
+**What goes wrong:** Standard 10DLC numbers have per-second rate limits (varies by trust score, typically 1-75 msg/sec). Bulk SMS exceeding this results in 429 errors and undelivered messages.
+
+**Prevention:**
+- In Procrastinate bulk SMS job, throttle to match the org's Twilio number throughput tier.
+- Queue messages and send at a controlled rate. Report send progress in UI.
+- Messaging Services with number pools increase throughput but add complexity.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Org Twilio Config (Phase 1) | Plaintext credentials (#1) | Fernet encryption from day one; BYTEA columns |
+| Org Twilio Config (Phase 1) | Cross-org webhook routing (#5) | Org ID in webhook URL path; SID-to-campaign mapping |
+| Schema Design (Phase 1) | RLS gap on new tables (#6) | CI check for RLS on all campaign_id tables |
+| Schema Design (Phase 1) | Webhook idempotency (#21) | Event log table with unique constraint |
+| Schema Design (Phase 1) | Out-of-order callbacks (#24) | Timestamp-based state machine design |
+| Voice Click-to-Call (Phase 2) | Webhook URL mismatch (#2) | TWILIO_WEBHOOK_BASE_URL env var |
+| Voice Click-to-Call (Phase 2) | Auth Token in Access Token (#3) | Enforce API Key usage; code review check |
+| Voice Click-to-Call (Phase 2) | ICE/firewall failure (#16) | TURN fallback + tel: link fallback |
+| Voice Click-to-Call (Phase 2) | Microphone permissions (#17) | Pre-call permission request |
+| Voice Click-to-Call (Phase 2) | Calling hours (#9) | ZIP-to-timezone + server-side enforcement |
+| Two-Way SMS (Phase 2-3) | A2P 10DLC registration (#12) | Start registration EARLY -- 2-3 week lead time |
+| Two-Way SMS (Phase 2-3) | STOP/DNC sync (#13) | Webhook handler + DNCReason expansion |
+| Two-Way SMS (Phase 2-3) | TCPA consent for SMS (#8) | consent_source field; compliance warnings |
+| Two-Way SMS (Phase 2-3) | Event loop blocking (#23) | AsyncTwilioHttpClient from start |
+| Lookup & Spend (Phase 3-4) | Lookup cost (#20) | Cache 90 days; batch only; cost estimates |
+| Lookup & Spend (Phase 3-4) | Spend limit races (#22) | Pre-decrement with SELECT FOR UPDATE |
+
+---
 
 ## Sources
 
-- Project context: [.planning/PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md)
-- Existing search implementation: [app/services/voter.py](/home/kwhatcher/projects/civicpulse/run-api/app/services/voter.py)
-- Existing filter/search contract: [app/schemas/voter_filter.py](/home/kwhatcher/projects/civicpulse/run-api/app/schemas/voter_filter.py)
-- Existing rate-limit expectations: [docs/production-testing-runbook.md](/home/kwhatcher/projects/civicpulse/run-api/docs/production-testing-runbook.md)
-- Existing search endpoint stress test: [web/e2e/cross-cutting.spec.ts](/home/kwhatcher/projects/civicpulse/run-api/web/e2e/cross-cutting.spec.ts)
-- Existing frontend search hook: [web/src/hooks/useVoters.ts](/home/kwhatcher/projects/civicpulse/run-api/web/src/hooks/useVoters.ts)
-- PostgreSQL generated column restrictions: https://www.postgresql.org/docs/current/ddl-generated-columns.html
-- PostgreSQL text search controls and ranking: https://www.postgresql.org/docs/current/textsearch-controls.html
-- PostgreSQL text search tables and indexes: https://www.postgresql.org/docs/current/textsearch-tables.html
-- PostgreSQL `pg_trgm` similarity, thresholds, and index support: https://www.postgresql.org/docs/current/pgtrgm.html
-- PostgreSQL `unaccent` extension: https://www.postgresql.org/docs/current/unaccent.html
-- PostgreSQL `CREATE INDEX`, including `CONCURRENTLY` and GIN storage parameters: https://www.postgresql.org/docs/current/sql-createindex.html
-- RLS planner/search interaction discussion: https://jfagoagas.github.io/blog/posts/psql-rls-ts/ (MEDIUM confidence)
+- [Twilio: Webhooks Security](https://www.twilio.com/docs/usage/webhooks/webhooks-security) -- signature validation, URL matching, proxy gotchas
+- [Twilio: Secure Your Account](https://www.twilio.com/docs/usage/security/secure-your-twilio-account) -- credential storage best practices
+- [Twilio: Protect Your Auth Token](https://www.twilio.com/en-us/blog/protect-phishing-auth-token-fraud) -- auth token exposure risks
+- [Twilio: Access Tokens](https://www.twilio.com/docs/iam/access-tokens) -- token lifetime, API Key vs Auth Token
+- [Twilio: Voice SDK Best Practices](https://www.twilio.com/docs/voice/sdks/javascript/best-practices) -- WebRTC pitfalls, token refresh
+- [Twilio: Voice SDK Network Connectivity](https://www.twilio.com/docs/voice/sdks/network-connectivity-requirements) -- firewall/NAT/TURN
+- [Twilio: Troubleshooting Voice JavaScript SDK](https://support.twilio.com/hc/en-us/articles/223180908) -- common SDK issues
+- [Twilio: A2P 10DLC for Political ISVs](https://help.twilio.com/articles/9515675492251) -- political registration requirements
+- [Twilio: A2P 10DLC Overview](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc) -- registration enforcement
+- [Twilio: Opt-out Keywords (STOP Filtering)](https://help.twilio.com/articles/223134027) -- automatic STOP handling
+- [Twilio: Advanced Opt-Out](https://www.twilio.com/docs/messaging/tutorials/advanced-opt-out) -- custom opt-out configuration
+- [Twilio: Lookup v2 API](https://www.twilio.com/docs/lookup/v2-api) -- pricing, rate limits
+- [Twilio: Usage Triggers](https://support.twilio.com/hc/en-us/articles/223132387) -- spend protection
+- [Twilio: Legal Considerations for Recording](https://help.twilio.com/articles/360011522553) -- two-party consent states
+- [Twilio: Does Voice Work Behind Firewalls?](https://support.twilio.com/hc/en-us/articles/223133207) -- firewall requirements
+- [GitGuardian: Remediating Twilio Credential Leaks](https://www.gitguardian.com/remediation/twilio-master-credential) -- leak remediation
+- [Hookdeck: Twilio Webhooks Guide](https://hookdeck.com/webhooks/platforms/twilio-webhooks-features-and-best-practices-guide) -- retry behavior, idempotency
+- [TCPA Compliance for Political Calls](https://mslawgroup.com/tcpa-compliance-for-political-calls/) -- political exemptions, manual vs auto-dial
+- [Navigating TCPA Regulations for Political Calls](https://mslawgroup.com/navigating-tcpa-regulations-for-political-calls/) -- PEC requirements, voter registration data
+- [BCLP: TCPA Opt-Out Rules April 2025](https://www.bclplaw.com/en-US/events-insights-news/the-tcpas-new-opt-out-rules-take-effect-on-april-11-2025-what-does-this-mean-for-businesses.html) -- REVOKE/OPTOUT keywords
 
 ---
-*Pitfalls research for: voter-page free-text search and lookup retrofit in a multi-tenant voter CRM*
-*Researched: 2026-04-06*
+*Pitfalls research for: Twilio Communications (v1.15)*
+*Researched: 2026-04-07*

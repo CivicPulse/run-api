@@ -1,207 +1,198 @@
-# Stack Research
+# Stack Research -- Twilio Communications
 
-**Domain:** Voter-page free-text search and cross-field lookup in an existing FastAPI/PostgreSQL voter CRM
-**Researched:** 2026-04-06
-**Confidence:** HIGH
+**Project:** CivicPulse Run v1.15
+**Researched:** 2026-04-07
+**Overall confidence:** HIGH
 
-## Recommended Stack
+## New Dependencies
 
-### Core Technologies
+### Backend (Python)
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| PostgreSQL | 17.x, specifically 17.9 in current supported release docs; repo already targets `postgres:17` | Primary search engine for this milestone using `pg_trgm`, `unaccent`, full-text search, GIN/GiST indexes, and ranking | This app already depends on PostgreSQL + RLS. PostgreSQL 17 can cover typo tolerance, partial matches, exact/prefix boosts, and ranked lookup without adding a second search system or weakening tenant isolation. |
-| SQLAlchemy PostgreSQL dialect | 2.0.48+ (already installed) | Build `similarity()`, `%`, `@@`, `websearch_to_tsquery()`, `ts_rank_cd()`, and weighted `CASE` ranking expressions from the existing async service layer | SQLAlchemy 2.x already exposes PostgreSQL full-text operators and functions cleanly. Use direct dialect functions instead of adding a search abstraction library. |
-| FastAPI | 0.135.1+ (already installed) | Expose a search-first voter endpoint contract that returns ranked results and match metadata | No framework change is needed. The work is query construction, schema evolution, and result shaping, not API infrastructure. |
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `twilio` | `>=9.10.4` | Twilio REST API client, Access Token generation, webhook validation, TwiML generation | Official helper library. Includes `twilio.rest.Client` for Messaging/Lookup API calls, `twilio.jwt.access_token` for Voice SDK token generation, `twilio.request_validator.RequestValidator` for webhook signature verification, and `twilio.twiml` for TwiML response building. Native async support via `AsyncTwilioHttpClient` (uses aiohttp internally). Single dependency covers all five Twilio integration surfaces. |
+| `cryptography` | `>=44.0.0` | Fernet symmetric encryption for org-scoped Twilio credentials at rest | Auth Tokens and API Key Secrets stored in PostgreSQL must be encrypted. Fernet (AES-128-CBC + HMAC-SHA256) provides authenticated encryption with a single `CREDENTIAL_ENCRYPTION_KEY` env var. No external KMS needed at current scale. Already a transitive dependency of `authlib` so no new wheel to build. |
 
-### Supporting Libraries
+No other new backend packages required. The `twilio` package bundles:
+- REST client (sync + async) for Voice, Messaging, Lookup v2 APIs
+- `AccessToken` + `VoiceGrant` classes for browser SDK token minting
+- `RequestValidator` for webhook X-Twilio-Signature verification
+- TwiML builder (`VoiceResponse`, `MessagingResponse`) for webhook responses
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `pg_trgm` PostgreSQL extension | Bundled with PostgreSQL 17 | Trigram similarity and index-backed typo-tolerant partial matching | Use for names, addresses, city, ZIP, source IDs, phone numbers, and email values where user input is messy or incomplete. |
-| `unaccent` PostgreSQL extension | Bundled with PostgreSQL 17 | Accent-insensitive normalization before trigram or FTS comparison | Use anywhere text should match regardless of diacritics. Apply in indexed expressions, not only at query time. |
-| `asyncpg` | 0.31.0+ (already installed) | Existing async PostgreSQL driver | Keep as-is. No driver change is needed for search. |
-| Alembic | 1.18.4+ (already installed) | Roll out `CREATE EXTENSION`, functional indexes, and any search-specific columns safely | Use for all schema/index additions in this milestone. |
-| `@tanstack/react-query` | 5.90.21 (already in `web/package.json`) | Debounced, cache-aware ranked search requests from the voter page | Reuse the current `useVoterSearch()` pattern for search-as-you-type and optional filter refinement. |
-| `ky` | 1.14.3 (already in `web/package.json`) | Existing HTTP client for search requests | Keep as-is; no frontend client library change is required. |
-| `RapidFuzz` | 3.14.3 (already installed) | Offline evaluation or fixture generation only | Do not use in the hot request path. It is appropriate for import mapping and test comparisons, not DB-backed voter lookup. |
+### Frontend (TypeScript/React)
 
-### Development Tools
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `@twilio/voice-sdk` | `^2.18.1` | Browser WebRTC calling via Twilio Voice | Official Twilio Voice JS SDK. Provides `Device` (manages WebRTC connection) and `Call` (represents an active call with mute/hangup/DTMF). Replaces `tel:` links with in-browser calling on desktop; mobile can still fall back to `tel:`. Full TypeScript types included. v1.x is EOL (April 2025); v2.x is the only supported line. |
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| Alembic migrations | Enable extensions and add search indexes | Put `CREATE EXTENSION IF NOT EXISTS pg_trgm;` and `CREATE EXTENSION IF NOT EXISTS unaccent;` in a dedicated migration before query changes ship. |
-| `EXPLAIN (ANALYZE, BUFFERS)` | Validate that ranked queries use the intended GIN/GiST indexes | Required before rollout because search ranking queries can silently degrade into sequential scans. |
-| Existing Vitest/Playwright stack | Verify ranked lookup behavior end-to-end | Add tests for typo tolerance, prefix matches, ranking order, and filter + search interaction. |
+No other new frontend packages required. The Voice SDK is self-contained (bundles its own WebRTC handling). SMS UI is purely API-driven via existing `ky` + TanStack Query patterns.
 
-## Integration Points
+## Key Integration Points
 
-### Database
+### 1. Access Token Endpoint (Voice SDK auth)
 
-Add PostgreSQL-native search features to the existing database, not a separate service:
+The browser Voice SDK requires a short-lived JWT (Access Token) with a VoiceGrant. New FastAPI endpoint:
 
-1. Enable `pg_trgm` and `unaccent`.
-2. Add normalized functional indexes on the fields users actually search:
-   - `voters.first_name`
-   - `voters.last_name`
-   - concatenated full name
-   - `voters.source_id`
-   - registration and mailing address lines
-   - city/state/ZIP
-   - `voter_phones.value`
-   - `voter_emails.value`
-3. Add one weighted full-text search expression for voter-row text fields:
-   - names highest weight
-   - address and geography medium weight
-   - source/vendor IDs lower weight
-4. Keep phone/email lookup index-backed via joins or `EXISTS` subqueries with trigram/equality matching rather than introducing an async indexing pipeline.
+```
+POST /api/v1/campaigns/{campaign_id}/twilio/voice-token
+```
 
-Recommended query shape:
+Backend flow:
+1. Load org's Twilio API Key SID + API Key Secret (decrypted from DB)
+2. Create `AccessToken(account_sid, api_key_sid, api_key_secret, identity=user_id)`
+3. Add `VoiceGrant(outgoing_application_sid=twiml_app_sid)`
+4. Return `token.to_jwt()` with 10-minute TTL
 
-- Exact and prefix boosts first: exact phone, exact email, exact source ID, exact last name + first name prefix.
-- FTS candidate/rank next: `to_tsvector(...) @@ websearch_to_tsquery(...)` with `ts_rank_cd(...)`.
-- Trigram fallback for typo tolerance: `similarity(...)`, `word_similarity(...)`, and `%` on normalized expressions.
-- Final blended score in SQL via `CASE` + weighted rank fields.
+Frontend fetches this token, passes it to `new Device(token)`, then calls `device.connect()` to initiate WebRTC calls.
 
-### Backend
+**Critical:** Use Twilio API Keys (Standard type), not the master Auth Token, for Access Token signing. API Keys can be revoked per-org without compromising the entire Twilio account.
 
-Current implementation is only name `ILIKE` on concatenated fields in [app/services/voter.py](/home/kwhatcher/projects/civicpulse/run-api/app/services/voter.py). Replace that narrow predicate with a dedicated ranked-search branch inside the existing `VoterService.search_voters()` flow.
+### 2. TwiML Application Webhook
 
-Recommended backend changes:
+When `device.connect({To: '+1234567890'})` fires, Twilio POSTs to a configured TwiML Application URL:
 
-- Extend [app/schemas/voter_filter.py](/home/kwhatcher/projects/civicpulse/run-api/app/schemas/voter_filter.py) so search-first requests can sort by relevance.
-- Keep the existing `POST /campaigns/{campaign_id}/voters/search` endpoint in [app/api/v1/voters.py](/home/kwhatcher/projects/civicpulse/run-api/app/api/v1/voters.py); do not create a parallel search API unless response semantics materially diverge.
-- Return match metadata useful to the UI:
-  - `rank`
-  - `matched_fields`
-  - optional `match_type` such as `exact`, `prefix`, `fts`, `trigram`
-- Preserve current RLS/session handling through `get_campaign_db`; search must stay inside the same transaction-scoped campaign context.
+```
+POST /api/v1/webhooks/twilio/voice  (public, validated by X-Twilio-Signature)
+```
 
-### Frontend
+Returns TwiML:
+```xml
+<Response><Dial callerId="+1orgNumber"><Number>+1234567890</Number></Dial></Response>
+```
 
-No new frontend search package is needed. The web app already has the right primitives:
+### 3. Twilio Messaging API (SMS)
 
-- [web/src/hooks/useVoters.ts](/home/kwhatcher/projects/civicpulse/run-api/web/src/hooks/useVoters.ts) already posts search bodies via React Query.
-- [web/src/components/voters/AddVotersDialog.tsx](/home/kwhatcher/projects/civicpulse/run-api/web/src/components/voters/AddVotersDialog.tsx) already demonstrates debounced voter search.
+Outbound SMS uses the Twilio REST client with async methods:
 
-Recommended UI stack change:
+```python
+from twilio.http.async_http_client import AsyncTwilioHttpClient
+from twilio.rest import Client
 
-- Reuse existing React Query + `ky` plumbing.
-- Add debounce and stale-request suppression in the voter-page search box.
-- Show ranked results immediately, with the existing structured filters as secondary refinement.
-- Do not add client-side fuzzy search libraries; ranking belongs in PostgreSQL so pagination and security stay correct.
+async_http = AsyncTwilioHttpClient()
+client = Client(account_sid, auth_token, http_client=async_http)
+message = await client.messages.create_async(
+    body="Your message",
+    from_=org_twilio_number,
+    to=voter_phone,
+    status_callback="https://api.civpulse.org/api/v1/webhooks/twilio/sms-status"
+)
+```
+
+Inbound SMS and delivery status updates arrive via webhook endpoints.
+
+### 4. Twilio Lookup v2 API
+
+Number validation on voter contact create/edit:
+
+```python
+phone_number = await client.lookups.v2.phone_numbers(e164).fetch_async(
+    fields="line_type_intelligence"
+)
+# Returns: line_type_intelligence.type = "mobile" | "landline" | "fixedVoip" | ...
+```
+
+Cache results in voter contact records (line_type, carrier columns) to avoid repeated paid lookups.
+
+### 5. Webhook Signature Validation
+
+All Twilio webhook endpoints must validate the `X-Twilio-Signature` header:
+
+```python
+from twilio.request_validator import RequestValidator
+
+validator = RequestValidator(auth_token)
+is_valid = validator.validate(url, params, signature)
+```
+
+Implement as a FastAPI dependency (`Depends(verify_twilio_signature)`) applied to all `/webhooks/twilio/*` routes. These routes are public (no JWT auth) but cryptographically verified.
+
+**Gotcha:** The validator needs the exact public URL Twilio sees (including protocol, host, port). Behind a reverse proxy (Traefik), reconstruct from `X-Forwarded-*` headers or configure a canonical webhook base URL in settings.
+
+### 6. Org-Scoped Credential Storage
+
+New `twilio_configs` table linked to `organizations.id`:
+
+| Column | Type | Notes |
+|--------|------|-------|
+| org_id | UUID FK | One config per org |
+| account_sid | VARCHAR | Not encrypted (not secret per Twilio docs) |
+| auth_token_encrypted | BYTEA | Fernet-encrypted |
+| api_key_sid | VARCHAR | For Access Token generation |
+| api_key_secret_encrypted | BYTEA | Fernet-encrypted |
+| twiml_app_sid | VARCHAR | Voice TwiML Application SID |
+| phone_numbers | JSONB | Array of provisioned numbers with capabilities |
+| daily_spend_limit_cents | INTEGER | Platform-enforced soft limit |
+| total_spend_limit_cents | INTEGER | Platform-enforced soft limit |
+
+Encryption: single `CREDENTIAL_ENCRYPTION_KEY` env var (Fernet key), loaded at startup. Decrypt only when making Twilio API calls.
+
+### 7. Existing Code Touch Points
+
+| File | Change |
+|------|--------|
+| `web/src/components/field/PhoneNumberList.tsx` | Add WebRTC call button alongside existing `tel:` link; conditionally render based on Twilio config availability |
+| `app/api/v1/phone_banks.py` | Add call metadata recording endpoints |
+| `app/models/organization.py` | Add relationship to `twilio_configs` table |
+| `app/core/config.py` | Add `CREDENTIAL_ENCRYPTION_KEY` and `TWILIO_WEBHOOK_BASE_URL` settings |
+
+## What NOT to Add
+
+| Avoid | Why | Do Instead |
+|-------|-----|------------|
+| Twilio Conversations API | Designed for long-lived chat sessions with participant management; campaign SMS is transactional send-and-log | Use Messaging API directly |
+| Separate webhook microservice | Webhook volume bounded by campaign activity (hundreds/day); a few FastAPI routes suffice | Add routes to existing API with signature validation dependency |
+| WebSocket infrastructure for call state | `@twilio/voice-sdk` manages call state client-side via event emitters (`Device.on`, `Call.on`) | Thin React wrapper around SDK events |
+| Per-org env var credentials | Does not scale to multi-tenant; cannot add/remove orgs without restart | Encrypted database storage with Fernet |
+| Twilio phone number provisioning API | v1.15 scope is BYO numbers + manual config; programmatic purchasing is premature | Manual number entry in org settings UI |
+| Custom dialer UI | Voice SDK `Device` and `Call` handle WebRTC, audio device selection, call state | Build thin wrapper around SDK events |
+| Master Auth Token for Access Tokens | Account-wide, cannot be scoped or independently revoked | API Keys (Standard type) for all token generation |
+| `twilio-python-async` (community) | Deprecated; official SDK now has native async | Use official `twilio` package with `AsyncTwilioHttpClient` |
+| Redis for SMS queue | Procrastinate (already in stack) handles async jobs via PostgreSQL | Use existing Procrastinate worker for bulk SMS sends |
+
+## Alternatives Considered
+
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| Python Twilio client | `twilio` (official) | `twilio-python-async` (community) | Deprecated; official SDK has native async |
+| Browser calling | `@twilio/voice-sdk` v2 | `twilio-client` (v1) | v1 EOL April 2025; unsupported |
+| Credential encryption | `cryptography` (Fernet) | `pgcrypto` extension | App-layer encryption keeps secrets opaque in DB dumps and query logs |
+| Credential encryption | `cryptography` (Fernet) | AWS KMS / HashiCorp Vault | Over-engineering for current scale; migrate later if needed |
+| SMS API | Twilio Messaging API | Twilio Conversations API | Conversations adds session/participant complexity for no benefit |
+| Bulk SMS processing | Procrastinate jobs | Celery / Redis | Procrastinate already in stack; no new infrastructure |
 
 ## Installation
 
 ```bash
-# Python: no new package required
-# Frontend: no new package required
+# Backend
+cd /home/kwhatcher/projects/civicpulse/run-api
+uv add twilio cryptography
 
-# Database migration contents
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS unaccent;
+# Frontend
+cd /home/kwhatcher/projects/civicpulse/run-api/web
+npm install @twilio/voice-sdk
 ```
-
-Representative index patterns to add in Alembic migrations:
-
-```sql
-CREATE INDEX IF NOT EXISTS ix_voters_full_name_trgm
-ON voters
-USING gin (
-  unaccent(lower(coalesce(first_name, '') || ' ' || coalesce(last_name, ''))) gin_trgm_ops
-);
-
-CREATE INDEX IF NOT EXISTS ix_voters_search_tsv
-ON voters
-USING gin (
-  to_tsvector(
-    'simple',
-    unaccent(
-      concat_ws(
-        ' ',
-        first_name,
-        middle_name,
-        last_name,
-        suffix,
-        source_id,
-        registration_line1,
-        registration_city,
-        registration_state,
-        registration_zip,
-        mailing_line1,
-        mailing_city,
-        mailing_state,
-        mailing_zip
-      )
-    )
-  )
-);
-
-CREATE INDEX IF NOT EXISTS ix_voter_phones_value_trgm
-ON voter_phones
-USING gin (unaccent(lower(value)) gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS ix_voter_emails_value_trgm
-ON voter_emails
-USING gin (lower(value) gin_trgm_ops);
-```
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| PostgreSQL 17 + `pg_trgm` + FTS | Elasticsearch/OpenSearch | Only if voter lookup grows into a separate multi-entity search platform with cross-campaign/global search, heavy aggregations, or search-specific operational staff. Not justified for this milestone. |
-| PostgreSQL-native ranking in SQL | Meilisearch or Typesense | Reasonable only if product direction shifts toward consumer-style instant search across many entities and languages. Today it adds another service, sync pipeline, and failure mode without solving a must-have gap. |
-| Direct SQLAlchemy PostgreSQL functions | `sqlalchemy-searchable` or similar helper packages | Use a helper only if the team decides to standardize a shared search DSL across many models. For one voter lookup milestone, direct SQLAlchemy is clearer and lower risk. |
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| Elasticsearch/OpenSearch for this milestone | New cluster, new ops surface, async indexing, failure/relevance debugging, and tenant-sync complexity for a feature PostgreSQL already covers | PostgreSQL 17 with `pg_trgm`, `unaccent`, FTS, and expression indexes |
-| Meilisearch/Typesense for this milestone | Same dual-write/index-sync problem; also complicates RLS-aligned tenant isolation | PostgreSQL-native search inside the existing transaction and policy model |
-| Python-side `RapidFuzz`/`fuzzywuzzy` in request handlers | Pulls ranking out of the database, breaks index use, complicates pagination, and becomes slow on large voter tables | SQL ranking functions plus indexed trigram matching |
-| Client-side fuzzy filtering libraries | Searches only whatever page of results was already fetched and produces incorrect rank/order semantics | Server-side ranked search with React Query debounce |
-| Redis or a background indexing worker just for search | Unnecessary operational complexity for a synchronous lookup feature | Direct PostgreSQL query execution on writes and reads |
-
-## Stack Patterns by Variant
-
-**If the query looks like a person/address lookup:**
-- Use trigram similarity plus prefix boosts on normalized name and address expressions.
-- Because users often type fragments, swapped spacing, or minor misspellings.
-
-**If the query is multi-word free text:**
-- Use `websearch_to_tsquery('simple', q)` against a weighted `to_tsvector(...)`.
-- Because it handles natural user input better than raw `to_tsquery()` while still ranking results.
-
-**If the query looks like phone, email, ZIP, or source ID:**
-- Use exact and prefix comparisons before trigram fallback.
-- Because identifier-style fields should rank precise matches above fuzzy name matches.
 
 ## Version Compatibility
 
-| Package A | Compatible With | Notes |
-|-----------|-----------------|-------|
-| PostgreSQL 17.x | `pg_trgm`, `unaccent`, built-in FTS | These are bundled contrib capabilities, not extra services. |
-| SQLAlchemy 2.0.48+ | PostgreSQL full-text functions/operators | SQLAlchemy 2.0 docs explicitly support PostgreSQL FTS via `func` and boolean operators. |
-| FastAPI 0.135.1+ | `asyncpg` 0.31.0+ and SQLAlchemy async | No framework upgrade is required to add ranked search. |
-| React 19.2 + React Query 5.90.21 | Existing `ky` client hooks | Current frontend stack is already sufficient for search-as-you-type UX. |
+| New Package | Compatible With | Notes |
+|-------------|-----------------|-------|
+| `twilio` 9.10.x | Python 3.13 | Tested on 3.7-3.13; async via aiohttp |
+| `twilio` 9.10.x | FastAPI async | Use `AsyncTwilioHttpClient` + `*_async()` methods |
+| `@twilio/voice-sdk` 2.18.x | React 19, TypeScript | Full TS types bundled; no React-specific wrapper needed |
+| `cryptography` 44.x | Python 3.13 | Wheels available; already transitive dep of authlib |
 
 ## Sources
 
-- [`.planning/PROJECT.md`](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md) - milestone scope, existing architecture, constraints
-- [`pyproject.toml`](/home/kwhatcher/projects/civicpulse/run-api/pyproject.toml) - current backend package versions
-- [`web/package.json`](/home/kwhatcher/projects/civicpulse/run-api/web/package.json) - current frontend package versions
-- [`app/services/voter.py`](/home/kwhatcher/projects/civicpulse/run-api/app/services/voter.py) - current voter search implementation
-- [`app/api/v1/voters.py`](/home/kwhatcher/projects/civicpulse/run-api/app/api/v1/voters.py) - current search endpoint integration point
-- [`app/models/voter.py`](/home/kwhatcher/projects/civicpulse/run-api/app/models/voter.py) - searchable voter fields
-- [`app/models/voter_contact.py`](/home/kwhatcher/projects/civicpulse/run-api/app/models/voter_contact.py) - searchable phone/email fields
-- https://www.postgresql.org/docs/17/pgtrgm.html - official `pg_trgm` operators, similarity functions, and index support
-- https://www.postgresql.org/docs/17/unaccent.html - official accent-insensitive text normalization support
-- https://www.postgresql.org/docs/17/textsearch-controls.html - official `websearch_to_tsquery()` and `ts_rank_cd()` behavior
-- https://docs.sqlalchemy.org/en/20/dialects/postgresql.html - official SQLAlchemy PostgreSQL full-text search support
-- https://www.postgresql.org/docs/17/release-17.html - official PostgreSQL 17 release reference; repo currently targets `postgres:17`
+- [Twilio Python SDK -- PyPI](https://pypi.org/project/twilio/) -- v9.10.4, MIT license (HIGH confidence)
+- [Twilio Python async support](https://www.twilio.com/en-us/blog/twilio-python-helper-library-async) -- AsyncTwilioHttpClient docs (HIGH confidence)
+- [@twilio/voice-sdk -- npm](https://www.npmjs.com/package/@twilio/voice-sdk) -- v2.18.1 (HIGH confidence)
+- [Voice JavaScript SDK docs](https://www.twilio.com/docs/voice/sdks/javascript) -- Device/Call API reference (HIGH confidence)
+- [Twilio Access Tokens](https://www.twilio.com/docs/iam/access-tokens) -- JWT generation with grants (HIGH confidence)
+- [Twilio API Keys](https://www.twilio.com/docs/iam/api-keys) -- Standard/Main/Restricted types, production recommendation (HIGH confidence)
+- [Lookup v2 Line Type Intelligence](https://www.twilio.com/docs/lookup/v2-api/line-type-intelligence) -- carrier/line type data (HIGH confidence)
+- [Webhook validation with FastAPI](https://www.twilio.com/en-us/blog/build-secure-twilio-webhook-python-fastapi) -- signature validation pattern (HIGH confidence)
+- [Secure credentials](https://www.twilio.com/docs/usage/secure-credentials) -- storage best practices (HIGH confidence)
 
 ---
-*Stack research for: voter-page search and lookup*
-*Researched: 2026-04-06*
+*Stack research for: Twilio Communications (v1.15)*
+*Researched: 2026-04-07*

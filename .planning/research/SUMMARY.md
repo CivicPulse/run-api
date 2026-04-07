@@ -1,168 +1,190 @@
-# Project Research Summary
+# Research Summary — v1.15 Twilio Communications
 
-**Project:** CivicPulse Run API
-**Domain:** Multi-tenant voter CRM free-text lookup and ranked search
-**Researched:** 2026-04-06
+**Project:** CivicPulse Run v1.15
+**Domain:** Browser-based calling, two-way SMS, phone validation, opt-out management for multi-tenant political campaign field ops
+**Researched:** 2026-04-07
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This milestone is not a greenfield search product. It is a lookup upgrade inside an existing FastAPI/PostgreSQL voter CRM where campaign-scoped isolation, deterministic filters, and operational trust matter more than novelty. The research consistently points to a PostgreSQL-native search design: keep the current monolith, extend the existing voter search endpoint, and add ranked free-text lookup across names, contact fields, addresses, ZIP/city, and stable IDs without introducing Elasticsearch, Meilisearch, or Python-side fuzzy matching.
+v1.15 adds Twilio-powered communications to CivicPulse Run: WebRTC click-to-call for phone banking, two-way SMS with a reply inbox, phone number validation via Twilio Lookup, and org-scoped spend controls. The integration follows a well-documented pattern — official Twilio Python SDK with async HTTP client, `@twilio/voice-sdk` v2 in the browser, Fernet-encrypted credentials per org in PostgreSQL, and FastAPI webhook routes secured by Twilio signature validation. All patterns have HIGH-confidence official documentation. The stack additions are minimal: two backend packages (`twilio`, `cryptography`) and one frontend package (`@twilio/voice-sdk`). No new infrastructure is required — bulk SMS jobs run through the existing Procrastinate queue.
 
-The recommended approach is to keep structured filters deterministic and separate from fuzzy lookup semantics. Experts would implement this as a hybrid search layer backed by PostgreSQL `pg_trgm`, `unaccent`, weighted full-text search, and a denormalized per-voter search projection that flattens voter plus contact data into an indexed, campaign-scoped search surface. The UI should become search-first on the voter page, but only after the API contract, projection sync, relevance cursoring, and RLS protections are in place.
+The feature surface is large but naturally phases around a hard dependency tree: org credential storage must come first, then phone number provisioning, then webhook infrastructure, then voice calling, then SMS, then spend controls. Voice calling (replacing `tel:` links with in-browser WebRTC) is the highest-value feature and is largely self-contained once webhook infra is in place. SMS is higher complexity — it requires A2P 10DLC brand registration (3-5 week external approval) and full conversation thread management. The single most important lead-time item is starting A2P 10DLC registration in Phase 1, even though SMS ships in Phase 5.
 
-The main risks are not feature gaps; they are trust failures. The highest-risk failures are cross-campaign leakage through a new search surface, stale denormalized search data, naive `%term%` expansion that collapses under real voter-file size, and unstable relevance pagination. Mitigation is straightforward but must be front-loaded: secure the projection table with campaign-aware isolation, define a deterministic ranking contract, refresh the projection on every relevant write/import path, and verify with representative query plans plus end-to-end search/filter interaction tests.
+The dominant risks are not technical — they are security and compliance. Storing Twilio credentials in plaintext is the fastest path to org account takeover. Misunderstanding the TCPA political exemption (it only covers manually-initiated calls, not SMS or automated calling) creates class-action exposure for every campaign on the platform. Silent webhook URL mismatch behind Traefik is the most common integration failure. All three are avoidable with clear implementation rules established before any code is written.
 
-## Key Findings
+## Stack Additions
 
-### Recommended Stack
+- **`twilio >= 9.10.4` (Python)** — Official REST client, Access Token generation, TwiML builder, webhook validator, and `AsyncTwilioHttpClient` for non-blocking API calls. Covers all five Twilio integration surfaces in a single package.
+- **`cryptography >= 44.0.0` (Python)** — Fernet symmetric encryption for Auth Token and API Key Secret at rest in PostgreSQL. Already a transitive dependency of `authlib`; no new build overhead. Implemented as a SQLAlchemy `TypeDecorator` (`EncryptedString`) for transparent encrypt/decrypt.
+- **`@twilio/voice-sdk ^2.18.1` (TypeScript/React)** — Browser WebRTC calling. v1.x EOL as of April 2025 — only v2.x supported. Wraps WebRTC, manages call state via event emitters (`Device`, `Call`). The frontend wraps it in a `useTwilioDevice` hook; no React-specific Twilio library needed.
+- **No new infrastructure** — Procrastinate (existing) handles bulk SMS job queuing via PostgreSQL. No Redis, no Celery, no separate webhook microservice.
+- **Key integration pattern** — All Twilio API calls must use `AsyncTwilioHttpClient`; synchronous SDK calls in async FastAPI handlers will block the event loop and degrade all concurrent requests.
 
-The stack recommendation is conservative on purpose. PostgreSQL 17 already covers typo tolerance, partial matching, ranking, and exact-match boosting while preserving the existing RLS model and async SQLAlchemy service layer. No new backend or frontend package is required for the core milestone; the work is mostly schema design, query design, sync ownership, and UI contract changes.
+## Feature Table Stakes
 
-**Core technologies:**
-- PostgreSQL 17.x: primary search engine using `pg_trgm`, `unaccent`, full-text search, and GIN/GiST indexes — keeps search inside the existing tenant-safe database model.
-- SQLAlchemy 2.0.48+: builds PostgreSQL-native ranking and search expressions from the current async service layer — avoids adding a search abstraction library.
-- FastAPI 0.135.1+: exposes ranked lookup through the existing voter search endpoint — no framework shift needed.
-- Alembic 1.18.4+: rolls out extensions, projection table, and indexes safely — required for controlled schema evolution.
-- TanStack Query 5.90.21 + `ky`: supports debounced search-first UX in the current web app — enough for request cancellation, caching, and stale-request handling.
+These must ship in v1.15:
 
-### Expected Features
+**Voice (Click-to-Call):**
+- Browser-to-PSTN calling via Voice JS SDK (WebRTC) in phone banking UI
+- Access token generation endpoint with VoiceGrant (scoped to org TwiML App)
+- Mute/unmute controls, call status events (ringing, answered, completed)
+- Graceful `tel:` fallback when no Twilio config — existing field volunteer behavior must not break
+- Call duration and disposition captured as `VoterInteraction` record
+- DNC check before every dial (existing `DNCService`)
 
-The launch bar is clear: users expect one-box, campaign-scoped lookup that can find a voter from partial known information and rank likely matches first. The differentiators are not flashy AI search features; they are mixed-token cross-field matching and query-aware ranking that reflect organizer intent without breaking trust.
+**SMS:**
+- Individual SMS to a voter from their contact page (DNC + opt-out check before send)
+- Two-way conversational reply inbox for inbound messages
+- Message templates with merge fields
+- Delivery status tracking (sent / delivered / failed)
+- "Reply STOP to opt out" in first message (TCPA/carrier requirement)
 
-**Must have (table stakes):**
-- One-box lookup across name, phone, email, address fragments, city/ZIP, and stable identifiers.
-- Partial matching on high-intent fields with normalized phone/email/address handling.
-- Deterministic ranking that boosts exact identifier and exact-name hits above fuzzy candidates.
-- Typo tolerance limited mainly to names and address text.
-- Search-first plus existing filter refinement in one result set.
-- Result rows with enough context to disambiguate duplicate names.
+**Number Management:**
+- BYO phone number registration in org settings
+- Phone number inventory display with capabilities (voice/SMS/MMS)
 
-**Should have (competitive):**
-- Mixed-token cross-field matching such as `maria 30309` or `smith 1212`.
-- Query-aware ranking that treats emails, phone-like queries, and ZIP-like queries differently from names.
-- Search-to-filter handoff with a removable query chip.
-- Keyboard-first lookup flow once ranking is stable.
+**Opt-Out:**
+- STOP keyword processing synced to local DNC list via webhook (Twilio handles carrier-level block; platform syncs for UI visibility)
+- `SMS_STOP` reason added to `DNCReason` enum — distinct from call refusals
+- START/UNSTOP re-subscribe via inbound webhook
 
-**Defer (v2+):**
-- Saved/recent searches and ranking controls.
-- Alias handling beyond straightforward normalization.
-- Semantic or AI-assisted search.
+**Compliance guardrails:**
+- Server-side calling hours enforcement (8 AM–9 PM in voter inferred timezone from ZIP)
+- Block SMS sends to numbers without opt-in consent; compliance warning for L2-imported numbers
+- No auto-dialer, no predictive dialer, no ringless voicemail (TCPA anti-features already in PROJECT.md scope exclusions)
 
-### Architecture Approach
+**Infrastructure:**
+- Org-scoped Twilio credentials stored encrypted at rest (`EncryptedString` TypeDecorator, BYTEA columns)
+- Twilio signature validation on all webhook routes (custom FastAPI dependency, NOT middleware)
+- Idempotent webhook handlers keyed on `twilio_sid` (Twilio retries on timeout/5xx)
+- RLS policies on all new campaign-scoped tables
 
-The architecture recommendation is explicit: keep `VoterFilter` deterministic, add a separate `lookup` contract for fuzzy search semantics, and implement ranked lookup in a dedicated `VoterSearchService` backed by a denormalized `voter_search_documents` table. That projection should store a weighted `tsvector`, flattened search text, and normalized phone/email/name fields keyed by `voter_id` and `campaign_id`, with RLS-aligned isolation and dedicated relevance cursoring. This isolates lookup complexity from stable list filtering and avoids turning the existing query builder into an unreadable pile of fuzzy OR clauses.
+## Feature Differentiators
 
-**Major components:**
-1. API contract extension on the existing voter search endpoint — accepts `lookup`, `relevance` sorting, and returns match metadata.
-2. `VoterSearchService` — builds hybrid FTS + trigram candidate sets, deterministic boosts, and relevance pagination.
-3. `voter_search_documents` projection table — precomputes cross-table searchable data with campaign-scoped indexes and sync ownership.
-4. Voter/contact/import write-path refresh hooks — keep the projection fresh after edits, upserts, and bulk imports.
-5. Search-first voter page and shared hooks — debounce input, preserve filter composition, and surface ranked results predictably.
+These add excellence if scope allows:
 
-### Critical Pitfalls
+- **Inline call controls with voter context card** — caller sees voter name, prior interactions, survey script while on call; no tab-switching during phone banking
+- **Call timer with live duration display** — visual urgency indicator for pace during phone bank sessions
+- **A2P 10DLC registration wizard** — guided org onboarding through brand registration + Campaign Verify; most competitors punt this to the Twilio console
+- **Cost estimate before bulk SMS send** — "This will send 2,340 messages at ~$0.0079/msg = ~$18.49. Proceed?"
+- **SMS eligibility badge on voter contact cards** — mobile vs. landline/VoIP indicator after Lookup validation
+- **Conversation threading with voter context** — reply inbox shows full thread alongside voter record and prior interaction history
+- **Scheduled SMS send** — queue for afternoon delivery via Procrastinate `scheduled_at`
+- **Supervisor live session dashboard** — active callers, calls completed, avg duration during phone bank sessions
 
-1. **Search surface bypasses tenant isolation** — secure the projection layer itself with campaign-aware storage/query design and dedicated cross-tenant tests, not just endpoint checks.
-2. **Naive `%term%` expansion across many fields** — do not scale the current `ILIKE` pattern; use indexed normalized expressions, FTS, trigram, and a precomputed projection.
-3. **Denormalized search data goes stale** — define one owner for projection refresh and cover voter CRUD, contact CRUD, imports, and merge-like flows.
-4. **Ranking is unstable for pagination** — design a deterministic relevance tuple and a dedicated cursor format before UI rollout.
-5. **Search-first UI causes request storms** — debounce, cancel stale requests, gate fuzzy search for very short input, and revisit rate limits with real typing behavior.
+## Anti-Features
 
-## Implications for Roadmap
+Explicitly excluded from v1.15:
 
-Based on research, suggested phase structure:
+| Anti-Feature | Reason |
+|---|---|
+| Predictive / auto-dialer | TCPA $500–$1,500 per call; PROJECT.md out-of-scope |
+| Ringless voicemail (voicemail drop) | FCC treats as a "call" requiring Prior Express Consent |
+| Call audio recording | Two-party consent required in 12 states; PII liability |
+| AI-generated SMS reply suggestions | Out of scope per PROJECT.md; off-message risk |
+| Short code provisioning | $1,000+/month, 8-12 week approval; overkill for campaign scale |
+| Automatic number purchase without explicit confirmation | Real costs ($1-2/month/number); must be deliberate org admin action |
+| Shared sender numbers across orgs | Twilio opt-out is per-number-pair; shared numbers pollute all orgs on STOP |
+| SMS body content stored in DB | PII liability; store `twilio_sid` reference and body length only |
+| Master Auth Token for Access Token signing | Account-wide, cannot be scoped or revoked independently — use API Keys |
+| Twilio Conversations API | Session/participant complexity with no benefit for transactional campaign SMS |
+| CNAM (caller name) lookup | $0.01/lookup for inaccurate data; voter files already have names |
 
-### Phase 1: Search Contract and Safety Boundary
-**Rationale:** This must come first because the biggest failure mode is not low relevance quality; it is leaking fuzzy search semantics into the wrong layers or weakening campaign isolation.
-**Delivers:** Separate `lookup` request contract, `relevance` sort mode, response metadata, and explicit semantics for how free-text composes with deterministic filters.
-**Addresses:** Search-first plus filter refinement, deterministic ranking expectations, disambiguation context.
-**Avoids:** Tenant-isolation bypass, search/filter semantic drift, unstable pagination contracts.
+## Architecture Highlights
 
-### Phase 2: Search Projection and Database Primitives
-**Rationale:** Ranked lookup across voter plus contact fields is not credible without an indexed projection and database-native search primitives.
-**Delivers:** `pg_trgm` and `unaccent`, `voter_search_documents`, campaign-scoped indexes/RLS, and backfill/rebuild tooling.
-**Uses:** PostgreSQL 17, Alembic, SQLAlchemy PostgreSQL functions.
-**Implements:** Denormalized search storage, exact/prefix/fuzzy-safe field normalization.
-**Avoids:** Naive multi-join `%term%` search, stale data ownership confusion, production-only performance collapse.
+**New DB tables (7 total, ~6-7 Alembic migrations):**
+- `org_twilio_configs` — one row per org; `auth_token` and `api_key_secret` as BYTEA (Fernet-encrypted); org-level (no campaign RLS); queried via `get_db()`
+- `org_twilio_phones` — org phone numbers with capabilities JSONB, default voice/SMS flags; unique on `(organization_id, phone_number)`
+- `call_records` — Twilio Voice metadata; RLS-protected; idempotent on `twilio_sid`; links to `voter_interactions` via FK
+- `sms_conversations` — thread container per `(campaign_id, org_phone_id, voter_phone)`; tracks opt-out status and unread count
+- `sms_messages` — append-only message log; idempotent on `twilio_sid` via `ON CONFLICT DO NOTHING`; body stored as TEXT (PII decision to revisit)
+- `twilio_spend_ledger` — append-only billable event log; org-level (no campaign RLS); used for pre-send budget gating
+- `phone_validations` — Lookup API result cache; RLS-protected; 90-day TTL; keyed on `(campaign_id, phone_number)`
 
-### Phase 3: Ranked Backend Read/Write Path
-**Rationale:** Once the projection exists, the backend can safely implement the actual lookup planner and keep it fresh.
-**Delivers:** `VoterSearchService`, hybrid FTS + trigram candidate retrieval, deterministic score formula, relevance cursoring, and projection refresh hooks for voter/contact/import updates.
-**Addresses:** One-box cross-field lookup, partial matching, typo tolerance, exact-match boosting.
-**Avoids:** Duplicate rows from live joins, unstable ranking, freshness drift after imports or edits.
+**Encryption pattern:** `EncryptedString` SQLAlchemy TypeDecorator using `cryptography.fernet.Fernet`. Symmetric key from `TWILIO_ENCRYPTION_KEY` env var injected via K8s Secret. Auth Token and API Key Secret encrypted on write, decrypted only when making Twilio API calls. GET config endpoint returns masked token (last 4 chars only) — full token never returned via API.
 
-### Phase 4: Search-First Voter Page UX
-**Rationale:** The UI should land after the backend contract and ranking behavior are stable enough to support interactive use.
-**Delivers:** Search box on the voter page, debounce/cancellation, default relevance sort when a query exists, result-row disambiguation, and preserved filter refinement flow.
-**Uses:** TanStack Query, existing `ky` hooks, current voter page route/data table patterns.
-**Implements:** Search-first plus filter refinement, clear loading/empty states, optional query chip behavior.
-**Avoids:** Request storms, stale-result flicker, confusing state resets, user mistrust from opaque matches.
+**Webhook security:** All Twilio webhooks route to `/api/v1/webhooks/twilio/*` — public routes (no JWT auth) with Twilio signature validation as a FastAPI dependency. Org resolved from `AccountSid` or `To` phone number in form data. Critical: webhook URL must be reconstructed from `X-Forwarded-Proto` + configured `TWILIO_WEBHOOK_BASE_URL` — never from `request.url` which exposes the internal Traefik-side HTTP URL.
 
-### Phase 5: Secondary Consumers, Tuning, and Rollout Hardening
-**Rationale:** Reuse and tuning should happen only after the primary voter page proves stable.
-**Delivers:** Add Voters dialog adoption, EXPLAIN-based tuning, import/write throughput verification, staged backfill/index rollout, and production monitoring for relevance and freshness.
-**Addresses:** Secondary lookup surfaces, query-aware ranking tuning, operational readiness.
-**Avoids:** Rollout regressions, import slowdowns, hidden freshness lag, support-only discovery of bad ranking.
+**Multi-tenant routing:** Each org has its own Twilio credentials and phone numbers (never shared). Webhook callbacks include `AccountSid` to identify org. `call_records` and `sms_messages` store both `org_id` (via phone lookup) and `campaign_id` at creation time for status callback routing.
 
-### Phase Ordering Rationale
+**Existing code integration points:**
+- `DNCService.add_entry()` reused for STOP processing (new `SMS_STOP` reason value)
+- `VoterInteraction` extended via JSONB payload (no schema migration); `InteractionType.SMS` added as StrEnum value
+- Procrastinate job queue used for bulk SMS (new `sms_task.py`); 202 Accepted pattern matches existing import jobs
+- Phone banking call button switches from `<a href="tel:">` to `device.connect()` when org has Twilio config; full `tel:` fallback if not
 
-- The order follows hard dependencies: contract and semantics first, storage/indexing second, lookup implementation third, interactive UX fourth, reuse and tuning last.
-- The grouping matches the architecture pattern from research: deterministic filters remain stable while lookup-specific complexity is isolated behind a new service and projection table.
-- This order front-loads the highest-risk pitfalls: tenant isolation, projection freshness, query-plan performance, and relevance pagination all get solved before the search-first UI increases traffic.
+## Watch Out For
 
-### Research Flags
+Top 5 pitfalls most likely to derail v1.15:
 
-Phases likely needing deeper research during planning:
-- **Phase 2:** projection-table design and RLS policy details need careful validation against the current schema and import/write paths.
-- **Phase 3:** relevance cursor encoding and deterministic score tuning need implementation-level design review before coding.
-- **Phase 5:** rollout strategy needs operational validation for concurrent index builds, backfill sequencing, and import throughput.
+1. **Plaintext credential storage (CRITICAL)** — Any column using VARCHAR for `auth_token` or `api_key_secret` exposes full Twilio account control via DB dumps, logs, and Sentry breadcrumbs. Use `EncryptedString` (BYTEA) from the very first migration. Add a CI grep check: any Pydantic response schema field matching `*_token` or `*_secret` that is not write-only is a build failure. Non-negotiable from day one.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** API contract split between deterministic filters and lookup is already strongly supported by the research and current architecture.
-- **Phase 4:** frontend debounce, stale-request suppression, and query-driven relevance sort are standard patterns in the current React Query stack.
+2. **Webhook URL mismatch behind Traefik (CRITICAL)** — Twilio HMAC-SHA1 signature is computed against the exact public HTTPS URL. FastAPI behind Traefik sees `http://api:8000/...`; Twilio signed against `https://api.civpulse.org/...`. This causes silent 403 failures on every callback — no call status updates, no inbound SMS, no STOP syncing. Fix: `TWILIO_WEBHOOK_BASE_URL` env var + `_reconstruct_webhook_url()` helper using `X-Forwarded-Proto`. Test with a real Twilio request before Phase 4/5 feature work begins.
 
-## Confidence Assessment
+3. **TCPA political exemption misunderstanding (CRITICAL)** — The exemption covers manually-dialed calls only. It does NOT cover SMS, auto-dialed calls, or calls using an ATDS. L2 voter file phone numbers are NOT prior express consent for SMS — campaigns must collect opt-in separately. Require `consent_source` field on voter contacts and display a compliance warning when targeting imported numbers without explicit consent.
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Strongly grounded in current repo state plus official PostgreSQL and SQLAlchemy documentation; recommendation is conservative and low-novelty. |
-| Features | HIGH | Table stakes and differentiators align across campaign CRM examples and the stated milestone scope; low ambiguity about launch requirements. |
-| Architecture | HIGH | Fits existing seams in the codebase and uses well-understood PostgreSQL patterns; the main choices are opinionated but defensible. |
-| Pitfalls | HIGH | Risks are concrete, domain-specific, and consistent with this repo’s known RLS/history and the operational realities of indexed search. |
+4. **A2P 10DLC registration lead time (CRITICAL for SMS timeline)** — IRS 527 political orgs must complete Campaign Verify + Twilio 10DLC brand + campaign registration. Total lead time: 2-3 weeks minimum, often 10-15 days in backlog. SMS cannot go live until registration clears. Start ISV registration in Phase 1 even though SMS ships in Phase 5. Block SMS sends with a "SMS Pending Registration" status gate in UI.
 
-**Overall confidence:** HIGH
+5. **Cross-org webhook credential routing (HIGH)** — A single webhook endpoint receives callbacks for all orgs. Resolving the correct org auth token for signature validation requires looking up `AccountSid` in `org_twilio_configs`. Getting this wrong causes silent validation failure for all orgs or creates a security boundary violation. Include org resolution from `AccountSid` as the first step in the webhook dependency; store `call_sid`/`message_sid` with `org_id` at creation time for status callback routing.
 
-### Gaps to Address
+**Honorable mentions:** ICE/firewall failure for WebRTC in restrictive campaign locations (enable TURN relay, always offer `tel:` fallback); Lookup API cost explosion on bulk imports ($0.01/number — validate on-demand only, cache 90 days); webhook duplicate processing (Twilio at-least-once delivery — use `ON CONFLICT DO NOTHING` on `twilio_sid`); synchronous Twilio client in async handlers blocking the event loop (always use `AsyncTwilioHttpClient`).
 
-- **Projection contents:** Final searchable field list needs a deliberate cut so write amplification stays acceptable while user value stays high.
-- **Ranking weights:** Exact boost thresholds and trigram/FTS weights should be tuned against representative real campaign queries, not guessed once.
-- **Freshness model during imports:** Planning must decide whether projection refresh is synchronous per batch or intentionally delayed with explicit rebuild tooling.
-- **Persistability of free-text search:** The roadmap should decide whether `lookup` is strictly ephemeral UI state or can ever participate in saved views/list definitions.
+## Phasing Recommendation
 
-## Sources
+The dependency tree is strict: credentials before phones, phones before webhooks, webhooks before voice or SMS, spend controls after billable events flow. Phone validation is standalone and can parallelize with later phases.
 
-### Primary (HIGH confidence)
-- [STACK.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/STACK.md) — stack and version recommendations grounded in repo state and official PostgreSQL/SQLAlchemy docs.
-- [FEATURES.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/FEATURES.md) — table stakes, differentiators, and anti-features for voter CRM lookup.
-- [ARCHITECTURE.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/ARCHITECTURE.md) — component boundaries, data flow, projection-table pattern, and build order.
-- [PITFALLS.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/PITFALLS.md) — domain-specific failure modes, operational warnings, and verification targets.
-- [PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md) — milestone scope, constraints, and current product context.
-- PostgreSQL `pg_trgm` docs: https://www.postgresql.org/docs/17/pgtrgm.html
-- PostgreSQL `unaccent` docs: https://www.postgresql.org/docs/17/unaccent.html
-- PostgreSQL text search controls: https://www.postgresql.org/docs/17/textsearch-controls.html
-- PostgreSQL text search tables/indexes: https://www.postgresql.org/docs/current/textsearch-tables.html
-- SQLAlchemy PostgreSQL dialect docs: https://docs.sqlalchemy.org/en/20/dialects/postgresql.html
+**Phase 1: Org Credential Storage + Encryption Foundation**
+Rationale: The entire milestone foundation. Nothing calls Twilio until credentials exist and are encrypted. Zero external API calls — pure CRUD + encryption pattern establishment. Also the phase to initiate A2P 10DLC ISV registration externally.
+Delivers: `org_twilio_configs` table with `EncryptedString` columns, config CRUD endpoints at `/api/v1/org/twilio/config`, org settings Twilio page, `TWILIO_ENCRYPTION_KEY` env var in settings and K8s, credential test endpoint.
+Critical action: Initiate ISV A2P 10DLC registration with Twilio this phase. The 3-5 week approval clock must start now.
 
-### Secondary (MEDIUM confidence)
-- NationBuilder quick search docs: https://support.nationbuilder.com/en/articles/2306501-find-people-and-pages-with-quick-search
-- NationBuilder filters docs: https://support.nationbuilder.com/en/articles/3055676-use-filters-to-target-your-audience
-- The Official Vanual (VAN training guide PDF): https://www.deldems.org/sites/default/files/2024-04/The%20Official%20Vanual.pdf
-- Algolia typo tolerance docs: https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance
-- Typesense search API docs: https://typesense.org/docs/29.0/api/search.html
+**Phase 2: Phone Number Management + Provisioning**
+Rationale: Voice and SMS both need a configured `From` number. This phase makes the first real Twilio API calls. Isolated from call/SMS complexity.
+Delivers: `org_twilio_phones` table, BYO number registration, available number search + purchase UI, phone inventory with capabilities badges.
 
-### Tertiary (LOW confidence)
-- RLS planner/search interaction discussion: https://jfagoagas.github.io/blog/posts/psql-rls-ts/ — useful cautionary context, but not required for the core recommendation.
+**Phase 3: Webhook Infrastructure + Signature Validation**
+Rationale: Both Voice (Phase 4) and SMS (Phase 5) depend on webhooks. Building and testing this in isolation surfaces the Traefik URL reconstruction bug before it is buried in a feature phase.
+Delivers: `/api/v1/webhooks/twilio/*` route group, `validate_twilio_signature` FastAPI dependency, `_reconstruct_webhook_url()` with `X-Forwarded-Proto` handling, webhook router registered without JWT auth prefix.
+Risk: High (the #1 integration failure mode) — must be tested against production proxy, not just local dev.
+
+**Phase 4: Click-to-Call via Voice SDK**
+Rationale: Highest-value feature. Replaces `tel:` links with in-browser WebRTC calling that captures metadata. Depends on Phase 3 for status callbacks. Can parallelize with Phase 5 once Phase 3 is proven.
+Delivers: `/campaigns/{cid}/twilio/voice-token` endpoint, `call_records` table, TwiML voice webhook handler, `useTwilioDevice` React hook, `VoiceCallButton` in phone banking, calling hours enforcement.
+
+**Phase 5: Two-Way SMS + STOP/DNC Integration**
+Rationale: High complexity but self-contained after Phase 3. STOP processing reuses existing `DNCService`. Block real sending behind A2P registration status gate.
+Delivers: `sms_conversations` + `sms_messages` tables with RLS, SMS send/reply endpoints, inbound SMS webhook + STOP pipeline, SMS inbox UI, bulk SMS via Procrastinate, `DNCReason.SMS_STOP` enum value.
+Prerequisite: A2P 10DLC registration (started Phase 1) must be approved before this phase sends to real numbers.
+
+**Phase 6: Spend Tracking + Budget Enforcement**
+Rationale: Policy layer on top of existing billable events. Building last means all call_records and sms_messages are already flowing with price data.
+Delivers: `twilio_spend_ledger` table, spend aggregation queries, daily/total budget soft enforcement (pre-send `SELECT SUM` check), spend dashboard in org settings (Recharts bar chart, budget progress bar).
+
+**Phase 7: Phone Validation (Lookup API)**
+Rationale: Lowest priority — platform works fully without it. Depends only on Phase 1 credentials. Can parallelize with Phases 4-6.
+Delivers: `phone_validations` cache table, Lookup v2 endpoint, inline validation button + `LineTypeBadge` in voter contact UI, SMS eligibility filtering.
+
+**Dependency graph summary:**
+- Phases 1-3 are infrastructure-only (no user-visible features) — treat as a foundation sprint
+- Phases 4 and 5 can parallelize by separate developers once Phase 3 is tested
+- Phase 6 can begin once Phase 4 produces first `call_records` with price data
+- Phase 7 is standalone and lowest risk at any point after Phase 1
+
+## Open Questions
+
+Decisions needed before or during implementation:
+
+1. **DNC channel semantics** — The existing `DNCEntry` model conflates call and SMS opt-outs. A voter who STOPs SMS may still accept calls. Decision: add `channel VARCHAR(10) DEFAULT "all"` to `dnc_entries` (values: `all`, `sms`, `voice`) and update `DNCService.check_number()` to accept an optional channel filter. This must be resolved before any Phase 5 DNC code is written.
+
+2. **A2P 10DLC ISV registration** — CivicPulse must complete its own ISV registration before any customer org can send political SMS. The exact current steps and timeline require manual verification with Twilio (the process has changed several times). Start this in Phase 1 and document the outcome.
+
+3. **Calling hours timezone mapping** — Python `zoneinfo` handles timezone logic but not ZIP-to-timezone mapping. Options: `us-zipcode` library, a static ZCTA lookup table, or PostGIS geometry of voter addresses. Needs a decision before Phase 4 calling hours enforcement is coded.
+
+4. **SMS body storage policy** — Research recommends not storing message body content (PII liability). The current schema draft includes a `body TEXT` column on `sms_messages`. Decision: store body or store only `body_length` + `twilio_sid` reference? The inbox UI requires the body to be visible — if not stored locally, the inbox must fetch from Twilio API on demand. Confirm policy before Phase 5 schema is finalized.
+
+5. **Twilio subaccounts vs. master account** — Research assumed BYO Twilio credentials per org (each org uses their own Twilio account). If CivicPulse ever offers a managed Twilio tier (platform provisions numbers on behalf of orgs), subaccounts would be needed. Confirm v1.15 is strictly BYO credentials only.
 
 ---
-*Research completed: 2026-04-06*
+*Research completed: 2026-04-07*
 *Ready for roadmap: yes*

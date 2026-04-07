@@ -1,437 +1,656 @@
-# Architecture Patterns
+# Architecture Research -- Twilio Communications
 
-**Domain:** Voter-page free-text lookup for a multi-tenant campaign CRM
-**Researched:** 2026-04-06
-**Confidence:** HIGH
+**Domain:** Twilio Voice/SMS integration for multi-tenant campaign field ops
+**Researched:** 2026-04-07
+**Overall confidence:** HIGH
 
-## Recommended Architecture
+---
 
-Keep the existing FastAPI + async SQLAlchemy + PostgreSQL monolith and add a dedicated voter lookup layer inside it. Do not create a separate search service. The new feature fits the current architecture if search remains campaign-scoped, database-native, and exposed through the existing `POST /campaigns/{campaign_id}/voters/search` flow.
+## New Data Models
 
-The key architectural choice is to separate **deterministic filters** from **discovery-style lookup**:
+### Org-Level Models (no RLS -- org-scoped via FK)
 
-- Keep `VoterFilter` for stable, composable filters used by voter lists and filter chips.
-- Add a separate lookup payload for free-text search, ranking, and typo tolerance.
-- Back that lookup with a denormalized PostgreSQL search projection plus indexes, instead of expanding the current name-only `ILIKE`.
+These tables live outside campaign RLS because Twilio credentials and phone numbers are billed per-organization, not per-campaign. They follow the same pattern as `organizations` and `organization_members` -- queried via `get_db()` with explicit `organization_id` filtering.
 
-This avoids leaking fuzzy semantics into dynamic lists, preserves existing filter behavior, and keeps ranking logic isolated to the voter page and other lookup UIs.
+#### `org_twilio_configs`
 
-### System Overview
+Stores the org's Twilio credentials. One row per org. Auth token encrypted at rest.
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                            React Web UI                             │
-├──────────────────────────────────────────────────────────────────────┤
-│ Voter page search box │ Filter builder │ DataTable │ Add-to-list UI │
-└───────────────┬───────────────────────────────┬──────────────────────┘
-                │                               │
-                │ POST /campaigns/:id/voters/search
-                │ body = { filters, lookup, cursor, sort_by, sort_dir }
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                         FastAPI voter API                            │
-├──────────────────────────────────────────────────────────────────────┤
-│ Request schema │ auth/RLS deps │ VoterSearchService │ serializers    │
-└───────────────┬───────────────────────────────────────┬───────────────┘
-                │                                       │
-                │ structured filters                    │ ranked lookup
-                ▼                                       ▼
-┌──────────────────────────────┐      ┌────────────────────────────────┐
-│ Existing voter filter query  │      │ New voter lookup query planner │
-│ exact/range/tag predicates   │      │ FTS + trigram + boost rules    │
-└───────────────┬──────────────┘      └───────────────┬────────────────┘
-                │                                     │
-                └──────────────────┬──────────────────┘
-                                   ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                           PostgreSQL                                 │
-├──────────────────────────────────────────────────────────────────────┤
-│ voters │ voter_phones │ voter_emails │ voter_search_documents        │
-│ RLS    │ RLS          │ RLS          │ RLS + GIN/GiST trigram/text   │
-└──────────────────────────────────────────────────────────────────────┘
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| organization_id | FK organizations.id | UNIQUE -- one config per org |
+| account_sid | VARCHAR(64) | Twilio Account SID (AC...) |
+| auth_token_encrypted | BYTEA | Fernet-encrypted auth token |
+| api_key_sid | VARCHAR(64) NULL | For Access Token generation (SK...) |
+| api_key_secret_encrypted | BYTEA NULL | Fernet-encrypted API key secret |
+| twiml_app_sid | VARCHAR(64) NULL | TwiML App SID for Voice SDK |
+| status | VARCHAR(20) | 'active' / 'suspended' / 'pending' |
+| daily_budget_cents | INTEGER NULL | Soft daily spend limit (cents) |
+| total_budget_cents | INTEGER NULL | Soft total spend limit (cents) |
+| webhook_base_url | VARCHAR(500) NULL | Override for webhook URL (default: app URL) |
+| created_by | FK users.id | |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
+
+**Rationale:** One row per org avoids join complexity. `api_key_sid` + `api_key_secret` are separate from Account SID / Auth Token because Twilio recommends API keys for production Access Token generation. The TwiML App SID is needed for Voice SDK grants.
+
+#### `org_twilio_phones`
+
+Phone numbers available to the org (BYO registered or platform-provisioned).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| organization_id | FK organizations.id | |
+| phone_number | VARCHAR(20) | E.164 format |
+| twilio_sid | VARCHAR(64) NULL | Twilio PhoneNumber SID (PN...) if provisioned |
+| friendly_name | VARCHAR(255) NULL | |
+| capabilities | JSONB | `{"voice": true, "sms": true, "mms": false}` |
+| phone_type | VARCHAR(20) | 'local' / 'toll_free' / 'mobile' |
+| is_default_voice | BOOLEAN DEFAULT false | Default caller ID for voice |
+| is_default_sms | BOOLEAN DEFAULT false | Default sender for SMS |
+| provisioned_by_platform | BOOLEAN DEFAULT false | true if purchased via our provisioning API |
+| status | VARCHAR(20) | 'active' / 'released' / 'pending' |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
+
+**Unique constraint:** `(organization_id, phone_number)`
+
+### Campaign-Level Models (RLS-protected)
+
+These tables have `campaign_id` FK and are protected by existing RLS policies. They follow the same pattern as `call_lists`, `voter_interactions`, etc.
+
+#### `sms_conversations`
+
+Thread container for two-way SMS between a campaign phone number and a voter's phone.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| campaign_id | FK campaigns.id | RLS-scoped |
+| org_phone_id | FK org_twilio_phones.id | Campaign's sending number |
+| voter_id | FK voters.id NULL | Linked voter (NULL if unmatched inbound) |
+| voter_phone | VARCHAR(20) | Voter's phone in E.164 |
+| status | VARCHAR(20) | 'active' / 'opted_out' / 'closed' |
+| last_message_at | TIMESTAMPTZ NULL | For inbox sorting |
+| unread_count | INTEGER DEFAULT 0 | Unread inbound messages |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
+
+**Unique constraint:** `(campaign_id, org_phone_id, voter_phone)` -- one thread per number pair per campaign.
+
+**Index:** `(campaign_id, last_message_at DESC)` for inbox sorting.
+
+#### `sms_messages`
+
+Individual messages within a conversation. Append-only log.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| campaign_id | FK campaigns.id | RLS-scoped |
+| conversation_id | FK sms_conversations.id | |
+| twilio_sid | VARCHAR(64) NULL | Twilio Message SID (SM...) |
+| direction | VARCHAR(10) | 'outbound' / 'inbound' |
+| body | TEXT | Message content |
+| from_number | VARCHAR(20) | E.164 |
+| to_number | VARCHAR(20) | E.164 |
+| status | VARCHAR(20) | 'queued'/'sent'/'delivered'/'failed'/'received' |
+| error_code | VARCHAR(10) NULL | Twilio error code if failed |
+| error_message | TEXT NULL | |
+| segment_count | INTEGER DEFAULT 1 | For cost tracking |
+| price_cents | INTEGER NULL | Actual cost from Twilio callback |
+| sent_by | FK users.id NULL | NULL for inbound |
+| created_at | TIMESTAMPTZ | |
+
+**Index:** `(conversation_id, created_at)` for thread display.
+
+**Idempotency:** `twilio_sid` has a UNIQUE constraint -- `INSERT ... ON CONFLICT (twilio_sid) DO NOTHING` prevents double-processing of webhook retries.
+
+#### `call_records`
+
+Twilio Voice call metadata. Links to existing `voter_interactions` for the canonical interaction log but stores Twilio-specific metadata separately.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| campaign_id | FK campaigns.id | RLS-scoped |
+| twilio_sid | VARCHAR(64) NULL | Twilio Call SID (CA...) -- UNIQUE for idempotency |
+| voter_id | FK voters.id NULL | |
+| voter_interaction_id | FK voter_interactions.id NULL | Link to canonical interaction |
+| caller_user_id | FK users.id | Who placed the call |
+| phone_bank_session_id | FK phone_bank_sessions.id NULL | If part of a session |
+| direction | VARCHAR(10) | 'outbound' / 'inbound' |
+| from_number | VARCHAR(20) | E.164 |
+| to_number | VARCHAR(20) | E.164 |
+| status | VARCHAR(20) | 'initiated'/'ringing'/'answered'/'completed'/'no-answer'/'busy'/'failed' |
+| duration_seconds | INTEGER NULL | Call duration from Twilio |
+| answered | BOOLEAN NULL | Derived from status |
+| price_cents | INTEGER NULL | Actual cost from Twilio callback |
+| started_at | TIMESTAMPTZ | |
+| ended_at | TIMESTAMPTZ NULL | |
+| created_at | TIMESTAMPTZ | |
+
+**Index:** `(campaign_id, caller_user_id, created_at)` for per-caller stats.
+**Index:** `(campaign_id, voter_id, created_at)` for voter history.
+
+#### `twilio_spend_ledger`
+
+Append-only spend log for budget enforcement. One row per billable event.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| organization_id | FK organizations.id | For org-level budget checks |
+| campaign_id | FK campaigns.id NULL | Optional campaign attribution |
+| event_type | VARCHAR(20) | 'voice_call' / 'sms_outbound' / 'sms_inbound' / 'phone_provision' / 'lookup' |
+| twilio_sid | VARCHAR(64) NULL | Reference to Twilio resource |
+| amount_cents | INTEGER | Cost in cents |
+| occurred_at | TIMESTAMPTZ | When the billable event happened |
+| created_at | TIMESTAMPTZ | |
+
+**Index:** `(organization_id, occurred_at)` for daily/total aggregation.
+
+**Note:** This table does NOT use campaign-level RLS because budget enforcement queries span org-level. Queried via `get_db()` with explicit `organization_id` filtering.
+
+#### `phone_validations`
+
+Cache for Twilio Lookup API results. Avoids re-validating the same number.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| campaign_id | FK campaigns.id | RLS-scoped |
+| phone_number | VARCHAR(20) | E.164 |
+| valid | BOOLEAN | |
+| line_type | VARCHAR(20) NULL | 'mobile'/'landline'/'voip'/'toll_free' etc. |
+| carrier_name | VARCHAR(255) NULL | |
+| country_code | VARCHAR(5) NULL | |
+| lookup_data | JSONB NULL | Full Lookup v2 response |
+| validated_at | TIMESTAMPTZ | |
+| created_at | TIMESTAMPTZ | |
+
+**Unique constraint:** `(campaign_id, phone_number)` with upsert on re-validation.
+
+---
+
+## API Endpoint Groups
+
+### Group 1: Org Twilio Config (org-level, no RLS)
+
+Route prefix: `/api/v1/org/twilio`
+Auth: `require_org_role("org_admin")` minimum, `require_org_role("org_owner")` for credential write
+DB: `get_db()` (like existing `/api/v1/org/*` endpoints)
+
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| GET | `/org/twilio/config` | Get org Twilio config (SID visible, token masked) | org_admin |
+| PUT | `/org/twilio/config` | Create/update Twilio credentials | org_owner |
+| DELETE | `/org/twilio/config` | Remove Twilio config | org_owner |
+| POST | `/org/twilio/config/test` | Verify credentials work (calls Twilio API) | org_admin |
+| GET | `/org/twilio/spend` | Get current spend summary (daily/total) | org_admin |
+| GET | `/org/twilio/spend/history` | Spend ledger with date range filter | org_admin |
+
+### Group 2: Org Phone Numbers (org-level, no RLS)
+
+Route prefix: `/api/v1/org/twilio/phones`
+Auth: `require_org_role("org_admin")`
+DB: `get_db()`
+
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| GET | `/org/twilio/phones` | List org phone numbers | org_admin |
+| POST | `/org/twilio/phones` | Register BYO phone number | org_admin |
+| DELETE | `/org/twilio/phones/{phone_id}` | Remove phone number | org_admin |
+| POST | `/org/twilio/phones/search` | Search available numbers for provisioning | org_admin |
+| POST | `/org/twilio/phones/provision` | Purchase a number via Twilio API | org_owner |
+| POST | `/org/twilio/phones/{phone_id}/release` | Release a provisioned number | org_owner |
+
+### Group 3: Voice SDK Token + Call Initiation (campaign-level)
+
+Route prefix: `/api/v1/campaigns/{campaign_id}/twilio`
+Auth: `require_role("volunteer")` minimum
+DB: `get_campaign_db`
+
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| POST | `/campaigns/{cid}/twilio/voice-token` | Generate Voice SDK Access Token | volunteer |
+| POST | `/campaigns/{cid}/twilio/calls` | Initiate outbound call (returns call_record) | volunteer |
+
+**Voice token generation flow:**
+1. Caller requests token with their identity
+2. Server fetches org's `api_key_sid` + `api_key_secret` + `twiml_app_sid` from `org_twilio_configs` (via campaign -> organization FK chain)
+3. Server creates AccessToken with VoiceGrant (outgoing_application_sid = twiml_app_sid)
+4. Token returned with TTL (default 1 hour, max 24 hours)
+5. Frontend initializes Twilio Voice SDK `Device` with the token
+
+### Group 4: SMS (campaign-level)
+
+Route prefix: `/api/v1/campaigns/{campaign_id}/sms`
+Auth: `require_role("manager")` for send, `require_role("volunteer")` for inbox read
+DB: `get_campaign_db`
+
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| GET | `/campaigns/{cid}/sms/conversations` | List conversations (inbox) | volunteer |
+| GET | `/campaigns/{cid}/sms/conversations/{conv_id}` | Get conversation with messages | volunteer |
+| POST | `/campaigns/{cid}/sms/conversations/{conv_id}/messages` | Send reply in conversation | volunteer |
+| POST | `/campaigns/{cid}/sms/send` | Send SMS to voter(s) -- creates conversations | manager |
+| POST | `/campaigns/{cid}/sms/send-bulk` | Bulk SMS to voter list segment (202 Accepted) | manager |
+| PATCH | `/campaigns/{cid}/sms/conversations/{conv_id}/read` | Mark conversation read | volunteer |
+
+### Group 5: Phone Validation (campaign-level)
+
+Route prefix: `/api/v1/campaigns/{campaign_id}/phones`
+DB: `get_campaign_db`
+
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| POST | `/campaigns/{cid}/phones/validate` | Validate phone via Twilio Lookup v2 | manager |
+| GET | `/campaigns/{cid}/phones/{phone}/validation` | Get cached validation result | volunteer |
+
+### Group 6: Twilio Webhooks (unauthenticated -- Twilio signature validated)
+
+Route prefix: `/api/v1/webhooks/twilio`
+Auth: Twilio signature validation (NOT JWT auth) via custom dependency
+DB: `get_db()` -- webhook handler resolves org/campaign from phone number lookup
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/webhooks/twilio/voice` | TwiML App voice webhook (connect calls) |
+| POST | `/webhooks/twilio/voice/status` | Voice call status callback |
+| POST | `/webhooks/twilio/sms` | Inbound SMS webhook |
+| POST | `/webhooks/twilio/sms/status` | SMS delivery status callback |
+
+---
+
+## Twilio Webhook Architecture
+
+### The Core Challenge: Multi-Tenant Webhook Routing
+
+Twilio sends webhooks to a single URL per phone number. The webhook must determine which org and campaign the message belongs to. This is solved by looking up the `To` phone number (for inbound) or the `AccountSid` (for status callbacks) in `org_twilio_phones` / `org_twilio_configs` to find the org, then using conversation/call record context to find the campaign.
+
+### Webhook Data Flow -- Inbound SMS
+
+```
+Twilio Cloud
+    |
+    v
+POST /api/v1/webhooks/twilio/sms
+    |
+    +-- 1. Validate X-Twilio-Signature (reject 403 if invalid)
+    |
+    +-- 2. Extract From/To/Body from form data
+    |
+    +-- 3. Look up To number in org_twilio_phones -> get organization_id
+    |
+    +-- 4. Look up existing sms_conversations by (org_phone_id, From number)
+    |       -> If found: route to that campaign's conversation
+    |       -> If not found: create new conversation (unmatched inbound)
+    |
+    +-- 5. INSERT sms_messages ON CONFLICT (twilio_sid) DO NOTHING (idempotency)
+    |
+    +-- 6. Check for STOP/UNSUBSCRIBE/CANCEL/END/QUIT keyword
+    |       -> auto-DNC via DNCService + mark conversation opted_out
+    |
+    +-- 7. Return TwiML response (empty <Response/> for SMS)
 ```
 
-### Component Boundaries
+### Webhook Data Flow -- Voice Call Status
 
-| Component | Status | Responsibility | Communicates With |
-|-----------|--------|----------------|-------------------|
-| `app/api/v1/voters.py` | Modified | Keep current endpoint; accept lookup payload; dispatch to ranked query path when present | Schemas, search service |
-| `app/schemas/voter_filter.py` or split `voter_search.py` | Modified/New | Separate stable filters from fuzzy lookup contract | API, frontend types |
-| `app/services/voter.py` | Modified | Continue owning CRUD and deterministic filter composition | Existing voter flows |
-| `app/services/voter_search.py` | New | Build candidate set, rank matches, paginate relevance results | Voter API, SQLAlchemy |
-| `app/models/voter_search_document.py` | New | Denormalized per-voter search projection including cross-table fields | Migration, write paths |
-| `alembic` migration | New | Enable `pg_trgm`, add search table/indexes/RLS/backfill | PostgreSQL |
-| Voter/contact write paths | Modified | Refresh search projection after voter/contact/import changes | Search document table |
-| `web/src/routes/campaigns/$campaignId/voters/index.tsx` | Modified | Search-first UX; query + filters + relevance sort behavior | Hook, DataTable |
-| `web/src/hooks/useVoters.ts` | Modified | Carry lookup payload and relevance cursor | Voter API |
-| `web/src/components/voters/AddVotersDialog.tsx` | Modified | Reuse lookup API with a simpler UI mode | Hook |
-
-## Why This Fits The Existing App
-
-### Existing seam to preserve
-
-The current voter page already routes all server-side search through `POST /voters/search`, and the backend already centralizes filter construction in `build_voter_query()` and `VoterService.search_voters()`. That is the correct seam to extend.
-
-### Existing seam to avoid overloading
-
-`VoterFilter.search` is currently a name substring match, but `VoterFilter` is also reused for dynamic lists and other deterministic filtering flows. If fuzzy cross-field lookup is pushed into that field, list definitions become unstable and hard to reason about.
-
-**Recommendation:** keep fuzzy lookup out of stored `VoterFilter`. Introduce a separate contract such as:
-
-```ts
-type VoterSearchBody = {
-  filters: VoterFilter
-  lookup?: {
-    query: string
-    mode?: "broad" | "name_only"
-  }
-  cursor?: string
-  limit?: number
-  sort_by?: "relevance" | existingSortableColumns
-  sort_dir?: "asc" | "desc"
-}
+```
+Twilio Cloud
+    |
+    v
+POST /api/v1/webhooks/twilio/voice/status
+    |
+    +-- 1. Validate X-Twilio-Signature
+    |
+    +-- 2. Extract CallSid, CallStatus, CallDuration, Price from form data
+    |
+    +-- 3. UPDATE call_records SET status, duration_seconds, price_cents, ended_at
+    |       WHERE twilio_sid = CallSid
+    |
+    +-- 4. Write spend ledger entry if price is present
 ```
 
-## Search Storage Pattern
+### Signature Validation Implementation
 
-### Recommended pattern: denormalized search projection table
+Use a FastAPI dependency (not middleware) scoped to webhook routes only. This avoids running validation on all requests and allows per-org auth token resolution.
 
-Add a new table, for example `voter_search_documents`, keyed by `voter_id`, with its own `campaign_id` for RLS and index locality.
+```python
+# app/api/deps.py (new dependency)
+async def validate_twilio_signature(request: Request) -> dict:
+    """Validate Twilio webhook signature.
 
-Suggested contents:
+    Resolves the org from the AccountSid or To phone number,
+    fetches the decrypted auth_token for that org, and validates
+    X-Twilio-Signature.
 
-| Column | Purpose |
-|--------|---------|
-| `voter_id` | One row per voter |
-| `campaign_id` | RLS and query scoping |
-| `document` (`tsvector`) | Weighted full-text document |
-| `search_text` (`text`) | Flattened text for trigram / substring matching |
-| `name_text` (`text`) | Name-specific lookup and exact/prefix boosts |
-| `phone_text` (`text`) | Normalized joined phone digits |
-| `email_text` (`text`) | Joined emails if included |
-| `updated_at` | Operational visibility |
+    Returns parsed form data and resolved org config on success.
+    Raises HTTPException(403) on invalid signature.
+    """
+    form_data = await request.form()
+    account_sid = form_data.get("AccountSid", "")
 
-### Why a projection table instead of only columns on `voters`
+    # Look up org auth token from AccountSid
+    org_config = await _get_org_config_by_sid(account_sid)
+    if not org_config:
+        raise HTTPException(403, "Unknown Twilio account")
 
-- Cross-field lookup wants data from `voters` plus related contact tables.
-- Generated columns on `voters` are good for same-row data, but do not solve phone/email joins cleanly.
-- A projection table keeps search-specific write logic and indexes isolated from the canonical voter model.
-- It makes rebuild/backfill possible without risking voter CRUD semantics.
+    auth_token = decrypt_field(org_config.auth_token_encrypted)
+    validator = RequestValidator(auth_token)
 
-### Recommended indexed search strategy
+    # Reconstruct the original URL (handle proxy/TLS termination)
+    url = _reconstruct_webhook_url(request)
+    signature = request.headers.get("X-Twilio-Signature", "")
 
-Use a **hybrid** query:
+    if not validator.validate(url, dict(form_data), signature):
+        raise HTTPException(403, "Invalid Twilio signature")
 
-1. Full-text search for broad cross-field retrieval and stemming.
-2. Trigram similarity for typo tolerance and partial-name recovery.
-3. Explicit boosts for exact and prefix matches.
-
-Suggested PostgreSQL primitives:
-
-- `document @@ websearch_to_tsquery('english', :query)` for forgiving raw user input.
-- `ts_rank_cd(document, tsquery, 32)` for relevance ranking.
-- `pg_trgm` similarity / word similarity against `name_text`, `search_text`, and normalized phone fragments.
-- GIN index on `document`.
-- GIN trigram indexes on `name_text` and `search_text`.
-
-### Recommended rank formula
-
-Treat ranking as a deterministic composite score, not a single opaque function:
-
-```text
-score =
-  exact_name_boost +
-  prefix_name_boost +
-  phone_exact_boost +
-  source_id_exact_boost +
-  (ts_rank_cd * fts_weight) +
-  (greatest(name_similarity, search_similarity) * trigram_weight)
+    return {"form_data": dict(form_data), "org_config": org_config}
 ```
 
-Recommended ordering:
+**Critical: SSL termination handling.** The system uses Cloudflare/Traefik TLS termination. The webhook URL that Twilio signs uses HTTPS, but the request arrives at the app as HTTP. The `_reconstruct_webhook_url` function must use the `X-Forwarded-Proto` header (or the configured `webhook_base_url` from `org_twilio_configs`) to rebuild the original HTTPS URL, or Twilio signature validation will fail every time. This is the single most common Twilio webhook integration failure.
 
-1. Exact identifier / phone matches
-2. Exact full-name matches
-3. Prefix name matches
-4. Strong FTS matches
-5. Trigram fallback matches
-6. Stable tiebreakers: `last_name`, `first_name`, `id`
+### Idempotency Strategy
 
-This is more explainable to users and easier to tune than pure `ts_rank_cd`.
+Twilio retries webhooks on 5xx or timeout. Every webhook handler must be idempotent:
 
-## Data Flow
+- **SMS messages:** `INSERT INTO sms_messages ... ON CONFLICT (twilio_sid) DO NOTHING`
+- **Call records:** `INSERT INTO call_records ... ON CONFLICT (twilio_sid) DO UPDATE SET status = EXCLUDED.status, duration_seconds = EXCLUDED.duration_seconds` (status callbacks are naturally idempotent -- latest status wins)
+- **Spend ledger:** Keyed by `(twilio_sid, event_type)` to prevent double-counting
 
-### Read path: voter page lookup
+### STOP Keyword Processing
 
-```text
-User types query
-    ↓
-Debounced route/page state updates
-    ↓
-TanStack Query posts { filters, lookup, cursor, sort_by }
-    ↓
-FastAPI endpoint validates request and sets campaign-scoped DB context
-    ↓
-VoterSearchService builds:
-  - base campaign scope
-  - deterministic filter predicates
-  - ranked lookup candidate CTE
-    ↓
-PostgreSQL returns voters + optional score/match metadata
-    ↓
-API serializes results
-    ↓
-DataTable renders ranked voters; filters remain active as refinements
+When an inbound SMS contains STOP, UNSUBSCRIBE, CANCEL, END, or QUIT (case-insensitive, entire body or first word):
+1. Mark the `sms_conversations` row as `status = 'opted_out'`
+2. Add the voter's phone to the campaign's DNC list via existing `DNCService.add_entry()` with reason `'sms_stop'`
+3. Twilio handles the auto-response at the carrier level (Twilio automatically sends "You have been unsubscribed..."), so the server returns empty `<Response/>`
+4. Future outbound SMS to this number in this campaign is blocked at the send endpoint
+
+---
+
+## Org Credential Security
+
+### Encryption Approach: Fernet Symmetric Encryption via SQLAlchemy TypeDecorator
+
+Use the `cryptography` library's Fernet implementation with a SQLAlchemy `TypeDecorator` for transparent encrypt/decrypt.
+
+**Key management:**
+- Encryption key stored as environment variable `TWILIO_ENCRYPTION_KEY` (Fernet key, 32-byte URL-safe base64)
+- Key injected via K8s Secret (same pattern as `DATABASE_URL`, `ZITADEL_SERVICE_CLIENT_SECRET`)
+- Key added to `Settings` model in `app/core/config.py`
+- Never logged, never in git, never in error reports (Sentry PII scrubbing already strips env vars)
+- Generate with: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+
+**Implementation:**
+
+```python
+# app/core/encryption.py
+from cryptography.fernet import Fernet
+from sqlalchemy import LargeBinary
+from sqlalchemy.types import TypeDecorator
+from app.core.config import settings
+
+class EncryptedString(TypeDecorator):
+    """Transparent Fernet encryption for string columns.
+
+    Stores as BYTEA in PostgreSQL. Encrypts on write, decrypts on read.
+    """
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        f = Fernet(settings.twilio_encryption_key.encode())
+        return f.encrypt(value.encode())
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        f = Fernet(settings.twilio_encryption_key.encode())
+        return f.decrypt(value).decode()
 ```
 
-### Write path: maintaining the search projection
+**Why Fernet over alternatives:**
+- `cryptography` is already a transitive dependency (via `authlib` used for JWT/JWKS)
+- Fernet provides authenticated encryption (AES-128-CBC + HMAC-SHA256) -- prevents tampering
+- No key rotation complexity needed at this stage (Fernet supports `MultiFernet` for rotation later)
+- SQLAlchemy TypeDecorator makes it transparent to all service code -- no manual encrypt/decrypt calls
 
-```text
-Voter/contact/import write completes
-    ↓
-Refresh search document for affected voter_ids
-    ↓
-Projection row recomputed from voters + phones/emails
-    ↓
-Indexes updated transactionally
+**What gets encrypted:**
+- `org_twilio_configs.auth_token_encrypted` -- the Twilio Auth Token
+- `org_twilio_configs.api_key_secret_encrypted` -- the Twilio API Key Secret
+
+**What does NOT get encrypted (not secret per Twilio docs):**
+- `account_sid` -- used as public identifier in API calls
+- `api_key_sid` -- used as username, not secret
+- `twiml_app_sid` -- resource identifier
+
+**API response masking:** The GET config endpoint returns `auth_token_masked: "****abcd"` (last 4 chars only). The full token is never returned via API.
+
+---
+
+## Frontend Integration Points
+
+### New React Components
+
+#### Org Settings -- Twilio Configuration
+Location: `web/src/routes/org/settings/twilio.tsx`
+
+- TwilioConfigForm: Account SID, Auth Token input, API Key fields, test connection button
+- PhoneNumberList: DataTable of org phone numbers with default voice/SMS toggles
+- PhoneNumberSearch: Search + provision flow (search available -> preview -> purchase)
+- SpendDashboard: Daily spend bar chart (recharts), total budget progress bar, spend history table
+
+#### Campaign -- SMS Inbox
+Location: `web/src/routes/campaigns/$campaignId/sms/`
+
+- ConversationList: Left panel inbox sorted by last_message_at, unread badges
+- ConversationThread: Right panel message history with reply input
+- BulkSendDialog: Voter list segment picker -> message template -> preview -> send (202 Accepted)
+- Uses existing voter search/filter infrastructure for segment selection
+
+#### Campaign -- Phone Banking Enhancement
+Location: Extends existing `web/src/routes/campaigns/$campaignId/phone-banking/`
+
+- useTwilioDevice: React hook wrapping `@twilio/voice-sdk` Device lifecycle (token fetch, connect, disconnect, state management)
+- VoiceCallButton: Replaces current `tel:` link with `device.connect()` call
+- CallStatusIndicator: Real-time call state (ringing, connected, duration timer)
+- Graceful fallback: If org has no Twilio config, existing `tel:` link behavior is preserved
+
+#### Phone Validation
+Inline in voter contact create/edit forms:
+
+- ValidatePhoneButton: Triggers Twilio Lookup, shows loading state
+- LineTypeBadge: Shows mobile/landline/voip icon on VoterPhone rows after validation
+
+### TanStack Query Integration
+
+New query keys follow existing pattern:
+```
+["org", "twilio", "config"]
+["org", "twilio", "phones"]
+["org", "twilio", "spend"]
+["campaigns", campaignId, "sms", "conversations"]
+["campaigns", campaignId, "sms", "conversations", conversationId, "messages"]
+["campaigns", campaignId, "twilio", "voice-token"]
+["campaigns", campaignId, "phones", phoneNumber, "validation"]
 ```
 
-### Batch/import path
+### NPM Dependencies
 
-Do not rebuild the projection one voter at a time during large imports if it materially slows ingestion. Add a bulk refresh helper for imported voter IDs per committed batch, so the import pipeline preserves its current bounded-commit model.
+- `@twilio/voice-sdk` -- Browser WebRTC calling (the only new frontend dependency)
 
-## API and Query Contract Changes
-
-### Recommended request contract
-
-- Keep `filters` exactly as the deterministic refinement layer.
-- Add `lookup.query` as the free-text entry point.
-- Add `"relevance"` as a first-class sort mode.
-- When `lookup.query` is present and no explicit sort is supplied, default to `relevance desc`.
-
-### Recommended response additions
-
-Return optional metadata alongside each voter:
-
-| Field | Purpose |
-|------|---------|
-| `search_score` | Debuggable relevance score |
-| `match_reason` | Short explanation such as `exact_name`, `phone`, `address`, `typo_name` |
-
-This is useful for UI trust and for test assertions, even if the first UI version does not display it prominently.
-
-### Pagination change
-
-The current cursor scheme assumes a single physical sort column. Relevance search needs a separate cursor format, based on the relevance tuple. Keep cursor pagination, but branch the encoding when `sort_by == "relevance"`:
-
-```text
-cursor = score|match_bucket|last_name|first_name|id
-```
-
-The backend should reject reusing a relevance cursor with a different query.
-
-## Recommended Project Structure
-
-```text
-app/
-├── api/v1/voters.py                  # extend search endpoint contract
-├── models/
-│   ├── voter.py                      # existing canonical voter
-│   └── voter_search_document.py      # new search projection model
-├── schemas/
-│   ├── voter_filter.py               # stable filters
-│   └── voter_search.py               # new lookup request/response metadata
-├── services/
-│   ├── voter.py                      # existing deterministic query builder
-│   └── voter_search.py               # hybrid lookup planner + ranking
-└── db/ or utils/                     # normalization helpers if needed
-
-web/src/
-├── hooks/useVoters.ts                # extend request typing
-├── routes/campaigns/$campaignId/voters/index.tsx
-│                                     # search-first page state + relevance UX
-├── components/voters/                # search input / result affordances
-└── types/voter.ts                    # request and response metadata
-```
-
-### Structure rationale
-
-- `services/voter.py` should remain the home of stable voter CRUD and filter logic.
-- `services/voter_search.py` should own ranking and lookup-specific SQL so filter logic does not become unreadable.
-- A separate schema module helps prevent accidental reuse of fuzzy lookup fields in dynamic list storage.
-
-## Architectural Patterns
-
-### Pattern 1: Hybrid candidate retrieval
-
-**What:** build a candidate set from full-text matches and trigram matches, union them, then rank once.
-
-**When to use:** default voter-page lookup and add-to-list lookup.
-
-**Trade-offs:** slightly more SQL complexity, but much better recall than FTS-only and much better precision than trigram-only.
-
-**Example:**
-
-```sql
-WITH q AS (
-  SELECT websearch_to_tsquery('english', :query) AS tsq
-),
-candidates AS (
-  SELECT d.voter_id
-  FROM voter_search_documents d, q
-  WHERE d.campaign_id = :campaign_id
-    AND d.document @@ q.tsq
-  UNION
-  SELECT d.voter_id
-  FROM voter_search_documents d
-  WHERE d.campaign_id = :campaign_id
-    AND d.name_text % :query
-)
-SELECT ...
-```
-
-### Pattern 2: Projection-table refresh on write
-
-**What:** keep search state denormalized and refresh it whenever canonical voter or contact data changes.
-
-**When to use:** any write path that touches searchable fields.
-
-**Trade-offs:** extra write work, but dramatically simpler and faster reads.
-
-### Pattern 3: Search-first plus filter refinement
-
-**What:** lookup query narrows the universe first; filter builder remains optional refinement.
-
-**When to use:** voter page default experience.
-
-**Trade-offs:** users get faster lookup, but UI must clearly distinguish free-text lookup from structured filters.
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Reusing `filters.search` for fuzzy global lookup
-
-**What people do:** replace the current name `ILIKE` with a huge fuzzy cross-field query inside `VoterFilter.search`.
-
-**Why it’s wrong:** dynamic lists and stored filters inherit unstable fuzzy semantics, and the shared query builder becomes unmaintainable.
-
-**Do this instead:** keep `VoterFilter` deterministic and add a separate lookup object / service.
-
-### Anti-Pattern 2: Joining phones/emails directly into every lookup query
-
-**What people do:** build one giant live join from `voters` to contacts for every search request.
-
-**Why it’s wrong:** ranking queries become expensive, duplicates are easy to introduce, and indexes become less effective.
-
-**Do this instead:** query a pre-flattened search projection.
-
-### Anti-Pattern 3: Adding Elasticsearch/OpenSearch immediately
-
-**What people do:** introduce a separate search cluster for typo tolerance.
-
-**Why it’s wrong:** this milestone’s requirements are well within PostgreSQL capability, and an external search system adds indexing lag, ops overhead, and multi-tenant consistency risk.
-
-**Do this instead:** use PostgreSQL FTS + `pg_trgm` first. Revisit only if later requirements include facets, multilingual analyzers, or cross-campaign global search.
-
-## Integration Points
-
-### Internal boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| voter page → voter search API | HTTP JSON | Preserve existing endpoint path; extend body |
-| voter API → search service | direct function call | New ranked path only when `lookup.query` present |
-| search service → existing filter builder | direct call / composed predicates | Filters remain reusable |
-| voter/contact writes → search projection refresh | direct service call | Must happen for CRUD and import writes |
-| import pipeline → projection bulk refresh | direct service call | Refresh affected voter IDs per committed batch |
-| dynamic lists → filter builder only | direct call | Do not use fuzzy lookup contract in stored lists |
-
-### External services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| PostgreSQL full-text search | native SQL functions | `websearch_to_tsquery`, `ts_rank_cd`, weighted `tsvector` |
-| PostgreSQL trigram | extension + indexes | `pg_trgm` supports similarity and indexed `LIKE`/`ILIKE` |
-
-## New vs Modified Pieces
-
-### New
-
-- `voter_search_documents` table and model
-- `pg_trgm` extension migration
-- search-specific indexes
-- `VoterSearchService`
-- lookup request/response schema types
-- relevance cursor encoder/decoder
-
-### Modified
-
-- voter search endpoint
-- voter/contact/import write paths
-- voter page route state and hook payload
-- Add Voters dialog search behavior
-- tests for search ranking, typo tolerance, and tenant isolation
+---
 
 ## Suggested Build Order
 
-1. **Define the contract boundary**
-   - Add `lookup` to the request schema.
-   - Add `relevance` sort mode and response metadata.
-   - Keep `VoterFilter` deterministic.
+### Phase 1: Org Credential Storage + Encryption Foundation
 
-2. **Add database primitives**
-   - Enable `pg_trgm`.
-   - Create `voter_search_documents`.
-   - Add RLS policy and indexes.
-   - Backfill from existing voter/contact data.
+**What:** `org_twilio_configs` table, `EncryptedString` TypeDecorator, config CRUD endpoints, org settings Twilio page.
 
-3. **Implement backend read path**
-   - Create `VoterSearchService`.
-   - Compose deterministic filters with ranked lookup.
-   - Add relevance cursor pagination.
+**Rationale:** Everything else depends on having Twilio credentials stored and retrievable. This phase has zero Twilio API calls -- pure CRUD with encryption. Establishes the encryption pattern and the `twilio_encryption_key` env var in settings/k8s.
 
-4. **Implement backend write-path sync**
-   - Refresh projection on voter CRUD.
-   - Refresh projection on phone/email changes.
-   - Add bulk refresh hook for import batches.
+**Dependencies on existing code:** Extends `Organization` model (FK), `org.py` router pattern, org settings UI.
+**New files:** `app/models/twilio.py`, `app/services/twilio_config.py`, `app/api/v1/twilio_config.py`, `app/core/encryption.py`, `app/schemas/twilio.py`
+**Migration:** 1 Alembic migration (create `org_twilio_configs`)
+**Risk:** Low -- no external API calls.
 
-5. **Switch the voter page to search-first**
-   - Add free-text input.
-   - Default to relevance sort when query exists.
-   - Keep filter panel as optional refinement.
+### Phase 2: Phone Number Management + Provisioning
 
-6. **Expand to secondary consumers**
-   - Update Add Voters dialog.
-   - Decide whether other list/member pickers should opt in.
+**What:** `org_twilio_phones` table, BYO phone registration, Twilio number search + purchase API, phone list UI.
 
-7. **Tune and verify**
-   - Add ranking tests.
-   - Add typo-tolerance tests.
-   - Add EXPLAIN-based performance checks on representative campaign sizes.
-   - Add RLS coverage for the new search table.
+**Rationale:** Voice and SMS both need phone numbers configured before they can work. Provisioning is the first real Twilio API integration. Isolated from call/SMS complexity.
 
-## Scaling Considerations
+**Dependencies:** Phase 1 (needs org credentials to call Twilio API).
+**New files:** `app/services/twilio_phone.py`, `app/api/v1/twilio_phones.py`
+**Migration:** 1 Alembic migration (create `org_twilio_phones`)
+**First Twilio API calls:** `client.available_phone_numbers`, `client.incoming_phone_numbers.create_async()`
+**Risk:** Medium -- first real Twilio API integration; needs error handling for billing failures.
 
-| Scale | Architecture Adjustment |
-|-------|--------------------------|
-| 0-100k voters per campaign | PostgreSQL-only hybrid search is enough |
-| 100k-1M voters per campaign | Tune weights, keep projection table lean, verify index selectivity |
-| 1M+ voters per campaign or multi-region search pressure | Consider partitioning by `campaign_id` or a dedicated search system only if PostgreSQL tuning is exhausted |
+### Phase 3: Webhook Infrastructure + Signature Validation
 
-### What breaks first
+**What:** Webhook route group, Twilio signature validation dependency, URL reconstruction for TLS termination, webhook route registration in `router.py`.
 
-1. **Read performance on poorly indexed fuzzy queries**
-   - Fix with projection indexes and candidate-set narrowing.
+**Rationale:** Webhooks are needed by both Voice (Phase 4) and SMS (Phase 5). Building them standalone allows testing with Twilio's webhook debugger and ngrok/Tailscale Funnel before adding business logic. The signature validation is the critical security gate for all unauthenticated Twilio traffic.
 
-2. **Projection freshness during heavy imports**
-   - Fix with batch refresh strategy and explicit rebuild tooling.
+**Dependencies:** Phase 1 (auth token for validation), Phase 2 (phone number lookup for routing).
+**New files:** `app/api/v1/twilio_webhooks.py`, new dependency in `app/api/deps.py`
+**Extends:** `router.py` (new webhook router without JWT auth prefix)
+**Risk:** High -- SSL termination URL reconstruction is the #1 failure mode. Must test with production proxy.
+
+### Phase 4: Click-to-Call via Voice SDK
+
+**What:** Access Token generation endpoint, `call_records` table, TwiML App voice webhook handler (returns `<Dial>` TwiML), Voice SDK frontend integration (`useTwilioDevice` hook + `VoiceCallButton`), call status tracking.
+
+**Rationale:** Voice calling is the highest-value feature -- it replaces the `tel:` fallback in phone banking with real WebRTC calling that records metadata. Depends on webhook infra (Phase 3) for status callbacks.
+
+**Dependencies:** Phases 1, 2, 3.
+**Extends:** Existing phone banking field mode UI (VoiceCallButton replaces tel: link), `VoterInteractionService` (PHONE_CALL payload now includes `twilio_call_sid`).
+**New files:** `app/services/twilio_voice.py`, `app/api/v1/twilio_voice.py`, `web/src/hooks/useTwilioDevice.ts`
+**Migration:** 1 Alembic migration (create `call_records`)
+**Risk:** Medium -- Voice SDK Device lifecycle management in React is tricky (token refresh, reconnection).
+
+### Phase 5: Two-Way SMS + STOP/DNC Integration
+
+**What:** `sms_conversations` + `sms_messages` tables, SMS send/reply endpoints, inbound SMS webhook handler, STOP keyword -> DNC pipeline, SMS inbox UI, bulk SMS via Procrastinate.
+
+**Rationale:** SMS is a large feature surface but self-contained. STOP processing reuses existing `DNCService.add_entry()`. Can be built in parallel with Phase 4 if desired (both depend on Phase 3).
+
+**Dependencies:** Phases 1, 2, 3.
+**Extends:** `DNCService` (new reason value `SMS_STOP`), `DNCReason` enum, `InteractionType` enum (add `SMS` value), Procrastinate import paths.
+**New files:** `app/services/twilio_sms.py`, `app/api/v1/twilio_sms.py`, `app/tasks/sms_task.py`
+**Migration:** 1 Alembic migration (create `sms_conversations` + `sms_messages` + RLS policies)
+**Risk:** Medium -- bulk send needs rate limiting to avoid Twilio throttling; conversation threading for unmatched inbound numbers needs UX decisions.
+
+### Phase 6: Spend Tracking + Budget Enforcement
+
+**What:** `twilio_spend_ledger` table, spend aggregation queries, daily/total budget soft enforcement, spend dashboard UI in org settings.
+
+**Rationale:** Budget enforcement is a policy layer on top of existing call/SMS. Building it last means all billable events are already flowing. Enforcement is "soft" -- blocks new sends when over budget but doesn't cancel in-progress operations.
+
+**Dependencies:** Phases 4 and 5 (all billable event sources).
+**Extends:** Voice and SMS services (add spend ledger writes on status callbacks), org settings UI.
+**New files:** `app/services/twilio_spend.py`, `app/api/v1/twilio_spend.py`
+**Migration:** 1 Alembic migration (create `twilio_spend_ledger`)
+**Enforcement:** Pre-send check: `SELECT COALESCE(SUM(amount_cents), 0) FROM twilio_spend_ledger WHERE organization_id = ? AND occurred_at >= current_date` -- if >= daily_budget_cents, raise `BudgetExceededError`.
+
+### Phase 7: Phone Validation (Twilio Lookup v2)
+
+**What:** `phone_validations` cache table, Lookup API integration, validation endpoint, inline UI badge in voter contact forms.
+
+**Rationale:** Lowest priority -- the platform already works without phone validation. This is a quality-of-life enhancement. Depends only on org credentials (Phase 1).
+
+**Dependencies:** Phase 1 only (could be parallelized with Phases 4-6).
+**Extends:** Voter contact create/edit UI (adds validate button + line type badge).
+**New files:** `app/services/twilio_lookup.py`, `app/api/v1/twilio_lookup.py`
+**Migration:** 1 Alembic migration (create `phone_validations`)
+**Risk:** Low -- simple API call + cache pattern.
+
+---
+
+## Integration with Existing Features
+
+### DNC Service
+
+The existing `DNCService` and `DoNotCallEntry` model are reused directly:
+- **STOP keyword SMS:** Webhook handler calls `DNCService.add_entry(campaign_id, phone, 'sms_stop', system_user_id)` when STOP detected
+- **New DNCReason value:** Add `SMS_STOP = "sms_stop"` to `DNCReason` StrEnum (native_enum=False so no ALTER TYPE migration needed)
+- **Pre-send DNC check:** SMS send and voice call endpoints call `DNCService.check_number()` before placing call/sending message
+- **Call list DNC filtering:** Existing call list generation already filters DNC -- no change needed
+
+### Voter Contacts (VoterPhone)
+
+- **No schema changes to VoterPhone.** Line type data lives in the `phone_validations` cache table, not on VoterPhone itself. This avoids migrating the existing VoterPhone table and keeps Lookup results independently cacheable/refreshable.
+- **Phone validation cache:** `phone_validations` is campaign-scoped, keyed by E.164 number. Frontend queries validation data separately when rendering phone rows.
+
+### Voter Interactions
+
+- **Voice calls:** Create `VoterInteraction(type=PHONE_CALL)` with extended JSONB payload: `{"twilio_call_sid": "CA...", "duration_seconds": 120, "answered": true, "via": "twilio_voice_sdk"}`
+- **SMS messages:** Create `VoterInteraction(type=SMS)` for outbound messages: `{"twilio_message_sid": "SM...", "direction": "outbound", "body_preview": "..."}`
+- **New InteractionType value:** Add `SMS = "sms"` to `InteractionType` StrEnum (native_enum=False, no ALTER TYPE needed)
+- **Existing JSONB payload column** is flexible enough for all new fields -- no migration on `voter_interactions`
+
+### Phone Banking (PhoneBankService)
+
+- **Existing `record_call` flow preserved:** When a caller records an outcome in a phone bank session, the existing flow (create interaction, update entry status, auto-DNC on refused) continues unchanged
+- **`call_records` table is supplementary:** It stores Twilio-specific metadata (SID, duration, price) that `CallListEntry` / `VoterInteraction` don't track
+- **Voice SDK integration point:** The active calling screen's "Call" button switches from `<a href="tel:...">` to `Device.connect()` when org has Twilio config; outcome recording flow is identical
+- **Feature detection:** Frontend checks for Twilio config via a lightweight endpoint or org context; falls back to `tel:` links with zero behavioral change if no config
+
+### Procrastinate Job Queue
+
+- **Bulk SMS sending:** New task `send_bulk_sms` registered in `app/tasks/sms_task.py`
+- **Added to `procrastinate_app.import_paths`:** `["app.tasks.import_task", "app.tasks.sms_task"]`
+- **Queueing lock:** Uses `queueing_lock=f"bulk_sms_{campaign_id}_{batch_id}"` to prevent duplicate job submission (same pattern as import jobs)
+- **202 Accepted:** Bulk send endpoint returns 202 with job ID; frontend polls for completion
+
+### Organization Model
+
+- **No changes to `Organization` model itself** -- `org_twilio_configs` links via FK
+- **Org router extended:** New sub-routers mounted at `/api/v1/org/twilio/...` following existing org.py pattern
+- **Org role gates:** All config/phone endpoints use existing `require_org_role()` dependency
+
+### Async Twilio Client Pattern
+
+- **Use `AsyncTwilioHttpClient` with `*_async()` methods** for all Twilio API calls in the FastAPI process
+- **Cache Twilio `Client` instances per org** in a module-level dict keyed by `org_id` with TTL. Invalidate on credential update.
+- **Procrastinate worker:** Uses sync Twilio client (worker runs in its own process, not on the async event loop)
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Data model design | HIGH | Follows established codebase patterns (campaign_id FK, JSONB payloads, append-only logs, StrEnum with native_enum=False) |
+| Webhook architecture | HIGH | Twilio webhook patterns well-documented; SSL termination is the known pitfall to test early |
+| Credential encryption | HIGH | Fernet + TypeDecorator is a standard pattern; cryptography is already a transitive dependency |
+| Voice SDK token flow | HIGH | Well-documented Twilio pattern; Python SDK has native AccessToken generation |
+| Multi-tenant webhook routing | HIGH | Phone number / AccountSid lookup approach is standard for multi-tenant Twilio integrations |
+| Async compatibility | MEDIUM | Twilio Python SDK has `*_async` methods but some community-reported edge cases; may need `run_in_executor` fallback for specific operations |
+| Spend tracking accuracy | MEDIUM | Relies on Twilio status callbacks for actual pricing; callbacks can be delayed or missing for some edge cases |
+| Build order | HIGH | Dependencies are clear and phases are isolatable with well-defined integration seams |
+
+---
 
 ## Sources
 
-- Local codebase: `app/services/voter.py`, `app/api/v1/voters.py`, `app/schemas/voter_filter.py`, `web/src/routes/campaigns/$campaignId/voters/index.tsx`, `web/src/components/voters/AddVotersDialog.tsx`
-- PostgreSQL full-text search docs: https://www.postgresql.org/docs/current/textsearch-controls.html
-- PostgreSQL full-text indexing docs: https://www.postgresql.org/docs/current/textsearch-tables.html
-- PostgreSQL trigram docs: https://www.postgresql.org/docs/current/pgtrgm.html
-
----
-*Architecture research for: voter-page free-text search and lookup*
-*Researched: 2026-04-06*
+- [Build a Secure Twilio Webhook with Python and FastAPI](https://www.twilio.com/en-us/blog/build-secure-twilio-webhook-python-fastapi) -- FastAPI webhook + signature validation
+- [Twilio Webhooks Security](https://www.twilio.com/docs/usage/webhooks/webhooks-security) -- X-Twilio-Signature HMAC-SHA1
+- [Twilio Access Tokens](https://www.twilio.com/docs/iam/access-tokens) -- Voice SDK token generation
+- [Twilio Voice SDKs](https://www.twilio.com/docs/voice/sdks) -- Browser calling via WebRTC
+- [Generate Twilio Access Tokens in Python](https://www.twilio.com/en-us/blog/twilio-access-tokens-python) -- Python AccessToken + VoiceGrant
+- [Twilio API Keys Overview](https://www.twilio.com/docs/iam/api-keys) -- API keys recommended for production
+- [Secure Your Twilio Credentials](https://www.twilio.com/docs/usage/secure-credentials) -- Credential storage best practices
+- [Twilio Lookup v2 API](https://www.twilio.com/docs/lookup/v2-api) -- Phone validation + line type intelligence
+- [Twilio Available Phone Numbers API](https://www.twilio.com/docs/phone-numbers/global-catalog/api/available-numbers) -- Number search
+- [Twilio IncomingPhoneNumber Resource](https://www.twilio.com/docs/phone-numbers/api/incomingphonenumber-resource) -- Number purchase API
+- [Encryption at Rest with SQLAlchemy](https://blog.miguelgrinberg.com/post/encryption-at-rest-with-sqlalchemy) -- Fernet TypeDecorator pattern
+- [Twilio Python Helper Library Async](https://www.twilio.com/en-us/blog/twilio-python-helper-library-async) -- AsyncTwilioHttpClient usage
+- [SQLAlchemy SymmetricEncryptionClientSide Wiki](https://github.com/sqlalchemy/sqlalchemy/wiki/SymmetricEncryptionClientSide) -- TypeDecorator encryption reference
+- Existing codebase: `app/services/phone_bank.py` (service composition pattern), `app/models/organization.py` (org-level model), `app/api/v1/org.py` (org endpoint pattern), `app/api/deps.py` (dependency pattern), `app/tasks/procrastinate_app.py` (job queue pattern)
