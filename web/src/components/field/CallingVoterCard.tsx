@@ -139,6 +139,16 @@ export function CallingVoterCard({
           attempts={entry.phone_attempts}
           voterName={voterName}
           onCallStarted={onCallStarted}
+          callMode="tel"
+          callStatus="idle"
+          activeCallNumber={null}
+          isMuted={false}
+          duration={0}
+          onBrowserCall={onCallStarted}
+          onHangUp={() => {}}
+          onToggleMute={() => {}}
+          dncStatus={{}}
+          callingHoursCheck={null}
         />
       </div>
     </Card>

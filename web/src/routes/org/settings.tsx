@@ -18,7 +18,7 @@ import { DangerZone } from "@/components/org/DangerZone"
 import { PhoneNumbersCard } from "@/components/org/PhoneNumbersCard"
 import { useOrg, useUpdateOrg } from "@/hooks/useOrg"
 import { useOrgPermissions } from "@/hooks/useOrgPermissions"
-import type { TwilioBudgetActivity } from "@/types/org"
+import type { TwilioBudgetActivity, TwilioOrgUpdate } from "@/types/org"
 
 function formatCurrency(cents: number | null | undefined) {
   if (cents == null) return "Not set"
@@ -75,10 +75,7 @@ function OrgSettingsPage() {
     if (isDirty) {
       payload.name = currentName
     }
-    const twilio: {
-      account_sid?: string
-      auth_token?: string
-    } = {}
+    const twilio: TwilioOrgUpdate = {}
     if (accountSid !== null && accountSid !== org?.twilio?.account_sid) {
       twilio.account_sid = currentAccountSid
     }

@@ -96,7 +96,7 @@ vi.mock("@twilio/voice-sdk", () => ({
   Device: {
     isSupported: true,
   },
-}), { virtual: true })
+}))
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },

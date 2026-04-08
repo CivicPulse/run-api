@@ -1,6 +1,5 @@
 import { createFileRoute, Link, Navigate, useParams } from "@tanstack/react-router"
 import { AlertTriangle, Loader2, Wallet } from "lucide-react"
-import { formatPhoneDisplay } from "@/types/calling"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -54,9 +53,7 @@ interface SurveyQuestion {
 
 function VoterInfoPanel({
   entry,
-  selectedPhone,
   onPhoneSelect,
-  campaignId,
   twilioDevice,
   callMode,
   activeCallNumber,
@@ -66,9 +63,7 @@ function VoterInfoPanel({
   onCallStarted,
 }: {
   entry: CallListEntry
-  selectedPhone: string
   onPhoneSelect: (phone: string) => void
-  campaignId: string
   twilioDevice: ReturnType<typeof useTwilioDevice>
   callMode: "browser" | "tel"
   activeCallNumber: string | null
@@ -445,10 +440,6 @@ function ActiveCallingPageInner({
     twilioDevice.connect(e164, campaignId)
   }
 
-  function handleHangUp() {
-    twilioDevice.disconnect()
-  }
-
   function handleCallStarted(e164: string) {
     // For tel: mode, just track which number was called
     setActiveCallNumber(e164)
@@ -563,16 +554,14 @@ function ActiveCallingPageInner({
         <div className="flex gap-6 min-h-[500px]">
           {/* Left panel: voter info */}
           <div className="w-80 shrink-0 space-y-4 border-r pr-6">
-            <VoterInfoPanel
-              entry={state.entry}
-              selectedPhone={state.selectedPhone}
-              onPhoneSelect={(phone) =>
-                setState({ ...state, selectedPhone: phone })
-              }
-              campaignId={campaignId}
-              twilioDevice={twilioDevice}
-              callMode={callMode}
-              activeCallNumber={activeCallNumber}
+              <VoterInfoPanel
+                entry={state.entry}
+                onPhoneSelect={(phone) =>
+                  setState({ ...state, selectedPhone: phone })
+                }
+                twilioDevice={twilioDevice}
+                callMode={callMode}
+                activeCallNumber={activeCallNumber}
               dncStatus={dncStatus}
               callingHoursCheck={callingHoursCheck}
               onBrowserCall={handleBrowserCall}
@@ -605,16 +594,14 @@ function ActiveCallingPageInner({
         <div className="flex gap-6 min-h-[500px]">
           {/* Left panel: voter info (read-only) */}
           <div className="w-80 shrink-0 space-y-4 border-r pr-6">
-            <VoterInfoPanel
-              entry={state.entry}
-              selectedPhone={state.selectedPhone}
-              onPhoneSelect={(phone) =>
-                setState({ ...state, selectedPhone: phone })
-              }
-              campaignId={campaignId}
-              twilioDevice={twilioDevice}
-              callMode={callMode}
-              activeCallNumber={activeCallNumber}
+              <VoterInfoPanel
+                entry={state.entry}
+                onPhoneSelect={(phone) =>
+                  setState({ ...state, selectedPhone: phone })
+                }
+                twilioDevice={twilioDevice}
+                callMode={callMode}
+                activeCallNumber={activeCallNumber}
               dncStatus={dncStatus}
               callingHoursCheck={callingHoursCheck}
               onBrowserCall={handleBrowserCall}
