@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.16
 milestone_name: Email Delivery Foundation
-status: roadmap defined
-stopped_at: v1.16 requirements and roadmap complete; ready to plan phase 95
-last_updated: "2026-04-08T13:00:00Z"
-last_activity: 2026-04-08 -- completed v1.16 requirements and roadmap through phase 99
+status: phase 99 complete
+stopped_at: phase 99 complete; next step is /gsd-audit-milestone v1.16
+last_updated: "2026-04-08T17:53:28Z"
+last_activity: 2026-04-08
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 6
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-08)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** ready to plan Phase 95 for v1.16 Email Delivery Foundation
+**Current focus:** ready to audit milestone v1.16 Email Delivery Foundation
 
 ## Current Position
 
-Phase: Not started (ready for phase planning)
-Plan: Phase 95 pending
-Status: Requirements and roadmap defined
-Last activity: 2026-04-08 -- v1.16 requirements and roadmap completed
+Phase: Complete
+Plan: Complete
+Status: Phase 99 complete
+Last activity: 2026-04-08
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Accumulated Context
 
@@ -58,6 +58,11 @@ Progress: [░░░░░░░░░░] 0%
 - v1.16: This milestone covers transactional/system email only, including existing invite flows and ZITADEL auth/system delivery setup.
 - v1.16: ZITADEL scope is configure-and-document email delivery, not CivicPulse-managed auth templating or branding tooling.
 - v1.16: Basic email delivery/audit metadata is in scope; inboxes, campaign email, and advanced analytics remain out of scope.
+- [Phase 95]: Phase 95 established a typed transactional email seam with Mailgun selected by settings and code-owned HTML/text invite templates. — This keeps invite-domain logic provider-agnostic and gives later async, audit, and ZITADEL phases a stable foundation.
+- [Phase 96]: Phase 96 moved invite delivery behind a post-commit communications task with invite-keyed idempotency, same-origin invite entry, and persisted queue-failure state instead of false request failures. — This gives phase 97 a stable submission record and phase 98/99 a real app-owned invite path to document and harden.
+- [Phase 97]: Phase 97 added canonical invite-email attempt audit rows plus authenticated Mailgun webhook reconciliation keyed by provider message id. — This gives support a truthful latest outcome per invite and keeps future resend/deliverability work grounded in durable attempt history.
+- [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery, including a runbook for sender alignment and support triage. — This keeps auth/system mail ownership explicit and gives phase 99 a clear shared-ops boundary to harden.
+- [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations across CivicPulse invite mail and ZITADEL auth mail. — The milestone is now ready for milestone audit and archive steps.
 
 ## Pending Todos
 
@@ -70,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-08
-Stopped at: v1.16 requirements and roadmap complete; next step is `/gsd-plan-phase 95`
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-08T17:53:28Z
+Stopped at: phase 99 complete; next step is /gsd-audit-milestone v1.16
+Resume file: .planning/phases/99-deliverability-hardening-operations/99-VERIFICATION.md

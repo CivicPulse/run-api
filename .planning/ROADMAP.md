@@ -180,11 +180,11 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 
 ## Phases
 
-- [ ] **Phase 95: Provider Foundation & Secret Hygiene** - Establish the app-owned email provider seam, template ownership model, and secret-safe Mailgun configuration boundary.
-- [ ] **Phase 96: Async Delivery Core & Invite Dispatch** - Make existing invite workflows queue real transactional emails only after durable writes, with stable public links and idempotent retries.
-- [ ] **Phase 97: Webhook Reconciliation & Audit Truth** - Persist support-grade send history and reconcile Mailgun delivery outcomes through authenticated provider events.
-- [ ] **Phase 98: ZITADEL Delivery Setup & Support Boundary** - Configure ZITADEL's auth/system email path separately and document the ownership split between CivicPulse mail and ZITADEL mail.
-- [ ] **Phase 99: Deliverability Hardening & Operations** - Close production readiness with domain/DNS runbooks, monitoring, resend/remediation expectations, and app-vs-ZITADEL operational clarity.
+- [x] **Phase 95: Provider Foundation & Secret Hygiene** - Establish the app-owned email provider seam, template ownership model, and secret-safe Mailgun configuration boundary. (completed 2026-04-08)
+- [x] **Phase 96: Async Delivery Core & Invite Dispatch** - Make existing invite workflows queue real transactional emails only after durable writes, with stable public links and idempotent retries. (completed 2026-04-08)
+- [x] **Phase 97: Webhook Reconciliation & Audit Truth** - Persist support-grade send history and reconcile Mailgun delivery outcomes through authenticated provider events. (completed 2026-04-08)
+- [x] **Phase 98: ZITADEL Delivery Setup & Support Boundary** - Configure ZITADEL's auth/system email path separately and document the ownership split between CivicPulse mail and ZITADEL mail. (completed 2026-04-08)
+- [x] **Phase 99: Deliverability Hardening & Operations** - Close production readiness with domain/DNS runbooks, monitoring, resend/remediation expectations, and app-vs-ZITADEL operational clarity. (completed 2026-04-08)
 
 ## Phase Details
 
@@ -249,11 +249,11 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 95. Provider Foundation & Secret Hygiene | 0/TBD | Not started | - |
-| 96. Async Delivery Core & Invite Dispatch | 0/TBD | Not started | - |
-| 97. Webhook Reconciliation & Audit Truth | 0/TBD | Not started | - |
-| 98. ZITADEL Delivery Setup & Support Boundary | 0/TBD | Not started | - |
-| 99. Deliverability Hardening & Operations | 0/TBD | Not started | - |
+| 95. Provider Foundation & Secret Hygiene | 2/2 | Complete   | 2026-04-08 |
+| 96. Async Delivery Core & Invite Dispatch | 1/1 | Complete   | 2026-04-08 |
+| 97. Webhook Reconciliation & Audit Truth | 1/1 | Complete   | 2026-04-08 |
+| 98. ZITADEL Delivery Setup & Support Boundary | 1/1 | Complete   | 2026-04-08 |
+| 99. Deliverability Hardening & Operations | 1/1 | Complete   | 2026-04-08 |
 
 ## Coverage
 
