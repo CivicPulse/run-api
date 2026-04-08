@@ -1,101 +1,96 @@
 # Requirements: CivicPulse Run API
 
-**Defined:** 2026-04-07
+**Defined:** 2026-04-08
 **Core Value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
 
 ## v1 Requirements
 
-Requirements for milestone `v1.15 Twilio Communications`.
+### Email Foundation
 
-### Org Twilio Foundation
+- [ ] **EML-01**: The backend can send app-owned transactional email through an internal provider abstraction with Mailgun as the first production implementation.
+- [ ] **EML-02**: Transactional email templates are owned in the CivicPulse codebase and rendered as both HTML and plain text rather than relying on provider-hosted templates.
+- [ ] **EML-03**: App-owned transactional email uses environment-scoped sender, domain, region, and secret configuration without exposing credentials back through API responses, logs, or UI.
+- [ ] **EML-04**: Transactional email sends happen only after the triggering domain write is durable, with idempotent retry behavior so retries or resends do not create duplicate invite state.
 
-- [x] **ORG-01**: Org admins can store and update Twilio credentials for their organization without exposing secrets back through the API or UI.
-- [x] **ORG-02**: Org admins can register BYO Twilio numbers and manage platform-provisioned numbers with capability and default-number visibility.
-- [x] **ORG-03**: Twilio numbers, credentials, and webhook routing stay isolated per organization and never bleed across org boundaries.
+### Invite Delivery
 
-### Voice Calling
+- [ ] **INV-01**: Creating a campaign member invite sends a real transactional email to the invitee instead of only storing the invite record.
+- [ ] **INV-02**: Existing volunteer and staff invitation flows that currently promise an email invite use the new transactional email path.
+- [ ] **INV-03**: Invite emails tell the recipient who invited them, what org or campaign they are being invited to, what access they will receive, and when the invite expires.
+- [ ] **INV-04**: Invite links land on the existing acceptance/auth flow using the configured public app URL, and revoked, expired, or already-accepted invites do not continue sending misleading emails.
 
-- [x] **VOICE-01**: Phone bankers can place browser-based click-to-call calls from the existing phone banking flow when Twilio Voice is configured.
-- [x] **VOICE-02**: Users on unsupported browsers or orgs without Twilio Voice configuration fall back cleanly to the existing `tel:` behavior.
-- [x] **VOICE-03**: Call state, duration, and final outcome are captured so future reporting can measure answer and completion rates per voter and campaign.
-- [x] **VOICE-04**: Calls are blocked when the voter is on DNC or outside allowed calling hours, with clear operator feedback.
+### Delivery Audit and Events
 
-### SMS Messaging
+- [ ] **AUD-01**: The app persists each transactional email send attempt with tenant context, template key, recipient, provider, timestamps, and provider message identity for support and reconciliation.
+- [ ] **AUD-02**: Provider delivery updates are reconciled through authenticated webhook or equivalent event handling so the app distinguishes queued or accepted mail from delivered, bounced, complained, suppressed, or failed mail.
+- [ ] **AUD-03**: Delivery history remains isolated and unambiguous even when the same recipient email is invited by multiple organizations or campaigns.
+- [ ] **AUD-04**: Staff have basic operational visibility for invite-email outcomes, including last known status and failure reason good enough to support resend or remediation workflows.
 
-- [x] **SMS-01**: Staff can send an individual SMS to a voter from the product only when that number is eligible for SMS outreach.
-- [x] **SMS-02**: Staff can launch bulk SMS outreach to a voter segment through the existing background-job infrastructure with observable send status.
-- [x] **SMS-03**: Staff can read and continue two-way SMS conversations in a reply inbox tied back to the voter and org phone number.
-- [x] **SMS-04**: Inbound STOP, START, and related opt-out keywords sync platform unsubscribe state so SMS outreach respects voter choice.
+### ZITADEL Delivery
 
-### Security, Compliance, and Reliability
+- [ ] **ZIT-01**: ZITADEL is configured to send its own auth and system emails through a production-ready provider path using Mailgun SMTP or an equivalent documented SMTP configuration.
+- [ ] **ZIT-02**: Operators have a documented runbook covering ZITADEL email prerequisites, sender and domain alignment, required secrets, smoke tests for auth email flows, and the support boundary between CivicPulse mail and ZITADEL mail.
 
-- [x] **SEC-01**: Twilio secrets are encrypted at rest and never logged or returned in plaintext by response schemas, logs, or error paths.
-- [x] **SEC-02**: All Twilio webhook routes validate request signatures against the public webhook URL shape used in production behind Traefik.
-- [x] **SEC-03**: Twilio callback handling is idempotent on provider SID values so retries do not duplicate records or side effects.
-- [x] **SEC-04**: New Twilio campaign-scoped tables enforce the existing RLS isolation model.
-- [x] **COMP-01**: SMS send flows gate on explicit eligibility or consent signals and surface compliance warnings for numbers without clear SMS consent.
-- [x] **COMP-02**: The milestone does not introduce predictive dialing, ringless voicemail, or other explicitly out-of-scope auto-dialer behavior.
+### Security and Operations
 
-### Spend, Validation, and Reporting
-
-- [x] **BUD-01**: Org admins can see Twilio spend and configure platform soft limits that gate billable communication actions before overspend.
-- [x] **OBS-01**: Call and message metadata is stored with enough structure to support future per-voter, per-campaign, and per-org effectiveness reporting.
-- [x] **LOOK-01**: Contact create and edit flows can validate phone numbers through Twilio Lookup with cached carrier and line-type intelligence rather than revalidating every time.
+- [ ] **SEC-01**: App-owned transactional email metadata, provider requests, and webhook handling preserve tenant boundaries and never batch invite recipients across organizations or campaigns.
+- [ ] **SEC-02**: Provider webhook handling verifies authenticity before mutating delivery state.
+- [ ] **OPS-01**: Production readiness includes a documented Mailgun domain and DNS setup, region-aware configuration, retry or replay expectations, and monitoring that distinguishes CivicPulse invite mail from ZITADEL auth mail.
 
 ## v2 Requirements
 
-Deferred beyond milestone `v1.15`.
+Deferred beyond milestone `v1.16`.
 
-### Communications Enhancements
+### Email Expansion
 
-- **NEXT-01**: Staff can schedule SMS campaigns for later delivery windows.
-- **NEXT-02**: Supervisors can monitor live Twilio calling activity across a phone-bank session dashboard.
-- **NEXT-03**: Staff can work with richer SMS templates, approvals, and reusable compliance snippets.
-- **NEXT-04**: The platform can offer a managed-Twilio tier with subaccount lifecycle automation.
+- **NEXT-01**: The platform can support a second outbound email provider without changing invite-domain logic.
+- **NEXT-02**: Org admins can preview or test transactional email templates before production sends.
+- **NEXT-03**: Staff can inspect a richer delivery timeline with suppression insights and resend history in the product UI.
+- **NEXT-04**: The platform can support campaign-authored or bulk email workflows with their own compliance and analytics model.
+- **NEXT-05**: The platform can offer manual replay, dead-letter handling, or provider failover for critical email outages.
 
 ## Out of Scope
 
-Explicitly excluded from milestone `v1.15`.
+Explicitly excluded from milestone `v1.16`.
 
 | Feature | Reason |
 |---------|--------|
-| Predictive / auto-dialer calling | TCPA/FCC risk; product remains manual click-to-call only |
-| Ringless voicemail or voicemail drop | Regulatory and consent risk |
-| Call audio recording | Two-party consent and PII liability |
-| Shared sender numbers across organizations | STOP semantics and tenant isolation become unsafe |
-| Twilio Conversations API adoption | Adds complexity without solving the immediate product needs |
-| SMS body AI generation or reply suggestion tooling | Outside current product boundary |
-| Full carrier registration automation inside the platform | A2P/10DLC registration remains an org responsibility in this milestone |
+| Campaign-authored or bulk email | Separate product surface, compliance model, and UX from transactional/system email |
+| Marketing automation, newsletters, or drip campaigns | Not required to deliver invites and auth/system email reliably |
+| Provider-hosted template management as the primary source of truth | Keep templates in Git and preserve provider portability |
+| In-app email inbox or reply handling | Turns outbound transactional mail into a support or CRM product |
+| Open/click analytics as a milestone driver | Delivery truth and operational audit matter more than engagement tracking here |
+| Attachments in invite or auth email | Adds risk and complexity without helping the core flows |
+| Per-org SMTP/provider configuration inside ZITADEL | ZITADEL delivery is effectively instance-operated, not tenant-scoped in this milestone |
+| Separate email microservice | Existing FastAPI plus Procrastinate architecture is sufficient for current scope |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ORG-01 | Phase 88 | Complete |
-| SEC-01 | Phase 88 | Complete |
-| ORG-02 | Phase 89 | Complete |
-| ORG-03 | Phase 90 | Complete |
-| SEC-02 | Phase 90 | Complete |
-| SEC-03 | Phase 90 | Complete |
-| SEC-04 | Phase 90 | Complete |
-| VOICE-01 | Phase 91 | Complete |
-| VOICE-02 | Phase 91 | Complete |
-| VOICE-03 | Phase 91 | Complete |
-| VOICE-04 | Phase 91 | Complete |
-| SMS-01 | Phase 92 | Complete |
-| SMS-02 | Phase 92 | Complete |
-| SMS-03 | Phase 92 | Complete |
-| SMS-04 | Phase 92 | Complete |
-| COMP-01 | Phase 92 | Complete |
-| COMP-02 | Phase 92 | Complete |
-| BUD-01 | Phase 93 | Complete |
-| OBS-01 | Phase 93 | Complete |
-| LOOK-01 | Phase 94 | Complete |
+| EML-01 | Phase 95 | Pending |
+| EML-02 | Phase 95 | Pending |
+| EML-03 | Phase 95 | Pending |
+| EML-04 | Phase 96 | Pending |
+| INV-01 | Phase 96 | Pending |
+| INV-02 | Phase 96 | Pending |
+| INV-03 | Phase 96 | Pending |
+| INV-04 | Phase 96 | Pending |
+| AUD-01 | Phase 97 | Pending |
+| AUD-02 | Phase 97 | Pending |
+| AUD-03 | Phase 97 | Pending |
+| AUD-04 | Phase 97 | Pending |
+| ZIT-01 | Phase 98 | Pending |
+| ZIT-02 | Phase 98 | Pending |
+| SEC-01 | Phase 95 | Pending |
+| SEC-02 | Phase 97 | Pending |
+| OPS-01 | Phase 99 | Pending |
 
 **Coverage:**
-- v1 requirements: 20 total
-- Mapped to phases: 20
+- v1 requirements: 17 total
+- Mapped to phases: 17
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-04-07*
+*Requirements defined: 2026-04-08*
+*Last updated: 2026-04-08 after v1.16 research synthesis*
