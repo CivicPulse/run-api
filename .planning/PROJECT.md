@@ -111,10 +111,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Campaign-scoped PostgreSQL search surface with edit/import freshness guarantees — v1.14 (SRCH-02, SRCH-04, TRST-01)
 - ✓ Ranked multi-field lookup across name, phone, email, address, city, ZIP, and source identifiers with typo tolerance — v1.14 (LOOK-02, LOOK-03, LOOK-04, TRST-02)
 - ✓ Search-first voter page states, stale-response protection, and richer row disambiguation — v1.14 (LOOK-06, INT-01, INT-02)
+- ✓ Org-scoped encrypted Twilio credentials and phone inventory with secure webhook routing — v1.15 (ORG-01, ORG-02, ORG-03, SEC-01, SEC-02, SEC-03, SEC-04)
+- ✓ Browser click-to-call with Twilio Voice SDK, manual fallback, call logging, and compliance guardrails — v1.15 (VOICE-01, VOICE-02, VOICE-03, VOICE-04)
+- ✓ Two-way SMS with bulk queueing, threaded inbox, and STOP/START opt-out enforcement — v1.15 (SMS-01, SMS-02, SMS-03, SMS-04, COMP-01, COMP-02)
+- ✓ Org-scoped spend controls and append-only communication telemetry for Twilio voice and SMS — v1.15 (BUD-01, OBS-01)
+- ✓ Campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight — v1.15 (LOOK-01)
 
 ### Active
 
-(v1.15 requirements defined in REQUIREMENTS.md — see Current Milestone below)
+- Planning next milestone after v1.15 closeout
 
 ### Out of Scope
 
@@ -140,37 +145,28 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
 - White-label / custom branding per org
 
-## Current Milestone: v1.15 Twilio Communications
+## Current Milestone
 
-**Goal:** Add browser-based click-to-call and two-way SMS to field ops, backed by org-scoped Twilio credentials, spend controls, and rich call/message metadata for future targeting.
-
-**Target features:**
-- Org-level Twilio config — Account SID, Auth Token, phone numbers (BYO + platform-provisioned)
-- Click-to-call via Twilio Voice SDK (WebRTC) with mobile tel: fallback
-- Two-way SMS — bulk outreach to voter segments + conversational reply inbox
-- Inbound STOP → auto-DNC; self-service opt-out link for web-based unsubscribe
-- Twilio Lookup API — number validation, carrier, line type, deliverability on contact create/edit
-- Call & message metadata logging — answer/delivery/response rates per voter and campaign
-- Spend controls — platform soft limits (daily + total budget) + Twilio account-level surfacing in org settings
+None active. v1.15 Twilio Communications shipped on 2026-04-08; next milestone definition has not started yet.
 
 ## Current State
 
-**Shipped:** v1.14 Voter Search & Lookup (2026-04-07)
+**Shipped:** v1.15 Twilio Communications (2026-04-08)
 
-The platform now ships a search-first voter lookup experience. v1.14 closed 4 phases (6 plans), added free-text lookup to the existing voter search flow, introduced a campaign-scoped PostgreSQL search surface refreshed on voter/contact/import writes, shipped ranked cross-field matching with typo tolerance, and verified DB-backed campaign isolation plus 10k-row lookup performance at about 115.54 ms.
+The platform now ships org-scoped Twilio communications across the existing field workflow. v1.15 closed 7 phases (21 plans), added encrypted org Twilio credentials plus phone inventory, secured webhook ingress, browser click-to-call, two-way SMS with inbox threading and STOP/START enforcement, spend controls with communication telemetry, and a campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
 2. HSTS header — Cloudflare edge configuration
 3. QA test data — kubectl cleanup documented
 
-Search freshness boundary: direct voter/contact edits are immediate; import completion is expected to become visible within 5 minutes.
+Search freshness boundary remains: direct voter/contact edits are immediate; import completion is expected to become visible within 5 minutes. Twilio lookup cache freshness is 90 days with manual refresh on demand.
 
 Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- v1.15: Twilio Communications — browser click-to-call, two-way SMS, org-scoped credentials, spend limits, Lookup validation, call/message metadata logging.
+- Define the next post-communications milestone
 
 ## Context
 
@@ -214,6 +210,9 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Production shakedown drives v1.13 scope | Verified failures in deployed behavior should set remediation priority over new feature work | ✓ Good — all P0s fixed, GO verdict achieved |
 | Keep lookup inside `POST /voters/search` | Avoid split query semantics and preserve composition with deterministic filters | ✓ Good — one voter-search contract now powers browse, filters, and ranked lookup |
 | PostgreSQL-native search surface over external search infra | Lower operational risk while preserving campaign scoping and freshness | ✓ Good — `voter_search_records` supports DB-backed 10k-row lookup in about 116 ms |
+| Org-scoped Twilio billing and credentials | Twilio account ownership, spend policy, and number routing belong at org scope rather than per campaign | ✓ Good — credentials, phone inventory, spend controls, and webhook auth all share one org boundary |
+| Shared communication ledger before reporting UI | Persist billable call/message facts once so later reporting and targeting can reuse the same telemetry | ✓ Good — voice and SMS now reconcile into append-only communication ledger rows |
+| Cached Twilio Lookup over mutating contact source data | Preserve user-entered contact labels while exposing provider-derived line-type intelligence as a reusable summary | ✓ Good — contact CRUD and SMS eligibility now share a 90-day lookup cache without rewriting source fields |
 
 ---
 ## Evolution
@@ -234,4 +233,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 — v1.15 Twilio Communications milestone started*
+*Last updated: 2026-04-08 — v1.15 Twilio Communications milestone completed*

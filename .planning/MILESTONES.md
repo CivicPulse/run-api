@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.15 Twilio Communications (Shipped: 2026-04-08)
+
+**Phases completed:** 7 phases, 21 plans
+
+**Key accomplishments:**
+
+1. Added encrypted org-scoped Twilio credentials, secure number inventory, and webhook routing boundaries without exposing secrets back through API or UI.
+2. Shipped browser click-to-call with Twilio Voice SDK, explicit `tel:` fallback, call logging, and DNC/calling-hours guardrails inside the existing phone-banking flow.
+3. Added two-way SMS with individual send, bulk queueing, threaded inbox UI, and STOP/START opt-out synchronization.
+4. Introduced org-level spend controls and append-only communication telemetry shared across Twilio voice and SMS actions.
+5. Added a campaign-scoped Twilio Lookup cache reused by voter contact editing and SMS preflight so staff can tell whether a number is text-safe before sending.
+
+**Audit:** .planning/milestones/v1.15-MILESTONE-AUDIT.md (status: passed, 20/20 requirements satisfied)
+
+---
+
 ## v1.14 Voter Search & Lookup (Shipped: 2026-04-07)
 
 **Phases completed:** 4 phases, 6 plans
@@ -40,6 +56,7 @@
 7. Achieved production shakedown GO verdict with full reverification across all 15 shakedown phases
 
 **Conditions (ops/infrastructure, not code gaps):**
+
 - Campaign creation 500 — ZITADEL pod connectivity investigation needed
 - HSTS — Cloudflare edge configuration
 - QA test data — kubectl cleanup documented
