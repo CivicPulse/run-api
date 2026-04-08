@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 
 from app.schemas.common import BaseSchema
+from app.schemas.org import TwilioBudgetSummary
 
 
 class VoiceTokenResponse(BaseSchema):
@@ -56,3 +57,4 @@ class VoiceCapabilityResponse(BaseSchema):
 
     browser_call_available: bool
     reason: str | None = None
+    budget: TwilioBudgetSummary | None = None

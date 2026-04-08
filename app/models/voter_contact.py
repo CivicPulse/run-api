@@ -32,6 +32,8 @@ class VoterPhone(Base):
     value: Mapped[str] = mapped_column(String(50), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # home/work/cell
     is_primary: Mapped[bool] = mapped_column(default=False)
+    sms_allowed: Mapped[bool] = mapped_column(default=False)
+    sms_consent_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False)  # import/manual
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

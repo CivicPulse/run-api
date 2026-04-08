@@ -1,3 +1,16 @@
+export interface PhoneValidationSummary {
+  normalized_phone_number: string
+  status: string
+  is_valid?: boolean | null
+  carrier_name?: string | null
+  line_type?: string | null
+  sms_capable?: boolean | null
+  validated_at?: string | null
+  is_stale: boolean
+  reason_code?: string | null
+  reason_detail?: string | null
+}
+
 export interface PhoneContact {
   id: string
   campaign_id: string
@@ -8,6 +21,7 @@ export interface PhoneContact {
   source: string
   created_at: string
   updated_at: string
+  validation?: PhoneValidationSummary | null
 }
 
 export interface PhoneContactCreate {

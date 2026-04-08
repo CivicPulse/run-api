@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import {
   useVoterContacts,
   useAddPhone,
+  useRefreshPhoneValidation,
   useUpdatePhone,
   useDeletePhone,
   useAddEmail,
@@ -27,6 +28,9 @@ import {
   useDeleteAddress,
   useSetPrimaryContact,
 } from "@/hooks/useVoterContacts"
+import { PhoneValidationBadge } from "@/components/voters/PhoneValidationBadge"
+import { PhoneValidationSummary } from "@/components/voters/PhoneValidationSummary"
+import { PhoneValidationBanner } from "@/components/voters/PhoneValidationBanner"
 import type {
   PhoneContact,
   EmailContact,
@@ -246,6 +250,7 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
   const [deleteTarget, setDeleteTarget] = useState<PhoneContact | null>(null)
 
   const addPhone = useAddPhone(campaignId, voterId)
+  const refreshValidation = useRefreshPhoneValidation(campaignId, voterId)
   const updatePhone = useUpdatePhone(campaignId, voterId)
   const deletePhone = useDeletePhone(campaignId, voterId)
 
@@ -281,6 +286,14 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
     })
   }
 
+  function handleRefreshValidation(phone: PhoneContact) {
+    refreshValidation.mutate(phone.id, {
+      onSuccess: () => {
+        toast.success("Phone validation refreshed")
+      },
+    })
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -310,7 +323,8 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
         <div className="space-y-1">
           {phones.map((phone) => (
             <div key={phone.id}>
-              <div className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+              <div className="rounded-md px-2 py-2 hover:bg-muted/50">
+                <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPrimary.mutate({ contactType: "phones", contactId: phone.id })}
                   disabled={setPrimary.isPending}
@@ -323,8 +337,14 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
                     color={phone.is_primary ? "var(--status-warning-foreground)" : "currentColor"}
                   />
                 </button>
-                <span className="flex-1 text-sm font-medium">{phone.value}</span>
-                <Badge variant="secondary" className="text-xs">{phone.type}</Badge>
+                <div className="flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{phone.value}</span>
+                    <Badge variant="secondary" className="text-xs">{phone.type}</Badge>
+                    <PhoneValidationBadge validation={phone.validation} />
+                  </div>
+                  <PhoneValidationSummary validation={phone.validation} />
+                </div>
                 <RequireRole minimum="manager">
                   <button
                     onClick={() => setExpandedEdit(expandedEdit === phone.id ? null : phone.id)}
@@ -341,6 +361,12 @@ function PhoneSection({ campaignId, voterId, phones, setPrimary }: PhoneSectionP
                     <Trash2 className="size-4" />
                   </button>
                 </RequireRole>
+                </div>
+                <PhoneValidationBanner
+                  validation={phone.validation}
+                  isRefreshing={refreshValidation.isPending}
+                  onRefresh={() => handleRefreshValidation(phone)}
+                />
               </div>
               {expandedEdit === phone.id && (
                 <PhoneForm

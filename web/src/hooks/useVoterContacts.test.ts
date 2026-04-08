@@ -2,7 +2,11 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
-import { useDeleteAddress, useSetPrimaryContact } from "./useVoterContacts"
+import {
+  useDeleteAddress,
+  useRefreshPhoneValidation,
+  useSetPrimaryContact,
+} from "./useVoterContacts"
 import type { VoterFilter } from "@/types/voter"
 
 // Mock api client
@@ -187,6 +191,43 @@ describe("useDeleteAddress", () => {
     })
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["voters", "campaign-1"],
+    })
+  })
+})
+
+describe("useRefreshPhoneValidation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("calls the refresh-validation endpoint and invalidates queries", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+    mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(undefined) })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(
+      () => useRefreshPhoneValidation("campaign-1", "voter-1"),
+      { wrapper }
+    )
+
+    result.current.mutate("phone-1")
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "api/v1/campaigns/campaign-1/voters/voter-1/phones/phone-1/refresh-validation"
+    )
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["voters", "campaign-1", "voter-1", "contacts"],
     })
   })
 })

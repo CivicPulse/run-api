@@ -10,6 +10,37 @@ from pydantic import Field, SecretStr
 from app.schemas.common import BaseSchema
 
 
+class TwilioBudgetActivity(BaseSchema):
+    """Recent billable communication activity."""
+
+    id: uuid.UUID
+    channel: str
+    event_type: str
+    provider_sid: str | None = None
+    provider_status: str | None = None
+    cost_cents: int | None = None
+    pending_cost: bool = True
+    campaign_id: uuid.UUID | None = None
+    voter_id: uuid.UUID | None = None
+    created_at: datetime
+
+
+class TwilioBudgetSummary(BaseSchema):
+    """Org-level spend summary and soft-budget state."""
+
+    configured: bool = False
+    soft_budget_cents: int | None = None
+    warning_percent: int = 80
+    state: str = "healthy"
+    finalized_spend_cents: int = 0
+    pending_spend_cents: int = 0
+    pending_item_count: int = 0
+    estimated_total_spend_cents: int = 0
+    remaining_budget_cents: int | None = None
+    warning_threshold_cents: int | None = None
+    updated_at: datetime | None = None
+
+
 class TwilioOrgStatus(BaseSchema):
     """Redacted org-level Twilio configuration status."""
 
@@ -20,6 +51,8 @@ class TwilioOrgStatus(BaseSchema):
     auth_token_hint: str | None = None
     auth_token_updated_at: datetime | None = None
     ready: bool = False
+    budget: TwilioBudgetSummary | None = None
+    recent_activity: list[TwilioBudgetActivity] = []
 
 
 class OrgResponse(BaseSchema):
@@ -37,6 +70,8 @@ class TwilioOrgUpdate(BaseSchema):
 
     account_sid: str | None = Field(None, min_length=1, max_length=64)
     auth_token: SecretStr | None = Field(None, repr=False)
+    soft_budget_cents: int | None = Field(None, ge=0)
+    budget_warning_percent: int | None = Field(None, ge=1, le=100)
 
 
 class OrgUpdate(BaseSchema):

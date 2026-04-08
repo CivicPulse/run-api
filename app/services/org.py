@@ -15,6 +15,7 @@ from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
 from app.models.user import User
 from app.schemas.org import OrgResponse, OrgUpdate, TwilioOrgStatus
+from app.services.communication_budget import CommunicationBudgetService
 from app.services.twilio_config import TwilioConfigService
 
 
@@ -42,12 +43,19 @@ class OrgService:
 
     def __init__(self) -> None:
         self._twilio = TwilioConfigService()
+        self._budget = CommunicationBudgetService()
 
     async def get_org(self, db: AsyncSession, org_id: uuid.UUID) -> Organization | None:
         return await db.scalar(select(Organization).where(Organization.id == org_id))
 
-    def build_org_response(self, org: Organization) -> OrgResponse:
+    async def build_org_response(
+        self,
+        db: AsyncSession,
+        org: Organization,
+    ) -> OrgResponse:
         """Build the org response including redacted Twilio status."""
+        budget = await self._budget.get_budget_summary(db, org)
+        recent_activity = await self._budget.list_recent_activity(db, org_id=org.id)
         return OrgResponse(
             id=org.id,
             name=org.name,
@@ -66,6 +74,8 @@ class OrgService:
                     account_sid=org.twilio_account_sid,
                     auth_token_encrypted=org.twilio_auth_token_encrypted,
                 ),
+                budget=budget,
+                recent_activity=recent_activity,
             ),
         )
 
@@ -100,6 +110,19 @@ class OrgService:
                 org.twilio_auth_token_key_id = encrypted.key_id
                 org.twilio_auth_token_last4 = encrypted.last4
                 org.twilio_auth_token_updated_at = now
+                result.twilio_changed = True
+
+            if "soft_budget_cents" in twilio_fields:
+                org.twilio_soft_budget_cents = body.twilio.soft_budget_cents
+                org.twilio_budget_updated_at = now
+                result.twilio_changed = True
+
+            if (
+                "budget_warning_percent" in twilio_fields
+                and body.twilio.budget_warning_percent is not None
+            ):
+                org.twilio_budget_warning_percent = body.twilio.budget_warning_percent
+                org.twilio_budget_updated_at = now
                 result.twilio_changed = True
 
         if result.name_changed or result.twilio_changed:

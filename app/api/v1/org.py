@@ -52,7 +52,7 @@ async def get_org(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
         )
-    return _service.build_org_response(org)
+    return await _service.build_org_response(db, org)
 
 
 @router.patch("", response_model=OrgResponse)
@@ -73,7 +73,7 @@ async def update_org(
             detail="Organization not found",
         )
     updated = await _service.update_org_details(db, org, body)
-    return _service.build_org_response(updated.org)
+    return await _service.build_org_response(db, updated.org)
 
 
 @router.get("/campaigns", response_model=list[OrgCampaignResponse])

@@ -1,3 +1,5 @@
+import type { TwilioBudgetSummary } from "@/types/org"
+
 export type TwilioCallStatus =
   | "idle"
   | "connecting"
@@ -13,6 +15,7 @@ export interface VoiceTokenResponse {
 export interface VoiceCapabilityResponse {
   browser_call_available: boolean
   reason: string | null
+  budget?: TwilioBudgetSummary | null
 }
 
 export interface CallingHoursCheck {

@@ -31,6 +31,22 @@ class PhoneResponse(BaseSchema):
     source: str
     created_at: datetime
     updated_at: datetime
+    validation: "PhoneValidationSummary | None" = None
+
+
+class PhoneValidationSummary(BaseSchema):
+    """Compact cached lookup summary reused by contacts and SMS surfaces."""
+
+    normalized_phone_number: str
+    status: str
+    is_valid: bool | None = None
+    carrier_name: str | None = None
+    line_type: str | None = None
+    sms_capable: bool | None = None
+    validated_at: datetime | None = None
+    is_stale: bool = False
+    reason_code: str | None = None
+    reason_detail: str | None = None
 
 
 # --- Email ---

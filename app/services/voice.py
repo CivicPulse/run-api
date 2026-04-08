@@ -17,6 +17,7 @@ from app.schemas.voice import (
     DNCCheckResult,
     VoiceCapabilityResponse,
 )
+from app.services.communication_budget import CommunicationBudgetService
 from app.services.dnc import DNCService
 from app.services.twilio_config import TwilioConfigError, TwilioConfigService
 
@@ -38,6 +39,7 @@ class VoiceService:
     def __init__(self) -> None:
         self._twilio_config = TwilioConfigService()
         self._dnc_service = DNCService()
+        self._budget_service = CommunicationBudgetService()
 
     # ------------------------------------------------------------------
     # Token generation
@@ -199,7 +201,9 @@ class VoiceService:
             status=status,
             started_at=utcnow(),
         )
-        db.add(record)
+        maybe_added = db.add(record)
+        if hasattr(maybe_added, "__await__"):
+            await maybe_added
         await db.flush()
         return record
 
@@ -266,10 +270,12 @@ class VoiceService:
             VoiceCapabilityResponse with availability and reason.
         """
         creds = self._twilio_config.voice_credentials_for_org(org)
+        budget = await self._budget_service.get_budget_summary(db, org)
         if creds is None:
             return VoiceCapabilityResponse(
                 browser_call_available=False,
                 reason="Voice calling credentials not configured",
+                budget=budget,
             )
 
         org_id = getattr(org, "id", None)
@@ -286,9 +292,11 @@ class VoiceService:
             return VoiceCapabilityResponse(
                 browser_call_available=False,
                 reason="No voice-capable phone numbers configured",
+                budget=budget,
             )
 
         return VoiceCapabilityResponse(
             browser_call_available=True,
             reason=None,
+            budget=budget,
         )

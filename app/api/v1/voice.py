@@ -29,6 +29,7 @@ from app.schemas.voice import (
     VoiceCapabilityResponse,
     VoiceTokenResponse,
 )
+from app.services.communication_budget import CommunicationBudgetService
 from app.services.twilio_config import TwilioConfigError
 from app.services.voice import VoiceService
 
@@ -37,6 +38,7 @@ from app.services.voice import VoiceService
 # ---------------------------------------------------------------------------
 
 _voice_service = VoiceService()
+_budget_service = CommunicationBudgetService()
 
 # ---------------------------------------------------------------------------
 # Request schemas
@@ -143,6 +145,16 @@ async def generate_voice_token(
     Returns 404 when the org has no voice configuration.
     """
     _campaign, org = await _resolve_campaign_org(db, campaign_id)
+    gate = await _budget_service.evaluate_gate(db, org)
+    if not gate.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "reason_code": gate.reason_code,
+                "reason_detail": gate.reason_detail,
+                "budget": gate.summary.model_dump(mode="json"),
+            },
+        )
 
     try:
         token = _voice_service.generate_voice_token(org, user.id)
@@ -276,6 +288,15 @@ async def twiml_voice_handler(
         response.hangup()
         return PlainTextResponse(str(response), media_type="text/xml")
 
+    gate = await _budget_service.evaluate_gate(db, org)
+    if not gate.allowed:
+        response.say(
+            gate.reason_detail
+            or "This organization cannot start new calls until its budget is updated."
+        )
+        response.hangup()
+        return PlainTextResponse(str(response), media_type="text/xml")
+
     # Get caller ID from org's voice numbers
     caller_id = await _get_caller_id(db, org)
 
@@ -307,6 +328,18 @@ async def twiml_voice_handler(
             from_number=caller_id or "",
             to_number=to_number,
             status="initiated",
+        )
+        await _budget_service.record_event(
+            db,
+            org_id=org.id,
+            campaign_id=campaign_id,
+            voter_id=None,
+            channel="voice",
+            event_type="voice.call",
+            provider_sid=call_sid or None,
+            provider_status="initiated",
+            pending_cost=True,
+            metadata_json={"to_number": to_number, "from_number": caller_id},
         )
         await db.commit()
     except Exception:

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Navigate, useParams } from "@tanstack/react-router"
-import { Loader2 } from "lucide-react"
+import { AlertTriangle, Loader2, Wallet } from "lucide-react"
 import { formatPhoneDisplay } from "@/types/calling"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -17,6 +17,7 @@ import { buildRecordCallPayload, type RecordCallPayload } from "@/types/phone-ba
 import type { CallListEntry } from "@/types/call-list"
 import type { DNCCheckResult, CallingHoursCheck } from "@/types/voice"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -322,7 +323,7 @@ function ActiveCallingPageInner({
   const selfRelease = useSelfReleaseEntry(campaignId, sessionId)
 
   // Voice calling hooks
-  const { mode: callMode } = useVoiceCapability(campaignId)
+  const { mode: callMode, budget } = useVoiceCapability(campaignId)
   const twilioDevice = useTwilioDevice(campaignId, callMode === "browser")
 
   const [state, setState] = useState<CallingState>({ phase: "idle" })
@@ -508,6 +509,33 @@ function ActiveCallingPageInner({
         </Link>
         <h1 className="text-xl font-semibold">Active Calling</h1>
       </div>
+
+      {budget && budget.state !== "healthy" ? (
+        <Alert
+          variant={budget.state === "over_limit" ? "destructive" : "default"}
+          data-testid="call-budget-banner"
+        >
+          {budget.state === "over_limit" ? (
+            <AlertTriangle className="h-4 w-4" />
+          ) : (
+            <Wallet className="h-4 w-4" />
+          )}
+          <AlertTitle>
+            {budget.state === "over_limit"
+              ? "Calling is paused by the org soft budget"
+              : budget.state === "near_limit"
+                ? "Calling spend is nearing the org soft budget"
+                : "Recent call costs are still pending"}
+          </AlertTitle>
+          <AlertDescription>
+            {budget.state === "over_limit"
+              ? "New browser calls will be blocked until an org owner updates the Twilio budget."
+              : budget.state === "near_limit"
+                ? "Calls can still start, but the organization is close to its configured Twilio threshold."
+                : "Twilio has not finalized pricing for some recent calls yet."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {/* State: idle */}
       {state.phase === "idle" && (

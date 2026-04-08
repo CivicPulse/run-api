@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.core.time import utcnow
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import InteractionType
+from app.services.phone_validation import PhoneValidationService
 from app.services.voter_interaction import VoterInteractionService
 from app.services.voter_search import VoterSearchIndexService
 
@@ -27,6 +28,7 @@ class VoterContactService:
     def __init__(self) -> None:
         self._interaction_service = VoterInteractionService()
         self._search_index = VoterSearchIndexService()
+        self._phone_validation = PhoneValidationService()
 
     # -----------------------------------------------------------------------
     # Phone
@@ -85,6 +87,11 @@ class VoterContactService:
             user_id=user_id,
         )
         await self._search_index.refresh_records(session, [voter_id])
+        phone.validation = await self._phone_validation.refresh_phone_validation(
+            session,
+            campaign_id=campaign_id,
+            phone_number=phone.value,
+        )
 
         return phone
 
@@ -139,6 +146,11 @@ class VoterContactService:
             user_id=user_id,
         )
         await self._search_index.refresh_records(session, [voter_id])
+        phone.validation = await self._phone_validation.refresh_phone_validation(
+            session,
+            campaign_id=campaign_id,
+            phone_number=phone.value,
+        )
 
         return phone
 
@@ -549,10 +561,36 @@ class VoterContactService:
         )
 
         return {
-            "phones": list(phones_result.scalars().all()),
+            "phones": await self._attach_phone_validations(
+                session,
+                campaign_id=campaign_id,
+                phones=list(phones_result.scalars().all()),
+            ),
             "emails": list(emails_result.scalars().all()),
             "addresses": list(addresses_result.scalars().all()),
         }
+
+    async def refresh_phone(
+        self,
+        session: AsyncSession,
+        campaign_id: uuid.UUID,
+        voter_id: uuid.UUID,
+        phone_id: uuid.UUID,
+    ) -> VoterPhone:
+        """Refresh cached validation for one campaign-scoped voter phone."""
+        phone = await self._get_contact(
+            session,
+            VoterPhone,
+            phone_id,
+            campaign_id,
+            voter_id,
+        )
+        phone.validation = await self._phone_validation.refresh_phone_validation(
+            session,
+            campaign_id=campaign_id,
+            phone_number=phone.value,
+        )
+        return phone
 
     async def set_primary(
         self,
@@ -636,6 +674,21 @@ class VoterContactService:
         )
         for contact in result.scalars().all():
             contact.is_primary = False
+
+    async def _attach_phone_validations(
+        self,
+        session: AsyncSession,
+        *,
+        campaign_id: uuid.UUID,
+        phones: list[VoterPhone],
+    ) -> list[VoterPhone]:
+        for phone in phones:
+            phone.validation = await self._phone_validation.get_validation_summary(
+                session,
+                campaign_id=campaign_id,
+                phone_number=phone.value,
+            )
+        return phones
 
     async def _get_contact(
         self,

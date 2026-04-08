@@ -56,6 +56,22 @@ export function useUpdatePhone(campaignId: string, voterId: string) {
   })
 }
 
+export function useRefreshPhoneValidation(campaignId: string, voterId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (phoneId: string) =>
+      api
+        .post(
+          `api/v1/campaigns/${campaignId}/voters/${voterId}/phones/${phoneId}/refresh-validation`,
+        )
+        .json<PhoneContact>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.all(campaignId, voterId) })
+      qc.invalidateQueries({ queryKey: ["voters", campaignId] })
+    },
+  })
+}
+
 export function useDeletePhone(campaignId: string, voterId: string) {
   const qc = useQueryClient()
   return useMutation({

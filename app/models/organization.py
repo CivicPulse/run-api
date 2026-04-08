@@ -57,6 +57,16 @@ class Organization(Base):
         ForeignKey("org_phone_numbers.id", use_alter=True, ondelete="SET NULL"),
         nullable=True,
     )
+    twilio_soft_budget_cents: Mapped[int | None] = mapped_column(nullable=True)
+    twilio_budget_warning_percent: Mapped[int] = mapped_column(
+        nullable=False,
+        default=80,
+        server_default="80",
+    )
+    twilio_budget_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

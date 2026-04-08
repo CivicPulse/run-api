@@ -128,6 +128,39 @@ async def update_phone(
     return PhoneResponse.model_validate(phone)
 
 
+@router.post(
+    "/campaigns/{campaign_id}/voters/{voter_id}/phones/{phone_id}/refresh-validation",
+    response_model=PhoneResponse,
+)
+@limiter.limit("60/minute", key_func=get_user_or_ip_key)
+async def refresh_phone_validation(
+    request: Request,
+    campaign_id: uuid.UUID,
+    voter_id: uuid.UUID,
+    phone_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(require_role("manager")),
+    db: AsyncSession = Depends(get_campaign_db),
+):
+    """Force a refresh of cached lookup intelligence for one phone."""
+    await ensure_user_synced(user, db)
+
+    try:
+        phone = await _service.refresh_phone(
+            session=db,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            phone_id=phone_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    await db.commit()
+
+    return PhoneResponse.model_validate(phone)
+
+
 @router.delete(
     "/campaigns/{campaign_id}/voters/{voter_id}/phones/{phone_id}",
     status_code=status.HTTP_204_NO_CONTENT,

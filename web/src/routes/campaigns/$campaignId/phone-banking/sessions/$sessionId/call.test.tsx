@@ -26,10 +26,77 @@ vi.mock("@/hooks/useCallLists", () => ({
   useCallList: vi.fn(),
 }))
 
+vi.mock("@/hooks/useVoiceCapability", () => ({
+  useVoiceCapability: vi.fn(() => ({
+    mode: "browser",
+    isLoading: false,
+    budget: null,
+  })),
+}))
+
+vi.mock("@/hooks/useTwilioDevice", () => ({
+  useTwilioDevice: vi.fn(() => ({
+    callStatus: "idle",
+    isMuted: false,
+    duration: 0,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    toggleMute: vi.fn(),
+  })),
+}))
+
+vi.mock("@/hooks/useCallerCheckInStatus", () => ({
+  useCallerCheckInStatus: vi.fn(() => ({
+    isLoading: false,
+    isError: false,
+    notAssigned: false,
+    data: { checked_in: true },
+  })),
+}))
+
+vi.mock("@/components/field/PhoneNumberList", () => ({
+  PhoneNumberList: ({
+    phones,
+    onCallStarted,
+  }: {
+    phones: Array<{ value: string }>
+    onCallStarted: (phone: string) => void
+  }) => (
+    <div>
+      {phones.map((phone) => (
+        <button
+          key={phone.value}
+          type="button"
+          onClick={() => onCallStarted(phone.value)}
+        >
+          {phone.value}
+        </button>
+      ))}
+    </div>
+  ),
+}))
+
+vi.mock("@/api/client", () => ({
+  api: {
+    get: vi.fn(() => ({
+      json: vi.fn().mockResolvedValue({ allowed: true, checked_in: true }),
+    })),
+    post: vi.fn(() => ({
+      json: vi.fn().mockResolvedValue({ blocked: false, message: null }),
+    })),
+  },
+}))
+
 // Mock useQuery for survey questions
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
 }))
+
+vi.mock("@twilio/voice-sdk", () => ({
+  Device: {
+    isSupported: true,
+  },
+}), { virtual: true })
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },

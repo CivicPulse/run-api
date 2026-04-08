@@ -20,6 +20,33 @@ const useOrgState = vi.hoisted(() => ({
       auth_token_hint: "••••6789",
       auth_token_updated_at: "2026-04-07T00:00:00Z",
       ready: true,
+      budget: {
+        configured: true,
+        soft_budget_cents: 5000,
+        warning_percent: 80,
+        state: "near_limit",
+        finalized_spend_cents: 3200,
+        pending_spend_cents: 500,
+        pending_item_count: 1,
+        estimated_total_spend_cents: 3700,
+        remaining_budget_cents: 1300,
+        warning_threshold_cents: 4000,
+        updated_at: "2026-04-07T00:00:00Z",
+      },
+      recent_activity: [
+        {
+          id: "ledger-1",
+          channel: "sms",
+          event_type: "sms.message",
+          provider_sid: "SM123",
+          provider_status: "delivered",
+          cost_cents: 120,
+          pending_cost: false,
+          campaign_id: "campaign-1",
+          voter_id: "voter-1",
+          created_at: "2026-04-07T00:00:00Z",
+        },
+      ],
     },
   },
   isLoading: false,
@@ -48,6 +75,14 @@ vi.mock("@/hooks/useOrgPermissions", () => ({
   useOrgPermissions: () => ({
     hasOrgRole,
   }),
+}))
+
+vi.mock("@/components/org/PhoneNumbersCard", () => ({
+  PhoneNumbersCard: () => <div data-testid="phone-numbers-card" />,
+}))
+
+vi.mock("@/components/org/DangerZone", () => ({
+  DangerZone: () => <div data-testid="danger-zone" />,
 }))
 
 vi.mock("sonner", () => ({

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -52,6 +53,9 @@ class TestVoterContactService:
         # Mock the interaction service record_interaction
         with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
+            service._phone_validation.refresh_phone_validation = AsyncMock(
+                return_value=SimpleNamespace(status="validated")
+            )
 
             # No existing primary phones
             mock_result = MagicMock()
@@ -109,6 +113,9 @@ class TestVoterContactService:
 
         with patch.object(service, "_interaction_service") as mock_interaction:
             mock_interaction.record_interaction = AsyncMock()
+            service._phone_validation.refresh_phone_validation = AsyncMock(
+                return_value=SimpleNamespace(status="validated")
+            )
 
             # Return existing primary phone
             mock_result = MagicMock()
@@ -266,6 +273,9 @@ class TestVoterContactService:
         mock_db.execute = AsyncMock(
             side_effect=[mock_phone_result, mock_email_result, mock_addr_result]
         )
+        service._phone_validation.get_validation_summary = AsyncMock(
+            return_value=SimpleNamespace(status="validated")
+        )
 
         result = await service.get_voter_contacts(
             session=mock_db,
@@ -279,6 +289,37 @@ class TestVoterContactService:
         assert len(result["phones"]) == 1
         assert len(result["emails"]) == 1
         assert len(result["addresses"]) == 0
+        assert result["phones"][0].validation.status == "validated"
+
+    async def test_refresh_phone_returns_phone_with_validation(
+        self, service, mock_db, voter_id, campaign_id
+    ):
+        phone = VoterPhone(
+            id=uuid.uuid4(),
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            value="+15551234",
+            type="cell",
+            is_primary=True,
+            source="manual",
+            created_at=utcnow(),
+            updated_at=utcnow(),
+        )
+        service._phone_validation.refresh_phone_validation = AsyncMock(
+            return_value=SimpleNamespace(status="pending")
+        )
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = phone
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.refresh_phone(
+            session=mock_db,
+            campaign_id=campaign_id,
+            voter_id=voter_id,
+            phone_id=phone.id,
+        )
+
+        assert result.validation.status == "pending"
 
     async def test_set_primary_unsets_others_and_sets_target(
         self, service, mock_db, voter_id, campaign_id, user_id
