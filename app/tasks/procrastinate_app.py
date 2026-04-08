@@ -29,5 +29,5 @@ procrastinate_app = procrastinate.App(
         conninfo=_make_conninfo(),
         kwargs={"options": "-c search_path=procrastinate,public"},
     ),
-    import_paths=["app.tasks.import_task"],
+    import_paths=["app.tasks.import_task", "app.tasks.sms_tasks"],
 )

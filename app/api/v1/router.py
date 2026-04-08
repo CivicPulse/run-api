@@ -18,6 +18,7 @@ from app.api.v1 import (
     org,
     phone_banks,
     shifts,
+    sms,
     surveys,
     turfs,
     users,
@@ -57,6 +58,7 @@ router.include_router(shifts.router, tags=["shifts"])
 router.include_router(dashboard.router, tags=["dashboard"])
 router.include_router(field.router, tags=["field"])
 router.include_router(config.router, tags=["config"])
+router.include_router(sms.campaign_router, prefix="/campaigns", tags=["sms"])
 router.include_router(voice.campaign_router, prefix="/campaigns", tags=["voice"])
 router.include_router(voice.twiml_router, prefix="/voice", tags=["voice"])
 router.include_router(webhooks.router, prefix="/webhooks/twilio", tags=["webhooks"])

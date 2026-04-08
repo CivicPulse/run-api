@@ -38,6 +38,7 @@ import { Route as CampaignsCampaignIdSurveysScriptIdRouteImport } from './routes
 import { Route as CampaignsCampaignIdSettingsMembersRouteImport } from './routes/campaigns/$campaignId/settings/members'
 import { Route as CampaignsCampaignIdSettingsGeneralRouteImport } from './routes/campaigns/$campaignId/settings/general'
 import { Route as CampaignsCampaignIdSettingsDangerRouteImport } from './routes/campaigns/$campaignId/settings/danger'
+import { Route as CampaignsCampaignIdPhoneBankingMessagesRouteImport } from './routes/campaigns/$campaignId/phone-banking/messages'
 import { Route as CampaignsCampaignIdVotersTagsIndexRouteImport } from './routes/campaigns/$campaignId/voters/tags/index'
 import { Route as CampaignsCampaignIdVotersListsIndexRouteImport } from './routes/campaigns/$campaignId/voters/lists/index'
 import { Route as CampaignsCampaignIdVotersImportsIndexRouteImport } from './routes/campaigns/$campaignId/voters/imports/index'
@@ -225,6 +226,12 @@ const CampaignsCampaignIdSettingsDangerRoute =
     path: '/danger',
     getParentRoute: () => CampaignsCampaignIdSettingsRoute,
   } as any)
+const CampaignsCampaignIdPhoneBankingMessagesRoute =
+  CampaignsCampaignIdPhoneBankingMessagesRouteImport.update({
+    id: '/messages',
+    path: '/messages',
+    getParentRoute: () => CampaignsCampaignIdPhoneBankingRoute,
+  } as any)
 const CampaignsCampaignIdVotersTagsIndexRoute =
   CampaignsCampaignIdVotersTagsIndexRouteImport.update({
     id: '/tags/',
@@ -371,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
   '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
   '/field/$campaignId/': typeof FieldCampaignIdIndexRoute
+  '/campaigns/$campaignId/phone-banking/messages': typeof CampaignsCampaignIdPhoneBankingMessagesRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -416,6 +424,7 @@ export interface FileRoutesByTo {
   '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
   '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
   '/field/$campaignId': typeof FieldCampaignIdIndexRoute
+  '/campaigns/$campaignId/phone-banking/messages': typeof CampaignsCampaignIdPhoneBankingMessagesRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -469,6 +478,7 @@ export interface FileRoutesById {
   '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
   '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
   '/field/$campaignId/': typeof FieldCampaignIdIndexRoute
+  '/campaigns/$campaignId/phone-banking/messages': typeof CampaignsCampaignIdPhoneBankingMessagesRoute
   '/campaigns/$campaignId/settings/danger': typeof CampaignsCampaignIdSettingsDangerRoute
   '/campaigns/$campaignId/settings/general': typeof CampaignsCampaignIdSettingsGeneralRoute
   '/campaigns/$campaignId/settings/members': typeof CampaignsCampaignIdSettingsMembersRoute
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/field/$campaignId/canvassing'
     | '/field/$campaignId/phone-banking'
     | '/field/$campaignId/'
+    | '/campaigns/$campaignId/phone-banking/messages'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -568,6 +579,7 @@ export interface FileRouteTypes {
     | '/field/$campaignId/canvassing'
     | '/field/$campaignId/phone-banking'
     | '/field/$campaignId'
+    | '/campaigns/$campaignId/phone-banking/messages'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -620,6 +632,7 @@ export interface FileRouteTypes {
     | '/field/$campaignId/canvassing'
     | '/field/$campaignId/phone-banking'
     | '/field/$campaignId/'
+    | '/campaigns/$campaignId/phone-banking/messages'
     | '/campaigns/$campaignId/settings/danger'
     | '/campaigns/$campaignId/settings/general'
     | '/campaigns/$campaignId/settings/members'
@@ -870,6 +883,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsCampaignIdSettingsDangerRouteImport
       parentRoute: typeof CampaignsCampaignIdSettingsRoute
     }
+    '/campaigns/$campaignId/phone-banking/messages': {
+      id: '/campaigns/$campaignId/phone-banking/messages'
+      path: '/messages'
+      fullPath: '/campaigns/$campaignId/phone-banking/messages'
+      preLoaderRoute: typeof CampaignsCampaignIdPhoneBankingMessagesRouteImport
+      parentRoute: typeof CampaignsCampaignIdPhoneBankingRoute
+    }
     '/campaigns/$campaignId/voters/tags/': {
       id: '/campaigns/$campaignId/voters/tags/'
       path: '/tags'
@@ -1045,6 +1065,7 @@ const CampaignsCampaignIdCanvassingRouteWithChildren =
   )
 
 interface CampaignsCampaignIdPhoneBankingRouteChildren {
+  CampaignsCampaignIdPhoneBankingMessagesRoute: typeof CampaignsCampaignIdPhoneBankingMessagesRoute
   CampaignsCampaignIdPhoneBankingIndexRoute: typeof CampaignsCampaignIdPhoneBankingIndexRoute
   CampaignsCampaignIdPhoneBankingCallListsCallListIdRoute: typeof CampaignsCampaignIdPhoneBankingCallListsCallListIdRoute
   CampaignsCampaignIdPhoneBankingCallListsIndexRoute: typeof CampaignsCampaignIdPhoneBankingCallListsIndexRoute
@@ -1057,6 +1078,8 @@ interface CampaignsCampaignIdPhoneBankingRouteChildren {
 
 const CampaignsCampaignIdPhoneBankingRouteChildren: CampaignsCampaignIdPhoneBankingRouteChildren =
   {
+    CampaignsCampaignIdPhoneBankingMessagesRoute:
+      CampaignsCampaignIdPhoneBankingMessagesRoute,
     CampaignsCampaignIdPhoneBankingIndexRoute:
       CampaignsCampaignIdPhoneBankingIndexRoute,
     CampaignsCampaignIdPhoneBankingCallListsCallListIdRoute:
