@@ -45,6 +45,11 @@ class InviteResponse(BaseSchema):
     expires_at: datetime
     accepted_at: datetime | None = None
     revoked_at: datetime | None = None
+    email_delivery_status: str = "pending"
+    email_delivery_queued_at: datetime | None = None
+    email_delivery_sent_at: datetime | None = None
+    email_delivery_error: str | None = None
+    email_delivery_last_event_at: datetime | None = None
     created_at: datetime
 
 
@@ -54,3 +59,16 @@ class InviteAcceptResponse(BaseSchema):
     message: str
     campaign_id: uuid.UUID
     role: str
+
+
+class PublicInviteResponse(BaseSchema):
+    """Public invite metadata shown before authentication/acceptance."""
+
+    token: uuid.UUID
+    status: str
+    campaign_id: uuid.UUID | None = None
+    campaign_name: str | None = None
+    organization_name: str | None = None
+    inviter_name: str | None = None
+    role: str | None = None
+    expires_at: datetime | None = None

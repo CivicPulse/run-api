@@ -12,6 +12,7 @@ from app.models.import_job import (
 )
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
+from app.models.email_delivery_attempt import EmailDeliveryAttempt
 from app.models.phone_validation import PhoneValidation
 from app.models.phone_bank import PhoneBankSession, SessionCaller
 from app.models.shift import Shift, ShiftVolunteer
@@ -40,6 +41,7 @@ __all__ = [
     "Campaign",
     "CampaignMember",
     "DoNotCallEntry",
+    "EmailDeliveryAttempt",
     "FieldMappingTemplate",
     "ImportChunk",
     "ImportChunkStatus",

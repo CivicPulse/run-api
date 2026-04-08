@@ -111,8 +111,16 @@ function MembersSettings() {
 
   const handleInviteSubmit = inviteForm.handleSubmit(async (data) => {
     try {
-      await createInvite.mutateAsync(data)
-      toast.success(`Invite sent to ${data.email}`)
+      const invite = await createInvite.mutateAsync(data)
+      if (invite.email_delivery_status === "submitted") {
+        toast.success(`Invite sent to ${data.email}`)
+      } else if (invite.email_delivery_status === "failed") {
+        toast.warning(
+          `Invite created for ${data.email}, but email queueing failed. You can retry from the pending invites list.`,
+        )
+      } else {
+        toast.success(`Invite queued for ${data.email}`)
+      }
       inviteForm.reset()
       setInviteDialogOpen(false)
     } catch {

@@ -128,7 +128,6 @@ function VolunteerRegisterPage() {
     try {
       if (isManager) {
         if (mode === "invite") {
-          // Invite mode: create volunteer record and notify about invite
           const result = await createVolunteer.mutateAsync({
             ...payload,
             send_invite: true,
@@ -136,9 +135,7 @@ function VolunteerRegisterPage() {
           form.reset()
           setPreFilled(false)
           setMode("record")
-          toast.info(
-            "Volunteer created. Email invite feature is coming soon.",
-          )
+          toast.success("Volunteer created. Check pending invites for delivery status.")
           navigate({
             to: "/campaigns/$campaignId/volunteers/$volunteerId",
             params: { campaignId, volunteerId: result.id },

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -90,6 +90,8 @@ class TestCreateInvite:
         creator = _make_user(role=CampaignRole.OWNER)
         campaign_id = uuid.uuid4()
 
+        service.enqueue_invite_email = AsyncMock(side_effect=lambda _db, inv: inv)
+
         invite = await service.create_invite(
             db=mock_db,
             campaign_id=campaign_id,
@@ -107,6 +109,7 @@ class TestCreateInvite:
         assert delta.days >= 6  # at least 6 days remaining
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()
+        service.enqueue_invite_email.assert_awaited_once()
 
     async def test_rejects_if_caller_role_below_invited_role(self, service, mock_db):
         """Admin cannot invite another admin or owner."""
@@ -163,6 +166,31 @@ class TestValidateInvite:
 
         result = await service.validate_invite(mock_db, invite.token)
         assert result is None
+
+
+class TestEnqueueInviteEmail:
+    """Tests for enqueue_invite_email."""
+
+    async def test_marks_invite_failed_when_queueing_raises(self, service, mock_db):
+        """Queue failures persist failed delivery state instead of raising."""
+        invite = _make_invite(role="volunteer")
+
+        defer_async = AsyncMock(side_effect=RuntimeError("queue offline"))
+        configured_task = MagicMock()
+        configured_task.defer_async = defer_async
+
+        with patch(
+            "app.services.invite.send_campaign_invite_email.configure",
+            return_value=configured_task,
+        ):
+            result = await service.enqueue_invite_email(mock_db, invite)
+
+        assert result is invite
+        assert invite.email_delivery_status == "failed"
+        assert invite.email_delivery_error == "Failed to queue invite email"
+        assert invite.email_delivery_last_event_at is not None
+        assert mock_db.commit.await_count == 2
+        assert mock_db.refresh.await_count == 2
 
     async def test_returns_none_for_revoked_token(self, service, mock_db):
         """Revoked token returns None."""

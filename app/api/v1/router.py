@@ -14,6 +14,7 @@ from app.api.v1 import (
     imports,
     invites,
     join,
+    mailgun_webhooks,
     members,
     org,
     phone_banks,
@@ -62,3 +63,8 @@ router.include_router(sms.campaign_router, prefix="/campaigns", tags=["sms"])
 router.include_router(voice.campaign_router, prefix="/campaigns", tags=["voice"])
 router.include_router(voice.twiml_router, prefix="/voice", tags=["voice"])
 router.include_router(webhooks.router, prefix="/webhooks/twilio", tags=["webhooks"])
+router.include_router(
+    mailgun_webhooks.router,
+    prefix="/webhooks/mailgun",
+    tags=["webhooks"],
+)

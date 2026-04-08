@@ -10,7 +10,7 @@ import { SkipNav } from "@/components/shared/SkipNav"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuthStore } from "@/stores/authStore"
 
-const PUBLIC_ROUTES = ["/login", "/callback"]
+const PUBLIC_ROUTES = ["/login", "/callback", "/invites"]
 const AuthenticatedAppShell = lazy(() =>
   import("@/components/layout/AuthenticatedAppShell").then((module) => ({
     default: module.AuthenticatedAppShell,

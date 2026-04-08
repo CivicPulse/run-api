@@ -18,6 +18,8 @@ from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
 from app.models.organization import Organization
+from app.models.user import User
+from app.tasks.invite_tasks import send_campaign_invite_email
 
 if TYPE_CHECKING:
     from app.core.security import AuthenticatedUser
@@ -66,9 +68,14 @@ class InviteService:
                 raise InsufficientPermissionsError(
                     "Admins can only invite manager role and below"
                 )
+        elif creator.role == CampaignRole.MANAGER:
+            if invited_role > CampaignRole.VOLUNTEER:
+                raise InsufficientPermissionsError(
+                    "Managers can only invite volunteer role and below"
+                )
         else:
             raise InsufficientPermissionsError(
-                "Only admins and owners can create invites"
+                "Only managers, admins, and owners can create invites"
             )
 
         # Check for existing pending invite
@@ -102,6 +109,7 @@ class InviteService:
         db.add(invite)
         await db.commit()
         await db.refresh(invite)
+        await self.enqueue_invite_email(db, invite)
         logger.info(
             "Invite created for {} to campaign {} with role {}",
             email,
@@ -134,6 +142,34 @@ class InviteService:
             return None
         if invite.accepted_at is not None:
             return None
+        return invite
+
+    async def enqueue_invite_email(
+        self,
+        db: AsyncSession,
+        invite: Invite,
+    ) -> Invite:
+        """Queue asynchronous invite email delivery after the invite commit."""
+        invite.email_delivery_status = "queued"
+        invite.email_delivery_queued_at = utcnow()
+        invite.email_delivery_last_event_at = invite.email_delivery_queued_at
+        invite.email_delivery_error = None
+        await db.commit()
+        await db.refresh(invite)
+
+        try:
+            await send_campaign_invite_email.configure(
+                queueing_lock=f"invite-email:{invite.id}",
+            ).defer_async(
+                invite_id=str(invite.id),
+                campaign_id=str(invite.campaign_id),
+            )
+        except Exception:
+            invite.email_delivery_status = "failed"
+            invite.email_delivery_error = "Failed to queue invite email"
+            invite.email_delivery_last_event_at = utcnow()
+            await db.commit()
+            await db.refresh(invite)
         return invite
 
     async def accept_invite(
@@ -321,3 +357,34 @@ class InviteService:
             )
         )
         return list(result.scalars().all())
+
+    async def get_public_invite(
+        self,
+        db: AsyncSession,
+        token: uuid.UUID,
+    ) -> tuple[Invite | None, Campaign | None, Organization | None, User | None]:
+        """Load public-facing invite context by token."""
+        invite = (
+            await db.execute(select(Invite).where(Invite.token == token))
+        ).scalar_one_or_none()
+        if invite is None:
+            return None, None, None, None
+
+        campaign = await db.get(Campaign, invite.campaign_id)
+        organization = None
+        if campaign and campaign.organization_id is not None:
+            organization = await db.get(Organization, campaign.organization_id)
+        inviter = await db.get(User, invite.created_by)
+        return invite, campaign, organization, inviter
+
+    def get_public_invite_status(self, invite: Invite | None) -> str:
+        """Summarize the current public invite state."""
+        if invite is None:
+            return "not_found"
+        if invite.accepted_at is not None:
+            return "accepted"
+        if invite.revoked_at is not None:
+            return "revoked"
+        if invite.expires_at <= utcnow():
+            return "expired"
+        return "valid"

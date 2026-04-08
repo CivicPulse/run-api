@@ -26,11 +26,13 @@ from app.schemas.volunteer import (
     VolunteerTagUpdate,
     VolunteerUpdate,
 )
+from app.services.invite import InviteService
 from app.services.volunteer import VolunteerService
 
 router = APIRouter()
 
 _volunteer_service = VolunteerService()
+_invite_service = InviteService()
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +61,14 @@ async def create_volunteer(
     volunteer = await _volunteer_service.create_volunteer(
         db, campaign_id, body, user.id
     )
+    if body.send_invite and body.email:
+        await _invite_service.create_invite(
+            db=db,
+            campaign_id=campaign_id,
+            email=body.email,
+            role="volunteer",
+            creator=user,
+        )
     await db.commit()
     return VolunteerResponse.model_validate(volunteer)
 

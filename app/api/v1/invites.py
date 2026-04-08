@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import get_user_or_ip_key, limiter
 from app.core.security import AuthenticatedUser, get_current_user, require_role
 from app.db.session import get_db
-from app.schemas.invite import InviteAcceptResponse, InviteCreate, InviteResponse
+from app.schemas.invite import (
+    InviteAcceptResponse,
+    InviteCreate,
+    InviteResponse,
+    PublicInviteResponse,
+)
 from app.services.invite import InviteService
 
 router = APIRouter()
@@ -50,6 +55,11 @@ async def create_invite(
             expires_at=invite.expires_at,
             accepted_at=invite.accepted_at,
             revoked_at=invite.revoked_at,
+            email_delivery_status=invite.email_delivery_status,
+            email_delivery_queued_at=invite.email_delivery_queued_at,
+            email_delivery_sent_at=invite.email_delivery_sent_at,
+            email_delivery_error=invite.email_delivery_error,
+            email_delivery_last_event_at=invite.email_delivery_last_event_at,
             created_at=invite.created_at,
         )
     except InsufficientPermissionsError:
@@ -84,10 +94,43 @@ async def list_invites(
             expires_at=inv.expires_at,
             accepted_at=inv.accepted_at,
             revoked_at=inv.revoked_at,
+            email_delivery_status=inv.email_delivery_status,
+            email_delivery_queued_at=inv.email_delivery_queued_at,
+            email_delivery_sent_at=inv.email_delivery_sent_at,
+            email_delivery_error=inv.email_delivery_error,
+            email_delivery_last_event_at=inv.email_delivery_last_event_at,
             created_at=inv.created_at,
         )
         for inv in invites
     ]
+
+
+@router.get(
+    "/public/invites/{token}",
+    response_model=PublicInviteResponse,
+)
+@limiter.limit("120/minute", key_func=get_user_or_ip_key)
+async def get_public_invite(
+    request: Request,
+    token: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resolve public invite metadata for the invite-entry page."""
+    invite, campaign, organization, inviter = await invite_service.get_public_invite(
+        db,
+        token,
+    )
+    status_value = invite_service.get_public_invite_status(invite)
+    return PublicInviteResponse(
+        token=token,
+        status=status_value,
+        campaign_id=campaign.id if campaign else None,
+        campaign_name=campaign.name if campaign else None,
+        organization_name=organization.name if organization else None,
+        inviter_name=inviter.display_name if inviter else None,
+        role=invite.role if invite else None,
+        expires_at=invite.expires_at if invite else None,
+    )
 
 
 @router.delete(
