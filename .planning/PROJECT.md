@@ -119,7 +119,10 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-- Planning next milestone after v1.15 closeout
+- Pluggable transactional email delivery foundation with Mailgun as the first provider implementation
+- Product invite emails for existing org, campaign, volunteer, and staff invitation flows
+- ZITADEL email delivery configuration and operator documentation for auth/system emails
+- Basic email delivery and audit metadata for sent transactional messages
 
 ### Out of Scope
 
@@ -127,7 +130,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - FEC/state campaign finance compliance — 80+ federal report types, 50 state systems
 - Mobile app — API-only; mobile clients are separate projects
 - Predictive dialer / auto-dialer — TCPA auto-dialer compliance; manual click-to-call only
-- Email delivery engine — building deliverability infra is a separate product
+- Campaign-authored or marketing email campaigns — this milestone is transactional/system email only
 - AI-generated campaign content — client-side concern
 - Voter score prediction — import vendor-provided scores instead
 - Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
@@ -147,13 +150,25 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current Milestone
 
-None active. v1.15 Twilio Communications shipped on 2026-04-08; next milestone definition has not started yet.
+v1.16 Email Delivery Foundation
+
+**Goal:** Add pluggable transactional email delivery to CivicPulse Run, starting with app invites and system/auth email paths, with Mailgun as the first provider and ZITADEL email delivery configured and documented.
+
+**Target features:**
+- Provider-agnostic email delivery foundation with Mailgun as the first implementation
+- Product invite emails for org/campaign member invitation flows already in the app
+- Email support for volunteer/staff invitation flows that already exist
+- ZITADEL email delivery configuration and documentation for its own auth/system emails
+- Basic delivery/audit metadata for sent email events
+- Clear separation between transactional/system email now and broader campaign/authored email later
 
 ## Current State
 
-**Shipped:** v1.15 Twilio Communications (2026-04-08)
+**Current milestone:** v1.16 Email Delivery Foundation (started 2026-04-08)
 
 The platform now ships org-scoped Twilio communications across the existing field workflow. v1.15 closed 7 phases (21 plans), added encrypted org Twilio credentials plus phone inventory, secured webhook ingress, browser click-to-call, two-way SMS with inbox threading and STOP/START enforcement, spend controls with communication telemetry, and a campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight.
+
+v1.16 shifts the platform into transactional email. The milestone will add a provider abstraction with Mailgun first, wire existing invite flows onto the new delivery path, cover ZITADEL auth/system email configuration, and capture basic delivery metadata without expanding into marketing-style campaign email.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
@@ -166,7 +181,10 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Define the next post-communications milestone
+- Ship provider-agnostic transactional email delivery with Mailgun as the first provider
+- Replace invite flows that currently lack platform email delivery with real outbound email
+- Make ZITADEL able to send auth/system email through a configured provider path
+- Establish durable email audit metadata and clear future boundaries for broader email capabilities
 
 ## Context
 
@@ -213,6 +231,8 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Org-scoped Twilio billing and credentials | Twilio account ownership, spend policy, and number routing belong at org scope rather than per campaign | ✓ Good — credentials, phone inventory, spend controls, and webhook auth all share one org boundary |
 | Shared communication ledger before reporting UI | Persist billable call/message facts once so later reporting and targeting can reuse the same telemetry | ✓ Good — voice and SMS now reconcile into append-only communication ledger rows |
 | Cached Twilio Lookup over mutating contact source data | Preserve user-entered contact labels while exposing provider-derived line-type intelligence as a reusable summary | ✓ Good — contact CRUD and SMS eligibility now share a 90-day lookup cache without rewriting source fields |
+| Transactional email starts with a provider seam | Invite and auth email need immediate delivery, but provider lock-in would make later SMTP/SES/Postmark support expensive | — Pending |
+| ZITADEL email stays configure-and-document in-product scope | Auth email originates in ZITADEL, so this milestone should unblock delivery and operations without rebuilding auth templating in CivicPulse | — Pending |
 
 ---
 ## Evolution
@@ -233,4 +253,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 — v1.15 Twilio Communications milestone completed*
+*Last updated: 2026-04-08 — v1.16 Email Delivery Foundation milestone started*

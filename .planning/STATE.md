@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.15
-milestone_name: Twilio Communications
-status: v1.15 milestone complete
-stopped_at: v1.15 archived and phase directories moved to milestone storage
-last_updated: "2026-04-08T02:10:00Z"
-last_activity: 2026-04-08 -- v1.15 archived after passing milestone audit
+milestone: v1.16
+milestone_name: Email Delivery Foundation
+status: defining requirements
+stopped_at: milestone kickoff before requirements and roadmap
+last_updated: "2026-04-08T12:00:00Z"
+last_activity: 2026-04-08 -- started v1.16 Email Delivery Foundation milestone
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-08)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** planning the next milestone after v1.15 closeout
+**Current focus:** defining requirements for v1.16 Email Delivery Foundation
 
 ## Current Position
 
-Phase: milestone complete
-Plan: 21 plans complete
-Status: v1.15 archived after audit and cleanup
-Last activity: 2026-04-08 -- v1.15 archived after passing milestone audit
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-04-08 -- Milestone v1.16 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -54,6 +54,10 @@ Progress: [██████████] 100%
 - v1.15: Phase 94 uses a campaign-scoped `phone_validations` cache with a 90-day TTL instead of mutating voter contact source data with Twilio-derived line-type intelligence.
 - v1.15: Contact save remains available when Twilio Lookup fails; stale or pending validation surfaces as warning state plus manual refresh.
 - v1.15: SMS eligibility now consumes cached lookup summaries and blocks landline, stale, and review-needed numbers before send.
+- v1.16: Transactional email will use a provider abstraction with Mailgun first so CivicPulse can add providers without rewriting invite flows.
+- v1.16: This milestone covers transactional/system email only, including existing invite flows and ZITADEL auth/system delivery setup.
+- v1.16: ZITADEL scope is configure-and-document email delivery, not CivicPulse-managed auth templating or branding tooling.
+- v1.16: Basic email delivery/audit metadata is in scope; inboxes, campaign email, and advanced analytics remain out of scope.
 
 ## Pending Todos
 
@@ -67,5 +71,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-08
-Stopped at: v1.15 archived and phase directories moved to `.planning/milestones/v1.15-phases/`
+Stopped at: milestone kickoff before requirements and roadmap
 Resume file: .planning/PROJECT.md
