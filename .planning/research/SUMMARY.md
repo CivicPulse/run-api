@@ -1,190 +1,178 @@
-# Research Summary — v1.15 Twilio Communications
+# Project Research Summary
 
-**Project:** CivicPulse Run v1.15
-**Domain:** Browser-based calling, two-way SMS, phone validation, opt-out management for multi-tenant political campaign field ops
-**Researched:** 2026-04-07
+**Project:** CivicPulse Run API
+**Domain:** v1.16 transactional email delivery foundation
+**Researched:** 2026-04-08
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v1.15 adds Twilio-powered communications to CivicPulse Run: WebRTC click-to-call for phone banking, two-way SMS with a reply inbox, phone number validation via Twilio Lookup, and org-scoped spend controls. The integration follows a well-documented pattern — official Twilio Python SDK with async HTTP client, `@twilio/voice-sdk` v2 in the browser, Fernet-encrypted credentials per org in PostgreSQL, and FastAPI webhook routes secured by Twilio signature validation. All patterns have HIGH-confidence official documentation. The stack additions are minimal: two backend packages (`twilio`, `cryptography`) and one frontend package (`@twilio/voice-sdk`). No new infrastructure is required — bulk SMS jobs run through the existing Procrastinate queue.
+This milestone is not a general email platform. It is a narrow transactional-email foundation for an existing multi-tenant campaign operations product: app-owned invite emails plus ZITADEL-owned auth/system email delivery. The research is consistent that experts split those paths cleanly. CivicPulse should send its own invite flows through an internal provider seam with Mailgun as the first adapter, while ZITADEL continues to send password reset, verification, and related auth mail through its own SMTP configuration.
 
-The feature surface is large but naturally phases around a hard dependency tree: org credential storage must come first, then phone number provisioning, then webhook infrastructure, then voice calling, then SMS, then spend controls. Voice calling (replacing `tel:` links with in-browser WebRTC) is the highest-value feature and is largely self-contained once webhook infra is in place. SMS is higher complexity — it requires A2P 10DLC brand registration (3-5 week external approval) and full conversation thread management. The single most important lead-time item is starting A2P 10DLC registration in Phase 1, even though SMS ships in Phase 5.
+The recommended build is an async, audit-backed delivery path inside the existing FastAPI + Procrastinate architecture. Invite creation remains the durable system of record; email send is queued after commit, rendered from app-owned Jinja templates, submitted via Mailgun HTTP, and reconciled into normalized delivery states. The product boundary stays tight: transactional/system email only, no campaign-authored email, no editor, no analytics-driven engagement features.
 
-The dominant risks are not technical — they are security and compliance. Storing Twilio credentials in plaintext is the fastest path to org account takeover. Misunderstanding the TCPA political exemption (it only covers manually-initiated calls, not SMS or automated calling) creates class-action exposure for every campaign on the platform. Silent webhook URL mismatch behind Traefik is the most common integration failure. All three are avoidable with clear implementation rules established before any code is written.
+The main risks are false delivery confidence, provider lock-in, and operational misconfiguration. The roadmap should explicitly guard against treating Mailgun acceptance as delivery, matching webhook events by recipient email, mixing Mailgun and ZITADEL ownership, or launching without domain/DNS/auth configuration. Requirements should treat final-state visibility, idempotent send behavior, explicit public URL config, and operator runbooks as first-class milestone outputs, not polish.
 
-## Stack Additions
+## Key Findings
 
-- **`twilio >= 9.10.4` (Python)** — Official REST client, Access Token generation, TwiML builder, webhook validator, and `AsyncTwilioHttpClient` for non-blocking API calls. Covers all five Twilio integration surfaces in a single package.
-- **`cryptography >= 44.0.0` (Python)** — Fernet symmetric encryption for Auth Token and API Key Secret at rest in PostgreSQL. Already a transitive dependency of `authlib`; no new build overhead. Implemented as a SQLAlchemy `TypeDecorator` (`EncryptedString`) for transparent encrypt/decrypt.
-- **`@twilio/voice-sdk ^2.18.1` (TypeScript/React)** — Browser WebRTC calling. v1.x EOL as of April 2025 — only v2.x supported. Wraps WebRTC, manages call state via event emitters (`Device`, `Call`). The frontend wraps it in a `useTwilioDevice` hook; no React-specific Twilio library needed.
-- **No new infrastructure** — Procrastinate (existing) handles bulk SMS job queuing via PostgreSQL. No Redis, no Celery, no separate webhook microservice.
-- **Key integration pattern** — All Twilio API calls must use `AsyncTwilioHttpClient`; synchronous SDK calls in async FastAPI handlers will block the event loop and degrade all concurrent requests.
+### Recommended Stack
 
-## Feature Table Stakes
+The stack change is intentionally small. Reuse the existing backend foundation and add only what the milestone needs: Jinja2 for app-owned templates, Mailgun HTTP via existing `httpx`, Procrastinate for async send/retry, and PostgreSQL tables for audit and idempotency. Do not add a Mailgun SDK, app-side SMTP adapter, new queue infrastructure, or provider-stored templates.
 
-These must ship in v1.15:
+**Core technologies:**
+- `httpx` — Mailgun HTTP client path; keeps the provider adapter thin and consistent with existing async integrations.
+- `Jinja2>=3.1.6` — local text+HTML template rendering owned in Git, not in provider config.
+- `procrastinate` — post-commit send execution, retry handling, and failure isolation without new infrastructure.
+- PostgreSQL — `email_messages` / `email_events`, idempotency keys, and operator-facing audit state.
+- Mailgun Email API — first provider implementation with region-aware config and webhook support.
+- ZITADEL SMTP configuration — separate auth/system email path owned by ZITADEL operations, not by CivicPulse runtime.
 
-**Voice (Click-to-Call):**
-- Browser-to-PSTN calling via Voice JS SDK (WebRTC) in phone banking UI
-- Access token generation endpoint with VoiceGrant (scoped to org TwiML App)
-- Mute/unmute controls, call status events (ringing, answered, completed)
-- Graceful `tel:` fallback when no Twilio config — existing field volunteer behavior must not break
-- Call duration and disposition captured as `VoterInteraction` record
-- DNC check before every dial (existing `DNCService`)
+Critical config requirements:
+- `APP_EMAIL_PROVIDER=mailgun`
+- `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_REGION`
+- derived Mailgun base URL from region
+- `MAILGUN_WEBHOOK_SIGNING_KEY`
+- `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`
+- explicit public app base URL for invite links
+- ZITADEL SMTP/custom-domain settings documented separately
 
-**SMS:**
-- Individual SMS to a voter from their contact page (DNC + opt-out check before send)
-- Two-way conversational reply inbox for inbound messages
-- Message templates with merge fields
-- Delivery status tracking (sent / delivered / failed)
-- "Reply STOP to opt out" in first message (TCPA/carrier requirement)
+### Expected Features
 
-**Number Management:**
-- BYO phone number registration in org settings
-- Phone number inventory display with capabilities (voice/SMS/MMS)
+The milestone scope is transactional email only. The table stakes are real email for existing invite flows, provider-backed send and delivery metadata, idempotent resend behavior, stable accept-invite links into existing flows, and ZITADEL email configuration/runbooks. The research is aligned that app invite logic should be reused, not redesigned.
 
-**Opt-Out:**
-- STOP keyword processing synced to local DNC list via webhook (Twilio handles carrier-level block; platform syncs for UI visibility)
-- `SMS_STOP` reason added to `DNCReason` enum — distinct from call refusals
-- START/UNSTOP re-subscribe via inbound webhook
+**Must have (table stakes):**
+- Existing org/campaign/staff/volunteer invite flows send real email through the platform.
+- Typed transactional email service with a provider abstraction and Mailgun-first implementation.
+- App-owned templates with subject, HTML, and plain-text variants.
+- Delivery/audit persistence tied to the invite or related domain record.
+- Idempotent send/resend behavior keyed to the logical invite action.
+- Final delivery state reconciliation through provider events/webhooks.
+- ZITADEL SMTP/provider setup and operator documentation for auth/system mail.
+- Deliverability prerequisites documented: sender identity, SPF/DKIM/DMARC, environment-specific domains.
 
-**Compliance guardrails:**
-- Server-side calling hours enforcement (8 AM–9 PM in voter inferred timezone from ZIP)
-- Block SMS sends to numbers without opt-in consent; compliance warning for L2-imported numbers
-- No auto-dialer, no predictive dialer, no ringless voicemail (TCPA anti-features already in PROJECT.md scope exclusions)
+**Should have (useful within milestone if time permits after table stakes):**
+- Staff-visible resend action and last-send status.
+- Delivery event timeline per invite/supportable send history.
+- Simple template preview or test-send workflow.
+- Suppression-aware resend UX for permanently failed recipients.
 
-**Infrastructure:**
-- Org-scoped Twilio credentials stored encrypted at rest (`EncryptedString` TypeDecorator, BYTEA columns)
-- Twilio signature validation on all webhook routes (custom FastAPI dependency, NOT middleware)
-- Idempotent webhook handlers keyed on `twilio_sid` (Twilio retries on timeout/5xx)
-- RLS policies on all new campaign-scoped tables
+**Defer (explicitly out of scope):**
+- Campaign-authored or bulk email.
+- Marketing automation, segmentation, drip logic, or analytics-led engagement features.
+- Rich editor / per-org template builder.
+- In-app inbox or reply handling.
+- Attachments, unsubscribe/preferences center, or broad open/click tracking.
+- Multiple live providers or automatic provider failover.
 
-## Feature Differentiators
+### Architecture Approach
 
-These add excellence if scope allows:
+The architecture should mirror the existing Twilio and job-backed import patterns: domain write first, email queue second, provider send in the worker, webhook reconciliation later. The app owns invite email generation and normalized audit state; ZITADEL owns auth email delivery through separate SMTP configuration and docs.
 
-- **Inline call controls with voter context card** — caller sees voter name, prior interactions, survey script while on call; no tab-switching during phone banking
-- **Call timer with live duration display** — visual urgency indicator for pace during phone bank sessions
-- **A2P 10DLC registration wizard** — guided org onboarding through brand registration + Campaign Verify; most competitors punt this to the Twilio console
-- **Cost estimate before bulk SMS send** — "This will send 2,340 messages at ~$0.0079/msg = ~$18.49. Proceed?"
-- **SMS eligibility badge on voter contact cards** — mobile vs. landline/VoIP indicator after Lookup validation
-- **Conversation threading with voter context** — reply inbox shows full thread alongside voter record and prior interaction history
-- **Scheduled SMS send** — queue for afternoon delivery via Procrastinate `scheduled_at`
-- **Supervisor live session dashboard** — active callers, calls completed, avg duration during phone bank sessions
+**Major components:**
+1. `EmailProvider` contract + `MailgunEmailProvider` — isolates provider-specific send and webhook verification behavior.
+2. `EmailService` + template renderer — builds typed messages, creates idempotent audit rows, and queues jobs after commit.
+3. `email_messages` / `email_events` models — normalized send attempts, provider message IDs, lifecycle states, and append-only events.
+4. Procrastinate email tasks — asynchronous send, retry, status transitions, and replay-safe execution.
+5. Mailgun webhook endpoint — signature verification and final-state reconciliation by local send ID / provider message ID.
+6. Invite integration call sites — campaign invite first, then volunteer/staff/org variants on the same foundation.
+7. ZITADEL operator docs/config — SMTP/custom-domain setup, ownership boundaries, and smoke-test runbook.
 
-## Anti-Features
+### Critical Pitfalls
 
-Explicitly excluded from v1.15:
+1. **Treating provider acceptance as delivery** — require normalized states such as `queued`, `submitted`, `delivered`, `failed`, `bounced`, `complained`, `suppressed`, and do not surface “delivered” without webhook evidence.
+2. **Mixing CivicPulse invite email with ZITADEL auth email ownership** — keep separate config, code paths, docs, and debugging boundaries from day one.
+3. **No idempotency or sending before commit** — use an outbox/job pattern and unique logical send keys so retries do not create duplicate or orphaned invite emails.
+4. **Reconciling events by recipient email** — join webhook events by local send-attempt identity and provider message ID, never by address alone.
+5. **Region/domain/secret misconfiguration** — make Mailgun region first-class, isolate a transactional sending domain, separate API/webhook/SMTP secrets, and publish rotation/runbook guidance before go-live.
+6. **Cross-tenant leakage through batching or metadata** — send one invite per recipient and keep provider tags/variables opaque and minimal.
+7. **Wrong public links in emails** — generate invite URLs from explicit public config, not request headers or internal service hosts.
 
-| Anti-Feature | Reason |
-|---|---|
-| Predictive / auto-dialer | TCPA $500–$1,500 per call; PROJECT.md out-of-scope |
-| Ringless voicemail (voicemail drop) | FCC treats as a "call" requiring Prior Express Consent |
-| Call audio recording | Two-party consent required in 12 states; PII liability |
-| AI-generated SMS reply suggestions | Out of scope per PROJECT.md; off-message risk |
-| Short code provisioning | $1,000+/month, 8-12 week approval; overkill for campaign scale |
-| Automatic number purchase without explicit confirmation | Real costs ($1-2/month/number); must be deliberate org admin action |
-| Shared sender numbers across orgs | Twilio opt-out is per-number-pair; shared numbers pollute all orgs on STOP |
-| SMS body content stored in DB | PII liability; store `twilio_sid` reference and body length only |
-| Master Auth Token for Access Token signing | Account-wide, cannot be scoped or revoked independently — use API Keys |
-| Twilio Conversations API | Session/participant complexity with no benefit for transactional campaign SMS |
-| CNAM (caller name) lookup | $0.01/lookup for inaccurate data; voter files already have names |
+## Implications for Roadmap
 
-## Architecture Highlights
+Based on the combined research, the milestone should be decomposed into five build slices.
 
-**New DB tables (7 total, ~6-7 Alembic migrations):**
-- `org_twilio_configs` — one row per org; `auth_token` and `api_key_secret` as BYTEA (Fernet-encrypted); org-level (no campaign RLS); queried via `get_db()`
-- `org_twilio_phones` — org phone numbers with capabilities JSONB, default voice/SMS flags; unique on `(organization_id, phone_number)`
-- `call_records` — Twilio Voice metadata; RLS-protected; idempotent on `twilio_sid`; links to `voter_interactions` via FK
-- `sms_conversations` — thread container per `(campaign_id, org_phone_id, voter_phone)`; tracks opt-out status and unread count
-- `sms_messages` — append-only message log; idempotent on `twilio_sid` via `ON CONFLICT DO NOTHING`; body stored as TEXT (PII decision to revisit)
-- `twilio_spend_ledger` — append-only billable event log; org-level (no campaign RLS); used for pre-send budget gating
-- `phone_validations` — Lookup API result cache; RLS-protected; 90-day TTL; keyed on `(campaign_id, phone_number)`
+### Phase 1: Provider Foundation and Secret Hygiene
+**Rationale:** Every later slice depends on a clean provider seam, explicit config, and safe operational boundaries.
+**Delivers:** `EmailProvider` contract, Mailgun adapter, config surface, Jinja2 dependency, sender policy, region-aware base URL derivation, secret separation rules.
+**Addresses:** provider-backed sending, template system foundation, environment-safe configuration.
+**Avoids:** Mailgun lock-in, region/base-URL mismatch, secret sprawl, shared-domain mistakes.
 
-**Encryption pattern:** `EncryptedString` SQLAlchemy TypeDecorator using `cryptography.fernet.Fernet`. Symmetric key from `TWILIO_ENCRYPTION_KEY` env var injected via K8s Secret. Auth Token and API Key Secret encrypted on write, decrypted only when making Twilio API calls. GET config endpoint returns masked token (last 4 chars only) — full token never returned via API.
+### Phase 2: Persistence and Async Delivery Core
+**Rationale:** Invite integration should not happen before the audit/idempotency model and queue semantics exist.
+**Delivers:** `email_messages`, `email_events`, idempotency key strategy, `EmailService`, Procrastinate send task, retry rules, post-commit queueing.
+**Addresses:** delivery metadata persistence, idempotent send behavior, resend-safe foundation.
+**Avoids:** send-before-commit races, duplicate emails, boolean-only “sent” state.
 
-**Webhook security:** All Twilio webhooks route to `/api/v1/webhooks/twilio/*` — public routes (no JWT auth) with Twilio signature validation as a FastAPI dependency. Org resolved from `AccountSid` or `To` phone number in form data. Critical: webhook URL must be reconstructed from `X-Forwarded-Proto` + configured `TWILIO_WEBHOOK_BASE_URL` — never from `request.url` which exposes the internal Traefik-side HTTP URL.
+### Phase 3: Invite Delivery Integration
+**Rationale:** Existing product value comes from making already-present invite flows actually send email.
+**Delivers:** campaign invite email path first, then volunteer/staff/org invite variants; stable accept-invite links; staff-visible resend/status hooks where already supported by UX.
+**Addresses:** real invite emails, invite-context content, stable acceptance flow reuse.
+**Avoids:** frontend/provider coupling, wrong public URLs, recipient batching, redesigning invite domain logic.
 
-**Multi-tenant routing:** Each org has its own Twilio credentials and phone numbers (never shared). Webhook callbacks include `AccountSid` to identify org. `call_records` and `sms_messages` store both `org_id` (via phone lookup) and `campaign_id` at creation time for status callback routing.
+### Phase 4: Email Events, Webhooks, and Audit Visibility
+**Rationale:** Milestone credibility depends on truthful delivery state, not just successful provider submission.
+**Delivers:** Mailgun webhook ingress with signature verification, normalized event reconciliation, suppression-aware status updates, final-state visibility in operator-facing surfaces or APIs.
+**Addresses:** final delivery status, failure visibility, bounce/complaint/suppression handling, support-grade audit trail.
+**Avoids:** accepted-as-delivered bugs, event misattachment by email address, repeated sends to suppressed recipients, excess tracking PII.
 
-**Existing code integration points:**
-- `DNCService.add_entry()` reused for STOP processing (new `SMS_STOP` reason value)
-- `VoterInteraction` extended via JSONB payload (no schema migration); `InteractionType.SMS` added as StrEnum value
-- Procrastinate job queue used for bulk SMS (new `sms_task.py`); 202 Accepted pattern matches existing import jobs
-- Phone banking call button switches from `<a href="tel:">` to `device.connect()` when org has Twilio config; full `tel:` fallback if not
+### Phase 5: ZITADEL Delivery Setup and Operational Hardening
+**Rationale:** The milestone is not complete until auth/system mail and operator runbooks are production-ready too.
+**Delivers:** ZITADEL SMTP/custom-domain documentation, ownership boundaries, smoke-test checklist for verification/reset/auth mail, Mailgun DNS/domain runbooks, fallback/manual replay guidance, app-vs-ZITADEL monitoring boundaries.
+**Addresses:** auth/system email readiness, deliverability prerequisites, go-live operations.
+**Avoids:** leaving ZITADEL on default settings, blended monitoring/runbooks, undefined outage response.
 
-## Watch Out For
+### Phase Ordering Rationale
 
-Top 5 pitfalls most likely to derail v1.15:
+- Provider/config boundaries come first because they shape schema, queue behavior, and requirement wording.
+- Persistence and async delivery must exist before wiring live invite flows; otherwise the team will either block request latency on Mailgun or lose auditability.
+- Invite integration belongs before webhook polish because it is the direct product slice, but milestone acceptance should still require final-state reconciliation before closeout.
+- ZITADEL work is separate from app code but should be a milestone phase, not post-milestone ops follow-up.
 
-1. **Plaintext credential storage (CRITICAL)** — Any column using VARCHAR for `auth_token` or `api_key_secret` exposes full Twilio account control via DB dumps, logs, and Sentry breadcrumbs. Use `EncryptedString` (BYTEA) from the very first migration. Add a CI grep check: any Pydantic response schema field matching `*_token` or `*_secret` that is not write-only is a build failure. Non-negotiable from day one.
+### Research Flags
 
-2. **Webhook URL mismatch behind Traefik (CRITICAL)** — Twilio HMAC-SHA1 signature is computed against the exact public HTTPS URL. FastAPI behind Traefik sees `http://api:8000/...`; Twilio signed against `https://api.civpulse.org/...`. This causes silent 403 failures on every callback — no call status updates, no inbound SMS, no STOP syncing. Fix: `TWILIO_WEBHOOK_BASE_URL` env var + `_reconstruct_webhook_url()` helper using `X-Forwarded-Proto`. Test with a real Twilio request before Phase 4/5 feature work begins.
+Phases likely needing deeper research during planning:
+- **Phase 4:** Mailgun webhook event mapping and suppression-policy details should be verified against the exact event set and desired normalized states.
+- **Phase 5:** ZITADEL SMTP/custom-domain operator steps need implementation-specific validation against the current deployed ZITADEL environment and secrets flow.
 
-3. **TCPA political exemption misunderstanding (CRITICAL)** — The exemption covers manually-dialed calls only. It does NOT cover SMS, auto-dialed calls, or calls using an ATDS. L2 voter file phone numbers are NOT prior express consent for SMS — campaigns must collect opt-in separately. Require `consent_source` field on voter contacts and display a compliance warning when targeting imported numbers without explicit consent.
+Phases with standard patterns (likely no separate research pass needed):
+- **Phase 1:** Provider seam, config surface, and template ownership are already well-supported by the research.
+- **Phase 2:** Async outbox-style send with Procrastinate fits existing platform patterns.
+- **Phase 3:** Invite integration should mostly reuse existing invite models, tokens, and acceptance routes.
 
-4. **A2P 10DLC registration lead time (CRITICAL for SMS timeline)** — IRS 527 political orgs must complete Campaign Verify + Twilio 10DLC brand + campaign registration. Total lead time: 2-3 weeks minimum, often 10-15 days in backlog. SMS cannot go live until registration clears. Start ISV registration in Phase 1 even though SMS ships in Phase 5. Block SMS sends with a "SMS Pending Registration" status gate in UI.
+## Confidence Assessment
 
-5. **Cross-org webhook credential routing (HIGH)** — A single webhook endpoint receives callbacks for all orgs. Resolving the correct org auth token for signature validation requires looking up `AccountSid` in `org_twilio_configs`. Getting this wrong causes silent validation failure for all orgs or creates a security boundary violation. Include org resolution from `AccountSid` as the first step in the webhook dependency; store `call_sid`/`message_sid` with `org_id` at creation time for status callback routing.
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Stack | HIGH | Backed by official Mailgun and ZITADEL docs and consistent with existing FastAPI/Procrastinate/httpx platform patterns. |
+| Features | MEDIUM-HIGH | Table stakes are clear, but some operator UX recommendations are based on common practice rather than a single canonical source. |
+| Architecture | HIGH | Strong alignment across research and with existing codebase seams for invite services, tasks, config, and integration style. |
+| Pitfalls | HIGH | Risks are concrete, source-backed, and directly applicable to milestone sequencing and acceptance criteria. |
 
-**Honorable mentions:** ICE/firewall failure for WebRTC in restrictive campaign locations (enable TURN relay, always offer `tel:` fallback); Lookup API cost explosion on bulk imports ($0.01/number — validate on-demand only, cache 90 days); webhook duplicate processing (Twilio at-least-once delivery — use `ON CONFLICT DO NOTHING` on `twilio_sid`); synchronous Twilio client in async handlers blocking the event loop (always use `AsyncTwilioHttpClient`).
+**Overall confidence:** HIGH
 
-## Phasing Recommendation
+### Gaps to Address
 
-The dependency tree is strict: credentials before phones, phones before webhooks, webhooks before voice or SMS, spend controls after billable events flow. Phone validation is standalone and can parallelize with later phases.
+- **Current invite surface inventory:** requirements should explicitly name which invite flows are in-scope on day one so roadmap phases do not drift.
+- **Public URL ownership:** planning should confirm the canonical public app URL and how it will coexist with ZITADEL login/custom-domain URLs.
+- **Operator ownership split:** clarify who owns Mailgun provisioning, DNS, Kubernetes secret injection, and ZITADEL SMTP activation before execution begins.
+- **Delivery-status UX depth:** decide during requirements whether operator visibility is API-only, admin-surface status, or both.
+- **Fallback policy:** define whether outage handling is queue-and-retry only or includes manual replay/resend workflow in this milestone.
 
-**Phase 1: Org Credential Storage + Encryption Foundation**
-Rationale: The entire milestone foundation. Nothing calls Twilio until credentials exist and are encrypted. Zero external API calls — pure CRUD + encryption pattern establishment. Also the phase to initiate A2P 10DLC ISV registration externally.
-Delivers: `org_twilio_configs` table with `EncryptedString` columns, config CRUD endpoints at `/api/v1/org/twilio/config`, org settings Twilio page, `TWILIO_ENCRYPTION_KEY` env var in settings and K8s, credential test endpoint.
-Critical action: Initiate ISV A2P 10DLC registration with Twilio this phase. The 3-5 week approval clock must start now.
+## Sources
 
-**Phase 2: Phone Number Management + Provisioning**
-Rationale: Voice and SMS both need a configured `From` number. This phase makes the first real Twilio API calls. Isolated from call/SMS complexity.
-Delivers: `org_twilio_phones` table, BYO number registration, available number search + purchase UI, phone inventory with capabilities badges.
+### Primary (HIGH confidence)
+- [.planning/PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md) — milestone scope, explicit out-of-scope boundaries, current invite/auth context
+- [.planning/research/STACK.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/STACK.md) — stack and operational prerequisites
+- [.planning/research/FEATURES.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/FEATURES.md) — table stakes, differentiators, and anti-features
+- [.planning/research/ARCHITECTURE.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/ARCHITECTURE.md) — service boundaries, data flow, and build order
+- [.planning/research/PITFALLS.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/PITFALLS.md) — delivery, tenancy, and operational risks
+- Mailgun API/send/webhook/DNS docs — provider send path, regional endpoints, webhook security, deliverability constraints
+- ZITADEL SMTP/default-settings/custom-domain docs — auth/system email ownership and operator configuration boundaries
 
-**Phase 3: Webhook Infrastructure + Signature Validation**
-Rationale: Both Voice (Phase 4) and SMS (Phase 5) depend on webhooks. Building and testing this in isolation surfaces the Traefik URL reconstruction bug before it is buried in a feature phase.
-Delivers: `/api/v1/webhooks/twilio/*` route group, `validate_twilio_signature` FastAPI dependency, `_reconstruct_webhook_url()` with `X-Forwarded-Proto` handling, webhook router registered without JWT auth prefix.
-Risk: High (the #1 integration failure mode) — must be tested against production proxy, not just local dev.
-
-**Phase 4: Click-to-Call via Voice SDK**
-Rationale: Highest-value feature. Replaces `tel:` links with in-browser WebRTC calling that captures metadata. Depends on Phase 3 for status callbacks. Can parallelize with Phase 5 once Phase 3 is proven.
-Delivers: `/campaigns/{cid}/twilio/voice-token` endpoint, `call_records` table, TwiML voice webhook handler, `useTwilioDevice` React hook, `VoiceCallButton` in phone banking, calling hours enforcement.
-
-**Phase 5: Two-Way SMS + STOP/DNC Integration**
-Rationale: High complexity but self-contained after Phase 3. STOP processing reuses existing `DNCService`. Block real sending behind A2P registration status gate.
-Delivers: `sms_conversations` + `sms_messages` tables with RLS, SMS send/reply endpoints, inbound SMS webhook + STOP pipeline, SMS inbox UI, bulk SMS via Procrastinate, `DNCReason.SMS_STOP` enum value.
-Prerequisite: A2P 10DLC registration (started Phase 1) must be approved before this phase sends to real numbers.
-
-**Phase 6: Spend Tracking + Budget Enforcement**
-Rationale: Policy layer on top of existing billable events. Building last means all call_records and sms_messages are already flowing with price data.
-Delivers: `twilio_spend_ledger` table, spend aggregation queries, daily/total budget soft enforcement (pre-send `SELECT SUM` check), spend dashboard in org settings (Recharts bar chart, budget progress bar).
-
-**Phase 7: Phone Validation (Lookup API)**
-Rationale: Lowest priority — platform works fully without it. Depends only on Phase 1 credentials. Can parallelize with Phases 4-6.
-Delivers: `phone_validations` cache table, Lookup v2 endpoint, inline validation button + `LineTypeBadge` in voter contact UI, SMS eligibility filtering.
-
-**Dependency graph summary:**
-- Phases 1-3 are infrastructure-only (no user-visible features) — treat as a foundation sprint
-- Phases 4 and 5 can parallelize by separate developers once Phase 3 is tested
-- Phase 6 can begin once Phase 4 produces first `call_records` with price data
-- Phase 7 is standalone and lowest risk at any point after Phase 1
-
-## Open Questions
-
-Decisions needed before or during implementation:
-
-1. **DNC channel semantics** — The existing `DNCEntry` model conflates call and SMS opt-outs. A voter who STOPs SMS may still accept calls. Decision: add `channel VARCHAR(10) DEFAULT "all"` to `dnc_entries` (values: `all`, `sms`, `voice`) and update `DNCService.check_number()` to accept an optional channel filter. This must be resolved before any Phase 5 DNC code is written.
-
-2. **A2P 10DLC ISV registration** — CivicPulse must complete its own ISV registration before any customer org can send political SMS. The exact current steps and timeline require manual verification with Twilio (the process has changed several times). Start this in Phase 1 and document the outcome.
-
-3. **Calling hours timezone mapping** — Python `zoneinfo` handles timezone logic but not ZIP-to-timezone mapping. Options: `us-zipcode` library, a static ZCTA lookup table, or PostGIS geometry of voter addresses. Needs a decision before Phase 4 calling hours enforcement is coded.
-
-4. **SMS body storage policy** — Research recommends not storing message body content (PII liability). The current schema draft includes a `body TEXT` column on `sms_messages`. Decision: store body or store only `body_length` + `twilio_sid` reference? The inbox UI requires the body to be visible — if not stored locally, the inbox must fetch from Twilio API on demand. Confirm policy before Phase 5 schema is finalized.
-
-5. **Twilio subaccounts vs. master account** — Research assumed BYO Twilio credentials per org (each org uses their own Twilio account). If CivicPulse ever offers a managed Twilio tier (platform provisions numbers on behalf of orgs), subaccounts would be needed. Confirm v1.15 is strictly BYO credentials only.
+### Secondary (MEDIUM confidence)
+- Jinja2 PyPI metadata — current stable version guidance for template rendering dependency
+- Mailgun Python SDK PyPI metadata — used only to justify avoiding SDK adoption in this milestone
 
 ---
-*Research completed: 2026-04-07*
+*Research completed: 2026-04-08*
 *Ready for roadmap: yes*

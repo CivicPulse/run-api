@@ -1,198 +1,215 @@
-# Stack Research -- Twilio Communications
+# Technology Stack
 
-**Project:** CivicPulse Run v1.15
-**Researched:** 2026-04-07
+**Project:** CivicPulse Run v1.16 transactional email
+**Researched:** 2026-04-08
 **Overall confidence:** HIGH
 
-## New Dependencies
+## Recommended Stack
 
-### Backend (Python)
+### Required Foundation
 
-| Package | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `twilio` | `>=9.10.4` | Twilio REST API client, Access Token generation, webhook validation, TwiML generation | Official helper library. Includes `twilio.rest.Client` for Messaging/Lookup API calls, `twilio.jwt.access_token` for Voice SDK token generation, `twilio.request_validator.RequestValidator` for webhook signature verification, and `twilio.twiml` for TwiML response building. Native async support via `AsyncTwilioHttpClient` (uses aiohttp internally). Single dependency covers all five Twilio integration surfaces. |
-| `cryptography` | `>=44.0.0` | Fernet symmetric encryption for org-scoped Twilio credentials at rest | Auth Tokens and API Key Secrets stored in PostgreSQL must be encrypted. Fernet (AES-128-CBC + HMAC-SHA256) provides authenticated encryption with a single `CREDENTIAL_ENCRYPTION_KEY` env var. No external KMS needed at current scale. Already a transitive dependency of `authlib` so no new wheel to build. |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `httpx` | existing `>=0.28.1` | Mailgun HTTP API client | Do not add a Mailgun SDK first. The app already standardizes on async `httpx`, and Mailgun's primary send path is plain HTTP API. This keeps the provider adapter small, testable, and consistent with the existing ZITADEL service client. |
+| `Jinja2` | `>=3.1.6` | Local transactional email template rendering | Invite/system email needs stable text+HTML rendering under app control. Use local templates, not provider-stored templates, so copy/versioning stays in Git and the provider remains swappable. |
+| `procrastinate` | existing `>=3.7.3` | Async send/retry execution | Reuse the existing job system for outbound email dispatch, retries, and failure isolation. No Celery/Redis expansion is justified for transactional volume. |
+| PostgreSQL | existing | Email audit metadata and idempotency | Persist message intent, provider, provider message id, status, error summary, and timestamps in the existing database. This is enough for transactional auditing without adding an event pipeline yet. |
+| Mailgun Email API | current service | First provider implementation | Mailgun gives both HTTP API and SMTP paths, domain-level isolation, EU/US regional endpoints, and a clear route for app email now plus ZITADEL SMTP delivery separately. |
+| ZITADEL SMTP configuration | current product capability | Auth/system email delivery | ZITADEL already supports instance SMTP configuration and also documents Mailgun SMTP specifically. Configure ZITADEL directly against Mailgun SMTP instead of proxying auth emails through the app. |
 
-No other new backend packages required. The `twilio` package bundles:
-- REST client (sync + async) for Voice, Messaging, Lookup v2 APIs
-- `AccessToken` + `VoiceGrant` classes for browser SDK token minting
-- `RequestValidator` for webhook X-Twilio-Signature verification
-- TwiML builder (`VoiceResponse`, `MessagingResponse`) for webhook responses
+### Optional Future Tooling
 
-### Frontend (TypeScript/React)
+Add only when a second provider or richer lifecycle needs it.
 
-| Package | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `@twilio/voice-sdk` | `^2.18.1` | Browser WebRTC calling via Twilio Voice | Official Twilio Voice JS SDK. Provides `Device` (manages WebRTC connection) and `Call` (represents an active call with mute/hangup/DTMF). Replaces `tel:` links with in-browser calling on desktop; mobile can still fall back to `tel:`. Full TypeScript types included. v1.x is EOL (April 2025); v2.x is the only supported line. |
+| Technology | Version | Purpose | When to Use |
+|------------|---------|---------|-------------|
+| `aiosmtplib` | latest stable, if adopted later | Generic async SMTP adapter for app-sent email | Add only when the application itself must support a second SMTP-only provider. It is not needed for Mailgun-first delivery because Mailgun HTTP is cleaner and ZITADEL handles its own SMTP path. |
+| Mailgun webhooks | current service | Delivery/open/bounce reconciliation | Add after the app truly needs provider-pushed status updates. Basic audit metadata can ship without webhook ingestion. |
+| CSS inlining tooling | none yet | HTML email client compatibility hardening | Add only if templates become marketing-like or heavily styled. For invite/system mail, keep markup simple enough to avoid a premailer dependency. |
 
-No other new frontend packages required. The Voice SDK is self-contained (bundles its own WebRTC handling). SMS UI is purely API-driven via existing `ky` + TanStack Query patterns.
+## Concrete Recommendations
 
-## Key Integration Points
+### 1. App Email Delivery
 
-### 1. Access Token Endpoint (Voice SDK auth)
-
-The browser Voice SDK requires a short-lived JWT (Access Token) with a VoiceGrant. New FastAPI endpoint:
-
-```
-POST /api/v1/campaigns/{campaign_id}/twilio/voice-token
-```
-
-Backend flow:
-1. Load org's Twilio API Key SID + API Key Secret (decrypted from DB)
-2. Create `AccessToken(account_sid, api_key_sid, api_key_secret, identity=user_id)`
-3. Add `VoiceGrant(outgoing_application_sid=twiml_app_sid)`
-4. Return `token.to_jwt()` with 10-minute TTL
-
-Frontend fetches this token, passes it to `new Device(token)`, then calls `device.connect()` to initiate WebRTC calls.
-
-**Critical:** Use Twilio API Keys (Standard type), not the master Auth Token, for Access Token signing. API Keys can be revoked per-org without compromising the entire Twilio account.
-
-### 2. TwiML Application Webhook
-
-When `device.connect({To: '+1234567890'})` fires, Twilio POSTs to a configured TwiML Application URL:
-
-```
-POST /api/v1/webhooks/twilio/voice  (public, validated by X-Twilio-Signature)
-```
-
-Returns TwiML:
-```xml
-<Response><Dial callerId="+1orgNumber"><Number>+1234567890</Number></Dial></Response>
-```
-
-### 3. Twilio Messaging API (SMS)
-
-Outbound SMS uses the Twilio REST client with async methods:
+Use a provider abstraction in the backend with this shape:
 
 ```python
-from twilio.http.async_http_client import AsyncTwilioHttpClient
-from twilio.rest import Client
-
-async_http = AsyncTwilioHttpClient()
-client = Client(account_sid, auth_token, http_client=async_http)
-message = await client.messages.create_async(
-    body="Your message",
-    from_=org_twilio_number,
-    to=voter_phone,
-    status_callback="https://api.civpulse.org/api/v1/webhooks/twilio/sms-status"
-)
+class TransactionalEmailProvider(Protocol):
+    async def send(message: TransactionalEmailMessage) -> ProviderSendResult: ...
 ```
 
-Inbound SMS and delivery status updates arrive via webhook endpoints.
+Implement only:
 
-### 4. Twilio Lookup v2 API
+- `MailgunEmailProvider` using `httpx.AsyncClient`
 
-Number validation on voter contact create/edit:
+Do not implement yet:
 
-```python
-phone_number = await client.lookups.v2.phone_numbers(e164).fetch_async(
-    fields="line_type_intelligence"
-)
-# Returns: line_type_intelligence.type = "mobile" | "landline" | "fixedVoip" | ...
+- SMTP provider adapter
+- SES/Postmark/Resend adapters
+- provider-stored templates
+
+Reason: this milestone needs pluggable design, not multiple live providers. A clean interface plus one production implementation is enough.
+
+### 2. Template Strategy
+
+Add `Jinja2>=3.1.6` and render both:
+
+- plain text body
+- simple HTML body
+
+Store templates in repo, for example:
+
+```text
+app/templates/email/
 ```
 
-Cache results in voter contact records (line_type, carrier columns) to avoid repeated paid lookups.
+Reason: invites and system notices are product assets, not provider configuration. Git-backed templates are easier to review, test, and eventually localize.
 
-### 5. Webhook Signature Validation
+### 3. Queueing and Retry
 
-All Twilio webhook endpoints must validate the `X-Twilio-Signature` header:
+Keep send execution in Procrastinate jobs.
 
-```python
-from twilio.request_validator import RequestValidator
+Use sync boundaries like:
 
-validator = RequestValidator(auth_token)
-is_valid = validator.validate(url, params, signature)
-```
+1. API/service creates invite or system event
+2. DB commit succeeds
+3. enqueue email job with message payload/reference
+4. worker sends email and updates audit row
 
-Implement as a FastAPI dependency (`Depends(verify_twilio_signature)`) applied to all `/webhooks/twilio/*` routes. These routes are public (no JWT auth) but cryptographically verified.
+Reason: avoids sending mail for rolled-back transactions and matches the existing platform job model.
 
-**Gotcha:** The validator needs the exact public URL Twilio sees (including protocol, host, port). Behind a reverse proxy (Traefik), reconstruct from `X-Forwarded-*` headers or configure a canonical webhook base URL in settings.
+### 4. Audit Model
 
-### 6. Org-Scoped Credential Storage
+Add a small email-delivery table, not a full communications platform schema.
 
-New `twilio_configs` table linked to `organizations.id`:
+Recommended minimum fields:
 
-| Column | Type | Notes |
-|--------|------|-------|
-| org_id | UUID FK | One config per org |
-| account_sid | VARCHAR | Not encrypted (not secret per Twilio docs) |
-| auth_token_encrypted | BYTEA | Fernet-encrypted |
-| api_key_sid | VARCHAR | For Access Token generation |
-| api_key_secret_encrypted | BYTEA | Fernet-encrypted |
-| twiml_app_sid | VARCHAR | Voice TwiML Application SID |
-| phone_numbers | JSONB | Array of provisioned numbers with capabilities |
-| daily_spend_limit_cents | INTEGER | Platform-enforced soft limit |
-| total_spend_limit_cents | INTEGER | Platform-enforced soft limit |
+| Field | Purpose |
+|-------|---------|
+| `id` | internal id |
+| `organization_id` / `campaign_id` nullable as appropriate | tenancy context |
+| `template_key` | which transactional template was used |
+| `to_email` | recipient |
+| `from_email` | effective sender |
+| `provider` | `mailgun` initially |
+| `provider_message_id` | external reference |
+| `status` | `queued/sent/failed` to start |
+| `error_code` / `error_detail` | operator troubleshooting |
+| `sent_at` / `failed_at` | timeline |
+| `created_by_job_id` or equivalent | traceability |
 
-Encryption: single `CREDENTIAL_ENCRYPTION_KEY` env var (Fernet key), loaded at startup. Decrypt only when making Twilio API calls.
+Not yet:
 
-### 7. Existing Code Touch Points
+- opens/clicks
+- unsubscribe state
+- campaign audience segmentation
+- rich analytics tables
 
-| File | Change |
-|------|--------|
-| `web/src/components/field/PhoneNumberList.tsx` | Add WebRTC call button alongside existing `tel:` link; conditionally render based on Twilio config availability |
-| `app/api/v1/phone_banks.py` | Add call metadata recording endpoints |
-| `app/models/organization.py` | Add relationship to `twilio_configs` table |
-| `app/core/config.py` | Add `CREDENTIAL_ENCRYPTION_KEY` and `TWILIO_WEBHOOK_BASE_URL` settings |
+## Integration Points
 
-## What NOT to Add
+### Backend Libraries / Config
 
-| Avoid | Why | Do Instead |
-|-------|-----|------------|
-| Twilio Conversations API | Designed for long-lived chat sessions with participant management; campaign SMS is transactional send-and-log | Use Messaging API directly |
-| Separate webhook microservice | Webhook volume bounded by campaign activity (hundreds/day); a few FastAPI routes suffice | Add routes to existing API with signature validation dependency |
-| WebSocket infrastructure for call state | `@twilio/voice-sdk` manages call state client-side via event emitters (`Device.on`, `Call.on`) | Thin React wrapper around SDK events |
-| Per-org env var credentials | Does not scale to multi-tenant; cannot add/remove orgs without restart | Encrypted database storage with Fernet |
-| Twilio phone number provisioning API | v1.15 scope is BYO numbers + manual config; programmatic purchasing is premature | Manual number entry in org settings UI |
-| Custom dialer UI | Voice SDK `Device` and `Call` handle WebRTC, audio device selection, call state | Build thin wrapper around SDK events |
-| Master Auth Token for Access Tokens | Account-wide, cannot be scoped or independently revoked | API Keys (Standard type) for all token generation |
-| `twilio-python-async` (community) | Deprecated; official SDK now has native async | Use official `twilio` package with `AsyncTwilioHttpClient` |
-| Redis for SMS queue | Procrastinate (already in stack) handles async jobs via PostgreSQL | Use existing Procrastinate worker for bulk SMS sends |
+| Addition | Required | Why |
+|----------|----------|-----|
+| `Jinja2>=3.1.6` | Yes | Only clearly missing runtime dependency for local template rendering. |
+| `MAILGUN_API_KEY` | Yes | Secret for Mailgun HTTP API. |
+| `MAILGUN_DOMAIN` | Yes | Sending domain used in `/v3/{domain}/messages`. |
+| `MAILGUN_REGION` (`us` or `eu`) | Yes | Mailgun uses different base URLs per region and the domain is region-bound. |
+| `MAILGUN_BASE_URL` derived from region | Yes | `https://api.mailgun.net` for US, `https://api.eu.mailgun.net` for EU. |
+| `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` | Yes | Stable sender identity for app mail. |
+| `APP_EMAIL_PROVIDER=mailgun` | Yes | Future-safe provider selection. |
+| `ZITADEL_SMTP_HOST/USER/PASSWORD/FROM` or operator-managed equivalent | Yes, for auth/system mail | ZITADEL sends its own emails and should be configured directly. |
+
+### Service Boundaries
+
+| Component | Responsibility |
+|-----------|---------------|
+| `EmailService` | app-facing orchestration, idempotency, audit creation |
+| `TransactionalEmailProvider` | provider abstraction |
+| `MailgunEmailProvider` | HTTP request signing and send call |
+| `EmailTemplateRenderer` | Jinja text/html rendering |
+| Procrastinate job | asynchronous delivery and retry |
+| ZITADEL operator config | auth/reset/verification mail outside app runtime |
+
+### ZITADEL Delivery Implications
+
+Use direct ZITADEL -> Mailgun SMTP configuration for auth/system email.
+
+Why this is the right split:
+
+- ZITADEL already supports SMTP configuration at instance setup.
+- ZITADEL documents Mailgun SMTP specifically, so this path is first-class enough for operator setup.
+- Auth emails should not depend on the Run API being up or correctly routing a custom relay endpoint.
+
+Do not route ZITADEL email through the app in this milestone.
+
+## Operational Prerequisites
+
+### Mailgun
+
+| Requirement | Why it Exists |
+|-------------|---------------|
+| Verified sending domain | Mailgun delivery depends on domain verification and DNS records. |
+| SPF/DKIM/CNAME records applied | Required for domain verification and proper authenticated sending/tracking behavior. |
+| Region decision before provisioning (`US` vs `EU`) | Mailgun domains are region-bound and API base URL differs by region. |
+| Per-environment domain/subdomain strategy | Keep dev/staging/prod isolated; do not send all environments from one production domain. |
+| Secret distribution in Kubernetes | Mailgun API key and sender config belong in K8s secrets, not committed env files. |
+
+### ZITADEL
+
+| Requirement | Why it Exists |
+|-------------|---------------|
+| SMTP host/user/password configured on the instance | ZITADEL sends verification, password reset, and related auth mail itself. |
+| Sender address aligned with domain policy | ZITADEL's production docs call out sender/domain matching behavior in SMTP configuration. |
+| Operator runbook for first-instance/default-instance config | This is partly infrastructure configuration, not just application code. |
 
 ## Alternatives Considered
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Python Twilio client | `twilio` (official) | `twilio-python-async` (community) | Deprecated; official SDK has native async |
-| Browser calling | `@twilio/voice-sdk` v2 | `twilio-client` (v1) | v1 EOL April 2025; unsupported |
-| Credential encryption | `cryptography` (Fernet) | `pgcrypto` extension | App-layer encryption keeps secrets opaque in DB dumps and query logs |
-| Credential encryption | `cryptography` (Fernet) | AWS KMS / HashiCorp Vault | Over-engineering for current scale; migrate later if needed |
-| SMS API | Twilio Messaging API | Twilio Conversations API | Conversations adds session/participant complexity for no benefit |
-| Bulk SMS processing | Procrastinate jobs | Celery / Redis | Procrastinate already in stack; no new infrastructure |
+| Mailgun integration | `httpx` against Mailgun HTTP API | Mailgun Python SDK (`mailgun`) | The SDK is current, but PyPI still labels it alpha and it adds little value over a thin HTTP adapter in an app that already uses `httpx`. |
+| Template storage | In-repo Jinja templates | Mailgun stored templates | Locks content/versioning into provider config too early. |
+| Queueing | existing Procrastinate | Celery/Redis | New infra with no milestone payoff. |
+| ZITADEL delivery path | direct SMTP config to Mailgun | Run API as custom relay | Adds an extra hop and makes auth emails depend on app availability. |
+| Future provider abstraction | interface + one implementation | building multiple live adapters now | Scope expansion without product value this milestone. |
+
+## What NOT to Add Yet
+
+| Avoid | Why | Do Instead |
+|------|-----|------------|
+| Marketing/campaign email tooling | Out of scope for transactional/system mail | Ship invites and system notifications only |
+| Email builder/WYSIWYG | Adds content-management complexity | Keep templates in code |
+| Webhook ingestion pipeline | Useful later, not required for minimal audit metadata | Store send result and provider message id first |
+| SMTP adapter in app | Not needed for Mailgun-first delivery | Add only when a real second provider requires it |
+| Dedicated email microservice | Premature service split | Keep email delivery in existing FastAPI + worker architecture |
+| Link tracking/open tracking work | Pulls milestone toward campaign-email analytics | Defer until broader communications roadmap |
 
 ## Installation
 
 ```bash
-# Backend
+# backend
 cd /home/kwhatcher/projects/civicpulse/run-api
-uv add twilio cryptography
-
-# Frontend
-cd /home/kwhatcher/projects/civicpulse/run-api/web
-npm install @twilio/voice-sdk
+uv add Jinja2
 ```
 
-## Version Compatibility
-
-| New Package | Compatible With | Notes |
-|-------------|-----------------|-------|
-| `twilio` 9.10.x | Python 3.13 | Tested on 3.7-3.13; async via aiohttp |
-| `twilio` 9.10.x | FastAPI async | Use `AsyncTwilioHttpClient` + `*_async()` methods |
-| `@twilio/voice-sdk` 2.18.x | React 19, TypeScript | Full TS types bundled; no React-specific wrapper needed |
-| `cryptography` 44.x | Python 3.13 | Wheels available; already transitive dep of authlib |
+No Mailgun SDK install is recommended for v1.16.
 
 ## Sources
 
-- [Twilio Python SDK -- PyPI](https://pypi.org/project/twilio/) -- v9.10.4, MIT license (HIGH confidence)
-- [Twilio Python async support](https://www.twilio.com/en-us/blog/twilio-python-helper-library-async) -- AsyncTwilioHttpClient docs (HIGH confidence)
-- [@twilio/voice-sdk -- npm](https://www.npmjs.com/package/@twilio/voice-sdk) -- v2.18.1 (HIGH confidence)
-- [Voice JavaScript SDK docs](https://www.twilio.com/docs/voice/sdks/javascript) -- Device/Call API reference (HIGH confidence)
-- [Twilio Access Tokens](https://www.twilio.com/docs/iam/access-tokens) -- JWT generation with grants (HIGH confidence)
-- [Twilio API Keys](https://www.twilio.com/docs/iam/api-keys) -- Standard/Main/Restricted types, production recommendation (HIGH confidence)
-- [Lookup v2 Line Type Intelligence](https://www.twilio.com/docs/lookup/v2-api/line-type-intelligence) -- carrier/line type data (HIGH confidence)
-- [Webhook validation with FastAPI](https://www.twilio.com/en-us/blog/build-secure-twilio-webhook-python-fastapi) -- signature validation pattern (HIGH confidence)
-- [Secure credentials](https://www.twilio.com/docs/usage/secure-credentials) -- storage best practices (HIGH confidence)
+- Mailgun API overview: https://documentation.mailgun.com/docs/mailgun/api-reference/api-overview
+  - HIGH confidence. Confirms regional base URLs and HTTP API behavior.
+- Mailgun sending messages: https://documentation.mailgun.com/docs/mailgun/user-manual/sending-messages
+  - HIGH confidence. Confirms Mailgun send flow and test mode behavior.
+- Jinja2 on PyPI: https://pypi.org/project/Jinja2/
+  - MEDIUM confidence. Confirms current stable package version (`3.1.6`) and that it supports async-friendly template rendering patterns needed for backend email composition.
+- Mailgun Python SDK on PyPI: https://pypi.org/project/mailgun/
+  - MEDIUM confidence. Current package exists (`1.6.0`, uploaded 2026-01-08), but PyPI metadata shows alpha status; used here mainly to justify not depending on it yet.
+- ZITADEL production setup: https://zitadel.com/docs/self-hosting/manage/production
+  - HIGH confidence. Confirms `SMTPConfiguration` in instance/default-instance config and sender/domain notes.
+- ZITADEL notification providers: https://zitadel.com/docs/guides/manage/customize/notification-providers
+  - HIGH confidence. Confirms ZITADEL supports SMTP providers, includes Mailgun templates, and notes console/API differences for SMTP auth methods.
+- ZITADEL default settings: https://zitadel.com/docs/guides/manage/console/default-settings
+  - HIGH confidence. Confirms production guidance to configure your own SMTP provider, activate it, and align sender/domain settings.
 
 ---
-*Stack research for: Twilio Communications (v1.15)*
-*Researched: 2026-04-07*
+*Focused stack research for v1.16 transactional email only. Existing FastAPI, React, PostgreSQL, Procrastinate, Kubernetes, and ZITADEL auth integration were intentionally not re-researched.*
