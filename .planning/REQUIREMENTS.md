@@ -79,7 +79,7 @@ Explicitly excluded from milestone `v1.16`.
 | AUD-01 | Phase 97 | Pending |
 | AUD-02 | Phase 97 | Pending |
 | AUD-03 | Phase 97 | Pending |
-| AUD-04 | Phase 97 | Pending |
+| AUD-04 | Phase 100 | Pending |
 | ZIT-01 | Phase 98 | Pending |
 | ZIT-02 | Phase 98 | Pending |
 | SEC-01 | Phase 95 | Pending |
@@ -93,4 +93,4 @@ Explicitly excluded from milestone `v1.16`.
 
 ---
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 after v1.16 research synthesis*
+*Last updated: 2026-04-08 after v1.16 milestone gap planning*

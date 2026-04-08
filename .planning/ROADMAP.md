@@ -2,7 +2,7 @@
 
 ## Overview
 
-v1.16 adds a transactional email foundation to CivicPulse Run without turning the product into a campaign-email platform or collapsing the boundary between app-owned mail and ZITADEL-owned auth mail. The milestone is organized as five phases that establish a provider seam with Mailgun first, add post-commit async delivery for existing invite flows, reconcile delivery truth through authenticated provider events, configure and document ZITADEL's separate email path, and finish with deliverability and operational hardening.
+v1.16 adds a transactional email foundation to CivicPulse Run without turning the product into a campaign-email platform or collapsing the boundary between app-owned mail and ZITADEL-owned auth mail. The milestone is organized as six phases that establish a provider seam with Mailgun first, add post-commit async delivery for existing invite flows, reconcile delivery truth through authenticated provider events, configure and document ZITADEL's separate email path, finish with deliverability and operational hardening, and then close the audit-identified invite-admin UI contract gap.
 
 ## Milestones
 
@@ -19,7 +19,7 @@ v1.16 adds a transactional email foundation to CivicPulse Run without turning th
 - ✅ **v1.13 Production Shakedown Remediation** — Phases 78-83 (shipped 2026-04-06)
 - ✅ **v1.14 Voter Search & Lookup** — Phases 84-87 (shipped 2026-04-07)
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
-- 🔄 **v1.16 Email Delivery Foundation** — Phases 95-99
+- 🔄 **v1.16 Email Delivery Foundation** — Phases 95-100
 
 ## Milestone History
 
@@ -176,7 +176,7 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 
 ### v1.16 Email Delivery Foundation
 
-**Milestone Goal:** Add provider-agnostic transactional email delivery to CivicPulse Run with Mailgun as the first provider, wire existing invite flows onto a durable async send path, reconcile delivery truth through authenticated events, and configure/document ZITADEL's separate auth-email path.
+**Milestone Goal:** Add provider-agnostic transactional email delivery to CivicPulse Run with Mailgun as the first provider, wire existing invite flows onto a durable async send path, reconcile delivery truth through authenticated events, configure/document ZITADEL's separate auth-email path, and close the remaining invite-admin contract and visibility gaps surfaced by the milestone audit.
 
 ## Phases
 
@@ -185,6 +185,7 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 - [x] **Phase 97: Webhook Reconciliation & Audit Truth** - Persist support-grade send history and reconcile Mailgun delivery outcomes through authenticated provider events. (completed 2026-04-08)
 - [x] **Phase 98: ZITADEL Delivery Setup & Support Boundary** - Configure ZITADEL's auth/system email path separately and document the ownership split between CivicPulse mail and ZITADEL mail. (completed 2026-04-08)
 - [x] **Phase 99: Deliverability Hardening & Operations** - Close production readiness with domain/DNS runbooks, monitoring, resend/remediation expectations, and app-vs-ZITADEL operational clarity. (completed 2026-04-08)
+- [ ] **Phase 100: Invite Delivery Visibility UI Closure** - Align the pending-invite frontend with the backend contract and surface support-facing delivery outcome details in the admin UI.
 
 ## Phase Details
 
@@ -245,6 +246,19 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
   4. Production readiness does not expand into campaign-authored email, bulk email, or analytics-driven email scope.
 **Plans**: TBD
 
+### Phase 100: Invite Delivery Visibility UI Closure
+**Goal**: The admin pending-invites surface consumes the current invite API contract correctly and exposes support-grade delivery outcome details so the milestone's invite workflows work end to end in the product UI.
+**Depends on**: Phase 97, Phase 99
+**Requirements**: AUD-04
+**Gap Closure**: Closes gaps from `.planning/v1.16-MILESTONE-AUDIT.md`
+**Success Criteria** (what must be TRUE):
+  1. The pending-invites UI renders records from the current backend response shape instead of assuming a paginated `items` wrapper.
+  2. The frontend invite contract includes the latest delivery error and last-event timestamp fields exposed by the backend schema.
+  3. Staff can inspect the latest invite-email outcome and failure reason directly in the campaign members settings UI well enough to support resend or remediation workflows.
+  4. The admin pending-invite review flow works again end to end after phases 96 and 97, without regressing the public invite acceptance path.
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
@@ -254,6 +268,7 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 | 97. Webhook Reconciliation & Audit Truth | 1/1 | Complete   | 2026-04-08 |
 | 98. ZITADEL Delivery Setup & Support Boundary | 1/1 | Complete   | 2026-04-08 |
 | 99. Deliverability Hardening & Operations | 1/1 | Complete   | 2026-04-08 |
+| 100. Invite Delivery Visibility UI Closure | 0/0 | Pending    | - |
 
 ## Coverage
 
@@ -271,7 +286,7 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 | AUD-01 | 97 |
 | AUD-02 | 97 |
 | AUD-03 | 97 |
-| AUD-04 | 97 |
+| AUD-04 | 100 |
 | SEC-02 | 97 |
 | ZIT-01 | 98 |
 | ZIT-02 | 98 |
