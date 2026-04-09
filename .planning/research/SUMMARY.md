@@ -1,178 +1,134 @@
 # Project Research Summary
 
 **Project:** CivicPulse Run API
-**Domain:** v1.16 transactional email delivery foundation
-**Researched:** 2026-04-08
+**Domain:** Campaign-scoped volunteer self-signup and approval links
+**Researched:** 2026-04-09
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This milestone is not a general email platform. It is a narrow transactional-email foundation for an existing multi-tenant campaign operations product: app-owned invite emails plus ZITADEL-owned auth/system email delivery. The research is consistent that experts split those paths cleanly. CivicPulse should send its own invite flows through an internal provider seam with Mailgun as the first adapter, while ZITADEL continues to send password reset, verification, and related auth mail through its own SMTP configuration.
+This milestone is not a net-new subsystem. CivicPulse already has a public join surface, volunteer records with `pending/active/inactive`, campaign membership, invite email infrastructure, and ZITADEL-backed role assignment. The main architectural correction is to replace the current instant-membership join flow with a managed signup-link and pending-application workflow that grants campaign access only after staff approval.
 
-The recommended build is an async, audit-backed delivery path inside the existing FastAPI + Procrastinate architecture. Invite creation remains the durable system of record; email send is queued after commit, rendered from app-owned Jinja templates, submitted via Mailgun HTTP, and reconciled into normalized delivery states. The product boundary stays tight: transactional/system email only, no campaign-authored email, no editor, no analytics-driven engagement features.
+Research points to a straightforward approach: keep the existing FastAPI/PostgreSQL/React/ZITADEL stack, add dedicated campaign-scoped signup-link records plus pending application records, and treat approval as the moment that creates membership and campaign role assignment. Official invite-link products consistently expose link lifecycle controls such as disable/deactivate, renewal/regeneration, and optional expiry or usage limits; official sign-in guidance also favors recognizing returning users instead of forcing duplicate account creation.
 
-The main risks are false delivery confidence, provider lock-in, and operational misconfiguration. The roadmap should explicitly guard against treating Mailgun acceptance as delivery, matching webhook events by recipient email, mixing Mailgun and ZITADEL ownership, or launching without domain/DNS/auth configuration. Requirements should treat final-state visibility, idempotent send behavior, explicit public URL config, and operator runbooks as first-class milestone outputs, not polish.
+The major risk is authorization drift. If pending applicants become `CampaignMember`s too early or inherit ZITADEL roles before review, the product breaks its core promise that applicants cannot see anything until approved. The roadmap should therefore establish data model and access boundaries first, then handle existing-account reconciliation, and only then add manager review polish and optional notifications/reporting.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack change is intentionally small. Reuse the existing backend foundation and add only what the milestone needs: Jinja2 for app-owned templates, Mailgun HTTP via existing `httpx`, Procrastinate for async send/retry, and PostgreSQL tables for audit and idempotency. Do not add a Mailgun SDK, app-side SMTP adapter, new queue infrastructure, or provider-stored templates.
+No new platform stack is required. The existing FastAPI + SQLAlchemy async backend, PostgreSQL persistence, React/TanStack frontend, and ZITADEL auth stack are sufficient. This milestone is primarily about adding managed link/application models and correcting the join workflow boundary.
 
 **Core technologies:**
-- `httpx` — Mailgun HTTP client path; keeps the provider adapter thin and consistent with existing async integrations.
-- `Jinja2>=3.1.6` — local text+HTML template rendering owned in Git, not in provider config.
-- `procrastinate` — post-commit send execution, retry handling, and failure isolation without new infrastructure.
-- PostgreSQL — `email_messages` / `email_events`, idempotency keys, and operator-facing audit state.
-- Mailgun Email API — first provider implementation with region-aware config and webhook support.
-- ZITADEL SMTP configuration — separate auth/system email path owned by ZITADEL operations, not by CivicPulse runtime.
-
-Critical config requirements:
-- `APP_EMAIL_PROVIDER=mailgun`
-- `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_REGION`
-- derived Mailgun base URL from region
-- `MAILGUN_WEBHOOK_SIGNING_KEY`
-- `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`
-- explicit public app base URL for invite links
-- ZITADEL SMTP/custom-domain settings documented separately
+- FastAPI + SQLAlchemy async: public link lookup, application submission, review actions
+- PostgreSQL: authoritative state for link lifecycle, attribution, and approval
+- React + TanStack Query/Router: public apply and manager review/link admin flows
+- ZITADEL: identity stays external, but campaign role assignment moves to approval time
 
 ### Expected Features
 
-The milestone scope is transactional email only. The table stakes are real email for existing invite flows, provider-backed send and delivery metadata, idempotent resend behavior, stable accept-invite links into existing flows, and ZITADEL email configuration/runbooks. The research is aligned that app invite logic should be reused, not redesigned.
+The must-haves are multiple campaign-scoped signup links, per-link controls, a pending application queue, approval/rejection actions, and an existing-account apply path. Nice follow-ons include optional expiry/max-use controls, email confirmations, and link-level funnel reporting.
 
 **Must have (table stakes):**
-- Existing org/campaign/staff/volunteer invite flows send real email through the platform.
-- Typed transactional email service with a provider abstraction and Mailgun-first implementation.
-- App-owned templates with subject, HTML, and plain-text variants.
-- Delivery/audit persistence tied to the invite or related domain record.
-- Idempotent send/resend behavior keyed to the logical invite action.
-- Final delivery state reconciliation through provider events/webhooks.
-- ZITADEL SMTP/provider setup and operator documentation for auth/system mail.
-- Deliverability prerequisites documented: sender identity, SPF/DKIM/DMARC, environment-specific domains.
+- Managed signup links with labels/source attribution
+- Pending applications separate from campaign membership
+- Approval/rejection queue for staff
+- Existing-account application path
+- Link disable/regenerate controls
 
-**Should have (useful within milestone if time permits after table stakes):**
-- Staff-visible resend action and last-send status.
-- Delivery event timeline per invite/supportable send history.
-- Simple template preview or test-send workflow.
-- Suppression-aware resend UX for permanently failed recipients.
+**Should have (competitive):**
+- Clear link-level reporting for recruitment channels
+- Low-friction existing-user path in a multi-campaign product
 
-**Defer (explicitly out of scope):**
-- Campaign-authored or bulk email.
-- Marketing automation, segmentation, drip logic, or analytics-led engagement features.
-- Rich editor / per-org template builder.
-- In-app inbox or reply handling.
-- Attachments, unsubscribe/preferences center, or broad open/click tracking.
-- Multiple live providers or automatic provider failover.
+**Defer (v2+):**
+- Custom form builders
+- Automated approval rules
+- Broader cross-campaign volunteer profile workflows
 
 ### Architecture Approach
 
-The architecture should mirror the existing Twilio and job-backed import patterns: domain write first, email queue second, provider send in the worker, webhook reconciliation later. The app owns invite email generation and normalized audit state; ZITADEL owns auth email delivery through separate SMTP configuration and docs.
+Use opaque DB-backed signup-link records rather than the campaign slug as the public secret. Public submissions should create pending application rows that copy source attribution from the link at submit time. Approval should atomically create `CampaignMember` access, activate or create the volunteer record, and grant the campaign role through ZITADEL.
 
 **Major components:**
-1. `EmailProvider` contract + `MailgunEmailProvider` — isolates provider-specific send and webhook verification behavior.
-2. `EmailService` + template renderer — builds typed messages, creates idempotent audit rows, and queues jobs after commit.
-3. `email_messages` / `email_events` models — normalized send attempts, provider message IDs, lifecycle states, and append-only events.
-4. Procrastinate email tasks — asynchronous send, retry, status transitions, and replay-safe execution.
-5. Mailgun webhook endpoint — signature verification and final-state reconciliation by local send ID / provider message ID.
-6. Invite integration call sites — campaign invite first, then volunteer/staff/org variants on the same foundation.
-7. ZITADEL operator docs/config — SMTP/custom-domain setup, ownership boundaries, and smoke-test runbook.
+1. Managed signup-link service — create/list/disable/regenerate campaign-scoped links
+2. Public application service — resolve link, capture application, reconcile existing accounts
+3. Approval workflow service — approve/reject pending applications and grant access only on approval
 
 ### Critical Pitfalls
 
-1. **Treating provider acceptance as delivery** — require normalized states such as `queued`, `submitted`, `delivered`, `failed`, `bounced`, `complained`, `suppressed`, and do not surface “delivered” without webhook evidence.
-2. **Mixing CivicPulse invite email with ZITADEL auth email ownership** — keep separate config, code paths, docs, and debugging boundaries from day one.
-3. **No idempotency or sending before commit** — use an outbox/job pattern and unique logical send keys so retries do not create duplicate or orphaned invite emails.
-4. **Reconciling events by recipient email** — join webhook events by local send-attempt identity and provider message ID, never by address alone.
-5. **Region/domain/secret misconfiguration** — make Mailgun region first-class, isolate a transactional sending domain, separate API/webhook/SMTP secrets, and publish rotation/runbook guidance before go-live.
-6. **Cross-tenant leakage through batching or metadata** — send one invite per recipient and keep provider tags/variables opaque and minimal.
-7. **Wrong public links in emails** — generate invite URLs from explicit public config, not request headers or internal service hosts.
+1. **Pre-approval access leakage** — keep application state separate from membership and defer ZITADEL role assignment until approval.
+2. **Fake rotation** — regeneration must invalidate old tokens server-side, not just change visible metadata.
+3. **Duplicate user identities** — reuse existing CivicPulse accounts rather than creating campaign-specific duplicates.
+4. **Attribution drift** — copy source metadata onto the application at submission time.
+5. **Public-link abuse** — ship rate limits and fast disable controls with the initial flow.
 
 ## Implications for Roadmap
 
-Based on the combined research, the milestone should be decomposed into five build slices.
+Based on research, suggested phase structure:
 
-### Phase 1: Provider Foundation and Secret Hygiene
-**Rationale:** Every later slice depends on a clean provider seam, explicit config, and safe operational boundaries.
-**Delivers:** `EmailProvider` contract, Mailgun adapter, config surface, Jinja2 dependency, sender policy, region-aware base URL derivation, secret separation rules.
-**Addresses:** provider-backed sending, template system foundation, environment-safe configuration.
-**Avoids:** Mailgun lock-in, region/base-URL mismatch, secret sprawl, shared-domain mistakes.
+### Phase 101: Signup Link Foundation & Public Application Contract
+**Rationale:** Everything else depends on having real managed links and a pending application record distinct from campaign membership.
+**Delivers:** Signup-link model/API, public link lookup, pending application submit path, source attribution persistence
+**Addresses:** managed links, attribution, pending applications
+**Avoids:** fake rotation, attribution drift, pre-approval access
 
-### Phase 2: Persistence and Async Delivery Core
-**Rationale:** Invite integration should not happen before the audit/idempotency model and queue semantics exist.
-**Delivers:** `email_messages`, `email_events`, idempotency key strategy, `EmailService`, Procrastinate send task, retry rules, post-commit queueing.
-**Addresses:** delivery metadata persistence, idempotent send behavior, resend-safe foundation.
-**Avoids:** send-before-commit races, duplicate emails, boolean-only “sent” state.
+### Phase 102: Existing-Account Reconciliation & Approval Access Boundary
+**Rationale:** Approval semantics and duplicate-account prevention are the highest-risk integration points.
+**Delivers:** existing-account apply flow, approval/rejection actions, membership/role creation only on approval
+**Uses:** existing ZITADEL role assignment, volunteer status, campaign membership patterns
+**Implements:** application-before-membership boundary
 
-### Phase 3: Invite Delivery Integration
-**Rationale:** Existing product value comes from making already-present invite flows actually send email.
-**Delivers:** campaign invite email path first, then volunteer/staff/org invite variants; stable accept-invite links; staff-visible resend/status hooks where already supported by UX.
-**Addresses:** real invite emails, invite-context content, stable acceptance flow reuse.
-**Avoids:** frontend/provider coupling, wrong public URLs, recipient batching, redesigning invite domain logic.
-
-### Phase 4: Email Events, Webhooks, and Audit Visibility
-**Rationale:** Milestone credibility depends on truthful delivery state, not just successful provider submission.
-**Delivers:** Mailgun webhook ingress with signature verification, normalized event reconciliation, suppression-aware status updates, final-state visibility in operator-facing surfaces or APIs.
-**Addresses:** final delivery status, failure visibility, bounce/complaint/suppression handling, support-grade audit trail.
-**Avoids:** accepted-as-delivered bugs, event misattachment by email address, repeated sends to suppressed recipients, excess tracking PII.
-
-### Phase 5: ZITADEL Delivery Setup and Operational Hardening
-**Rationale:** The milestone is not complete until auth/system mail and operator runbooks are production-ready too.
-**Delivers:** ZITADEL SMTP/custom-domain documentation, ownership boundaries, smoke-test checklist for verification/reset/auth mail, Mailgun DNS/domain runbooks, fallback/manual replay guidance, app-vs-ZITADEL monitoring boundaries.
-**Addresses:** auth/system email readiness, deliverability prerequisites, go-live operations.
-**Avoids:** leaving ZITADEL on default settings, blended monitoring/runbooks, undefined outage response.
+### Phase 103: Manager Operations, Abuse Controls, and Verification
+**Rationale:** Once the core flow works, staff need operational control and proof it is safe.
+**Delivers:** link list/manage UI, disable/regenerate actions, review queue polish, rate-limit/duplication tests, optional notifications/reporting closure
 
 ### Phase Ordering Rationale
 
-- Provider/config boundaries come first because they shape schema, queue behavior, and requirement wording.
-- Persistence and async delivery must exist before wiring live invite flows; otherwise the team will either block request latency on Mailgun or lose auditability.
-- Invite integration belongs before webhook polish because it is the direct product slice, but milestone acceptance should still require final-state reconciliation before closeout.
-- ZITADEL work is separate from app code but should be a milestone phase, not post-milestone ops follow-up.
+- Link and application primitives must exist before review or analytics are meaningful.
+- Existing-account reconciliation must land before staff start approving real applications, or duplicate identities become expensive to unwind.
+- Operational controls and verification belong after the core access boundary is correct, but they are still part of the same milestone because public links are abuse-prone by definition.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 4:** Mailgun webhook event mapping and suppression-policy details should be verified against the exact event set and desired normalized states.
-- **Phase 5:** ZITADEL SMTP/custom-domain operator steps need implementation-specific validation against the current deployed ZITADEL environment and secrets flow.
+- **Phase 102:** exact duplicate-account reconciliation rules and any ZITADEL edge cases for already-known users
 
-Phases with standard patterns (likely no separate research pass needed):
-- **Phase 1:** Provider seam, config surface, and template ownership are already well-supported by the research.
-- **Phase 2:** Async outbox-style send with Procrastinate fits existing platform patterns.
-- **Phase 3:** Invite integration should mostly reuse existing invite models, tokens, and acceptance routes.
+Phases with standard patterns (skip research-phase):
+- **Phase 101:** DB-backed link records and pending-application models are standard, well-understood patterns
+- **Phase 103:** admin queue/list management and disable/regenerate controls follow established invite-link patterns
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Backed by official Mailgun and ZITADEL docs and consistent with existing FastAPI/Procrastinate/httpx platform patterns. |
-| Features | MEDIUM-HIGH | Table stakes are clear, but some operator UX recommendations are based on common practice rather than a single canonical source. |
-| Architecture | HIGH | Strong alignment across research and with existing codebase seams for invite services, tasks, config, and integration style. |
-| Pitfalls | HIGH | Risks are concrete, source-backed, and directly applicable to milestone sequencing and acceptance criteria. |
+| Stack | HIGH | Existing stack is clearly sufficient; no platform migration needed |
+| Features | HIGH | User goals are concrete and align with common invite/application patterns |
+| Architecture | HIGH | Current codebase already exposes the exact join/membership seam that needs correction |
+| Pitfalls | HIGH | Risks are directly implied by the current instant-join implementation and public-link patterns |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Current invite surface inventory:** requirements should explicitly name which invite flows are in-scope on day one so roadmap phases do not drift.
-- **Public URL ownership:** planning should confirm the canonical public app URL and how it will coexist with ZITADEL login/custom-domain URLs.
-- **Operator ownership split:** clarify who owns Mailgun provisioning, DNS, Kubernetes secret injection, and ZITADEL SMTP activation before execution begins.
-- **Delivery-status UX depth:** decide during requirements whether operator visibility is API-only, admin-surface status, or both.
-- **Fallback policy:** define whether outage handling is queue-and-retry only or includes manual replay/resend workflow in this milestone.
+- Exact applicant identity resolution policy when an anonymous applicant submits an email that already belongs to an existing CivicPulse account
+- Whether expiry/max-use controls are required for MVP or can remain a phase-level stretch goal under the broader per-link controls umbrella
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [.planning/PROJECT.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/PROJECT.md) — milestone scope, explicit out-of-scope boundaries, current invite/auth context
-- [.planning/research/STACK.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/STACK.md) — stack and operational prerequisites
-- [.planning/research/FEATURES.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/FEATURES.md) — table stakes, differentiators, and anti-features
-- [.planning/research/ARCHITECTURE.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/ARCHITECTURE.md) — service boundaries, data flow, and build order
-- [.planning/research/PITFALLS.md](/home/kwhatcher/projects/civicpulse/run-api/.planning/research/PITFALLS.md) — delivery, tenancy, and operational risks
-- Mailgun API/send/webhook/DNS docs — provider send path, regional endpoints, webhook security, deliverability constraints
-- ZITADEL SMTP/default-settings/custom-domain docs — auth/system email ownership and operator configuration boundaries
+- Existing codebase: `app/api/v1/join.py`, `app/services/join.py`, `app/api/v1/volunteers.py`, `app/services/volunteer.py`
+- Existing implementation notes: `reports/volunteer-join-flow-backend.md`
+- Slack Help Center — https://slack.com/help/articles/360060363633-Manage-pending-invitations-and-invite-links-for-your-workspace
+- Slack Help Center — https://slack.com/help/articles/115005912706-Manage-Slack-Connect-channel-approval-settings-and-invitation-requests
+- Discord Support — https://support.discord.com/hc/en-us/articles/208866998-Invites-101
+- Google for Developers — https://developers.google.com/identity/gsi/web/guides/personalized-button
 
 ### Secondary (MEDIUM confidence)
-- Jinja2 PyPI metadata — current stable version guidance for template rendering dependency
-- Mailgun Python SDK PyPI metadata — used only to justify avoiding SDK adoption in this milestone
+- Inference from current CivicPulse code structure: the safest path is to preserve existing service boundaries and insert application-before-membership semantics rather than invent a parallel auth model.
+
+### Tertiary (LOW confidence)
+- None
 
 ---
-*Research completed: 2026-04-08*
+*Research completed: 2026-04-09*
 *Ready for roadmap: yes*
