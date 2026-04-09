@@ -19,6 +19,7 @@ from app.api.v1 import (
     org,
     phone_banks,
     shifts,
+    signup_links,
     sms,
     surveys,
     turfs,
@@ -56,6 +57,7 @@ router.include_router(dnc.router, tags=["dnc"])
 router.include_router(phone_banks.router, tags=["phone-banks"])
 router.include_router(volunteers.router, tags=["volunteers"])
 router.include_router(shifts.router, tags=["shifts"])
+router.include_router(signup_links.router, tags=["signup-links"])
 router.include_router(dashboard.router, tags=["dashboard"])
 router.include_router(field.router, tags=["field"])
 router.include_router(config.router, tags=["config"])
