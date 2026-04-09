@@ -238,3 +238,50 @@ async def test_mailgun_events_ignores_duplicate_delivery():
 
     assert result == ""
     db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_mailgun_events_updates_orgless_attempt_without_idempotency_lookup():
+    from app.api.v1.mailgun_webhooks import mailgun_events
+
+    invite = _make_invite()
+    attempt = _make_attempt(invite)
+    attempt.organization_id = None
+    timestamp = "1710000000"
+    token = "mailgun-token"
+    key = "signing-secret"
+    request = _mock_request(
+        {
+            "timestamp": timestamp,
+            "token": token,
+            "signature": _signature(timestamp, token, key),
+            "event-data": json.dumps(
+                {
+                    "id": "evt-orgless-1",
+                    "event": "failed",
+                    "severity": "temporary",
+                    "reason": "Mailbox unavailable",
+                    "message": {"headers": {"message-id": attempt.provider_message_id}},
+                    "timestamp": 1710000000,
+                }
+            ),
+        }
+    )
+    db = AsyncMock()
+    db.scalar = AsyncMock(return_value=attempt)
+    db.get = AsyncMock(return_value=invite)
+
+    original = settings.mailgun_webhook_signing_key
+    try:
+        settings.mailgun_webhook_signing_key = SecretStr(key)
+        with patch("app.api.v1.mailgun_webhooks.check_idempotency", new_callable=AsyncMock) as check_idempotency_mock:
+            result = await mailgun_events(request=request, db=db)
+    finally:
+        settings.mailgun_webhook_signing_key = original
+
+    assert result == ""
+    assert invite.email_delivery_status == "failed"
+    assert invite.email_delivery_error == "temporary"
+    assert attempt.provider_event_key == "evt-orgless-1"
+    check_idempotency_mock.assert_not_awaited()
+    db.commit.assert_awaited_once()
