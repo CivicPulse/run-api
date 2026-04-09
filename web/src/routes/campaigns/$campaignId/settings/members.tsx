@@ -53,6 +53,30 @@ const roleVariant: Record<string, StatusVariant> = {
   viewer: "default",
 }
 
+const inviteDeliveryVariant: Record<string, StatusVariant> = {
+  pending: "default",
+  queued: "info",
+  submitted: "info",
+  delivered: "success",
+  failed: "error",
+  bounced: "error",
+  complained: "warning",
+  suppressed: "warning",
+  skipped: "warning",
+}
+
+const inviteDeliveryLabel: Record<string, string> = {
+  pending: "Pending",
+  queued: "Queued",
+  submitted: "Submitted",
+  delivered: "Delivered",
+  failed: "Failed",
+  bounced: "Bounced",
+  complained: "Complained",
+  suppressed: "Suppressed",
+  skipped: "Skipped",
+}
+
 // Selectable roles (owner excluded — owner transfer is in Danger Zone)
 const ASSIGNABLE_ROLES = ["viewer", "volunteer", "manager", "admin"] as const
 type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]
@@ -66,6 +90,44 @@ const inviteSchema = z.object({
 })
 
 type InviteFormValues = z.infer<typeof inviteSchema>
+
+function formatInviteEventTimestamp(value: string | null | undefined) {
+  if (!value) return null
+
+  return new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+function getInviteDeliveryContext(invite: Invite) {
+  const status = invite.email_delivery_status ?? "pending"
+  const label = inviteDeliveryLabel[status] ?? status
+  const variant = inviteDeliveryVariant[status] ?? "default"
+  const eventAt =
+    invite.email_delivery_last_event_at ??
+    invite.email_delivery_sent_at ??
+    invite.email_delivery_queued_at
+
+  let detail = "Awaiting delivery activity."
+  if (status === "queued") detail = "Queued for background delivery."
+  if (status === "submitted") detail = "Accepted by the provider."
+  if (status === "delivered") detail = "Delivered to the recipient."
+  if (status === "failed") detail = "Delivery failed. Review the latest error."
+  if (status === "bounced") detail = "Mailbox or domain rejected delivery."
+  if (status === "complained") detail = "Recipient marked the message as spam."
+  if (status === "suppressed") detail = "Provider suppressed additional sends."
+  if (status === "skipped") detail = "Invite is no longer deliverable."
+
+  return {
+    label,
+    variant,
+    detail,
+    eventLabel: formatInviteEventTimestamp(eventAt),
+  }
+}
 
 // ----- Members tab component -----
 function MembersSettings() {
@@ -287,6 +349,39 @@ function MembersSettings() {
       ),
     },
     {
+      id: "delivery",
+      header: "Delivery",
+      cell: ({ row }) => {
+        const delivery = getInviteDeliveryContext(row.original)
+        return (
+          <div className="space-y-1">
+            <StatusBadge
+              status={delivery.label}
+              variant={delivery.variant}
+            />
+            <p className="text-muted-foreground text-xs">{delivery.detail}</p>
+            {delivery.eventLabel ? (
+              <p className="text-muted-foreground text-xs">
+                Last event {delivery.eventLabel}
+              </p>
+            ) : null}
+          </div>
+        )
+      },
+    },
+    {
+      id: "details",
+      header: "Notes",
+      cell: ({ row }) => {
+        const error = row.original.email_delivery_error
+        return (
+          <span className={error ? "text-sm text-destructive" : "text-muted-foreground text-sm"}>
+            {error ?? "No delivery issues reported."}
+          </span>
+        )
+      },
+    },
+    {
       accessorKey: "created_at",
       header: "Invited",
       cell: ({ row }) => {
@@ -317,7 +412,7 @@ function MembersSettings() {
   ]
 
   const members = membersData ?? []
-  const invites = invitesData?.items ?? []
+  const invites = invitesData ?? []
 
   return (
     <div className="space-y-10">

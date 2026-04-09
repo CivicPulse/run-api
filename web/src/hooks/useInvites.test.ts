@@ -32,21 +32,19 @@ function makeWrapper() {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const mockInvites = {
-  items: [
-    {
-      id: "invite-1",
-      campaign_id: "campaign-1",
-      email: "newmember@example.com",
-      role: "volunteer",
-      status: "pending" as const,
-      invited_by: "user-1",
-      created_at: "2026-03-01T00:00:00Z",
-      expires_at: "2026-04-01T00:00:00Z",
-    },
-  ],
-  pagination: { next_cursor: null, has_more: false },
-}
+const mockInvites = [
+  {
+    id: "invite-1",
+    campaign_id: "campaign-1",
+    email: "newmember@example.com",
+    role: "volunteer",
+    created_at: "2026-03-01T00:00:00Z",
+    expires_at: "2026-04-01T00:00:00Z",
+    email_delivery_status: "failed" as const,
+    email_delivery_error: "Mailbox unavailable",
+    email_delivery_last_event_at: "2026-03-01T01:00:00Z",
+  },
+]
 
 describe("useInvites", () => {
   beforeEach(() => {
@@ -85,7 +83,7 @@ describe("useCreateInvite", () => {
   })
 
   it("calls POST /api/v1/campaigns/{id}/invites with email and role", async () => {
-    const newInvite = mockInvites.items[0]
+    const newInvite = mockInvites[0]
     mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(newInvite) })
 
     const { result } = renderHook(() => useCreateInvite("campaign-1"), {
@@ -111,7 +109,7 @@ describe("useCreateInvite", () => {
     })
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
 
-    const newInvite = mockInvites.items[0]
+    const newInvite = mockInvites[0]
     mockApi.post.mockReturnValue({ json: vi.fn().mockResolvedValue(newInvite) })
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -135,7 +133,7 @@ describe("useRevokeInvite", () => {
   })
 
   it("calls DELETE /api/v1/campaigns/{id}/invites/{inviteId}", async () => {
-    mockApi.delete.mockReturnValue({ json: vi.fn().mockResolvedValue(undefined) })
+    mockApi.delete.mockResolvedValue(undefined)
 
     const { result } = renderHook(() => useRevokeInvite("campaign-1"), {
       wrapper: makeWrapper(),
@@ -159,7 +157,7 @@ describe("useRevokeInvite", () => {
     })
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
 
-    mockApi.delete.mockReturnValue({ json: vi.fn().mockResolvedValue(undefined) })
+    mockApi.delete.mockResolvedValue(undefined)
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
@@ -173,5 +171,15 @@ describe("useRevokeInvite", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["campaigns", "campaign-1", "invites"],
     })
+  })
+
+  it("treats a 204 delete response as success without parsing JSON", async () => {
+    mockApi.delete.mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useRevokeInvite("campaign-1"), {
+      wrapper: makeWrapper(),
+    })
+
+    await expect(result.current.mutateAsync("invite-1")).resolves.toBeUndefined()
   })
 })
