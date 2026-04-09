@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.16 Email Delivery Foundation (Shipped: 2026-04-08)
+
+**Phases completed:** 6 phases, 7 plans
+
+**Key accomplishments:**
+
+- Added a provider-agnostic transactional email foundation with Mailgun as the first implementation and code-owned invite templates.
+- Moved invite delivery onto a durable async path with idempotent background send behavior and same-origin invite acceptance.
+- Added canonical Mailgun delivery-attempt audit rows plus authenticated webhook reconciliation for truthful invite delivery state.
+- Documented and wired ZITADEL SMTP ownership separately from CivicPulse invite mail, with explicit operator runbooks.
+- Closed the admin pending-invite UI contract gap so staff can inspect delivery truth and revoke pending invites successfully.
+
+**Audit:** .planning/milestones/v1.16-MILESTONE-AUDIT.md (status: tech_debt, 17/17 requirements satisfied; no shipment blockers)
+
+---
+
 ## v1.15 Twilio Communications (Shipped: 2026-04-08)
 
 **Phases completed:** 7 phases, 21 plans

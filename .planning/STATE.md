@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.16
 milestone_name: Email Delivery Foundation
-status: phase 99 complete
-stopped_at: phase 99 complete; next step is /gsd-audit-milestone v1.16
-last_updated: "2026-04-08T17:53:28Z"
-last_activity: 2026-04-08
+status: completed
+stopped_at: Session resumed; awaiting next action from archived v1.16 state
+last_updated: "2026-04-09T18:16:44Z"
+last_activity: 2026-04-09
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-08)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** ready to audit milestone v1.16 Email Delivery Foundation
+**Current focus:** v1.16 archived; ready to define the next milestone
 
 ## Current Position
 
 Phase: Complete
 Plan: Complete
-Status: Phase 99 complete
-Last activity: 2026-04-08
+Status: Milestone v1.16 archived
+Last activity: 2026-04-09
 
 Progress: [██████████] 100%
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 - [Phase 97]: Phase 97 added canonical invite-email attempt audit rows plus authenticated Mailgun webhook reconciliation keyed by provider message id. — This gives support a truthful latest outcome per invite and keeps future resend/deliverability work grounded in durable attempt history.
 - [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery, including a runbook for sender alignment and support triage. — This keeps auth/system mail ownership explicit and gives phase 99 a clear shared-ops boundary to harden.
 - [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations across CivicPulse invite mail and ZITADEL auth mail. — The milestone is now ready for milestone audit and archive steps.
+- [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing in the campaign members UI. — This closes the remaining AUD-04 admin visibility gap identified by the milestone audit.
 
 ## Pending Todos
 
@@ -75,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-08T17:53:28Z
-Stopped at: phase 99 complete; next step is /gsd-audit-milestone v1.16
-Resume file: .planning/phases/99-deliverability-hardening-operations/99-VERIFICATION.md
+Last session: 2026-04-09T18:16:44Z
+Stopped at: Session resumed; awaiting next action from archived v1.16 state
+Resume file: .planning/milestones/v1.16-MILESTONE-AUDIT.md
