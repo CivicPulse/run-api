@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Easy Volunteer Invites
 status: in_progress
-stopped_at: Roadmap created for v1.17; ready to discuss Phase 101
-last_updated: "2026-04-09T19:57:49Z"
+stopped_at: Phase 101 complete and verified; ready to discuss Phase 102
+last_updated: "2026-04-09T20:09:20Z"
 last_activity: 2026-04-09
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.17 Easy Volunteer Invites — roadmap created, Phase 101 ready
+**Current focus:** v1.17 Easy Volunteer Invites — Phase 101 complete, Phase 102 ready
 
 ## Current Position
 
-Phase: 101
+Phase: 102
 Plan: —
-Status: Roadmap created; ready for phase discussion
+Status: Phase 101 complete; Phase 102 ready for discussion
 Last activity: 2026-04-09
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 33%
 
 ## Accumulated Context
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery, including a runbook for sender alignment and support triage. — This keeps auth/system mail ownership explicit and gives phase 99 a clear shared-ops boundary to harden.
 - [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations across CivicPulse invite mail and ZITADEL auth mail. — The milestone is now ready for milestone audit and archive steps.
 - [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing in the campaign members UI. — This closes the remaining AUD-04 admin visibility gap identified by the milestone audit.
+- [Phase 101]: Phase 101 added dedicated volunteer signup links with admin lifecycle controls, a neutral public resolver, and a same-origin public landing page separate from legacy slug joins and trusted member invites. — This creates the safe public entry foundation required for application intake in phase 102.
 
 ## Pending Todos
 
@@ -77,5 +78,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-09T19:57:49Z
-Stopped at: Roadmap created for v1.17; ready to discuss Phase 101
+Stopped at: Phase 101 complete and verified; ready to discuss Phase 102
 Resume file: .planning/ROADMAP.md

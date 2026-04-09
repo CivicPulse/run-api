@@ -188,7 +188,7 @@ See: `.planning/milestones/v1.16-ROADMAP.md`
 
 ## Phases
 
-- [ ] **Phase 101: Signup Link Foundation & Public Entry** - Create the campaign-scoped signup-link domain, public resolution flow, and fail-closed link lifecycle controls without reusing trusted member invites.
+- [x] **Phase 101: Signup Link Foundation & Public Entry** - Create the campaign-scoped signup-link domain, public resolution flow, and fail-closed link lifecycle controls without reusing trusted member invites. — completed 2026-04-09
 - [ ] **Phase 102: Volunteer Applications & Existing-Account Intake** - Accept public applications into a pending state with dedupe, immutable source attribution, and privacy-safe handling for existing CivicPulse accounts.
 - [ ] **Phase 103: Review Queue, Approval, and Access Activation** - Give campaign admins a review workflow that approves or rejects applications and only grants campaign membership and volunteer access on approval.
 
