@@ -1,118 +1,89 @@
-# Feature Research
+# Feature Landscape: Easy Volunteer Invites
 
-**Domain:** Campaign-scoped volunteer self-signup and approval links
+**Domain:** Campaign-scoped volunteer signup links with pending approval
+**Project:** CivicPulse Run API
 **Researched:** 2026-04-09
-**Confidence:** HIGH
+**Overall confidence:** HIGH
 
-## Feature Landscape
+## Scope Boundary
 
-### Table Stakes (Users Expect These)
+This milestone is about a campaign sharing one or more volunteer signup links so people can apply to join that campaign, remain pending until staff approval, and preserve attribution per link.
 
-| Feature | Why Expected | Complexity | Notes |
+This milestone is not:
+
+- general campaign-member invites for admins/managers
+- a marketing lead funnel
+- volunteer CRM scoring or automation
+- organization-scoped shared signup portals
+
+## Table Stakes
+
+### Signup Links
+
+| Feature | Why expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Multiple signup links per campaign | Staff want different links for QR flyers, website buttons, organizers, or events | MEDIUM | Links need labels/source metadata and campaign ownership. |
-| Per-link lifecycle controls | Official invite systems commonly allow expiration, disable/deactivate, renewal, or replacement | MEDIUM | Disable/regenerate is core to abuse response; expiration and max uses are natural controls. |
-| Pending application queue before access | Staff need approval control before a volunteer sees campaign data or tools | MEDIUM | Application and membership must be separate states. |
-| Existing-account apply path | Returning users expect recognition instead of duplicate signup friction | MEDIUM | Known account data should be reused and linked to the pending application. |
-| Staff review with approve/reject actions | Pending state is incomplete without explicit review operations | MEDIUM | Approval should create membership/role; rejection should preserve auditability. |
-| Attribution of how the applicant found the campaign | The user explicitly wants to track share channel performance | LOW | Best handled as immutable link metadata copied onto the application at submit time. |
+| Multiple signup links per campaign | Required for source tracking and channel-specific sharing | Medium | Each link needs label, token/slug, status, created/updated timestamps |
+| Per-link label/source name | Core attribution requirement | Low | Example: `website`, `flyer`, `event-qr` |
+| Disable/regenerate link | Required abuse control | Medium | Regeneration should invalidate old public URLs cleanly |
+| Public link resolution page | People need a stable public destination | Medium | Should show campaign context and application state safely |
 
-### Differentiators (Competitive Advantage)
+### Applications
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Link-level reporting inside volunteer operations | Lets campaigns see which outreach channels actually drive approved volunteers | LOW | Strong fit for CivicPulse because campaign organizing depends on measurable field recruitment. |
-| Seamless existing-user application flow | Reduces friction for volunteers already using CivicPulse elsewhere | MEDIUM | A practical differentiator because CivicPulse is multi-campaign and multi-tenant. |
-| Approval-gated access with no pre-approval visibility | Preserves trust and campaign privacy while still enabling public recruiting | MEDIUM | Stronger operational safety than the current immediate-join model. |
+| Feature | Why expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Public volunteer application form | Core entry point for new volunteers | Medium | Collect enough data for staff review and later volunteer workflows |
+| Pending state after submit | Explicit user requirement | Low | No campaign access before review |
+| Staff review queue | Required to turn pending applications into usable workflow | Medium | Needs filtering and attribution visibility |
+| Approve or reject application | Core lifecycle action | Medium | Approval should be idempotent and traceable |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Existing Account Handling
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Open join with instant campaign access | Feels “easy” and reduces one step | Conflicts with approval requirement and increases abuse/visibility risk | Keep public application easy, but gate campaign membership until approval |
-| Unlimited shared link with no controls | Simplest possible sharing model | No attribution, no abuse response, no rotation story | Support multiple managed links with disable/regenerate and optional expiry/usage caps |
-| Separate account per campaign application | Seems simpler to implement than account reconciliation | Creates duplicate identities and poor UX for existing CivicPulse users | Bind the application to an existing user when one already exists |
+| Feature | Why expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Existing CivicPulse user can apply without creating another account | Explicit user requirement | Medium | Should recognize account and avoid duplicate signup |
+| Reuse known profile info when possible | Required UX simplification | Medium | Existing user should not need to re-enter all fields |
+| Existing account still requires approval for this campaign | Core permission boundary | Low | Existing identity does not imply campaign membership |
 
-## Feature Dependencies
+### Staff Visibility
 
-```
-[Per-link attribution]
-    └──requires──> [Managed signup link records]
+| Feature | Why expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| See which link produced each application | Core attribution outcome | Low | Surface link label/source on each application |
+| View pending vs approved/rejected counts by link | Useful baseline insight | Medium | Lightweight operational reporting, not full analytics |
+| Link-level controls in campaign UI | Needed to manage abuse and rotation | Medium | Create, copy, disable, regenerate |
 
-[Pending application queue]
-    └──requires──> [Application model distinct from membership]
-                       └──requires──> [Approval / rejection actions]
+## Differentiators
 
-[Existing-account apply flow]
-    └──requires──> [Identity reconciliation at apply time]
-                       └──requires──> [Approval path that creates membership later]
+| Feature | Value | Complexity | Notes |
+|---------|-------|------------|-------|
+| Optional per-link expiry | Helps with event-specific links | Low | Good candidate if it fits without bloating v1.17 |
+| Applicant confirmation and approval emails | Better UX and lower staff friction | Medium | Reuse Mailgun-backed email foundation |
+| Duplicate-application guidance | Better handling for already-pending or already-active users | Medium | Important for clean UX when links are reused publicly |
 
-[Notifications]
-    └──enhances──> [Pending application queue]
+## Anti-Features
 
-[Immediate campaign access] ──conflicts──> [Approval-gated membership]
-```
+| Anti-feature | Why avoid | What to do instead |
+|-------------|-----------|--------------------|
+| Auto-approve applicants from public links | Breaks the milestone’s permission boundary | Keep staff approval mandatory |
+| Org-wide volunteer pools joined from one link | Not requested and complicates tenancy | Keep links campaign-scoped |
+| Rich referral attribution/UTM dashboards | Over-scoped for “which link did they use?” | Store link id + label only |
+| Public campaign browsing/discovery directory | Separate product surface | Require possession of a campaign-issued link |
+| Volunteer application workflow builder | Too much configurability for first release | Use one fixed, product-owned application flow |
 
-### Dependency Notes
+## Category Recommendations For Requirements
 
-- **Per-link attribution requires managed signup link records:** attribution cannot come from a bare campaign slug because multiple sources must coexist.
-- **Pending application queue requires a model distinct from membership:** otherwise a “pending” applicant already exists as a campaign member, which conflicts with the privacy goal.
-- **Existing-account apply flow requires identity reconciliation:** the system must detect whether the applicant is already known and avoid duplicate account creation.
-- **Notifications enhance the queue:** confirmation and approval emails are valuable but not mandatory for the first milestone if core flow is solid.
-- **Immediate campaign access conflicts with approval-gated membership:** these two product models are mutually exclusive.
+Use these requirement categories:
 
-## MVP Definition
-
-### Launch With (v1)
-
-- [ ] Managed campaign-scoped signup links with labels/source attribution
-- [ ] Public apply flow for new and existing CivicPulse users
-- [ ] Pending volunteer application records separate from campaign membership
-- [ ] Staff queue to review, approve, and reject applications
-- [ ] Link disable/regenerate controls for abuse response
-- [ ] Approval that creates campaign membership and grants access only then
-
-### Add After Validation (v1.x)
-
-- [ ] Optional per-link expiration and max-use limits — add when campaigns want tighter event or QR controls
-- [ ] Email confirmations for applicant submitted/approved/rejected states — add if support load shows applicants need stronger feedback
-- [ ] Link-level funnel reporting (submitted vs approved vs rejected) — add when campaigns want recruitment analytics beyond source labels
-
-### Future Consideration (v2+)
-
-- [ ] Fully customizable public volunteer forms per campaign — defer until the base approval workflow proves stable
-- [ ] Automated approval rules — defer until campaigns show repeated, low-risk approval criteria
-- [ ] Cross-campaign volunteer profile reuse controls beyond account reuse — valuable later but not required for this milestone
-
-## Feature Prioritization Matrix
-
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Managed signup links | HIGH | MEDIUM | P1 |
-| Pending application workflow | HIGH | MEDIUM | P1 |
-| Approval/rejection actions | HIGH | MEDIUM | P1 |
-| Existing-account apply flow | HIGH | MEDIUM | P1 |
-| Link disable/regenerate | HIGH | MEDIUM | P1 |
-| Optional expiration/max uses | MEDIUM | LOW/MEDIUM | P2 |
-| Applicant/manager notifications | MEDIUM | MEDIUM | P2 |
-| Link-level conversion analytics | MEDIUM | LOW | P2 |
-
-## Competitor Feature Analysis
-
-| Feature | Competitor A | Competitor B | Our Approach |
-|---------|--------------|--------------|--------------|
-| Link lifecycle controls | Slack invite links can be viewed, renewed, and deactivated | Discord invites can have expiry, usage caps, and be removed | Campaign managers get multiple managed signup links with disable/regenerate as baseline |
-| Pending review | Slack pending invitations can be extended or deleted before acceptance | Slack Connect supports approval and denial flows for pending requests | Campaign managers review volunteer applications before membership exists |
-| Returning-user path | Google identity surfaces returning accounts to reduce repeated signup friction | N/A | Reuse existing CivicPulse accounts during apply instead of creating duplicates |
+1. `LINK` — campaign signup-link lifecycle and controls
+2. `APPL` — public application submission and applicant-state handling
+3. `APRV` — staff review, approval, rejection, and gating
+4. `ACCT` — existing-account recognition and account-to-membership conversion
+5. `OBS` — attribution and operational visibility
 
 ## Sources
 
-- Existing codebase and `reports/volunteer-join-flow-backend.md` — current baseline and current gap: immediate volunteer registration through `/join/{slug}/register`.
-- Slack Help Center — https://slack.com/help/articles/360060363633-Manage-pending-invitations-and-invite-links-for-your-workspace
-- Slack Help Center — https://slack.com/help/articles/115005912706-Manage-Slack-Connect-channel-approval-settings-and-invitation-requests
-- Discord Support — https://support.discord.com/hc/en-us/articles/208866998-Invites-101
-- Google for Developers — https://developers.google.com/identity/gsi/web/guides/personalized-button
-
----
-*Feature research for: campaign-scoped volunteer self-signup and approval links*
-*Researched: 2026-04-09*
+- `.planning/PROJECT.md`
+- `app/services/join.py`
+- `app/services/volunteer.py`
+- `app/api/v1/volunteers.py`
+- `web/src/routes/campaigns/$campaignId/volunteers/register/index.tsx`

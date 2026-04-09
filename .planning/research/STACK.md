@@ -1,83 +1,80 @@
-# Stack Research
+# Stack Research: Easy Volunteer Invites
 
-**Domain:** Campaign-scoped volunteer self-signup and approval links
+**Domain:** Campaign-scoped volunteer signup links and approval-gated applications
+**Project:** CivicPulse Run API
 **Researched:** 2026-04-09
-**Confidence:** HIGH
+**Overall confidence:** HIGH
 
-## Recommended Stack
+## Recommendation
 
-### Core Technologies
+The existing stack is already sufficient for this milestone. The work should extend current backend and frontend seams rather than add a new auth, invite, or forms subsystem.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| FastAPI + SQLAlchemy async | existing | Public join endpoints, manager link management, approval actions | Already powers CivicPulse API patterns, validation, RLS-aware services, and transaction boundaries without adding a second backend surface. |
-| PostgreSQL | existing | Durable invite-link records, pending applications, approval audit state | Link rotation, per-link attribution, and approval decisions need authoritative server-side state rather than self-contained tokens. |
-| React + TanStack Query/Router | existing | Public application page plus manager review/link admin UI | Matches the existing web app architecture and supports pending/active state transitions without introducing a separate frontend stack. |
-| ZITADEL | existing | Create or attach identity only after approval | Existing auth system already owns user identity and campaign role assignment, so approval should gate when those org-scoped roles are granted. |
+Use:
 
-### Supporting Libraries
+- FastAPI + SQLAlchemy async for public application endpoints and staff approval actions
+- PostgreSQL for durable signup-link and application records
+- Existing ZITADEL auth for account recognition and post-approval campaign membership
+- Existing Mailgun-backed invite/email foundation for confirmation and approval notifications when needed
+- Existing React + TanStack Router/Query frontend for public application pages and staff management UI
+- Existing Procrastinate queue only if notifications or abuse/audit tasks need async handling
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Python `secrets` / `hashlib` stdlib | Python 3.13+ | Opaque link token generation and optional hashed token storage | Use for non-guessable invite/application tokens without bringing in JWT-style complexity. |
-| Existing mail pipeline (`app/services/invite_email.py`, Mailgun provider seam) | existing | Optional applicant confirmation and manager notification emails | Use if the milestone includes “application received” or “approved” transactional mail. |
-| Existing rate limiting middleware | existing | Abuse protection on public application endpoints | Required because public links are intentionally shareable and can be abused. |
+Do not add:
 
-### Development Tools
+- A second auth system or passwordless signup flow
+- Public write access directly to `campaign_members`
+- A marketing/referral platform or analytics service
+- A third-party form builder
+- Link-shortener or external attribution vendor dependencies
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| Existing Alembic migration flow | Schema changes | Add dedicated signup-link and application tables or extend current join-related models with reversible migrations. |
-| Existing Playwright + backend tests | Verification | Cover public application, existing-account apply flow, approval, rejection, link disable/regenerate, and source attribution display. |
+## Existing Seams To Reuse
 
-## Installation
+| Component | What already exists | How this milestone should use it |
+|-----------|---------------------|----------------------------------|
+| `app/services/join.py` | Public campaign join flow by campaign slug, immediate `CampaignMember` creation, immediate `Volunteer(status='active')` creation | Replace or narrow the immediate-grant path for volunteer applications; new public links should create pending applications instead of active membership |
+| `app/services/volunteer.py` | Manager-created volunteers default to `pending`; status transitions already enforce `pending -> active/inactive` | Reuse volunteer lifecycle semantics for application review and approval |
+| `app/api/v1/volunteers.py` | Staff CRUD and self-register endpoints | Add staff review/approval actions and avoid the current authenticated self-register path for this milestone's public link flow |
+| `app/services/invite.py` + invite model | Tokenized, revocable campaign invites with delivery metadata | Reuse link lifecycle ideas (token, revoke, rotate, delivery metadata patterns), but do not overload campaign member invites for volunteer applications |
+| `app/services/email_delivery.py` and invite tasks | Async Mailgun-backed email delivery already exists | Reuse only for optional applicant/staff notifications |
+| `web/src/routes/campaigns/$campaignId/volunteers/register/index.tsx` | Current volunteer registration form with staff and self-register modes | Split staff-facing volunteer creation from public application flow; current route should not remain the public entry point unchanged |
 
-```bash
-# No new core packages required for the recommended baseline.
-# Reuse the current FastAPI / SQLAlchemy / React / ZITADEL stack.
-```
+## Recommended Data Additions
 
-## Alternatives Considered
+Minimal new persistence is justified.
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| DB-backed opaque signup links | Self-contained JWT invite links | Only use JWT links if offline verification or cross-service validation is required. That is not needed here and makes revocation/regeneration harder. |
-| Approval-gated membership creation | Immediate `CampaignMember` creation on apply | Only use immediate membership when the product explicitly wants open self-join without staff review. That conflicts with this milestone goal. |
-| Existing-account detection during apply | Force every applicant through full signup/profile entry | Only use the full form for anonymous first-time applicants. Returning users should not create duplicate accounts or re-enter known identity fields. |
+| Need | Recommendation | Why |
+|------|----------------|-----|
+| Campaign signup links | New table such as `volunteer_signup_links` | Multiple campaign-scoped links with labels, status, token/slug, attribution metadata, rotation, and abuse controls need their own durable records |
+| Volunteer applications | New table such as `volunteer_applications` | Pending applications should be distinct from active campaign membership and from internal volunteer records until approved |
+| Attribution | Store link id and source label on application | This satisfies “how did they find us?” without external analytics tooling |
+| Approval audit | Store approver, approved/rejected timestamps, and resolution note | Staff actions need traceability and safe repeated review |
 
-## What NOT to Use
+Prefer a distinct application record over trying to encode everything into `volunteers.status='pending'` alone. The current `volunteers` table is an internal campaign record and mixes too early with user/member semantics.
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| URL slug alone as the public signup secret | Campaign slug is already public and cannot support per-link controls or attribution | Dedicated per-link token/code records tied to a campaign |
-| Stateless invite codes with no DB record | Cannot cleanly disable, rotate, cap uses, or attribute applicants to a specific source | Server-side link rows with status and metadata |
-| Granting ZITADEL campaign role before approval | Violates the requirement that applicants see nothing until approved | Create pending application first, assign membership/role only after approval |
+## Config and Integration Requirements
 
-## Stack Patterns by Variant
+| Config / seam | Needed | Notes |
+|---------------|--------|-------|
+| Public app base URL | Yes | Public signup links must be built from explicit public URL config, not request headers |
+| Rate limiting | Yes | Public application endpoints and link lookup endpoints need IP-aware limits |
+| Abuse controls | Yes | Link disable/regenerate and staff-visible counts are part of the product requirement |
+| Existing identity lookup | Yes | Existing CivicPulse users should be recognized by email/account and not forced through duplicate account creation |
+| Notification templates | Optional but likely | Reuse app-owned Mailgun email system if applicant/staff notifications are sent |
 
-**If the applicant is anonymous:**
-- Show the public campaign signup landing page.
-- Capture application details first, then route to account creation/sign-in only when needed to complete the application.
+## What Not To Add
 
-**If the applicant already has a CivicPulse account but lacks campaign membership:**
-- Reuse the existing identity.
-- Prefill or suppress identity fields already known from the account.
-- Create a pending application bound to that existing user record.
-
-## Version Compatibility
-
-| Package A | Compatible With | Notes |
-|-----------|-----------------|-------|
-| Existing FastAPI API layer | Existing SQLAlchemy async session / Alembic | No stack change required; milestone is primarily new data model and workflow logic. |
-| Existing React app | Existing TanStack Query / Router setup | Public join and manager review screens fit the current frontend patterns. |
+| Avoid | Reason |
+|------|--------|
+| Public direct creation of `CampaignMember` rows | Violates the approval requirement |
+| Automatic volunteer activation on application submit | Conflicts with pending-vs-active gate |
+| Per-link deep analytics, cookies, or campaign tracking pixels | Over-scoped for “which link did they use?” |
+| Requiring existing users to create a second account | Violates explicit milestone intent |
 
 ## Sources
 
-- Existing codebase: `app/api/v1/join.py`, `app/services/join.py`, `app/api/v1/volunteers.py`, `app/services/volunteer.py` — verified the current join flow creates immediate membership and that volunteer status already supports `pending`.
-- Slack Help Center — https://slack.com/help/articles/360060363633-Manage-pending-invitations-and-invite-links-for-your-workspace — official example of invite-link lifecycle controls such as viewing, deactivating, renewing, and managing pending invitations.
-- Discord Support — https://support.discord.com/hc/en-us/articles/208866998-Invites-101 — official example of per-link controls like expiration, max uses, and generating a new link.
-- Google for Developers — https://developers.google.com/identity/gsi/web/guides/personalized-button — official sign-in guidance showing better returning-user flows when a system recognizes an existing account instead of forcing duplicate account creation.
-
----
-*Stack research for: campaign-scoped volunteer self-signup and approval links*
-*Researched: 2026-04-09*
+- `.planning/PROJECT.md`
+- `app/services/join.py`
+- `app/services/volunteer.py`
+- `app/api/v1/volunteers.py`
+- `app/services/invite.py`
+- `app/models/invite.py`
+- `web/src/routes/campaigns/$campaignId/volunteers/register/index.tsx`

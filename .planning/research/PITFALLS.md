@@ -1,180 +1,73 @@
-# Pitfalls Research
+# Domain Pitfalls: Easy Volunteer Invites
 
-**Domain:** Campaign-scoped volunteer self-signup and approval links
+**Domain:** Campaign-scoped volunteer signup links with pending approval
+**Project:** CivicPulse Run API
 **Researched:** 2026-04-09
 **Confidence:** HIGH
 
 ## Critical Pitfalls
 
-### Pitfall 1: Accidental pre-approval access
+### Pitfall 1: Public link submits directly create campaign membership
+**What goes wrong:** The public flow bypasses approval and writes `CampaignMember` rows immediately, similar to the current join flow.
+**Why it is likely here:** `app/services/join.py` already does immediate member creation and active volunteer creation.
+**Consequences:** Unapproved users gain campaign access.
+**Prevention:** Keep public signup submission and approval in separate services and tables. Only approval can grant membership.
 
-**What goes wrong:**
-Applicants receive a `CampaignMember` row or ZITADEL role before staff approval and can see campaign data despite being “pending.”
+### Pitfall 2: Reusing `invites` for signup links
+**What goes wrong:** One-person role-grant invites are forced to represent shareable public application links.
+**Why it is likely here:** Existing invite token, revoke, and email flows are attractive to reuse.
+**Consequences:** Wrong semantics, hard-to-model attribution, and confusing revoke/accept behavior.
+**Prevention:** Use a dedicated signup-link model and service; reuse patterns, not the record type.
 
-**Why it happens:**
-Teams try to reuse the old instant-join path or store approval as only a volunteer-status flag while membership already exists.
+### Pitfall 3: No clean duplicate handling
+**What goes wrong:** Applicants can create multiple pending applications, or existing users are blocked awkwardly.
+**Why it is likely here:** The current code has separate volunteer, member, and invite concepts with different dedupe logic.
+**Consequences:** Staff confusion, accidental double approvals, inconsistent applicant UX.
+**Prevention:** Define explicit dedupe rules for active member, pending application, rejected application, existing account not in campaign, and existing volunteer record with no user link.
 
-**How to avoid:**
-Create a dedicated pending application state and defer membership plus role assignment until the approval transaction.
+### Pitfall 4: Existing-account flow creates a second identity
+**What goes wrong:** A person with a CivicPulse account is pushed through “new signup” behavior and ends up duplicated.
+**Why it is likely here:** The product currently distinguishes invite acceptance, self-register, and staff-created volunteer records.
+**Consequences:** Duplicate user/volunteer records and broken approval semantics.
+**Prevention:** Approval flow must reconcile against existing user identity first and attach campaign membership to that identity.
 
-**Warning signs:**
-Pending applicants appear in permission-gated campaign screens, or approval code only updates a status flag rather than creating access.
+### Pitfall 5: Link regeneration does not truly invalidate old links
+**What goes wrong:** Staff regenerate or disable a link, but old URLs still resolve or submit successfully.
+**Why it is likely here:** Token rotation can be implemented as “create another token” without enforcing old-token invalidation.
+**Consequences:** Abuse controls are false confidence.
+**Prevention:** Treat rotation as explicit invalidation of the old token and ensure public lookup enforces active status.
 
-**Phase to address:**
-Phase 1 or 2, before any public rollout.
+### Pitfall 6: Attribution is stored only as free text
+**What goes wrong:** Source data becomes inconsistent and unusable operationally.
+**Why it is likely here:** The requirement is phrased as “track how someone found the link.”
+**Consequences:** Low-quality reporting and no dependable per-link counts.
+**Prevention:** Attribute by durable link id first, display link label/source second.
 
----
+### Pitfall 7: Public endpoints leak campaign or applicant data
+**What goes wrong:** Public lookup reveals too much campaign data or applicant status to unauthenticated users.
+**Why it is likely here:** New public routes will sit outside normal campaign-member RLS flows.
+**Consequences:** Privacy leaks and tenancy regressions.
+**Prevention:** Public endpoints should expose only safe campaign metadata and coarse application outcomes.
 
-### Pitfall 2: Link rotation that doesn’t actually revoke old links
+### Pitfall 8: Approval action is not idempotent
+**What goes wrong:** Double-clicks or retries create multiple memberships, volunteers, or notifications.
+**Why it is likely here:** Approval spans volunteer state, campaign membership, and possibly email/role side effects.
+**Consequences:** Data corruption and inconsistent access.
+**Prevention:** Use one approval transaction with uniqueness checks and idempotent status transitions.
 
-**What goes wrong:**
-“Regenerated” links still accept applications because the old token remains valid or shares the same public secret.
+## Recommended Mitigations
 
-**Why it happens:**
-Developers rotate display text or timestamps without invalidating the underlying token record.
-
-**How to avoid:**
-Use immutable link records with explicit active/inactive status, unique opaque tokens, and copied attribution on submit so deactivated links stay dead.
-
-**Warning signs:**
-No server-side notion of link state, or regeneration updates a row in place without invalidating previous tokens.
-
-**Phase to address:**
-Phase 1, alongside the signup-link data model.
-
----
-
-### Pitfall 3: Duplicate people records for existing CivicPulse users
-
-**What goes wrong:**
-An existing user applies and ends up with a second account or a second volunteer identity disconnected from their real login.
-
-**Why it happens:**
-The public flow treats all applicants as brand-new identities and ignores existing auth/session or email matches.
-
-**How to avoid:**
-Add explicit existing-account reconciliation and keep account identity separate from campaign membership.
-
-**Warning signs:**
-Applications can be submitted with an email already tied to another CivicPulse user without any reconciliation path.
-
-**Phase to address:**
-Phase 2, before approval automation and admin review polish.
-
----
-
-### Pitfall 4: Source attribution drift
-
-**What goes wrong:**
-Applicants show the wrong source after a link label is edited or a link is disabled/regenerated.
-
-**Why it happens:**
-The application stores only a foreign key to the live link row and reads the current link label later.
-
-**How to avoid:**
-Copy the source label/code onto the application at submission time and keep the link reference separately for audit.
-
-**Warning signs:**
-Historical applications change source labels when managers edit link metadata.
-
-**Phase to address:**
-Phase 1, in the schema and submit path.
-
----
-
-### Pitfall 5: Public-link abuse overwhelms review queues
-
-**What goes wrong:**
-Spam or repeated submissions flood pending applications and bury legitimate volunteers.
-
-**Why it happens:**
-Public endpoints are shipped without rate limits, duplicate controls, or easy link deactivation.
-
-**How to avoid:**
-Apply rate limiting, duplicate submission checks, and manager-visible disable/regenerate controls from the start.
-
-**Warning signs:**
-Many pending applications from the same IP/email/link in a short window or no staff tooling to disable a hot link quickly.
-
-**Phase to address:**
-Phase 1 and Phase 3.
-
-## Technical Debt Patterns
-
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Reusing the old `/join/{slug}/register` semantics under the hood | Faster initial coding | Leaves authorization and approval behavior ambiguous | Never for this milestone |
-| Storing only “current link” attribution on campaign or volunteer | Minimal schema work | Loses per-link history and analytics usefulness | Never |
-| Approving by directly mutating volunteer status without traceability | Less code | Harder support/debugging and no clean audit of who approved what | Only if approval metadata is captured elsewhere in the same transaction |
-
-## Integration Gotchas
-
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| ZITADEL | Granting campaign role on application submit | Grant only on approval |
-| Mailgun / notifications | Treating email delivery as proof of application state | Application and approval state must remain DB-authoritative |
-| Existing auth/session | Forcing returning users through net-new account creation | Detect and reuse existing CivicPulse identity where possible |
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Unindexed pending-application queue | Slow volunteer admin page loads | Index by `campaign_id`, `status`, `created_at` | Noticeable once a campaign has hundreds or thousands of applicants |
-| Counting link uses by scanning application history each time | Slow link admin UI | Persist use counters or indexed aggregates, or query by indexed foreign key | Becomes painful when many links and applicants accumulate |
-| Re-rendering public join forms off campaign slug alone | Extra lookups and ambiguous caching | Resolve dedicated link token first, then derive campaign context | As soon as multiple links exist per campaign |
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Guessable or sequential public link codes | Unauthorized discovery and abuse | Use opaque high-entropy tokens |
-| Leaving deactivated links functionally valid | Abuse continues after staff “rotation” | Enforce link status server-side on every lookup and submission |
-| Exposing applicant review data to pending users | Privacy breach | No campaign membership or campaign-scoped role before approval |
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Asking existing users to fill every field again | Friction and abandonment | Prefill or skip known identity fields and explain what still needs confirmation |
-| No feedback after submitting an application | Applicants think the flow failed | Show a clear pending state and next-step message |
-| Hiding source labels deep in admin UI | Staff cannot trust or use attribution | Show link label/source clearly in both link management and application review surfaces |
-
-## "Looks Done But Isn't" Checklist
-
-- [ ] **Managed links:** Disable/regenerate actually invalidates old public tokens.
-- [ ] **Pending applications:** Pending applicants cannot access campaign routes or field mode.
-- [ ] **Existing-account apply:** Existing CivicPulse users do not create duplicate identities.
-- [ ] **Approval flow:** Approval creates both campaign membership and the right volunteer/access state.
-- [ ] **Attribution:** Historical applications keep the source they originally came from even after link edits.
-- [ ] **Abuse controls:** Public endpoints are rate-limited and staff can turn off a bad link quickly.
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Pre-approval access leak | HIGH | Revoke membership/roles, audit affected applicants, patch approval boundary, add regression tests |
-| Old links still work after rotation | MEDIUM | Invalidate tokens in DB, notify staff, add status enforcement tests |
-| Duplicate user/application identities | MEDIUM | Merge or relink records, backfill application-to-user references, add reconciliation checks |
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Accidental pre-approval access | Phase 1/2 | Access tests prove pending applicants cannot reach campaign data |
-| Link rotation not revoking old links | Phase 1 | Old token returns inactive/404 after rotation |
-| Duplicate identities for existing users | Phase 2 | Existing-account apply test proves no duplicate account creation |
-| Source attribution drift | Phase 1 | Historical applications retain original source after link edits |
-| Public-link abuse flood | Phase 3 | Rate-limit and disable-link tests cover repeated submissions |
+1. Separate models for signup links and applications.
+2. Explicit lifecycle states: link active/inactive; application pending/approved/rejected.
+3. Approval-only membership creation.
+4. Existing-account reconciliation before any new user/account creation path.
+5. Durable link-id attribution instead of text-only source fields.
+6. Public endpoint tests for inactive, rotated, duplicate, and cross-campaign edge cases.
 
 ## Sources
 
-- Existing codebase: `app/services/join.py`, `app/services/volunteer.py`, `app/api/v1/join.py`
-- Existing implementation notes: `reports/volunteer-join-flow-backend.md`
-- Slack Help Center — https://slack.com/help/articles/360060363633-Manage-pending-invitations-and-invite-links-for-your-workspace
-- Slack Help Center — https://slack.com/help/articles/115005912706-Manage-Slack-Connect-channel-approval-settings-and-invitation-requests
-- Discord Support — https://support.discord.com/hc/en-us/articles/208866998-Invites-101
-- Google for Developers — https://developers.google.com/identity/gsi/web/guides/personalized-button
-
----
-*Pitfalls research for: campaign-scoped volunteer self-signup and approval links*
-*Researched: 2026-04-09*
+- `.planning/PROJECT.md`
+- `app/services/join.py`
+- `app/services/volunteer.py`
+- `app/api/v1/volunteers.py`
+- `app/services/invite.py`
