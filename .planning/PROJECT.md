@@ -116,13 +116,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Two-way SMS with bulk queueing, threaded inbox, and STOP/START opt-out enforcement — v1.15 (SMS-01, SMS-02, SMS-03, SMS-04, COMP-01, COMP-02)
 - ✓ Org-scoped spend controls and append-only communication telemetry for Twilio voice and SMS — v1.15 (BUD-01, OBS-01)
 - ✓ Campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight — v1.15 (LOOK-01)
+- ✓ Provider-agnostic transactional email foundation with Mailgun and code-owned templates — v1.16 (EML-01, EML-02, EML-03, SEC-01)
+- ✓ Durable async invite delivery for org, campaign, volunteer, and staff invite flows — v1.16 (EML-04, INV-01, INV-02, INV-03, INV-04)
+- ✓ Canonical email-delivery audit trail with authenticated Mailgun webhook reconciliation — v1.16 (AUD-01, AUD-02, AUD-03, SEC-02)
+- ✓ ZITADEL SMTP delivery setup and operator runbooks with explicit ownership boundaries — v1.16 (ZIT-01, ZIT-02, OPS-01)
+- ✓ Pending-invite admin visibility for delivery status, latest error, and remediation support — v1.16 (AUD-04)
 
 ### Active
 
-- Pluggable transactional email delivery foundation with Mailgun as the first provider implementation
-- Product invite emails for existing org, campaign, volunteer, and staff invitation flows
-- ZITADEL email delivery configuration and operator documentation for auth/system emails
-- Basic email delivery and audit metadata for sent transactional messages
+- Planning next milestone after v1.16 closeout
 
 ### Out of Scope
 
@@ -150,25 +152,13 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current Milestone
 
-v1.16 Email Delivery Foundation
-
-**Goal:** Add pluggable transactional email delivery to CivicPulse Run, starting with app invites and system/auth email paths, with Mailgun as the first provider and ZITADEL email delivery configured and documented.
-
-**Target features:**
-- Provider-agnostic email delivery foundation with Mailgun as the first implementation
-- Product invite emails for org/campaign member invitation flows already in the app
-- Email support for volunteer/staff invitation flows that already exist
-- ZITADEL email delivery configuration and documentation for its own auth/system emails
-- Basic delivery/audit metadata for sent email events
-- Clear separation between transactional/system email now and broader campaign/authored email later
+None active. v1.16 Email Delivery Foundation shipped on 2026-04-08; next milestone definition has not started yet.
 
 ## Current State
 
-**Current milestone:** v1.16 Email Delivery Foundation (started 2026-04-08)
+**Shipped:** v1.16 Email Delivery Foundation (2026-04-08)
 
-The platform now ships org-scoped Twilio communications across the existing field workflow. v1.15 closed 7 phases (21 plans), added encrypted org Twilio credentials plus phone inventory, secured webhook ingress, browser click-to-call, two-way SMS with inbox threading and STOP/START enforcement, spend controls with communication telemetry, and a campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight.
-
-v1.16 shifts the platform into transactional email. The milestone will add a provider abstraction with Mailgun first, wire existing invite flows onto the new delivery path, cover ZITADEL auth/system email configuration, and capture basic delivery metadata without expanding into marketing-style campaign email.
+The platform now ships app-owned transactional email for invite workflows alongside the existing Twilio field communications stack. v1.16 closed 6 phases (7 plans), added a provider-agnostic Mailgun-backed email seam with code-owned templates, durable post-commit invite delivery, authenticated webhook reconciliation with canonical delivery-attempt audit rows, separate ZITADEL SMTP runbooks, and pending-invite UI visibility for delivery truth and remediation.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
@@ -181,10 +171,19 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Ship provider-agnostic transactional email delivery with Mailgun as the first provider
-- Replace invite flows that currently lack platform email delivery with real outbound email
-- Make ZITADEL able to send auth/system email through a configured provider path
-- Establish durable email audit metadata and clear future boundaries for broader email capabilities
+- Define the next post-email milestone
+
+<details>
+<summary>Archived v1.16 planning context</summary>
+
+- Provider-agnostic email delivery foundation with Mailgun as the first implementation
+- Product invite emails for org/campaign member invitation flows already in the app
+- Email support for volunteer/staff invitation flows that already exist
+- ZITADEL email delivery configuration and documentation for its own auth/system emails
+- Basic delivery/audit metadata for sent email events
+- Clear separation between transactional/system email now and broader campaign/authored email later
+
+</details>
 
 ## Context
 
