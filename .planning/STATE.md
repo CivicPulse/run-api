@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.16
-milestone_name: Email Delivery Foundation
-status: completed
-stopped_at: Milestone v1.16 archived; ready to define the next milestone
-last_updated: "2026-04-09T18:23:08Z"
+milestone: v1.17
+milestone_name: Easy Volunteer Invites
+status: in_progress
+stopped_at: Defining requirements for milestone v1.17
+last_updated: "2026-04-09T19:48:22Z"
 last_activity: 2026-04-09
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 7
-  completed_plans: 7
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.16 archived; ready to define the next milestone
+**Current focus:** v1.17 Easy Volunteer Invites — defining requirements
 
 ## Current Position
 
-Phase: Complete
-Plan: Complete
-Status: Milestone v1.16 archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
 Last activity: 2026-04-09
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -76,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-09T18:23:08Z
-Stopped at: Milestone v1.16 archived; ready to define the next milestone
-Resume file: .planning/milestones/v1.16-MILESTONE-AUDIT.md
+Last session: 2026-04-09T19:48:22Z
+Stopped at: Defining requirements for milestone v1.17
+Resume file: .planning/PROJECT.md

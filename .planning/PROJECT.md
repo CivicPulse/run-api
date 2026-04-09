@@ -124,7 +124,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-- Planning next milestone after v1.16 closeout
+- v1.17 Easy Volunteer Invites — campaign-scoped volunteer signup links, pending approval workflow, per-link source tracking, and existing-account apply path
 
 ### Out of Scope
 
@@ -152,7 +152,17 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current Milestone
 
-None active. v1.16 Email Delivery Foundation shipped on 2026-04-08; next milestone definition has not started yet.
+v1.17 Easy Volunteer Invites
+
+**Goal:** Let campaign staff share campaign-scoped volunteer signup links that create pending applications, preserve source attribution, and require approval before a volunteer gains campaign access.
+
+**Target features:**
+- Campaign staff can create multiple volunteer signup links per campaign for different channels or sources.
+- Each link can be labeled/tracked so staff can tell how an applicant found the campaign.
+- Each link can be disabled, rotated, or regenerated if abuse happens.
+- Public applicants can submit a volunteer application through a link without being granted campaign access immediately.
+- Approved applications become campaign membership; rejected or pending applicants do not get access.
+- Existing CivicPulse users who are not members of that campaign can apply through the same flow without creating a second account or re-entering all profile details.
 
 ## Current State
 
@@ -171,7 +181,9 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Define the next post-email milestone
+- Campaign-scoped volunteer signup links with per-link source attribution and abuse controls
+- Pending volunteer application review before any campaign access is granted
+- Existing-account apply path for users who already have CivicPulse accounts but are not campaign members
 
 <details>
 <summary>Archived v1.16 planning context</summary>
@@ -252,4 +264,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 — v1.16 Email Delivery Foundation milestone started*
+*Last updated: 2026-04-09 — v1.17 Easy Volunteer Invites milestone started*
