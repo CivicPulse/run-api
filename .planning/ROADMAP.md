@@ -2,7 +2,7 @@
 
 ## Overview
 
-Most recently shipped: v1.16 Email Delivery Foundation on 2026-04-08. CivicPulse Run now has app-owned transactional email for invite workflows, authenticated delivery reconciliation, and documented separation between CivicPulse invite mail and ZITADEL auth/system mail. The next milestone has not been defined yet.
+Most recently shipped: v1.16 Email Delivery Foundation on 2026-04-08. The active milestone is v1.17 Easy Volunteer Invites, which adds campaign-scoped volunteer signup links, pending volunteer applications, existing-account apply handling, and approval-gated campaign access without collapsing the trust boundary between public signup traffic and trusted campaign invites.
 
 ## Milestones
 
@@ -20,6 +20,7 @@ Most recently shipped: v1.16 Email Delivery Foundation on 2026-04-08. CivicPulse
 - ✅ **v1.14 Voter Search & Lookup** — Phases 84-87 (shipped 2026-04-07)
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
+- 🔄 **v1.17 Easy Volunteer Invites** — Phases 101-103
 
 ## Milestone History
 
@@ -178,3 +179,55 @@ See: `.planning/milestones/v1.15-ROADMAP.md`
 See: `.planning/milestones/v1.16-ROADMAP.md`
 
 </details>
+
+## Current Milestone
+
+### v1.17 Easy Volunteer Invites
+
+**Milestone Goal:** Let campaign staff share campaign-scoped volunteer signup links that create pending applications, preserve source attribution, support existing CivicPulse accounts without duplicate signups, and require explicit approval before campaign access is granted.
+
+## Phases
+
+- [ ] **Phase 101: Signup Link Foundation & Public Entry** - Create the campaign-scoped signup-link domain, public resolution flow, and fail-closed link lifecycle controls without reusing trusted member invites.
+- [ ] **Phase 102: Volunteer Applications & Existing-Account Intake** - Accept public applications into a pending state with dedupe, immutable source attribution, and privacy-safe handling for existing CivicPulse accounts.
+- [ ] **Phase 103: Review Queue, Approval, and Access Activation** - Give campaign admins a review workflow that approves or rejects applications and only grants campaign membership and volunteer access on approval.
+
+## Phase Details
+
+### Phase 101: Signup Link Foundation & Public Entry
+**Goal**: Campaign admins can create, view, disable, and regenerate volunteer signup links, and public visitors can open a safe campaign-scoped signup page only through valid active links.
+**Depends on**: Phase 100
+**Requirements**: LINK-01, LINK-02, LINK-03, LINK-04, LINK-05, SAFE-01
+**Success Criteria** (what must be TRUE):
+  1. Campaign admins can create multiple labeled volunteer signup links for one campaign and retrieve them later with current status.
+  2. Disabling or regenerating a signup link invalidates the previous public URL immediately and prevents new applications through that link.
+  3. Public visitors opening a valid signup link can see safe campaign context without seeing internal campaign-only data.
+  4. Invalid, disabled, regenerated, or expired-style link states fail closed with safe public responses.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 102: Volunteer Applications & Existing-Account Intake
+**Goal**: Public visitors can submit volunteer applications from valid links into a pending queue with immutable attribution, duplicate protection, and low-friction handling for existing CivicPulse accounts.
+**Depends on**: Phase 101
+**Requirements**: APPL-01, APPL-02, APPL-03, APPL-04, APPL-05, SAFE-02
+**Success Criteria** (what must be TRUE):
+  1. Submitting a volunteer application from a valid signup link creates a pending application and does not create campaign membership or campaign-visible access.
+  2. Each application snapshots the originating signup-link identity so later link edits or regeneration do not erase attribution history.
+  3. Repeated submissions for the same applicant and campaign resolve safely without creating duplicate pending applications.
+  4. Existing CivicPulse users who are not campaign members can apply without creating a second account and without re-entering unchanged known profile data.
+  5. Public application endpoints are rate-limited and keep responses neutral enough to avoid account-existence leakage.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 103: Review Queue, Approval, and Access Activation
+**Goal**: Campaign admins can review pending applications, approve or reject them safely, and only approval creates campaign membership and volunteer access.
+**Depends on**: Phase 102
+**Requirements**: REVW-01, REVW-02, REVW-03, REVW-04, REVW-05, REVW-06, SAFE-03
+**Success Criteria** (what must be TRUE):
+  1. Campaign admins can review a pending application queue that shows applicant details, source-link attribution, and relevant duplicate or existing-account context.
+  2. Approving an application creates campaign membership and volunteer access exactly once, even if the action is retried.
+  3. Rejecting an application leaves the applicant without campaign access while preserving an auditable decision trail.
+  4. Pending or rejected applicants cannot access campaign data or volunteer-only flows for that campaign.
+  5. Existing members or already-resolved applications are handled safely without duplicate membership or volunteer records.
+**Plans**: TBD
+**UI hint**: yes

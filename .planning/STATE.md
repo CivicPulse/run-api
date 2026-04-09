@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Easy Volunteer Invites
 status: in_progress
-stopped_at: Defining requirements for milestone v1.17
-last_updated: "2026-04-09T19:48:22Z"
+stopped_at: Roadmap created for v1.17; ready to discuss Phase 101
+last_updated: "2026-04-09T19:57:49Z"
 last_activity: 2026-04-09
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.17 Easy Volunteer Invites — defining requirements
+**Current focus:** v1.17 Easy Volunteer Invites — roadmap created, Phase 101 ready
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 101
 Plan: —
-Status: Defining requirements
+Status: Roadmap created; ready for phase discussion
 Last activity: 2026-04-09
 
 Progress: [░░░░░░░░░░] 0%
@@ -76,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-09T19:48:22Z
-Stopped at: Defining requirements for milestone v1.17
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-09T19:57:49Z
+Stopped at: Roadmap created for v1.17; ready to discuss Phase 101
+Resume file: .planning/ROADMAP.md

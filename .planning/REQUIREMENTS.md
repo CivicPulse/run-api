@@ -67,31 +67,31 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LINK-01 | Unmapped | Pending |
-| LINK-02 | Unmapped | Pending |
-| LINK-03 | Unmapped | Pending |
-| LINK-04 | Unmapped | Pending |
-| LINK-05 | Unmapped | Pending |
-| APPL-01 | Unmapped | Pending |
-| APPL-02 | Unmapped | Pending |
-| APPL-03 | Unmapped | Pending |
-| APPL-04 | Unmapped | Pending |
-| APPL-05 | Unmapped | Pending |
-| REVW-01 | Unmapped | Pending |
-| REVW-02 | Unmapped | Pending |
-| REVW-03 | Unmapped | Pending |
-| REVW-04 | Unmapped | Pending |
-| REVW-05 | Unmapped | Pending |
-| REVW-06 | Unmapped | Pending |
-| SAFE-01 | Unmapped | Pending |
-| SAFE-02 | Unmapped | Pending |
-| SAFE-03 | Unmapped | Pending |
+| LINK-01 | Phase 101 | Pending |
+| LINK-02 | Phase 101 | Pending |
+| LINK-03 | Phase 101 | Pending |
+| LINK-04 | Phase 101 | Pending |
+| LINK-05 | Phase 101 | Pending |
+| APPL-01 | Phase 102 | Pending |
+| APPL-02 | Phase 102 | Pending |
+| APPL-03 | Phase 102 | Pending |
+| APPL-04 | Phase 102 | Pending |
+| APPL-05 | Phase 102 | Pending |
+| REVW-01 | Phase 103 | Pending |
+| REVW-02 | Phase 103 | Pending |
+| REVW-03 | Phase 103 | Pending |
+| REVW-04 | Phase 103 | Pending |
+| REVW-05 | Phase 103 | Pending |
+| REVW-06 | Phase 103 | Pending |
+| SAFE-01 | Phase 101 | Pending |
+| SAFE-02 | Phase 102 | Pending |
+| SAFE-03 | Phase 103 | Pending |
 
 **Coverage:**
 - Milestone requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19 ⚠️
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after v1.17 milestone definition*
+*Last updated: 2026-04-09 after roadmap creation*
