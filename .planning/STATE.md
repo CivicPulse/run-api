@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.17
-milestone_name: Easy Volunteer Invites
+milestone_name: milestone
 status: v1.17 delivered, traceability backfilled, and milestone ready to remain archived as passed
 stopped_at: Milestone completed after phase 104-105 closeout and audit traceability backfill
-last_updated: "2026-04-10T12:27:28.204Z"
+last_updated: "2026-04-10T12:42:34.438Z"
 last_activity: 2026-04-10
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 100
 ---
 
