@@ -65,7 +65,15 @@ const setupProjectNames = [
 ]
 
 const useDevServer = process.env.E2E_USE_DEV_SERVER !== "0"
-const baseURL = useDevServer ? "https://localhost:5173" : "https://localhost:4173"
+// Allow pointing at an external (docker) dev server. When E2E_DEV_SERVER_URL
+// is set, skip the built-in webServer and use that URL directly — this is
+// the path used when the web container publishes Vite on a non-default
+// host port (e.g., 49372) and we want Playwright to reuse it instead of
+// spawning its own preview build.
+const externalDevServerUrl = process.env.E2E_DEV_SERVER_URL || ""
+const baseURL =
+  externalDevServerUrl ||
+  (useDevServer ? "https://localhost:5173" : "https://localhost:4173")
 
 export default defineConfig({
   testDir: "./e2e",
@@ -143,19 +151,24 @@ export default defineConfig({
     },
   ],
 
-  webServer: useDevServer
-    ? {
-        command: "npm run dev -- --host localhost --port 5173 --strictPort",
-        url: "https://localhost:5173",
-        reuseExistingServer: !process.env.CI,
-        ignoreHTTPSErrors: true,
-        timeout: 120_000,
-      }
-    : {
-        command: "npm run preview -- --host localhost --strictPort --port 4173",
-        url: "https://localhost:4173",
-        reuseExistingServer: !process.env.CI,
-        ignoreHTTPSErrors: true,
-        timeout: 120_000,
-      },
+  // When E2E_DEV_SERVER_URL is set, skip the built-in webServer entirely —
+  // we're running against an already-running external server (typically the
+  // docker web container) and Playwright should NOT try to spawn its own.
+  webServer: externalDevServerUrl
+    ? undefined
+    : useDevServer
+      ? {
+          command: "npm run dev -- --host localhost --port 5173 --strictPort",
+          url: "https://localhost:5173",
+          reuseExistingServer: !process.env.CI,
+          ignoreHTTPSErrors: true,
+          timeout: 120_000,
+        }
+      : {
+          command: "npm run preview -- --host localhost --strictPort --port 4173",
+          url: "https://localhost:4173",
+          reuseExistingServer: !process.env.CI,
+          ignoreHTTPSErrors: true,
+          timeout: 120_000,
+        },
 })
