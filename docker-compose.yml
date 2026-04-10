@@ -13,7 +13,8 @@ services:
     ports:
       - "${API_HOST_PORT:-37821}:8000"
     env_file:
-      - .env
+      - path: .env
+        required: false
       - path: .env.zitadel
         required: false
     environment:
@@ -78,7 +79,8 @@ services:
     container_name: run-api-worker
     command: ["python", "scripts/worker.py"]
     env_file:
-      - .env
+      - path: .env
+        required: false
       - path: .env.zitadel
         required: false
     environment:
