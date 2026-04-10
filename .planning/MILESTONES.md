@@ -1,5 +1,15 @@
 # Milestones
 
+## v1.17 Easy Volunteer Invites (Shipped: 2026-04-10)
+
+**Phases completed:** 4 phases, 4 plans, 0 tasks
+
+**Key accomplishments:**
+
+- (none recorded)
+
+---
+
 ## v1.16 Email Delivery Foundation (Shipped: 2026-04-08)
 
 **Phases completed:** 6 phases, 7 plans
