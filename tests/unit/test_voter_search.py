@@ -907,5 +907,7 @@ class TestVoterServiceCRUD:
         stmt, params = mock_db.execute.await_args_list[0].args
         assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(stmt)
         assert params == {"voter_id": voter_id}
-        service._search_index.refresh_records.assert_awaited_once_with(mock_db, [voter_id])
+        service._search_index.refresh_records.assert_awaited_once_with(
+            mock_db, [voter_id]
+        )
         mock_db.commit.assert_awaited_once()

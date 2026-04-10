@@ -464,7 +464,8 @@ class TestCanvassingRLSIsolation:
     async def test_door_knock_persists_survey_responses_for_authoritative_readback(
         self, app_user_session, two_campaigns_with_canvassing_data
     ):
-        """Door-knock survey saves must read back on the same campaign/script/voter seam."""
+        """Door-knock survey saves must read back on the same
+        campaign/script/voter seam."""
         data = two_campaigns_with_canvassing_data
         session = app_user_session
         await self._set_context(session, data["campaign_a_id"])

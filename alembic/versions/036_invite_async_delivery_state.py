@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision: str = "036_invite_async_delivery_state"
 down_revision: str = "035_phone_validation_cache"
@@ -30,7 +31,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "invites",
-        sa.Column("email_delivery_queued_at", sa.DateTime(timezone=False), nullable=True),
+        sa.Column(
+            "email_delivery_queued_at", sa.DateTime(timezone=False), nullable=True
+        ),
     )
     op.add_column(
         "invites",

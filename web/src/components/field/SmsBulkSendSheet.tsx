@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -26,12 +26,16 @@ export function SmsBulkSendSheet({
   onSubmit,
 }: SmsBulkSendSheetProps) {
   const [body, setBody] = useState("")
+  const [wasOpen, setWasOpen] = useState(open)
 
-  useEffect(() => {
+  // Clear the draft when the sheet transitions from open -> closed. Deriving
+  // this during render avoids the cascading re-render of a setState-in-effect.
+  if (wasOpen !== open) {
+    setWasOpen(open)
     if (!open) {
       setBody("")
     }
-  }, [open])
+  }
 
   async function handleQueue() {
     const trimmed = body.trim()

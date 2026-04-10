@@ -33,7 +33,9 @@ async def test_evaluate_gate_returns_near_limit_when_threshold_crossed():
     )
     db.execute.return_value = result
 
-    decision = await service.evaluate_gate(db, _make_org(), estimated_additional_cents=200)
+    decision = await service.evaluate_gate(
+        db, _make_org(), estimated_additional_cents=200
+    )
 
     assert decision.allowed is True
     assert decision.state == "near_limit"

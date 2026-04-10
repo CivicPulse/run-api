@@ -12,7 +12,8 @@ from app.schemas.voter import VoterCreateRequest
 
 
 def test_source_type_default_survives_model_dump():
-    """R002 regression: model_dump(exclude_none=True) preserves the default source_type."""
+    """R002 regression: model_dump(exclude_none=True) preserves the default
+    source_type."""
     request = VoterCreateRequest(first_name="Jane", last_name="Doe")
     dumped = request.model_dump(exclude_none=True)
     assert "source_type" in dumped, "source_type must be present in model_dump output"

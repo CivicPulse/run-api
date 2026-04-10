@@ -259,9 +259,7 @@ class TestRegisterNumber:
         app, mock_db = _setup_app(user, org)
 
         with (
-            patch(
-                f"{_SVC}.register_number", new_callable=AsyncMock
-            ) as mock_register,
+            patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register,
             patch(f"{_SVC}.enrich_response") as mock_enrich,
         ):
             mock_register.return_value = num
@@ -290,9 +288,7 @@ class TestRegisterNumber:
         app, mock_db = _setup_app(user, org)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 "/api/v1/org/numbers",
                 json={"phone_number": "5551234567"},  # no + prefix
@@ -310,9 +306,7 @@ class TestRegisterNumber:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.register_number", new_callable=AsyncMock
-        ) as mock_register:
+        with patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register:
             mock_register.side_effect = HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Phone number already registered for this organization",
@@ -339,9 +333,7 @@ class TestRegisterNumber:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.register_number", new_callable=AsyncMock
-        ) as mock_register:
+        with patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register:
             mock_register.side_effect = HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Phone number not found in your Twilio account",
@@ -376,9 +368,7 @@ class TestDeleteNumber:
         num_id = uuid.uuid4()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.delete_number", new_callable=AsyncMock
-        ) as mock_delete:
+        with patch(f"{_SVC}.delete_number", new_callable=AsyncMock) as mock_delete:
             mock_delete.return_value = None
 
             transport = ASGITransport(app=app)
@@ -405,9 +395,7 @@ class TestDeleteNumber:
         )
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.delete_number", new_callable=AsyncMock
-        ) as mock_delete:
+        with patch(f"{_SVC}.delete_number", new_callable=AsyncMock) as mock_delete:
             # Service handles clearing defaults internally
             mock_delete.return_value = None
 
@@ -435,9 +423,7 @@ class TestDeleteNumber:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.delete_number", new_callable=AsyncMock
-        ) as mock_delete:
+        with patch(f"{_SVC}.delete_number", new_callable=AsyncMock) as mock_delete:
             mock_delete.side_effect = HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Phone number not found",
@@ -537,9 +523,7 @@ class TestSetDefault:
         num_id = uuid.uuid4()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.set_default", new_callable=AsyncMock
-        ) as mock_set:
+        with patch(f"{_SVC}.set_default", new_callable=AsyncMock) as mock_set:
             mock_set.return_value = None
 
             transport = ASGITransport(app=app)
@@ -567,9 +551,7 @@ class TestSetDefault:
         num_id = uuid.uuid4()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.set_default", new_callable=AsyncMock
-        ) as mock_set:
+        with patch(f"{_SVC}.set_default", new_callable=AsyncMock) as mock_set:
             mock_set.return_value = None
 
             transport = ASGITransport(app=app)
@@ -596,9 +578,7 @@ class TestSetDefault:
         num_id = uuid.uuid4()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.set_default", new_callable=AsyncMock
-        ) as mock_set:
+        with patch(f"{_SVC}.set_default", new_callable=AsyncMock) as mock_set:
             mock_set.side_effect = HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Phone number does not support voice",
@@ -625,9 +605,7 @@ class TestSetDefault:
         app, mock_db = _setup_app(user, org)
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.patch(
                 f"/api/v1/org/numbers/{num_id}/set-default",
                 json={"capability": "fax"},
@@ -681,9 +659,7 @@ class TestRoleGates:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 "/api/v1/org/numbers",
                 json={"phone_number": "+15551234567"},
@@ -706,9 +682,7 @@ class TestRoleGates:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.delete(
                 f"/api/v1/org/numbers/{uuid.uuid4()}",
                 headers={"Authorization": "Bearer fake"},
@@ -734,14 +708,11 @@ class TestTwilioErrors:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.register_number", new_callable=AsyncMock
-        ) as mock_register:
+        with patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register:
             mock_register.side_effect = HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=(
-                    "Twilio credential error -- "
-                    "verify your Account SID and Auth Token"
+                    "Twilio credential error -- verify your Account SID and Auth Token"
                 ),
             )
 
@@ -767,9 +738,7 @@ class TestTwilioErrors:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.register_number", new_callable=AsyncMock
-        ) as mock_register:
+        with patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register:
             mock_register.side_effect = HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Twilio API error",
@@ -796,9 +765,7 @@ class TestTwilioErrors:
         org = _make_org()
         app, mock_db = _setup_app(user, org)
 
-        with patch(
-            f"{_SVC}.register_number", new_callable=AsyncMock
-        ) as mock_register:
+        with patch(f"{_SVC}.register_number", new_callable=AsyncMock) as mock_register:
             mock_register.side_effect = HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Twilio credentials not configured",

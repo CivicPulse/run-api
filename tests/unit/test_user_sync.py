@@ -107,6 +107,8 @@ class TestEnsureUserSyncedMultiCampaign:
         db = AsyncMock()
         db.add = MagicMock()
         db.commit = AsyncMock()
+        # RLS pre-check returns empty -> skip restore branch at end
+        db.scalar = AsyncMock(return_value="")
 
         # Execute calls:
         # 1. User lookup -> found
@@ -144,8 +146,9 @@ class TestEnsureUserSyncedMultiCampaign:
         db.add = MagicMock()
         db.commit = AsyncMock()
 
-        # When rowcount=0, code does db.scalar() to check for role backfill
-        db.scalar = AsyncMock(return_value=existing_member)
+        # First db.scalar call: RLS pre-check (returns "" to skip restore).
+        # Second call: backfill existing-member check.
+        db.scalar = AsyncMock(side_effect=["", existing_member])
 
         results = [
             _mock_result(local_user),  # user lookup
@@ -162,8 +165,8 @@ class TestEnsureUserSyncedMultiCampaign:
 
         # 7 execute calls total (insert still happens, just rowcount=0)
         assert db.execute.call_count == 7
-        # db.scalar called once for the existing member backfill check
-        assert db.scalar.call_count == 1
+        # db.scalar called twice: once for RLS pre-check, once for backfill
+        assert db.scalar.call_count == 2
 
     async def test_no_campaigns_logs_warning_no_crash(self):
         """User in org with 0 campaigns -- logs warning, does not crash."""
@@ -199,6 +202,8 @@ class TestEnsureUserSyncedMultiCampaign:
         db = AsyncMock()
         db.add = MagicMock()
         db.commit = AsyncMock()
+        # RLS pre-check returns empty -> skip restore branch at end
+        db.scalar = AsyncMock(return_value="")
 
         # No orgs found -> skip org member upsert and per-org campaign lookup
         # Go straight to fallback campaign lookup

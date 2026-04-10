@@ -5,10 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
-from app.db.session import get_db
+from app.core.security import AuthenticatedUser, CampaignRole
 from app.main import create_app
 
 pytestmark = pytest.mark.usefixtures("_patch_user_sync")

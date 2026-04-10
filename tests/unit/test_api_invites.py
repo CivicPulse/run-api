@@ -125,6 +125,7 @@ def _setup_role_resolution(mock_db, org_id="org-1", role="admin"):
     campaign_mock.zitadel_org_id = org_id
     mock_db.scalar = AsyncMock(
         side_effect=[
+            "",  # ensure_user_synced RLS pre-check (empty → skip restore)
             member_mock,  # CampaignMember lookup → explicit member with role
             campaign_mock,  # Campaign lookup → for org role check
         ]

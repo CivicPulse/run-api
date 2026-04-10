@@ -294,9 +294,7 @@ class TestPatchOrg:
         assert called_body.twilio is not None
         assert called_body.twilio.account_sid == "AC9999999999"
         assert called_body.twilio.auth_token is not None
-        assert (
-            called_body.twilio.auth_token.get_secret_value() == "super-secret-token"
-        )
+        assert called_body.twilio.auth_token.get_secret_value() == "super-secret-token"
 
     @pytest.mark.asyncio
     async def test_patch_requires_org_owner(self):

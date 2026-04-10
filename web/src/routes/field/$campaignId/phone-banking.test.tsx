@@ -105,7 +105,7 @@ vi.mock("@/components/field/QuickStartCard", () => ({
 }))
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, onClick, disabled, asChild, ...props }: any) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button>,
+  Button: ({ children, onClick, disabled, asChild, ...props }: { children?: React.ReactNode; onClick?: () => void; disabled?: boolean; asChild?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button>,
 }))
 
 vi.mock("@/components/ui/card", () => ({

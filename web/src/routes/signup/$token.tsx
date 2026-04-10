@@ -113,7 +113,7 @@ function SignupEntryPage() {
       })
       setSubmittedApplication(application)
       toast.success("Application submitted")
-    } catch (error) {
+    } catch {
       toast.error("Unable to submit your application")
     }
   })

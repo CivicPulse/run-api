@@ -9,8 +9,8 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.time import utcnow
 from app.core.rate_limit import get_real_ip, limiter
+from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.email_delivery_attempt import EmailDeliveryAttempt
 from app.models.invite import Invite

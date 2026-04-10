@@ -157,7 +157,8 @@ def main() -> None:
         )
         if cur.rowcount:
             print(
-                f"ensure-dev-org: normalized smoke campaign enum values for {campaign_id}"
+                "ensure-dev-org: normalized smoke campaign enum values "
+                f"for {campaign_id}"
             )
 
         # 5. Ensure the dev admin has owner rights on the smoke campaign.

@@ -28,23 +28,22 @@ function MessagesPage() {
     null,
   )
 
-  const {
-    conversations,
-    isListLoading,
-    selectedConversation,
-    isDetailLoading,
-    markRead,
-  } = useSmsInbox(campaignId, selectedConversationId)
-  const { sendMessage, bulkSend } = useSmsSend(campaignId)
+  // First call just loads the conversation list so we can derive a default
+  // selection. The list query is keyed by campaign only, so TanStack Query
+  // dedupes the network request with the second call below.
+  const { conversations, isListLoading } = useSmsInbox(campaignId, null)
 
+  // Fall back to the first conversation until the user makes an explicit
+  // selection. Derived during render to avoid a setState-in-effect.
   const effectiveConversationId =
     selectedConversationId ?? conversations[0]?.id ?? null
 
-  useEffect(() => {
-    if (selectedConversationId === null && conversations[0]?.id) {
-      setSelectedConversationId(conversations[0].id)
-    }
-  }, [conversations, selectedConversationId])
+  const {
+    selectedConversation,
+    isDetailLoading,
+    markRead,
+  } = useSmsInbox(campaignId, effectiveConversationId)
+  const { sendMessage, bulkSend } = useSmsSend(campaignId)
 
   useEffect(() => {
     if (

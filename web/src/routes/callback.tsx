@@ -11,18 +11,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { UserCampaign } from "@/types/user"
 import type { FieldMeResponse } from "@/types/field"
-
-// Module-level flag prevents signinRedirectCallback() from being called
-// more than once. This is critical because:
-// 1. React StrictMode unmounts/remounts components, re-triggering effects
-// 2. Auth state changes can cause parent re-renders that remount this component
-// The flag must NOT have a cleanup/reset — each login cycle involves a full
-// page navigation through the OIDC provider, which reloads this module fresh.
-let callbackProcessed = false
-
-export function __resetCallbackProcessedForTests() {
-  callbackProcessed = false
-}
+import { hasCallbackProcessed, markCallbackProcessed } from "./callback-state"
 
 async function resolveVolunteerCampaign(campaigns: UserCampaign[]) {
   if (campaigns.length === 0) return null
@@ -51,8 +40,8 @@ function CallbackPage() {
 
   useEffect(() => {
     if (hasError) return
-    if (callbackProcessed) return
-    callbackProcessed = true
+    if (hasCallbackProcessed()) return
+    markCallbackProcessed()
 
     // Reconstruct the callback URL with the OIDC params that
     // TanStack Router would otherwise strip from window.location.

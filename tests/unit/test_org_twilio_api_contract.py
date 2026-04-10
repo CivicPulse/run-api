@@ -29,9 +29,7 @@ def test_org_response_includes_only_redacted_twilio_fields():
 
 
 def test_org_update_supports_partial_twilio_rotation():
-    update = OrgUpdate.model_validate(
-        {"twilio": {"auth_token": "super-secret-value"}}
-    )
+    update = OrgUpdate.model_validate({"twilio": {"auth_token": "super-secret-value"}})
 
     assert update.twilio is not None
     assert update.twilio.account_sid is None

@@ -45,9 +45,7 @@ class MailgunSettings:
 def resolve_mailgun_settings() -> MailgunSettings:
     """Resolve Mailgun configuration from app settings."""
     api_key = (
-        settings.mailgun_api_key.get_secret_value()
-        if settings.mailgun_api_key
-        else ""
+        settings.mailgun_api_key.get_secret_value() if settings.mailgun_api_key else ""
     )
     region = settings.mailgun_region.strip().lower()
     if settings.mailgun_base_url.strip():

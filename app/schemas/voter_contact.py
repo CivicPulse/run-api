@@ -31,7 +31,7 @@ class PhoneResponse(BaseSchema):
     source: str
     created_at: datetime
     updated_at: datetime
-    validation: "PhoneValidationSummary | None" = None
+    validation: PhoneValidationSummary | None = None
 
 
 class PhoneValidationSummary(BaseSchema):

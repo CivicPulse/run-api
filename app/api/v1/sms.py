@@ -213,12 +213,14 @@ async def get_sms_conversation(
     """Load one inbox conversation with thread detail."""
     _campaign, org = await _resolve_campaign_org(db, campaign_id)
     try:
-        conversation, messages, eligibility = (
-            await _sms_service.get_conversation_detail(
-                db,
-                campaign_id=campaign_id,
-                conversation_id=conversation_id,
-            )
+        (
+            conversation,
+            messages,
+            eligibility,
+        ) = await _sms_service.get_conversation_detail(
+            db,
+            campaign_id=campaign_id,
+            conversation_id=conversation_id,
         )
     except SMSServiceError as exc:
         raise HTTPException(

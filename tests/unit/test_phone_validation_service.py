@@ -88,9 +88,7 @@ async def test_refresh_validation_degrades_safely_on_lookup_failure():
         patch.object(
             service,
             "_resolve_org",
-            new=AsyncMock(
-                return_value=(SimpleNamespace(), SimpleNamespace())
-            ),
+            new=AsyncMock(return_value=(SimpleNamespace(), SimpleNamespace())),
         ),
         patch.object(
             service._twilio,

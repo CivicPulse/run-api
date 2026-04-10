@@ -15,10 +15,12 @@ class Base(DeclarativeBase):
 # These imports must be after Base is defined to avoid circular imports.
 # ImportChunk and ImportChunkStatus are registered via app.models.import_job.
 import app.models.call_list  # noqa: E402, F401
+import app.models.call_record  # noqa: E402, F401
 import app.models.campaign  # noqa: E402, F401
 import app.models.campaign_member  # noqa: E402, F401
 import app.models.communication_ledger  # noqa: E402, F401
 import app.models.dnc  # noqa: E402, F401
+import app.models.email_delivery_attempt  # noqa: E402, F401
 import app.models.import_job  # noqa: E402, F401
 import app.models.invite  # noqa: E402, F401
 import app.models.org_phone_number  # noqa: E402, F401
@@ -42,3 +44,4 @@ import app.models.voter_interaction  # noqa: E402, F401
 import app.models.voter_list  # noqa: E402, F401
 import app.models.voter_search  # noqa: E402, F401
 import app.models.walk_list  # noqa: E402, F401
+import app.models.webhook_event  # noqa: E402, F401

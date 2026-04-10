@@ -9,7 +9,6 @@ import pytest
 from app.core.config import Settings
 from app.services.twilio_config import TwilioConfigError, TwilioConfigService
 
-
 VALID_FERNET_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 

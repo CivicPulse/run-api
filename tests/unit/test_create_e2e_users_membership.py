@@ -37,7 +37,7 @@ def test_find_target_campaigns_prefers_seeded_campaign_names():
     assert list(module.TARGET_CAMPAIGN_NAMES) == first_params[0]
 
 
-def test_find_target_campaigns_falls_back_to_first_campaign_when_named_targets_missing():
+def test_find_target_campaigns_falls_back_when_named_targets_missing():
     module = _load_module()
     cur = MagicMock()
     cur.fetchall.return_value = []

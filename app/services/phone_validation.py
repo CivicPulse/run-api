@@ -62,7 +62,9 @@ class PhoneValidationService:
                 status="review_needed",
                 is_stale=False,
                 reason_code="invalid_phone_number",
-                reason_detail="The phone number could not be normalized for validation.",
+                reason_detail=(
+                    "The phone number could not be normalized for validation."
+                ),
             )
 
         cache = await self._get_cache_row(
@@ -97,7 +99,9 @@ class PhoneValidationService:
                 status="review_needed",
                 is_stale=False,
                 reason_code="invalid_phone_number",
-                reason_detail="The phone number could not be normalized for validation.",
+                reason_detail=(
+                    "The phone number could not be normalized for validation."
+                ),
             )
             return ValidationResult(summary=summary, cache=existing)
 
@@ -131,7 +135,9 @@ class PhoneValidationService:
                 cache,
                 status="pending",
                 reason_code="lookup_unavailable",
-                reason_detail="Twilio Lookup is not configured for this organization yet.",
+                reason_detail=(
+                    "Twilio Lookup is not configured for this organization yet."
+                ),
                 preserve_validated_at=True,
             )
         except Exception as exc:  # pragma: no cover - Twilio SDK errors are varied
@@ -139,7 +145,9 @@ class PhoneValidationService:
                 cache,
                 status="pending" if cache.validated_at is None else cache.status,
                 reason_code="lookup_unavailable",
-                reason_detail="Twilio Lookup is temporarily unavailable. Save can continue.",
+                reason_detail=(
+                    "Twilio Lookup is temporarily unavailable. Save can continue."
+                ),
                 preserve_validated_at=cache.validated_at is not None,
                 error_message=str(exc),
             )
@@ -192,7 +200,9 @@ class PhoneValidationService:
         campaign, org = row.one()
         return campaign, org
 
-    def _fetch_lookup_payload(self, client: Any, normalized_phone_number: str) -> dict[str, Any]:
+    def _fetch_lookup_payload(
+        self, client: Any, normalized_phone_number: str
+    ) -> dict[str, Any]:
         """Fetch Lookup data and coerce it into a JSON-safe dict."""
         lookup = client.lookups.v2.phone_numbers(normalized_phone_number).fetch(
             fields="line_type_intelligence"
@@ -267,7 +277,8 @@ class PhoneValidationService:
         if stale and cache.validated_at is not None:
             reason_code = "phone_validation_stale"
             reason_detail = (
-                "Cached validation is getting old. Refresh to confirm the current line type."
+                "Cached validation is getting old. "
+                "Refresh to confirm the current line type."
             )
         return PhoneValidationSummary(
             normalized_phone_number=normalized_phone_number,
@@ -305,7 +316,7 @@ class PhoneValidationService:
         if isinstance(payload, dict):
             return payload
         if hasattr(payload, "_properties"):
-            return dict(getattr(payload, "_properties"))
+            return dict(payload._properties)
         result: dict[str, Any] = {}
         for key in dir(payload):
             if key.startswith("_"):

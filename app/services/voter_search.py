@@ -45,7 +45,8 @@ class VoterSearchIndexService:
                     lower(coalesce(v.registration_city, '')) AS city,
                     lower(coalesce(v.registration_state, '')) AS state,
                     coalesce(v.registration_zip, '') AS zip_code,
-                    lower(trim(concat_ws(' ', v.source_type, v.source_id))) AS source_ids,
+                    lower(trim(concat_ws(' ', v.source_type, v.source_id)))
+                        AS source_ids,
                     lower(
                         trim(
                             concat_ws(
@@ -66,7 +67,15 @@ class VoterSearchIndexService:
             phone_agg AS (
                 SELECT
                     vp.voter_id,
-                    lower(string_agg(vp.value, ' ' ORDER BY vp.is_primary DESC, vp.updated_at DESC, vp.id)) AS phone_values,
+                    lower(
+                        string_agg(
+                            vp.value,
+                            ' '
+                            ORDER BY vp.is_primary DESC,
+                                vp.updated_at DESC,
+                                vp.id
+                        )
+                    ) AS phone_values,
                     string_agg(
                         regexp_replace(vp.value, '\\D', '', 'g'),
                         ' '
@@ -79,7 +88,15 @@ class VoterSearchIndexService:
             email_agg AS (
                 SELECT
                     ve.voter_id,
-                    lower(string_agg(ve.value, ' ' ORDER BY ve.is_primary DESC, ve.updated_at DESC, ve.id)) AS email_values
+                    lower(
+                        string_agg(
+                            ve.value,
+                            ' '
+                            ORDER BY ve.is_primary DESC,
+                                ve.updated_at DESC,
+                                ve.id
+                        )
+                    ) AS email_values
                 FROM voter_emails ve
                 WHERE ve.voter_id = ANY(CAST(:voter_ids AS uuid[]))
                 GROUP BY ve.voter_id
@@ -89,7 +106,16 @@ class VoterSearchIndexService:
                     va.voter_id,
                     lower(
                         string_agg(
-                            trim(concat_ws(' ', va.address_line1, va.address_line2, va.city, va.state, va.zip_code)),
+                            trim(
+                                concat_ws(
+                                    ' ',
+                                    va.address_line1,
+                                    va.address_line2,
+                                    va.city,
+                                    va.state,
+                                    va.zip_code
+                                )
+                            ),
                             ' '
                             ORDER BY va.is_primary DESC, va.updated_at DESC, va.id
                         )

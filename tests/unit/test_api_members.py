@@ -189,6 +189,16 @@ class TestListMembers:
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db, role="viewer")
+        # list_members route calls ensure_user_synced a second time, so
+        # prepend an extra RLS pre-check scalar for that second pass.
+        _member_mock = MagicMock()
+        _member_mock.role = "viewer"
+        _campaign_mock = MagicMock()
+        _campaign_mock.organization_id = None
+        _campaign_mock.zitadel_org_id = ORG_ID
+        # Order: pass1 RLS, resolve_campaign_role (member + campaign),
+        # then pass2 RLS (from route handler's ensure_user_synced).
+        mock_db.scalar = AsyncMock(side_effect=["", _member_mock, _campaign_mock, ""])
 
         member = _make_member()  # role=None defaults to "viewer" in response
         member_user = _make_local_user()
@@ -213,6 +223,15 @@ class TestListMembers:
         user = _make_user(role=CampaignRole.VIEWER)
         app = _override_app(user=user, db=mock_db, zitadel=mock_zitadel)
         _setup_role_resolution(mock_db, role="viewer")
+        # list_members calls ensure_user_synced twice; prepend extra RLS scalar.
+        _member_mock = MagicMock()
+        _member_mock.role = "viewer"
+        _campaign_mock = MagicMock()
+        _campaign_mock.organization_id = None
+        _campaign_mock.zitadel_org_id = ORG_ID
+        # Order: pass1 RLS, resolve_campaign_role (member + campaign),
+        # then pass2 RLS (from route handler's ensure_user_synced).
+        mock_db.scalar = AsyncMock(side_effect=["", _member_mock, _campaign_mock, ""])
 
         member = _make_member(role="admin")
         member_user = _make_local_user()

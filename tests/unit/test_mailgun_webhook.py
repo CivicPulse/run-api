@@ -116,9 +116,7 @@ async def test_parse_mailgun_event_rejects_bad_signature():
                         "id": "evt-1",
                         "event": "delivered",
                         "message": {
-                            "headers": {
-                                "message-id": "<message-1@example.test>"
-                            }
+                            "headers": {"message-id": "<message-1@example.test>"}
                         },
                     }
                 ),
@@ -274,7 +272,9 @@ async def test_mailgun_events_updates_orgless_attempt_without_idempotency_lookup
     original = settings.mailgun_webhook_signing_key
     try:
         settings.mailgun_webhook_signing_key = SecretStr(key)
-        with patch("app.api.v1.mailgun_webhooks.check_idempotency", new_callable=AsyncMock) as check_idempotency_mock:
+        with patch(
+            "app.api.v1.mailgun_webhooks.check_idempotency", new_callable=AsyncMock
+        ) as check_idempotency_mock:
             result = await mailgun_events(request=request, db=db)
     finally:
         settings.mailgun_webhook_signing_key = original

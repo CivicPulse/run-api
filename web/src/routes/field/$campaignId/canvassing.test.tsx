@@ -135,7 +135,7 @@ vi.mock("@/components/field/DoorListView", () => ({
 vi.mock("@/components/field/QuickStartCard", () => ({ QuickStartCard: () => null }))
 vi.mock("@/components/field/CanvassingMap", () => ({ CanvassingMap: () => <div>Map</div> }))
 vi.mock("@/components/field/CanvassingCompletionSummary", () => ({ CanvassingCompletionSummary: () => <div>Complete</div> }))
-vi.mock("@/components/ui/button", () => ({ Button: ({ children, onClick, disabled, asChild, ...props }: any) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button> }))
+vi.mock("@/components/ui/button", () => ({ Button: ({ children, onClick, disabled, asChild, ...props }: { children?: React.ReactNode; onClick?: () => void; disabled?: boolean; asChild?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) => asChild ? children : <button onClick={onClick} disabled={disabled} {...props}>{children}</button> }))
 vi.mock("@/components/ui/card", () => ({
   Card: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
   CardHeader: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,

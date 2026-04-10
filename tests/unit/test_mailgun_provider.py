@@ -90,7 +90,9 @@ async def test_mailgun_send_sanitizes_failure_details():
     response.status_code = 401
     response.raise_for_status.side_effect = httpx.HTTPStatusError(
         "401 error key-super-secret",
-        request=httpx.Request("POST", "https://api.eu.mailgun.net/v3/mg.example.test/messages"),
+        request=httpx.Request(
+            "POST", "https://api.eu.mailgun.net/v3/mg.example.test/messages"
+        ),
         response=response,
     )
     mock_client = AsyncMock()

@@ -57,8 +57,10 @@ async def phase78_isolation_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO campaigns "
-                "(id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
-                "VALUES (:id, :org_id, :name, :type, 'ACTIVE', :created_by, :now, :now)"
+                "(id, zitadel_org_id, name, type, status, created_by, "
+                "created_at, updated_at) "
+                "VALUES (:id, :org_id, :name, :type, 'ACTIVE', "
+                ":created_by, :now, :now)"
             ),
             {
                 "id": cid,
@@ -76,7 +78,8 @@ async def phase78_isolation_data(superuser_session):
     ]:
         await session.execute(
             text(
-                "INSERT INTO campaign_members (id, user_id, campaign_id, role, synced_at) "
+                "INSERT INTO campaign_members "
+                "(id, user_id, campaign_id, role, synced_at) "
                 "VALUES (:id, :user_id, :campaign_id, :role, :now)"
             ),
             {
@@ -95,7 +98,8 @@ async def phase78_isolation_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO voters "
-                "(id, campaign_id, source_type, first_name, last_name, latitude, longitude, geom, created_at, updated_at) "
+                "(id, campaign_id, source_type, first_name, last_name, "
+                "latitude, longitude, geom, created_at, updated_at) "
                 "VALUES ("
                 ":id, :campaign_id, 'manual', :first_name, 'Tenant', :lat, :lon, "
                 "ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :now, :now)"
@@ -117,7 +121,8 @@ async def phase78_isolation_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO voter_lists "
-                "(id, campaign_id, name, list_type, created_by, created_at, updated_at) "
+                "(id, campaign_id, name, list_type, created_by, "
+                "created_at, updated_at) "
                 "VALUES (:id, :campaign_id, :name, 'STATIC', :created_by, :now, :now)"
             ),
             {
@@ -132,7 +137,8 @@ async def phase78_isolation_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO turfs "
-            "(id, campaign_id, name, status, boundary, created_by, created_at, updated_at) "
+            "(id, campaign_id, name, status, boundary, created_by, "
+            "created_at, updated_at) "
             "VALUES ("
             ":id, :campaign_id, :name, 'active', "
             "ST_GeomFromEWKT(:boundary), :created_by, :now, :now)"
@@ -160,7 +166,8 @@ async def phase78_isolation_data(superuser_session):
         await session.execute(
             text(
                 "INSERT INTO volunteers "
-                "(id, campaign_id, user_id, first_name, last_name, status, skills, created_by, created_at, updated_at) "
+                "(id, campaign_id, user_id, first_name, last_name, status, "
+                "skills, created_by, created_at, updated_at) "
                 "VALUES ("
                 ":id, :campaign_id, :user_id, :first_name, 'Tenant', 'active', "
                 "'{}'::varchar[], :created_by, :now, :now)"
@@ -191,7 +198,8 @@ async def phase78_isolation_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO shifts "
-            "(id, campaign_id, name, type, status, start_at, end_at, max_volunteers, created_by, created_at, updated_at) "
+            "(id, campaign_id, name, type, status, start_at, end_at, "
+            "max_volunteers, created_by, created_at, updated_at) "
             "VALUES ("
             ":id, :campaign_id, 'Phase78 Shift B', 'general', 'completed', "
             ":start_at, :end_at, 5, :created_by, :now, :now)"
@@ -209,9 +217,11 @@ async def phase78_isolation_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO shift_volunteers "
-            "(id, shift_id, volunteer_id, status, signed_up_at, check_in_at, check_out_at) "
+            "(id, shift_id, volunteer_id, status, signed_up_at, "
+            "check_in_at, check_out_at) "
             "VALUES ("
-            ":id, :shift_id, :volunteer_id, 'checked_out', :signed_up_at, :check_in_at, :check_out_at)"
+            ":id, :shift_id, :volunteer_id, 'checked_out', "
+            ":signed_up_at, :check_in_at, :check_out_at)"
         ),
         {
             "id": shift_volunteer_b_id,

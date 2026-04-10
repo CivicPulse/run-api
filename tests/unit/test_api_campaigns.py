@@ -94,10 +94,24 @@ def _make_scalars_result(items):
     return result
 
 
+def _rls_scalars(n: int = 1) -> list:
+    """Return n RLS-context scalar values for ensure_user_synced's pre-check.
+
+    ensure_user_synced reads ``app.current_campaign_id`` via ``db.scalar``
+    at the top of the function.  Returning an empty string ensures the
+    final ``set_campaign_context`` restore branch is skipped, so no
+    additional ``db.execute`` is consumed.
+    """
+    return [""] * n
+
+
 def _one_sync_pass(local_user=None):
     """Return mock execute results for a single ensure_user_synced call.
 
-    ensure_user_synced makes 3 execute calls:
+    Assumes the RLS pre-check scalar returns an empty string, so the
+    final ``set_campaign_context`` restore is skipped and this pass
+    consumes exactly 3 execute calls:
+
     1. User lookup → result.scalar_one_or_none()
     2. Org lookup → result.scalars().all() (returns [] so fallback runs)
     3. Campaign fallback → result.scalars().all() (returns [] so no member upserts)
@@ -129,27 +143,46 @@ def _setup_user_sync_on_db(mock_db, local_user=None, campaign=None):
     return results
 
 
-def _setup_role_resolution(mock_db, campaign=None, extra_scalars=None, role="viewer"):
-    """Set up mock_db.scalar for resolve_campaign_role.
+def _setup_role_resolution(
+    mock_db,
+    campaign=None,
+    extra_scalars=None,
+    role="viewer",
+    sync_passes=2,
+):
+    """Set up mock_db.scalar for ensure_user_synced + resolve_campaign_role.
 
-    resolve_campaign_role calls db.scalar() for:
-    1. CampaignMember lookup → mock member with explicit role
-    2. Campaign lookup → campaign object (for org role check)
-       - If campaign.organization_id is None, org check is skipped
+    Scalar call order for a typical ``require_role`` + route body flow:
+    1. ``ensure_user_synced`` (via require_role) reads RLS context → 1 scalar
+    2. ``resolve_campaign_role``:
+       a. CampaignMember lookup → mock member with explicit role
+       b. Campaign lookup → campaign object (for org role check)
+    3. ``ensure_user_synced`` (in route body) reads RLS context → 1 scalar
+    4. Optionally, service-layer scalar calls (``extra_scalars``)
 
     With JWT fallback removed (D-07), a CampaignMember record must exist
     for the user to have access.  The ``role`` parameter controls the
     resolved campaign role.
 
-    extra_scalars: additional db.scalar() return values for service-layer
-    calls that also use scalar() (e.g. delete_campaign's sibling count).
+    Args:
+        sync_passes: Number of ``ensure_user_synced`` invocations in the
+            request (default 2: one from ``require_role``, one from the
+            route body).  An RLS scalar (empty string) is prepended /
+            inserted for each pass.
+        extra_scalars: additional db.scalar() return values for
+            service-layer calls (e.g. delete_campaign's sibling count).
     """
     member = MagicMock()
     member.role = role
-    values = [
-        member,  # CampaignMember lookup → explicit member with role
-        campaign,  # Campaign lookup → for org role check
-    ]
+    # Scalar sequence:
+    #   pass-1 RLS, member, campaign, pass-2 RLS, ...extra
+    values: list = []
+    if sync_passes >= 1:
+        values.extend(_rls_scalars(1))
+    values.append(member)  # CampaignMember lookup → explicit member with role
+    values.append(campaign)  # Campaign lookup → for org role check
+    if sync_passes >= 2:
+        values.extend(_rls_scalars(sync_passes - 1))
     if extra_scalars:
         values.extend(extra_scalars)
     mock_db.scalar = AsyncMock(side_effect=values)
@@ -164,6 +197,10 @@ def mock_db():
     db.rollback = AsyncMock()
     db.refresh = AsyncMock()
     db.execute = AsyncMock()
+    # Default scalar to empty-string so ensure_user_synced's RLS-context
+    # read does not trigger the final set_campaign_context restore
+    # branch.  Tests that need real scalar return values override this.
+    db.scalar = AsyncMock(return_value="")
     return db
 
 
@@ -220,8 +257,9 @@ class TestCampaignCreate:
         sync_results = _one_sync_pass()
         sync_results.append(_mock_result_with(org))
         mock_db.execute = AsyncMock(side_effect=sync_results)
-        # route org lookup, then _generate_unique_slug existence check
-        mock_db.scalar = AsyncMock(side_effect=[org, None])
+        # ensure_user_synced RLS scalar, then route org lookup,
+        # then _generate_unique_slug existence check
+        mock_db.scalar = AsyncMock(side_effect=[*_rls_scalars(1), org, None])
 
         async def fake_refresh(obj):
             if isinstance(obj, Campaign):
@@ -270,7 +308,8 @@ class TestCampaignCreate:
 
         sync_results = _one_sync_pass()
         mock_db.execute = AsyncMock(side_effect=sync_results)
-        mock_db.scalar = AsyncMock(return_value=None)
+        # RLS scalar for ensure_user_synced, then route org lookup (None)
+        mock_db.scalar = AsyncMock(side_effect=[*_rls_scalars(1), None])
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

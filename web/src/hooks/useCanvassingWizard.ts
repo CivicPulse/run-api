@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useLayoutEffect, useRef } from "react"
+import { useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useCanvassingStore } from "@/stores/canvassingStore"
 import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import {
@@ -91,9 +91,19 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   // Track the household key the user is actually viewing so pinning stabilises
   // the *displayed* door rather than always falling back to the sequence-order
   // household at currentAddressIndex (which would force 1521 1st Ave back to
-  // index 0 even in distance mode).
-  const pinnedHouseholdKeyRef = useRef<string | null>(null)
-  const prevSortModeRef = useRef(sortMode)
+  // index 0 even in distance mode). Stored as state so the `households` memo
+  // can read it safely during render.
+  const [pinnedHouseholdKey, setPinnedHouseholdKey] = useState<string | null>(null)
+  const [trackedSortMode, setTrackedSortMode] = useState(sortMode)
+
+  // Detect a sort mode change during render. Updating state here follows the
+  // "storing information from previous renders" React pattern and skips
+  // pinning for the render immediately following the change.
+  const sortModeJustChanged = trackedSortMode !== sortMode
+  if (sortModeJustChanged) {
+    setTrackedSortMode(sortMode)
+    setPinnedHouseholdKey(null)
+  }
 
   const households = useMemo(() => {
     const orderedHouseholds = sortMode === "distance"
@@ -101,17 +111,15 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       : orderHouseholdsBySequence(sequenceHouseholds)
 
     // When the sort mode just changed, skip pinning so the new ordering takes
-    // full effect. The ref is cleared here (during render) rather than in a
-    // layout effect so the memo sees the cleared value immediately.
-    if (prevSortModeRef.current !== sortMode) {
+    // full effect.
+    if (sortModeJustChanged) {
       return orderedHouseholds
     }
 
-    const pinnedKey = pinnedHouseholdKeyRef.current
-    if (!pinnedKey) return orderedHouseholds
+    if (!pinnedHouseholdKey) return orderedHouseholds
 
     const pinnedIndex = orderedHouseholds.findIndex(
-      (household) => household.householdKey === pinnedKey,
+      (household) => household.householdKey === pinnedHouseholdKey,
     )
     if (pinnedIndex < 0 || pinnedIndex === currentAddressIndex) {
       return orderedHouseholds
@@ -130,15 +138,26 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     locationSnapshot,
     sequenceHouseholds,
     sortMode,
+    sortModeJustChanged,
+    pinnedHouseholdKey,
   ])
 
-  // Sync refs after the memo has computed. On sort mode change: clear the
-  // pinned key and jump to index 0. The ref update here ensures the NEXT
-  // render sees sortModeJustChanged = false and starts pinning again.
+  // After the memo has computed, record which household the user is viewing
+  // during render so subsequent location updates pin *that* door. Using the
+  // "update state during render" pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders)
+  // avoids cascading renders from setState-in-effect.
+  if (!sortModeJustChanged) {
+    const viewing = households[currentAddressIndex]
+    const nextPin = viewing ? viewing.householdKey : null
+    if (nextPin !== null && nextPin !== pinnedHouseholdKey) {
+      setPinnedHouseholdKey(nextPin)
+    }
+  }
+
+  // Sync index after the memo has computed. On sort mode change: jump to
+  // index 0. Otherwise clamp the active index to the household list length.
   useLayoutEffect(() => {
-    if (prevSortModeRef.current !== sortMode) {
-      prevSortModeRef.current = sortMode
-      pinnedHouseholdKeyRef.current = null
+    if (sortModeJustChanged) {
       if (households.length > 0) {
         jumpToAddress(0)
       }
@@ -147,17 +166,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     if (currentAddressIndex >= households.length && households.length > 0) {
       jumpToAddress(households.length - 1)
     }
-  }, [currentAddressIndex, households, jumpToAddress, sortMode])
-
-  // After each settled render, record which household the user is viewing so
-  // subsequent location updates pin *that* door (not the sequence-order one).
-  useLayoutEffect(() => {
-    if (prevSortModeRef.current !== sortMode) return // skip during transition
-    const viewing = households[currentAddressIndex]
-    if (viewing) {
-      pinnedHouseholdKeyRef.current = viewing.householdKey
-    }
-  }, [households, currentAddressIndex, sortMode])
+  }, [currentAddressIndex, households, jumpToAddress, sortModeJustChanged])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,

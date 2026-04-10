@@ -238,9 +238,7 @@ def upgrade() -> None:
         "CREATE POLICY sms_conversations_isolation ON sms_conversations "
         "USING (campaign_id = current_setting('app.current_campaign_id', true)::uuid)"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON sms_conversations TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON sms_conversations TO app_user")
 
     op.execute("ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE sms_messages FORCE ROW LEVEL SECURITY")
@@ -248,9 +246,7 @@ def upgrade() -> None:
         "CREATE POLICY sms_messages_isolation ON sms_messages "
         "USING (campaign_id = current_setting('app.current_campaign_id', true)::uuid)"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON sms_messages TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON sms_messages TO app_user")
 
 
 def downgrade() -> None:

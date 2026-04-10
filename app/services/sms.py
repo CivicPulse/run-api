@@ -102,8 +102,7 @@ class SMSService:
                 allowed=False,
                 reason_code="missing_mobile_signal",
                 reason_detail=(
-                    "Only mobile or cell phone numbers can be used "
-                    "for SMS outreach."
+                    "Only mobile or cell phone numbers can be used for SMS outreach."
                 ),
                 voter_phone_id=phone.id,
                 normalized_phone_number=normalized,
@@ -114,8 +113,7 @@ class SMSService:
                 allowed=False,
                 reason_code="missing_sms_consent",
                 reason_detail=(
-                    "This phone does not have an explicit SMS eligibility "
-                    "signal yet."
+                    "This phone does not have an explicit SMS eligibility signal yet."
                 ),
                 voter_phone_id=phone.id,
                 normalized_phone_number=normalized,

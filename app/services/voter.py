@@ -259,9 +259,7 @@ def decode_search_cursor(cursor: str) -> tuple[int, int, str, str, uuid.UUID]:
     try:
         padding = "=" * (-len(cursor) % 4)
         payload = json.loads(
-            base64.urlsafe_b64decode((cursor + padding).encode("utf-8")).decode(
-                "utf-8"
-            )
+            base64.urlsafe_b64decode((cursor + padding).encode("utf-8")).decode("utf-8")
         )
         if (
             payload.get("mode") != _SEARCH_CURSOR_MODE
@@ -606,9 +604,7 @@ class VoterService:
                     cursor_last_name,
                     cursor_first_name,
                     cursor_id,
-                ) = (
-                    decode_search_cursor(cursor)
-                )
+                ) = decode_search_cursor(cursor)
                 lookup_rank, lookup_penalty = _build_search_rank_exprs(
                     normalized_search,
                     search_digits,
@@ -673,9 +669,9 @@ class VoterService:
         next_cursor = None
         if has_more and items:
             if use_lookup_order:
-                _, cursor_last_name, cursor_first_name, cursor_rank, cursor_penalty = rows[
-                    -1
-                ]
+                _, cursor_last_name, cursor_first_name, cursor_rank, cursor_penalty = (
+                    rows[-1]
+                )
                 next_cursor = encode_search_cursor(
                     rank=cursor_rank,
                     penalty=cursor_penalty,

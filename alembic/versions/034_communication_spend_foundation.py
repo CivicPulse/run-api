@@ -33,7 +33,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "organizations",
-        sa.Column("twilio_budget_updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "twilio_budget_updated_at", sa.DateTime(timezone=True), nullable=True
+        ),
     )
 
     op.create_table(
@@ -101,8 +103,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_communication_ledgers_provider_event", table_name="communication_ledgers")
-    op.drop_index("ix_communication_ledgers_org_created", table_name="communication_ledgers")
+    op.drop_index(
+        "ix_communication_ledgers_provider_event", table_name="communication_ledgers"
+    )
+    op.drop_index(
+        "ix_communication_ledgers_org_created", table_name="communication_ledgers"
+    )
     op.drop_table("communication_ledgers")
     op.drop_column("organizations", "twilio_budget_updated_at")
     op.drop_column("organizations", "twilio_budget_warning_percent")
