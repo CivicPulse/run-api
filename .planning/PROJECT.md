@@ -129,7 +129,11 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-_None — next milestone TBD via `/gsd-new-milestone`._
+- Fix reported canvassing field bugs (auto-advance, skip house, map/list layering, house selection, broken map icons, optional outcome notes) — v1.18
+- Audit household active-state state machine end-to-end — v1.18
+- Audit field-mode map asset pipeline and Leaflet icon loading — v1.18
+- Audit field-mode form requiredness to remove over-eager validation — v1.18
+- Proactively harden the offline queue, connectivity indicators, and sync-on-reconnect flow — v1.18
 
 ### Out of Scope
 
@@ -155,9 +159,22 @@ _None — next milestone TBD via `/gsd-new-milestone`._
 - Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
 - White-label / custom branding per org
 
-## Current Milestone
+## Current Milestone: v1.18 Field UX Polish
 
-_None — run `/gsd-new-milestone` to scope the next milestone._
+**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably.
+
+**Target features:**
+- Canvassing flow fixes — auto-advance after outcome, working Skip House, optional outcome note
+- House selection from list and map — tap-to-activate in both views, resolve "can't activate correct house" friction
+- Map rendering fixes — broken Leaflet marker icons and map-over-list layering
+- Household active-state state-machine audit
+- Field-mode form requiredness audit
+- Offline queue, connectivity indicator, and sync-on-reconnect hardening
+
+**Key context:**
+- Driven by real volunteer feedback from door-knocking sessions
+- Bug-fix + polish milestone on the mobile-first field mode shipped in v1.4
+- Medium scope (4–6 phases); phase numbering continues from v1.17
 
 ## Current State
 
@@ -178,7 +195,7 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-_TBD — scope the next milestone via `/gsd-new-milestone`._
+_v1.18 Field UX Polish is the current milestone — see above._
 
 <details>
 <summary>Archived v1.17 planning context</summary>
@@ -270,4 +287,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after v1.17 Easy Volunteer Invites milestone*
+*Last updated: 2026-04-10 — started milestone v1.18 Field UX Polish*

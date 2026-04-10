@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.17
-milestone_name: milestone
-status: v1.17 delivered, traceability backfilled, and milestone ready to remain archived as passed
-stopped_at: Milestone completed after phase 104-105 closeout and audit traceability backfill
-last_updated: "2026-04-10T12:42:34.438Z"
+milestone: v1.18
+milestone_name: Field UX Polish
+status: Defining requirements
+stopped_at: Milestone v1.18 started — gathering requirements
+last_updated: "2026-04-10T18:00:00.000Z"
 last_activity: 2026-04-10
 progress:
   total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-09)
+See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.17 Easy Volunteer Invites — gap closure phases 104-105 queued after milestone audit
+**Current focus:** v1.18 Field UX Polish — fix reported canvassing field bugs and harden the offline/sync path for volunteers.
 
 ## Current Position
 
-Phase: Complete
-Plan: Complete
-Status: v1.17 delivered, traceability backfilled, and milestone ready to remain archived as passed
-Last activity: 2026-04-10
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-10 — Milestone v1.18 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -58,17 +58,18 @@ Progress: [██████████] 100%
 - v1.16: This milestone covers transactional/system email only, including existing invite flows and ZITADEL auth/system delivery setup.
 - v1.16: ZITADEL scope is configure-and-document email delivery, not CivicPulse-managed auth templating or branding tooling.
 - v1.16: Basic email delivery/audit metadata is in scope; inboxes, campaign email, and advanced analytics remain out of scope.
-- [Phase 95]: Phase 95 established a typed transactional email seam with Mailgun selected by settings and code-owned HTML/text invite templates. — This keeps invite-domain logic provider-agnostic and gives later async, audit, and ZITADEL phases a stable foundation.
-- [Phase 96]: Phase 96 moved invite delivery behind a post-commit communications task with invite-keyed idempotency, same-origin invite entry, and persisted queue-failure state instead of false request failures. — This gives phase 97 a stable submission record and phase 98/99 a real app-owned invite path to document and harden.
-- [Phase 97]: Phase 97 added canonical invite-email attempt audit rows plus authenticated Mailgun webhook reconciliation keyed by provider message id. — This gives support a truthful latest outcome per invite and keeps future resend/deliverability work grounded in durable attempt history.
-- [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery, including a runbook for sender alignment and support triage. — This keeps auth/system mail ownership explicit and gives phase 99 a clear shared-ops boundary to harden.
-- [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations across CivicPulse invite mail and ZITADEL auth mail. — The milestone is now ready for milestone audit and archive steps.
-- [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing in the campaign members UI. — This closes the remaining AUD-04 admin visibility gap identified by the milestone audit.
-- [Phase 101]: Phase 101 added dedicated volunteer signup links with admin lifecycle controls, a neutral public resolver, and a same-origin public landing page separate from legacy slug joins and trusted member invites. — This creates the safe public entry foundation required for application intake in phase 102.
-- [Phase 102]: Phase 102 added approval-gated volunteer applications on signup links, immutable source snapshots, duplicate-safe intake, and authenticated prefill for existing CivicPulse accounts. — This creates the pending application queue Phase 103 resolves.
-- [Phase 103]: Phase 103 added an admin review queue with approve/reject actions that only create campaign membership and active volunteer access on approval. — This closes the milestone’s approval-gated access activation loop.
-- [Phase 104]: Gap closure planning assigned the public volunteer intake blocker to a dedicated follow-up phase. — This phase will restore anonymous signup-link application submission while preserving the authenticated prefill path and safe review gating.
-- [Phase 105]: Gap closure planning assigned the remaining review-context and audit-evidence gaps to a dedicated follow-up phase. — This phase will close the `REVW-02` and `SAFE-03` audit findings and backfill the milestone traceability artifacts needed for re-audit.
+- [Phase 95]: Phase 95 established a typed transactional email seam with Mailgun selected by settings and code-owned HTML/text invite templates.
+- [Phase 96]: Phase 96 moved invite delivery behind a post-commit communications task with invite-keyed idempotency, same-origin invite entry, and persisted queue-failure state.
+- [Phase 97]: Phase 97 added canonical invite-email attempt audit rows plus authenticated Mailgun webhook reconciliation keyed by provider message id.
+- [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery.
+- [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations.
+- [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing.
+- [Phase 101]: Phase 101 added dedicated volunteer signup links with admin lifecycle controls, a neutral public resolver, and a same-origin public landing page.
+- [Phase 102]: Phase 102 added approval-gated volunteer applications on signup links, immutable source snapshots, duplicate-safe intake, and authenticated prefill for existing accounts.
+- [Phase 103]: Phase 103 added an admin review queue with approve/reject actions that only create campaign membership and active volunteer access on approval.
+- [Phase 104]: Gap closure phase restored anonymous signup-link application submission while preserving authenticated prefill and safe review gating.
+- [Phase 105]: Gap closure phase closed REVW-02 and SAFE-03 audit findings and backfilled milestone traceability artifacts.
+- v1.18: Milestone driven by real volunteer feedback from door-knocking sessions — 7 reported canvassing bugs + 3 broader audits + offline hardening.
 
 ## Pending Todos
 
@@ -81,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T01:05:00Z
-Stopped at: Milestone completed after phase 104-105 closeout and audit traceability backfill
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-10T18:00:00Z
+Stopped at: Milestone v1.18 started — defining requirements
+Resume file: .planning/REQUIREMENTS.md (pending)
