@@ -20,7 +20,7 @@ Most recently shipped: v1.16 Email Delivery Foundation on 2026-04-08. The active
 - ✅ **v1.14 Voter Search & Lookup** — Phases 84-87 (shipped 2026-04-07)
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
-- 🔄 **v1.17 Easy Volunteer Invites** — Phases 101-103
+- 🔄 **v1.17 Easy Volunteer Invites** — Phases 101-105
 
 ## Milestone History
 
@@ -189,8 +189,10 @@ See: `.planning/milestones/v1.16-ROADMAP.md`
 ## Phases
 
 - [x] **Phase 101: Signup Link Foundation & Public Entry** - Create the campaign-scoped signup-link domain, public resolution flow, and fail-closed link lifecycle controls without reusing trusted member invites. — completed 2026-04-09
-- [ ] **Phase 102: Volunteer Applications & Existing-Account Intake** - Accept public applications into a pending state with dedupe, immutable source attribution, and privacy-safe handling for existing CivicPulse accounts.
-- [ ] **Phase 103: Review Queue, Approval, and Access Activation** - Give campaign admins a review workflow that approves or rejects applications and only grants campaign membership and volunteer access on approval.
+- [x] **Phase 102: Volunteer Applications & Existing-Account Intake** - Accept public applications into a pending state with dedupe, immutable source attribution, and privacy-safe handling for existing CivicPulse accounts. — completed 2026-04-09
+- [x] **Phase 103: Review Queue, Approval, and Access Activation** - Give campaign admins a review workflow that approves or rejects applications and only grants campaign membership and volunteer access on approval. — completed 2026-04-09
+- [ ] **Phase 104: Public Volunteer Intake Closure** - Restore a true public volunteer application flow so valid signup links can accept anonymous applicants without granting campaign access and while preserving dedupe, attribution, and abuse resistance.
+- [ ] **Phase 105: Review Context and Audit Traceability Closeout** - Close the remaining review-context, approval-audit, and milestone evidence gaps so v1.17 can pass re-audit and milestone completion.
 
 ## Phase Details
 
@@ -203,7 +205,7 @@ See: `.planning/milestones/v1.16-ROADMAP.md`
   2. Disabling or regenerating a signup link invalidates the previous public URL immediately and prevents new applications through that link.
   3. Public visitors opening a valid signup link can see safe campaign context without seeing internal campaign-only data.
   4. Invalid, disabled, regenerated, or expired-style link states fail closed with safe public responses.
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
 
 ### Phase 102: Volunteer Applications & Existing-Account Intake
@@ -216,7 +218,7 @@ See: `.planning/milestones/v1.16-ROADMAP.md`
   3. Repeated submissions for the same applicant and campaign resolve safely without creating duplicate pending applications.
   4. Existing CivicPulse users who are not campaign members can apply without creating a second account and without re-entering unchanged known profile data.
   5. Public application endpoints are rate-limited and keep responses neutral enough to avoid account-existence leakage.
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
 
 ### Phase 103: Review Queue, Approval, and Access Activation
@@ -229,5 +231,31 @@ See: `.planning/milestones/v1.16-ROADMAP.md`
   3. Rejecting an application leaves the applicant without campaign access while preserving an auditable decision trail.
   4. Pending or rejected applicants cannot access campaign data or volunteer-only flows for that campaign.
   5. Existing members or already-resolved applications are handled safely without duplicate membership or volunteer records.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 104: Public Volunteer Intake Closure
+**Goal**: Valid campaign signup links support a true public volunteer application flow for anonymous and existing CivicPulse users without granting campaign access before approval.
+**Depends on**: Phase 103
+**Requirements**: APPL-01, APPL-04, APPL-05
+**Gap Closure**: Closes audit gaps `APPL-01`, `INT-APPLY-AUTH`, and `FLOW-ANON-SUBMIT`.
+**Success Criteria** (what must be TRUE):
+  1. Anonymous visitors can submit a volunteer application from a valid signup link without being forced to authenticate first.
+  2. Existing CivicPulse users still get the low-friction, prefilled path when signed in.
+  3. Application intake keeps attribution snapshots, duplicate-safe handling, and abuse-resistant behavior after the public path is restored.
+  4. Existing-member and reapplication edge cases follow explicit review-safe rules instead of silently bypassing the intended approval model.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 105: Review Context and Audit Traceability Closeout
+**Goal**: Campaign admins can review volunteer applications with the full context required for safe decisions, and the milestone carries the traceability artifacts needed to pass milestone re-audit.
+**Depends on**: Phase 104
+**Requirements**: REVW-02, SAFE-03
+**Gap Closure**: Closes the remaining `REVW-02` and `SAFE-03` audit gaps plus milestone traceability and Nyquist evidence gaps for phases 101-103.
+**Success Criteria** (what must be TRUE):
+  1. The admin review queue surfaces duplicate and existing-account context alongside applicant details and source-link attribution.
+  2. Existing-member and approval-retry paths retain auditable reviewer semantics and do not create duplicate campaign access records.
+  3. `REQUIREMENTS.md`, summary frontmatter, and verification artifacts accurately reflect the milestone’s delivered requirements.
+  4. Nyquist validation artifacts for phases 101-103 are added or explicitly waived so the milestone can be re-audited cleanly.
 **Plans**: TBD
 **UI hint**: yes

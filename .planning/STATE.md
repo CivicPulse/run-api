@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Easy Volunteer Invites
 status: in_progress
-stopped_at: Phase 101 complete and verified; ready to discuss Phase 102
-last_updated: "2026-04-09T20:09:20Z"
+stopped_at: Gap closure phases 104-105 added after milestone audit; planning pending
+last_updated: "2026-04-09T21:15:00Z"
 last_activity: 2026-04-09
 progress:
-  total_phases: 3
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 33
+  total_phases: 5
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.17 Easy Volunteer Invites — Phase 101 complete, Phase 102 ready
+**Current focus:** v1.17 Easy Volunteer Invites — gap closure phases 104-105 queued after milestone audit
 
 ## Current Position
 
-Phase: 102
-Plan: —
-Status: Phase 101 complete; Phase 102 ready for discussion
+Phase: 104
+Plan: pending
+Status: Milestone audit identified closure work; phase planning pending for phases 104-105
 Last activity: 2026-04-09
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 60%
 
 ## Accumulated Context
 
@@ -65,6 +65,10 @@ Progress: [███░░░░░░░] 33%
 - [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations across CivicPulse invite mail and ZITADEL auth mail. — The milestone is now ready for milestone audit and archive steps.
 - [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing in the campaign members UI. — This closes the remaining AUD-04 admin visibility gap identified by the milestone audit.
 - [Phase 101]: Phase 101 added dedicated volunteer signup links with admin lifecycle controls, a neutral public resolver, and a same-origin public landing page separate from legacy slug joins and trusted member invites. — This creates the safe public entry foundation required for application intake in phase 102.
+- [Phase 102]: Phase 102 added approval-gated volunteer applications on signup links, immutable source snapshots, duplicate-safe intake, and authenticated prefill for existing CivicPulse accounts. — This creates the pending application queue Phase 103 resolves.
+- [Phase 103]: Phase 103 added an admin review queue with approve/reject actions that only create campaign membership and active volunteer access on approval. — This closes the milestone’s approval-gated access activation loop.
+- [Phase 104]: Gap closure planning assigned the public volunteer intake blocker to a dedicated follow-up phase. — This phase will restore anonymous signup-link application submission while preserving the authenticated prefill path and safe review gating.
+- [Phase 105]: Gap closure planning assigned the remaining review-context and audit-evidence gaps to a dedicated follow-up phase. — This phase will close the `REVW-02` and `SAFE-03` audit findings and backfill the milestone traceability artifacts needed for re-audit.
 
 ## Pending Todos
 
@@ -77,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-09T19:57:49Z
-Stopped at: Phase 101 complete and verified; ready to discuss Phase 102
+Last session: 2026-04-09T21:15:00Z
+Stopped at: Gap closure phases 104-105 added after milestone audit; planning pending
 Resume file: .planning/ROADMAP.md

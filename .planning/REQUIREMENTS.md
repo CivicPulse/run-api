@@ -72,20 +72,20 @@
 | LINK-03 | Phase 101 | Pending |
 | LINK-04 | Phase 101 | Pending |
 | LINK-05 | Phase 101 | Pending |
-| APPL-01 | Phase 102 | Pending |
+| APPL-01 | Phase 104 | Pending |
 | APPL-02 | Phase 102 | Pending |
 | APPL-03 | Phase 102 | Pending |
-| APPL-04 | Phase 102 | Pending |
-| APPL-05 | Phase 102 | Pending |
+| APPL-04 | Phase 104 | Pending |
+| APPL-05 | Phase 104 | Pending |
 | REVW-01 | Phase 103 | Pending |
-| REVW-02 | Phase 103 | Pending |
+| REVW-02 | Phase 105 | Pending |
 | REVW-03 | Phase 103 | Pending |
 | REVW-04 | Phase 103 | Pending |
 | REVW-05 | Phase 103 | Pending |
 | REVW-06 | Phase 103 | Pending |
 | SAFE-01 | Phase 101 | Pending |
 | SAFE-02 | Phase 102 | Pending |
-| SAFE-03 | Phase 103 | Pending |
+| SAFE-03 | Phase 105 | Pending |
 
 **Coverage:**
 - Milestone requirements: 19 total
@@ -94,4 +94,4 @@
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after roadmap creation*
+*Last updated: 2026-04-09 after milestone gap planning*
