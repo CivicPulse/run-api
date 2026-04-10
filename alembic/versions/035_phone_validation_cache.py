@@ -39,7 +39,9 @@ def upgrade() -> None:
         sa.Column("carrier_name", sa.String(length=255), nullable=True),
         sa.Column("line_type", sa.String(length=64), nullable=True),
         sa.Column("sms_capable", sa.Boolean(), nullable=True),
-        sa.Column("lookup_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "lookup_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
         sa.Column("last_error_code", sa.String(length=64), nullable=True),
         sa.Column("last_error_message", sa.String(length=500), nullable=True),
         sa.Column("last_lookup_attempt_at", sa.DateTime(timezone=True), nullable=True),

@@ -109,9 +109,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Reverse order: drop FK constraints, then columns, then table
-    op.drop_constraint(
-        "fk_org_default_sms_number", "organizations", type_="foreignkey"
-    )
+    op.drop_constraint("fk_org_default_sms_number", "organizations", type_="foreignkey")
     op.drop_constraint(
         "fk_org_default_voice_number", "organizations", type_="foreignkey"
     )

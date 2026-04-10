@@ -110,11 +110,10 @@ def api_call(
             json=json,
             timeout=30,
         )
-        if resp.status_code == 503:
-            if attempt < 9:
-                print(f"  {path} -> 503 (attempt {attempt + 1}), retrying in 3s...")
-                time.sleep(3)
-                continue
+        if resp.status_code == 503 and attempt < 9:
+            print(f"  {path} -> 503 (attempt {attempt + 1}), retrying in 3s...")
+            time.sleep(3)
+            continue
         break
     if allow_conflict and resp.status_code == 409:
         print(f"  {path} -> already exists (409), skipping")

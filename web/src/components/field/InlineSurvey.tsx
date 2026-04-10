@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useMemo } from "react"
+import { useState, useId, useMemo } from "react"
 import {
   Sheet,
   SheetContent,
@@ -102,10 +102,21 @@ export function InlineSurvey(props: InlineSurveyProps) {
   const recordMutation = useRecordResponses(campaignId, scriptId)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState("")
+  // Track the (open, scriptId) pair so we can reset form state when either
+  // changes — derived during render per React's recommendation instead of
+  // an effect that would cascade renders.
+  const resetKey = `${open ? "1" : "0"}:${scriptId}`
+  const [lastResetKey, setLastResetKey] = useState(resetKey)
+  if (lastResetKey !== resetKey) {
+    setLastResetKey(resetKey)
+    setAnswers({})
+    setNotes("")
+  }
 
+  const scriptData = scriptQuery.data
   const rawQuestions = useMemo(
-    () => (Array.isArray(scriptQuery.data?.questions) ? scriptQuery.data.questions : []),
-    [scriptQuery.data?.questions],
+    () => (Array.isArray(scriptData?.questions) ? scriptData.questions : []),
+    [scriptData],
   )
 
   const questions = useMemo(
@@ -122,11 +133,6 @@ export function InlineSurvey(props: InlineSurveyProps) {
   const requiresSurvey = scriptId.length > 0
   const showQuestionState = requiresSurvey && (scriptQuery.isLoading || scriptQuery.isError || hasMalformedQuestions || renderableQuestions.length === 0)
   const requiresNotes = isControlled
-
-  useEffect(() => {
-    setAnswers({})
-    setNotes("")
-  }, [open, scriptId])
 
   const orderedResponses = useMemo<RecordCallSurveyResponse[]>(() => (
     renderableQuestions.flatMap((question) => {

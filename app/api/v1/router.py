@@ -14,15 +14,18 @@ from app.api.v1 import (
     imports,
     invites,
     join,
+    mailgun_webhooks,
     members,
     org,
     phone_banks,
     shifts,
+    signup_links,
     sms,
     surveys,
     turfs,
     users,
     voice,
+    volunteer_applications,
     volunteers,
     voter_contacts,
     voter_interactions,
@@ -54,7 +57,9 @@ router.include_router(call_lists.router, tags=["call-lists"])
 router.include_router(dnc.router, tags=["dnc"])
 router.include_router(phone_banks.router, tags=["phone-banks"])
 router.include_router(volunteers.router, tags=["volunteers"])
+router.include_router(volunteer_applications.router, tags=["volunteer-applications"])
 router.include_router(shifts.router, tags=["shifts"])
+router.include_router(signup_links.router, tags=["signup-links"])
 router.include_router(dashboard.router, tags=["dashboard"])
 router.include_router(field.router, tags=["field"])
 router.include_router(config.router, tags=["config"])
@@ -62,3 +67,8 @@ router.include_router(sms.campaign_router, prefix="/campaigns", tags=["sms"])
 router.include_router(voice.campaign_router, prefix="/campaigns", tags=["voice"])
 router.include_router(voice.twiml_router, prefix="/voice", tags=["voice"])
 router.include_router(webhooks.router, prefix="/webhooks/twilio", tags=["webhooks"])
+router.include_router(
+    mailgun_webhooks.router,
+    prefix="/webhooks/mailgun",
+    tags=["webhooks"],
+)

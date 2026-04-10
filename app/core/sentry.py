@@ -9,12 +9,16 @@ from app.core.observability import campaign_id_var, request_id_var, user_id_var
 
 PHONE_RE = re.compile(r"\b(\+?1?\d{10,15})\b")
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
+MAILGUN_KEY_RE = re.compile(r"\bkey-[A-Za-z0-9]+\b")
+AUTH_HEADER_RE = re.compile(r"(?i)\b(?:basic|bearer)\s+[A-Za-z0-9+/=._-]+\b")
 
 
 def _scrub_string(value: str) -> str:
     """Replace phone numbers and emails in a string."""
     value = PHONE_RE.sub("[REDACTED_PHONE]", value)
-    return EMAIL_RE.sub("[REDACTED_EMAIL]", value)
+    value = EMAIL_RE.sub("[REDACTED_EMAIL]", value)
+    value = MAILGUN_KEY_RE.sub("[REDACTED_SECRET]", value)
+    return AUTH_HEADER_RE.sub("[REDACTED_AUTH]", value)
 
 
 def scrub_pii(event: dict[str, Any], hint: Any) -> dict[str, Any]:  # noqa: ARG001

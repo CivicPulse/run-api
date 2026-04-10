@@ -99,7 +99,14 @@ async def test_hsts_added_for_secure_production_requests(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_http_forwarded_proto_redirects_in_production(monkeypatch) -> None:
-    """Production requests forwarded as plain HTTP should redirect to HTTPS."""
+    """HTTPS redirect is delegated to Cloudflare at the edge.
+
+    Cloudflare runs in "flexible" mode and connects to the origin over
+    plain HTTP (x-forwarded-proto: http). The application MUST NOT issue
+    its own redirect in that case, otherwise Cloudflare would loop.
+    The request should therefore be served normally (200) and HSTS must
+    NOT be emitted for a non-HTTPS-terminated request.
+    """
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "environment", "production")
@@ -116,8 +123,8 @@ async def test_http_forwarded_proto_redirects_in_production(monkeypatch) -> None
             headers={"x-forwarded-proto": "http", "host": "run.civpulse.org"},
         )
 
-    assert response.status_code == HTTPStatus.TEMPORARY_REDIRECT
-    assert response.headers["location"] == "https://run.civpulse.org/health/live"
+    assert response.status_code == HTTPStatus.OK
+    assert "strict-transport-security" not in response.headers
 
 
 def test_docs_disabled_in_production(monkeypatch) -> None:

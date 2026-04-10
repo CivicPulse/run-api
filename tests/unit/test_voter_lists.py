@@ -110,11 +110,17 @@ class TestVoterListService:
         from app.services.voter_list import VoterListService
 
         service = VoterListService()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = static_list
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
         voter_ids = [uuid.uuid4(), uuid.uuid4()]
+
+        # First execute: list lookup (get_list) returns static_list via
+        # scalar_one_or_none. Second execute: voter-existence check
+        # returns the voter ids via scalars().all().
+        list_lookup_result = MagicMock()
+        list_lookup_result.scalar_one_or_none.return_value = static_list
+        voters_result = MagicMock()
+        voters_result.scalars.return_value.all.return_value = voter_ids
+        mock_db.execute = AsyncMock(side_effect=[list_lookup_result, voters_result])
+
         await service.add_members(
             mock_db, static_list.id, static_list.campaign_id, voter_ids
         )

@@ -17,6 +17,8 @@ from sqlalchemy import text
 
 from app.core.time import utcnow
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 async def critical_path_data(superuser_session):
@@ -69,7 +71,8 @@ async def critical_path_data(superuser_session):
     # 2. Organization
     await session.execute(
         text(
-            "INSERT INTO organizations (id, zitadel_org_id, name, created_by, created_at, updated_at) "
+            "INSERT INTO organizations "
+            "(id, zitadel_org_id, name, created_by, created_at, updated_at) "
             "VALUES (:id, :zitadel_org_id, :name, :created_by, :now, :now)"
         ),
         {
@@ -288,7 +291,8 @@ async def critical_path_data(superuser_session):
     )
     await session.execute(
         text(
-            "DELETE FROM voter_list_members WHERE voter_list_id = :vlid AND voter_id = :vid"
+            "DELETE FROM voter_list_members "
+            "WHERE voter_list_id = :vlid AND voter_id = :vid"
         ),
         {"vlid": voter_list_id, "vid": voter_id},
     )
@@ -321,7 +325,8 @@ async def critical_path_data(superuser_session):
 async def test_critical_path_all_entities_created(
     superuser_session, critical_path_data
 ):
-    """Every INSERT across the 12-table critical path succeeds and each record exists."""
+    """Every INSERT across the 12-table critical path succeeds and each record
+    exists."""
     session = superuser_session
     ids = critical_path_data
 

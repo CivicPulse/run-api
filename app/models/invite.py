@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -37,6 +37,34 @@ class Invite(Base):
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
     accepted_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
+    email_delivery_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    email_delivery_queued_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        default=None,
+    )
+    email_delivery_sent_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        default=None,
+    )
+    email_delivery_provider_message_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        default=None,
+    )
+    email_delivery_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+    )
+    email_delivery_last_event_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        default=None,
+    )
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),

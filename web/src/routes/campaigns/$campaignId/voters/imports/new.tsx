@@ -94,6 +94,10 @@ export function ImportWizardPage() {
   >({})
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [formatDetected, setFormatDetected] = useState<"l2" | "generic" | null>(null)
+  // Track which jobId's detected columns we've already hydrated so we only
+  // seed mapping state once per job — deriving during render avoids the
+  // cascading re-render that a setState-in-effect would cause.
+  const [hydratedJobId, setHydratedJobId] = useState<string | null>(null)
 
   // Hooks
   const initiateImport = useInitiateImport(campaignId)
@@ -102,28 +106,35 @@ export function ImportWizardPage() {
   const cancelImport = useCancelImport(campaignId, jobId)
   const jobQuery = useImportJob(campaignId, jobId)
 
-  // Auto-restore step from job status when jobId is in URL
+  // Hydrate mapping state for uploaded jobs (reopen case). Deriving this at
+  // render time — guarded by `hydratedJobId` so it only runs once per job —
+  // avoids the cascading renders of setState-in-effect.
+  const hydrateJob = jobQuery.data
+  const hydrateColumns = hydrateJob?.detected_columns
+  if (
+    jobId &&
+    hydrateJob &&
+    hydrateJob.status === "uploaded" &&
+    hydrateColumns &&
+    hydrateColumns.length > 0 &&
+    hydratedJobId !== jobId
+  ) {
+    setHydratedJobId(jobId)
+    setDetectedColumns(hydrateColumns)
+    setSuggestedMapping(hydrateJob.suggested_mapping ?? {})
+    setFormatDetected(hydrateJob.format_detected ?? null)
+    const initialMapping: Record<string, string> = {}
+    for (const col of hydrateColumns) {
+      initialMapping[col] = (hydrateJob.suggested_mapping?.[col]?.field) ?? ""
+    }
+    setMapping(initialMapping)
+  }
+
+  // Auto-restore step from job status when jobId is in URL. This effect only
+  // performs navigation (an external side effect), not React state updates.
   useEffect(() => {
     if (!jobId || !jobQuery.data) return
-    const job = jobQuery.data
-    const correctStep = deriveStep(job.status)
-
-    // Hydrate mapping state for uploaded jobs (reopen case)
-    if (
-      job.status === "uploaded" &&
-      job.detected_columns &&
-      job.detected_columns.length > 0 &&
-      detectedColumns.length === 0 // only hydrate once — don't overwrite user edits
-    ) {
-      setDetectedColumns(job.detected_columns)
-      setSuggestedMapping(job.suggested_mapping ?? {})
-      setFormatDetected(job.format_detected ?? null)
-      const initialMapping: Record<string, string> = {}
-      for (const col of job.detected_columns) {
-        initialMapping[col] = (job.suggested_mapping?.[col]?.field) ?? ""
-      }
-      setMapping(initialMapping)
-    }
+    const correctStep = deriveStep(jobQuery.data.status)
 
     // Don't let stale query data navigate backwards — status only moves forward
     if (correctStep < step) return
@@ -133,7 +144,7 @@ export function ImportWizardPage() {
         replace: true,
       })
     }
-  }, [jobId, jobQuery.data, step, navigate, detectedColumns.length])
+  }, [jobId, jobQuery.data, step, navigate])
 
   // Polling job for step 3
   const pollingJob = useImportJob(campaignId, jobId, step === 3)

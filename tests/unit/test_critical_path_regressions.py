@@ -32,7 +32,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 @pytest.mark.asyncio
 async def test_create_campaign_inserts_owner_as_member():
-    """R012 regression: create_campaign must add a CampaignMember(role='owner') for the creator."""
+    """R012 regression: create_campaign must add a CampaignMember(role='owner')
+    for the creator."""
     from app.models.campaign_member import CampaignMember
     from app.services.campaign import CampaignService
 
@@ -69,7 +70,7 @@ async def test_create_campaign_inserts_owner_as_member():
     with patch.object(
         svc, "_generate_unique_slug", new=AsyncMock(return_value="test-campaign")
     ):
-        campaign = await svc.create_campaign(
+        _campaign = await svc.create_campaign(
             db=mock_session,
             name="Test Campaign",
             campaign_type="FEDERAL",
@@ -105,10 +106,12 @@ def _read_source(relative_path: str) -> str:
 
 
 class TestFrontendSourcePresence:
-    """Source-presence assertions verifying frontend bug-fix patterns remain in place."""
+    """Source-presence assertions verifying frontend bug-fix patterns remain
+    in place."""
 
     def test_r003_voter_lists_hook_selects_items(self):
-        """R003 regression: useVoterLists hook must select .items from paginated API response.
+        """R003 regression: useVoterLists hook must select .items from
+        paginated API response.
 
         Without this, the hook returns the full paginated envelope
         {items: [...], total: N} instead of just the voter list array.
@@ -119,7 +122,8 @@ class TestFrontendSourcePresence:
         )
 
     def test_r004_select_item_none_sentinel(self):
-        """R004 regression: VoterEditSheet must use __none__ sentinel for nullable select fields.
+        """R004 regression: VoterEditSheet must use __none__ sentinel for
+        nullable select fields.
 
         Without this sentinel value, selecting 'None' in a dropdown sends
         an empty string instead of null, corrupting voter data.

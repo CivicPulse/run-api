@@ -119,9 +119,7 @@ async def verify_twilio_signature(
         )
 
     validator = RequestValidator(creds.auth_token)
-    params = getattr(request.state, "twilio_form", None) or dict(
-        await request.form()
-    )
+    params = getattr(request.state, "twilio_form", None) or dict(await request.form())
 
     if not validator.validate(public_url, params, signature):
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")

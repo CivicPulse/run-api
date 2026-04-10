@@ -8,6 +8,7 @@ Deploy and configure CivicPulse Run for local development or production use.
 - [Prerequisites](#prerequisites)
 - [Quick Start (Docker Compose)](#quick-start-docker-compose)
 - [ZITADEL Configuration](#zitadel-configuration)
+- [ZITADEL Email Delivery](#zitadel-email-delivery)
 - [Environment Variables Reference](#environment-variables-reference)
 - [Storage (MinIO)](#storage-minio)
 - [Database](#database)
@@ -135,6 +136,45 @@ ZITADEL_SERVICE_CLIENT_SECRET=<client-secret-from-step-2>
 ZITADEL_SPA_CLIENT_ID=<client-id-from-step-3>
 ```
 
+## ZITADEL Email Delivery
+
+ZITADEL-owned auth/system mail is intentionally separate from CivicPulse-owned
+transactional invite mail.
+
+- CivicPulse runtime code sends app-owned invite mail through the app's Mailgun
+  provider configuration.
+- ZITADEL sends password reset, verification, and other auth/system mail through
+  its own notification provider configuration.
+- Do not route ZITADEL auth mail through CivicPulse webhook or background-worker
+  code.
+
+For self-hosted ZITADEL, the production-ready path is to configure
+`DefaultInstance.SMTPConfiguration` using the matching
+`ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_*` environment variables. This repo's
+`docker-compose.yml` exposes optional passthrough variables so local/shared
+environments can exercise the same SMTP path.
+
+Recommended Mailgun SMTP values:
+
+```dotenv
+ZITADEL_SMTP_HOST=smtp.mailgun.org:587
+ZITADEL_SMTP_USER=postmaster@mg.example.com
+ZITADEL_SMTP_PASSWORD=<mailgun-smtp-password>
+ZITADEL_SMTP_TLS=true
+ZITADEL_SMTP_FROM=no-reply@example.com
+ZITADEL_SMTP_FROM_NAME=CivicPulse Auth
+ZITADEL_SMTP_REPLY_TO=support@example.com
+ZITADEL_SMTP_SENDER_ADDRESS_MATCHES_INSTANCE_DOMAIN=false
+```
+
+Use `smtp.eu.mailgun.org:587` for EU-region Mailgun accounts. If the sender
+domain in `ZITADEL_SMTP_FROM` differs from the ZITADEL external domain, set
+`ZITADEL_SMTP_SENDER_ADDRESS_MATCHES_INSTANCE_DOMAIN=false` so ZITADEL accepts
+that sender policy.
+
+The full smoke-test and support-boundary checklist lives in
+[`docs/zitadel-email-runbook.md`](./zitadel-email-runbook.md).
+
 ## Environment Variables Reference
 
 ### Backend (.env)
@@ -150,6 +190,23 @@ ZITADEL_SPA_CLIENT_ID=<client-id-from-step-3>
 | `ZITADEL_SERVICE_CLIENT_ID` | Yes | -- | Service account client ID for backend API calls |
 | `ZITADEL_SERVICE_CLIENT_SECRET` | Yes | -- | Service account client secret |
 | `ZITADEL_SPA_CLIENT_ID` | Yes | -- | SPA application client ID for browser OIDC |
+| `ZITADEL_SMTP_HOST` | No | -- | Optional SMTP host:port passed through to ZITADEL DefaultInstance SMTP config |
+| `ZITADEL_SMTP_USER` | No | -- | Optional SMTP username for ZITADEL-owned auth/system mail |
+| `ZITADEL_SMTP_PASSWORD` | No | -- | Optional SMTP password for ZITADEL-owned auth/system mail |
+| `ZITADEL_SMTP_TLS` | No | `false` | Optional SMTP TLS toggle passed to ZITADEL |
+| `ZITADEL_SMTP_FROM` | No | -- | Optional sender address for ZITADEL auth/system mail |
+| `ZITADEL_SMTP_FROM_NAME` | No | -- | Optional sender display name for ZITADEL auth/system mail |
+| `ZITADEL_SMTP_REPLY_TO` | No | -- | Optional reply-to address for ZITADEL auth/system mail |
+| `ZITADEL_SMTP_SENDER_ADDRESS_MATCHES_INSTANCE_DOMAIN` | No | `true` | Set `false` when the sender domain differs from the ZITADEL external domain |
+| `EMAIL_PROVIDER` | No | `disabled` | CivicPulse app-owned transactional email provider (`mailgun` for invite mail) |
+| `APP_BASE_URL` | No | `http://localhost:5173` | Public app URL used in invite links |
+| `EMAIL_SENDER_NAME` | No | `CivicPulse Run` | Sender display name for CivicPulse-owned invite mail |
+| `EMAIL_SENDER_ADDRESS` | No | `no-reply@localhost.test` | Sender address for CivicPulse-owned invite mail |
+| `MAILGUN_DOMAIN` | No | -- | Mailgun domain used by CivicPulse invite delivery |
+| `MAILGUN_REGION` | No | `us` | Mailgun region (`us` or `eu`) for CivicPulse invite delivery |
+| `MAILGUN_BASE_URL` | No | Auto-derived | Optional Mailgun API base URL override |
+| `MAILGUN_API_KEY` | No | -- | Mailgun API key for CivicPulse invite delivery |
+| `MAILGUN_WEBHOOK_SIGNING_KEY` | No | -- | Mailgun webhook signing key used to verify delivery callbacks |
 | `CORS_ALLOWED_ORIGINS` | No | `["http://localhost:5173"]` | JSON array of allowed CORS origins |
 | `S3_ENDPOINT_URL` | No | `http://localhost:9000` | S3-compatible storage endpoint |
 | `S3_PRESIGN_ENDPOINT_URL` | No | Same as `S3_ENDPOINT_URL` | Public-facing URL for presigned upload URLs |
@@ -237,6 +294,10 @@ Key differences from local development:
 - **Ingress** -- Cloudflare Tunnel to Traefik IngressRoute
 - **Auth** -- Same ZITADEL instance, production redirect URIs
 - **Images** -- Built via GitHub Actions CI/CD, pushed to GHCR
+
+For email-specific operational hardening, see
+[`docs/email-operations-runbook.md`](./email-operations-runbook.md) and
+[`docs/zitadel-email-runbook.md`](./zitadel-email-runbook.md).
 
 ## Troubleshooting
 

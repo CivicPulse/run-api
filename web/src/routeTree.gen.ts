@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SignupTokenRouteImport } from './routes/signup/$token'
 import { Route as OrgSettingsRouteImport } from './routes/org/settings'
 import { Route as OrgMembersRouteImport } from './routes/org/members'
+import { Route as InvitesTokenRouteImport } from './routes/invites/$token'
 import { Route as FieldCampaignIdRouteImport } from './routes/field/$campaignId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsCampaignIdRouteImport } from './routes/campaigns/$campaignId'
@@ -76,6 +78,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupTokenRoute = SignupTokenRouteImport.update({
+  id: '/signup/$token',
+  path: '/signup/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrgSettingsRoute = OrgSettingsRouteImport.update({
   id: '/org/settings',
   path: '/org/settings',
@@ -84,6 +91,11 @@ const OrgSettingsRoute = OrgSettingsRouteImport.update({
 const OrgMembersRoute = OrgMembersRouteImport.update({
   id: '/org/members',
   path: '/org/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvitesTokenRoute = InvitesTokenRouteImport.update({
+  id: '/invites/$token',
+  path: '/invites/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FieldCampaignIdRoute = FieldCampaignIdRouteImport.update({
@@ -366,8 +378,10 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
+  '/invites/$token': typeof InvitesTokenRoute
   '/org/members': typeof OrgMembersRoute
   '/org/settings': typeof OrgSettingsRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRouteWithChildren
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
@@ -418,8 +432,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
+  '/invites/$token': typeof InvitesTokenRoute
   '/org/members': typeof OrgMembersRoute
   '/org/settings': typeof OrgSettingsRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/field/$campaignId/canvassing': typeof FieldCampaignIdCanvassingRoute
   '/field/$campaignId/phone-banking': typeof FieldCampaignIdPhoneBankingRoute
@@ -466,8 +482,10 @@ export interface FileRoutesById {
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
+  '/invites/$token': typeof InvitesTokenRoute
   '/org/members': typeof OrgMembersRoute
   '/org/settings': typeof OrgSettingsRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/campaigns/$campaignId/canvassing': typeof CampaignsCampaignIdCanvassingRouteWithChildren
   '/campaigns/$campaignId/dashboard': typeof CampaignsCampaignIdDashboardRoute
   '/campaigns/$campaignId/phone-banking': typeof CampaignsCampaignIdPhoneBankingRouteWithChildren
@@ -521,8 +539,10 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/field/$campaignId'
+    | '/invites/$token'
     | '/org/members'
     | '/org/settings'
+    | '/signup/$token'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -573,8 +593,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/invites/$token'
     | '/org/members'
     | '/org/settings'
+    | '/signup/$token'
     | '/campaigns/$campaignId/dashboard'
     | '/field/$campaignId/canvassing'
     | '/field/$campaignId/phone-banking'
@@ -620,8 +642,10 @@ export interface FileRouteTypes {
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/field/$campaignId'
+    | '/invites/$token'
     | '/org/members'
     | '/org/settings'
+    | '/signup/$token'
     | '/campaigns/$campaignId/canvassing'
     | '/campaigns/$campaignId/dashboard'
     | '/campaigns/$campaignId/phone-banking'
@@ -674,8 +698,10 @@ export interface RootRouteChildren {
   CampaignsCampaignIdRoute: typeof CampaignsCampaignIdRouteWithChildren
   CampaignsNewRoute: typeof CampaignsNewRoute
   FieldCampaignIdRoute: typeof FieldCampaignIdRouteWithChildren
+  InvitesTokenRoute: typeof InvitesTokenRoute
   OrgMembersRoute: typeof OrgMembersRoute
   OrgSettingsRoute: typeof OrgSettingsRoute
+  SignupTokenRoute: typeof SignupTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -701,6 +727,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup/$token': {
+      id: '/signup/$token'
+      path: '/signup/$token'
+      fullPath: '/signup/$token'
+      preLoaderRoute: typeof SignupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/org/settings': {
       id: '/org/settings'
       path: '/org/settings'
@@ -713,6 +746,13 @@ declare module '@tanstack/react-router' {
       path: '/org/members'
       fullPath: '/org/members'
       preLoaderRoute: typeof OrgMembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invites/$token': {
+      id: '/invites/$token'
+      path: '/invites/$token'
+      fullPath: '/invites/$token'
+      preLoaderRoute: typeof InvitesTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/field/$campaignId': {
@@ -1259,8 +1299,10 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsCampaignIdRoute: CampaignsCampaignIdRouteWithChildren,
   CampaignsNewRoute: CampaignsNewRoute,
   FieldCampaignIdRoute: FieldCampaignIdRouteWithChildren,
+  InvitesTokenRoute: InvitesTokenRoute,
   OrgMembersRoute: OrgMembersRoute,
   OrgSettingsRoute: OrgSettingsRoute,
+  SignupTokenRoute: SignupTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

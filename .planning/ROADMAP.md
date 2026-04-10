@@ -2,7 +2,7 @@
 
 ## Overview
 
-v1.15 adds Twilio-powered communications to CivicPulse Run without weakening the platform's tenant isolation, compliance posture, or operator trust. The milestone is organized as seven phases that first establish encrypted org-scoped Twilio configuration and phone inventory, then add secure webhook infrastructure, browser voice calling, two-way SMS, spend controls, and phone validation.
+Most recently shipped: v1.17 Easy Volunteer Invites on 2026-04-10. No active milestone — run `/gsd-new-milestone` to scope the next one.
 
 ## Milestones
 
@@ -19,8 +19,10 @@ v1.15 adds Twilio-powered communications to CivicPulse Run without weakening the
 - ✅ **v1.13 Production Shakedown Remediation** — Phases 78-83 (shipped 2026-04-06)
 - ✅ **v1.14 Voter Search & Lookup** — Phases 84-87 (shipped 2026-04-07)
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
+- ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
+- ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
 
-## Phases
+## Milestone History
 
 <details>
 <summary>✅ v1.0 MVP (Phases 1-7) — SHIPPED 2026-03-10</summary>
@@ -33,7 +35,7 @@ v1.15 adds Twilio-powered communications to CivicPulse Run without weakening the
 - [x] Phase 6: Operational Dashboards (2/2 plans) — completed 2026-03-09
 - [x] Phase 7: Integration Wiring Fixes (1/1 plan) — completed 2026-03-10
 
-See: `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
@@ -45,42 +47,42 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 - [x] Phase 10: CI/CD Pipeline (1/1 plan) — completed 2026-03-10
 - [x] Phase 11: Kubernetes & GitOps (2/2 plans) — completed 2026-03-10
 
-See: `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.1-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.2 Full UI (Phases 12-22) — SHIPPED 2026-03-13</summary>
 
-See: `.planning/milestones/v1.2-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.2-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.3 Voter Model & Import Enhancement (Phases 23-29) — SHIPPED 2026-03-15</summary>
 
-See: `.planning/milestones/v1.3-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.3-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.4 Volunteer Field Mode (Phases 30-38) — SHIPPED 2026-03-17</summary>
 
-See: `.planning/milestones/v1.4-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.4-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.5 Go Live — Production Readiness (Phases 39-48) — SHIPPED 2026-03-25</summary>
 
-See: `.planning/milestones/v1.5-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.5-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.6 Imports (Phases 49-55) — SHIPPED 2026-03-29</summary>
 
-See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.6-ROADMAP.md`
 
 </details>
 
@@ -91,7 +93,7 @@ See: `.planning/milestones/v1.6-ROADMAP.md` for full phase details.
 - [x] Phase 57: Recovery Engine & Completion Hardening (1/1 plan) — completed 2026-04-01
 - [x] Phase 58: Test Coverage (1/1 plan) — completed 2026-04-01
 
-See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details.
+See: `.planning/milestones/v1.10-ROADMAP.md`
 
 </details>
 
@@ -111,7 +113,7 @@ See: `.planning/milestones/v1.10-ROADMAP.md` for archived phase details.
 - [x] Phase 69: Queued Cancellation Finalization Closure — completed 2026-04-04
 - [x] Phase 70: Reopened Import Restore Flow Closure — completed 2026-04-04
 
-See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.11-ROADMAP.md`
 
 </details>
 
@@ -126,7 +128,7 @@ See: `.planning/milestones/v1.11-ROADMAP.md` for full phase details.
 - [x] Phase 76: Reliability — Backend Infrastructure (5/5 plans) — completed 2026-04-05
 - [x] Phase 77: Quality, Accessibility & Test Coverage (5/5 plans) — completed 2026-04-05
 
-See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.12-ROADMAP.md`
 
 </details>
 
@@ -140,151 +142,57 @@ See: `.planning/milestones/v1.12-ROADMAP.md` for full phase details.
 - [x] Phase 82: Contract Drift, Validation, and Documentation Decisions (3/3 plans) — completed 2026-04-06
 - [x] Phase 83: Reverification and Shakedown Cleanup (3/3 plans) — completed 2026-04-06
 
-See: `.planning/milestones/v1.13-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.13-ROADMAP.md`
 
 </details>
 
 <details>
 <summary>✅ v1.14 Voter Search & Lookup (Phases 84-87) — SHIPPED 2026-04-07</summary>
 
-**Milestone Goal:** Make voter lookup the default workflow on the voter page with ranked, typo-tolerant, campaign-scoped search that still composes cleanly with deterministic filters.
+- [x] Phase 84: Search Contract & Composition — completed 2026-04-07
+- [x] Phase 85: Campaign-Scoped Search Data & Freshness — completed 2026-04-07
+- [x] Phase 86: Ranked Multi-Field Lookup — completed 2026-04-07
+- [x] Phase 87: Search-First Voter Page UX — completed 2026-04-07
 
-- [x] **Phase 84: Search Contract & Composition** - Add free-text lookup to the existing voter search flow without breaking filter behavior or stable pagination. (completed 2026-04-07)
-- [x] **Phase 85: Campaign-Scoped Search Data & Freshness** - Build the search data surface so ranked lookup stays isolated, fresh, and fast on real campaign datasets. (completed 2026-04-07)
-- [x] **Phase 86: Ranked Multi-Field Lookup** - Implement cross-field partial and typo-tolerant ranking with exact-match boosts and automated trust coverage. (completed 2026-04-07)
-- [x] **Phase 87: Search-First Voter Page UX** - Make the voter page default to lookup-first interaction with clear states and row-level disambiguation. (completed 2026-04-07)
-
-See: `.planning/milestones/v1.14-ROADMAP.md` for full phase details.
+See: `.planning/milestones/v1.14-ROADMAP.md`
 
 </details>
 
-### ✅ v1.15 Twilio Communications (Shipped 2026-04-08)
+<details>
+<summary>✅ v1.15 Twilio Communications (Phases 88-94) — SHIPPED 2026-04-08</summary>
 
-**Milestone Goal:** Add browser-based click-to-call and two-way SMS to field ops, backed by org-scoped Twilio credentials, spend controls, webhook security, and rich communication metadata for future targeting and reporting.
+- [x] Phase 88: Org Twilio Credentials & Encryption Foundation — completed 2026-04-07
+- [x] Phase 89: Phone Number Inventory & Provisioning — completed 2026-04-07
+- [x] Phase 90: Webhook Security & Routing Infrastructure — completed 2026-04-07
+- [x] Phase 91: Browser Voice Calling — completed 2026-04-07
+- [x] Phase 92: Two-Way SMS & Opt-Out Handling — completed 2026-04-07
+- [x] Phase 93: Spend Controls & Communication Telemetry — completed 2026-04-08
+- [x] Phase 94: Twilio Lookup Validation — completed 2026-04-08
 
-- [x] **Phase 88: Org Twilio Credentials & Encryption Foundation** - Establish encrypted org-scoped Twilio configuration, secret-handling guardrails, and the initial settings surface without exposing credentials. (completed 2026-04-07)
-- [x] **Phase 89: Phone Number Inventory & Provisioning** - Let org admins register BYO Twilio numbers, inspect capability metadata, and manage default voice and SMS numbers. (completed 2026-04-07)
-- [x] **Phase 90: Webhook Security & Routing Infrastructure** - Add Twilio webhook routes, public-URL signature validation, idempotent callback handling, and org-safe routing for future voice and SMS events. (completed 2026-04-07)
-- [x] **Phase 91: Browser Voice Calling** - Replace configured phone-bank `tel:` flows with Twilio Voice SDK click-to-call while preserving fallback behavior and call logging. (completed 2026-04-07)
-- [x] **Phase 92: Two-Way SMS & Opt-Out Handling** - Add individual and bulk SMS sends, threaded reply inbox behavior, and STOP/START unsubscribe enforcement. (completed 2026-04-07)
-- [x] **Phase 93: Spend Controls & Communication Telemetry** - Surface Twilio spend, enforce soft budgets, and persist billable communication metadata for later reporting. (completed 2026-04-08)
-- [x] **Phase 94: Twilio Lookup Validation** - Add cached phone-validation intelligence to contact flows so staff can tell which numbers are SMS-capable and trustworthy. (completed 2026-04-08)
+See: `.planning/milestones/v1.15-ROADMAP.md`
 
-## Phase Details
+</details>
 
-### Phase 88: Org Twilio Credentials & Encryption Foundation
-**Goal**: Twilio account configuration exists as an org-scoped, encrypted foundation that other phases can safely build on.
-**Depends on**: Phase 87
-**Requirements**: ORG-01, SEC-01
-**Success Criteria** (what must be TRUE):
-  1. Org admins can create and update Twilio account configuration without secrets being exposed back through API responses or UI state.
-  2. Twilio secrets are encrypted at rest and protected from plaintext leakage in logs, schemas, and error paths.
-  3. The codebase has a stable, reusable integration seam for later Twilio API calls.
-**Plans**: 3 plans
-Plans:
-- [x] 88-01-PLAN.md — Org Twilio persistence and encryption seam
-- [x] 88-02-PLAN.md — Secret-safe org API and partial rotation backend flows
-- [x] 88-03-PLAN.md — Organization settings Twilio card and frontend verification
-**UI hint**: yes
+<details>
+<summary>✅ v1.16 Email Delivery Foundation (Phases 95-100) — SHIPPED 2026-04-08</summary>
 
-### Phase 89: Phone Number Inventory & Provisioning
-**Goal**: Each org can manage the Twilio phone numbers it uses for voice and SMS, including capability visibility and sensible defaults.
-**Depends on**: Phase 88
-**Requirements**: ORG-02
-**Success Criteria** (what must be TRUE):
-  1. Org admins can register existing Twilio numbers and inspect their voice and SMS capabilities.
-  2. Org admins can manage which org numbers are used by default for voice and SMS flows.
-  3. The platform has durable org-phone records ready for webhook, voice, and SMS routing.
-**Plans**: 3 plans
-Plans:
-- [x] 89-01-PLAN.md — Data foundation: model, migration, schemas, service, Twilio client
-- [x] 89-02-PLAN.md — API endpoints: 5 routes with role gates, rate limits, error mapping
-- [x] 89-03-PLAN.md — Frontend: types, hooks, PhoneNumbersCard, settings integration
-**UI hint**: yes
+See: `.planning/milestones/v1.16-ROADMAP.md`
 
-### Phase 90: Webhook Security & Routing Infrastructure
-**Goal**: Twilio callbacks enter the system through secure, org-safe webhook infrastructure that future phases can rely on.
-**Depends on**: Phase 89
-**Requirements**: ORG-03, SEC-02, SEC-03, SEC-04
-**Success Criteria** (what must be TRUE):
-  1. Twilio webhook requests are validated against the public production URL shape instead of the internal proxy URL.
-  2. Callback handling is idempotent on Twilio SID values and safe under retries.
-  3. New Twilio campaign-scoped data paths respect the existing RLS isolation model and org routing boundaries.
-**Plans**: 2 plans
-Plans:
-- [x] 90-01-PLAN.md — Data foundation: webhook_events table, phone uniqueness, config setting
-- [x] 90-02-PLAN.md — Service layer: signature validation, org resolution, webhook routes
+</details>
 
-### Phase 91: Browser Voice Calling
-**Goal**: Phone bankers can place browser-based Twilio calls with the existing workflow while preserving fallback and compliance protections.
-**Depends on**: Phase 90
-**Requirements**: VOICE-01, VOICE-02, VOICE-03, VOICE-04
-**Success Criteria** (what must be TRUE):
-  1. Configured orgs can place Twilio Voice SDK calls from the phone banking flow without leaving the product.
-  2. Unsupported clients or unconfigured orgs still fall back cleanly to the current `tel:` behavior.
-  3. Call logging captures status, timing, and outcome while enforcing DNC and calling-hours guardrails before dialing.
-**Plans**: 3 plans
-Plans:
-- [x] 91-01-PLAN.md — Data foundation: call_records table, campaign calling hours, org API key columns, VoiceService
-- [x] 91-02-PLAN.md — API layer: voice token endpoint, TwiML handler, webhook status processing
-- [x] 91-03-PLAN.md — Frontend: Twilio Voice SDK integration, inline call UI, compliance banners
-**UI hint**: yes
+<details>
+<summary>✅ v1.17 Easy Volunteer Invites (Phases 101-105) — SHIPPED 2026-04-10</summary>
 
-### Phase 92: Two-Way SMS & Opt-Out Handling
-**Goal**: Staff can send compliant SMS outreach and work reply conversations without breaking tenant isolation or unsubscribe semantics.
-**Depends on**: Phase 90
-**Requirements**: SMS-01, SMS-02, SMS-03, SMS-04, COMP-01, COMP-02
-**Success Criteria** (what must be TRUE):
-  1. Staff can send individual and bulk SMS only to eligible voter numbers through existing product flows.
-  2. Inbound and outbound messages thread into a usable reply inbox tied back to the voter and org phone number.
-  3. STOP and START keyword handling updates platform unsubscribe state and prevents non-compliant sends.
-**Plans**: 4/4 plans complete
-- [x] 92-01-PLAN.md — SMS data foundation: conversations, messages, opt-out store, core service contracts
-- [x] 92-02-PLAN.md — Outbound backend: single send, bulk send, queue orchestration, campaign SMS API
-- [x] 92-03-PLAN.md — Inbound/backend threading: webhook reply ingestion, STOP/START handling, delivery status reconciliation
-- [x] 92-04-PLAN.md — Frontend: campaign Messages inbox, thread panel, composer, compliance banners, bulk-send sheet
-**UI hint**: yes
+- [x] Phase 101: Signup Link Foundation & Public Entry (1/1 plan) — completed 2026-04-09
+- [x] Phase 102: Volunteer Applications & Existing-Account Intake (1/1 plan) — completed 2026-04-09
+- [x] Phase 103: Review Queue, Approval, and Access Activation (1/1 plan) — completed 2026-04-09
+- [x] Phase 104: Public Volunteer Intake Closure (1/1 plan) — completed 2026-04-09
+- [x] Phase 105: Review Context and Audit Traceability Closeout (1/1 plan) — completed 2026-04-09
 
-### Phase 93: Spend Controls & Communication Telemetry
-**Goal**: Billable Twilio communication activity is visible, auditable, and gated by org-level soft budgets before overspend.
-**Depends on**: Phase 91, Phase 92
-**Requirements**: BUD-01, OBS-01
-**Success Criteria** (what must be TRUE):
-  1. Org admins can see communication spend and configure platform soft limits.
-  2. Billable voice and SMS actions are checked against soft budgets before execution.
-  3. Communication metadata persists with enough structure to support future reporting and targeting logic.
-**Plans**: 0/0 plans complete
-**UI hint**: yes
+See: `.planning/milestones/v1.17-ROADMAP.md`
 
-### Phase 94: Twilio Lookup Validation
-**Goal**: Contact workflows can use cached Twilio Lookup intelligence to distinguish valid SMS and voice numbers without excessive API churn.
-**Depends on**: Phase 88
-**Requirements**: LOOK-01
-**Success Criteria** (what must be TRUE):
-  1. Contact create and edit flows can validate phone numbers and expose carrier or line-type intelligence.
-  2. Lookup results are cached long enough to avoid wasteful repeated validation while still being reusable by SMS eligibility checks.
-  3. Staff can tell when a number is unsuitable for SMS outreach before trying to send.
-**Plans**: 0/0 plans complete
-**UI hint**: yes
+</details>
 
-### Backlog / Parking Lot
+## Current Milestone
 
-- [ ] Phase 999.1: Update Zitadel to v3 or v4 — parked backlog item, not part of the active milestone sequence
-
-## Progress
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1-7 | v1.0 | 20/20 | Complete | 2026-03-10 |
-| 8-11 | v1.1 | 7/7 | Complete | 2026-03-10 |
-| 12-22 | v1.2 | 43/43 | Complete | 2026-03-13 |
-| 23-29 | v1.3 | 18/18 | Complete | 2026-03-15 |
-| 30-38 | v1.4 | 26/26 | Complete | 2026-03-17 |
-| 39-48 | v1.5 | 36/36 | Complete | 2026-03-25 |
-| 49-55 | v1.6 | 16/16 | Complete | 2026-03-29 |
-| 56-58 | v1.10 | 3/3 | Complete | 2026-04-01 |
-| 59-70 | v1.11 | 31/31 | Complete | 2026-04-04 |
-| 71-77 | v1.12 | 30/30 | Complete | 2026-04-05 |
-| 78-83 | v1.13 | 18/18 | Complete | 2026-04-06 |
-| 84-87 | v1.14 | 6/6 | Complete | 2026-04-07 |
-| 88-94 | v1.15 | 21/21 | Complete | 2026-04-08 |
+_None — run `/gsd-new-milestone` to scope the next milestone._

@@ -35,7 +35,9 @@ export function useTwilioDevice(
   const callRef = useRef<Call | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const campaignIdRef = useRef(campaignId)
-  campaignIdRef.current = campaignId
+  useEffect(() => {
+    campaignIdRef.current = campaignId
+  }, [campaignId])
 
   // Clear the duration timer
   const clearTimer = useCallback(() => {

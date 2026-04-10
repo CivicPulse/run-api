@@ -193,7 +193,8 @@ class TestCanvassService:
     async def test_record_door_knock_with_survey_responses_requires_attached_script(
         self,
     ) -> None:
-        """CANV-04: Contact survey writes fail fast when readback script context is missing."""
+        """CANV-04: Contact survey writes fail fast when readback script
+        context is missing."""
         from app.services.canvass import CanvassService
 
         service = CanvassService()
@@ -246,7 +247,7 @@ class TestCanvassService:
         service._survey_service.record_responses_batch.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_record_door_knock_non_contact_without_survey_keeps_backward_compatibility(
+    async def test_record_door_knock_non_contact_without_survey_back_compat(
         self,
     ) -> None:
         """CANV-04: Non-contact outcomes still save cleanly without survey metadata."""

@@ -26,6 +26,28 @@ def test_scrub_pii_strips_email():
     assert "voter@example.com" not in result["exception"]["values"][0]["value"]
 
 
+def test_scrub_pii_strips_mailgun_secrets_and_auth_headers():
+    """Mailgun keys and auth headers are replaced."""
+    event = {
+        "exception": {
+            "values": [
+                {
+                    "value": (
+                        "Mailgun failed with key-abc123xyz and "
+                        "Authorization: Basic dXNlcjpzZWNyZXQ="
+                    )
+                }
+            ]
+        }
+    }
+    result = scrub_pii(event, {})
+    value = result["exception"]["values"][0]["value"]
+    assert "[REDACTED_SECRET]" in value
+    assert "[REDACTED_AUTH]" in value
+    assert "key-abc123xyz" not in value
+    assert "dXNlcjpzZWNyZXQ=" not in value
+
+
 def test_scrub_pii_preserves_tags():
     """Existing tags like user_id are not scrubbed."""
     event = {"tags": {"user_id": "abc123"}}

@@ -34,9 +34,7 @@ async def _resolve_org(
 ) -> Organization:
     """Resolve the Organization row from the authenticated user's org_id."""
     org = await db.scalar(
-        select(Organization).where(
-            Organization.zitadel_org_id == user.org_id
-        )
+        select(Organization).where(Organization.zitadel_org_id == user.org_id)
     )
     if not org:
         raise HTTPException(

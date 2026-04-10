@@ -18,6 +18,8 @@ from app.core.time import utcnow
 from app.services.phone_bank import PhoneBankService
 from app.services.walk_list import WalkListService
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 async def phone_bank_data(superuser_session):
@@ -52,7 +54,8 @@ async def phone_bank_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO campaigns "
-            "(id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
+            "(id, zitadel_org_id, name, type, status, created_by, created_at, "
+            "updated_at) "
             "VALUES (:id, :org_id, :name, :type, :status, :created_by, :now, :now)"
         ),
         {
@@ -88,8 +91,10 @@ async def phone_bank_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO phone_bank_sessions "
-            "(id, campaign_id, call_list_id, name, status, created_by, created_at, updated_at) "
-            "VALUES (:id, :campaign_id, :call_list_id, :name, :status, :created_by, :now, :now)"
+            "(id, campaign_id, call_list_id, name, status, created_by, "
+            "created_at, updated_at) "
+            "VALUES (:id, :campaign_id, :call_list_id, :name, :status, "
+            ":created_by, :now, :now)"
         ),
         {
             "id": pb_session_id,
@@ -166,7 +171,8 @@ async def walk_list_data(superuser_session):
     await session.execute(
         text(
             "INSERT INTO campaigns "
-            "(id, zitadel_org_id, name, type, status, created_by, created_at, updated_at) "
+            "(id, zitadel_org_id, name, type, status, created_by, created_at, "
+            "updated_at) "
             "VALUES (:id, :org_id, :name, :type, :status, :created_by, :now, :now)"
         ),
         {
@@ -186,7 +192,9 @@ async def walk_list_data(superuser_session):
             "INSERT INTO turfs "
             "(id, campaign_id, name, boundary, created_by, created_at) "
             "VALUES (:id, :campaign_id, :name, "
-            "ST_GeomFromText('POLYGON((-77.0 38.9, -77.0 39.0, -76.9 39.0, -76.9 38.9, -77.0 38.9))', 4326), "
+            "ST_GeomFromText('POLYGON("
+            "(-77.0 38.9, -77.0 39.0, -76.9 39.0, -76.9 38.9, -77.0 38.9)"
+            ")', 4326), "
             ":created_by, :now)"
         ),
         {

@@ -19,8 +19,9 @@ async def get_public_config(request: Request):
         "zitadel_client_id": settings.zitadel_spa_client_id,
         "zitadel_project_id": settings.zitadel_project_id,
         "upload_host": (
-            settings.s3_presign_endpoint_url
-            or settings.s3_endpoint_url
-            or ""
-        ).replace("https://", "").replace("http://", "").rstrip("/"),
+            settings.s3_presign_endpoint_url or settings.s3_endpoint_url or ""
+        )
+        .replace("https://", "")
+        .replace("http://", "")
+        .rstrip("/"),
     }

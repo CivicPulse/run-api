@@ -38,7 +38,10 @@ class CommunicationBudgetService:
             func.coalesce(
                 func.sum(
                     case(
-                        (CommunicationLedger.pending_cost.is_(False), CommunicationLedger.cost_cents),
+                        (
+                            CommunicationLedger.pending_cost.is_(False),
+                            CommunicationLedger.cost_cents,
+                        ),
                         else_=0,
                     )
                 ),
@@ -47,7 +50,10 @@ class CommunicationBudgetService:
             func.coalesce(
                 func.sum(
                     case(
-                        (CommunicationLedger.pending_cost.is_(True), CommunicationLedger.cost_cents),
+                        (
+                            CommunicationLedger.pending_cost.is_(True),
+                            CommunicationLedger.cost_cents,
+                        ),
                         else_=0,
                     )
                 ),
@@ -67,9 +73,7 @@ class CommunicationBudgetService:
             row = await row
         return self._build_summary(
             org=org,
-            finalized_spend_cents=int(
-                getattr(row, "finalized_spend_cents", 0) or 0
-            ),
+            finalized_spend_cents=int(getattr(row, "finalized_spend_cents", 0) or 0),
             pending_spend_cents=int(getattr(row, "pending_spend_cents", 0) or 0),
             pending_item_count=int(getattr(row, "pending_item_count", 0) or 0),
             updated_at=getattr(row, "updated_at", None)
@@ -86,7 +90,9 @@ class CommunicationBudgetService:
         result = await db.execute(
             select(CommunicationLedger)
             .where(CommunicationLedger.org_id == org_id)
-            .order_by(CommunicationLedger.created_at.desc(), CommunicationLedger.id.desc())
+            .order_by(
+                CommunicationLedger.created_at.desc(), CommunicationLedger.id.desc()
+            )
             .limit(limit)
         )
         scalars = result.scalars()
@@ -95,10 +101,7 @@ class CommunicationBudgetService:
         rows = scalars.all()
         if inspect.isawaitable(rows):
             rows = await rows
-        return [
-            TwilioBudgetActivity.model_validate(row)
-            for row in rows
-        ]
+        return [TwilioBudgetActivity.model_validate(row) for row in rows]
 
     async def evaluate_gate(
         self,
@@ -135,7 +138,8 @@ class CommunicationBudgetService:
                 reason_code="budget_over_limit",
                 reason_detail=(
                     "This organization has exceeded its Twilio soft budget. "
-                    "An org owner must raise the limit before new voice or SMS activity can start."
+                    "An org owner must raise the limit before new voice or SMS "
+                    "activity can start."
                 ),
                 summary=summary,
             )
@@ -228,7 +232,9 @@ class CommunicationBudgetService:
                 CommunicationLedger.provider_sid == provider_sid,
                 CommunicationLedger.event_type == event_type,
             )
-            .order_by(CommunicationLedger.created_at.desc(), CommunicationLedger.id.desc())
+            .order_by(
+                CommunicationLedger.created_at.desc(), CommunicationLedger.id.desc()
+            )
             .limit(1)
         )
         row = result.scalar_one_or_none()
@@ -284,9 +290,7 @@ class CommunicationBudgetService:
         )
         raw_warning_percent = getattr(org, "twilio_budget_warning_percent", 80)
         warning_percent = (
-            int(raw_warning_percent)
-            if isinstance(raw_warning_percent, int)
-            else 80
+            int(raw_warning_percent) if isinstance(raw_warning_percent, int) else 80
         )
         estimated_total = finalized_spend_cents + pending_spend_cents
         warning_threshold = None

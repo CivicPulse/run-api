@@ -108,9 +108,7 @@ def upgrade() -> None:
     )
 
     # Grant to app_user
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON call_records TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON call_records TO app_user")
 
     # --- Organization: API key columns ---
     op.add_column(
@@ -174,11 +172,7 @@ def downgrade() -> None:
 
     # call_records table (indexes drop with table)
     op.execute("DROP POLICY IF EXISTS call_records_isolation ON call_records")
-    op.drop_index(
-        "ix_call_records_campaign_caller_created", table_name="call_records"
-    )
-    op.drop_index(
-        "ix_call_records_campaign_voter_created", table_name="call_records"
-    )
+    op.drop_index("ix_call_records_campaign_caller_created", table_name="call_records")
+    op.drop_index("ix_call_records_campaign_voter_created", table_name="call_records")
     op.execute("DROP INDEX IF EXISTS ix_call_records_twilio_sid")
     op.drop_table("call_records")

@@ -44,7 +44,9 @@ async def voice_status_callback(
     Returns empty 200 to acknowledge receipt.
     """
     cached_form = getattr(request.state, "twilio_form", None)
-    params = cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    params = (
+        cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    )
 
     call_sid = params.get("CallSid", "")
     call_status = params.get("CallStatus", "")
@@ -117,7 +119,9 @@ async def sms_inbound_callback(
     Returns empty 200 to acknowledge receipt.
     """
     cached_form = getattr(request.state, "twilio_form", None)
-    params = cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    params = (
+        cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    )
 
     message_sid = params.get("MessageSid", "")
     body = params.get("Body", "")
@@ -165,7 +169,9 @@ async def sms_status_callback(
     Returns empty 200 to acknowledge receipt.
     """
     cached_form = getattr(request.state, "twilio_form", None)
-    params = cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    params = (
+        cached_form if isinstance(cached_form, dict) else dict(await request.form())
+    )
 
     message_sid = params.get("MessageSid", "")
     message_status = params.get("MessageStatus", "")

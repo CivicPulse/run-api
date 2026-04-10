@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { SmsEligibilityBanner } from "@/components/field/SmsEligibilityBanner"
@@ -19,11 +19,16 @@ export function SmsComposer({
   onSend,
 }: SmsComposerProps) {
   const [body, setBody] = useState("")
+  const [lastConversationId, setLastConversationId] = useState(conversationId)
   const isBlocked = !eligibility?.allowed
 
-  useEffect(() => {
+  // Reset the composer when the active conversation changes. Updating state
+  // during render is the React-recommended pattern for deriving state from
+  // props — see https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  if (conversationId !== lastConversationId) {
+    setLastConversationId(conversationId)
     setBody("")
-  }, [conversationId])
+  }
 
   async function handleSubmit() {
     const trimmed = body.trim()

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 
 from app.schemas.common import BaseSchema
 
@@ -25,6 +25,14 @@ class VolunteerCreate(BaseSchema):
     emergency_contact_phone: str | None = None
     notes: str | None = None
     skills: list[str] = []
+    send_invite: bool = False
+
+    @model_validator(mode="after")
+    def validate_send_invite_email(self) -> VolunteerCreate:
+        """Invite mode requires an email address."""
+        if self.send_invite and not self.email:
+            raise ValueError("Email is required when send_invite is true")
+        return self
 
 
 class VolunteerUpdate(BaseSchema):

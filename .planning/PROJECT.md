@@ -116,10 +116,20 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Two-way SMS with bulk queueing, threaded inbox, and STOP/START opt-out enforcement — v1.15 (SMS-01, SMS-02, SMS-03, SMS-04, COMP-01, COMP-02)
 - ✓ Org-scoped spend controls and append-only communication telemetry for Twilio voice and SMS — v1.15 (BUD-01, OBS-01)
 - ✓ Campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight — v1.15 (LOOK-01)
+- ✓ Provider-agnostic transactional email foundation with Mailgun and code-owned templates — v1.16 (EML-01, EML-02, EML-03, SEC-01)
+- ✓ Durable async invite delivery for org, campaign, volunteer, and staff invite flows — v1.16 (EML-04, INV-01, INV-02, INV-03, INV-04)
+- ✓ Canonical email-delivery audit trail with authenticated Mailgun webhook reconciliation — v1.16 (AUD-01, AUD-02, AUD-03, SEC-02)
+- ✓ ZITADEL SMTP delivery setup and operator runbooks with explicit ownership boundaries — v1.16 (ZIT-01, ZIT-02, OPS-01)
+- ✓ Pending-invite admin visibility for delivery status, latest error, and remediation support — v1.16 (AUD-04)
+- ✓ Campaign-scoped volunteer signup links with admin create/list/disable/regenerate lifecycle and fail-closed public resolution — v1.17 (LINK-01, LINK-02, LINK-03, LINK-04, LINK-05, SAFE-01)
+- ✓ Pending volunteer application intake with immutable source-link attribution, duplicate-safe handling, and rate-limited neutral public endpoints — v1.17 (APPL-02, APPL-03, SAFE-02)
+- ✓ Anonymous and authenticated public volunteer application submission with existing-account prefill — v1.17 (APPL-01, APPL-04, APPL-05)
+- ✓ Admin review queue with approve/reject actions, exactly-once membership activation, and auditable decision trail — v1.17 (REVW-01, REVW-03, REVW-04, REVW-05, REVW-06)
+- ✓ Review queue context surfacing existing-account, existing-member, and prior-status signals with idempotent approval retries and invite fallback for email-only applicants — v1.17 (REVW-02, SAFE-03)
 
 ### Active
 
-- Planning next milestone after v1.15 closeout
+_None — next milestone TBD via `/gsd-new-milestone`._
 
 ### Out of Scope
 
@@ -127,7 +137,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - FEC/state campaign finance compliance — 80+ federal report types, 50 state systems
 - Mobile app — API-only; mobile clients are separate projects
 - Predictive dialer / auto-dialer — TCPA auto-dialer compliance; manual click-to-call only
-- Email delivery engine — building deliverability infra is a separate product
+- Campaign-authored or marketing email campaigns — this milestone is transactional/system email only
 - AI-generated campaign content — client-side concern
 - Voter score prediction — import vendor-provided scores instead
 - Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
@@ -147,13 +157,15 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ## Current Milestone
 
-None active. v1.15 Twilio Communications shipped on 2026-04-08; next milestone definition has not started yet.
+_None — run `/gsd-new-milestone` to scope the next milestone._
 
 ## Current State
 
-**Shipped:** v1.15 Twilio Communications (2026-04-08)
+**Shipped:** v1.17 Easy Volunteer Invites (2026-04-10)
 
-The platform now ships org-scoped Twilio communications across the existing field workflow. v1.15 closed 7 phases (21 plans), added encrypted org Twilio credentials plus phone inventory, secured webhook ingress, browser click-to-call, two-way SMS with inbox threading and STOP/START enforcement, spend controls with communication telemetry, and a campaign-scoped Twilio Lookup cache reused by contact editing and SMS preflight.
+The platform now supports campaign-scoped volunteer signup links separate from trusted member invites. v1.17 closed 5 phases (5 plans) and delivered: admin-managed signup links with create/list/disable/regenerate lifecycle, a safe same-origin public signup landing page, anonymous and authenticated public volunteer application intake with immutable source-link attribution, duplicate-safe handling and rate-limited neutral public endpoints, an admin review queue with approve/reject actions that gate campaign membership activation on explicit approval, and enriched review context (existing-account/member/prior-status) with idempotent approval and an invite-fallback path for email-only applicants.
+
+**Previously shipped:** v1.16 Email Delivery Foundation (2026-04-08) — provider-agnostic Mailgun-backed transactional email seam with durable post-commit invite delivery, authenticated webhook reconciliation, canonical delivery-attempt audit rows, ZITADEL SMTP runbooks, and pending-invite UI visibility.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
@@ -166,7 +178,28 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-- Define the next post-communications milestone
+_TBD — scope the next milestone via `/gsd-new-milestone`._
+
+<details>
+<summary>Archived v1.17 planning context</summary>
+
+- Campaign-scoped volunteer signup links with per-link source attribution and abuse controls
+- Pending volunteer application review before any campaign access is granted
+- Existing-account apply path for users who already have CivicPulse accounts but are not campaign members
+
+</details>
+
+<details>
+<summary>Archived v1.16 planning context</summary>
+
+- Provider-agnostic email delivery foundation with Mailgun as the first implementation
+- Product invite emails for org/campaign member invitation flows already in the app
+- Email support for volunteer/staff invitation flows that already exist
+- ZITADEL email delivery configuration and documentation for its own auth/system emails
+- Basic delivery/audit metadata for sent email events
+- Clear separation between transactional/system email now and broader campaign/authored email later
+
+</details>
 
 ## Context
 
@@ -213,6 +246,10 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Org-scoped Twilio billing and credentials | Twilio account ownership, spend policy, and number routing belong at org scope rather than per campaign | ✓ Good — credentials, phone inventory, spend controls, and webhook auth all share one org boundary |
 | Shared communication ledger before reporting UI | Persist billable call/message facts once so later reporting and targeting can reuse the same telemetry | ✓ Good — voice and SMS now reconcile into append-only communication ledger rows |
 | Cached Twilio Lookup over mutating contact source data | Preserve user-entered contact labels while exposing provider-derived line-type intelligence as a reusable summary | ✓ Good — contact CRUD and SMS eligibility now share a 90-day lookup cache without rewriting source fields |
+| Transactional email starts with a provider seam | Invite and auth email need immediate delivery, but provider lock-in would make later SMTP/SES/Postmark support expensive | ✓ Good — Mailgun-first seam plus durable post-commit delivery shipped without provider coupling in invite domain |
+| ZITADEL email stays configure-and-document in-product scope | Auth email originates in ZITADEL, so this milestone should unblock delivery and operations without rebuilding auth templating in CivicPulse | ✓ Good — ZITADEL SMTP runbook plus ops separation shipped without CivicPulse-side auth templating |
+| Keep public signup links separate from trusted member invites | Public volunteer traffic and trusted staff invites have different trust models and should not share a single entry surface | ✓ Good — dedicated signup-link domain, neutral public resolver, and same-origin landing page shipped alongside untouched member invites |
+| Approval-gated volunteer access with pending applications | Public intake must not grant campaign visibility before reviewer approval | ✓ Good — pending applications activate membership only on approve; anonymous approvals fall back to invite delivery for email-only applicants |
 
 ---
 ## Evolution
@@ -233,4 +270,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 — v1.15 Twilio Communications milestone completed*
+*Last updated: 2026-04-10 after v1.17 Easy Volunteer Invites milestone*

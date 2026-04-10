@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 
 
 def test_call_record_model_has_required_columns():
@@ -81,7 +81,7 @@ def test_call_record_read_schema():
     """CallRecordRead serializes all call_record fields."""
     from app.schemas.voice import CallRecordRead
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     record = CallRecordRead(
         id=uuid.uuid4(),
         campaign_id=uuid.uuid4(),

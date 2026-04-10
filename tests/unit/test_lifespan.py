@@ -234,6 +234,8 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     )
     mock_db.scalar = AsyncMock(
         side_effect=[
+            # ensure_user_synced RLS pre-check (empty → skip restore branch)
+            "",
             organization,  # route org lookup
             None,  # _generate_unique_slug slug existence check
         ]

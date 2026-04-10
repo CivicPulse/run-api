@@ -62,7 +62,7 @@ vi.mock("@/config", () => ({
   getConfig: mockGetConfig,
 }))
 
-import { __resetCallbackProcessedForTests } from "./callback"
+import { __resetCallbackProcessedForTests } from "./callback-state"
 
 function renderPage() {
   const Component = store.component

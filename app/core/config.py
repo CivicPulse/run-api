@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from functools import cached_property
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -73,6 +73,17 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.1
     environment: str = "development"
+
+    # App-owned transactional email
+    email_provider: str = "disabled"
+    app_base_url: str = "http://localhost:5173"
+    email_sender_name: str = "CivicPulse Run"
+    email_sender_address: str = "no-reply@localhost.test"
+    mailgun_domain: str = ""
+    mailgun_region: str = "us"
+    mailgun_base_url: str = ""
+    mailgun_api_key: SecretStr | None = None
+    mailgun_webhook_signing_key: SecretStr | None = None
 
     # Rate limiting
     trusted_proxy_cidrs: list[str] = [

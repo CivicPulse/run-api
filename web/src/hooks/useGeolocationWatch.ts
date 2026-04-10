@@ -49,38 +49,38 @@ export function useGeolocationWatch({
   onPosition,
   onError,
   thresholdMeters = MOVEMENT_THRESHOLD_METERS,
-}: UseGeolocationWatchOptions): GeolocationWatchStatus {
-  const statusRef = useRef<GeolocationWatchStatus>("inactive")
+}: UseGeolocationWatchOptions): void {
   const lastReportedRef = useRef<CoordinatePoint | null>(null)
   const watchIdRef = useRef<number | null>(null)
 
-  // Keep callbacks fresh without restarting the watcher.
+  // Keep callbacks fresh without restarting the watcher. Assigning inside an
+  // effect (rather than during render) satisfies react-hooks/refs.
   const onPositionRef = useRef(onPosition)
-  onPositionRef.current = onPosition
   const onErrorRef = useRef(onError)
-  onErrorRef.current = onError
+  useEffect(() => {
+    onPositionRef.current = onPosition
+  }, [onPosition])
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
 
-  const stop = useCallback(() => {
+  const clearWatcher = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
     }
-    statusRef.current = "inactive"
   }, [])
 
   useEffect(() => {
     if (!active) {
-      stop()
+      clearWatcher()
       return
     }
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
-      statusRef.current = "unavailable"
       onErrorRef.current?.("unavailable")
       return
     }
-
-    statusRef.current = "watching"
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -101,7 +101,6 @@ export function useGeolocationWatch({
       },
       (error) => {
         const denied = error.code === error.PERMISSION_DENIED
-        statusRef.current = denied ? "denied" : "unavailable"
         onErrorRef.current?.(denied ? "denied" : "unavailable")
       },
       {
@@ -112,9 +111,7 @@ export function useGeolocationWatch({
     )
 
     return () => {
-      stop()
+      clearWatcher()
     }
-  }, [active, stop, thresholdMeters])
-
-  return statusRef.current
+  }, [active, clearWatcher, thresholdMeters])
 }

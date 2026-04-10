@@ -78,14 +78,42 @@ echo "    ZITADEL_DOMAIN=${FQDN}"
 echo "    CORS_ALLOWED_ORIGINS=${CORS_VALUE}"
 
 # ---------------------------------------------------------------------------
-# 4. Clear stale ZITADEL credential files (both the shared volume path and the
+# 4. Validate ZITADEL SMTP config so auth mail does not silently boot broken
+# ---------------------------------------------------------------------------
+echo "==> Validating ZITADEL SMTP config..."
+required_smtp_vars=(
+  ZITADEL_SMTP_HOST
+  ZITADEL_SMTP_USER
+  ZITADEL_SMTP_PASSWORD
+  ZITADEL_SMTP_FROM
+  ZITADEL_SMTP_REPLY_TO
+)
+
+missing_smtp_vars=()
+for var_name in "${required_smtp_vars[@]}"; do
+  if ! grep -qE "^${var_name}=.+" .env; then
+    missing_smtp_vars+=("${var_name}")
+  fi
+done
+
+if (( ${#missing_smtp_vars[@]} > 0 )); then
+  echo "ERROR: Missing required ZITADEL SMTP settings in .env:" >&2
+  printf '  - %s\n' "${missing_smtp_vars[@]}" >&2
+  echo "Refusing to start because ZITADEL auth mail will fail without SMTP config." >&2
+  exit 1
+fi
+
+echo "    ZITADEL SMTP config present"
+
+# ---------------------------------------------------------------------------
+# 5. Clear stale ZITADEL credential files (both the shared volume path and the
 #    project-root copy written by bootstrap-zitadel.py's OUTPUT_PATH)
 # ---------------------------------------------------------------------------
 echo "==> Clearing stale ZITADEL data..."
 rm -f .zitadel-data/env.zitadel .zitadel-data/pat.txt .env.zitadel
 
 # ---------------------------------------------------------------------------
-# 5. Wipe volumes (unless --no-wipe)
+# 6. Wipe volumes (unless --no-wipe)
 # ---------------------------------------------------------------------------
 if [[ "$WIPE" == "true" ]]; then
   echo "==> Running docker compose down -v..."
@@ -95,13 +123,13 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Bring up all services
+# 7. Bring up all services
 # ---------------------------------------------------------------------------
 echo "==> Starting services..."
 docker compose up -d
 
 # ---------------------------------------------------------------------------
-# 7. Wait for API readiness, then seed
+# 8. Wait for API readiness, then seed
 # ---------------------------------------------------------------------------
 API_PORT=$(grep -E '^API_HOST_PORT=' .env | cut -d= -f2 || echo "37821")
 HEALTH_URL="http://localhost:${API_PORT}/health/ready"
@@ -125,7 +153,7 @@ echo "==> Loading seed data..."
 docker compose exec api bash -c "PYTHONPATH=/home/app python /home/app/scripts/seed.py"
 
 # ---------------------------------------------------------------------------
-# 8. Summary
+# 9. Summary
 # ---------------------------------------------------------------------------
 ADMIN_PASSWORD=$(grep -E '^ZITADEL_ADMIN_PASSWORD=' .env | cut -d= -f2 || echo "Admin1234!")
 ZITADEL_PORT=$(grep -E '^ZITADEL_EXTERNAL_PORT=' .env | cut -d= -f2 || echo "37823")

@@ -36,9 +36,15 @@ def upgrade() -> None:
             sa.ForeignKey("campaigns.id"),
             nullable=False,
         ),
-        sa.Column("name_full", sa.String(length=511), nullable=False, server_default=""),
-        sa.Column("name_first", sa.String(length=255), nullable=False, server_default=""),
-        sa.Column("name_last", sa.String(length=255), nullable=False, server_default=""),
+        sa.Column(
+            "name_full", sa.String(length=511), nullable=False, server_default=""
+        ),
+        sa.Column(
+            "name_first", sa.String(length=255), nullable=False, server_default=""
+        ),
+        sa.Column(
+            "name_last", sa.String(length=255), nullable=False, server_default=""
+        ),
         sa.Column("city", sa.String(length=255), nullable=False, server_default=""),
         sa.Column("state", sa.String(length=2), nullable=False, server_default=""),
         sa.Column("zip_code", sa.String(length=10), nullable=False, server_default=""),
@@ -223,12 +229,16 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_voter_search_records_address_text_trgm")
     op.execute("DROP INDEX IF EXISTS ix_voter_search_records_name_full_trgm")
     op.execute("DROP INDEX IF EXISTS ix_voter_search_records_document_trgm")
-    op.drop_index("ix_voter_search_records_source_ids", table_name="voter_search_records")
+    op.drop_index(
+        "ix_voter_search_records_source_ids", table_name="voter_search_records"
+    )
     op.drop_index(
         "ix_voter_search_records_phone_digits",
         table_name="voter_search_records",
     )
-    op.drop_index("ix_voter_search_records_name_full", table_name="voter_search_records")
+    op.drop_index(
+        "ix_voter_search_records_name_full", table_name="voter_search_records"
+    )
     op.drop_index(
         "ix_voter_search_records_campaign_id",
         table_name="voter_search_records",
