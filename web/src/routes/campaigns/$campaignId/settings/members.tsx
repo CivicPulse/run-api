@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Copy, Link2, MoreHorizontal, RefreshCw, UserPlus, Users } from "lucide-react"
+import { Check, Copy, Link2, MoreHorizontal, RefreshCw, UserPlus, Users, X } from "lucide-react"
 import { TooltipIcon } from "@/components/shared/TooltipIcon"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -44,11 +44,17 @@ import {
   useRegenerateSignupLink,
   useSignupLinks,
 } from "@/hooks/useSignupLinks"
+import {
+  useApproveVolunteerApplication,
+  useRejectVolunteerApplication,
+  useVolunteerApplications,
+} from "@/hooks/useVolunteerApplications"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useAuthStore } from "@/stores/authStore"
 import type { CampaignMember } from "@/types/campaign"
 import type { Invite } from "@/types/invite"
 import type { SignupLink } from "@/types/signupLink"
+import type { VolunteerApplication } from "@/types/volunteerApplication"
 type StatusVariant = "default" | "success" | "warning" | "error" | "info"
 
 // Role badge variants
@@ -148,6 +154,14 @@ function getSignupLinkStatusVariant(status: SignupLink["status"]): StatusVariant
   return "default"
 }
 
+function getVolunteerApplicationStatusVariant(
+  status: VolunteerApplication["status"],
+): StatusVariant {
+  if (status === "approved") return "success"
+  if (status === "rejected") return "error"
+  return "warning"
+}
+
 // ----- Members tab component -----
 function MembersSettings() {
   const { campaignId } = useParams({
@@ -161,6 +175,8 @@ function MembersSettings() {
   const { data: membersData, isLoading: membersLoading } = useMembers(campaignId)
   const { data: invitesData, isLoading: invitesLoading } = useInvites(campaignId)
   const { data: signupLinksData, isLoading: signupLinksLoading } = useSignupLinks(campaignId)
+  const { data: applicationsData, isLoading: applicationsLoading } =
+    useVolunteerApplications(campaignId)
 
   // Mutations
   const updateMemberRole = useUpdateMemberRole(campaignId)
@@ -170,6 +186,8 @@ function MembersSettings() {
   const createSignupLink = useCreateSignupLink(campaignId)
   const disableSignupLink = useDisableSignupLink(campaignId)
   const regenerateSignupLink = useRegenerateSignupLink(campaignId)
+  const approveApplication = useApproveVolunteerApplication(campaignId)
+  const rejectApplication = useRejectVolunteerApplication(campaignId)
 
   // Dialog state — role change
   const [roleDialogMember, setRoleDialogMember] = useState<CampaignMember | null>(null)
@@ -185,11 +203,16 @@ function MembersSettings() {
   // Dialog state — revoke invite
   const [revokeDialogInvite, setRevokeDialogInvite] = useState<Invite | null>(null)
   const [disableDialogLink, setDisableDialogLink] = useState<SignupLink | null>(null)
+  const [approveDialogApplication, setApproveDialogApplication] =
+    useState<VolunteerApplication | null>(null)
+  const [rejectDialogApplication, setRejectDialogApplication] =
+    useState<VolunteerApplication | null>(null)
 
   // D-10: Refs for focus management after delete actions
   const membersHeadingRef = useRef<HTMLHeadingElement>(null)
   const invitesHeadingRef = useRef<HTMLHeadingElement>(null)
   const signupLinksHeadingRef = useRef<HTMLHeadingElement>(null)
+  const applicationsHeadingRef = useRef<HTMLHeadingElement>(null)
 
   // ---- Invite form ----
   const inviteForm = useForm<InviteFormValues>({
@@ -285,6 +308,32 @@ function MembersSettings() {
       requestAnimationFrame(() => signupLinksHeadingRef.current?.focus())
     } catch {
       toast.error("Failed to disable signup link")
+    }
+  }
+
+  const handleApproveApplication = async () => {
+    if (!approveDialogApplication) return
+    try {
+      await approveApplication.mutateAsync(approveDialogApplication.id)
+      toast.success("Application approved")
+      setApproveDialogApplication(null)
+      requestAnimationFrame(() => applicationsHeadingRef.current?.focus())
+    } catch {
+      toast.error("Failed to approve application")
+    }
+  }
+
+  const handleRejectApplication = async () => {
+    if (!rejectDialogApplication) return
+    try {
+      await rejectApplication.mutateAsync({
+        applicationId: rejectDialogApplication.id,
+      })
+      toast.success("Application rejected")
+      setRejectDialogApplication(null)
+      requestAnimationFrame(() => applicationsHeadingRef.current?.focus())
+    } catch {
+      toast.error("Failed to reject application")
     }
   }
 
@@ -563,9 +612,119 @@ function MembersSettings() {
     },
   ]
 
+  const applicationColumns: ColumnDef<VolunteerApplication, unknown>[] = [
+    {
+      accessorKey: "first_name",
+      header: "Applicant",
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <p className="font-medium">
+            {row.original.first_name} {row.original.last_name}
+          </p>
+          <p className="text-sm text-muted-foreground">{row.original.email}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <StatusBadge
+          status={row.original.status}
+          variant={getVolunteerApplicationStatusVariant(row.original.status)}
+        />
+      ),
+    },
+    {
+      accessorKey: "signup_link_label",
+      header: "Source",
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.signup_link_label}
+        </span>
+      ),
+    },
+    {
+      id: "details",
+      header: "Details",
+      cell: ({ row }) => (
+        <div className="space-y-1 text-sm text-muted-foreground">
+          {row.original.review_context ? (
+            <>
+              <p>
+                Account:{" "}
+                {row.original.review_context.has_existing_account ? "Existing CivicPulse user" : "Anonymous email-only applicant"}
+              </p>
+              <p>
+                Campaign member:{" "}
+                {row.original.review_context.existing_member
+                  ? row.original.review_context.existing_member_role ?? "Existing member"
+                  : "No"}
+              </p>
+              {row.original.review_context.prior_application_statuses.length ? (
+                <p>
+                  Prior decisions:{" "}
+                  {row.original.review_context.prior_application_statuses.join(", ")}
+                </p>
+              ) : null}
+              {row.original.review_context.approval_delivery ? (
+                <p>
+                  Access delivery: {row.original.review_context.approval_delivery}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+          {row.original.phone ? <p>Phone: {row.original.phone}</p> : null}
+          {row.original.notes ? <p>{row.original.notes}</p> : <p>No notes</p>}
+          {row.original.rejection_reason ? (
+            <p className="text-destructive">
+              Rejection note: {row.original.rejection_reason}
+            </p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Submitted",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">
+          {new Date(row.original.created_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) =>
+        row.original.status === "pending" ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setApproveDialogApplication(row.original)}
+            >
+              <Check className="mr-2 size-4" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setRejectDialogApplication(row.original)}
+            >
+              <X className="mr-2 size-4" />
+              Reject
+            </Button>
+          </div>
+        ) : null,
+    },
+  ]
+
   const members = membersData ?? []
   const invites = invitesData ?? []
   const signupLinks = signupLinksData ?? []
+  const applications = applicationsData ?? []
 
   return (
     <div className="space-y-10">
@@ -649,6 +808,29 @@ function MembersSettings() {
           emptyIcon={UserPlus}
           emptyTitle="No pending invites"
           emptyDescription="All invites have been accepted or there are none yet."
+        />
+      </div>
+
+      {/* Section 4: Volunteer Applications */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <h2
+            ref={applicationsHeadingRef}
+            tabIndex={-1}
+            className="text-lg font-semibold outline-none"
+          >
+            Volunteer Applications
+          </h2>
+          <Badge variant="secondary">{applications.length}</Badge>
+        </div>
+
+        <DataTable
+          columns={applicationColumns}
+          data={applications}
+          isLoading={applicationsLoading}
+          emptyIcon={UserPlus}
+          emptyTitle="No volunteer applications"
+          emptyDescription="Applications submitted from signup links will appear here for review."
         />
       </div>
 
@@ -863,6 +1045,31 @@ function MembersSettings() {
         variant="destructive"
         onConfirm={handleDisableSignupLink}
         isPending={disableSignupLink.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!approveDialogApplication}
+        onOpenChange={(open) => {
+          if (!open) setApproveDialogApplication(null)
+        }}
+        title={`Approve ${approveDialogApplication?.first_name ?? "this applicant"}?`}
+        description="Approval grants campaign membership and volunteer access."
+        confirmLabel="Approve"
+        onConfirm={handleApproveApplication}
+        isPending={approveApplication.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!rejectDialogApplication}
+        onOpenChange={(open) => {
+          if (!open) setRejectDialogApplication(null)
+        }}
+        title={`Reject ${rejectDialogApplication?.first_name ?? "this applicant"}?`}
+        description="The application will remain in the audit trail without granting campaign access."
+        confirmLabel="Reject"
+        variant="destructive"
+        onConfirm={handleRejectApplication}
+        isPending={rejectApplication.isPending}
       />
     </div>
   )

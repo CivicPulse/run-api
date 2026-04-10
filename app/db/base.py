@@ -35,6 +35,7 @@ import app.models.survey  # noqa: E402, F401
 import app.models.turf  # noqa: E402, F401
 import app.models.user  # noqa: E402, F401
 import app.models.volunteer  # noqa: E402, F401
+import app.models.volunteer_application  # noqa: E402, F401
 import app.models.voter  # noqa: E402, F401
 import app.models.voter_contact  # noqa: E402, F401
 import app.models.voter_interaction  # noqa: E402, F401

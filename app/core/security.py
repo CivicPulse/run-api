@@ -275,6 +275,7 @@ async def resolve_campaign_role(
 
 
 bearer_scheme = HTTPBearer()
+optional_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
@@ -380,6 +381,16 @@ async def get_current_user(
         email=email,
         display_name=display_name or email,
     )
+
+
+async def get_optional_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
+) -> AuthenticatedUser | None:
+    """Return the authenticated user when a bearer token is present."""
+    if credentials is None:
+        return None
+    return await get_current_user(request, credentials)
 
 
 def require_role(minimum: str):

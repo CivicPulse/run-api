@@ -12,6 +12,13 @@ const mockUseCreateInvite = vi.hoisted(() => vi.fn())
 const mockUseRevokeInvite = vi.hoisted(() => vi.fn())
 const mockUseUpdateMemberRole = vi.hoisted(() => vi.fn())
 const mockUseRemoveMember = vi.hoisted(() => vi.fn())
+const mockUseSignupLinks = vi.hoisted(() => vi.fn())
+const mockUseCreateSignupLink = vi.hoisted(() => vi.fn())
+const mockUseDisableSignupLink = vi.hoisted(() => vi.fn())
+const mockUseRegenerateSignupLink = vi.hoisted(() => vi.fn())
+const mockUseVolunteerApplications = vi.hoisted(() => vi.fn())
+const mockUseApproveVolunteerApplication = vi.hoisted(() => vi.fn())
+const mockUseRejectVolunteerApplication = vi.hoisted(() => vi.fn())
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute:
@@ -33,6 +40,19 @@ vi.mock("@/hooks/useInvites", () => ({
   useInvites: mockUseInvites,
   useCreateInvite: mockUseCreateInvite,
   useRevokeInvite: mockUseRevokeInvite,
+}))
+
+vi.mock("@/hooks/useSignupLinks", () => ({
+  useSignupLinks: mockUseSignupLinks,
+  useCreateSignupLink: mockUseCreateSignupLink,
+  useDisableSignupLink: mockUseDisableSignupLink,
+  useRegenerateSignupLink: mockUseRegenerateSignupLink,
+}))
+
+vi.mock("@/hooks/useVolunteerApplications", () => ({
+  useVolunteerApplications: mockUseVolunteerApplications,
+  useApproveVolunteerApplication: mockUseApproveVolunteerApplication,
+  useRejectVolunteerApplication: mockUseRejectVolunteerApplication,
 }))
 
 vi.mock("@/hooks/usePermissions", () => ({
@@ -147,6 +167,60 @@ describe("Members settings route", () => {
       mutateAsync: vi.fn(),
       isPending: false,
     })
+    mockUseSignupLinks.mockReturnValue({
+      data: [],
+      isLoading: false,
+    })
+    mockUseCreateSignupLink.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })
+    mockUseDisableSignupLink.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })
+    mockUseRegenerateSignupLink.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })
+    mockUseVolunteerApplications.mockReturnValue({
+      data: [
+        {
+          id: "application-1",
+          campaign_id: "campaign-1",
+          signup_link_id: "signup-link-1",
+          signup_link_label: "Weekend volunteers",
+          applicant_user_id: null,
+          first_name: "Pat",
+          last_name: "Doe",
+          email: "pat@example.com",
+          phone: "555-111-2222",
+          notes: "Can help weekends",
+          status: "pending",
+          reviewed_by: null,
+          reviewed_at: null,
+          rejection_reason: null,
+          review_context: {
+            has_existing_account: false,
+            existing_member: false,
+            existing_member_role: null,
+            prior_application_statuses: ["rejected"],
+            approval_delivery: null,
+          },
+          created_at: "2026-04-09T00:00:00Z",
+          updated_at: "2026-04-09T00:00:00Z",
+        },
+      ],
+      isLoading: false,
+    })
+    mockUseApproveVolunteerApplication.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })
+    mockUseRejectVolunteerApplication.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })
   })
 
   it("renders pending invites from the bare invite array and shows delivery support details", () => {
@@ -157,5 +231,13 @@ describe("Members settings route", () => {
     expect(screen.getByText("Failed")).toBeInTheDocument()
     expect(screen.getByText("Mailbox unavailable")).toBeInTheDocument()
     expect(screen.getByText(/last event/i)).toBeInTheDocument()
+  })
+
+  it("renders admin review context for volunteer applications", () => {
+    renderPage()
+
+    expect(screen.getByRole("heading", { name: "Volunteer Applications" })).toBeInTheDocument()
+    expect(screen.getByText(/Anonymous email-only applicant/)).toBeInTheDocument()
+    expect(screen.getByText(/Prior decisions: rejected/)).toBeInTheDocument()
   })
 })

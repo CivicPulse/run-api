@@ -1,9 +1,10 @@
 from app.models.call_list import CallList, CallListEntry
-from app.models.communication_ledger import CommunicationLedger
 from app.models.call_record import CallRecord
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
+from app.models.communication_ledger import CommunicationLedger
 from app.models.dnc import DoNotCallEntry
+from app.models.email_delivery_attempt import EmailDeliveryAttempt
 from app.models.import_job import (
     FieldMappingTemplate,
     ImportChunk,
@@ -12,9 +13,8 @@ from app.models.import_job import (
 )
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
-from app.models.email_delivery_attempt import EmailDeliveryAttempt
-from app.models.phone_validation import PhoneValidation
 from app.models.phone_bank import PhoneBankSession, SessionCaller
+from app.models.phone_validation import PhoneValidation
 from app.models.shift import Shift, ShiftVolunteer
 from app.models.sms_conversation import SMSConversation
 from app.models.sms_message import SMSMessage
@@ -26,6 +26,7 @@ from app.models.volunteer import (
     VolunteerTag,
     VolunteerTagMember,
 )
+from app.models.volunteer_application import VolunteerApplication
 from app.models.voter import Voter, VoterTag, VoterTagMember
 from app.models.voter_contact import VoterAddress, VoterEmail, VoterPhone
 from app.models.voter_interaction import VoterInteraction
@@ -59,6 +60,7 @@ __all__ = [
     "User",
     "Volunteer",
     "VolunteerAvailability",
+    "VolunteerApplication",
     "VolunteerTag",
     "VolunteerTagMember",
     "Voter",

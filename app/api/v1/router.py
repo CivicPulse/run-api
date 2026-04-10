@@ -25,6 +25,7 @@ from app.api.v1 import (
     turfs,
     users,
     voice,
+    volunteer_applications,
     volunteers,
     voter_contacts,
     voter_interactions,
@@ -56,6 +57,7 @@ router.include_router(call_lists.router, tags=["call-lists"])
 router.include_router(dnc.router, tags=["dnc"])
 router.include_router(phone_banks.router, tags=["phone-banks"])
 router.include_router(volunteers.router, tags=["volunteers"])
+router.include_router(volunteer_applications.router, tags=["volunteer-applications"])
 router.include_router(shifts.router, tags=["shifts"])
 router.include_router(signup_links.router, tags=["signup-links"])
 router.include_router(dashboard.router, tags=["dashboard"])
