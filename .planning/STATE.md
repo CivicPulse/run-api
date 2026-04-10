@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
-status: Defining requirements
-stopped_at: Milestone v1.18 started — gathering requirements
-last_updated: "2026-04-10T18:00:00.000Z"
+status: Roadmap created — ready to plan Phase 106
+stopped_at: Roadmap drafted; Phase 106 (Test Baseline Trustworthiness) queued for planning
+last_updated: "2026-04-10T19:00:00.000Z"
 last_activity: 2026-04-10
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,55 +25,39 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 106 — Test Baseline Trustworthiness (queued)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-10 — Milestone v1.18 started
+Status: Roadmap created
+Last activity: 2026-04-10 — Roadmap drafted, 5 phases (106-110), all 17 requirements mapped
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 0% (0/5 phases)
+
+## Roadmap Summary
+
+Phases 106-110 derived from 17 requirements:
+
+- **Phase 106**: Test Baseline Trustworthiness (TEST-04) — fix/delete broken tests first so subsequent phases get a trustworthy CI signal
+- **Phase 107**: Canvassing Wizard Fixes (CANV-01, CANV-02, CANV-03, FORMS-01) — auto-advance, skip house, optional notes, form-requiredness audit
+- **Phase 108**: House Selection & Active-State (SELECT-01, SELECT-02, SELECT-03) — tap-to-activate from list and map with audited state machine
+- **Phase 109**: Map Rendering & Asset Pipeline (MAP-01, MAP-02, MAP-03) — Leaflet icons render, list not covered by map, asset pipeline audit
+- **Phase 110**: Offline Queue & Connectivity Hardening (OFFLINE-01/02/03 + TEST-01/02/03 anchor) — persist/replay, connectivity indicator, sync with backoff
+
+TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107-110), anchored to Phase 110 for traceability and milestone-final pass.
 
 ## Accumulated Context
 
 ### Decisions
 
-- v1.15: Org-scoped Twilio credentials (Account SID, Auth Token) — billing isolated per org, not per campaign.
-- v1.15: Click-to-call uses Twilio Voice SDK (WebRTC); mobile/unsupported browsers fall back to existing tel: link behavior.
-- v1.15: SMS is both bulk outreach and conversational — reply inbox for volunteers to follow up.
-- v1.15: Phone numbers are BYO + platform-provisioned (org settings UI for Twilio number search/rent).
-- v1.15: Spend limits enforced at both platform level (soft gates) and Twilio account level (surfaced in org settings).
-- v1.15: TCPA/A2P 10DLC compliance is org responsibility; platform provides opt-out tooling, not carrier registration.
-- v1.15: SMS opt-out state is channel-specific and must not mutate the voice DNC list.
-- v1.15: Bulk SMS uses the existing Procrastinate queue pattern and must remain observable to staff.
-- v1.15: SMS sends require explicit eligibility or consent signals; imported voter numbers alone are not text-eligible.
-- v1.15: Phase 92 UI contract keeps SMS inside the campaign phone-banking workflow with a campaign-level Messages inbox, inline consent/opt-out banners, and queued bulk-send status cards.
-- v1.15: Phase 92 is complete with campaign-scoped SMS conversation storage, webhook threading, STOP/START enforcement, and a Messages route in phone banking.
-- v1.15: Spend controls will be org-scoped soft limits enforced before new voice/SMS billable actions, backed by append-only communication telemetry.
-- v1.15: Phase 93 UI contract keeps spend controls in org settings as a compact Twilio Spend & Telemetry card with summary chips, threshold inputs, recent activity for both voice and SMS, and org-admin editable soft budgets.
-- v1.15: Phase 93 planning uses a unified communication ledger plus a shared budget gate applied to both voice and SMS launch paths.
-- v1.15: Phase 93 is complete with org budget fields, append-only communication telemetry, pre-launch budget blocks, webhook reconciliation, and inline spend state in org settings plus phone-banking routes.
-- v1.15: Phase 94 uses a campaign-scoped `phone_validations` cache with a 90-day TTL instead of mutating voter contact source data with Twilio-derived line-type intelligence.
-- v1.15: Contact save remains available when Twilio Lookup fails; stale or pending validation surfaces as warning state plus manual refresh.
-- v1.15: SMS eligibility now consumes cached lookup summaries and blocks landline, stale, and review-needed numbers before send.
-- v1.16: Transactional email will use a provider abstraction with Mailgun first so CivicPulse can add providers without rewriting invite flows.
-- v1.16: This milestone covers transactional/system email only, including existing invite flows and ZITADEL auth/system delivery setup.
-- v1.16: ZITADEL scope is configure-and-document email delivery, not CivicPulse-managed auth templating or branding tooling.
-- v1.16: Basic email delivery/audit metadata is in scope; inboxes, campaign email, and advanced analytics remain out of scope.
-- [Phase 95]: Phase 95 established a typed transactional email seam with Mailgun selected by settings and code-owned HTML/text invite templates.
-- [Phase 96]: Phase 96 moved invite delivery behind a post-commit communications task with invite-keyed idempotency, same-origin invite entry, and persisted queue-failure state.
-- [Phase 97]: Phase 97 added canonical invite-email attempt audit rows plus authenticated Mailgun webhook reconciliation keyed by provider message id.
-- [Phase 98]: Phase 98 documented and wired ZITADEL's own SMTP notification path separately from CivicPulse invite delivery.
-- [Phase 99]: Phase 99 added the production operations runbook for Mailgun DNS prerequisites, monitoring split, and remediation expectations.
-- [Phase 100]: Phase 100 realigned the pending-invites frontend with the backend invite contract and surfaced delivery status, latest error, and last-event timing.
-- [Phase 101]: Phase 101 added dedicated volunteer signup links with admin lifecycle controls, a neutral public resolver, and a same-origin public landing page.
-- [Phase 102]: Phase 102 added approval-gated volunteer applications on signup links, immutable source snapshots, duplicate-safe intake, and authenticated prefill for existing accounts.
-- [Phase 103]: Phase 103 added an admin review queue with approve/reject actions that only create campaign membership and active volunteer access on approval.
-- [Phase 104]: Gap closure phase restored anonymous signup-link application submission while preserving authenticated prefill and safe review gating.
-- [Phase 105]: Gap closure phase closed REVW-02 and SAFE-03 audit findings and backfilled milestone traceability artifacts.
 - v1.18: Milestone driven by real volunteer feedback from door-knocking sessions — 7 reported canvassing bugs + 3 broader audits + offline hardening.
+- v1.18: Test Baseline Trustworthiness (TEST-04) is its own first phase (106) so subsequent phases can trust pytest/vitest/Playwright signal before adding new tests.
+- v1.18: TEST-01/02/03 are coverage obligations on every code-changing phase, not a separate end phase. Anchored to Phase 110 for traceability.
+- v1.18: FORMS-01 (form requiredness audit) grouped with Phase 107 canvassing wizard fixes since CANV-03 (optional notes) is itself a requiredness fix.
+- v1.18: MAP-01/02/03 grouped into a single phase (109) since the asset pipeline audit, icon fix, and list/map layering all touch the same field-mode map components.
+- v1.18: 5 phases for medium appetite, sequential dependency chain (106 → 107 → 108 → 109 → 110) so each phase ships on a trustworthy baseline.
 
 ## Pending Todos
 
-None yet.
+- Plan Phase 106 (Test Baseline Trustworthiness) via `/gsd-plan-phase 106`
 
 ## Blockers/Concerns
 
@@ -82,6 +66,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T18:00:00Z
-Stopped at: Milestone v1.18 started — defining requirements
-Resume file: .planning/REQUIREMENTS.md (pending)
+Last session: 2026-04-10T19:00:00Z
+Stopped at: Roadmap drafted; Phase 106 queued for planning
+Resume file: .planning/ROADMAP.md

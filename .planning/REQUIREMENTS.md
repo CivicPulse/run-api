@@ -2,7 +2,7 @@
 
 **Milestone:** v1.18 Field UX Polish
 **Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Raise the test suite to a trustworthy baseline.
-**Status:** Defining requirements
+**Status:** Roadmap created — 5 phases (106-110)
 **Last updated:** 2026-04-10
 
 ---
@@ -80,22 +80,24 @@ _Deferred to later milestones:_
 
 | REQ-ID      | Description                                        | Phase |
 |-------------|----------------------------------------------------|-------|
-| CANV-01     | Auto-advance after outcome                         | —     |
-| CANV-02     | Skip house button works                            | —     |
-| CANV-03     | Outcome note optional                              | —     |
-| SELECT-01   | Tap house in list → active                         | —     |
-| SELECT-02   | Tap house on map → active                          | —     |
-| SELECT-03   | Active-state state machine audit                   | —     |
-| MAP-01      | Leaflet marker icons render                        | —     |
-| MAP-02      | List view not covered by map                       | —     |
-| MAP-03      | Map asset pipeline audit                           | —     |
-| FORMS-01    | Field-mode form requiredness audit                 | —     |
-| OFFLINE-01  | Queue persists/replays reliably                    | —     |
-| OFFLINE-02  | Connectivity indicator                             | —     |
-| OFFLINE-03  | Sync-on-reconnect with retry/backoff               | —     |
-| TEST-01     | Unit coverage for modified files                   | —     |
-| TEST-02     | Integration coverage for touched boundaries        | —     |
-| TEST-03     | E2E coverage for user-visible changes              | —     |
-| TEST-04     | Fix/delete pre-existing broken tests               | —     |
+| CANV-01     | Auto-advance after outcome                         | 107   |
+| CANV-02     | Skip house button works                            | 107   |
+| CANV-03     | Outcome note optional                              | 107   |
+| SELECT-01   | Tap house in list → active                         | 108   |
+| SELECT-02   | Tap house on map → active                          | 108   |
+| SELECT-03   | Active-state state machine audit                   | 108   |
+| MAP-01      | Leaflet marker icons render                        | 109   |
+| MAP-02      | List view not covered by map                       | 109   |
+| MAP-03      | Map asset pipeline audit                           | 109   |
+| FORMS-01    | Field-mode form requiredness audit                 | 107   |
+| OFFLINE-01  | Queue persists/replays reliably                    | 110   |
+| OFFLINE-02  | Connectivity indicator                             | 110   |
+| OFFLINE-03  | Sync-on-reconnect with retry/backoff               | 110   |
+| TEST-01     | Unit coverage for modified files                   | 110*  |
+| TEST-02     | Integration coverage for touched boundaries        | 110*  |
+| TEST-03     | E2E coverage for user-visible changes              | 110*  |
+| TEST-04     | Fix/delete pre-existing broken tests               | 106   |
 
-_Phase column populated by roadmapper._
+_* TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107, 108, 109, 110). Anchored to Phase 110 for traceability — that is the milestone-final coverage gate where the full suite must pass clean._
+
+**Coverage:** 17/17 requirements mapped. No orphans. No duplicates.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Most recently shipped: v1.17 Easy Volunteer Invites on 2026-04-10. No active milestone — run `/gsd-new-milestone` to scope the next one.
+Current milestone: **v1.18 Field UX Polish** — fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Phases 106-110.
 
 ## Milestones
 
@@ -21,6 +21,7 @@ Most recently shipped: v1.17 Easy Volunteer Invites on 2026-04-10. No active mil
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
 - ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
+- 🚧 **v1.18 Field UX Polish** — Phases 106-110 (in progress)
 
 ## Milestone History
 
@@ -195,4 +196,93 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 
 ## Current Milestone
 
-_None — run `/gsd-new-milestone` to scope the next milestone._
+### v1.18 Field UX Polish
+
+**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Raise the test suite to a trustworthy baseline.
+
+**Phase numbering:** continues from v1.17 (last phase 105) → v1.18 spans **Phases 106-110**.
+
+**Phase dependency chain:** 106 → 107 → 108 → 109 → 110 (sequential; each phase ships on a trustworthy baseline left by the previous one).
+
+| #   | Phase                                      | Goal                                                                                     | Requirements                                      |
+|-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
+| 106 | Test Baseline Trustworthiness              | Fix or delete pre-existing broken tests so CI signal becomes reliable                    | TEST-04                                           |
+| 107 | Canvassing Wizard Fixes                    | Auto-advance, working Skip House, optional outcome notes, form-requiredness audit        | CANV-01, CANV-02, CANV-03, FORMS-01               |
+| 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
+| 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
+| 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
+
+#### Phase 106: Test Baseline Trustworthiness
+
+**Goal:** Pre-existing broken or consistently failing tests are fixed or deleted so that any red test in the remaining v1.18 work signals a real regression.
+
+**Requirements:** TEST-04
+
+**Success criteria:**
+1. `uv run pytest` runs end-to-end with no unexpected failures (skips/xfails justified in code).
+2. Frontend `vitest` suite runs clean with no known-broken tests left as `.skip` / `xfail` without justification.
+3. `web/scripts/run-e2e.sh` runs the full Playwright suite with no flaky-known-broken specs — any remaining failures are tracked as real bugs.
+4. Any tests deleted during this phase are recorded with a short justification in the phase commit messages.
+
+**Dependencies:** none (first phase of milestone).
+
+#### Phase 107: Canvassing Wizard Fixes
+
+**Goal:** A volunteer recording outcomes in the canvassing wizard experiences automatic advance, working skip, and no forced text entry.
+
+**Requirements:** CANV-01, CANV-02, CANV-03, FORMS-01
+
+**Success criteria:**
+1. Submitting an outcome on the active house automatically transitions the wizard to the next house in the walk list (CANV-01).
+2. Tapping "Skip house" advances past the current active house, marks it skipped in the queue, and surfaces the next house within one tap (CANV-02).
+3. Any outcome can be saved with an empty notes field (CANV-03).
+4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
+5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
+
+**Dependencies:** Phase 106.
+
+#### Phase 108: House Selection & Active-State
+
+**Goal:** Volunteers can reliably make any house active from either the list or the map, with a state machine that is the same regardless of entry point.
+
+**Requirements:** SELECT-01, SELECT-02, SELECT-03
+
+**Success criteria:**
+1. Tapping any house in the household list sets it as the active house (SELECT-01).
+2. Tapping any house marker on the map sets it as the active house (SELECT-02).
+3. A documented state-machine audit covers list-tap, map-tap, auto-advance, skip, resume, and reconciliation after offline sync; the same target state is reachable from every entry point (SELECT-03).
+4. Unit, integration, and E2E tests cover list-tap, map-tap, and state transitions end-to-end (TEST-01/02/03).
+
+**Dependencies:** Phase 107.
+
+#### Phase 109: Map Rendering & Asset Pipeline
+
+**Goal:** Field-mode maps render correctly — no broken marker icons and no layout occluding the household list.
+
+**Requirements:** MAP-01, MAP-02, MAP-03
+
+**Success criteria:**
+1. Leaflet marker icons render on every field-mode map view (canvassing map, walk list map, volunteer hub map) with zero broken-image placeholders (MAP-01).
+2. In list view the household list is fully visible and interactable; the map no longer overlays or z-index covers it (MAP-02).
+3. A map asset pipeline audit document lives in `.planning/phases/109-*` confirming every Leaflet icon, sprite, and tile asset resolves correctly under dev, preview, and production build/serve (MAP-03).
+4. Unit/integration tests cover map marker rendering and layout behavior; E2E tests confirm the list-vs-map layout bug does not return (TEST-01/02/03).
+
+**Dependencies:** Phase 108.
+
+#### Phase 110: Offline Queue & Connectivity Hardening
+
+**Goal:** The offline outcome queue reliably persists, replays, and reconciles outcomes on reconnect, volunteers always know their sync state, and the full v1.18 test suite gate is satisfied.
+
+**Requirements:** OFFLINE-01, OFFLINE-02, OFFLINE-03, TEST-01/02/03 (milestone coverage anchor)
+
+**Success criteria:**
+1. Under simulated connectivity loss, outcomes persist locally and replay on reconnect with no duplication or loss (OFFLINE-01).
+2. A glanceable connectivity indicator shows online / offline / syncing / last-sync-time in the field-mode shell (OFFLINE-02).
+3. Sync-on-reconnect completes within a defined budget, retries server errors with backoff, and surfaces unresolvable items as actionable errors (OFFLINE-03).
+4. Full milestone coverage gate: every file modified across phases 106-110 has unit + integration + E2E coverage for its changed behavior, and the full `uv run pytest`, `vitest`, and `web/scripts/run-e2e.sh` suites pass clean (TEST-01/02/03).
+
+**Dependencies:** Phase 109.
+
+---
+
+_TEST-01, TEST-02, and TEST-03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107-110). They are anchored to Phase 110 in the Traceability table as the milestone-final coverage gate._
