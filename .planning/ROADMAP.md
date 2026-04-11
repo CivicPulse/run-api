@@ -208,7 +208,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 |-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
 | 106 | 5/5 | Complete    | 2026-04-11 |
 | 107 | 10/10 | Complete    | 2026-04-11 |
-| 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
+| 108 | 7/7 | Complete    | 2026-04-11 |
 | 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
 | 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
 
@@ -277,16 +277,16 @@ Plans:
 3. A documented state-machine audit covers list-tap, map-tap, auto-advance, skip, resume, and reconciliation after offline sync; the same target state is reachable from every entry point (SELECT-03).
 4. Unit, integration, and E2E tests cover list-tap, map-tap, and state transitions end-to-end (TEST-01/02/03).
 
-**Plans:** 7 plans
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] 108-01-PLAN.md — Wave 0: Spikes A1 (Space key) + A2 (L.DivIcon) + fixture House C
-- [ ] 108-02-PLAN.md — SELECT-01: wrap handleJumpToAddress, hook unit test, HouseholdCard render-path guard
-- [ ] 108-03-PLAN.md — SELECT-02: CanvassingMapMarkers refactor, panTo, ARIA, CSS, component tests
-- [ ] 108-04-PLAN.md — SELECT-03 docs: 108-STATE-MACHINE.md Mermaid + transition table + reconciliation placeholder
-- [ ] 108-05-PLAN.md — SELECT-03 test: behavioral integration test covering all 5 entry points
-- [ ] 108-06-PLAN.md — E2E: canvassing-house-selection.spec.ts (list-tap, map-tap, keyboard, resume)
-- [ ] 108-07-PLAN.md — Phase exit gate: ruff + pytest + vitest + 2x run-e2e.sh, 108-VERIFICATION-RESULTS.md
+- [x] 108-01-PLAN.md — Wave 0: Spikes A1 (Space key) + A2 (L.DivIcon) + fixture House C
+- [x] 108-02-PLAN.md — SELECT-01: wrap handleJumpToAddress, hook unit test, HouseholdCard render-path guard
+- [x] 108-03-PLAN.md — SELECT-02: CanvassingMapMarkers refactor, panTo, ARIA, CSS, component tests
+- [x] 108-04-PLAN.md — SELECT-03 docs: 108-STATE-MACHINE.md Mermaid + transition table + reconciliation placeholder
+- [x] 108-05-PLAN.md — SELECT-03 test: behavioral integration test covering all 5 entry points
+- [x] 108-06-PLAN.md — E2E: canvassing-house-selection.spec.ts (list-tap, map-tap, keyboard, resume)
+- [x] 108-07-PLAN.md — Phase exit gate: ruff + pytest + vitest + 2x run-e2e.sh, 108-VERIFICATION-RESULTS.md
 
 **Canonical refs:** 108-CONTEXT.md, 108-UI-SPEC.md, 108-RESEARCH.md, 108-SPIKES.md, 108-STATE-MACHINE.md
 

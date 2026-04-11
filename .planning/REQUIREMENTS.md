@@ -27,9 +27,9 @@ Requirements derived from:
 
 ### SELECT — House Selection & Active-State
 
-- [ ] **SELECT-01**: Volunteers can tap any house in the household list to set it as the active house.
-- [ ] **SELECT-02**: Volunteers can tap any house marker on the map to set it as the active house.
-- [ ] **SELECT-03**: The active-house state machine is reviewed end-to-end so a volunteer standing at a specific address can reliably make that address active regardless of entry point (list, map, auto-advance, skip, resume).
+- [x] **SELECT-01**: Volunteers can tap any house in the household list to set it as the active house.
+- [x] **SELECT-02**: Volunteers can tap any house marker on the map to set it as the active house.
+- [x] **SELECT-03**: The active-house state machine is reviewed end-to-end so a volunteer standing at a specific address can reliably make that address active regardless of entry point (list, map, auto-advance, skip, resume).
 
 ### MAP — Map Rendering & Layout
 
