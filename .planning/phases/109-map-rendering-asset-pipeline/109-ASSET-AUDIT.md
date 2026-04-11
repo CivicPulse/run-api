@@ -129,7 +129,23 @@ hashing — so Preview and Production behavior is identical to Dev.
 
 Plan 109-02 will consume this list verbatim.
 
-### Issue #1 — `voterIcon` uses remote unpkg CDN URLs (MAP-01 blocker)
+### Issue #1 — `voterIcon` uses remote unpkg CDN URLs (MAP-01 blocker) — **RESOLVED**
+
+**Status:** RESOLVED by plan 109-02 (commits `4604920` feat +
+`6f2a175` fix). All four marker factories now live in
+`web/src/components/canvassing/map/leafletIcons.ts` using Vite
+ES-module imports of `leaflet/dist/images/marker-*.png`. Vite inlines
+the marker PNGs as `data:image/png;base64,...` data URIs at build time
+(verified in `dist/assets/leafletIcons-*.js` after `npx vite build`),
+so every marker renders with zero network requests and zero CDN
+dependency. `VoterMarkerLayer.tsx` imports `voterIcon` from the shared
+module, and `CanvassingMap.tsx` imports `volunteerIcon`,
+`householdIcon`, `activeHouseholdIcon` from the same module. No
+`unpkg.com` references remain in `web/src/` production code.
+
+<details>
+<summary>Original finding (for history)</summary>
+
 
 - **File:** `web/src/components/canvassing/map/VoterMarkerLayer.tsx`
 - **Lines:** 7–16
@@ -163,7 +179,22 @@ Plan 109-02 will consume this list verbatim.
   environment depends on network reachability of a third-party host, so
   the column status `CDN` is not a pass.
 
-### Issue #2 — Two copies of the same marker PNGs risk drift
+</details>
+
+### Issue #2 — Two copies of the same marker PNGs risk drift — **PARTIALLY RESOLVED**
+
+**Status:** PARTIALLY RESOLVED by plan 109-02. After the fix,
+`VoterMarkerLayer.tsx` and `CanvassingMap.tsx` both use bundled
+`leaflet/dist/images/*` via `leafletIcons.ts`, so the production code
+no longer reads from `web/public/leaflet/`. The hand-managed
+`web/public/leaflet/marker-*.png` copies still exist on disk and are
+still copied to `dist/leaflet/` by Vite, but nothing in `web/src/`
+references them anymore. Deleting the `public/leaflet/` directory is a
+trivial follow-up that can land in any subsequent plan without risk.
+
+<details>
+<summary>Original finding (for history)</summary>
+
 
 - **Files:** `web/public/leaflet/marker-icon*.png` vs. Leaflet's own
   `node_modules/leaflet/dist/images/marker-icon*.png` (transitively
@@ -178,6 +209,8 @@ Plan 109-02 will consume this list verbatim.
   installed Leaflet version.
 - **Priority:** Medium. Only relevant after Issue #1 is resolved, but
   worth tracking now so Plan 109-02 can close it in the same change.
+
+</details>
 
 ---
 
