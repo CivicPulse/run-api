@@ -61,10 +61,11 @@ interface InteractiveHouseholdMarkerProps {
   onClick: (household: Household) => void
 }
 
-// Per Phase 108 Spike A1: Leaflet 1.9.4 routes Enter-key activation via the
-// browser's role="button" synthetic click path, but does NOT handle Space.
-// We attach a post-mount keydown listener that matches event.key === " " to
-// close Contract 2c (Enter + Space activation).
+// Per Phase 108 Spike A1 + WR-03 review finding: Leaflet 1.9.4 does NOT
+// handle Space, and a <div role="button"> does NOT synthesize a click on
+// Enter in any modern browser either — only native <button> elements do.
+// We attach a post-mount keydown listener matching Space + Enter to close
+// Contract 2c (Enter + Space keyboard activation).
 function InteractiveHouseholdMarker({
   household,
   isActive,
@@ -90,7 +91,11 @@ function InteractiveHouseholdMarker({
     el.setAttribute("tabindex", "0")
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === " " || e.code === "Space") {
+      // WR-03: handle both Space and Enter. A <div role="button"> does NOT
+      // synthesize a click on Enter in any modern browser (only native
+      // <button> does), so we must handle Enter explicitly to close
+      // Contract 2c keyboard activation.
+      if (e.key === " " || e.code === "Space" || e.key === "Enter") {
         e.preventDefault()
         onClickRef.current(household)
       }
