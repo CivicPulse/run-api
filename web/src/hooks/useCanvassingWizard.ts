@@ -86,9 +86,9 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     locationSnapshot,
     locationStatus,
     setWalkList,
-    advanceAddress,
+    advanceAddress: storeAdvanceAddress,
     jumpToAddress,
-    skipEntry,
+    skipEntry: storeSkipEntry,
     unskipEntry,
     touch,
   } = useCanvassingStore()
@@ -116,6 +116,25 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   // can read it safely during render.
   const [pinnedHouseholdKey, setPinnedHouseholdKey] = useState<string | null>(null)
   const [trackedSortMode, setTrackedSortMode] = useState(sortMode)
+
+  // Phase 107-08.1: release the viewing pin on intentional advance / skip so
+  // the rendered HouseholdCard actually swaps to the next household. The pin
+  // exists to keep the user's current door stable while distance-mode GPS
+  // updates re-order the underlying list — it must NOT outlive an explicit
+  // navigation away from that door. See `.planning/todos/completed/107-canvassing-pinning-uxgap.md`
+  // for the full root-cause walk-through.
+  const advanceAddress = useCallback(() => {
+    setPinnedHouseholdKey(null)
+    storeAdvanceAddress()
+  }, [storeAdvanceAddress])
+
+  const skipEntry = useCallback(
+    (entryId: string) => {
+      setPinnedHouseholdKey(null)
+      storeSkipEntry(entryId)
+    },
+    [storeSkipEntry],
+  )
 
   // Detect a sort mode change during render. Updating state here follows the
   // "storing information from previous renders" React pattern and skips
