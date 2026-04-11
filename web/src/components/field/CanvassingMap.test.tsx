@@ -3,6 +3,12 @@ import { render, screen } from "@testing-library/react"
 import { CanvassingMap } from "@/components/field/CanvassingMap"
 import type { Household } from "@/types/canvassing"
 
+// Shared registry of DOM elements created by the Marker mock below. The
+// key is the address string (from the marker's tooltip children in real
+// usage, here keyed via position) so WR-03 tests can dispatch keydown at
+// a specific marker root.
+const markerElementsByPosition = new Map<string, HTMLDivElement>()
+
 // Top-level vi.mock calls are hoisted by Vitest's transformer, so the
 // mocks below apply to the CanvassingMap import above even though they
 // appear later in source order.
@@ -31,15 +37,38 @@ const panToSpy = vi.fn()
 
 vi.mock("react-leaflet", async () => {
   const React = await import("react")
+  // Forwarding the ref lets InteractiveHouseholdMarker's post-mount effect
+  // run against a real DOM element — WR-03 unit coverage dispatches keydown
+  // events directly at that element to verify Space + Enter activation.
+  const Marker = React.forwardRef<unknown, CapturedMarkerProps>((props, ref) => {
+    capturedMarkerProps.push(props)
+    const elRef = React.useRef<HTMLDivElement>(null)
+    React.useImperativeHandle(ref, () => ({
+      getElement: () => elRef.current,
+    }))
+    const positionKey = props.position
+      ? `${props.position[0]},${props.position[1]}`
+      : ""
+    return React.createElement(
+      "div",
+      {
+        ref: (node: HTMLDivElement | null) => {
+          elRef.current = node
+          if (node && positionKey) {
+            markerElementsByPosition.set(positionKey, node)
+          }
+        },
+        "data-testid": "mock-marker",
+      },
+      (props.children as React.ReactNode) ?? null,
+    )
+  })
   return {
     MapContainer: ({ children }: { children: React.ReactNode }) => children,
     TileLayer: () => null,
     GeoJSON: () => null,
     Popup: ({ children }: { children: React.ReactNode }) => children,
-    Marker: (props: CapturedMarkerProps) => {
-      capturedMarkerProps.push(props)
-      return (props.children as React.ReactNode) ?? null
-    },
+    Marker,
     Tooltip: ({ children }: { children: React.ReactNode }) => children,
     LayersControl: Object.assign(
       ({ children }: { children: React.ReactNode }) => children,
@@ -106,6 +135,7 @@ describe("CanvassingMap", () => {
   beforeEach(() => {
     capturedMarkerProps.length = 0
     panToSpy.mockClear()
+    markerElementsByPosition.clear()
   })
 
   test("SELECT-02 — marker click invokes onHouseholdSelect with households[] index (not mappable index)", () => {
@@ -309,6 +339,60 @@ describe("CanvassingMap", () => {
     expect(volunteerMarker?.interactive).toBe(false)
     expect(volunteerMarker?.keyboard).toBe(false)
     expect(volunteerMarker?.eventHandlers?.click).toBeUndefined()
+  })
+
+  test("WR-03 — Enter keydown on a marker root fires onHouseholdSelect (Contract 2c)", () => {
+    const onHouseholdSelect = vi.fn()
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={onHouseholdSelect}
+      />,
+    )
+
+    const el = markerElementsByPosition.get("32.85,-83.62")
+    expect(el).toBeDefined()
+    // Sanity: the post-mount effect applied aria/role attributes.
+    expect(el?.getAttribute("role")).toBe("button")
+    expect(el?.getAttribute("tabindex")).toBe("0")
+
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+    el!.dispatchEvent(event)
+
+    // Enter on the second marker must resolve to households[] index 1.
+    expect(onHouseholdSelect).toHaveBeenCalledWith(1)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  test("WR-03 — Space keydown on a marker root fires onHouseholdSelect (Contract 2c)", () => {
+    const onHouseholdSelect = vi.fn()
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={onHouseholdSelect}
+      />,
+    )
+
+    const el = markerElementsByPosition.get("32.85,-83.62")
+    expect(el).toBeDefined()
+
+    const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true })
+    el!.dispatchEvent(event)
+
+    expect(onHouseholdSelect).toHaveBeenCalledWith(1)
+    expect(event.defaultPrevented).toBe(true)
   })
 
   test("SELECT-02 — active household marker gets zIndexOffset=1000 for visual emphasis", () => {

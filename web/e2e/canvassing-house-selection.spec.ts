@@ -394,11 +394,10 @@ test.describe("Phase 108 — canvassing house selection", () => {
     // is the D-07 keyboard-activation surface and is what this test
     // exercises.
     //
-    // (Enter is documented by Leaflet as routing through `role="button"`
-    // synthetic click, but in headless Chromium `<div role="button">` does
-    // NOT auto-dispatch click on Enter — only native <button> does. The
-    // Enter path is covered by the Space listener symmetry + the unit
-    // tests in CanvassingMap.test.tsx.)
+    // Per WR-03 fix: the keydown listener now explicitly matches
+    // `key === "Enter"` alongside Space, so the Enter path runs through the
+    // same `onClickRef.current(household)` surface as Space (covered by the
+    // separate Enter test below).
     const houseBMarker = page.getByRole("button", {
       name: /Activate door:.*456 Oak Avenue/i,
     })
@@ -409,6 +408,33 @@ test.describe("Phase 108 — canvassing house selection", () => {
 
     // Same post-conditions as the tap variant: House B is now the rendered
     // household + the active marker.
+    await expect(houseBHeading(page)).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByTestId("canvassing-current-door-copy")).toContainText(
+      "Door 2 of 3",
+    )
+    await expect(houseBMarker).toHaveAttribute("aria-pressed", "true", {
+      timeout: 5_000,
+    })
+  })
+
+  test("WR-03: keyboard Enter on a focused map marker activates the same transition", async ({
+    page,
+  }) => {
+    await gotoCanvassing(page)
+
+    // WR-03 closes the Enter-key gap flagged by phase 108 code review:
+    // <div role="button"> does NOT synthesize a click on Enter in modern
+    // browsers (only native <button> does), so the marker keydown listener
+    // now explicitly matches `key === "Enter"` alongside Space. This test
+    // guards against regression.
+    const houseBMarker = page.getByRole("button", {
+      name: /Activate door:.*456 Oak Avenue/i,
+    })
+    await expect(houseBMarker).toBeVisible({ timeout: 15_000 })
+    await houseBMarker.focus()
+
+    await page.keyboard.press("Enter")
+
     await expect(houseBHeading(page)).toBeVisible({ timeout: 5_000 })
     await expect(page.getByTestId("canvassing-current-door-copy")).toContainText(
       "Door 2 of 3",
