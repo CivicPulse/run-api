@@ -89,6 +89,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     advanceAddress,
     jumpToAddress,
     skipEntry,
+    unskipEntry,
     touch,
   } = useCanvassingStore()
 
@@ -437,16 +438,95 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     maybeAdvanceAfterHouseholdSettled(currentHousehold)
   }, [currentHousehold, maybeAdvanceAfterHouseholdSettled])
 
+  // Phase 107 D-05/D-06/D-07 + RESEARCH.md §2 option (c):
+  // Synchronous local skip → immediate advance → mutation in background.
+  // The 300ms setTimeout that used to live here was hiding a race between
+  // local Zustand state, the skip mutation's invalidate/refetch, and the
+  // households memo's pinning logic. Replacing the timeout with an
+  // `isPending` guard closes the double-tap race AND removes the
+  // wall-clock dependency entirely.
   const handleSkipAddress = useCallback(() => {
     if (!currentHousehold) return
-    for (const entry of currentHousehold.entries) {
-      if (completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id)) {
-        skipEntry(entry.id)
-        skipEntryMutation.mutate(entry.id)
-      }
+    if (skipEntryMutation.isPending) return // anti-double-tap guard
+
+    // Snapshot entries to skip BEFORE store mutations so the Undo closure
+    // can reference the exact set we just skipped, regardless of any
+    // subsequent store changes.
+    const entriesToSkip = currentHousehold.entries
+      .filter(
+        (entry) =>
+          completedEntries[entry.id] === undefined &&
+          !skippedEntries.includes(entry.id),
+      )
+      .map((entry) => entry.id)
+
+    if (entriesToSkip.length === 0) {
+      // Nothing to skip; just advance.
+      advanceRef.current()
+      return
     }
-    setTimeout(() => advanceRef.current(), 300)
-  }, [currentHousehold, completedEntries, skippedEntries, skipEntry, skipEntryMutation])
+
+    // Snapshot current index + completed count so the Undo can decide
+    // whether it's still valid (D-06: undo only if no other outcome was
+    // recorded since the skip).
+    const skipAtAddressIndex = useCanvassingStore.getState().currentAddressIndex
+    const skipAtCompletedCount = Object.keys(
+      useCanvassingStore.getState().completedEntries,
+    ).length
+
+    // (1) Local store update — synchronous.
+    for (const id of entriesToSkip) {
+      skipEntry(id)
+    }
+
+    // (2) Advance immediately — no setTimeout.
+    advanceRef.current()
+
+    // (3) Info toast with Undo action (D-06 + UI-SPEC §Toast Contract).
+    toast.info("Skipped — Undo", {
+      id: "skip-undo",
+      duration: 4000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const state = useCanvassingStore.getState()
+          const completedSince =
+            Object.keys(state.completedEntries).length > skipAtCompletedCount
+          if (completedSince) {
+            toast("Can't undo — already moved on", {
+              id: "skip-undo-unavailable",
+              duration: 3000,
+            })
+            return
+          }
+          for (const id of entriesToSkip) {
+            unskipEntry(id)
+          }
+          useCanvassingStore.setState({ currentAddressIndex: skipAtAddressIndex })
+        },
+      },
+    })
+
+    // (4) Fire mutations in background; on error surface a toast but DO
+    //     NOT roll back the local skip — D-05 says skip is reversible and
+    //     the volunteer can re-activate from the household list.
+    for (const id of entriesToSkip) {
+      skipEntryMutation.mutate(id, {
+        onError: () => {
+          toast.error("Skip didn't sync — still saved on this device", {
+            id: "skip-sync-error",
+          })
+        },
+      })
+    }
+  }, [
+    currentHousehold,
+    completedEntries,
+    skippedEntries,
+    skipEntry,
+    unskipEntry,
+    skipEntryMutation,
+  ])
 
   const handleBulkNotHome = useCallback(
     async (entries: EnrichedWalkListEntry[]) => {
@@ -504,6 +584,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,
     isSavingDoorKnock: doorKnockMutation.isPending,
+    isSkipPending: skipEntryMutation.isPending,
     handleOutcome,
     handleSubmitContact,
     handlePostSurveyAdvance,

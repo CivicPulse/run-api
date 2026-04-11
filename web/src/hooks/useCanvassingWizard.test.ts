@@ -150,16 +150,28 @@ const entries: EnrichedWalkListEntry[] = [
 
 const toastError = vi.hoisted(() => vi.fn())
 const toastSuccess = vi.hoisted(() => vi.fn())
+const toastInfo = vi.hoisted(() => vi.fn())
+const toastBase = vi.hoisted(() => vi.fn())
 const entriesData = vi.hoisted(() => ({ value: [] as unknown[] }))
+const skipMutationState = vi.hoisted(() => ({ isPending: false }))
 
 vi.mock("@/hooks/useCanvassing", () => ({
   useEnrichedEntries: vi.fn(() => ({ data: entriesData.value, isLoading: false, isError: false })),
   useDoorKnockMutation: vi.fn(() => ({ mutateAsync, isPending: false })),
-  useSkipEntryMutation: vi.fn(() => ({ mutate: skipMutate })),
+  useSkipEntryMutation: vi.fn(() => ({
+    mutate: skipMutate,
+    get isPending() {
+      return skipMutationState.isPending
+    },
+  })),
 }))
 
 vi.mock("sonner", () => ({
-  toast: Object.assign(vi.fn(), { error: toastError, success: toastSuccess }),
+  toast: Object.assign(toastBase, {
+    error: toastError,
+    success: toastSuccess,
+    info: toastInfo,
+  }),
 }))
 
 const originalVibrate = (navigator as Navigator & { vibrate?: (pattern: number | number[]) => boolean }).vibrate
@@ -172,6 +184,9 @@ describe("useCanvassingWizard", () => {
     skipMutate.mockReset()
     toastError.mockReset()
     toastSuccess.mockReset()
+    toastInfo.mockReset()
+    toastBase.mockReset()
+    skipMutationState.isPending = false
     entriesData.value = entries
     Object.defineProperty(navigator, "vibrate", {
       configurable: true,
@@ -323,7 +338,142 @@ describe("useCanvassingWizard", () => {
       expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
       expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
     })
-    expect(skipMutate).toHaveBeenCalledWith("entry-a")
+    expect(skipMutate).toHaveBeenCalledWith("entry-a", expect.any(Object))
+  })
+
+  // ---------------------------------------------------------------------------
+  // Phase 107-05 — D-05/D-06/D-07 skip race fix regression suite.
+  // ---------------------------------------------------------------------------
+
+  test("handleSkipAddress advances synchronously without setTimeout", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // No waitFor needed for timing — the advance is synchronous now. The
+    // assertion runs in the same React batch as the skip.
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+    expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
+  })
+
+  test("double-tap Skip is guarded by isPending and only advances once", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // Simulate the skip mutation now in flight on the second tap.
+    skipMutationState.isPending = true
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // Index should have advanced exactly ONCE despite two taps.
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+    // mutate should have been called exactly once (only the first tap fired
+    // a mutation; the second tap was a no-op).
+    expect(skipMutate).toHaveBeenCalledTimes(1)
+    expect(skipMutate).toHaveBeenCalledWith("entry-a", expect.any(Object))
+  })
+
+  test("skip fires sonner info toast with Undo action", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    expect(toastInfo).toHaveBeenCalledWith(
+      "Skipped — Undo",
+      expect.objectContaining({
+        id: "skip-undo",
+        duration: 4000,
+        action: expect.objectContaining({
+          label: "Undo",
+          onClick: expect.any(Function),
+        }),
+      }),
+    )
+  })
+
+  test("Undo toast action restores skipped entries to pending if no outcome recorded since", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // Sanity: skipped + advanced
+    expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+
+    // Capture the Undo onClick from the toast call args.
+    const toastCall = toastInfo.mock.calls[0]
+    const action = toastCall[1].action as { onClick: () => void }
+
+    act(() => {
+      action.onClick()
+    })
+
+    // Skip should be reversed and the index restored.
+    expect(useCanvassingStore.getState().skippedEntries).toEqual([])
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(0)
+  })
+
+  test("Undo after another outcome was recorded shows 'Can't undo' toast and is a no-op", async () => {
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // Simulate that another outcome got recorded since the skip.
+    act(() => {
+      useCanvassingStore.getState().recordOutcome("entry-b", "not_home")
+    })
+
+    const toastCall = toastInfo.mock.calls[0]
+    const action = toastCall[1].action as { onClick: () => void }
+
+    act(() => {
+      action.onClick()
+    })
+
+    // The skipped entry should remain skipped — Undo bailed out.
+    expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
+    // A "Can't undo — already moved on" warning should have fired via the
+    // base toast() function.
+    expect(toastBase).toHaveBeenCalledWith(
+      "Can't undo — already moved on",
+      expect.objectContaining({ id: "skip-undo-unavailable", duration: 3000 }),
+    )
+  })
+
+  test("skip mutation failure surfaces error toast and keeps local skip", async () => {
+    // Make skipMutate invoke its onError option immediately.
+    skipMutate.mockImplementation((_id: string, options?: { onError?: () => void }) => {
+      options?.onError?.()
+    })
+
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    act(() => {
+      result.current.handleSkipAddress()
+    })
+
+    // Local skip should still be in place per D-05 (skip is reversible; we
+    // don't roll back on server failure).
+    expect(useCanvassingStore.getState().skippedEntries).toEqual(["entry-a"])
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+    // Error toast fired.
+    expect(toastError).toHaveBeenCalledWith(
+      "Skip didn't sync — still saved on this device",
+      expect.objectContaining({ id: "skip-sync-error" }),
+    )
   })
 
   // ---------------------------------------------------------------------------

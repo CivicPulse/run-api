@@ -27,6 +27,8 @@ interface HouseholdCardProps {
   currentDoorNumber: number
   totalDoors: number
   sortMode: CanvassingSortMode
+  isSavingDoorKnock?: boolean
+  isSkipPending?: boolean
   onOutcomeSelect: (
     entryId: string,
     voterId: string,
@@ -43,9 +45,12 @@ export const HouseholdCard = forwardRef<HTMLHeadingElement, HouseholdCardProps>(
   currentDoorNumber,
   totalDoors,
   sortMode,
+  isSavingDoorKnock = false,
+  isSkipPending = false,
   onOutcomeSelect,
   onSkip,
 }, ref) {
+  const skipDisabled = isSavingDoorKnock || isSkipPending
   const pendingCount = household.entries.filter(
     (entry) => completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id),
   ).length
@@ -148,6 +153,7 @@ export const HouseholdCard = forwardRef<HTMLHeadingElement, HouseholdCardProps>(
               entry={entry}
               isActive={entry.id === activeEntryId}
               recordedOutcome={completedEntries[entry.id]}
+              outcomesDisabled={skipDisabled}
               onOutcomeSelect={(result) =>
                 onOutcomeSelect(entry.id, entry.voter_id, result)
               }
@@ -161,6 +167,9 @@ export const HouseholdCard = forwardRef<HTMLHeadingElement, HouseholdCardProps>(
         <Button
           variant="ghost"
           onClick={onSkip}
+          disabled={skipDisabled}
+          aria-disabled={skipDisabled ? "true" : undefined}
+          aria-label="Skip this house. You can come back to it."
           className="text-sm text-muted-foreground min-h-11"
           data-tour="skip-button"
         >
