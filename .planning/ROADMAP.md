@@ -250,6 +250,19 @@ Plans:
 4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
 5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
 
+**Plans:** 9 plans
+
+Plans:
+- [ ] 107-01-PLAN.md — usePrefersReducedMotion hook + unit test (D-20 dependency for Plan 04)
+- [ ] 107-02-PLAN.md — HOUSE_LEVEL_OUTCOMES set in types/canvassing.ts + unit test (D-18 dependency for Plan 04)
+- [ ] 107-03-PLAN.md — Integration test locking empty-notes door-knock contract (D-10/D-16)
+- [ ] 107-04-PLAN.md — CANV-01: D-18 hybrid advance refactor + triple-channel feedback (D-03) + ARIA live + focus management
+- [ ] 107-05-PLAN.md — CANV-02: handleSkipAddress refactor per RESEARCH §2 option (c); isPending guard; Undo toast (D-06, D-07)
+- [ ] 107-06-PLAN.md — CANV-03: notesRequired prop decoupling in InlineSurvey; both call sites updated per D-19; new test file
+- [ ] 107-07-PLAN.md — FORMS-01: write 107-FORMS-AUDIT.md with 4-row disposition table (D-12, D-14, D-19)
+- [ ] 107-08-PLAN.md — E2E spec canvassing-wizard.spec.ts covering CANV-01/02/03 + FORMS-01 D-17 via run-e2e.sh
+- [ ] 107-09-PLAN.md — Phase exit gate: ruff + pytest + vitest + run-e2e.sh green; write 107-VERIFICATION-RESULTS.md
+
 **Dependencies:** Phase 106.
 
 #### Phase 108: House Selection & Active-State
