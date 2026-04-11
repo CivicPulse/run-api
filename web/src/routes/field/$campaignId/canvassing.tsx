@@ -515,6 +515,7 @@ function Canvassing() {
               activeHouseholdKey={currentHousehold.householdKey}
               locationStatus={locationStatus}
               locationSnapshot={locationSnapshot}
+              onHouseholdSelect={handleJumpToAddress}
             />
 
             <Card className="p-4 space-y-3" data-testid="canvassing-sort-controls">

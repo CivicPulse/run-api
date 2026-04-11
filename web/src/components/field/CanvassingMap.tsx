@@ -1,10 +1,12 @@
 import L from "leaflet"
-import { useMemo } from "react"
-import { Marker, Tooltip } from "react-leaflet"
+import type { Marker as LeafletMarker } from "leaflet"
+import { useCallback, useEffect, useMemo, useRef } from "react"
+import { Marker, Tooltip, useMap } from "react-leaflet"
 import { AlertTriangle, LocateFixed, MapIcon, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapProvider } from "@/components/canvassing/map/MapProvider"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import {
   getGoogleMapsUrl,
   hasAddress,
@@ -25,25 +27,24 @@ const volunteerIcon = new L.Icon({
   shadowSize: [41, 41],
 })
 
-const activeHouseholdIcon = new L.Icon({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
-  iconSize: [30, 49],
-  iconAnchor: [15, 49],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: "canvassing-map-active-marker",
-})
-
-const householdIcon = new L.Icon({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
+// Phase 108 Spike A2 — Converted from L.Icon to L.DivIcon so the marker root
+// is a <div> that can host a ::before pseudo-element for the Contract 2b
+// 44×44 hit-area expansion. Void <img> roots cannot host ::before, so the
+// Contract 2b rule would silently fail without this conversion.
+const householdIcon = new L.DivIcon({
+  html: '<img src="/leaflet/marker-icon.png" srcset="/leaflet/marker-icon-2x.png 2x" width="25" height="41" alt="" />',
+  className: "canvassing-map-household-marker",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+})
+
+const activeHouseholdIcon = new L.DivIcon({
+  html: '<img src="/leaflet/marker-icon.png" srcset="/leaflet/marker-icon-2x.png 2x" width="30" height="49" alt="" />',
+  className: "canvassing-map-household-marker canvassing-map-active-marker",
+  iconSize: [30, 49],
+  iconAnchor: [15, 49],
+  popupAnchor: [1, -40],
 })
 
 interface CanvassingMapProps {
@@ -51,6 +52,134 @@ interface CanvassingMapProps {
   activeHouseholdKey?: string | null
   locationStatus: CanvassingLocationStatus
   locationSnapshot: CoordinatePoint | null
+  onHouseholdSelect: (index: number) => void
+}
+
+interface InteractiveHouseholdMarkerProps {
+  household: Household
+  isActive: boolean
+  onClick: (household: Household) => void
+}
+
+// Per Phase 108 Spike A1: Leaflet 1.9.4 routes Enter-key activation via the
+// browser's role="button" synthetic click path, but does NOT handle Space.
+// We attach a post-mount keydown listener that matches event.key === " " to
+// close Contract 2c (Enter + Space activation).
+function InteractiveHouseholdMarker({
+  household,
+  isActive,
+  onClick,
+}: InteractiveHouseholdMarkerProps) {
+  const markerRef = useRef<LeafletMarker | null>(null)
+
+  useEffect(() => {
+    const marker = markerRef.current
+    if (!marker) return
+    const el = marker.getElement()
+    if (!el) return
+    el.setAttribute("role", "button")
+    el.setAttribute("aria-label", `Activate door: ${household.address}`)
+    el.setAttribute("aria-pressed", isActive ? "true" : "false")
+    el.setAttribute("tabindex", "0")
+    el.classList.add("canvassing-map-household-marker")
+    if (isActive) {
+      el.classList.add("canvassing-map-active-marker")
+    } else {
+      el.classList.remove("canvassing-map-active-marker")
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault()
+        onClick(household)
+      }
+    }
+    el.addEventListener("keydown", handleKeyDown)
+    return () => {
+      el.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [household, isActive, onClick])
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={[household.latitude as number, household.longitude as number]}
+      icon={isActive ? activeHouseholdIcon : householdIcon}
+      zIndexOffset={isActive ? 1000 : 0}
+      keyboard={true}
+      eventHandlers={{
+        click: () => onClick(household),
+      }}
+    >
+      <Tooltip>
+        {isActive ? `Current door: ${household.address}` : household.address}
+      </Tooltip>
+    </Marker>
+  )
+}
+
+interface CanvassingMapMarkersProps {
+  households: Household[]
+  mappableHouseholds: Household[]
+  activeHouseholdKey: string | null
+  onHouseholdSelect: (index: number) => void
+  volunteerLocation: CoordinatePoint | null
+}
+
+// Inner component so `useMap()` + `usePrefersReducedMotion()` resolve inside
+// the MapProvider subtree (research Pitfall 4). Must be rendered as a child
+// of <MapProvider>.
+function CanvassingMapMarkers({
+  households,
+  mappableHouseholds,
+  activeHouseholdKey,
+  onHouseholdSelect,
+  volunteerLocation,
+}: CanvassingMapMarkersProps) {
+  const map = useMap()
+  const prefersReducedMotion = usePrefersReducedMotion()
+
+  const handleMarkerClick = useCallback(
+    (household: Household) => {
+      // Resolve to the ORIGINAL households[] index (research Pitfall 3).
+      // A loop counter would return the mappableHouseholds index, which
+      // diverges whenever any household is missing coordinates.
+      const index = households.findIndex(
+        (h) => h.householdKey === household.householdKey,
+      )
+      if (index < 0) return
+
+      onHouseholdSelect(index)
+      map.panTo([household.latitude as number, household.longitude as number], {
+        animate: !prefersReducedMotion,
+        duration: 0.5,
+      })
+    },
+    [households, onHouseholdSelect, map, prefersReducedMotion],
+  )
+
+  return (
+    <>
+      {volunteerLocation && (
+        <Marker
+          position={[volunteerLocation.latitude, volunteerLocation.longitude]}
+          icon={volunteerIcon}
+          keyboard={false}
+          interactive={false}
+        >
+          <Tooltip>Your saved location</Tooltip>
+        </Marker>
+      )}
+      {mappableHouseholds.map((household) => (
+        <InteractiveHouseholdMarker
+          key={household.householdKey}
+          household={household}
+          isActive={household.householdKey === activeHouseholdKey}
+          onClick={handleMarkerClick}
+        />
+      ))}
+    </>
+  )
 }
 
 function getGeolocationCopy(locationStatus: CanvassingLocationStatus): string {
@@ -72,6 +201,7 @@ export function CanvassingMap({
   activeHouseholdKey = null,
   locationStatus,
   locationSnapshot,
+  onHouseholdSelect,
 }: CanvassingMapProps) {
   const volunteerLocation = isValidCoordinatePoint(locationSnapshot)
     ? locationSnapshot
@@ -157,32 +287,13 @@ export function CanvassingMap({
               center={mapCenter}
               className="h-64 md:h-96 w-full rounded-md border"
             >
-              {volunteerLocation && (
-                <Marker
-                  position={[volunteerLocation.latitude, volunteerLocation.longitude]}
-                  icon={volunteerIcon}
-                >
-                  <Tooltip>Your saved location</Tooltip>
-                </Marker>
-              )}
-
-              {mappableHouseholds.map((household) => {
-                const isActive = household.householdKey === activeHouseholdKey
-
-                return (
-                  <Marker
-                    key={household.householdKey}
-                    position={[household.latitude, household.longitude]}
-                    icon={isActive ? activeHouseholdIcon : householdIcon}
-                  >
-                    <Tooltip>
-                      {isActive
-                        ? `Current door: ${household.address}`
-                        : household.address}
-                    </Tooltip>
-                  </Marker>
-                )
-              })}
+              <CanvassingMapMarkers
+                households={households}
+                mappableHouseholds={mappableHouseholds}
+                activeHouseholdKey={activeHouseholdKey}
+                onHouseholdSelect={onHouseholdSelect}
+                volunteerLocation={volunteerLocation}
+              />
             </MapProvider>
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
