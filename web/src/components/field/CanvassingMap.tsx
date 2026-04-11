@@ -1,4 +1,3 @@
-import L from "leaflet"
 import type { Marker as LeafletMarker } from "leaflet"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Marker, Tooltip, useMap } from "react-leaflet"
@@ -6,6 +5,15 @@ import { AlertTriangle, LocateFixed, MapIcon, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapProvider } from "@/components/canvassing/map/MapProvider"
+// Phase 109-02 MAP-01 — all Leaflet marker icons (including the DivIcon
+// household markers that preserve the phase 108 Spike A2 ::before hit-area
+// contract) now live in @/components/canvassing/map/leafletIcons so Vite
+// fingerprints and bundles every asset. See 109-ASSET-AUDIT.md.
+import {
+  volunteerIcon,
+  householdIcon,
+  activeHouseholdIcon,
+} from "@/components/canvassing/map/leafletIcons"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import {
   getGoogleMapsUrl,
@@ -16,36 +24,6 @@ import {
   type Household,
 } from "@/types/canvassing"
 import type { CanvassingLocationStatus } from "@/stores/canvassingStore"
-
-const volunteerIcon = new L.Icon({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
-
-// Phase 108 Spike A2 — Converted from L.Icon to L.DivIcon so the marker root
-// is a <div> that can host a ::before pseudo-element for the Contract 2b
-// 44×44 hit-area expansion. Void <img> roots cannot host ::before, so the
-// Contract 2b rule would silently fail without this conversion.
-const householdIcon = new L.DivIcon({
-  html: '<img src="/leaflet/marker-icon.png" srcset="/leaflet/marker-icon-2x.png 2x" width="25" height="41" alt="" />',
-  className: "canvassing-map-household-marker",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-})
-
-const activeHouseholdIcon = new L.DivIcon({
-  html: '<img src="/leaflet/marker-icon.png" srcset="/leaflet/marker-icon-2x.png 2x" width="30" height="49" alt="" />',
-  className: "canvassing-map-household-marker canvassing-map-active-marker",
-  iconSize: [30, 49],
-  iconAnchor: [15, 49],
-  popupAnchor: [1, -40],
-})
 
 interface CanvassingMapProps {
   households: Household[]
