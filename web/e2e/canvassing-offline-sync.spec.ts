@@ -719,7 +719,18 @@ test.describe("Phase 110 — canvassing offline sync", () => {
     // success signal is that the dead-letter empties and a subsequent
     // drain lands a 200. Re-trigger drain via offline/online toggle to
     // avoid waiting for the 30s periodic drain.
+    //
+    // Plan 110-08 exit-gate: the toggle MUST produce an observable
+    // isOnline=false → true transition in React. Without waiting for
+    // the pill to reach the Offline state between toggles, Playwright's
+    // two CDP calls can coalesce fast enough that React's
+    // useConnectivityStatus never re-renders, so the useEffect([isOnline])
+    // drain timer never re-arms — and the test is left waiting for the
+    // 30s periodic drain, which exceeds the 25s poll below.
     await context.setOffline(true)
+    await expect(pill(page)).toHaveAttribute("aria-label", /Offline/, {
+      timeout: 5_000,
+    })
     await context.setOffline(false)
 
     // Final state: dead-letter + items both empty, pill returns to the
