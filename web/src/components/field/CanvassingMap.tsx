@@ -81,12 +81,6 @@ function InteractiveHouseholdMarker({
     el.setAttribute("aria-label", `Activate door: ${household.address}`)
     el.setAttribute("aria-pressed", isActive ? "true" : "false")
     el.setAttribute("tabindex", "0")
-    el.classList.add("canvassing-map-household-marker")
-    if (isActive) {
-      el.classList.add("canvassing-map-active-marker")
-    } else {
-      el.classList.remove("canvassing-map-active-marker")
-    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === " " || e.code === "Space") {
