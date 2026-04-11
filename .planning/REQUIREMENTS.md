@@ -39,7 +39,7 @@ Requirements derived from:
 
 ### FORMS — Field-Mode Form Requiredness
 
-- [ ] **FORMS-01**: A field-mode form audit identifies every `required` validator and every form field in the canvassing and phone banking flows; each is reviewed against its UX intent and over-eager validations are removed.
+- [x] **FORMS-01**: A field-mode form audit identifies every `required` validator and every form field in the canvassing and phone banking flows; each is reviewed against its UX intent and over-eager validations are removed.
 
 ### OFFLINE — Offline Queue Hardening
 
