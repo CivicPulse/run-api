@@ -235,6 +235,52 @@ describe("HouseholdCard render-path regression (Plan 107-08.1)", () => {
     })
   })
 
+  // Phase 108-02 — SELECT-01 D-13 render-path guard for list-tap.
+  // Mirrors the 107-08.1 regression guard: a buggy handleJumpToAddress (pin
+  // not cleared) would keep showing House A at the new index. The fix in
+  // Plan 108-02 Task 1 clears the pin BEFORE calling storeJumpToAddress so
+  // the rendered DOM swaps. Verified RED/GREEN per the plan.
+  test("rendered address swaps to the next household after a list-tap (handleJumpToAddress)", async () => {
+    let wizardApi: ReturnType<typeof useCanvassingWizard> | null = null
+    render(
+      <WizardHarness
+        onReady={(api) => {
+          wizardApi = api
+        }}
+      />,
+    )
+
+    // Sanity: the harness starts on House A (3-voter household at index 0).
+    await waitFor(() => {
+      expect(screen.getByTestId("rendered-household-key").textContent).toBe(
+        "house-multi",
+      )
+      expect(screen.getByTestId("rendered-address").textContent).toContain(
+        HOUSE_A_LINE1,
+      )
+    })
+
+    // Act: simulate a list-tap on House B (index 1) via handleJumpToAddress.
+    act(() => {
+      wizardApi!.handleJumpToAddress(1)
+    })
+
+    // Assertion: the RENDERED DOM TEXT must show House B's address. Pre-fix
+    // the pinnedHouseholdKey would re-pin house-multi at the new index slot
+    // and this text would still read "300 Pine St".
+    await waitFor(() => {
+      expect(screen.getByTestId("rendered-household-key").textContent).toBe(
+        "house-next",
+      )
+      expect(screen.getByTestId("rendered-address").textContent).toContain(
+        HOUSE_B_LINE1,
+      )
+      expect(screen.getByTestId("rendered-address").textContent).not.toContain(
+        HOUSE_A_LINE1,
+      )
+    })
+  })
+
   test("rendered address swaps to the next household after Skip", async () => {
     let wizardApi: ReturnType<typeof useCanvassingWizard> | null = null
     render(
