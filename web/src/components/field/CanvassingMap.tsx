@@ -1,6 +1,6 @@
 import L from "leaflet"
 import type { Marker as LeafletMarker } from "leaflet"
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Marker, Tooltip, useMap } from "react-leaflet"
 import { AlertTriangle, LocateFixed, MapIcon, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
@@ -71,6 +71,13 @@ function InteractiveHouseholdMarker({
   onClick,
 }: InteractiveHouseholdMarkerProps) {
   const markerRef = useRef<LeafletMarker | null>(null)
+  // WR-02: stash onClick in a ref so the keydown listener does not re-bind
+  // every time the upstream `households` memo produces a fresh callback
+  // identity (distance-sort memo churns on every geolocation tick).
+  const onClickRef = useRef(onClick)
+  useLayoutEffect(() => {
+    onClickRef.current = onClick
+  }, [onClick])
 
   useEffect(() => {
     const marker = markerRef.current
@@ -85,14 +92,14 @@ function InteractiveHouseholdMarker({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === " " || e.code === "Space") {
         e.preventDefault()
-        onClick(household)
+        onClickRef.current(household)
       }
     }
     el.addEventListener("keydown", handleKeyDown)
     return () => {
       el.removeEventListener("keydown", handleKeyDown)
     }
-  }, [household, isActive, onClick])
+  }, [household, isActive])
 
   return (
     <Marker
