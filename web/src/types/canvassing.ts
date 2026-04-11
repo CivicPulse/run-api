@@ -83,6 +83,28 @@ export const AUTO_ADVANCE_OUTCOMES = new Set<DoorKnockResultCode>([
   "not_home", "come_back_later", "moved", "deceased", "inaccessible",
 ])
 
+/**
+ * House-level outcomes (per phase 107 D-18).
+ *
+ * These outcomes describe the HOUSEHOLD, not an individual voter. When a
+ * volunteer records one of these against any voter at a household, the
+ * canvassing wizard treats all remaining unrecorded voters at that household
+ * as covered by the same outcome and advances to the next house immediately.
+ *
+ * `moved` and `deceased` are intentionally NOT house-level — those apply to
+ * a single person and the volunteer should iterate through the remaining
+ * residents at the address.
+ *
+ * Note: D-18 originally referenced `vacant` and `wrong_address`; neither
+ * exists in `DoorKnockResultCode`. The closest semantic fits in the real
+ * enum are `come_back_later` and `inaccessible`, which are included here.
+ */
+export const HOUSE_LEVEL_OUTCOMES = new Set<DoorKnockResultCode>([
+  "not_home",
+  "come_back_later",
+  "inaccessible",
+])
+
 export const OUTCOME_COLORS: Record<DoorKnockResultCode, { bg: string; text: string; border: string }> = {
   supporter:       { bg: "bg-status-success", text: "text-status-success-foreground", border: "border-status-success-foreground/30" },
   undecided:       { bg: "bg-status-warning", text: "text-status-warning-foreground", border: "border-status-warning-foreground/30" },
