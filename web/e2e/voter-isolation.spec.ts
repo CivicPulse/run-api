@@ -30,11 +30,13 @@ test.describe("Voter Data Isolation", () => {
       ignoreHTTPSErrors: true,
     })
     const page = await ctx.newPage()
-    const baseURL = process.env.CI
-      ? "https://localhost:4173"
-      : process.env.E2E_USE_DEV_SERVER === "1"
-        ? "http://localhost:5173"
-        : "https://localhost:4173"
+    // Honor E2E_DEV_SERVER_URL (docker/external web server) — see fixtures.ts for rationale.
+    const baseURL = process.env.E2E_DEV_SERVER_URL
+      ?? (process.env.CI
+        ? "https://localhost:4173"
+        : process.env.E2E_USE_DEV_SERVER === "1"
+          ? "http://localhost:5173"
+          : "https://localhost:4173")
     await page.goto(baseURL)
     await page.waitForURL(
       (url) =>
@@ -68,11 +70,13 @@ test.describe("Voter Data Isolation", () => {
       ignoreHTTPSErrors: true,
     })
     const page = await ctx.newPage()
-    const baseURL = process.env.CI
-      ? "https://localhost:4173"
-      : process.env.E2E_USE_DEV_SERVER === "1"
-        ? "http://localhost:5173"
-        : "https://localhost:4173"
+    // Honor E2E_DEV_SERVER_URL (docker/external web server) — see fixtures.ts for rationale.
+    const baseURL = process.env.E2E_DEV_SERVER_URL
+      ?? (process.env.CI
+        ? "https://localhost:4173"
+        : process.env.E2E_USE_DEV_SERVER === "1"
+          ? "http://localhost:5173"
+          : "https://localhost:4173")
     await page.goto(baseURL)
     await page.waitForURL(
       (url) =>
