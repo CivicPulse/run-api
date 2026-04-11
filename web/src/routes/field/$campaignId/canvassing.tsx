@@ -119,11 +119,15 @@ function Canvassing() {
     }
   }, [key, currentHousehold, startSegment])
 
+  // WR-05: depend on Boolean(currentHousehold) so the increment fires once
+  // `currentHousehold` hydrates (not only when `key` first becomes truthy).
+  // Without this the counter under-counts page visits where the wizard
+  // hydrates after the tour key resolves.
   useEffect(() => {
     if (!key || !currentHousehold) return
     const { incrementSession } = useTourStore.getState()
     incrementSession(key, "canvassing")
-  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, Boolean(currentHousehold)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: walkListDetail } = useWalkList(campaignId, walkListId)
   const scriptId = walkListDetail?.script_id ?? ""
