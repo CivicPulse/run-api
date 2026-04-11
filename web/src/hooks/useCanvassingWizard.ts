@@ -12,6 +12,7 @@ import {
   orderHouseholdsBySequence,
   SURVEY_TRIGGER_OUTCOMES,
   AUTO_ADVANCE_OUTCOMES,
+  HOUSE_LEVEL_OUTCOMES,
 } from "@/types/canvassing"
 import type {
   DoorKnockResultCode,
@@ -50,6 +51,25 @@ function toVolunteerSafeMessage(error: unknown, fallback: string): string {
   }
 
   return fallback
+}
+
+// Phase 107 D-03 + UI-SPEC §Toast Contract / §Haptic Contract.
+// Triple-channel feedback: toast + vibrate. Focus + ARIA live live in the
+// route component since they need DOM refs. Called immediately before any
+// auto-advance fires so the volunteer gets confirmation across three
+// independent channels (visual text + visual layout + tactile).
+function announceAutoAdvance(): void {
+  toast.success("Recorded — next house", {
+    id: "auto-advance",
+    duration: 2000,
+  })
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try {
+      navigator.vibrate(50)
+    } catch {
+      // Silent no-op on platforms where vibrate exists but throws.
+    }
+  }
 }
 
 export function useCanvassingWizard(campaignId: string, walkListId: string) {
@@ -215,6 +235,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     useCanvassingStore.getState().recordOutcome(payload.walk_list_entry_id, payload.result_code)
   }, [campaignId, walkListId])
 
+  const lastDoorKnockPayloadRef = useRef<DoorKnockCreate | null>(null)
+
   const maybeAdvanceAfterHouseholdSettled = useCallback((household?: Household | null) => {
     const targetHousehold = household ?? currentHouseholdRef.current
     if (!targetHousehold) return
@@ -226,31 +248,61 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         state.skippedEntries.includes(entry.id),
     )
     if (allDone) {
+      announceAutoAdvance()
       advanceRef.current()
     }
   }, [])
+
+  // Phase 107 D-18: house-level outcomes (`not_home`, `come_back_later`,
+  // `inaccessible`) bypass the per-voter settled gate and advance the wizard
+  // immediately — the outcome describes the WHOLE household, so the volunteer
+  // should not be stuck iterating through every voter at the address. Voter-
+  // level outcomes (`moved`, `deceased`, `refused`) fall through to the legacy
+  // settled-household helper.
+  const advanceAfterOutcome = useCallback(
+    (result: DoorKnockResultCode, household?: Household | null) => {
+      if (HOUSE_LEVEL_OUTCOMES.has(result)) {
+        announceAutoAdvance()
+        advanceRef.current()
+        return
+      }
+      maybeAdvanceAfterHouseholdSettled(household)
+    },
+    [maybeAdvanceAfterHouseholdSettled],
+  )
 
   const submitDoorKnock = useCallback(async (
     payload: DoorKnockCreate,
     options?: {
       household?: Household | null
       advanceOnSuccess?: boolean
+      advanceResult?: DoorKnockResultCode
       showErrorToast?: boolean
       errorMessage?: string
+      useRetryToast?: boolean
       onError?: (error: unknown) => void
     },
   ) => {
+    lastDoorKnockPayloadRef.current = payload
     try {
       await doorKnockMutation.mutateAsync(payload)
       if (options?.advanceOnSuccess) {
-        maybeAdvanceAfterHouseholdSettled(options.household)
+        if (options.advanceResult) {
+          advanceAfterOutcome(options.advanceResult, options.household)
+        } else {
+          maybeAdvanceAfterHouseholdSettled(options.household)
+        }
       }
       return true
     } catch (err) {
       if (err instanceof TypeError) {
         queueDoorKnockOffline(payload)
         if (options?.advanceOnSuccess) {
-          maybeAdvanceAfterHouseholdSettled(options.household)
+          if (options.advanceResult) {
+            advanceAfterOutcome(options.advanceResult, options.household)
+          } else {
+            maybeAdvanceAfterHouseholdSettled(options.household)
+          }
         }
         return true
       }
@@ -258,11 +310,36 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       options?.onError?.(err)
 
       if (options?.showErrorToast !== false) {
-        toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
+        if (options?.useRetryToast) {
+          // Phase 107 D-04 + UI-SPEC §Toast Contract "Error — save failed".
+          // Persistent toast with Retry action; the card stays on the failing
+          // house and the volunteer never loses context.
+          toast.error("Couldn't save — tap to retry", {
+            id: "auto-advance-error",
+            duration: Number.POSITIVE_INFINITY,
+            action: {
+              label: "Retry",
+              onClick: () => {
+                const retryPayload = lastDoorKnockPayloadRef.current
+                if (retryPayload) {
+                  void submitDoorKnockRef.current?.(retryPayload, options)
+                }
+              },
+            },
+          })
+        } else {
+          toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
+        }
       }
       return false
     }
-  }, [doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
+  }, [advanceAfterOutcome, doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
+
+  // Forward ref for the retry callback closure (avoids "used before declared")
+  const submitDoorKnockRef = useRef<typeof submitDoorKnock | null>(null)
+  useLayoutEffect(() => {
+    submitDoorKnockRef.current = submitDoorKnock
+  }, [submitDoorKnock])
 
   const handleOutcome = useCallback(
     async (entryId: string, voterId: string, result: DoorKnockResultCode): Promise<OutcomeResult> => {
@@ -279,6 +356,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       const saved = await submitDoorKnock(payload, {
         household: currentHousehold,
         advanceOnSuccess: AUTO_ADVANCE_OUTCOMES.has(result),
+        advanceResult: result,
+        useRetryToast: true,
       })
       if (!saved) return {}
 
@@ -344,6 +423,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     // intentionally from handleOutcome (simple outcomes like not_home), which
     // waits for every resident to settle before advancing.
     if (saved) {
+      announceAutoAdvance()
       advanceRef.current()
     }
 
