@@ -1,3 +1,4 @@
+import { forwardRef } from "react"
 import {
   type Household,
   getGoogleMapsUrl,
@@ -34,7 +35,7 @@ interface HouseholdCardProps {
   onSkip: () => void
 }
 
-export function HouseholdCard({
+export const HouseholdCard = forwardRef<HTMLHeadingElement, HouseholdCardProps>(function HouseholdCard({
   household,
   activeEntryId,
   completedEntries,
@@ -44,7 +45,7 @@ export function HouseholdCard({
   sortMode,
   onOutcomeSelect,
   onSkip,
-}: HouseholdCardProps) {
+}, ref) {
   const pendingCount = household.entries.filter(
     (entry) => completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id),
   ).length
@@ -83,7 +84,17 @@ export function HouseholdCard({
 
       <div className="mt-2 flex items-center gap-2">
         <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-        <span className="text-xl font-bold">{household.address}</span>
+        {/* Phase 107 D-03 + UI-SPEC §Card Swap Transition: address heading is
+            an h2 with tabIndex={-1} so the route can move focus here after
+            auto-advance, ensuring the volunteer's screen reader announces the
+            new address and keyboard focus never falls back to <body>. */}
+        <h2
+          ref={ref}
+          tabIndex={-1}
+          className="text-xl font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        >
+          {household.address}
+        </h2>
       </div>
 
       <p className="mt-2 text-sm text-muted-foreground" data-testid="household-progress-copy">
@@ -159,4 +170,4 @@ export function HouseholdCard({
       </div>
     </Card>
   )
-}
+})

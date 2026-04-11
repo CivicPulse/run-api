@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FieldProgress } from "@/components/field/FieldProgress"
 import { HouseholdCard } from "@/components/field/HouseholdCard"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { InlineSurvey } from "@/components/field/InlineSurvey"
 import { useResumePrompt } from "@/components/field/ResumePrompt"
 import { DoorListView } from "@/components/field/DoorListView"
@@ -59,6 +60,8 @@ function Canvassing() {
   const setLocationState = useCanvassingStore((s) => s.setLocationState)
 
   const [isCapturingLocation, setIsCapturingLocation] = useState(false)
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const householdCardRef = useRef<HTMLHeadingElement>(null)
 
   useGeolocationWatch({
     active: sortMode === "distance",
@@ -196,6 +199,15 @@ function Canvassing() {
     const key = `milestones-fired-canvassing-${walkListId}`
     checkMilestone(completedAddresses, totalAddresses, key)
   }, [completedAddresses, totalAddresses, walkListId])
+
+  // Phase 107 D-03 + UI-SPEC §Card Swap Transition: after the household
+  // changes (auto-advance, skip, jump), move keyboard focus to the new
+  // card's address heading. Mandatory regardless of motion preference —
+  // we never let focus fall back to <body>.
+  useEffect(() => {
+    if (!currentHousehold) return
+    householdCardRef.current?.focus()
+  }, [currentHousehold?.householdKey])
 
   const closeDraft = useCallback(() => {
     setSurveyOpen(false)
@@ -566,9 +578,14 @@ function Canvassing() {
 
             <div
               key={currentHousehold.householdKey}
-              className="animate-in fade-in slide-in-from-right-4 duration-300"
+              className={
+                prefersReducedMotion
+                  ? ""
+                  : "animate-in fade-in slide-in-from-right-4 duration-200"
+              }
             >
               <HouseholdCard
+                ref={householdCardRef}
                 household={currentHousehold}
                 activeEntryId={activeEntryId}
                 completedEntries={completedEntries}
