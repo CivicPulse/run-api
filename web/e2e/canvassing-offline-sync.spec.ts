@@ -591,13 +591,20 @@ test.describe("Phase 110 — canvassing offline sync", () => {
     await expect.poll(() => handler.calls, { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
 
     // Queue is still non-empty (backed off), not dead-lettered — this
-    // is the REL-02 invariant for 5xx per plan 110-04.
+    // is the REL-02 invariant for 5xx per plan 110-04. After reconnect
+    // ConnectivityPill's deriveView takes the online-with-queue branch,
+    // which uses the aria-label phrasing "N outcomes pending sync"
+    // (distinct from the offline phrasing "Offline, N pending" matched
+    // earlier in this test). Match either phrasing so the assertion is
+    // robust if deriveView's copy changes again.
     const backedOff = await readOfflineQueue(page)
     expect(backedOff.items).toHaveLength(1)
     expect(backedOff.deadLetter).toHaveLength(0)
-    await expect(pill(page)).toHaveAttribute("aria-label", /1 pending/, {
-      timeout: 5_000,
-    })
+    await expect(pill(page)).toHaveAttribute(
+      "aria-label",
+      /outcomes? pending sync|1 pending/,
+      { timeout: 5_000 },
+    )
 
     // Flip the handler to success and re-trigger a drain by bouncing
     // offline/online. The 1s online-transition debounce in useSyncEngine

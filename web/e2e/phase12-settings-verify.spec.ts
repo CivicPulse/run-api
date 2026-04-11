@@ -72,6 +72,13 @@ test.describe("CAMP-01: General settings tab — campaign edit form", () => {
     const discardBtn = page.getByRole("button", { name: /discard/i })
     await expect(discardBtn).not.toBeVisible({ timeout: 3000 })
 
+    // Wait for the post-save react-hook-form reset() to land on the just-
+    // saved value BEFORE filling again. Otherwise the second fill() races
+    // the onSuccess reset and the input snaps back to the previous value,
+    // leaving the database polluted with "E2E Test Campaign (CAMP-01)"
+    // for subsequent runs.
+    await expect(nameInput).toHaveValue(editedName, { timeout: 5_000 })
+
     // Restore seed name to keep test environment clean for other specs
     await nameInput.fill("Macon-Bibb Demo Campaign")
     await expect(nameInput).toHaveValue("Macon-Bibb Demo Campaign", { timeout: 3_000 })
