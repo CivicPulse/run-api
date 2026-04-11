@@ -231,4 +231,107 @@ describe("CanvassingMap", () => {
     expect(screen.getByText(/does not have enough coordinate data/i)).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /open current door in google maps/i })).toBeInTheDocument()
   })
+
+  test("SELECT-02 — marker click calls map.panTo with animate=true when motion is allowed", async () => {
+    const { usePrefersReducedMotion } = await import("@/hooks/usePrefersReducedMotion")
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false)
+
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const second = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    second?.eventHandlers?.click?.()
+
+    expect(panToSpy).toHaveBeenCalledWith(
+      [32.85, -83.62],
+      expect.objectContaining({ animate: true, duration: 0.5 }),
+    )
+  })
+
+  test("SELECT-02 — marker click calls map.panTo with animate=false under prefers-reduced-motion", async () => {
+    const { usePrefersReducedMotion } = await import("@/hooks/usePrefersReducedMotion")
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true)
+
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const second = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    second?.eventHandlers?.click?.()
+
+    expect(panToSpy).toHaveBeenCalledWith(
+      [32.85, -83.62],
+      expect.objectContaining({ animate: false, duration: 0.5 }),
+    )
+
+    // Restore default for subsequent tests
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false)
+  })
+
+  test("SELECT-02 — volunteer location marker is non-interactive (Contract 2c exclusion)", () => {
+    render(
+      <CanvassingMap
+        households={[makeHousehold({ householdKey: "hh-1", latitude: 32.85, longitude: -83.62 })]}
+        activeHouseholdKey="hh-1"
+        locationStatus="ready"
+        locationSnapshot={{ latitude: 32.841, longitude: -83.631 }}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const volunteerMarker = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.841 && p.position?.[1] === -83.631,
+    )
+    expect(volunteerMarker).toBeDefined()
+    expect(volunteerMarker?.interactive).toBe(false)
+    expect(volunteerMarker?.keyboard).toBe(false)
+    expect(volunteerMarker?.eventHandlers?.click).toBeUndefined()
+  })
+
+  test("SELECT-02 — active household marker gets zIndexOffset=1000 for visual emphasis", () => {
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-2"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const active = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    const idle = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.84 && p.position?.[1] === -83.63,
+    )
+    expect(active?.zIndexOffset).toBe(1000)
+    expect(idle?.zIndexOffset).toBe(0)
+  })
 })
