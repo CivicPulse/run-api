@@ -309,5 +309,5 @@
    satisfies the color-blindness rule. Two drop-shadows stack to form
    a visible primary-color halo independent of hue perception. */
 .leaflet-marker-icon.canvassing-map-active-marker {
-  filter: drop-shadow(0 0 0 var(--primary)) drop-shadow(0 0 4px var(--primary));
+  filter: drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 6px var(--primary));
 }
