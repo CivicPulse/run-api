@@ -47,6 +47,7 @@ function Canvassing() {
     isLoading,
     isError,
     isSavingDoorKnock,
+    isSkipPending,
     handleOutcome,
     handleSubmitContact,
     handleSkipAddress,
@@ -593,6 +594,8 @@ function Canvassing() {
                 currentDoorNumber={currentAddressIndex + 1}
                 totalDoors={totalAddresses}
                 sortMode={sortMode}
+                isSavingDoorKnock={isSavingDoorKnock}
+                isSkipPending={isSkipPending}
                 onOutcomeSelect={handleOutcomeWithBulk}
                 onSkip={handleSkipAddress}
               />
@@ -612,6 +615,7 @@ function Canvassing() {
           onSubmitDraft={handleSubmitContactDraft}
           isSubmitting={isSavingDoorKnock}
           submitLabel="Save Door Knock"
+          notesRequired={false}
         />
       )}
 
