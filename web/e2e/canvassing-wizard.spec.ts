@@ -377,12 +377,13 @@ test.describe("Canvassing wizard — phase 107", () => {
       { timeout: 5_000 },
     )
 
-    // The skipped household is now badged "Skipped" — D-05 reversibility
-    // marker that proves the local skip was applied to all 3 entries at
-    // House A in one tap.
-    await expect(
-      page.getByTestId("household-status-copy").filter({ hasText: /^Skipped$/i }),
-    ).toBeVisible({ timeout: 5_000 })
+    // Post-107-08.1 (pinning fix): the displayed HouseholdCard now swaps to
+    // the next house (House B) instead of staying pinned to the skipped
+    // House A. The "Skipped" badge therefore lives on a household that is
+    // no longer rendered as the active card. The Sonner toast below carries
+    // the D-05/D-06 reversibility signal at this layer; the per-entry skip
+    // state is exhaustively covered by HouseholdCard.test.tsx (107-08.1)
+    // and useCanvassingWizard.test.ts (107-05).
 
     // Sonner info toast "Skipped — Undo" is the D-06 reversibility surface.
     await expect(page.getByText(/Skipped — Undo/i)).toBeVisible({
