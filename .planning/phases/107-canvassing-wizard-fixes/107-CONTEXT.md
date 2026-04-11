@@ -134,6 +134,67 @@ Requirements satisfied: **CANV-01, CANV-02, CANV-03, FORMS-01**
   `.planning/todos/pending/`, NOT a fix in this phase. The phase 107 scope
   is the audit + the safe removals.
 
+### Post-Research Decisions (added 2026-04-10 after RESEARCH.md)
+
+- **D-18: CANV-01 root cause is the household-settled gate, not the
+  outcome set.** Researcher discovered that `AUTO_ADVANCE_OUTCOMES` in
+  `web/src/types/canvassing.ts:82-84` is **already complete and correct**.
+  The actual stall is in `useCanvassingWizard.ts:218-231`
+  (`maybeAdvanceAfterHouseholdSettled`), which gates advance on EVERY
+  voter at the household being settled. So tapping `not_home` on Voter 1
+  of a 3-voter household leaves the volunteer stuck on that house.
+
+  **Decision: HYBRID interpretation of D-01.** Outcomes are split into
+  two categories by domain:
+
+  - **House-level outcomes** (apply to the whole household, advance the
+    HOUSE immediately): `not_home`, `vacant`, `wrong_address`
+  - **Voter-level outcomes** (apply to one person, mark that voter and
+    iterate to the next voter at the same house; advance the house only
+    when all voters are settled OR the volunteer taps Skip):
+    `refused`, `moved`, `deceased`, `do_not_contact`, `language_barrier`
+  - **Survey path** (`contacted`): unchanged per D-02 — opens survey
+    panel, advances on save success.
+
+  Implementation: introduce a `HOUSE_LEVEL_OUTCOMES` set in
+  `types/canvassing.ts` next to `AUTO_ADVANCE_OUTCOMES`. Modify
+  `maybeAdvanceAfterHouseholdSettled` (or replace it with a new helper)
+  so that:
+  - If the recorded outcome is in `HOUSE_LEVEL_OUTCOMES` → mark all
+    remaining unrecorded voters at the household as
+    "covered by house outcome" (or just mark them as `not_home`/whatever
+    the house outcome was — backend may need to accept this) and
+    advance to next house immediately.
+  - Otherwise → use the existing per-voter advance logic.
+  - Researcher should confirm during planning whether the backend
+    accepts a single "house outcome" record or whether the frontend must
+    create per-voter records. If per-voter, the frontend writes the
+    house outcome to all voters at that household in one batch, then
+    advances.
+
+- **D-19: Phone-banking call notes follow the canvassing rule (notes
+  optional).** FORMS-01 audit found 3 save-blocking validators total:
+  1. `InlineSurvey.tsx:135` — the CANV-03 bug → **REMOVE**
+  2. `SmsComposer.tsx:70` — empty SMS body → **KEEP** (you cannot send a
+     blank SMS; data integrity)
+  3. `SmsBulkSendSheet.tsx:93` — bulk SMS body → **KEEP** (same reason)
+  4. **Phone-banking call notes (location TBD by researcher during
+     planning)** → **REMOVE**. Same rule as canvassing: notes are
+     optional, the volunteer marks the call outcome and may add notes
+     but isn't blocked. Audit doc records this with rationale "consistency
+     with CANV-03; outcome IS the record, notes are bonus context."
+  Net audit surface is tiny (~4 hits total), so the FORMS-AUDIT.md doc
+  will be brief but explicit.
+
+- **D-20: `usePrefersReducedMotion` hook is added in this phase.** UI-SPEC
+  references `usePrefersReducedMotion` for conditional vibrate, conditional
+  toast duration, and conditional card-swap animation. Researcher confirmed
+  no such hook exists. Create
+  `web/src/hooks/usePrefersReducedMotion.ts` (~15 lines) using
+  `matchMedia('(prefers-reduced-motion: reduce)')` with a useEffect
+  listener. Reusable in phases 108-110 (which will also have animations).
+  Add a unit test at `web/src/hooks/usePrefersReducedMotion.test.ts`.
+
 ### Test Coverage (TEST-01/02/03 obligation)
 
 - **D-16:** **All three layers for every CANV fix:**
