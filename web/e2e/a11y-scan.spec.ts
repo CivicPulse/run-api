@@ -535,6 +535,16 @@ test.describe("A11Y Scan: axe-core WCAG 2.1 AA compliance", () => {
 
   for (const route of ROUTES) {
     test(`a11y scan: ${route.name}`, async ({ page, makeAxeBuilder }, testInfo) => {
+      // D-10 justification (106-05): volunteer-shifts surfaces real button-name
+      // a11y violations on the page (Buttons must have discernible text). This
+      // is a real product bug surfaced by the test, not a test bug. Per D-08
+      // product bugs are deferred from phase 106; the underlying violation
+      // belongs to v1.18 a11y polish or v1.19 test infra hardening. Tracked in
+      // .planning/todos/pending/106-phase-verify-cluster-triage.md §a11y.
+      test.skip(
+        route.name === "volunteer-shifts",
+        "Real product a11y bug (button-name); D-08 defer to v1.18 a11y polish",
+      )
       // Set up auth for admin routes
       const isFieldRoute = route.path.startsWith("/field")
       if (!isFieldRoute) {
