@@ -312,6 +312,29 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       payload = { ...payload, client_uuid: crypto.randomUUID() }
     }
     lastDoorKnockPayloadRef.current = payload
+
+    // Plan 110-08 exit-gate Rule 1 fix: pre-flight offline check.
+    // The ConnectivityPill derives its "Offline" state from navigator.onLine,
+    // so submitDoorKnock must branch on the SAME signal — otherwise the pill
+    // and the queue disagree about whether we're offline. The post-failure
+    // `instanceof TypeError` branch below remains a safety net for "we
+    // thought we were online and the request died mid-flight", but the
+    // primary offline trigger is now navigator.onLine === false. This also
+    // makes the offline fallback fire synchronously instead of waiting for
+    // ky/fetch to time out (which under Playwright's CDP setOffline can
+    // take the full 10s ky timeout instead of throwing TypeError).
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      queueDoorKnockOffline(payload)
+      if (options?.advanceOnSuccess) {
+        if (options.advanceResult) {
+          advanceAfterOutcome(options.advanceResult, options.household)
+        } else {
+          maybeAdvanceAfterHouseholdSettled(options.household)
+        }
+      }
+      return true
+    }
+
     try {
       await doorKnockMutation.mutateAsync(payload)
       if (options?.advanceOnSuccess) {

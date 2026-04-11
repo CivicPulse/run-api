@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import { useCanvassingWizard } from "@/hooks/useCanvassingWizard"
 import { useCanvassingStore } from "@/stores/canvassingStore"
+import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
 import type { EnrichedWalkListEntry } from "@/types/canvassing"
 
 const mutateAsync = vi.fn()
@@ -676,6 +677,68 @@ describe("useCanvassingWizard", () => {
     }).not.toThrow()
 
     expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+  })
+
+  // ---------------------------------------------------------------------------
+  // Plan 110-08 exit-gate Rule 1 — pre-flight navigator.onLine check.
+  // Regression guard: when the browser reports offline, submitDoorKnock must
+  // push to the offline queue SYNCHRONOUSLY without ever hitting mutateAsync.
+  // This was the bug that blocked the OFFLINE-01/02/03 Playwright tests —
+  // ky's request hangs under Playwright's CDP setOffline until ky's own 10s
+  // timeout, which is past the 5s assertion window.
+  // ---------------------------------------------------------------------------
+
+  test("submitDoorKnock pre-flights navigator.onLine and queues offline without firing mutateAsync", async () => {
+    // Stub navigator.onLine on the INSTANCE, and track whether we installed
+    // our own override so the finally block can remove it cleanly without
+    // touching the prototype getter (if happy-dom defines one).
+    const hadOwn = Object.prototype.hasOwnProperty.call(navigator, "onLine")
+    const priorOwnDescriptor = hadOwn
+      ? Object.getOwnPropertyDescriptor(navigator, "onLine")
+      : undefined
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => false,
+    })
+    try {
+      useOfflineQueueStore.setState({ items: [], deadLetter: [] })
+
+      const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+      await act(async () => {
+        await result.current.handleOutcome("entry-a", "voter-a", "not_home")
+      })
+
+      // Mutation never ran — the offline branch short-circuits before it.
+      expect(mutateAsync).not.toHaveBeenCalled()
+
+      // Queue picked up the payload synchronously.
+      const items = useOfflineQueueStore.getState().items
+      expect(items).toHaveLength(1)
+      expect(items[0]).toMatchObject({
+        type: "door_knock",
+        campaignId: "camp-1",
+        resourceId: "walk-1",
+        payload: expect.objectContaining({
+          walk_list_entry_id: "entry-a",
+          voter_id: "voter-a",
+          result_code: "not_home",
+          client_uuid: expect.any(String),
+        }),
+      })
+
+      // recordOutcome ran — the UI advances through the household.
+      expect(
+        useCanvassingStore.getState().completedEntries["entry-a"],
+      ).toBe("not_home")
+    } finally {
+      if (priorOwnDescriptor) {
+        Object.defineProperty(navigator, "onLine", priorOwnDescriptor)
+      } else {
+        delete (navigator as unknown as { onLine?: boolean }).onLine
+      }
+      useOfflineQueueStore.setState({ items: [], deadLetter: [] })
+    }
   })
 
   test("empty notes on handleSubmitContact still advances (CANV-03 coupling)", async () => {
