@@ -303,6 +303,14 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       onError?: (error: unknown) => void
     },
   ) => {
+    // Plan 110-02 / OFFLINE-01: stamp client_uuid at the call site so the
+    // online mutation AND the offline fallback share the same UUID. If a
+    // connection drops between server-commit and client-ack, the retry
+    // lands on the server's partial unique index → 409 → offline sync
+    // drops the queued item via its existing isConflict branch.
+    if (!payload.client_uuid) {
+      payload = { ...payload, client_uuid: crypto.randomUUID() }
+    }
     lastDoorKnockPayloadRef.current = payload
     try {
       await doorKnockMutation.mutateAsync(payload)

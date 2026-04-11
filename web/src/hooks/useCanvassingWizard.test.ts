@@ -272,14 +272,19 @@ describe("useCanvassingWizard", () => {
 
     expect(submission!.saved).toBe(true)
     expect(submission!.failure).toBeNull()
-    expect(mutateAsync).toHaveBeenCalledWith({
+    // Plan 110-02 / OFFLINE-01: submitDoorKnock stamps client_uuid on the
+    // online path so a mid-flight retry after a drop carries the same UUID
+    // and hits the server's 409 dedup path. Use objectContaining so the
+    // UUID's exact value doesn't hard-couple this test.
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       walk_list_entry_id: "entry-a",
       voter_id: "voter-a",
       result_code: "supporter",
       notes: "Met voter at the door.",
       survey_responses: [{ question_id: "q-1", voter_id: "voter-a", answer_value: "Supporter" }],
       survey_complete: true,
-    })
+      client_uuid: expect.any(String),
+    }))
 
     // Deep per-voter contact submit advances the wizard unconditionally — even
     // if remaining residents at this address are still pending — so the
@@ -320,11 +325,13 @@ describe("useCanvassingWizard", () => {
     const outcome = await result.current.handleOutcome("entry-a", "voter-a", "not_home")
 
     expect(outcome).toEqual({})
-    expect(mutateAsync).toHaveBeenCalledWith({
+    // Plan 110-02 / OFFLINE-01: client_uuid stamped at call site.
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       walk_list_entry_id: "entry-a",
       voter_id: "voter-a",
       result_code: "not_home",
-    })
+      client_uuid: expect.any(String),
+    }))
   })
 
   test("skips the current address back into the queue and advances to the next door", async () => {

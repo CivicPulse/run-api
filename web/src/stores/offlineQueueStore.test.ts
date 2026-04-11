@@ -19,13 +19,16 @@ describe("offlineQueueStore", () => {
         voter_id: "voter-1",
         result_code: "supporter",
         notes: "Friendly",
-      },
+      } as unknown as import("@/types/walk-list").DoorKnockCreate,
       campaignId: "camp-1",
       resourceId: "wl-1",
     })
 
     const state = useOfflineQueueStore.getState()
     expect(state.items).toHaveLength(1)
+    // Plan 110-02 / OFFLINE-01: payload.client_uuid is stamped at push
+    // time with the same UUID as item.id, so duplicate server replays
+    // 409 against the partial unique index.
     expect(state.items[0]).toEqual({
       id: "test-uuid-1",
       type: "door_knock",
@@ -34,6 +37,7 @@ describe("offlineQueueStore", () => {
         voter_id: "voter-1",
         result_code: "supporter",
         notes: "Friendly",
+        client_uuid: "test-uuid-1",
       },
       campaignId: "camp-1",
       resourceId: "wl-1",
@@ -42,7 +46,81 @@ describe("offlineQueueStore", () => {
     })
   })
 
+  test("push() stamps client_uuid on door_knock payload matching item.id (OFFLINE-01)", () => {
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("dk-uuid" as `${string}-${string}-${string}-${string}-${string}`)
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: {
+        walk_list_entry_id: "entry-a",
+        voter_id: "voter-a",
+        result_code: "supporter",
+      } as unknown as import("@/types/walk-list").DoorKnockCreate,
+      campaignId: "camp-1",
+      resourceId: "wl-1",
+    })
+
+    const item = useOfflineQueueStore.getState().items[0]
+    expect(item.id).toBe("dk-uuid")
+    expect((item.payload as import("@/types/walk-list").DoorKnockCreate).client_uuid).toBe("dk-uuid")
+  })
+
+  test("push() skips duplicate door_knock for same (entry, voter, result) triple (OFFLINE-01 double-enqueue guard)", () => {
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("first-uuid" as `${string}-${string}-${string}-${string}-${string}`)
+      .mockReturnValueOnce("second-uuid" as `${string}-${string}-${string}-${string}-${string}`)
+
+    const base = {
+      walk_list_entry_id: "entry-x",
+      voter_id: "voter-x",
+      result_code: "not_home",
+    } as unknown as import("@/types/walk-list").DoorKnockCreate
+
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: base,
+      campaignId: "camp-1",
+      resourceId: "wl-1",
+    })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: base,
+      campaignId: "camp-1",
+      resourceId: "wl-1",
+    })
+
+    const state = useOfflineQueueStore.getState()
+    expect(state.items).toHaveLength(1)
+    expect(state.items[0].id).toBe("first-uuid")
+  })
+
+  test("push() allows different door_knock triples to coexist", () => {
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: {
+        walk_list_entry_id: "entry-1",
+        voter_id: "voter-1",
+        result_code: "supporter",
+      } as unknown as import("@/types/walk-list").DoorKnockCreate,
+      campaignId: "camp-1",
+      resourceId: "wl-1",
+    })
+    useOfflineQueueStore.getState().push({
+      type: "door_knock",
+      payload: {
+        walk_list_entry_id: "entry-1",
+        voter_id: "voter-1",
+        result_code: "not_home", // different result_code
+      } as unknown as import("@/types/walk-list").DoorKnockCreate,
+      campaignId: "camp-1",
+      resourceId: "wl-1",
+    })
+
+    expect(useOfflineQueueStore.getState().items).toHaveLength(2)
+  })
+
   test("push() with type 'door_knock' stores DoorKnockCreate payload", () => {
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("store-uuid" as `${string}-${string}-${string}-${string}-${string}`)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
       payload: {
@@ -51,19 +129,21 @@ describe("offlineQueueStore", () => {
         result_code: "not_home",
         latitude: 40.7128,
         longitude: -74.006,
-      },
+      } as unknown as import("@/types/walk-list").DoorKnockCreate,
       campaignId: "camp-1",
       resourceId: "wl-1",
     })
 
     const item = useOfflineQueueStore.getState().items[0]
     expect(item.type).toBe("door_knock")
+    // Plan 110-02 / OFFLINE-01: push() stamps client_uuid matching item.id
     expect(item.payload).toEqual({
       walk_list_entry_id: "entry-1",
       voter_id: "voter-1",
       result_code: "not_home",
       latitude: 40.7128,
       longitude: -74.006,
+      client_uuid: "store-uuid",
     })
   })
 
