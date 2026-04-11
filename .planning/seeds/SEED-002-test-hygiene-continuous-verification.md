@@ -123,6 +123,41 @@ Related code and decisions found in the current codebase:
 - `CLAUDE.md` — already mandates `web/scripts/run-e2e.sh` and `uv run`
   patterns. Any new automation must honor those conventions.
 
+## Hard Constraints
+
+**Dev/test env is docker-compose-only.** Any implementation of this seed
+MUST honor the project invariant: the entire local stack runs via
+`docker compose up -d`. No standalone `vite`, `npm run dev`,
+`uv run uvicorn`, or `python` commands to start dev servers.
+
+Concrete implications for each deliverable above:
+
+- **Pre-commit hooks** — can run `pytest --lf` and `vitest related` against
+  already-up docker services, but must NOT spin up anything new. If
+  compose isn't already up, the hook should fail fast with
+  "run `docker compose up -d` first" rather than silently start a
+  background process.
+- **Push-trigger CI** — every test job starts with
+  `docker compose up -d --wait` (or equivalent healthcheck wait). Never
+  `uv run uvicorn &` or `npm run dev &` as a background step.
+- **Scheduled nightly run** — same compose-up-first pattern. The full
+  suite runs against compose-hosted services.
+- **Env-drift healthcheck** — should *additionally* validate that no
+  services are running **outside** the compose stack (e.g., no rogue
+  vite or uvicorn processes bound to the dev ports).
+- **E2E targeting** — `E2E_DEV_SERVER_URL` points at the docker `web`
+  service URL, not a local vite instance. The override added in
+  phase 106 exists for this exact purpose.
+- **Seed data for tests** — scripts hit the running compose stack
+  (e.g., `scripts/seed.py`, `scripts/create-e2e-users.py`), never a
+  separately-spun backend.
+
+This constraint is load-bearing: phase 106 proved that 488 of 565 silent
+failures were env drift, and much of that drift would be impossible under
+strict compose-only discipline. Solving the symptom (continuous tests)
+without solving the cause (env-parity) just accelerates the drift
+detection without preventing the drift itself.
+
 ## Notes
 
 - This seed is **prerequisite** to any future milestone that touches
