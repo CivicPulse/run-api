@@ -99,6 +99,18 @@ jobs:
           ZITADEL_DOMAIN: localhost
           DISABLE_TLS: "true"
 
+      - name: Dump compose logs on startup failure
+        if: failure()
+        run: |
+          echo "===== docker compose ps ====="
+          docker compose ps -a || true
+          echo "===== zitadel logs ====="
+          docker compose logs zitadel || true
+          echo "===== zitadel-bootstrap logs ====="
+          docker compose logs zitadel-bootstrap || true
+          echo "===== zitadel-db logs ====="
+          docker compose logs zitadel-db || true
+
       - name: Wait for ZITADEL readiness
         run: |
           for i in $(seq 1 60); do
@@ -150,6 +162,18 @@ jobs:
           ZITADEL_EXTERNAL_SECURE: "false"
           ZITADEL_DOMAIN: localhost
           DISABLE_TLS: "true"
+
+      - name: Dump compose logs on startup failure
+        if: failure()
+        run: |
+          echo "===== docker compose ps ====="
+          docker compose ps -a || true
+          echo "===== zitadel logs ====="
+          docker compose logs zitadel || true
+          echo "===== zitadel-bootstrap logs ====="
+          docker compose logs zitadel-bootstrap || true
+          echo "===== zitadel-db logs ====="
+          docker compose logs zitadel-db || true
 
       - name: Wait for ZITADEL readiness
         run: |
