@@ -834,7 +834,13 @@ pseudo-element support"). The outcomes decide whether to include a keydown
 listener (A1) and whether to switch icons to `L.DivIcon` (A2). Both spikes
 are low-cost and eliminate 100% of the risk.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All four open questions were resolved by adoption in the plans:
+> Q1 → Plan 108-02 fires haptic in the hook (single fire point).
+> Q2 → Plan 108-05 creates a new `useCanvassingWizard.state-machine.test.ts` file.
+> Q3 → Plan 108-01 extends the existing E2E fixture with House C.
+> Q4 → Plan 108-04 uses inline Mermaid in `108-STATE-MACHINE.md`.
 
 1. **Should `handleJumpToAddress` fire the haptic pulse in the hook, or in
    the route (for symmetry with the current focus-move effect)?**
