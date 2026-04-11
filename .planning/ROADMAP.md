@@ -207,7 +207,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 | #   | Phase                                      | Goal                                                                                     | Requirements                                      |
 |-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
 | 106 | 5/5 | Complete    | 2026-04-11 |
-| 107 | 7/9 | In Progress|  |
+| 107 | 8/9 | In Progress|  |
 | 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
 | 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
 | 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
@@ -250,7 +250,7 @@ Plans:
 4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
 5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
 
-**Plans:** 7/9 plans executed
+**Plans:** 8/9 plans executed
 
 Plans:
 - [x] 107-01-PLAN.md — usePrefersReducedMotion hook + unit test (D-20 dependency for Plan 04)
@@ -260,7 +260,7 @@ Plans:
 - [x] 107-05-PLAN.md — CANV-02: handleSkipAddress refactor per RESEARCH §2 option (c); isPending guard; Undo toast (D-06, D-07)
 - [x] 107-06-PLAN.md — CANV-03: notesRequired prop decoupling in InlineSurvey; both call sites updated per D-19; new test file
 - [x] 107-07-PLAN.md — FORMS-01: write 107-FORMS-AUDIT.md with 4-row disposition table (D-12, D-14, D-19)
-- [ ] 107-08-PLAN.md — E2E spec canvassing-wizard.spec.ts covering CANV-01/02/03 + FORMS-01 D-17 via run-e2e.sh
+- [x] 107-08-PLAN.md — E2E spec canvassing-wizard.spec.ts covering CANV-01/02/03 + FORMS-01 D-17 via run-e2e.sh
 - [ ] 107-09-PLAN.md — Phase exit gate: ruff + pytest + vitest + run-e2e.sh green; write 107-VERIFICATION-RESULTS.md
 
 **Dependencies:** Phase 106.
