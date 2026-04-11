@@ -206,17 +206,19 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 
 | #   | Phase                                      | Goal                                                                                     | Requirements                                      |
 |-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
-| 106 | 5/5 | Complete   | 2026-04-11 |
+| 106 | 5/5 | Complete    | 2026-04-11 |
 | 107 | Canvassing Wizard Fixes                    | Auto-advance, working Skip House, optional outcome notes, form-requiredness audit        | CANV-01, CANV-02, CANV-03, FORMS-01               |
 | 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
 | 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
 | 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
 
-#### Phase 106: Test Baseline Trustworthiness
+#### Phase 106: Test Baseline Trustworthiness ✅ Complete (2026-04-10)
+
+**Status:** Complete — verified via 106-VERIFICATION.md (TEST-04 satisfied; D-12 exit gate passed with two consecutive Playwright greens at 01:52:12Z and 01:54:28Z; phase-verify cluster + a11y/voter-contacts deferrals authorized via D-15 Option D hybrid).
 
 **Goal:** Pre-existing broken or consistently failing tests are fixed or deleted so that any red test in the remaining v1.18 work signals a real regression.
 
-**Requirements:** TEST-04
+**Requirements:** TEST-04 ✅
 
 **Success criteria:**
 1. `uv run pytest` runs end-to-end with no unexpected failures (skips/xfails justified in code).
