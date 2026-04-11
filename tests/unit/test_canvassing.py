@@ -66,6 +66,7 @@ class TestCanvassService:
             return_value=mock_interaction,
         ) as mock_record:
             data = SimpleNamespace(
+                client_uuid=uuid.uuid4(),
                 voter_id=voter_id,
                 walk_list_entry_id=entry_id,
                 result_code=DoorKnockResult.SUPPORTER,
@@ -162,6 +163,7 @@ class TestCanvassService:
         service._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         data = SimpleNamespace(
+            client_uuid=uuid.uuid4(),
             voter_id=voter_id,
             walk_list_entry_id=entry_id,
             result_code=DoorKnockResult.SUPPORTER,
@@ -225,6 +227,7 @@ class TestCanvassService:
         service._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         data = SimpleNamespace(
+            client_uuid=uuid.uuid4(),
             voter_id=voter_id,
             walk_list_entry_id=entry_id,
             result_code=DoorKnockResult.SUPPORTER,
@@ -293,6 +296,7 @@ class TestCanvassService:
         service._survey_service.record_responses_batch = AsyncMock(return_value=[])
 
         data = SimpleNamespace(
+            client_uuid=uuid.uuid4(),
             voter_id=voter_id,
             walk_list_entry_id=entry_id,
             result_code=DoorKnockResult.NOT_HOME,
@@ -352,6 +356,7 @@ class TestCanvassService:
             return_value=mock_interaction,
         ):
             data = SimpleNamespace(
+                client_uuid=uuid.uuid4(),
                 voter_id=uuid.uuid4(),
                 walk_list_entry_id=entry_id,
                 result_code=DoorKnockResult.SUPPORTER,
@@ -395,6 +400,7 @@ class TestCanvassService:
 
         voter_id = uuid.uuid4()
         payload = DoorKnockCreate(
+            client_uuid=uuid.uuid4(),
             voter_id=voter_id,
             walk_list_entry_id=uuid.uuid4(),
             result_code=DoorKnockResult.SUPPORTER,

@@ -1,17 +1,14 @@
-"""Integration tests locking the CANV-03 optional-notes contract for door knocks.
+"""Integration tests locking OFFLINE-01 client_uuid idempotency contract.
 
-Phase 107 D-10/D-16: The door-knock POST must accept ``notes=None``,
-``notes=""``, an omitted ``notes`` field, and a real notes string. These
-tests prevent future regressions from re-introducing a NOT NULL or
-min-length constraint on the notes column.
-
-Per RESEARCH.md §3, ``DoorKnockCreate.notes`` is already
-``str | None = None`` and ``CanvassService.record_door_knock`` passes
-``data.notes`` through unchanged. These tests lock that contract.
+Plan 110-02: POST /door-knocks must accept a required ``client_uuid`` field
+and dedupe on ``(campaign_id, client_uuid)`` so that a replayed offline-
+queue item produces a 409 Conflict instead of a duplicate row. Race safety
+is provided by a DB UNIQUE index, not an app-level check-then-insert.
 """
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import pytest
@@ -24,24 +21,19 @@ from tests.integration.test_rls_api_smoke import _make_app_for_campaign
 
 
 @pytest.fixture
-async def door_knock_fixture(superuser_session):
-    """Seed a campaign + walk list + entry + voter for door-knock tests.
-
-    Yields a dict with the IDs the tests need to POST a door knock.
-    Cleans up in reverse FK order on teardown.
-    """
+async def idempotency_fixture(superuser_session):
+    """Seed a campaign + walk list + entry + voter for idempotency tests."""
     session = superuser_session
     now = utcnow()
 
     campaign_id = uuid.uuid4()
-    user_id = f"user-dk-{uuid.uuid4().hex[:8]}"
-    org_id = f"org-dk-{campaign_id.hex[:8]}"
+    user_id = f"user-idem-{uuid.uuid4().hex[:8]}"
+    org_id = f"org-idem-{campaign_id.hex[:8]}"
     voter_id = uuid.uuid4()
     turf_id = uuid.uuid4()
     walk_list_id = uuid.uuid4()
     entry_id = uuid.uuid4()
 
-    # User
     await session.execute(
         text(
             "INSERT INTO users (id, display_name, email, created_at, updated_at) "
@@ -49,19 +41,16 @@ async def door_knock_fixture(superuser_session):
         ),
         {
             "id": user_id,
-            "name": "Door Knock User",
-            "email": f"dk-{user_id}@test.com",
+            "name": "Idem User",
+            "email": f"idem-{user_id}@test.com",
             "now": now,
         },
     )
-
-    # Campaign
     await session.execute(
         text(
             "INSERT INTO campaigns (id, zitadel_org_id, name,"
-            " type, status, created_by, created_at,"
-            " updated_at) "
-            "VALUES (:id, :org_id, 'DK Campaign', 'STATE',"
+            " type, status, created_by, created_at, updated_at) "
+            "VALUES (:id, :org_id, 'Idem Campaign', 'STATE',"
             " 'ACTIVE', :created_by, :now, :now)"
         ),
         {
@@ -71,8 +60,6 @@ async def door_knock_fixture(superuser_session):
             "now": now,
         },
     )
-
-    # Campaign member (volunteer role -- endpoint requires volunteer+)
     await session.execute(
         text(
             "INSERT INTO campaign_members"
@@ -86,24 +73,20 @@ async def door_knock_fixture(superuser_session):
             "now": now,
         },
     )
-
-    # Voter
     await session.execute(
         text(
             "INSERT INTO voters (id, campaign_id, source_type,"
             " first_name, last_name, created_at, updated_at) "
-            "VALUES (:id, :cid, 'manual', 'Test', 'Voter', :now, :now)"
+            "VALUES (:id, :cid, 'manual', 'Idem', 'Voter', :now, :now)"
         ),
         {"id": voter_id, "cid": campaign_id, "now": now},
     )
-
-    # Turf (PostGIS polygon -- simple square)
     polygon_wkt = "SRID=4326;POLYGON((-90 40, -90 41, -89 41, -89 40, -90 40))"
     await session.execute(
         text(
             "INSERT INTO turfs (id, campaign_id, name, status, boundary,"
             " created_by, created_at, updated_at) "
-            "VALUES (:id, :cid, 'DK Turf', 'active',"
+            "VALUES (:id, :cid, 'Idem Turf', 'active',"
             " ST_GeomFromEWKT(:geom), :uid, :now, :now)"
         ),
         {
@@ -114,13 +97,11 @@ async def door_knock_fixture(superuser_session):
             "now": now,
         },
     )
-
-    # Walk list
     await session.execute(
         text(
             "INSERT INTO walk_lists (id, campaign_id, turf_id, name,"
             " created_by, created_at) "
-            "VALUES (:id, :cid, :tid, 'DK Walk List', :uid, :now)"
+            "VALUES (:id, :cid, :tid, 'Idem Walk List', :uid, :now)"
         ),
         {
             "id": walk_list_id,
@@ -130,8 +111,6 @@ async def door_knock_fixture(superuser_session):
             "now": now,
         },
     )
-
-    # Walk list entry
     await session.execute(
         text(
             "INSERT INTO walk_list_entries"
@@ -140,7 +119,6 @@ async def door_knock_fixture(superuser_session):
         ),
         {"id": entry_id, "wid": walk_list_id, "vid": voter_id},
     )
-
     await session.commit()
 
     yield {
@@ -153,9 +131,6 @@ async def door_knock_fixture(superuser_session):
         "entry_id": entry_id,
     }
 
-    # Teardown -- reverse FK order. voter_interactions are created by the
-    # door-knock POST and reference voter_id + campaign_id, so wipe them
-    # before voters/campaigns.
     await session.execute(
         text("DELETE FROM voter_interactions WHERE campaign_id = :cid"),
         {"cid": campaign_id},
@@ -196,7 +171,6 @@ def _build_client(
     app_user_engine,
     superuser_engine,
 ) -> AsyncClient:
-    """Build an ASGI AsyncClient acting as the seeded volunteer user."""
     app, _ = _make_app_for_campaign(
         data["user_id"],
         data["org_id"],
@@ -216,101 +190,103 @@ def _door_knock_url(data: dict) -> str:
     )
 
 
-def _base_payload(data: dict) -> dict:
-    # Plan 110-02 / OFFLINE-01: ``client_uuid`` is a required field on
-    # ``DoorKnockCreate`` for end-to-end idempotency. A fresh UUID per
-    # call keeps these tests independent of the idempotency contract —
-    # duplicate-detection semantics are covered in
-    # ``test_walk_list_door_knock_idempotency.py``.
+def _payload(data: dict, client_uuid: str) -> dict:
     return {
         "voter_id": str(data["voter_id"]),
         "walk_list_entry_id": str(data["entry_id"]),
         "result_code": "not_home",
-        "client_uuid": str(uuid.uuid4()),
+        "client_uuid": client_uuid,
     }
 
 
 @pytest.mark.integration
-class TestDoorKnockEmptyNotesContract:
-    """Lock the CANV-03 contract: notes is genuinely optional on door knocks.
+class TestDoorKnockClientUuidIdempotency:
+    """Lock OFFLINE-01: client_uuid-based exactly-once POST contract."""
 
-    Per D-10/D-16: ``POST /api/v1/campaigns/{id}/walk-lists/{id}/door-knocks``
-    must accept all four notes shapes (real string, empty string, ``None``,
-    omitted) and respond 201 in every case.
-    """
-
-    async def test_post_door_knock_with_real_notes_echoes_back(
+    async def test_duplicate_client_uuid_returns_409(
         self,
-        door_knock_fixture,
+        idempotency_fixture,
         app_user_engine,
         superuser_engine,
     ):
-        """Happy-path baseline: a real notes string round-trips intact."""
-        data = door_knock_fixture
-        payload = _base_payload(data)
-        payload["notes"] = "Left a flyer at the door."
+        """Second POST with same client_uuid → 409 Conflict."""
+        data = idempotency_fixture
+        client_uuid = str(uuid.uuid4())
+
+        async with _build_client(data, app_user_engine, superuser_engine) as client:
+            first = await client.post(
+                _door_knock_url(data), json=_payload(data, client_uuid)
+            )
+            assert first.status_code == 201, first.text
+
+            second = await client.post(
+                _door_knock_url(data), json=_payload(data, client_uuid)
+            )
+
+        assert second.status_code == 409, second.text
+        body = second.json()
+        # fastapi_problem_details returns RFC 7807 "type" as a URI; our slug
+        # is embedded at the tail.
+        assert "door-knock-duplicate" in (body.get("type") or "")
+
+    async def test_different_client_uuids_both_succeed(
+        self,
+        idempotency_fixture,
+        app_user_engine,
+        superuser_engine,
+    ):
+        """Two different client_uuids → both 201 (no false dedup)."""
+        data = idempotency_fixture
+
+        async with _build_client(data, app_user_engine, superuser_engine) as client:
+            r1 = await client.post(
+                _door_knock_url(data), json=_payload(data, str(uuid.uuid4()))
+            )
+            r2 = await client.post(
+                _door_knock_url(data), json=_payload(data, str(uuid.uuid4()))
+            )
+
+        assert r1.status_code == 201, r1.text
+        assert r2.status_code == 201, r2.text
+
+    async def test_missing_client_uuid_returns_422(
+        self,
+        idempotency_fixture,
+        app_user_engine,
+        superuser_engine,
+    ):
+        """Missing client_uuid → 422 Unprocessable (Pydantic required)."""
+        data = idempotency_fixture
+        payload = {
+            "voter_id": str(data["voter_id"]),
+            "walk_list_entry_id": str(data["entry_id"]),
+            "result_code": "not_home",
+        }
 
         async with _build_client(data, app_user_engine, superuser_engine) as client:
             resp = await client.post(_door_knock_url(data), json=payload)
 
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        assert body["notes"] == "Left a flyer at the door."
-        assert body["result_code"] == "not_home"
-        assert body["voter_id"] == str(data["voter_id"])
+        assert resp.status_code == 422, resp.text
 
-    async def test_post_door_knock_with_empty_string_notes_returns_201(
+    async def test_concurrent_duplicate_posts_exactly_one_201(
         self,
-        door_knock_fixture,
+        idempotency_fixture,
         app_user_engine,
         superuser_engine,
     ):
-        """Empty-string notes must be accepted (no min-length constraint)."""
-        data = door_knock_fixture
-        payload = _base_payload(data)
-        payload["notes"] = ""
+        """Concurrent POSTs with same client_uuid → one 201, one 409.
+
+        The DB unique index is the single source of truth. App-level
+        check-then-insert would race; this test locks the DB-level fix.
+        """
+        data = idempotency_fixture
+        client_uuid = str(uuid.uuid4())
 
         async with _build_client(data, app_user_engine, superuser_engine) as client:
-            resp = await client.post(_door_knock_url(data), json=payload)
+            r1, r2 = await asyncio.gather(
+                client.post(_door_knock_url(data), json=_payload(data, client_uuid)),
+                client.post(_door_knock_url(data), json=_payload(data, client_uuid)),
+            )
 
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        # Observed contract: empty string may be preserved as "" or normalized
-        # to None. Both are acceptable so long as no validation error fires.
-        assert body["notes"] in ("", None)
-
-    async def test_post_door_knock_with_null_notes_returns_201(
-        self,
-        door_knock_fixture,
-        app_user_engine,
-        superuser_engine,
-    ):
-        """Explicit ``notes=None`` must be accepted (no NOT NULL constraint)."""
-        data = door_knock_fixture
-        payload = _base_payload(data)
-        payload["notes"] = None
-
-        async with _build_client(data, app_user_engine, superuser_engine) as client:
-            resp = await client.post(_door_knock_url(data), json=payload)
-
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        assert body["notes"] is None
-
-    async def test_post_door_knock_omitting_notes_field_returns_201(
-        self,
-        door_knock_fixture,
-        app_user_engine,
-        superuser_engine,
-    ):
-        """Omitting the notes field entirely must succeed (truly optional)."""
-        data = door_knock_fixture
-        payload = _base_payload(data)
-        # Deliberately do NOT add a "notes" key.
-
-        async with _build_client(data, app_user_engine, superuser_engine) as client:
-            resp = await client.post(_door_knock_url(data), json=payload)
-
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        assert body["notes"] is None
+        statuses = sorted([r1.status_code, r2.status_code])
+        assert statuses == [201, 409], f"got {statuses}: {r1.text} | {r2.text}"

@@ -26,7 +26,7 @@ from app.schemas.walk_list import (
     WalkListResponse,
     WalkListUpdate,
 )
-from app.services.canvass import CanvassService
+from app.services.canvass import CanvassService, DuplicateClientUUIDError
 from app.services.walk_list import WalkListService
 
 router = APIRouter()
@@ -351,6 +351,20 @@ async def record_door_knock(
     try:
         result = await _canvass_service.record_door_knock(
             db, campaign_id, walk_list_id, body, user.id
+        )
+    except DuplicateClientUUIDError as exc:
+        # Plan 110-02 / OFFLINE-01: offline-queue replay of an already-
+        # synced outcome. The client's sync engine consumes this via its
+        # existing `isConflict` branch (useSyncEngine.ts) and drops the
+        # queue item without re-raising to the user.
+        return problem.ProblemResponse(
+            status=status.HTTP_409_CONFLICT,
+            title="Door Knock Duplicate",
+            detail=(
+                "An outcome with this client_uuid has already been recorded "
+                f"(client_uuid={exc.client_uuid})"
+            ),
+            type="door-knock-duplicate",
         )
     except ValueError as exc:
         return problem.ProblemResponse(

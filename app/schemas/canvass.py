@@ -48,8 +48,15 @@ class EnrichedEntryResponse(BaseSchema):
 
 
 class DoorKnockCreate(BaseSchema):
-    """Schema for recording a door knock attempt."""
+    """Schema for recording a door knock attempt.
 
+    ``client_uuid`` is a volunteer-device-generated UUID used for
+    end-to-end idempotency: resubmitting the same client_uuid within
+    the same campaign returns 409 rather than creating a duplicate
+    interaction. See plan 110-02 (OFFLINE-01) for the full contract.
+    """
+
+    client_uuid: uuid.UUID
     voter_id: uuid.UUID
     walk_list_entry_id: uuid.UUID
     result_code: DoorKnockResult

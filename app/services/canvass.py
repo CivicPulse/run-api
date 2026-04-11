@@ -6,6 +6,7 @@ import uuid
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.models.survey import SurveyScript
 from app.models.voter_interaction import InteractionType, VoterInteraction
@@ -18,6 +19,21 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.schemas.canvass import DoorKnockCreate
+
+
+class DuplicateClientUUIDError(Exception):
+    """Raised when a door-knock POST replays an already-recorded client_uuid.
+
+    Plan 110-02 / OFFLINE-01: the route layer converts this into an
+    RFC 7807 409 Conflict so the offline sync engine can drop the
+    duplicate queue item via its existing ``isConflict`` branch.
+    """
+
+    def __init__(self, client_uuid: str) -> None:
+        self.client_uuid = client_uuid
+        super().__init__(
+            f"Door knock with client_uuid {client_uuid} already recorded"
+        )
 
 
 class CanvassService:
@@ -85,14 +101,34 @@ class CanvassService:
             payload["script_id"] = str(script_id)
             payload["survey_response_count"] = len(data.survey_responses)
 
-        interaction = await self._interaction_service.record_interaction(
-            session=session,
-            campaign_id=campaign_id,
-            voter_id=data.voter_id,
-            interaction_type=InteractionType.DOOR_KNOCK,
-            payload=payload,
-            user_id=user_id,
-        )
+        try:
+            interaction = await self._interaction_service.record_interaction(
+                session=session,
+                campaign_id=campaign_id,
+                voter_id=data.voter_id,
+                interaction_type=InteractionType.DOOR_KNOCK,
+                payload=payload,
+                user_id=user_id,
+                client_uuid=data.client_uuid,
+            )
+        except IntegrityError as exc:
+            # Plan 110-02 / OFFLINE-01: a duplicate (campaign_id, client_uuid)
+            # means this outcome was already recorded — almost certainly an
+            # offline-queue retry after a dropped connection. Rollback the
+            # aborted transaction so the route's later commit() doesn't
+            # explode, then raise a domain exception the route converts to
+            # 409 Conflict.
+            await session.rollback()
+            constraint = getattr(getattr(exc, "orig", None), "diag", None)
+            constraint_name = (
+                getattr(constraint, "constraint_name", None) or ""
+            )
+            if (
+                "uq_voter_interactions_door_knock_client_uuid" in constraint_name
+                or "uq_voter_interactions_door_knock_client_uuid" in str(exc)
+            ):
+                raise DuplicateClientUUIDError(str(data.client_uuid)) from exc
+            raise
 
         if data.survey_responses:
             assert script_id is not None
