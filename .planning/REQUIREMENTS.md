@@ -33,9 +33,9 @@ Requirements derived from:
 
 ### MAP — Map Rendering & Layout
 
-- [ ] **MAP-01**: Leaflet marker icons render correctly on every field-mode map view (no broken-image placeholders). The fix is verified across canvassing map, walk list map, and volunteer hub map.
-- [ ] **MAP-02**: In list view, the household list is fully visible and interactable — the map does not overlay, z-index-cover, or otherwise block the list.
-- [ ] **MAP-03**: A map asset pipeline audit confirms every Leaflet icon, sprite, and tile asset resolves correctly under the app's build/serve configuration (dev, preview, and production).
+- [x] **MAP-01**: Leaflet marker icons render correctly on every field-mode map view (no broken-image placeholders). The fix is verified across canvassing map, walk list map, and volunteer hub map.
+- [x] **MAP-02**: In list view, the household list is fully visible and interactable — the map does not overlay, z-index-cover, or otherwise block the list.
+- [x] **MAP-03**: A map asset pipeline audit confirms every Leaflet icon, sprite, and tile asset resolves correctly under the app's build/serve configuration (dev, preview, and production).
 
 ### FORMS — Field-Mode Form Requiredness
 
