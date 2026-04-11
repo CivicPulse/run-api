@@ -239,3 +239,39 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* === Phase 108 — SELECT-02 map marker interactivity === */
+
+/* Contract 2b: 44x44 minimum hit area via transparent ::before pseudo.
+   Marker root is a <div> (L.DivIcon per Spike A2), so ::before attaches.
+   The pseudo is centered on the icon visual and captures pointer events
+   so small marker artwork still satisfies the AAA touch-target rule. */
+.leaflet-marker-icon.canvassing-map-household-marker {
+  position: relative;
+  cursor: pointer;
+}
+.leaflet-marker-icon.canvassing-map-household-marker::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Contract 2c: focus-visible outline — meets AAA focus indicator. */
+.leaflet-marker-icon.canvassing-map-household-marker:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Contract 2d: active marker halo — NOT hue-only. Combined with the
+   size delta (iconSize 30x49 vs 25x41) and aria-pressed="true" it
+   satisfies the color-blindness rule. Two drop-shadows stack to form
+   a visible primary-color halo independent of hue perception. */
+.leaflet-marker-icon.canvassing-map-active-marker {
+  filter: drop-shadow(0 0 0 var(--primary)) drop-shadow(0 0 4px var(--primary));
+}
