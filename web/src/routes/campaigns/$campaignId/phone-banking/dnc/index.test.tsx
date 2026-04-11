@@ -28,6 +28,9 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useParams: vi.fn(() => ({ campaignId: "campaign-1" })),
+  Navigate: ({ to }: { to: string }) => (
+    <div data-testid="navigate" data-to={to} />
+  ),
 }))
 
 vi.mock("@/hooks/useDNC", () => ({

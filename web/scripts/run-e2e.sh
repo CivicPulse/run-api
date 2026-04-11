@@ -131,7 +131,12 @@ HELP
 }
 
 # ── Parse flags from arguments ────────────────────────────────────────────
-DEFAULT_WORKERS=16
+# Default worker count. The phase 106 D-12 exit gate (plan 106-05) discovered
+# that 16 workers caused state-contention flakes in rbac.* specs (3/3 PASS in
+# isolation, fail under load). Reduced default to 8 as a minimal infra fix
+# (D-09). The E2E_WORKERS env var overrides without touching the script,
+# and --workers N on the command line still wins over both.
+DEFAULT_WORKERS="${E2E_WORKERS:-8}"
 WORKERS_FLAG="--workers $DEFAULT_WORKERS"
 LOOP_MODE=0
 LOOP_SLEEP=120

@@ -252,7 +252,7 @@ describe("field phone banking route", () => {
     fireEvent.click(screen.getByRole("button", { name: "Answered" }))
     expect(submitCall).not.toHaveBeenCalled()
 
-    fireEvent.change(screen.getByLabelText("Call Notes"), {
+    fireEvent.change(screen.getByLabelText(/Notes/i), {
       target: { value: "Strong supporter who asked for a yard sign." },
     })
     fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
@@ -292,7 +292,7 @@ describe("field phone banking route", () => {
     renderPage()
 
     fireEvent.click(screen.getByRole("button", { name: "Answered" }))
-    fireEvent.change(screen.getByLabelText("Call Notes"), {
+    fireEvent.change(screen.getByLabelText(/Notes/i), {
       target: { value: "Left detailed notes for retry." },
     })
     fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
@@ -303,7 +303,7 @@ describe("field phone banking route", () => {
 
     await waitFor(() => expect(submitCall).toHaveBeenCalledTimes(1))
     expect(screen.getByText("Jane Doe")).toBeInTheDocument()
-    expect(screen.getByLabelText("Call Notes")).toBeInTheDocument()
+    expect(screen.getByLabelText(/Notes/i)).toBeInTheDocument()
     expect(screen.getByTestId("phone-banking-save-failure-card")).toBeInTheDocument()
     expect(screen.getByText("boom")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Retry save" })).toBeInTheDocument()
@@ -317,7 +317,7 @@ describe("field phone banking route", () => {
     renderPage()
 
     fireEvent.click(screen.getByRole("button", { name: "Answered" }))
-    fireEvent.change(screen.getByLabelText("Call Notes"), {
+    fireEvent.change(screen.getByLabelText(/Notes/i), {
       target: { value: "Reached voter and confirmed they plan to vote early." },
     })
     fireEvent.click(screen.getByRole("button", { name: "Save Call" }))

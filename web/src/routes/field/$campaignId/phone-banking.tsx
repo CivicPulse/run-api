@@ -476,6 +476,7 @@ function PhoneBanking() {
           onSubmitDraft={handleAnsweredDraftSubmit}
           isSubmitting={isSubmittingCall}
           submitLabel="Save Call"
+          notesRequired={false}
         />
       )}
     </div>

@@ -1,6 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { FieldHeader } from "@/components/field/FieldHeader"
+import { useOfflineQueueStore } from "@/stores/offlineQueueStore"
+
+vi.mock("@/hooks/useConnectivityStatus", () => ({
+  useConnectivityStatus: vi.fn(() => true),
+}))
 
 // Mock TanStack Router Link and useNavigate with param substitution
 vi.mock("@tanstack/react-router", () => ({
@@ -168,6 +173,66 @@ describe("FieldHeader (NAV-03)", () => {
     // The Button asChild merges its className onto the Link element itself
     // So the rendered <a> tag should carry min-h-11 and min-w-11
     expect(backLink.className).toMatch(/min-h-11|min-w-11/)
+  })
+})
+
+describe("FieldHeader ConnectivityPill slot (110-05 / OFFLINE-02)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useOfflineQueueStore.setState({
+      items: [],
+      deadLetter: [],
+      isSyncing: false,
+      syncStartedAt: null,
+      isSlow: false,
+      lastSyncAt: null,
+    })
+    mockUseAuthStore.mockImplementation((selector: (state: unknown) => unknown) => {
+      const state = {
+        user: mockUser("Sarah Johnson", "sarah@example.com"),
+        logout: vi.fn().mockResolvedValue(undefined),
+      }
+      return selector(state)
+    })
+  })
+
+  test("renders ConnectivityPill when onConnectivityClick is provided", () => {
+    const onConnectivityClick = vi.fn()
+    render(
+      <FieldHeader
+        campaignId="campaign-123"
+        title="Field"
+        showBack={false}
+        onConnectivityClick={onConnectivityClick}
+      />,
+    )
+    // Pill carries aria-label that includes "Online"
+    const pill = screen.getByRole("button", { name: /online/i })
+    expect(pill).toBeInTheDocument()
+  })
+
+  test("does not render ConnectivityPill when onConnectivityClick is omitted", () => {
+    render(
+      <FieldHeader campaignId="campaign-123" title="Field" showBack={false} />,
+    )
+    // No pill button — "Online" aria-label absent
+    const pill = screen.queryByRole("button", { name: /online/i })
+    expect(pill).toBeNull()
+  })
+
+  test("clicking ConnectivityPill invokes onConnectivityClick callback", () => {
+    const onConnectivityClick = vi.fn()
+    render(
+      <FieldHeader
+        campaignId="campaign-123"
+        title="Field"
+        showBack={false}
+        onConnectivityClick={onConnectivityClick}
+      />,
+    )
+    const pill = screen.getByRole("button", { name: /online/i })
+    fireEvent.click(pill)
+    expect(onConnectivityClick).toHaveBeenCalledOnce()
   })
 })
 

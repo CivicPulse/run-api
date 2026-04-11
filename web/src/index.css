@@ -199,6 +199,42 @@
   --tag-8: oklch(0.6 0.16 340);
 }
 
+/* MAP-02 (Phase 109-03) — when the DoorListView sheet is open we mark
+ * the map wrapper inert so its Leaflet controls and marker ::before hit
+ * areas cannot intercept taps that belong to the household list cards.
+ * Using pointer-events:none (NOT display:none) keeps the Leaflet
+ * instance alive so panTo state from 108-03 survives the toggle.
+ */
+.canvassing-map-wrapper--inert,
+.canvassing-map-wrapper--inert * {
+  pointer-events: none !important;
+}
+
+/* Ensure the Radix Sheet overlay + content stack above Leaflet's highest
+ * pane (.leaflet-control = z-index 1000). Radix Sheet overlay defaults
+ * to z-50 which loses against Leaflet controls on mobile viewports.
+ */
+[data-slot="sheet-overlay"],
+[data-slot="sheet-content"] {
+  z-index: 1100;
+}
+
+/* Phase 109-06 — Radix portal-rendered popover primitives must stack
+ * ABOVE the Sheet overlay/content so Select, Popover, DropdownMenu, and
+ * Tooltip remain usable when opened from within a Sheet. The 109-03 bump
+ * of sheet-overlay to z-1100 broke Select dropdowns inside the voter edit
+ * Sheet (VCRUD-02) because Radix Select content defaults to z-50 and
+ * rendered behind the overlay. Bumping every Radix popper portal above
+ * the sheet restores the original layering contract.
+ */
+[data-slot="select-content"],
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="tooltip-content"],
+[data-radix-popper-content-wrapper] {
+  z-index: 1200;
+}
+
 /* Field mode animation keyframes */
 @keyframes field-shimmer {
   0%, 100% { opacity: 1; }
@@ -238,4 +274,40 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* === Phase 108 — SELECT-02 map marker interactivity === */
+
+/* Contract 2b: 44x44 minimum hit area via transparent ::before pseudo.
+   Marker root is a <div> (L.DivIcon per Spike A2), so ::before attaches.
+   The pseudo is centered on the icon visual and captures pointer events
+   so small marker artwork still satisfies the AAA touch-target rule. */
+.leaflet-marker-icon.canvassing-map-household-marker {
+  position: relative;
+  cursor: pointer;
+}
+.leaflet-marker-icon.canvassing-map-household-marker::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Contract 2c: focus-visible outline — meets AAA focus indicator. */
+.leaflet-marker-icon.canvassing-map-household-marker:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Contract 2d: active marker halo — NOT hue-only. Combined with the
+   size delta (iconSize 30x49 vs 25x41) and aria-pressed="true" it
+   satisfies the color-blindness rule. Two drop-shadows stack to form
+   a visible primary-color halo independent of hue perception. */
+.leaflet-marker-icon.canvassing-map-active-marker {
+  filter: drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 6px var(--primary));
 }

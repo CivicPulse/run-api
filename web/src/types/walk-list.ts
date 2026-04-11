@@ -36,6 +36,12 @@ export interface DoorKnockSurveyResponse {
 }
 
 export interface DoorKnockCreate {
+  // Plan 110-02 / OFFLINE-01: client-generated UUID used for end-to-end
+  // idempotency. The offline queue store stamps this in push() so the
+  // same ID flows to `QueueItem.id` AND `payload.client_uuid`; a mid-
+  // flight retry of an online POST carries the same UUID so the server
+  // can 409 the duplicate via its partial unique index.
+  client_uuid: string
   walk_list_entry_id: string
   voter_id: string
   result_code: string

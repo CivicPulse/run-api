@@ -9,8 +9,10 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -20,8 +22,19 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.time import utcnow
 
-# Database URLs for integration tests (port from env, default 5433)
-_DB_PORT = os.environ.get("TEST_DB_PORT", "5433")
+# Load repo-root .env BEFORE resolving DB port, so PG_HOST_PORT / TEST_DB_PORT
+# set in docker compose .env are visible to integration tests without a
+# pytest-dotenv plugin. `override=False` keeps any explicit shell env wins.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_REPO_ROOT / ".env", override=False)
+
+# Database URLs for integration tests.
+# Port resolution order: TEST_DB_PORT → PG_HOST_PORT → 5433.
+# PG_HOST_PORT is set by docker compose .env (the host-published port for the
+# postgres service). Falling back to it lets tests auto-align with whichever
+# port the running compose stack chose, so a `.env` change to the host port
+# scheme doesn't silently break integration tests with connection refused.
+_DB_PORT = os.environ.get("TEST_DB_PORT") or os.environ.get("PG_HOST_PORT") or "5433"
 SUPERUSER_URL = f"postgresql+asyncpg://postgres:postgres@localhost:{_DB_PORT}/run_api"
 APP_USER_URL = (
     f"postgresql+asyncpg://app_user:app_password@localhost:{_DB_PORT}/run_api"

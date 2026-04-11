@@ -75,6 +75,7 @@ export function DoorKnockDialog({
     if (!entryId || !voterId) return
     record.mutate(
       {
+        client_uuid: crypto.randomUUID(),
         walk_list_entry_id: entryId,
         voter_id: voterId,
         result_code: values.result_code,

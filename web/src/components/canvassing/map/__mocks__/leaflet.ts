@@ -45,7 +45,9 @@ export function setupLeafletMocks() {
       Map: vi.fn(() => mockMap),
       map: vi.fn(() => mockMap),
       Icon: vi.fn(),
+      DivIcon: vi.fn(),
       icon: vi.fn(),
+      divIcon: vi.fn(),
       geoJSON: vi.fn(() => mockLayer),
       latLngBounds: vi.fn(() => ({
         extend: vi.fn().mockReturnThis(),
@@ -58,6 +60,7 @@ export function setupLeafletMocks() {
     },
     Map: vi.fn(() => mockMap),
     Icon: vi.fn(),
+    DivIcon: vi.fn(),
     geoJSON: vi.fn(() => mockLayer),
     latLngBounds: vi.fn(),
     Control: { extend: vi.fn(() => vi.fn()) },

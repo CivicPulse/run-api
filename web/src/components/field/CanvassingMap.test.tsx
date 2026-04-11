@@ -1,8 +1,92 @@
-import { beforeEach, describe, expect, test } from "vitest"
+import { beforeEach, describe, expect, test, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { setupLeafletMocks } from "@/components/canvassing/map/__mocks__/leaflet"
 import { CanvassingMap } from "@/components/field/CanvassingMap"
 import type { Household } from "@/types/canvassing"
+
+// Shared registry of DOM elements created by the Marker mock below. The
+// key is the address string (from the marker's tooltip children in real
+// usage, here keyed via position) so WR-03 tests can dispatch keydown at
+// a specific marker root.
+const markerElementsByPosition = new Map<string, HTMLDivElement>()
+
+// Top-level vi.mock calls are hoisted by Vitest's transformer, so the
+// mocks below apply to the CanvassingMap import above even though they
+// appear later in source order.
+vi.mock("leaflet", () => ({
+  default: {
+    Icon: vi.fn(),
+    DivIcon: vi.fn(),
+  },
+  Icon: vi.fn(),
+  DivIcon: vi.fn(),
+}))
+
+// Module-level spies extended by the react-leaflet mock below, so tests can
+// capture the props passed to each <Marker> and assert click wiring + panTo.
+type CapturedMarkerProps = {
+  position?: [number, number]
+  eventHandlers?: { click?: () => void }
+  icon?: unknown
+  zIndexOffset?: number
+  interactive?: boolean
+  keyboard?: boolean
+  children?: unknown
+}
+const capturedMarkerProps: CapturedMarkerProps[] = []
+const panToSpy = vi.fn()
+
+vi.mock("react-leaflet", async () => {
+  const React = await import("react")
+  // Forwarding the ref lets InteractiveHouseholdMarker's post-mount effect
+  // run against a real DOM element — WR-03 unit coverage dispatches keydown
+  // events directly at that element to verify Space + Enter activation.
+  const Marker = React.forwardRef<unknown, CapturedMarkerProps>((props, ref) => {
+    capturedMarkerProps.push(props)
+    const elRef = React.useRef<HTMLDivElement>(null)
+    React.useImperativeHandle(ref, () => ({
+      getElement: () => elRef.current,
+    }))
+    const positionKey = props.position
+      ? `${props.position[0]},${props.position[1]}`
+      : ""
+    return React.createElement(
+      "div",
+      {
+        ref: (node: HTMLDivElement | null) => {
+          elRef.current = node
+          if (node && positionKey) {
+            markerElementsByPosition.set(positionKey, node)
+          }
+        },
+        "data-testid": "mock-marker",
+      },
+      (props.children as React.ReactNode) ?? null,
+    )
+  })
+  return {
+    MapContainer: ({ children }: { children: React.ReactNode }) => children,
+    TileLayer: () => null,
+    GeoJSON: () => null,
+    Popup: ({ children }: { children: React.ReactNode }) => children,
+    Marker,
+    Tooltip: ({ children }: { children: React.ReactNode }) => children,
+    LayersControl: Object.assign(
+      ({ children }: { children: React.ReactNode }) => children,
+      {
+        BaseLayer: ({ children }: { children: React.ReactNode }) => children,
+      },
+    ),
+    useMap: () => ({
+      panTo: panToSpy,
+      fitBounds: vi.fn(),
+      setView: vi.fn(),
+    }),
+  }
+})
+
+vi.mock("@/hooks/usePrefersReducedMotion", () => ({
+  usePrefersReducedMotion: vi.fn(() => false),
+}))
 
 function makeHousehold(overrides: Partial<Household>): Household {
   const latitude = overrides.latitude === undefined ? 32.84 : overrides.latitude
@@ -49,7 +133,38 @@ function makeHousehold(overrides: Partial<Household>): Household {
 
 describe("CanvassingMap", () => {
   beforeEach(() => {
-    setupLeafletMocks()
+    capturedMarkerProps.length = 0
+    panToSpy.mockClear()
+    markerElementsByPosition.clear()
+  })
+
+  test("SELECT-02 — marker click invokes onHouseholdSelect with households[] index (not mappable index)", () => {
+    const onHouseholdSelect = vi.fn()
+    const households = [
+      makeHousehold({ householdKey: "hh-a", address: "1 A St", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+      makeHousehold({ householdKey: "hh-b-unmapped", address: "2 B St", sequence: 2, latitude: null, longitude: null }),
+      makeHousehold({ householdKey: "hh-c", address: "3 C St", sequence: 3, latitude: 32.85, longitude: -83.62 }),
+    ]
+    render(
+      <CanvassingMap
+        households={households}
+        activeHouseholdKey="hh-a"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={onHouseholdSelect}
+      />,
+    )
+
+    const hhcMarker = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    expect(hhcMarker?.eventHandlers?.click).toBeTypeOf("function")
+    hhcMarker!.eventHandlers!.click!()
+
+    // CRITICAL (research Pitfall 3): must resolve to the ORIGINAL households[]
+    // index (2 — the unmapped row is at index 1), NOT the mappableHouseholds
+    // index (1).
+    expect(onHouseholdSelect).toHaveBeenCalledWith(2)
   })
 
   test("renders saved location, active household emphasis, and mapped-count summary", () => {
@@ -62,6 +177,7 @@ describe("CanvassingMap", () => {
         activeHouseholdKey="hh-2"
         locationStatus="ready"
         locationSnapshot={{ latitude: 32.841, longitude: -83.631 }}
+        onHouseholdSelect={vi.fn()}
       />,
     )
 
@@ -81,6 +197,7 @@ describe("CanvassingMap", () => {
         activeHouseholdKey="hh-1"
         locationStatus="denied"
         locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
       />,
     )
 
@@ -97,6 +214,7 @@ describe("CanvassingMap", () => {
         activeHouseholdKey="hh-1"
         locationStatus="unavailable"
         locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
       />,
     )
 
@@ -114,6 +232,7 @@ describe("CanvassingMap", () => {
         activeHouseholdKey="mapped"
         locationStatus="ready"
         locationSnapshot={{ latitude: 32.841, longitude: -83.631 }}
+        onHouseholdSelect={vi.fn()}
       />,
     )
 
@@ -133,6 +252,7 @@ describe("CanvassingMap", () => {
         activeHouseholdKey="hh-1"
         locationStatus="idle"
         locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
       />,
     )
 
@@ -140,5 +260,162 @@ describe("CanvassingMap", () => {
     expect(screen.getByText(/map pins unavailable/i)).toBeInTheDocument()
     expect(screen.getByText(/does not have enough coordinate data/i)).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /open current door in google maps/i })).toBeInTheDocument()
+  })
+
+  test("SELECT-02 — marker click calls map.panTo with animate=true when motion is allowed", async () => {
+    const { usePrefersReducedMotion } = await import("@/hooks/usePrefersReducedMotion")
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false)
+
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const second = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    second?.eventHandlers?.click?.()
+
+    expect(panToSpy).toHaveBeenCalledWith(
+      [32.85, -83.62],
+      expect.objectContaining({ animate: true, duration: 0.5 }),
+    )
+  })
+
+  test("SELECT-02 — marker click calls map.panTo with animate=false under prefers-reduced-motion", async () => {
+    const { usePrefersReducedMotion } = await import("@/hooks/usePrefersReducedMotion")
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true)
+
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const second = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    second?.eventHandlers?.click?.()
+
+    expect(panToSpy).toHaveBeenCalledWith(
+      [32.85, -83.62],
+      expect.objectContaining({ animate: false, duration: 0.5 }),
+    )
+
+    // Restore default for subsequent tests
+    ;(usePrefersReducedMotion as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false)
+  })
+
+  test("SELECT-02 — volunteer location marker is non-interactive (Contract 2c exclusion)", () => {
+    render(
+      <CanvassingMap
+        households={[makeHousehold({ householdKey: "hh-1", latitude: 32.85, longitude: -83.62 })]}
+        activeHouseholdKey="hh-1"
+        locationStatus="ready"
+        locationSnapshot={{ latitude: 32.841, longitude: -83.631 }}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const volunteerMarker = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.841 && p.position?.[1] === -83.631,
+    )
+    expect(volunteerMarker).toBeDefined()
+    expect(volunteerMarker?.interactive).toBe(false)
+    expect(volunteerMarker?.keyboard).toBe(false)
+    expect(volunteerMarker?.eventHandlers?.click).toBeUndefined()
+  })
+
+  test("WR-03 — Enter keydown on a marker root fires onHouseholdSelect (Contract 2c)", () => {
+    const onHouseholdSelect = vi.fn()
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={onHouseholdSelect}
+      />,
+    )
+
+    const el = markerElementsByPosition.get("32.85,-83.62")
+    expect(el).toBeDefined()
+    // Sanity: the post-mount effect applied aria/role attributes.
+    expect(el?.getAttribute("role")).toBe("button")
+    expect(el?.getAttribute("tabindex")).toBe("0")
+
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+    el!.dispatchEvent(event)
+
+    // Enter on the second marker must resolve to households[] index 1.
+    expect(onHouseholdSelect).toHaveBeenCalledWith(1)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  test("WR-03 — Space keydown on a marker root fires onHouseholdSelect (Contract 2c)", () => {
+    const onHouseholdSelect = vi.fn()
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-1"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={onHouseholdSelect}
+      />,
+    )
+
+    const el = markerElementsByPosition.get("32.85,-83.62")
+    expect(el).toBeDefined()
+
+    const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true })
+    el!.dispatchEvent(event)
+
+    expect(onHouseholdSelect).toHaveBeenCalledWith(1)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  test("SELECT-02 — active household marker gets zIndexOffset=1000 for visual emphasis", () => {
+    render(
+      <CanvassingMap
+        households={[
+          makeHousehold({ householdKey: "hh-1", sequence: 1, latitude: 32.84, longitude: -83.63 }),
+          makeHousehold({ householdKey: "hh-2", sequence: 2, latitude: 32.85, longitude: -83.62 }),
+        ]}
+        activeHouseholdKey="hh-2"
+        locationStatus="idle"
+        locationSnapshot={null}
+        onHouseholdSelect={vi.fn()}
+      />,
+    )
+
+    const active = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.85 && p.position?.[1] === -83.62,
+    )
+    const idle = capturedMarkerProps.find(
+      (p) => p.position?.[0] === 32.84 && p.position?.[1] === -83.63,
+    )
+    expect(active?.zIndexOffset).toBe(1000)
+    expect(idle?.zIndexOffset).toBe(0)
   })
 })

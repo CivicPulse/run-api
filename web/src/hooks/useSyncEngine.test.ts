@@ -35,7 +35,7 @@ function makeItem(overrides: Partial<QueueItem> = {}): QueueItem {
   return {
     id: "item-1",
     type: "door_knock",
-    payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
+    payload: { client_uuid: "", walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
     campaignId: "camp-1",
     resourceId: "wl-1",
     createdAt: Date.now(),
@@ -89,7 +89,7 @@ describe("replayMutation", () => {
       type: "door_knock",
       campaignId: "c1",
       resourceId: "wl-1",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
     })
 
     await replayMutation(item)
@@ -146,7 +146,7 @@ describe("drainQueue", () => {
   test("skips if isSyncing is already true (race condition guard)", async () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -164,7 +164,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -194,7 +194,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -223,7 +223,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -240,7 +240,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -257,7 +257,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -283,13 +283,13 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
+      payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -315,7 +315,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -325,7 +325,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
+      payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -342,7 +342,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -383,7 +383,7 @@ describe("drainQueue", () => {
     (api.post as Mock).mockReturnValue({ json: mockJson })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -398,13 +398,13 @@ describe("drainQueue", () => {
     (api.post as Mock).mockReturnValue({ json: mockJson })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
+      payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" },
       campaignId: "c2",
       resourceId: "wl-2",
     })
@@ -444,7 +444,7 @@ describe("drainQueue", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -463,7 +463,7 @@ describe("drainQueue", () => {
     // Push a door_knock for entry-A (this is what WE synced)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -501,7 +501,7 @@ describe("drainQueue", () => {
     // Push a door_knock for entry-B (this is what WE synced)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "entry-B", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "entry-B", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -557,7 +557,7 @@ describe("drainQueue — C14 lock release (REL-01)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -576,7 +576,7 @@ describe("drainQueue — C14 lock release (REL-01)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -615,19 +615,19 @@ describe("drainQueue — C15 continue on transient error (REL-02)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e3", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e3", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -645,7 +645,12 @@ describe("drainQueue — C15 continue on transient error (REL-02)", () => {
   })
 })
 
-describe("drainQueue — C15 MAX_RETRY removal + toast (REL-02)", () => {
+// Plan 110-04 / OFFLINE-03 updated the REL-02 invariant:
+// - 4xx non-409 → dead-letter immediately on FIRST failure (no retry)
+// - 5xx / network → back off forever (subject to 1s→60s cap) until reconnect
+// MAX_RETRY is no longer a removal gate; both tests below now exercise
+// the new 4xx → dead-letter disposition (validation errors are terminal).
+describe("drainQueue — REL-02 dead-letter on validation (plan 110-04)", () => {
   let queryClient: ReturnType<typeof makeQueryClient>
 
   beforeEach(() => {
@@ -656,56 +661,53 @@ describe("drainQueue — C15 MAX_RETRY removal + toast (REL-02)", () => {
     Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
   })
 
-  test("removes item and shows toast.error when retryCount >= MAX_RETRY on failure", async () => {
+  test("moves item to dead-letter and toasts on 4xx non-409 validation failure", async () => {
     ;(api.post as Mock).mockReturnValue({
-      json: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+      json: vi
+        .fn()
+        .mockRejectedValue({ response: { status: 422 }, message: "voter_id required" }),
     })
 
-    vi.spyOn(crypto, "randomUUID").mockReturnValue(
-      "id-1" as ReturnType<typeof crypto.randomUUID>,
-    )
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("dl-1" as ReturnType<typeof crypto.randomUUID>)
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
 
-    // Bump retryCount to MAX_RETRY so next failure triggers removal
-    const target = useOfflineQueueStore.getState().items[0]
-    for (let i = 0; i < MAX_RETRY; i++) {
-      useOfflineQueueStore.getState().incrementRetry(target.id)
-    }
-
     await drainQueue(queryClient as unknown as QueryClient)
 
-    // Item REMOVED (not just retried)
+    // Item is no longer in the active queue…
     expect(useOfflineQueueStore.getState().items).toHaveLength(0)
+    // …it's in the dead-letter slice with validation context.
+    expect(useOfflineQueueStore.getState().deadLetter).toHaveLength(1)
+    expect(useOfflineQueueStore.getState().deadLetter[0]).toMatchObject({
+      originalId: "id-1",
+      errorCode: "http_422",
+    })
     // User-visible toast fired
     expect(toast.error).toHaveBeenCalled()
   })
 
-  test("toast message on max-retry drop includes item type context (door knock)", async () => {
+  test("dead-letter toast message includes item type context (door knock)", async () => {
     ;(api.post as Mock).mockReturnValue({
-      json: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+      json: vi.fn().mockRejectedValue({ response: { status: 403 } }),
     })
 
-    vi.spyOn(crypto, "randomUUID").mockReturnValue(
-      "id-1" as ReturnType<typeof crypto.randomUUID>,
-    )
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("id-1" as ReturnType<typeof crypto.randomUUID>)
+      .mockReturnValueOnce("dl-1" as ReturnType<typeof crypto.randomUUID>)
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "entry-A", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
-
-    const target = useOfflineQueueStore.getState().items[0]
-    for (let i = 0; i < MAX_RETRY; i++) {
-      useOfflineQueueStore.getState().incrementRetry(target.id)
-    }
 
     await drainQueue(queryClient as unknown as QueryClient)
 

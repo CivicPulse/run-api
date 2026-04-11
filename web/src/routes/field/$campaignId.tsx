@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { FieldHeader } from "@/components/field/FieldHeader"
 import { OfflineBanner } from "@/components/field/OfflineBanner"
+import { ConnectivitySheet } from "@/components/field/ConnectivitySheet"
 import { useSyncEngine } from "@/hooks/useSyncEngine"
 import { useFieldMe } from "@/hooks/useFieldMe"
 import { useAuthStore } from "@/stores/authStore"
@@ -15,6 +16,10 @@ function FieldLayout() {
 
   // Activate offline sync engine for all field screens
   useSyncEngine()
+
+  // Plan 110-05 / OFFLINE-02: ConnectivitySheet open state. Pill tap
+  // in FieldHeader flips this on; Sheet onOpenChange flips it off.
+  const [connectivityOpen, setConnectivityOpen] = useState(false)
 
   // Tour context
   const user = useAuthStore((state) => state.user)
@@ -63,8 +68,13 @@ function FieldLayout() {
         title={title}
         showBack={!isHub}
         onHelpClick={userId ? handleHelpClick : undefined}
+        onConnectivityClick={() => setConnectivityOpen(true)}
       />
       <OfflineBanner />
+      <ConnectivitySheet
+        open={connectivityOpen}
+        onOpenChange={setConnectivityOpen}
+      />
       <main className="flex-1 px-4 pb-4" aria-label="Field mode content">
         <Outlet />
       </main>

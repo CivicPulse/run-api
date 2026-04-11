@@ -12,6 +12,7 @@ import {
   orderHouseholdsBySequence,
   SURVEY_TRIGGER_OUTCOMES,
   AUTO_ADVANCE_OUTCOMES,
+  HOUSE_LEVEL_OUTCOMES,
 } from "@/types/canvassing"
 import type {
   DoorKnockResultCode,
@@ -52,6 +53,25 @@ function toVolunteerSafeMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+// Phase 107 D-03 + UI-SPEC §Toast Contract / §Haptic Contract.
+// Triple-channel feedback: toast + vibrate. Focus + ARIA live live in the
+// route component since they need DOM refs. Called immediately before any
+// auto-advance fires so the volunteer gets confirmation across three
+// independent channels (visual text + visual layout + tactile).
+function announceAutoAdvance(): void {
+  toast.success("Recorded — next house", {
+    id: "auto-advance",
+    duration: 2000,
+  })
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try {
+      navigator.vibrate(50)
+    } catch {
+      // Silent no-op on platforms where vibrate exists but throws.
+    }
+  }
+}
+
 export function useCanvassingWizard(campaignId: string, walkListId: string) {
   const entriesQuery = useEnrichedEntries(campaignId, walkListId)
   const doorKnockMutation = useDoorKnockMutation(campaignId, walkListId)
@@ -66,9 +86,10 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     locationSnapshot,
     locationStatus,
     setWalkList,
-    advanceAddress,
-    jumpToAddress,
-    skipEntry,
+    advanceAddress: storeAdvanceAddress,
+    jumpToAddress: storeJumpToAddress,
+    skipEntry: storeSkipEntry,
+    unskipEntry,
     touch,
   } = useCanvassingStore()
 
@@ -95,6 +116,25 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   // can read it safely during render.
   const [pinnedHouseholdKey, setPinnedHouseholdKey] = useState<string | null>(null)
   const [trackedSortMode, setTrackedSortMode] = useState(sortMode)
+
+  // Phase 107-08.1: release the viewing pin on intentional advance / skip so
+  // the rendered HouseholdCard actually swaps to the next household. The pin
+  // exists to keep the user's current door stable while distance-mode GPS
+  // updates re-order the underlying list — it must NOT outlive an explicit
+  // navigation away from that door. See `.planning/todos/completed/107-canvassing-pinning-uxgap.md`
+  // for the full root-cause walk-through.
+  const advanceAddress = useCallback(() => {
+    setPinnedHouseholdKey(null)
+    storeAdvanceAddress()
+  }, [storeAdvanceAddress])
+
+  const skipEntry = useCallback(
+    (entryId: string) => {
+      setPinnedHouseholdKey(null)
+      storeSkipEntry(entryId)
+    },
+    [storeSkipEntry],
+  )
 
   // Detect a sort mode change during render. Updating state here follows the
   // "storing information from previous renders" React pattern and skips
@@ -159,14 +199,14 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   useLayoutEffect(() => {
     if (sortModeJustChanged) {
       if (households.length > 0) {
-        jumpToAddress(0)
+        storeJumpToAddress(0)
       }
       return
     }
     if (currentAddressIndex >= households.length && households.length > 0) {
-      jumpToAddress(households.length - 1)
+      storeJumpToAddress(households.length - 1)
     }
-  }, [currentAddressIndex, households, jumpToAddress, sortModeJustChanged])
+  }, [currentAddressIndex, households, storeJumpToAddress, sortModeJustChanged])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,
@@ -215,6 +255,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     useCanvassingStore.getState().recordOutcome(payload.walk_list_entry_id, payload.result_code)
   }, [campaignId, walkListId])
 
+  const lastDoorKnockPayloadRef = useRef<DoorKnockCreate | null>(null)
+
   const maybeAdvanceAfterHouseholdSettled = useCallback((household?: Household | null) => {
     const targetHousehold = household ?? currentHouseholdRef.current
     if (!targetHousehold) return
@@ -226,31 +268,92 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         state.skippedEntries.includes(entry.id),
     )
     if (allDone) {
+      announceAutoAdvance()
       advanceRef.current()
     }
   }, [])
+
+  // Phase 107 D-18: house-level outcomes (`not_home`, `come_back_later`,
+  // `inaccessible`) bypass the per-voter settled gate and advance the wizard
+  // immediately — the outcome describes the WHOLE household, so the volunteer
+  // should not be stuck iterating through every voter at the address. Voter-
+  // level outcomes (`moved`, `deceased`, `refused`) fall through to the legacy
+  // settled-household helper.
+  const advanceAfterOutcome = useCallback(
+    (result: DoorKnockResultCode, household?: Household | null) => {
+      if (HOUSE_LEVEL_OUTCOMES.has(result)) {
+        announceAutoAdvance()
+        advanceRef.current()
+        return
+      }
+      maybeAdvanceAfterHouseholdSettled(household)
+    },
+    [maybeAdvanceAfterHouseholdSettled],
+  )
 
   const submitDoorKnock = useCallback(async (
     payload: DoorKnockCreate,
     options?: {
       household?: Household | null
       advanceOnSuccess?: boolean
+      advanceResult?: DoorKnockResultCode
       showErrorToast?: boolean
       errorMessage?: string
+      useRetryToast?: boolean
       onError?: (error: unknown) => void
     },
   ) => {
+    // Plan 110-02 / OFFLINE-01: stamp client_uuid at the call site so the
+    // online mutation AND the offline fallback share the same UUID. If a
+    // connection drops between server-commit and client-ack, the retry
+    // lands on the server's partial unique index → 409 → offline sync
+    // drops the queued item via its existing isConflict branch.
+    if (!payload.client_uuid) {
+      payload = { ...payload, client_uuid: crypto.randomUUID() }
+    }
+    lastDoorKnockPayloadRef.current = payload
+
+    // Plan 110-08 exit-gate Rule 1 fix: pre-flight offline check.
+    // The ConnectivityPill derives its "Offline" state from navigator.onLine,
+    // so submitDoorKnock must branch on the SAME signal — otherwise the pill
+    // and the queue disagree about whether we're offline. The post-failure
+    // `instanceof TypeError` branch below remains a safety net for "we
+    // thought we were online and the request died mid-flight", but the
+    // primary offline trigger is now navigator.onLine === false. This also
+    // makes the offline fallback fire synchronously instead of waiting for
+    // ky/fetch to time out (which under Playwright's CDP setOffline can
+    // take the full 10s ky timeout instead of throwing TypeError).
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      queueDoorKnockOffline(payload)
+      if (options?.advanceOnSuccess) {
+        if (options.advanceResult) {
+          advanceAfterOutcome(options.advanceResult, options.household)
+        } else {
+          maybeAdvanceAfterHouseholdSettled(options.household)
+        }
+      }
+      return true
+    }
+
     try {
       await doorKnockMutation.mutateAsync(payload)
       if (options?.advanceOnSuccess) {
-        maybeAdvanceAfterHouseholdSettled(options.household)
+        if (options.advanceResult) {
+          advanceAfterOutcome(options.advanceResult, options.household)
+        } else {
+          maybeAdvanceAfterHouseholdSettled(options.household)
+        }
       }
       return true
     } catch (err) {
       if (err instanceof TypeError) {
         queueDoorKnockOffline(payload)
         if (options?.advanceOnSuccess) {
-          maybeAdvanceAfterHouseholdSettled(options.household)
+          if (options.advanceResult) {
+            advanceAfterOutcome(options.advanceResult, options.household)
+          } else {
+            maybeAdvanceAfterHouseholdSettled(options.household)
+          }
         }
         return true
       }
@@ -258,11 +361,36 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       options?.onError?.(err)
 
       if (options?.showErrorToast !== false) {
-        toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
+        if (options?.useRetryToast) {
+          // Phase 107 D-04 + UI-SPEC §Toast Contract "Error — save failed".
+          // Persistent toast with Retry action; the card stays on the failing
+          // house and the volunteer never loses context.
+          toast.error("Couldn't save — tap to retry", {
+            id: "auto-advance-error",
+            duration: Number.POSITIVE_INFINITY,
+            action: {
+              label: "Retry",
+              onClick: () => {
+                const retryPayload = lastDoorKnockPayloadRef.current
+                if (retryPayload) {
+                  void submitDoorKnockRef.current?.(retryPayload, options)
+                }
+              },
+            },
+          })
+        } else {
+          toast.error(options?.errorMessage ?? "Failed to save outcome. Please try again.")
+        }
       }
       return false
     }
-  }, [doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
+  }, [advanceAfterOutcome, doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
+
+  // Forward ref for the retry callback closure (avoids "used before declared")
+  const submitDoorKnockRef = useRef<typeof submitDoorKnock | null>(null)
+  useLayoutEffect(() => {
+    submitDoorKnockRef.current = submitDoorKnock
+  }, [submitDoorKnock])
 
   const handleOutcome = useCallback(
     async (entryId: string, voterId: string, result: DoorKnockResultCode): Promise<OutcomeResult> => {
@@ -270,7 +398,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         return { surveyTrigger: true }
       }
 
-      const payload = {
+      const payload: DoorKnockCreate = {
+        client_uuid: crypto.randomUUID(),
         walk_list_entry_id: entryId,
         voter_id: voterId,
         result_code: result,
@@ -279,6 +408,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       const saved = await submitDoorKnock(payload, {
         household: currentHousehold,
         advanceOnSuccess: AUTO_ADVANCE_OUTCOMES.has(result),
+        advanceResult: result,
+        useRetryToast: true,
       })
       if (!saved) return {}
 
@@ -308,6 +439,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     surveyComplete,
   }: ContactDraftSubmit) => {
     const payload: DoorKnockCreate = {
+      client_uuid: crypto.randomUUID(),
       walk_list_entry_id: entryId,
       voter_id: voterId,
       result_code: result,
@@ -344,6 +476,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     // intentionally from handleOutcome (simple outcomes like not_home), which
     // waits for every resident to settle before advancing.
     if (saved) {
+      announceAutoAdvance()
       advanceRef.current()
     }
 
@@ -357,16 +490,95 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     maybeAdvanceAfterHouseholdSettled(currentHousehold)
   }, [currentHousehold, maybeAdvanceAfterHouseholdSettled])
 
+  // Phase 107 D-05/D-06/D-07 + RESEARCH.md §2 option (c):
+  // Synchronous local skip → immediate advance → mutation in background.
+  // The 300ms setTimeout that used to live here was hiding a race between
+  // local Zustand state, the skip mutation's invalidate/refetch, and the
+  // households memo's pinning logic. Replacing the timeout with an
+  // `isPending` guard closes the double-tap race AND removes the
+  // wall-clock dependency entirely.
   const handleSkipAddress = useCallback(() => {
     if (!currentHousehold) return
-    for (const entry of currentHousehold.entries) {
-      if (completedEntries[entry.id] === undefined && !skippedEntries.includes(entry.id)) {
-        skipEntry(entry.id)
-        skipEntryMutation.mutate(entry.id)
-      }
+    if (skipEntryMutation.isPending) return // anti-double-tap guard
+
+    // Snapshot entries to skip BEFORE store mutations so the Undo closure
+    // can reference the exact set we just skipped, regardless of any
+    // subsequent store changes.
+    const entriesToSkip = currentHousehold.entries
+      .filter(
+        (entry) =>
+          completedEntries[entry.id] === undefined &&
+          !skippedEntries.includes(entry.id),
+      )
+      .map((entry) => entry.id)
+
+    if (entriesToSkip.length === 0) {
+      // Nothing to skip; just advance.
+      advanceRef.current()
+      return
     }
-    setTimeout(() => advanceRef.current(), 300)
-  }, [currentHousehold, completedEntries, skippedEntries, skipEntry, skipEntryMutation])
+
+    // Snapshot current index + completed count so the Undo can decide
+    // whether it's still valid (D-06: undo only if no other outcome was
+    // recorded since the skip).
+    const skipAtAddressIndex = useCanvassingStore.getState().currentAddressIndex
+    const skipAtCompletedCount = Object.keys(
+      useCanvassingStore.getState().completedEntries,
+    ).length
+
+    // (1) Local store update — synchronous.
+    for (const id of entriesToSkip) {
+      skipEntry(id)
+    }
+
+    // (2) Advance immediately — no setTimeout.
+    advanceRef.current()
+
+    // (3) Info toast with Undo action (D-06 + UI-SPEC §Toast Contract).
+    toast.info("Skipped — Undo", {
+      id: "skip-undo",
+      duration: 4000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const state = useCanvassingStore.getState()
+          const completedSince =
+            Object.keys(state.completedEntries).length > skipAtCompletedCount
+          if (completedSince) {
+            toast("Can't undo — already moved on", {
+              id: "skip-undo-unavailable",
+              duration: 3000,
+            })
+            return
+          }
+          for (const id of entriesToSkip) {
+            unskipEntry(id)
+          }
+          useCanvassingStore.setState({ currentAddressIndex: skipAtAddressIndex })
+        },
+      },
+    })
+
+    // (4) Fire mutations in background; on error surface a toast but DO
+    //     NOT roll back the local skip — D-05 says skip is reversible and
+    //     the volunteer can re-activate from the household list.
+    for (const id of entriesToSkip) {
+      skipEntryMutation.mutate(id, {
+        onError: () => {
+          toast.error("Skip didn't sync — still saved on this device", {
+            id: "skip-sync-error",
+          })
+        },
+      })
+    }
+  }, [
+    currentHousehold,
+    completedEntries,
+    skippedEntries,
+    skipEntry,
+    unskipEntry,
+    skipEntryMutation,
+  ])
 
   const handleBulkNotHome = useCallback(
     async (entries: EnrichedWalkListEntry[]) => {
@@ -376,6 +588,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       let allSaved = true
       for (const entry of entries) {
         const saved = await submitDoorKnock({
+          client_uuid: crypto.randomUUID(),
           walk_list_entry_id: entry.id,
           voter_id: entry.voter_id,
           result_code: "not_home",
@@ -401,11 +614,25 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     [currentHousehold, maybeAdvanceAfterHouseholdSettled, submitDoorKnock],
   )
 
+  // Phase 108 D-01/D-02/D-07: list-tap (and Plan 108-03 map-tap) funnel through
+  // this wrapped action. Clearing the pin BEFORE delegating to the store
+  // mirrors the 107-08.1 advance/skip pattern so the rendered HouseholdCard
+  // actually swaps. Haptic lives in the hook so both entry points fire exactly
+  // once per intentional navigation. Per D-02: NO toast on tap-to-activate —
+  // the user's own tap IS the feedback.
   const handleJumpToAddress = useCallback(
     (index: number) => {
-      jumpToAddress(index)
+      setPinnedHouseholdKey(null)
+      storeJumpToAddress(index)
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(50)
+        } catch {
+          // Silent no-op (iOS Safari, desktop, permission-denied).
+        }
+      }
     },
-    [jumpToAddress],
+    [storeJumpToAddress],
   )
 
   return {
@@ -424,6 +651,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,
     isSavingDoorKnock: doorKnockMutation.isPending,
+    isSkipPending: skipEntryMutation.isPending,
     handleOutcome,
     handleSubmitContact,
     handlePostSurveyAdvance,

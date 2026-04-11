@@ -29,6 +29,7 @@ interface CanvassingState extends CanvassingStoreData {
   recordOutcome: (entryId: string, result: string) => void
   revertOutcome: (entryId: string) => void
   skipEntry: (entryId: string) => void
+  unskipEntry: (entryId: string) => void
   advanceAddress: () => void
   jumpToAddress: (index: number) => void
   setSortMode: (mode: CanvassingSortMode) => void
@@ -179,6 +180,11 @@ export const useCanvassingStore = create<CanvassingState>()(
       skipEntry: (entryId) =>
         set((state) => ({
           skippedEntries: [...state.skippedEntries, entryId],
+          lastActiveAt: Date.now(),
+        })),
+      unskipEntry: (entryId) =>
+        set((state) => ({
+          skippedEntries: state.skippedEntries.filter((id) => id !== entryId),
           lastActiveAt: Date.now(),
         })),
       advanceAddress: () =>

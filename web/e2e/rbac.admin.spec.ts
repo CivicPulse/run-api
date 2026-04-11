@@ -97,6 +97,7 @@ test.describe("RBAC: admin permissions", () => {
     await expect(saveButton).toBeVisible({ timeout: 30_000 })
   })
 
+  // D-10 justification: Superseded by Phase 73 role gates (SEC-10/11). Admins are redirected at the route level before reaching danger-zone content; see "Phase 73 role gates (admin partial access)" describe block below for the current redirect-based assertions.
   test.skip("campaign settings > danger zone: Transfer Ownership and Delete Campaign NOT visible (owner-only)", async ({
     page, campaignId,
   }) => {

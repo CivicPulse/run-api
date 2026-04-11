@@ -29,10 +29,7 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(newVoterButton).not.toBeVisible()
   })
 
-  // Voter search and voter detail APIs require volunteer+ role.
-  // Viewer (role level 0) is below volunteer (level 1), so the voter
-  // table shows empty and detail pages return 403.  These tests are
-  // skipped because viewer cannot access voter data by design.
+  // D-10 justification: Voter search/detail APIs require volunteer+. Viewer (level 0) is below volunteer (level 1), so voter table is empty and detail pages return 403 — viewer cannot access voter data by design.
   test.skip("voter detail: Edit button is NOT visible", async ({ page }) => {
     await enterCampaign(page, campaignId)
     await page.goto(`/campaigns/${campaignId}/voters`)
@@ -47,6 +44,7 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(editButton).not.toBeVisible()
   })
 
+  // D-10 justification: Viewer (level 0) is below volunteer (level 1) and cannot reach voter detail pages — API returns 403 and the detail route never renders for viewers.
   test.skip("voter detail: Add Interaction button IS visible for viewer", async ({
     page,
   }) => {
@@ -128,6 +126,7 @@ test.describe("RBAC: viewer permissions", () => {
     await expect(editVolunteerButton).not.toBeVisible()
   })
 
+  // D-10 justification: Superseded by Phase 73 role gates (SEC-10/11). Viewers are redirected at the route level before reaching settings content; see "Phase 73 role gates (viewer is denied)" describe block below.
   test.skip("campaign settings: Members nav link IS visible but members content is gated", async ({
     page, campaignId,
   }) => {

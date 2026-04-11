@@ -59,6 +59,7 @@ class VoterInteractionService:
         interaction_type: InteractionType,
         payload: dict,
         user_id: str,
+        client_uuid: uuid.UUID | None = None,
     ) -> VoterInteraction:
         """Create an immutable interaction event.
 
@@ -69,6 +70,10 @@ class VoterInteractionService:
             interaction_type: Type of interaction event.
             payload: JSONB event data.
             user_id: ID of the user creating the event.
+            client_uuid: Optional volunteer-device-generated UUID used
+                for end-to-end idempotency on door-knock POSTs
+                (plan 110-02 / OFFLINE-01). Only set for door_knock
+                interactions; other types leave it NULL.
 
         Returns:
             The created VoterInteraction record.
@@ -80,6 +85,7 @@ class VoterInteractionService:
             voter_id=voter_id,
             type=interaction_type,
             payload=payload,
+            client_uuid=client_uuid,
             created_by=user_id,
             created_at=utcnow(),
         )

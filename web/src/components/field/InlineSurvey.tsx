@@ -20,6 +20,14 @@ interface BaseInlineSurveyProps {
   open: boolean
   onSkip: () => void
   voterName?: string
+  /**
+   * D-09 (Phase 107): Explicit prop replacing the legacy
+   * `requiresNotes = isControlled` coupling. When false (the default),
+   * the Save button is enabled with empty notes and the label renders a
+   * muted "(optional)" affordance per UI-SPEC §"Notes Field Affordance".
+   * Both canvassing and phone-banking pass `false` per D-19.
+   */
+  notesRequired?: boolean
 }
 
 interface DirectSaveInlineSurveyProps extends BaseInlineSurveyProps {
@@ -132,7 +140,10 @@ export function InlineSurvey(props: InlineSurveyProps) {
   const hasMalformedQuestions = questions.length > 0 && renderableQuestions.length !== questions.length
   const requiresSurvey = scriptId.length > 0
   const showQuestionState = requiresSurvey && (scriptQuery.isLoading || scriptQuery.isError || hasMalformedQuestions || renderableQuestions.length === 0)
-  const requiresNotes = isControlled
+  // D-09 (Phase 107, CANV-03): notes-required is now an explicit prop instead
+  // of the legacy `isControlled` coupling. Default is `false`. Both canvassing
+  // and phone-banking call sites pass `notesRequired={false}` per D-19.
+  const requiresNotes = props.notesRequired ?? false
 
   const orderedResponses = useMemo<RecordCallSurveyResponse[]>(() => (
     renderableQuestions.flatMap((question) => {
@@ -290,16 +301,19 @@ export function InlineSurvey(props: InlineSurveyProps) {
           {isControlled && (
             <div className="space-y-2">
               <Label htmlFor="field-call-notes" className="text-sm font-medium">
-                Call Notes
+                Notes
+                {!requiresNotes && (
+                  <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                )}
               </Label>
               <Textarea
                 id="field-call-notes"
                 className="min-h-[100px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="What happened on this call?"
+                placeholder={requiresNotes ? "What happened on this call?" : "Anything worth remembering? (optional)"}
               />
-              {!isNotesComplete && (
+              {requiresNotes && !isNotesComplete && (
                 <p className="text-sm text-destructive">Add notes before saving this answered call.</p>
               )}
               {requiresSurvey && !showQuestionState && !isSurveyComplete && (

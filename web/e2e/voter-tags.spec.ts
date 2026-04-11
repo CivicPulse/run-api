@@ -94,8 +94,10 @@ test.describe.serial("Voter tags lifecycle", () => {
       page.getByRole("heading", { name: /campaign tags/i }),
     ).toBeVisible({ timeout: 15_000 })
 
-    // Wait for "+ New Tag" button to be visible (RequireRole gate)
-    const newTagBtn = page.getByRole("button", { name: /new tag/i })
+    // Wait for "+ New Tag" button to be visible (RequireRole gate).
+    // Use .first() to handle the empty-state variant, which renders its own "+ New Tag" button
+    // inside the EmptyState component alongside the header's toolbar button (strict-mode conflict).
+    const newTagBtn = page.getByRole("button", { name: /new tag/i }).first()
     await expect(newTagBtn).toBeVisible({ timeout: 15_000 })
 
     for (const tagName of tagNames) {

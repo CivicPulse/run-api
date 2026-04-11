@@ -12,10 +12,16 @@ export const test = base.extend<{}, { campaignId: string }>({
     })
     const page = await context.newPage()
 
-    // Navigate to app to establish auth context
-    const baseURL = process.env.CI
-      ? "https://localhost:4173"
-      : (process.env.E2E_USE_DEV_SERVER === "1" ? "https://localhost:5173" : "https://localhost:4173")
+    // Navigate to app to establish auth context.
+    // Priority: E2E_DEV_SERVER_URL (docker/external) > CI/preview > dev server opt-in > built-in preview.
+    // E2E_DEV_SERVER_URL is set by run-e2e.sh when the project is being tested against an already-running
+    // external web server (docker compose web container on a 493xx port). Without this branch, the fixture
+    // would hardcode localhost:4173 and net::ERR_CONNECTION_REFUSED for every test that depends on it.
+    // See plan 106-01 commit 2e830c6 for the playwright.config.ts side of the same override.
+    const baseURL = process.env.E2E_DEV_SERVER_URL
+      ?? (process.env.CI
+        ? "https://localhost:4173"
+        : (process.env.E2E_USE_DEV_SERVER === "1" ? "https://localhost:5173" : "https://localhost:4173"))
     await page.goto(baseURL)
     await page.waitForURL(
       (url) => !url.pathname.includes("/login") && !url.pathname.includes("/ui/login"),

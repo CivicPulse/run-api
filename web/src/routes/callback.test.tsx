@@ -64,6 +64,9 @@ vi.mock("@/config", () => ({
 
 import { __resetCallbackProcessedForTests } from "./callback-state"
 
+// Import module to trigger createFileRoute capture
+import "./callback"
+
 function renderPage() {
   const Component = store.component
   if (!Component) throw new Error("Callback component was not captured")

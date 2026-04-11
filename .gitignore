@@ -267,6 +267,10 @@ web/.bg-shell/
 web/playwright-report/
 web/test-results-*/
 
+# Phase 106 baseline raw logs (keep directory via .gitkeep, ignore contents)
+.planning/phases/**/artifacts/*
+!.planning/phases/**/artifacts/.gitkeep
+
 # ── GSD baseline (auto-generated) ──
 .gsd
 .DS_Store

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Most recently shipped: v1.17 Easy Volunteer Invites on 2026-04-10. No active milestone — run `/gsd-new-milestone` to scope the next one.
+Current milestone: **v1.18 Field UX Polish** — fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Phases 106-110.
 
 ## Milestones
 
@@ -21,6 +21,7 @@ Most recently shipped: v1.17 Easy Volunteer Invites on 2026-04-10. No active mil
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
 - ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
+- ✅ **v1.18 Field UX Polish** — Phases 106-110 (shipped 2026-04-11)
 
 ## Milestone History
 
@@ -195,4 +196,142 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 
 ## Current Milestone
 
-_None — run `/gsd-new-milestone` to scope the next milestone._
+### v1.18 Field UX Polish
+
+**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Raise the test suite to a trustworthy baseline.
+
+**Phase numbering:** continues from v1.17 (last phase 105) → v1.18 spans **Phases 106-110**.
+
+**Phase dependency chain:** 106 → 107 → 108 → 109 → 110 (sequential; each phase ships on a trustworthy baseline left by the previous one).
+
+| #   | Phase                                      | Goal                                                                                     | Requirements                                      |
+|-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
+| 106 | 5/5 | Complete    | 2026-04-11 |
+| 107 | 10/10 | Complete    | 2026-04-11 |
+| 108 | 7/7 | Complete    | 2026-04-11 |
+| 109 | 6/6 | Complete   | 2026-04-11 |
+| 110 | 8/8 | Complete   | 2026-04-11 |
+
+#### Phase 106: Test Baseline Trustworthiness ✅ Complete (2026-04-10)
+
+**Status:** Complete — verified via 106-VERIFICATION.md (TEST-04 satisfied; D-12 exit gate passed with two consecutive Playwright greens at 01:52:12Z and 01:54:28Z; phase-verify cluster + a11y/voter-contacts deferrals authorized via D-15 Option D hybrid).
+
+**Goal:** Pre-existing broken or consistently failing tests are fixed or deleted so that any red test in the remaining v1.18 work signals a real regression.
+
+**Requirements:** TEST-04 ✅
+
+**Success criteria:**
+1. `uv run pytest` runs end-to-end with no unexpected failures (skips/xfails justified in code).
+2. Frontend `vitest` suite runs clean with no known-broken tests left as `.skip` / `xfail` without justification.
+3. `web/scripts/run-e2e.sh` runs the full Playwright suite with no flaky-known-broken specs — any remaining failures are tracked as real bugs.
+4. Any tests deleted during this phase are recorded with a short justification in the phase commit messages.
+
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 106-01-PLAN.md — Baseline capture (env sanity, 3-suite single-run, 106-BASELINE.md scope fence, scope-explosion gate)
+- [x] 106-02-PLAN.md — Pytest triage (15-min time-box, D-10 skip audit, `PHASE-106-DELETE:` deletion trail, pytest exits 0)
+- [x] 106-03-PLAN.md — Vitest triage (15-min time-box, D-10 skip/only audit, vitest exits 0)
+- [x] 106-04-PLAN.md — Playwright triage (D-11 known-skip audit, 3x rerun D-04, historical flake hit list, run-e2e.sh exits 0)
+- [x] 106-05-PLAN.md — D-12 exit gate (ruff + pytest + vitest + 2x consecutive green Playwright via wrapper, 106-EXIT-GATE.md)
+
+**Dependencies:** none (first phase of milestone).
+
+#### Phase 107: Canvassing Wizard Fixes
+
+**Goal:** A volunteer recording outcomes in the canvassing wizard experiences automatic advance, working skip, and no forced text entry.
+
+**Requirements:** CANV-01, CANV-02, CANV-03, FORMS-01
+
+**Success criteria:**
+1. Submitting an outcome on the active house automatically transitions the wizard to the next house in the walk list (CANV-01).
+2. Tapping "Skip house" advances past the current active house, marks it skipped in the queue, and surfaces the next house within one tap (CANV-02).
+3. Any outcome can be saved with an empty notes field (CANV-03).
+4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
+5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
+
+**Plans:** 10/10 plans complete
+
+Plans:
+- [x] 107-01-PLAN.md — usePrefersReducedMotion hook + unit test (D-20 dependency for Plan 04)
+- [x] 107-02-PLAN.md — HOUSE_LEVEL_OUTCOMES set in types/canvassing.ts + unit test (D-18 dependency for Plan 04)
+- [x] 107-03-PLAN.md — Integration test locking empty-notes door-knock contract (D-10/D-16)
+- [x] 107-04-PLAN.md — CANV-01: D-18 hybrid advance refactor + triple-channel feedback (D-03) + ARIA live + focus management
+- [x] 107-05-PLAN.md — CANV-02: handleSkipAddress refactor per RESEARCH §2 option (c); isPending guard; Undo toast (D-06, D-07)
+- [x] 107-06-PLAN.md — CANV-03: notesRequired prop decoupling in InlineSurvey; both call sites updated per D-19; new test file
+- [x] 107-07-PLAN.md — FORMS-01: write 107-FORMS-AUDIT.md with 4-row disposition table (D-12, D-14, D-19)
+- [x] 107-08-PLAN.md — E2E spec canvassing-wizard.spec.ts covering CANV-01/02/03 + FORMS-01 D-17 via run-e2e.sh
+- [x] 107-09-PLAN.md — Phase exit gate: ruff + pytest + vitest + run-e2e.sh green; write 107-VERIFICATION-RESULTS.md
+
+**Dependencies:** Phase 106.
+
+#### Phase 108: House Selection & Active-State
+
+**Goal:** Volunteers can reliably make any house active from either the list or the map, with a state machine that is the same regardless of entry point.
+
+**Requirements:** SELECT-01, SELECT-02, SELECT-03
+
+**Success criteria:**
+1. Tapping any house in the household list sets it as the active house (SELECT-01).
+2. Tapping any house marker on the map sets it as the active house (SELECT-02).
+3. A documented state-machine audit covers list-tap, map-tap, auto-advance, skip, resume, and reconciliation after offline sync; the same target state is reachable from every entry point (SELECT-03).
+4. Unit, integration, and E2E tests cover list-tap, map-tap, and state transitions end-to-end (TEST-01/02/03).
+
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 108-01-PLAN.md — Wave 0: Spikes A1 (Space key) + A2 (L.DivIcon) + fixture House C
+- [x] 108-02-PLAN.md — SELECT-01: wrap handleJumpToAddress, hook unit test, HouseholdCard render-path guard
+- [x] 108-03-PLAN.md — SELECT-02: CanvassingMapMarkers refactor, panTo, ARIA, CSS, component tests
+- [x] 108-04-PLAN.md — SELECT-03 docs: 108-STATE-MACHINE.md Mermaid + transition table + reconciliation placeholder
+- [x] 108-05-PLAN.md — SELECT-03 test: behavioral integration test covering all 5 entry points
+- [x] 108-06-PLAN.md — E2E: canvassing-house-selection.spec.ts (list-tap, map-tap, keyboard, resume)
+- [x] 108-07-PLAN.md — Phase exit gate: ruff + pytest + vitest + 2x run-e2e.sh, 108-VERIFICATION-RESULTS.md
+
+**Canonical refs:** 108-CONTEXT.md, 108-UI-SPEC.md, 108-RESEARCH.md, 108-SPIKES.md, 108-STATE-MACHINE.md
+
+**Dependencies:** Phase 107.
+
+#### Phase 109: Map Rendering & Asset Pipeline
+
+**Goal:** Field-mode maps render correctly — no broken marker icons and no layout occluding the household list.
+
+**Requirements:** MAP-01, MAP-02, MAP-03
+
+**Success criteria:**
+1. Leaflet marker icons render on every field-mode map view (canvassing map, walk list map, volunteer hub map) with zero broken-image placeholders (MAP-01).
+2. In list view the household list is fully visible and interactable; the map no longer overlays or z-index covers it (MAP-02).
+3. A map asset pipeline audit document lives in `.planning/phases/109-*` confirming every Leaflet icon, sprite, and tile asset resolves correctly under dev, preview, and production build/serve (MAP-03).
+4. Unit/integration tests cover map marker rendering and layout behavior; E2E tests confirm the list-vs-map layout bug does not return (TEST-01/02/03).
+
+**Dependencies:** Phase 108.
+
+#### Phase 110: Offline Queue & Connectivity Hardening
+
+**Goal:** The offline outcome queue reliably persists, replays, and reconciles outcomes on reconnect, volunteers always know their sync state, and the full v1.18 test suite gate is satisfied.
+
+**Requirements:** OFFLINE-01, OFFLINE-02, OFFLINE-03, TEST-01/02/03 (milestone coverage anchor)
+
+**Success criteria:**
+1. Under simulated connectivity loss, outcomes persist locally and replay on reconnect with no duplication or loss (OFFLINE-01).
+2. A glanceable connectivity indicator shows online / offline / syncing / last-sync-time in the field-mode shell (OFFLINE-02).
+3. Sync-on-reconnect completes within a defined budget, retries server errors with backoff, and surfaces unresolvable items as actionable errors (OFFLINE-03).
+4. Full milestone coverage gate: every file modified across phases 106-110 has unit + integration + E2E coverage for its changed behavior, and the full `uv run pytest`, `vitest`, and `web/scripts/run-e2e.sh` suites pass clean (TEST-01/02/03).
+
+**Dependencies:** Phase 109.
+
+**Plans:** 8/8 plans complete
+
+Plans:
+- [x] 110-01: Offline boundary audit (`110-OFFLINE-AUDIT.md`)
+- [x] 110-02: `client_uuid` end-to-end + canvass service `DuplicateClientUUIDError` 409 path
+- [x] 110-03: `classifyError` 4-way split + `useSyncEngine` drainQueue dispositions
+- [x] 110-04: `computeBackoffMs` 1s→60s ladder + dead-letter slice + Sheet Retry / Discard
+- [x] 110-05: `ConnectivityPill` 6-state derivation + `ConnectivitySheet` UI
+- [x] 110-06: Coverage backfill (`110-COVERAGE-AUDIT.md` + missing component tests)
+- [x] 110-07: E2E `canvassing-offline-sync.spec.ts` (OFFLINE-01/02/03 4 tests)
+- [x] 110-08: Milestone v1.18 exit gate — 4-suite verification + `110-VERIFICATION-RESULTS.md`
+
+---
+
+_TEST-01, TEST-02, and TEST-03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107-110). They are anchored to Phase 110 in the Traceability table as the milestone-final coverage gate._

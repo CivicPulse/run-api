@@ -135,6 +135,7 @@ test.describe("RBAC: manager permissions", () => {
     }
   })
 
+  // D-10 justification: Superseded by Phase 73 role gates (SEC-10/11). Managers are redirected at the route level before reaching settings content; see "Phase 73 role gates (manager partial access)" describe block below.
   test.skip("campaign settings: Members nav link is visible but members content is NOT accessible", async ({
     page, campaignId,
   }) => {
@@ -148,6 +149,7 @@ test.describe("RBAC: manager permissions", () => {
     await page.waitForURL(/settings/, { timeout: 30_000 })
   })
 
+  // D-10 justification: Superseded by Phase 73 role gates (SEC-10/11). Managers are redirected at the route level before reaching danger-zone buttons; see "Phase 73 role gates (manager partial access)" describe block below.
   test.skip("campaign settings danger zone: Transfer and Delete NOT visible", async ({
     page, campaignId,
   }) => {

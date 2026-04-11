@@ -14,6 +14,7 @@ interface VoterCardProps {
   entry: EnrichedWalkListEntry
   isActive: boolean
   recordedOutcome?: string
+  outcomesDisabled?: boolean
   onOutcomeSelect?: (result: string) => void
 }
 
@@ -37,6 +38,7 @@ export function VoterCard({
   entry,
   isActive,
   recordedOutcome,
+  outcomesDisabled = false,
   onOutcomeSelect,
 }: VoterCardProps) {
   const { voter, prior_interactions } = entry
@@ -104,7 +106,7 @@ export function VoterCard({
       {/* Active state: show outcome grid */}
       {isActive && !isCompleted && !isSkipped && onOutcomeSelect && (
         <div className="mt-3">
-          <OutcomeGrid outcomes={CANVASSING_OUTCOMES} onSelect={onOutcomeSelect} voterName={voterName} />
+          <OutcomeGrid outcomes={CANVASSING_OUTCOMES} onSelect={onOutcomeSelect} disabled={outcomesDisabled} voterName={voterName} />
         </div>
       )}
 
