@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
-status: planning
-stopped_at: Completed 109-06-PLAN.md (phase 109 exit gate PASSED)
-last_updated: "2026-04-11T14:41:42.237Z"
+status: shipped
+stopped_at: Completed 110-08-PLAN.md (phase 110 exit gate PASSED, v1.18 milestone complete)
+last_updated: "2026-04-11T21:43:00.000Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 28
-  completed_plans: 28
+  completed_phases: 5
+  total_plans: 36
+  completed_plans: 36
   percent: 100
 ---
 
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 
 ## Current Position
 
-Phase: 110
-Plan: Not started
-Status: Ready for planning
+Phase: 110 complete; milestone v1.18 shipped
+Plan: 110-08 complete (exit gate PASSED)
+Status: Milestone shipped
 Last activity: 2026-04-11
 
-Progress: [████████░░] 80% (4/5 phases)
+Progress: [██████████] 100% (5/5 phases)
 
 ## Roadmap Summary
 
@@ -63,6 +63,7 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 - [Phase 107]: Phase 107 exit gate PASSED — pytest 1118/0/0, vitest 708/0/24 todo, Playwright 305/0/66 on two consecutive greens. Auth-state staleness was the root cause of an initial 17-fail Playwright cluster (cleared playwright/.auth/*.json once and the wrapper re-minted tokens).
 - [Phase 108]: Phase 108 exit gate PASSED — pytest 1118/0/0 (no Python delta), vitest 721/0/24 todo (+13), Playwright 304/0/66 on two consecutive greens via run-e2e.sh (+4 net product tests from canvassing-house-selection.spec.ts). SELECT-01/02/03 closed. 108-STATE-MACHINE.md captures the active-house state machine with reconciliation placeholder for phase 110.
 - [Phase 109]: Phase 109 exit gate PASSED — pytest 1118 (0 delta), vitest 738 (+17), Playwright 308 two consecutive greens. Shipped Radix popper z-1200 fix so Select/Popover/DropdownMenu/Tooltip inside Sheets stack above the 109-03 Sheet z-1100 overlay; shipped MAP-01 Playwright decode-race fix (img.complete && naturalWidth > 0). MAP-01/02/03 complete.
+- [Phase 110]: Phase 110 exit gate PASSED — milestone v1.18 ships on commit 18d54e9. Pytest 1122 (+4 client_uuid service tests), vitest 805 (+67 offline queue/sync engine/connectivity), Playwright 312 (+4 canvassing-offline-sync) on two consecutive greens via run-e2e.sh. Four Rule 1 auto-fixes during the gate: (1) ky retry ladder swallowing offline errors, (2) submitDoorKnock pre-flight navigator.onLine guard, (3) OFFLINE-03 5xx aria-label phrase mismatch, (4) OFFLINE-03 422 React isOnline race between back-to-back CDP toggles. Plus a fifth fix for the pre-existing phase12-settings-verify form-reset race. Production code change: submitDoorKnock now derives offline state from the same navigator.onLine signal as ConnectivityPill, so the UI and the offline queue can no longer disagree about whether the volunteer is online. OFFLINE-01/02/03 + TEST-01/02/03 complete; v1.18 Field UX Polish shipped.
 
 ## Pending Todos
 

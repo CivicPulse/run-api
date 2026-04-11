@@ -21,7 +21,7 @@ Current milestone: **v1.18 Field UX Polish** — fix reported canvassing field b
 - ✅ **v1.15 Twilio Communications** — Phases 88-94 (shipped 2026-04-08)
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
 - ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
-- 🚧 **v1.18 Field UX Polish** — Phases 106-110 (in progress)
+- ✅ **v1.18 Field UX Polish** — Phases 106-110 (shipped 2026-04-11)
 
 ## Milestone History
 
@@ -210,7 +210,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 | 107 | 10/10 | Complete    | 2026-04-11 |
 | 108 | 7/7 | Complete    | 2026-04-11 |
 | 109 | 6/6 | Complete   | 2026-04-11 |
-| 110 | 7/8 | In Progress|  |
+| 110 | 8/8 | Complete   | 2026-04-11 |
 
 #### Phase 106: Test Baseline Trustworthiness ✅ Complete (2026-04-10)
 
@@ -319,6 +319,18 @@ Plans:
 4. Full milestone coverage gate: every file modified across phases 106-110 has unit + integration + E2E coverage for its changed behavior, and the full `uv run pytest`, `vitest`, and `web/scripts/run-e2e.sh` suites pass clean (TEST-01/02/03).
 
 **Dependencies:** Phase 109.
+
+**Plans:** 8/8 plans complete
+
+Plans:
+- [x] 110-01: Offline boundary audit (`110-OFFLINE-AUDIT.md`)
+- [x] 110-02: `client_uuid` end-to-end + canvass service `DuplicateClientUUIDError` 409 path
+- [x] 110-03: `classifyError` 4-way split + `useSyncEngine` drainQueue dispositions
+- [x] 110-04: `computeBackoffMs` 1s→60s ladder + dead-letter slice + Sheet Retry / Discard
+- [x] 110-05: `ConnectivityPill` 6-state derivation + `ConnectivitySheet` UI
+- [x] 110-06: Coverage backfill (`110-COVERAGE-AUDIT.md` + missing component tests)
+- [x] 110-07: E2E `canvassing-offline-sync.spec.ts` (OFFLINE-01/02/03 4 tests)
+- [x] 110-08: Milestone v1.18 exit gate — 4-suite verification + `110-VERIFICATION-RESULTS.md`
 
 ---
 

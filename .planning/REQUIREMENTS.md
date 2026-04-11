@@ -43,15 +43,15 @@ Requirements derived from:
 
 ### OFFLINE — Offline Queue Hardening
 
-- [ ] **OFFLINE-01**: The offline outcome queue is exercised under simulated connectivity loss and reliably persists, replays, and reconciles outcomes on reconnect without duplication or loss.
-- [ ] **OFFLINE-02**: Connectivity state (online, offline, syncing, last-sync-time) is surfaced to volunteers in a glanceable indicator within the field-mode shell.
-- [ ] **OFFLINE-03**: Sync-on-reconnect completes within a defined budget, handles server errors gracefully (retry with backoff), and surfaces any unresolvable items as actionable errors to the volunteer.
+- [x] **OFFLINE-01**: The offline outcome queue is exercised under simulated connectivity loss and reliably persists, replays, and reconciles outcomes on reconnect without duplication or loss.
+- [x] **OFFLINE-02**: Connectivity state (online, offline, syncing, last-sync-time) is surfaced to volunteers in a glanceable indicator within the field-mode shell.
+- [x] **OFFLINE-03**: Sync-on-reconnect completes within a defined budget, handles server errors gracefully (retry with backoff), and surfaces any unresolvable items as actionable errors to the volunteer.
 
 ### TEST — Test Suite Trustworthiness
 
-- [ ] **TEST-01**: Every file modified during v1.18 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
-- [ ] **TEST-02**: Every API and service boundary touched during v1.18 has integration test coverage (backend: pytest integration marker; frontend: TanStack Query hooks against mock server).
-- [ ] **TEST-03**: Every user-visible behavior changed during v1.18 has E2E test coverage via `web/scripts/run-e2e.sh`, including the canvassing auto-advance, skip house, map house-tap, list house-tap, and offline sync flows.
+- [x] **TEST-01**: Every file modified during v1.18 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
+- [x] **TEST-02**: Every API and service boundary touched during v1.18 has integration test coverage (backend: pytest integration marker; frontend: TanStack Query hooks against mock server).
+- [x] **TEST-03**: Every user-visible behavior changed during v1.18 has E2E test coverage via `web/scripts/run-e2e.sh`, including the canvassing auto-advance, skip house, map house-tap, list house-tap, and offline sync flows.
 - [x] **TEST-04**: All pre-existing broken or consistently failing tests across backend (pytest) and frontend (vitest + Playwright) are either fixed or deleted with justification, so the CI signal is trustworthy — only valid regressions fail.
 
 ---
