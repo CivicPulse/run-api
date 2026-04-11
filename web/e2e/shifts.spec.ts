@@ -627,15 +627,14 @@ test.describe.serial("Shift Lifecycle", () => {
         expect(resp.ok()).toBeTruthy()
       }
     } else {
-      // Fallback: adjust via API directly
+      // Fallback: adjust via API directly. Triaged 106-05: previous body
+      // wrongly wrapped data inside `{ data: ..., headers: ... }` — apiPatch
+      // helper takes flat data (signature: apiPatch(page, url, data)).
       const resp = await apiPatch(page,
         `/api/v1/campaigns/${campaignId}/shifts/${activeShiftId}/volunteers/${checkedInVolunteerId}/hours`,
         {
-          data: {
-            adjusted_hours: 2.5,
-            adjustment_reason: "E2E test: correcting late check-in",
-          },
-          headers: { "Content-Type": "application/json" },
+          adjusted_hours: 2.5,
+          adjustment_reason: "E2E test: correcting late check-in",
         },
       )
       expect(resp.ok()).toBeTruthy()
