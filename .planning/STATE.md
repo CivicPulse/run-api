@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
-status: executing
-stopped_at: Completed 106-04-PLAN.md (Playwright triage)
-last_updated: "2026-04-11T01:19:26.172Z"
+status: verifying
+stopped_at: Completed 106-05-PLAN.md (D-12 exit gate PASSED, TEST-04 complete)
+last_updated: "2026-04-11T02:00:59.685Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 
 Phase: 106 (Test Baseline Trustworthiness) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-11
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -55,6 +55,8 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 - v1.18: MAP-01/02/03 grouped into a single phase (109) since the asset pipeline audit, icon fix, and list/map layering all touch the same field-mode map components.
 - v1.18: 5 phases for medium appetite, sequential dependency chain (106 → 107 → 108 → 109 → 110) so each phase ships on a trustworthy baseline.
 - [Phase 106-test-baseline-trustworthiness]: D-15: Phase 106 scoped to Option D hybrid (pytest 2, vitest 65, Playwright rbac cluster 44, pitfall-5 deletes ~11, D-10 audit 6); phase-verify cluster (~51) and misc (~29-40) deferred to v1.19 via .planning/todos/pending/106-phase-verify-cluster-triage.md
+- [Phase 106]: Reduced default Playwright workers 16 -> 8 in run-e2e.sh to fix gate-time concurrency flakes (rbac.volunteer/viewer); E2E_WORKERS env var honored as override
+- [Phase 106]: TEST-04 marked complete via 106-EXIT-GATE.md: pytest 1114 pass, vitest 675 pass, Playwright 0 fails on two consecutive run-e2e.sh runs (2026-04-11T01:52:12Z + 01:54:28Z)
 
 ## Pending Todos
 
@@ -67,6 +69,6 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 
 ## Session Continuity
 
-Last session: 2026-04-11T01:19:26.169Z
-Stopped at: Completed 106-04-PLAN.md (Playwright triage)
+Last session: 2026-04-11T02:00:59.682Z
+Stopped at: Completed 106-05-PLAN.md (D-12 exit gate PASSED, TEST-04 complete)
 Resume file: None

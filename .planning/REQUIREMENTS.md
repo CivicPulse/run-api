@@ -52,7 +52,7 @@ Requirements derived from:
 - [ ] **TEST-01**: Every file modified during v1.18 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
 - [ ] **TEST-02**: Every API and service boundary touched during v1.18 has integration test coverage (backend: pytest integration marker; frontend: TanStack Query hooks against mock server).
 - [ ] **TEST-03**: Every user-visible behavior changed during v1.18 has E2E test coverage via `web/scripts/run-e2e.sh`, including the canvassing auto-advance, skip house, map house-tap, list house-tap, and offline sync flows.
-- [ ] **TEST-04**: All pre-existing broken or consistently failing tests across backend (pytest) and frontend (vitest + Playwright) are either fixed or deleted with justification, so the CI signal is trustworthy — only valid regressions fail.
+- [x] **TEST-04**: All pre-existing broken or consistently failing tests across backend (pytest) and frontend (vitest + Playwright) are either fixed or deleted with justification, so the CI signal is trustworthy — only valid regressions fail.
 
 ---
 
