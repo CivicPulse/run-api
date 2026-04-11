@@ -147,7 +147,9 @@ describe("useAddTagToVolunteer / useRemoveTagFromVolunteer (VLTR-08)", () => {
   })
 
   it("removes tag from volunteer via DELETE /volunteers/{id}/tags/{tagId}", async () => {
-    mockApi.delete.mockReturnValue({ json: vi.fn().mockResolvedValue(null) })
+    // Hook calls api.delete(...).then(() => undefined) directly (204 No Content),
+    // so the mock must return a thenable, not a { json } object.
+    mockApi.delete.mockReturnValue(Promise.resolve(undefined))
 
     const { result } = renderHook(
       () => useRemoveTagFromVolunteer("campaign-1", "vol-1"),

@@ -10,6 +10,11 @@ vi.mock("@/stores/authStore", () => ({
 // Mock useUsers
 vi.mock("./useUsers", () => ({
   useMyCampaignRole: vi.fn(),
+  useMyCampaigns: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    isFetched: true,
+  })),
 }))
 
 // Mock TanStack Router useParams
