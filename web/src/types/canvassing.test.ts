@@ -1,12 +1,16 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import {
+  AUTO_ADVANCE_OUTCOMES,
   groupByHousehold,
+  HOUSE_LEVEL_OUTCOMES,
   isMappableEntry,
   isMappableHousehold,
   orderHouseholdsByDistance,
   orderHouseholdsBySequence,
+  SURVEY_TRIGGER_OUTCOMES,
   type CoordinatePoint,
+  type DoorKnockResultCode,
   type EnrichedWalkListEntry,
 } from "@/types/canvassing"
 
@@ -136,5 +140,59 @@ describe("canvassing household coordinate helpers", () => {
     expect(groupByHousehold([])).toEqual([])
     expect(orderHouseholdsBySequence([])).toEqual([])
     expect(orderHouseholdsByDistance([], { latitude: 42, longitude: -71 })).toEqual([])
+  })
+})
+
+const ALL_OUTCOMES: DoorKnockResultCode[] = [
+  "not_home",
+  "refused",
+  "supporter",
+  "undecided",
+  "opposed",
+  "moved",
+  "deceased",
+  "come_back_later",
+  "inaccessible",
+]
+
+describe("canvassing outcome sets", () => {
+  it("HOUSE_LEVEL_OUTCOMES contains the 3 household-scoped codes", () => {
+    expect(HOUSE_LEVEL_OUTCOMES).toEqual(
+      new Set<DoorKnockResultCode>(["not_home", "come_back_later", "inaccessible"]),
+    )
+  })
+
+  it("HOUSE_LEVEL_OUTCOMES is disjoint from SURVEY_TRIGGER_OUTCOMES", () => {
+    for (const code of HOUSE_LEVEL_OUTCOMES) {
+      expect(SURVEY_TRIGGER_OUTCOMES.has(code)).toBe(false)
+    }
+  })
+
+  it("HOUSE_LEVEL_OUTCOMES is a strict subset of AUTO_ADVANCE_OUTCOMES", () => {
+    for (const code of HOUSE_LEVEL_OUTCOMES) {
+      expect(AUTO_ADVANCE_OUTCOMES.has(code)).toBe(true)
+    }
+    expect(HOUSE_LEVEL_OUTCOMES.size).toBeLessThan(AUTO_ADVANCE_OUTCOMES.size)
+  })
+
+  it("moved and deceased are voter-level (auto-advance but not house-level)", () => {
+    expect(AUTO_ADVANCE_OUTCOMES.has("moved")).toBe(true)
+    expect(AUTO_ADVANCE_OUTCOMES.has("deceased")).toBe(true)
+    expect(HOUSE_LEVEL_OUTCOMES.has("moved")).toBe(false)
+    expect(HOUSE_LEVEL_OUTCOMES.has("deceased")).toBe(false)
+  })
+
+  it("SURVEY_TRIGGER_OUTCOMES and AUTO_ADVANCE_OUTCOMES partition the full enum", () => {
+    const union = new Set<DoorKnockResultCode>([
+      ...SURVEY_TRIGGER_OUTCOMES,
+      ...AUTO_ADVANCE_OUTCOMES,
+    ])
+    expect(union.size).toBe(ALL_OUTCOMES.length)
+    for (const code of ALL_OUTCOMES) {
+      expect(union.has(code)).toBe(true)
+    }
+    for (const code of SURVEY_TRIGGER_OUTCOMES) {
+      expect(AUTO_ADVANCE_OUTCOMES.has(code)).toBe(false)
+    }
   })
 })
