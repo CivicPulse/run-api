@@ -374,7 +374,8 @@ async def test_capped_rolling_window_chunk_dispatch_advances_full_chunk_list():
 
     defer_history: list[str] = []
 
-    async def fake_defer(chunk_id: str, _campaign_id: str):
+    async def fake_defer(chunk_id: str, campaign_id: str):
+        del campaign_id
         defer_history.append(chunk_id)
 
     mock_service = MagicMock()
