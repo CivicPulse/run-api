@@ -197,8 +197,8 @@ function Canvassing() {
 
   useEffect(() => {
     if (totalAddresses === 0 || !walkListId) return
-    const key = `milestones-fired-canvassing-${walkListId}`
-    checkMilestone(completedAddresses, totalAddresses, key)
+    const milestoneKey = `milestones-fired-canvassing-${walkListId}`
+    checkMilestone(completedAddresses, totalAddresses, milestoneKey)
   }, [completedAddresses, totalAddresses, walkListId])
 
   // Phase 107 D-03 + UI-SPEC §Card Swap Transition: after the household
