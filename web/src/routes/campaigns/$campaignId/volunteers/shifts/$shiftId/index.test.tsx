@@ -297,7 +297,7 @@ describe("Shift Detail Page (SHFT-08)", () => {
     _roleStore.role = "manager"
     mockUseShiftDetail.mockReturnValue({ data: makeShift(), isLoading: false })
     mockUseShiftVolunteers.mockReturnValue({
-      data: { items: [], total: 0, has_more: false, next_cursor: null },
+      data: [],
       isLoading: false,
     })
     mockUseVolunteerList.mockReturnValue({
@@ -521,12 +521,7 @@ describe("Shift Detail Page (SHFT-08)", () => {
       })
 
       mockUseShiftVolunteers.mockReturnValue({
-        data: {
-          items: [makeSignup({ volunteer_id: "vol-1" })],
-          total: 1,
-          has_more: false,
-          next_cursor: null,
-        },
+        data: [makeSignup({ volunteer_id: "vol-1" })],
         isLoading: false,
       })
 
@@ -547,12 +542,7 @@ describe("Shift Detail Page (SHFT-08)", () => {
       })
 
       mockUseShiftVolunteers.mockReturnValue({
-        data: {
-          items: [makeSignup({ volunteer_id: "vol-unknown-uuid-xyz" })],
-          total: 1,
-          has_more: false,
-          next_cursor: null,
-        },
+        data: [makeSignup({ volunteer_id: "vol-unknown-uuid-xyz" })],
         isLoading: false,
       })
 
@@ -568,12 +558,7 @@ describe("Shift Detail Page (SHFT-08)", () => {
 
     it("renders roster columns: Name, Status, Check In, Check Out, Hours", async () => {
       mockUseShiftVolunteers.mockReturnValue({
-        data: {
-          items: [makeSignup()],
-          total: 1,
-          has_more: false,
-          next_cursor: null,
-        },
+        data: [makeSignup()],
         isLoading: false,
       })
 
@@ -625,12 +610,7 @@ describe("Shift Detail Page (SHFT-08)", () => {
       })
 
       mockUseShiftVolunteers.mockReturnValue({
-        data: {
-          items: [makeSignup({ status: "signed_up" })],
-          total: 1,
-          has_more: false,
-          next_cursor: null,
-        },
+        data: [makeSignup({ status: "signed_up" })],
         isLoading: false,
       })
 
@@ -653,17 +633,12 @@ describe("Shift Detail Page (SHFT-08)", () => {
       })
 
       mockUseShiftVolunteers.mockReturnValue({
-        data: {
-          items: [
-            makeSignup({
-              status: "checked_in",
-              check_in_at: "2026-03-15T09:00:00Z",
-            }),
-          ],
-          total: 1,
-          has_more: false,
-          next_cursor: null,
-        },
+        data: [
+          makeSignup({
+            status: "checked_in",
+            check_in_at: "2026-03-15T09:00:00Z",
+          }),
+        ],
         isLoading: false,
       })
 

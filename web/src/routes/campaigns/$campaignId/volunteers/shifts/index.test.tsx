@@ -116,9 +116,9 @@ describe("Shift List Page (SHFT-04)", () => {
     renderPage()
 
     expect(screen.getByTestId("empty-state")).toBeInTheDocument()
-    expect(screen.getByText("No shifts yet")).toBeInTheDocument()
+    expect(screen.getByText("No shifts scheduled")).toBeInTheDocument()
     expect(
-      screen.getByText("Create your first shift to start scheduling volunteers"),
+      screen.getByText("Create a shift to schedule volunteer activities."),
     ).toBeInTheDocument()
   })
 
