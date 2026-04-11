@@ -23,10 +23,13 @@ describe("offlineQueueStore persistence (plan 110-03)", () => {
     vi.restoreAllMocks()
   })
 
-  test("persist config exposes version 1", () => {
+  test("persist config exposes version 2 (bumped in plan 110-04)", () => {
     // zustand exposes the persist API on store.persist
     // We assert the configured version by writing a value and reading
     // back the envelope, which zustand stamps with { state, version }.
+    // Plan 110-04 / OFFLINE-03 bumped the schema version to 2 to
+    // accommodate the new dead-letter slice and per-item backoff
+    // fields. v1 rehydrates still work via the migrate ladder.
     useOfflineQueueStore.getState().push({
       type: "door_knock",
       payload: {
@@ -38,7 +41,7 @@ describe("offlineQueueStore persistence (plan 110-03)", () => {
       resourceId: "r1",
     })
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")
-    expect(stored.version).toBe(1)
+    expect(stored.version).toBe(2)
   })
 
   test("v0 → v1 migrate stamps client_uuid on legacy door_knock items", async () => {
