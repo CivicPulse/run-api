@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
-status: Roadmap created
-stopped_at: Phase 106 context gathered
-last_updated: "2026-04-10T23:03:07.729Z"
-last_activity: 2026-04-10 — Roadmap drafted, 5 phases (106-110), all 17 requirements mapped
+status: executing
+stopped_at: Completed 106-01-PLAN.md (baseline capture + env unblock + scope decision D-15)
+last_updated: "2026-04-11T00:32:18.362Z"
+last_activity: 2026-04-11
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 5
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.18 Field UX Polish — fix reported canvassing field bugs and harden the offline/sync path for volunteers.
+**Current focus:** Phase 106 — Test Baseline Trustworthiness
 
 ## Current Position
 
-Phase: 106 — Test Baseline Trustworthiness (queued)
-Plan: —
-Status: Roadmap created
-Last activity: 2026-04-10 — Roadmap drafted, 5 phases (106-110), all 17 requirements mapped
+Phase: 106 (Test Baseline Trustworthiness) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-04-11
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
@@ -54,6 +54,7 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 - v1.18: FORMS-01 (form requiredness audit) grouped with Phase 107 canvassing wizard fixes since CANV-03 (optional notes) is itself a requiredness fix.
 - v1.18: MAP-01/02/03 grouped into a single phase (109) since the asset pipeline audit, icon fix, and list/map layering all touch the same field-mode map components.
 - v1.18: 5 phases for medium appetite, sequential dependency chain (106 → 107 → 108 → 109 → 110) so each phase ships on a trustworthy baseline.
+- [Phase 106-test-baseline-trustworthiness]: D-15: Phase 106 scoped to Option D hybrid (pytest 2, vitest 65, Playwright rbac cluster 44, pitfall-5 deletes ~11, D-10 audit 6); phase-verify cluster (~51) and misc (~29-40) deferred to v1.19 via .planning/todos/pending/106-phase-verify-cluster-triage.md
 
 ## Pending Todos
 
@@ -66,6 +67,6 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 
 ## Session Continuity
 
-Last session: 2026-04-10T23:03:07.726Z
-Stopped at: Phase 106 context gathered
-Resume file: .planning/phases/106-test-baseline-trustworthiness/106-CONTEXT.md
+Last session: 2026-04-11T00:32:18.359Z
+Stopped at: Completed 106-01-PLAN.md (baseline capture + env unblock + scope decision D-15)
+Resume file: None
