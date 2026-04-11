@@ -21,7 +21,20 @@ export function useDoorKnockMutation(campaignId: string, walkListId: string) {
 
   return useMutation({
     mutationFn: (data: DoorKnockCreate) =>
-      api.post(`api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/door-knocks`, { json: data }).json(),
+      // Plan 110-08 exit-gate Rule 1 fix: disable ky's retry for
+      // door-knock POSTs. ky's default retry (1s → 2s → 4s) swallows
+      // network TypeErrors for ~7s before surfacing them, which blocks
+      // the offline queue fallback from firing in time for the
+      // ConnectivityPill to update. The offline queue is the correct
+      // retry mechanism for door-knocks — exponential backoff + dead-
+      // letter + client_uuid idempotency — so a per-request retry
+      // layer on top is both redundant AND harmful.
+      api
+        .post(`api/v1/campaigns/${campaignId}/walk-lists/${walkListId}/door-knocks`, {
+          json: data,
+          retry: { limit: 0 },
+        })
+        .json(),
     onSuccess: (_data, variables) => {
       useCanvassingStore.getState().recordOutcome(variables.walk_list_entry_id, variables.result_code)
       queryClient.invalidateQueries({ queryKey: ["walk-list-entries-enriched", campaignId, walkListId] })

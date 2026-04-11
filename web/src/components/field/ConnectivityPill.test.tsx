@@ -15,7 +15,7 @@ function makeItem(id: string) {
   return {
     id,
     type: "door_knock" as const,
-    payload: {
+    payload: { client_uuid: "",
       walk_list_entry_id: "e1",
       voter_id: "v1",
       result_code: "supporter",
@@ -32,7 +32,7 @@ function makeDeadLetter(id: string, errorSummary = "Validation failed") {
     id,
     originalId: `orig-${id}`,
     type: "door_knock" as const,
-    payload: {
+    payload: { client_uuid: "",
       walk_list_entry_id: "e1",
       voter_id: "v1",
       result_code: "supporter",

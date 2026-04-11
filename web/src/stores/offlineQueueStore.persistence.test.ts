@@ -87,7 +87,7 @@ describe("offlineQueueStore persistence (plan 110-03)", () => {
     // Rehydrate should swallow the parse error via onRehydrateStorage.
     // We don't care whether persist reports error — we care that the
     // app state ends up empty and a warn was emitted.
-    await useOfflineQueueStore.persist.rehydrate().catch(() => {
+    await Promise.resolve(useOfflineQueueStore.persist.rehydrate()).catch(() => {
       // some zustand versions still reject on JSON parse fail; we
       // tolerate either outcome as long as state is sane.
     })

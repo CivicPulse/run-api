@@ -30,7 +30,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
   test("renders null when online even if items are queued (pill handles it)", () => {
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
     })
     const { container } = render(<OfflineBanner />)
@@ -47,9 +47,9 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
-        { id: "2", type: "door_knock", payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" }, campaignId: "c1", resourceId: "r1", createdAt: 2, retryCount: 0 },
-        { id: "3", type: "door_knock", payload: { walk_list_entry_id: "e3", voter_id: "v1", result_code: "refused" }, campaignId: "c1", resourceId: "r1", createdAt: 3, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "2", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" }, campaignId: "c1", resourceId: "r1", createdAt: 2, retryCount: 0 },
+        { id: "3", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e3", voter_id: "v1", result_code: "refused" }, campaignId: "c1", resourceId: "r1", createdAt: 3, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -62,7 +62,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -75,7 +75,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -86,7 +86,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -99,9 +99,9 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
-        { id: "2", type: "door_knock", payload: { walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" }, campaignId: "c1", resourceId: "r1", createdAt: 2, retryCount: 0 },
-        { id: "3", type: "door_knock", payload: { walk_list_entry_id: "e3", voter_id: "v1", result_code: "refused" }, campaignId: "c1", resourceId: "r1", createdAt: 3, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "2", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v1", result_code: "not_home" }, campaignId: "c1", resourceId: "r1", createdAt: 2, retryCount: 0 },
+        { id: "3", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e3", voter_id: "v1", result_code: "refused" }, campaignId: "c1", resourceId: "r1", createdAt: 3, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -114,7 +114,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(false)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
     })
     render(<OfflineBanner />)
@@ -130,7 +130,7 @@ describe("OfflineBanner (110-05 narrowed scope)", () => {
     mockUseConnectivityStatus.mockReturnValue(true)
     useOfflineQueueStore.setState({
       items: [
-        { id: "1", type: "door_knock", payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
+        { id: "1", type: "door_knock", payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" }, campaignId: "c1", resourceId: "r1", createdAt: 1, retryCount: 0 },
       ],
       isSyncing: true,
     })

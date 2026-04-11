@@ -70,12 +70,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DROP INDEX IF EXISTS uq_voter_interactions_door_knock_client_uuid"
-    )
-    op.execute(
-        "ALTER TABLE voter_interactions DROP COLUMN IF EXISTS client_uuid"
-    )
+    op.execute("DROP INDEX IF EXISTS uq_voter_interactions_door_knock_client_uuid")
+    op.execute("ALTER TABLE voter_interactions DROP COLUMN IF EXISTS client_uuid")
 
 
 # Silence ruff unused import in case future edits don't reference sa.

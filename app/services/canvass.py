@@ -31,9 +31,7 @@ class DuplicateClientUUIDError(Exception):
 
     def __init__(self, client_uuid: str) -> None:
         self.client_uuid = client_uuid
-        super().__init__(
-            f"Door knock with client_uuid {client_uuid} already recorded"
-        )
+        super().__init__(f"Door knock with client_uuid {client_uuid} already recorded")
 
 
 class CanvassService:
@@ -120,9 +118,7 @@ class CanvassService:
             # 409 Conflict.
             await session.rollback()
             constraint = getattr(getattr(exc, "orig", None), "diag", None)
-            constraint_name = (
-                getattr(constraint, "constraint_name", None) or ""
-            )
+            constraint_name = getattr(constraint, "constraint_name", None) or ""
             if (
                 "uq_voter_interactions_door_knock_client_uuid" in constraint_name
                 or "uq_voter_interactions_door_knock_client_uuid" in str(exc)

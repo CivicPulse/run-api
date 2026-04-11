@@ -204,7 +204,7 @@ describe("useCanvassingWizard", () => {
         value: undefined,
       })
       // and delete to fully remove from `'vibrate' in navigator` check
-      delete (navigator as Navigator & { vibrate?: unknown }).vibrate
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate
     } else {
       Object.defineProperty(navigator, "vibrate", {
         configurable: true,
@@ -597,7 +597,7 @@ describe("useCanvassingWizard", () => {
   })
 
   test("auto-advance silently skips vibrate when not supported", async () => {
-    delete (navigator as Navigator & { vibrate?: unknown }).vibrate
+    delete (navigator as unknown as { vibrate?: unknown }).vibrate
     mutateAsync.mockResolvedValue(undefined)
     const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
 
@@ -661,7 +661,7 @@ describe("useCanvassingWizard", () => {
   })
 
   test("handleJumpToAddress silently skips vibrate when not supported", async () => {
-    delete (navigator as Navigator & { vibrate?: unknown }).vibrate
+    delete (navigator as unknown as { vibrate?: unknown }).vibrate
     entriesData.value = multiVoterEntries
     const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
 

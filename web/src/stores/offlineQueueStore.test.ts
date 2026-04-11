@@ -181,13 +181,13 @@ describe("offlineQueueStore", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e2", voter_id: "v2", result_code: "not_home" },
+      payload: { client_uuid: "", walk_list_entry_id: "e2", voter_id: "v2", result_code: "not_home" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -203,7 +203,7 @@ describe("offlineQueueStore", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -223,7 +223,7 @@ describe("offlineQueueStore", () => {
   test("clear() empties items array and sets isSyncing false", () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -238,7 +238,7 @@ describe("offlineQueueStore", () => {
   test("store persists items to localStorage under key 'offline-queue'", () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "r1",
     })
@@ -301,7 +301,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -342,7 +342,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -374,7 +374,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -393,7 +393,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
     vi.spyOn(crypto, "randomUUID").mockReturnValue("bo-id" as `${string}-${string}-${string}-${string}-${string}`)
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -437,7 +437,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -459,7 +459,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
   test("persist envelope exposes version 2", () => {
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })
@@ -474,7 +474,7 @@ describe("offlineQueueStore — dead-letter slice (plan 110-04)", () => {
 
     useOfflineQueueStore.getState().push({
       type: "door_knock",
-      payload: { walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
+      payload: { client_uuid: "", walk_list_entry_id: "e1", voter_id: "v1", result_code: "supporter" },
       campaignId: "c1",
       resourceId: "wl-1",
     })

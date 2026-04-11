@@ -375,7 +375,8 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
         return { surveyTrigger: true }
       }
 
-      const payload = {
+      const payload: DoorKnockCreate = {
+        client_uuid: crypto.randomUUID(),
         walk_list_entry_id: entryId,
         voter_id: voterId,
         result_code: result,
@@ -415,6 +416,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     surveyComplete,
   }: ContactDraftSubmit) => {
     const payload: DoorKnockCreate = {
+      client_uuid: crypto.randomUUID(),
       walk_list_entry_id: entryId,
       voter_id: voterId,
       result_code: result,
@@ -563,6 +565,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
       let allSaved = true
       for (const entry of entries) {
         const saved = await submitDoorKnock({
+          client_uuid: crypto.randomUUID(),
           walk_list_entry_id: entry.id,
           voter_id: entry.voter_id,
           result_code: "not_home",
