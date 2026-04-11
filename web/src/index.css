@@ -199,6 +199,26 @@
   --tag-8: oklch(0.6 0.16 340);
 }
 
+/* MAP-02 (Phase 109-03) — when the DoorListView sheet is open we mark
+ * the map wrapper inert so its Leaflet controls and marker ::before hit
+ * areas cannot intercept taps that belong to the household list cards.
+ * Using pointer-events:none (NOT display:none) keeps the Leaflet
+ * instance alive so panTo state from 108-03 survives the toggle.
+ */
+.canvassing-map-wrapper--inert,
+.canvassing-map-wrapper--inert * {
+  pointer-events: none !important;
+}
+
+/* Ensure the Radix Sheet overlay + content stack above Leaflet's highest
+ * pane (.leaflet-control = z-index 1000). Radix Sheet overlay defaults
+ * to z-50 which loses against Leaflet controls on mobile viewports.
+ */
+[data-slot="sheet-overlay"],
+[data-slot="sheet-content"] {
+  z-index: 1100;
+}
+
 /* Field mode animation keyframes */
 @keyframes field-shimmer {
   0%, 100% { opacity: 1; }

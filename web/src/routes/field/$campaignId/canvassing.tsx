@@ -514,13 +514,19 @@ function Canvassing() {
 
         {currentHousehold && (
           <>
-            <CanvassingMap
-              households={households}
-              activeHouseholdKey={currentHousehold.householdKey}
-              locationStatus={locationStatus}
-              locationSnapshot={locationSnapshot}
-              onHouseholdSelect={handleJumpToAddress}
-            />
+            <div
+              data-testid="canvassing-map-wrapper"
+              className={listViewOpen ? "canvassing-map-wrapper--inert" : undefined}
+              aria-hidden={listViewOpen || undefined}
+            >
+              <CanvassingMap
+                households={households}
+                activeHouseholdKey={currentHousehold.householdKey}
+                locationStatus={locationStatus}
+                locationSnapshot={locationSnapshot}
+                onHouseholdSelect={handleJumpToAddress}
+              />
+            </div>
 
             <Card className="p-4 space-y-3" data-testid="canvassing-sort-controls">
               <div className="flex items-start justify-between gap-3">
