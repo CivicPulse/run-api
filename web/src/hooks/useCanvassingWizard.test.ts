@@ -625,6 +625,52 @@ describe("useCanvassingWizard", () => {
     expect(toastSuccess).not.toHaveBeenCalled()
   })
 
+  // ---------------------------------------------------------------------------
+  // Phase 108-02 — SELECT-01 D-01/D-02 handleJumpToAddress pin-clear + haptic.
+  // ---------------------------------------------------------------------------
+
+  test("handleJumpToAddress advances currentAddressIndex and fires haptic", async () => {
+    entriesData.value = multiVoterEntries
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    await waitFor(() => {
+      expect(result.current.households.length).toBeGreaterThanOrEqual(2)
+      expect(result.current.currentHousehold?.householdKey).toBe("house-multi")
+    })
+
+    // Baseline: index is 0 and vibrate has not been called yet for a jump.
+    ;(navigator.vibrate as ReturnType<typeof vi.fn>).mockClear()
+
+    act(() => {
+      result.current.handleJumpToAddress(1)
+    })
+
+    // Hook-state assertion: the store advanced to the tapped index. The
+    // visible render-path pin-clear assertion lives in HouseholdCard.test.tsx
+    // because pinnedHouseholdKey is intentionally not exposed on the hook
+    // result (removed in Plan 107-04) — Task 3 owns the DOM-level guarantee.
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+    expect(navigator.vibrate).toHaveBeenCalledWith(50)
+  })
+
+  test("handleJumpToAddress silently skips vibrate when not supported", async () => {
+    delete (navigator as Navigator & { vibrate?: unknown }).vibrate
+    entriesData.value = multiVoterEntries
+    const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
+
+    await waitFor(() => {
+      expect(result.current.households.length).toBeGreaterThanOrEqual(2)
+    })
+
+    expect(() => {
+      act(() => {
+        result.current.handleJumpToAddress(1)
+      })
+    }).not.toThrow()
+
+    expect(useCanvassingStore.getState().currentAddressIndex).toBe(1)
+  })
+
   test("empty notes on handleSubmitContact still advances (CANV-03 coupling)", async () => {
     mutateAsync.mockResolvedValue(undefined)
     const { result } = renderHook(() => useCanvassingWizard("camp-1", "walk-1"))
