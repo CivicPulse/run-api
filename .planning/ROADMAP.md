@@ -207,7 +207,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 | #   | Phase                                      | Goal                                                                                     | Requirements                                      |
 |-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
 | 106 | 5/5 | Complete    | 2026-04-11 |
-| 107 | 8/9 | In Progress|  |
+| 107 | 9/10 | In Progress|  |
 | 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
 | 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
 | 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
@@ -250,7 +250,7 @@ Plans:
 4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
 5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
 
-**Plans:** 8/9 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 - [x] 107-01-PLAN.md — usePrefersReducedMotion hook + unit test (D-20 dependency for Plan 04)

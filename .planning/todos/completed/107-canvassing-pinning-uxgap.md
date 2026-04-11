@@ -89,3 +89,34 @@ deferred surface that this todo unblocks.
 - E2E spec `web/e2e/canvassing-wizard.spec.ts` is updated to also
   assert on the address-heading change in CANV-01 happy path and CANV-02,
   and passes against the docker web container
+
+## Resolution
+
+**Closed:** 2026-04-10 by Plan 107-08.1.
+
+**Fix:** `web/src/hooks/useCanvassingWizard.ts` now wraps `advanceAddress`
+and `skipEntry` from the canvassing store. The wrapped versions call
+`setPinnedHouseholdKey(null)` before delegating to the store action, so
+intentional navigation releases the viewing pin and the `households`
+memo falls through to natural sequence ordering for the next render.
+GPS-update and sort-mode-change pin behavior is unchanged.
+
+**Regression-guard test:** A new render-path test at
+`web/src/components/field/HouseholdCard.test.tsx` mounts a tiny harness
+that uses `useCanvassingWizard` and renders `currentHousehold.address`
+to a `data-testid`. Two scenarios cover the bug surface (house-level
+outcome auto-advance + Skip). The test was verified to go RED on the
+buggy code (pin clear temporarily reverted) and GREEN on the fixed code
+before commit, satisfying Plan 107-08.1 acceptance criterion 2.
+
+**Commits:**
+- `07f5b58` — fix(107-08.1): release pinning on advance/skip to fix CANV-01 visible swap
+- `635213c` — test(107-08.1): add render-path test catching pinning regression
+- `<docs commit>` — docs(107-08.1): close pinning todo + complete plan
+
+**E2E follow-up:** The `canvassing-wizard.spec.ts` address-heading
+assertions in CANV-01 happy path and CANV-02 are still using the
+door-position counter / status badge oracles introduced by 107-08
+deviation #1. They can be tightened to also assert on the rendered
+address text in a future cleanup pass — the regression-guard at the
+unit-render layer carries the risk in the meantime.
