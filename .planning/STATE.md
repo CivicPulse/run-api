@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
-status: verifying
-stopped_at: Completed 108-07-PLAN.md (phase 108 exit gate PASSED)
-last_updated: "2026-04-11T13:35:00.000Z"
+status: planning
+stopped_at: Completed 109-06-PLAN.md (phase 109 exit gate PASSED)
+last_updated: "2026-04-11T14:41:42.237Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 22
-  completed_plans: 22
-  percent: 60
+  completed_phases: 4
+  total_plans: 28
+  completed_plans: 28
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 
 ## Current Position
 
-Phase: 109
+Phase: 110
 Plan: Not started
 Status: Ready for planning
 Last activity: 2026-04-11
 
-Progress: [██████░░░░] 60% (3/5 phases)
+Progress: [████████░░] 80% (4/5 phases)
 
 ## Roadmap Summary
 
@@ -62,6 +62,7 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 - [Phase 107]: FORMS-01 audit (D-12) shipped: 4 hits, 2 REMOVED (notes), 2 KEPT (SMS body); see 107-FORMS-AUDIT.md
 - [Phase 107]: Phase 107 exit gate PASSED — pytest 1118/0/0, vitest 708/0/24 todo, Playwright 305/0/66 on two consecutive greens. Auth-state staleness was the root cause of an initial 17-fail Playwright cluster (cleared playwright/.auth/*.json once and the wrapper re-minted tokens).
 - [Phase 108]: Phase 108 exit gate PASSED — pytest 1118/0/0 (no Python delta), vitest 721/0/24 todo (+13), Playwright 304/0/66 on two consecutive greens via run-e2e.sh (+4 net product tests from canvassing-house-selection.spec.ts). SELECT-01/02/03 closed. 108-STATE-MACHINE.md captures the active-house state machine with reconciliation placeholder for phase 110.
+- [Phase 109]: Phase 109 exit gate PASSED — pytest 1118 (0 delta), vitest 738 (+17), Playwright 308 two consecutive greens. Shipped Radix popper z-1200 fix so Select/Popover/DropdownMenu/Tooltip inside Sheets stack above the 109-03 Sheet z-1100 overlay; shipped MAP-01 Playwright decode-race fix (img.complete && naturalWidth > 0). MAP-01/02/03 complete.
 
 ## Pending Todos
 
@@ -74,6 +75,6 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 
 ## Session Continuity
 
-Last session: 2026-04-11T13:35:00.000Z
-Stopped at: Completed 108-07-PLAN.md (phase 108 exit gate PASSED)
+Last session: 2026-04-11T14:41:42.234Z
+Stopped at: Completed 109-06-PLAN.md (phase 109 exit gate PASSED)
 Resume file: None

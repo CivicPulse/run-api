@@ -209,7 +209,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 | 106 | 5/5 | Complete    | 2026-04-11 |
 | 107 | 10/10 | Complete    | 2026-04-11 |
 | 108 | 7/7 | Complete    | 2026-04-11 |
-| 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
+| 109 | 6/6 | Complete   | 2026-04-11 |
 | 110 | Offline Queue & Connectivity Hardening     | Reliable persist/replay, connectivity indicator, sync-on-reconnect + coverage gate       | OFFLINE-01/02/03 + TEST-01/02/03 anchor           |
 
 #### Phase 106: Test Baseline Trustworthiness ✅ Complete (2026-04-10)
