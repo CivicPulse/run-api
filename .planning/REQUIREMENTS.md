@@ -21,7 +21,7 @@ Requirements derived from:
 
 ### CANV — Canvassing Flow Fixes
 
-- [ ] **CANV-01**: After a volunteer records an outcome for the active house, the canvassing wizard automatically advances to the next house in the walk list without manual intervention.
+- [x] **CANV-01**: After a volunteer records an outcome for the active house, the canvassing wizard automatically advances to the next house in the walk list without manual intervention.
 - [ ] **CANV-02**: The "Skip house" button advances past the current active house, marks it skipped in the local queue, and surfaces the next house within one tap.
 - [ ] **CANV-03**: The outcome notes field is optional — volunteers can save any outcome (contacted, not home, refused, moved, etc.) without entering text in the notes field.
 
