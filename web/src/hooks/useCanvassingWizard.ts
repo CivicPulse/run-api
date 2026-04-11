@@ -87,7 +87,7 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     locationStatus,
     setWalkList,
     advanceAddress: storeAdvanceAddress,
-    jumpToAddress,
+    jumpToAddress: storeJumpToAddress,
     skipEntry: storeSkipEntry,
     unskipEntry,
     touch,
@@ -199,14 +199,14 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
   useLayoutEffect(() => {
     if (sortModeJustChanged) {
       if (households.length > 0) {
-        jumpToAddress(0)
+        storeJumpToAddress(0)
       }
       return
     }
     if (currentAddressIndex >= households.length && households.length > 0) {
-      jumpToAddress(households.length - 1)
+      storeJumpToAddress(households.length - 1)
     }
-  }, [currentAddressIndex, households, jumpToAddress, sortModeJustChanged])
+  }, [currentAddressIndex, households, storeJumpToAddress, sortModeJustChanged])
 
   const currentHousehold = useMemo(
     () => households[currentAddressIndex] ?? null,
@@ -580,11 +580,25 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     [currentHousehold, maybeAdvanceAfterHouseholdSettled, submitDoorKnock],
   )
 
+  // Phase 108 D-01/D-02/D-07: list-tap (and Plan 108-03 map-tap) funnel through
+  // this wrapped action. Clearing the pin BEFORE delegating to the store
+  // mirrors the 107-08.1 advance/skip pattern so the rendered HouseholdCard
+  // actually swaps. Haptic lives in the hook so both entry points fire exactly
+  // once per intentional navigation. Per D-02: NO toast on tap-to-activate —
+  // the user's own tap IS the feedback.
   const handleJumpToAddress = useCallback(
     (index: number) => {
-      jumpToAddress(index)
+      setPinnedHouseholdKey(null)
+      storeJumpToAddress(index)
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(50)
+        } catch {
+          // Silent no-op (iOS Safari, desktop, permission-denied).
+        }
+      }
     },
-    [jumpToAddress],
+    [storeJumpToAddress],
   )
 
   return {
