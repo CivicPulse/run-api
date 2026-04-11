@@ -241,3 +241,104 @@ trivial follow-up that can land in any subsequent plan without risk.
   `bundle-es-import` and remove the fragile unpkg dependency.
 - Issue #2 (duplicate `public/leaflet/` copies) is a latent drift risk
   that should be closed once Issue #1 lands.
+
+---
+
+## MAP-02 layout decision
+
+**Plan:** 109-03 (this phase)
+**Requirement:** MAP-02 — household list view must be fully visible and
+interactable; the Leaflet map underneath must not intercept taps.
+
+### Leaflet z-index pane stack (reference)
+
+From `leaflet.css`, the default stacking order used by every
+`MapContainer` in this app:
+
+| Pane / element          | z-index |
+| ----------------------- | ------- |
+| `.leaflet-tile-pane`    | 200     |
+| `.leaflet-pane`         | 400     |
+| `.leaflet-overlay-pane` | 400     |
+| `.leaflet-shadow-pane`  | 500     |
+| `.leaflet-marker-pane`  | 600     |
+| `.leaflet-tooltip-pane` | 650     |
+| `.leaflet-popup-pane`   | 700     |
+| `.leaflet-control`      | **1000** |
+
+`.leaflet-control` is the killer: `LayersControl`, zoom buttons, and
+attribution all render at `z-index: 1000`, which sits above any
+Radix/shadcn default overlay. The `.leaflet-container` also establishes
+its own stacking context via positioning, so on iOS Safari specifically,
+a Radix Sheet overlay at `z-index: 50` can render visually BEHIND
+Leaflet's tooltip/popup panes even though the Sheet is later in the DOM.
+
+### Radix/shadcn Sheet defaults
+
+`web/src/components/ui/sheet.tsx` ships both `SheetOverlay` and
+`SheetContent` with `className="... z-50 ..."`. That's Radix's default
+and matches shadcn's new-york preset. `z-50` < `.leaflet-control` at
+1000, so without an override the map's layer controls can visually
+cover the top edge of the bottom sheet on mobile viewports where the
+sheet is `max-h-[80dvh]` (not full screen).
+
+### Chosen fix
+
+Two changes in `web/src/index.css`:
+
+1. **`.canvassing-map-wrapper--inert`** — applied to the wrapper div
+   around `<CanvassingMap />` when `listViewOpen === true`. Sets
+   `pointer-events: none !important` on the wrapper and every descendant
+   so the map cannot intercept touch events while the sheet is open.
+   Critically, this does NOT use `display: none` or `visibility: hidden`
+   — the Leaflet instance stays mounted, which preserves the phase
+   108-03 `panTo` state across open/close toggles of the sheet.
+2. **`[data-slot="sheet-overlay"], [data-slot="sheet-content"] {
+   z-index: 1100; }`** — raises both the Radix Sheet overlay and content
+   above `.leaflet-control` at `z-index: 1000`. `1100` gives a 100-unit
+   cushion over the highest Leaflet layer without disturbing the rest of
+   the app's stacking.
+
+Plus one change in `web/src/routes/field/$campaignId/canvassing.tsx`:
+the `<CanvassingMap />` render is wrapped in a div with
+`data-testid="canvassing-map-wrapper"`, `className` toggled to
+`canvassing-map-wrapper--inert` on `listViewOpen`, and
+`aria-hidden={listViewOpen || undefined}` so assistive technology skips
+the map entirely while the sheet owns the viewport.
+
+### Why `pointer-events: none` over `display: none`
+
+Preserving the Leaflet instance across sheet toggles was a hard
+requirement from Plan 109-03's must-haves: the phase-108 `panTo` wiring
+(CanvassingMap ref centering on the active household) stores internal
+state on the Leaflet Map instance. `display: none` would not unmount
+the component, but Leaflet uses `ResizeObserver` under the hood and its
+size cache breaks when the container goes from 0×0 back to its real
+dimensions. `pointer-events: none` leaves the DOM fully measurable and
+only removes hit-testing, which is exactly what MAP-02 needs.
+
+### Test coverage
+
+- **Plan 109-03 (this plan)** — two unit tests in
+  `web/src/routes/field/$campaignId/canvassing.test.tsx`:
+  1. Wrapper div has `canvassing-map-wrapper--inert` class +
+     `aria-hidden="true"` only while the list-view sheet is open.
+  2. The mocked `canvassing-map-container` DOM node identity is
+     preserved across sheet open (no remount).
+- **Plan 109-04** — future unit test will extend `CanvassingMap.test.tsx`
+  with a live render of the Sheet+Map composition to assert the
+  Leaflet instance ref is identical across toggles.
+- **Plan 109-05** — E2E regression in `canvassing-house-selection.spec.ts`
+  (or its sibling) will tap a household card in list view at the top
+  edge where the map used to leak taps, and assert the jump handler
+  fires (not the map click handler). That closes MAP-02 with a full
+  browser-level proof.
+
+### Out of scope for MAP-02
+
+- Moving the "All Doors" button into a sticky header — layout change,
+  not a z-index fix.
+- Rewriting the Sheet primitive to portal outside `.leaflet-container` —
+  it already does (Radix `Portal`), the fix is purely a z-index bump.
+- Adjusting Leaflet's own pane z-indexes — leaves us fighting upstream
+  defaults on every future map view.
