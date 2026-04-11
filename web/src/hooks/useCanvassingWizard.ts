@@ -386,9 +386,17 @@ export function useCanvassingWizard(campaignId: string, walkListId: string) {
     }
   }, [advanceAfterOutcome, doorKnockMutation, maybeAdvanceAfterHouseholdSettled, queueDoorKnockOffline])
 
-  // Forward ref for the retry callback closure (avoids "used before declared")
+  // Forward ref for the retry callback closure (avoids "used before declared").
+  // React Compiler (via eslint-plugin-react-hooks 7.x) flags writing the
+  // useCallback result into a ref via react-hooks/immutability because its
+  // static analysis treats the callback value as immutable-by-identity.
+  // The pattern is safe — useLayoutEffect runs after render and the ref is
+  // only read from effect closures — and rewriting it would require making
+  // the retry-toast closure inside submitDoorKnock aware of its own
+  // recursive identity, which is worse.
   const submitDoorKnockRef = useRef<typeof submitDoorKnock | null>(null)
   useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     submitDoorKnockRef.current = submitDoorKnock
   }, [submitDoorKnock])
 

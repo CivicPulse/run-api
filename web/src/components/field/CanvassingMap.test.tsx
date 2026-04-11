@@ -49,6 +49,7 @@ vi.mock("react-leaflet", async () => {
     const positionKey = props.position
       ? `${props.position[0]},${props.position[1]}`
       : ""
+    /* eslint-disable react-hooks/refs */
     return React.createElement(
       "div",
       {
@@ -62,6 +63,7 @@ vi.mock("react-leaflet", async () => {
       },
       (props.children as React.ReactNode) ?? null,
     )
+    /* eslint-enable react-hooks/refs */
   })
   return {
     MapContainer: ({ children }: { children: React.ReactNode }) => children,

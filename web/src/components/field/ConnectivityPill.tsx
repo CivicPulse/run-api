@@ -153,8 +153,11 @@ function deriveView(args: DeriveArgs): DerivedView {
 /**
  * Produce a compact relative-time label (e.g. "just now", "30s",
  * "2m ago", "3h ago", "2d ago"). Kept small on purpose so the pill
- * fits narrow mobile headers.
+ * fits narrow mobile headers. Exported for unit testing; kept in this
+ * file because it's a single-purpose formatter tightly coupled to the
+ * pill's copy — moving it to its own module would be premature.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatRelative(ts: number, now: number = Date.now()): string {
   const diff = Math.max(0, now - ts)
   const sec = Math.floor(diff / 1000)
