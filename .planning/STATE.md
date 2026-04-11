@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Field UX Polish
 status: executing
-stopped_at: Completed 107-06-PLAN.md
-last_updated: "2026-04-11T03:36:49.659Z"
+stopped_at: Completed 107-05-PLAN.md
+last_updated: "2026-04-11T03:39:57.634Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
-  percent: 71
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 ## Current Position
 
 Phase: 107 (Canvassing Wizard Fixes) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-04-11
 
@@ -58,6 +58,7 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 - [Phase 106]: Reduced default Playwright workers 16 -> 8 in run-e2e.sh to fix gate-time concurrency flakes (rbac.volunteer/viewer); E2E_WORKERS env var honored as override
 - [Phase 106]: TEST-04 marked complete via 106-EXIT-GATE.md: pytest 1114 pass, vitest 675 pass, Playwright 0 fails on two consecutive run-e2e.sh runs (2026-04-11T01:52:12Z + 01:54:28Z)
 - [Phase 107]: InlineSurvey notesRequired is now an explicit prop (D-09); both canvassing and phone-banking pass false (D-19)
+- [Phase 107]: CANV-02 fix: removed 300ms setTimeout in handleSkipAddress; replaced with isPending guard + Undo toast (RESEARCH §2 option c)
 
 ## Pending Todos
 
@@ -70,6 +71,6 @@ TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success
 
 ## Session Continuity
 
-Last session: 2026-04-11T03:36:44.852Z
-Stopped at: Completed 107-06-PLAN.md
+Last session: 2026-04-11T03:39:53.455Z
+Stopped at: Completed 107-05-PLAN.md
 Resume file: None
