@@ -219,6 +219,22 @@
   z-index: 1100;
 }
 
+/* Phase 109-06 — Radix portal-rendered popover primitives must stack
+ * ABOVE the Sheet overlay/content so Select, Popover, DropdownMenu, and
+ * Tooltip remain usable when opened from within a Sheet. The 109-03 bump
+ * of sheet-overlay to z-1100 broke Select dropdowns inside the voter edit
+ * Sheet (VCRUD-02) because Radix Select content defaults to z-50 and
+ * rendered behind the overlay. Bumping every Radix popper portal above
+ * the sheet restores the original layering contract.
+ */
+[data-slot="select-content"],
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="tooltip-content"],
+[data-radix-popper-content-wrapper] {
+  z-index: 1200;
+}
+
 /* Field mode animation keyframes */
 @keyframes field-shimmer {
   0%, 100% { opacity: 1; }

@@ -308,10 +308,19 @@ test.describe("MAP-01 marker rendering", () => {
     })
 
     // Give Leaflet a tick to paint markers — `waitForFunction` polls the
-    // DOM until at least one `<img>` is inside `.leaflet-container` (the
-    // marker shadow + pin image for each household marker appear here).
+    // DOM until at least one `<img>` is inside `.leaflet-container` AND
+    // every image has a decoded `naturalWidth > 0`. Under heavy parallel
+    // load (8 workers) the plain `.length > 0` check can race the image
+    // decode microtask even for data URIs, so we wait for the decoded
+    // state explicitly.
     await page.waitForFunction(
-      () => document.querySelectorAll(".leaflet-container img").length > 0,
+      () => {
+        const imgs = Array.from(
+          document.querySelectorAll(".leaflet-container img"),
+        ) as HTMLImageElement[]
+        if (imgs.length === 0) return false
+        return imgs.every((img) => img.complete && img.naturalWidth > 0)
+      },
       undefined,
       { timeout: 15_000 },
     )
