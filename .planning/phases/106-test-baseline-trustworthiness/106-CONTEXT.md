@@ -89,6 +89,70 @@ Requirement satisfied: **TEST-04**.
   project's "commit after each task" norm and keeps delete justifications
   aligned with the code changes.
 
+### Scope Decision (2026-04-10, post-baseline)
+- **D-15:** After the plan 106-01 baseline run revealed **219 real hard
+  fails** (2 pytest + 65 vitest + 152 Playwright, post env-unblock) —
+  well beyond the 50-fail scope-explosion threshold — the user
+  selected **Option D: Hybrid, highest-signal clusters**. The phase is
+  scoped to the clusters where clustering math is favorable and signal
+  matters for v1.18 Field UX Polish, and the rest is deferred.
+
+  **IN scope for 106-02/03/04/05 triage:**
+  1. **pytest** — 2 hard fails (1 canvassing pitfall-5 delete, 1
+     parallel-chunk: 3x rerun then fix-or-delete).
+  2. **vitest shifts cluster** — 34 of 65 fails are one root cause
+     (`TypeError: signups.map is not a function` at
+     `web/src/routes/campaigns/$campaignId/volunteers/shifts/$shiftId/index.tsx:261`).
+     Single mechanical fix.
+  3. **vitest remainder** — ~31 fails across 6 files, per 15-min time
+     box (D-01).
+  4. **Playwright rbac cluster** — 44 fails across 5 specs
+     (`rbac.{admin,manager,viewer,volunteer,spec}.ts`). Investigate
+     shared helper/fixture first; expect cluster fix, not 44 independent
+     bugs. D-11 violations in these files (6 unjustified `test.skip`)
+     are handled as part of the cluster.
+  5. **Playwright pitfall-5 deletes** — `field-mode.volunteer.spec.ts`
+     (5 fails), `map-interactions.spec.ts` (4 fails),
+     `walk-lists.spec.ts` (1 fail), plus `src/hooks/useCanvassing.test.ts`
+     (full vitest file). Delete-with-reference to phases 107 (CANV) and
+     109 (MAP) per D-08. Use `PHASE-106-DELETE:` prefix in commit body
+     justifications.
+  6. **D-10 skip-marker audit** — 11 total markers across 7 known-skip
+     files. 6 are unjustified (all in rbac.*, handled by cluster #4).
+     5 are already compliant. 2 need inspection (phase21 and
+     cross-cutting line 344).
+
+  **OUT of scope (deferred to v1.19 / follow-up phase):**
+  1. **phase-verify cluster** — ~43 fails across
+     `phase{12,13,14,20,21,27,29,32,35}-*verify.spec.ts`. These cover
+     old milestone phases (12-35) unrelated to v1.18 Field UX Polish.
+     Create a backlog entry at
+     `.planning/todos/pending/106-phase-verify-cluster-triage.md` that
+     enumerates the 9 deferred spec files with current fail counts and
+     links back to `106-BASELINE.md §Playwright`. Before deferring,
+     mark each failing test with
+     `test.skip(..., "Deferred to v1.19 — pre-existing failure, phase-verify cluster, see .planning/todos/pending/106-phase-verify-cluster-triage.md")`
+     so the green bar isn't broken and they don't count as new failures
+     against future phases.
+  2. **Remaining Playwright specs not in rbac or pitfall-5** — any
+     tests that were in the baseline and are NOT in scope items 1-6
+     above get the same defer-with-justified-skip treatment. Add them
+     to the same todo file under a "miscellaneous deferred" section.
+
+  **D-12 exit-gate adjustment for phase 106-05:**
+  - `uv run pytest` exits 0 (unchanged).
+  - vitest exits 0 (unchanged).
+  - Playwright: **in-scope specs** pass on 2 consecutive `run-e2e.sh`
+    runs. Deferred specs carry D-10-compliant justified skips, so they
+    don't break the green bar. The exit gate verifies trustworthiness
+    for the IN-scope surface, not the entire 396-test suite.
+
+  **Handoff note:** Plan executors for 106-02/03/04/05 MUST read this
+  D-15 block AND the `## Scope Decision` footer in `106-BASELINE.md`
+  before starting. The phase appetite and exit criteria are now the
+  Option D hybrid, not the original "every failing test triaged"
+  framing.
+
 ### Claude's Discretion
 - Exact order the three suites are tackled (suggest pytest → vitest →
   Playwright, since pytest is likely lowest-noise).
