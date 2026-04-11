@@ -206,7 +206,7 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 
 | #   | Phase                                      | Goal                                                                                     | Requirements                                      |
 |-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
-| 106 | 3/5 | In Progress|  |
+| 106 | 4/5 | In Progress|  |
 | 107 | Canvassing Wizard Fixes                    | Auto-advance, working Skip House, optional outcome notes, form-requiredness audit        | CANV-01, CANV-02, CANV-03, FORMS-01               |
 | 108 | House Selection & Active-State             | Tap-to-activate from list and map with audited state machine                             | SELECT-01, SELECT-02, SELECT-03                   |
 | 109 | Map Rendering & Asset Pipeline             | Leaflet icons render everywhere; list view not covered by map; asset pipeline audited    | MAP-01, MAP-02, MAP-03                            |
@@ -224,13 +224,13 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 3. `web/scripts/run-e2e.sh` runs the full Playwright suite with no flaky-known-broken specs — any remaining failures are tracked as real bugs.
 4. Any tests deleted during this phase are recorded with a short justification in the phase commit messages.
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 106-01-PLAN.md — Baseline capture (env sanity, 3-suite single-run, 106-BASELINE.md scope fence, scope-explosion gate)
 - [x] 106-02-PLAN.md — Pytest triage (15-min time-box, D-10 skip audit, `PHASE-106-DELETE:` deletion trail, pytest exits 0)
 - [x] 106-03-PLAN.md — Vitest triage (15-min time-box, D-10 skip/only audit, vitest exits 0)
-- [ ] 106-04-PLAN.md — Playwright triage (D-11 known-skip audit, 3x rerun D-04, historical flake hit list, run-e2e.sh exits 0)
+- [x] 106-04-PLAN.md — Playwright triage (D-11 known-skip audit, 3x rerun D-04, historical flake hit list, run-e2e.sh exits 0)
 - [ ] 106-05-PLAN.md — D-12 exit gate (ruff + pytest + vitest + 2x consecutive green Playwright via wrapper, 106-EXIT-GATE.md)
 
 **Dependencies:** none (first phase of milestone).
