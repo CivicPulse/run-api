@@ -10,15 +10,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuthStore } from "@/stores/authStore"
+import { ConnectivityPill } from "@/components/field/ConnectivityPill"
 
 interface FieldHeaderProps {
   campaignId: string
   title: string
   showBack?: boolean
   onHelpClick?: () => void
+  // Plan 110-05 / OFFLINE-02: when provided, renders a ConnectivityPill
+  // in the header between the title and the help button, and invokes
+  // this callback on tap to let the parent open the ConnectivitySheet.
+  onConnectivityClick?: () => void
 }
 
-export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }: FieldHeaderProps) {
+export function FieldHeader({
+  campaignId,
+  title,
+  showBack = false,
+  onHelpClick,
+  onConnectivityClick,
+}: FieldHeaderProps) {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
@@ -58,6 +69,10 @@ export function FieldHeader({ campaignId, title, showBack = false, onHelpClick }
       <h1 className="flex-1 text-center text-sm font-semibold truncate">
         {title}
       </h1>
+
+      {onConnectivityClick && (
+        <ConnectivityPill onClick={onConnectivityClick} />
+      )}
 
       <Button
         variant="ghost"
