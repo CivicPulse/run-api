@@ -35,7 +35,7 @@ const MOCK_FIELD_ME = {
   canvassing: {
     walk_list_id: WALK_LIST_ID,
     walk_list_name: "Phase 107 Test Walk List",
-    total: 4,
+    total: 5,
     completed: 0,
   },
   phone_banking: null,
@@ -46,7 +46,7 @@ const MOCK_WALK_LIST_DETAIL = {
   name: "Phase 107 Test Walk List",
   campaign_id: CAMPAIGN_ID,
   script_id: SCRIPT_ID,
-  total_entries: 4,
+  total_entries: 5,
   completed_entries: 0,
 }
 
@@ -54,6 +54,11 @@ const MOCK_WALK_LIST_DETAIL = {
 // regression test (a Refused/Moved on Voter 1 must NOT advance the house).
 // House B is single-voter, used as the "next house" target for the
 // CANV-01 house-level test and the CANV-02 skip test.
+// House C (added Plan 108-01 Wave 0) is a single-voter household with
+// distinct mappable coordinates so SELECT-02 has a non-current marker
+// to tap and SELECT-03 (D-11) has the required ≥3 households in one
+// fixture. The Door counter therefore reads "Door X of 3" — phase 107
+// assertions were updated to match.
 // NOTE: `household.address` (per `groupByHousehold` in `web/src/types/canvassing.ts`)
 // concatenates line1, city, state, and zip with comma separators, so the
 // rendered text in the HouseholdCard h2 is the full string. Tests match
@@ -61,8 +66,19 @@ const MOCK_WALK_LIST_DETAIL = {
 // drift in the address combiner.
 const HOUSE_A_LINE1 = "123 Maple Street"
 const HOUSE_B_LINE1 = "456 Oak Avenue"
+const HOUSE_C_LINE1 = "400 Cherry Street"
 const HOUSE_A_ADDRESS_RE = new RegExp(HOUSE_A_LINE1, "i")
 const HOUSE_B_ADDRESS_RE = new RegExp(HOUSE_B_LINE1, "i")
+const HOUSE_C_ADDRESS_RE = new RegExp(HOUSE_C_LINE1, "i")
+
+// Mappable coordinates for the canvassing map. All three households are
+// in central Macon, GA with ≥150m of separation between any pair so each
+// renders as a distinct marker on the canvassing map (>>50m floor required
+// by Plan 108-01 Task 3 to satisfy SELECT-02's "tap a non-current marker"
+// requirement).
+const HOUSE_A_LATLNG = { latitude: 32.8407, longitude: -83.6324 }
+const HOUSE_B_LATLNG = { latitude: 32.8421, longitude: -83.6341 }
+const HOUSE_C_LATLNG = { latitude: 32.8389, longitude: -83.6307 }
 
 function makeEntry(opts: {
   id: string
@@ -72,6 +88,8 @@ function makeEntry(opts: {
   firstName: string
   lastName: string
   line1: string
+  latitude: number | null
+  longitude: number | null
 }) {
   return {
     id: opts.id,
@@ -80,8 +98,8 @@ function makeEntry(opts: {
     household_key: opts.householdKey,
     sequence: opts.sequence,
     status: "pending",
-    latitude: null,
-    longitude: null,
+    latitude: opts.latitude,
+    longitude: opts.longitude,
     voter: {
       id: opts.voterId,
       first_name: opts.firstName,
@@ -109,6 +127,8 @@ const MOCK_WALK_LIST_ENTRIES = [
     firstName: "Alice",
     lastName: "Anderson",
     line1: HOUSE_A_LINE1,
+    latitude: HOUSE_A_LATLNG.latitude,
+    longitude: HOUSE_A_LATLNG.longitude,
   }),
   makeEntry({
     id: "entry-a2",
@@ -118,6 +138,8 @@ const MOCK_WALK_LIST_ENTRIES = [
     firstName: "Aaron",
     lastName: "Anderson",
     line1: HOUSE_A_LINE1,
+    latitude: HOUSE_A_LATLNG.latitude,
+    longitude: HOUSE_A_LATLNG.longitude,
   }),
   makeEntry({
     id: "entry-a3",
@@ -127,6 +149,8 @@ const MOCK_WALK_LIST_ENTRIES = [
     firstName: "Amelia",
     lastName: "Anderson",
     line1: HOUSE_A_LINE1,
+    latitude: HOUSE_A_LATLNG.latitude,
+    longitude: HOUSE_A_LATLNG.longitude,
   }),
   // House B — single voter, the "next house" target
   makeEntry({
@@ -137,6 +161,24 @@ const MOCK_WALK_LIST_ENTRIES = [
     firstName: "Bob",
     lastName: "Brown",
     line1: HOUSE_B_LINE1,
+    latitude: HOUSE_B_LATLNG.latitude,
+    longitude: HOUSE_B_LATLNG.longitude,
+  }),
+  // House C — single voter, distinct mappable coordinates. Added by
+  // Plan 108-01 Wave 0 to satisfy SELECT-02 (non-current marker tap target)
+  // and SELECT-03 D-11 (≥3 households for state machine audit). Coords
+  // are ≥150m from House A and House B so SELECT-02's marker disambiguation
+  // is unambiguous.
+  makeEntry({
+    id: "entry-c1",
+    voterId: "voter-c1",
+    householdKey: "house-c",
+    sequence: 5,
+    firstName: "Carla",
+    lastName: "Carter",
+    line1: HOUSE_C_LINE1,
+    latitude: HOUSE_C_LATLNG.latitude,
+    longitude: HOUSE_C_LATLNG.longitude,
   }),
 ]
 
@@ -277,13 +319,14 @@ test.describe("Canvassing wizard — phase 107", () => {
   }) => {
     await gotoCanvassing(page)
 
-    // Sanity: starting on House A, door 1 of 2. There are 4 entries but
-    // only 2 unique households (3 voters at House A + 1 at House B), so
-    // the "Door X of N" counter reads "Door 1 of 2" — the wizard counts
-    // households, not voters, per `groupByHousehold`.
+    // Sanity: starting on House A, door 1 of 3. There are 5 entries but
+    // 3 unique households (3 voters at House A + 1 at House B + 1 at
+    // House C, the latter added by Plan 108-01 Wave 0), so the "Door X
+    // of N" counter reads "Door 1 of 3" — the wizard counts households,
+    // not voters, per `groupByHousehold`.
     await expect(houseAHeading(page)).toBeVisible()
     await expect(page.getByTestId("household-door-position")).toContainText(
-      "Door 1 of 2",
+      "Door 1 of 3",
     )
 
     // Tap "Not Home" — house-level outcome per HOUSE_LEVEL_OUTCOMES.
@@ -304,14 +347,14 @@ test.describe("Canvassing wizard — phase 107", () => {
     // counter advance + the ARIA-live status text + the sonner toast are
     // the user-visible channels that DO fire correctly today.
     await expect(page.getByTestId("household-door-position")).toContainText(
-      "Door 2 of 2",
+      "Door 2 of 3",
       { timeout: 5_000 },
     )
 
     // The aria-live region announces the new door number. (The address
     // string in the announcement is whichever door currentAddressIndex
-    // points to — also pinned, so we only assert on "door 2 of 2".)
-    await expect(page.getByRole("status").filter({ hasText: /door 2 of 2/i }))
+    // points to — also pinned, so we only assert on "door 2 of 3".)
+    await expect(page.getByRole("status").filter({ hasText: /door 2 of 3/i }))
       .toBeVisible({ timeout: 5_000 })
 
     // Triple-channel feedback per D-03: the sonner success toast
@@ -342,7 +385,7 @@ test.describe("Canvassing wizard — phase 107", () => {
     // (Aaron and Amelia are still pending).
     await expect(houseAHeading(page)).toBeVisible({ timeout: 5_000 })
     await expect(page.getByTestId("household-door-position")).toContainText(
-      "Door 1 of 2",
+      "Door 1 of 3",
     )
 
     // The active voter advances to the next pending resident (Aaron).
@@ -360,7 +403,7 @@ test.describe("Canvassing wizard — phase 107", () => {
 
     await expect(houseAHeading(page)).toBeVisible()
     await expect(page.getByTestId("household-door-position")).toContainText(
-      "Door 1 of 2",
+      "Door 1 of 3",
     )
 
     // One tap on Skip. Phase 107 D-07 removed the 300ms setTimeout race;
@@ -373,7 +416,7 @@ test.describe("Canvassing wizard — phase 107", () => {
     // caveat as the CANV-01 happy path test — see
     // `.planning/todos/pending/107-canvassing-pinning-uxgap.md`.
     await expect(page.getByTestId("household-door-position")).toContainText(
-      "Door 2 of 2",
+      "Door 2 of 3",
       { timeout: 5_000 },
     )
 
