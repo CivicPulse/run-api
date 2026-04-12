@@ -142,7 +142,7 @@ jobs:
           docker compose logs zitadel
           exit 1
 
-      - name: Pre-create alembic_version with VARCHAR(128)
+      - name: Pre-create alembic_version with VARCHAR(128) + diagnose DB state
         # Known issue (see issue #19 / reference_alembic_version_column_width.md).
         # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
         # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
@@ -150,7 +150,17 @@ jobs:
         # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
         # Pre-create with the right width so alembic detects the existing
         # table and skips its VARCHAR(32) create.
+        #
+        # Also diagnose what's in run_api before alembic runs — on iteration 7
+        # we saw a 'users' type already present blocking migration 001, origin
+        # unclear. Dump table + type state to localize.
         run: |
+          echo "===== existing tables in run_api ====="
+          docker compose exec -T postgres psql -U postgres -d run_api -c "\dt public.*" || true
+          echo "===== existing types in pg_type namespace public ====="
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "SELECT typname FROM pg_type WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname='public') ORDER BY typname;" || true
+          echo "===== creating alembic_version ====="
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
@@ -247,7 +257,7 @@ jobs:
           docker compose logs zitadel
           exit 1
 
-      - name: Pre-create alembic_version with VARCHAR(128)
+      - name: Pre-create alembic_version with VARCHAR(128) + diagnose DB state
         # Known issue (see issue #19 / reference_alembic_version_column_width.md).
         # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
         # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
@@ -255,7 +265,17 @@ jobs:
         # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
         # Pre-create with the right width so alembic detects the existing
         # table and skips its VARCHAR(32) create.
+        #
+        # Also diagnose what's in run_api before alembic runs — on iteration 7
+        # we saw a 'users' type already present blocking migration 001, origin
+        # unclear. Dump table + type state to localize.
         run: |
+          echo "===== existing tables in run_api ====="
+          docker compose exec -T postgres psql -U postgres -d run_api -c "\dt public.*" || true
+          echo "===== existing types in pg_type namespace public ====="
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "SELECT typname FROM pg_type WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname='public') ORDER BY typname;" || true
+          echo "===== creating alembic_version ====="
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
