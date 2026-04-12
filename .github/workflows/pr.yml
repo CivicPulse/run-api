@@ -344,17 +344,35 @@ jobs:
 
       - name: Run auth setup smoke projects (deterministic gate)
         working-directory: web
+        # E2E_DEV_SERVER_URL points Playwright at the docker-compose web
+        # container (host port 37822) instead of letting Playwright spawn
+        # its own `npm run dev --port 5173`. Playwright's spawned vite
+        # wouldn't know the ZITADEL discovery URL — web/.env.local on the
+        # CI runner is empty, whereas the docker web container sources
+        # /home/app/zitadel-data/env.zitadel at startup and has all the
+        # VITE_ZITADEL_* vars the login flow needs.
         run: npx playwright test --project=setup-owner --project=setup-admin --project=setup-manager --project=setup-volunteer --project=setup-viewer --workers=1
+        env:
+          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
 
       - name: Run Phase 63 strict no-skip gate (PB-10 + FIELD-08/09/10)
         if: matrix.shardIndex == 1
         working-directory: web
         run: ./scripts/run-e2e.sh --strict-phase63-no-skip
+        env:
+          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
 
       - name: Run E2E tests
         working-directory: web
         run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
+          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
           E2E_OWNER_USERNAME: owner1@localhost
           E2E_OWNER_PASSWORD: "Owner1234!"
           E2E_ADMIN_USERNAME: admin1@localhost
