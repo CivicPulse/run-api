@@ -186,12 +186,15 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run integration tests
-        # compose.yml publishes postgres on host port 37824 (PG_HOST_PORT
-        # default); the prior workflow used 5433 which was never actually
-        # mapped — dead config from an older compose file. Corrected.
+        # tests/integration/conftest.py reads PG_HOST_PORT (or TEST_DB_PORT)
+        # to build the DATABASE_URL, NOT the DATABASE_URL env var itself.
+        # compose.yml publishes postgres on 37824 (PG_HOST_PORT default).
+        # The prior workflow set DATABASE_URL to port 5433 which the
+        # conftest ignored entirely, then fell back to its own default
+        # of 5433 (which was never mapped). Fix: set PG_HOST_PORT.
         run: uv run pytest tests/integration/ -m integration -x -q
         env:
-          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:37824/run_api"
+          PG_HOST_PORT: "37824"
 
       - name: Stop services
         if: always()
@@ -215,7 +218,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      - name: Create ZITADEL data dir and env file with open perms
+      - name: Create ZITADEL data dir, env file, and web/node_modules with open perms
         run: |
           mkdir -p .zitadel-data
           chmod 0777 .zitadel-data
@@ -224,6 +227,13 @@ jobs:
           # the container's non-root app user can overwrite it.
           touch .env.zitadel
           chmod 0666 .env.zitadel
+          # docker compose up creates web/node_modules/ on the host as root
+          # when mounting the named volume web_node_modules:/home/app/web/node_modules
+          # (it needs the submount point). Subsequent `npm ci` as the runner
+          # user then fails with EACCES. Pre-create with 0777 so npm ci can
+          # populate it.
+          mkdir -p web/node_modules
+          chmod 0777 web/node_modules
 
       - name: Start services
         # No --wait: compose v2's strict mode errors out when any service
