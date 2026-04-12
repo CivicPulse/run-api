@@ -142,38 +142,44 @@ jobs:
           docker compose logs zitadel
           exit 1
 
-      - name: Pre-create alembic_version with VARCHAR(128) + diagnose DB state
+      - name: Pre-create alembic_version with VARCHAR(128)
         # Known issue (see issue #19 / reference_alembic_version_column_width.md).
         # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
         # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
         # StringDataRightTruncation blows up migrate. Dev + prod DBs were
         # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
-        # Pre-create with the right width so alembic detects the existing
-        # table and skips its VARCHAR(32) create.
-        #
-        # Also diagnose what's in run_api before alembic runs — on iteration 7
-        # we saw a 'users' type already present blocking migration 001, origin
-        # unclear. Dump table + type state to localize.
+        # Pre-create with the right width so the api container's
+        # dev-entrypoint.sh alembic run detects the existing table and skips
+        # its VARCHAR(32) create. This step races the api container's own
+        # dev-entrypoint, but CREATE TABLE IF NOT EXISTS is idempotent and
+        # we only need to win the race at T0 before dev-entrypoint gets to
+        # alembic's internal CREATE TABLE alembic_version.
         run: |
-          echo "===== existing tables in run_api ====="
-          docker compose exec -T postgres psql -U postgres -d run_api -c "\dt public.*" || true
-          echo "===== existing types in pg_type namespace public ====="
-          docker compose exec -T postgres psql -U postgres -d run_api \
-            -c "SELECT typname FROM pg_type WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname='public') ORDER BY typname;" || true
-          echo "===== creating alembic_version ====="
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
-      - name: Run migrations and seed
-        # Use `python -m alembic` rather than bare `alembic`: the COPY'd
-        # venv in the dev Dockerfile target has absolute-path shebangs
-        # pointing at the deps build stage (/build/.venv/bin/python) which
-        # doesn't exist at runtime, so the bare `alembic` script fails with
-        # "cannot execute: required file not found". Production k8s
-        # deployments already use `python -m alembic` in their init
-        # container for the same reason.
+      - name: Wait for api to finish self-migrating + become ready
+        # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
+        # on startup. We DON'T run our own alembic upgrade because two concurrent
+        # alembic runs race on migration 001's DDL (pg_type visibility leaks
+        # across transactions and we see 'users type already exists' collisions).
+        # Just wait for /health/ready to confirm alembic is done and uvicorn is up.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python -m alembic upgrade head"
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:37821/health/ready; then
+              echo "api ready"
+              exit 0
+            fi
+            echo "Waiting for api... ($i/60)"
+            sleep 2
+          done
+          echo "api did not become ready"
+          docker compose ps -a
+          docker compose logs api
+          exit 1
+
+      - name: Seed dev data
+        run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
       - name: Install Python test dependencies
@@ -257,38 +263,44 @@ jobs:
           docker compose logs zitadel
           exit 1
 
-      - name: Pre-create alembic_version with VARCHAR(128) + diagnose DB state
+      - name: Pre-create alembic_version with VARCHAR(128)
         # Known issue (see issue #19 / reference_alembic_version_column_width.md).
         # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
         # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
         # StringDataRightTruncation blows up migrate. Dev + prod DBs were
         # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
-        # Pre-create with the right width so alembic detects the existing
-        # table and skips its VARCHAR(32) create.
-        #
-        # Also diagnose what's in run_api before alembic runs — on iteration 7
-        # we saw a 'users' type already present blocking migration 001, origin
-        # unclear. Dump table + type state to localize.
+        # Pre-create with the right width so the api container's
+        # dev-entrypoint.sh alembic run detects the existing table and skips
+        # its VARCHAR(32) create. This step races the api container's own
+        # dev-entrypoint, but CREATE TABLE IF NOT EXISTS is idempotent and
+        # we only need to win the race at T0 before dev-entrypoint gets to
+        # alembic's internal CREATE TABLE alembic_version.
         run: |
-          echo "===== existing tables in run_api ====="
-          docker compose exec -T postgres psql -U postgres -d run_api -c "\dt public.*" || true
-          echo "===== existing types in pg_type namespace public ====="
-          docker compose exec -T postgres psql -U postgres -d run_api \
-            -c "SELECT typname FROM pg_type WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname='public') ORDER BY typname;" || true
-          echo "===== creating alembic_version ====="
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
-      - name: Run migrations and seed
-        # Use `python -m alembic` rather than bare `alembic`: the COPY'd
-        # venv in the dev Dockerfile target has absolute-path shebangs
-        # pointing at the deps build stage (/build/.venv/bin/python) which
-        # doesn't exist at runtime, so the bare `alembic` script fails with
-        # "cannot execute: required file not found". Production k8s
-        # deployments already use `python -m alembic` in their init
-        # container for the same reason.
+      - name: Wait for api to finish self-migrating + become ready
+        # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
+        # on startup. We DON'T run our own alembic upgrade because two concurrent
+        # alembic runs race on migration 001's DDL (pg_type visibility leaks
+        # across transactions and we see 'users type already exists' collisions).
+        # Just wait for /health/ready to confirm alembic is done and uvicorn is up.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python -m alembic upgrade head"
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:37821/health/ready; then
+              echo "api ready"
+              exit 0
+            fi
+            echo "Waiting for api... ($i/60)"
+            sleep 2
+          done
+          echo "api did not become ready"
+          docker compose ps -a
+          docker compose logs api
+          exit 1
+
+      - name: Seed dev data
+        run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
       - name: Create E2E test users
