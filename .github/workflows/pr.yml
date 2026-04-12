@@ -127,13 +127,20 @@ jobs:
           docker compose logs zitadel-db || true
 
       - name: Wait for ZITADEL readiness
+        # Compose maps zitadel to host port 37823 (internal 8080). This
+        # step was dead code before — previous compose up --wait always
+        # exited 1 first — so the wrong port (8080) never mattered.
+        # Port now corrected to match the actual published port.
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/debug/ready && echo "ZITADEL ready" && exit 0
+            curl -sf http://localhost:37823/debug/ready && echo "ZITADEL ready" && exit 0
             echo "Waiting for ZITADEL... ($i/60)"
             sleep 2
           done
-          echo "ZITADEL did not become ready" && exit 1
+          echo "ZITADEL did not become ready"
+          docker compose ps -a
+          docker compose logs zitadel
+          exit 1
 
       - name: Run migrations and seed
         run: |
@@ -206,13 +213,20 @@ jobs:
           docker compose logs zitadel-db || true
 
       - name: Wait for ZITADEL readiness
+        # Compose maps zitadel to host port 37823 (internal 8080). This
+        # step was dead code before — previous compose up --wait always
+        # exited 1 first — so the wrong port (8080) never mattered.
+        # Port now corrected to match the actual published port.
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/debug/ready && echo "ZITADEL ready" && exit 0
+            curl -sf http://localhost:37823/debug/ready && echo "ZITADEL ready" && exit 0
             echo "Waiting for ZITADEL... ($i/60)"
             sleep 2
           done
-          echo "ZITADEL did not become ready" && exit 1
+          echo "ZITADEL did not become ready"
+          docker compose ps -a
+          docker compose logs zitadel
+          exit 1
 
       - name: Run migrations and seed
         run: |
