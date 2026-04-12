@@ -102,7 +102,12 @@ jobs:
           chmod 0666 .env.zitadel
 
       - name: Start services
-        run: docker compose up -d --build --wait
+        # No --wait: compose v2's strict mode errors out when any service
+        # lacks a healthcheck, even if downstream services are healthy.
+        # zitadel is intentionally healthcheck-less (distroless image has
+        # no curl/wget). The "Wait for ZITADEL readiness" step below is
+        # the real readiness gate.
+        run: docker compose up -d --build
         env:
           ZITADEL_TLS_MODE: disabled
           ZITADEL_EXTERNAL_SECURE: "false"
@@ -176,7 +181,12 @@ jobs:
           chmod 0666 .env.zitadel
 
       - name: Start services
-        run: docker compose up -d --build --wait
+        # No --wait: compose v2's strict mode errors out when any service
+        # lacks a healthcheck, even if downstream services are healthy.
+        # zitadel is intentionally healthcheck-less (distroless image has
+        # no curl/wget). The "Wait for ZITADEL readiness" step below is
+        # the real readiness gate.
+        run: docker compose up -d --build
         env:
           ZITADEL_TLS_MODE: disabled
           ZITADEL_EXTERNAL_SECURE: "false"
