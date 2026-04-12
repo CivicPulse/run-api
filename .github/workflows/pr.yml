@@ -91,35 +91,122 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
+      - name: Create ZITADEL data dir and env file with open perms
+        run: |
+          mkdir -p .zitadel-data
+          chmod 0777 .zitadel-data
+          # zitadel-bootstrap container writes .env.zitadel into the repo
+          # root (bind-mounted as /home/app/output). Pre-touch with 0666 so
+          # the container's non-root app user can overwrite it.
+          touch .env.zitadel
+          chmod 0666 .env.zitadel
+
       - name: Start services
-        run: docker compose up -d --build --wait
+        # No --wait: compose v2's strict mode errors out when any service
+        # lacks a healthcheck, even if downstream services are healthy.
+        # zitadel is intentionally healthcheck-less (distroless image has
+        # no curl/wget). The "Wait for ZITADEL readiness" step below is
+        # the real readiness gate.
+        run: docker compose up -d --build
         env:
           ZITADEL_TLS_MODE: disabled
           ZITADEL_EXTERNAL_SECURE: "false"
           ZITADEL_DOMAIN: localhost
           DISABLE_TLS: "true"
 
+      - name: Dump compose logs on startup failure
+        if: failure()
+        run: |
+          echo "===== docker compose ps ====="
+          docker compose ps -a || true
+          echo "===== zitadel logs ====="
+          docker compose logs zitadel || true
+          echo "===== zitadel-bootstrap logs ====="
+          docker compose logs zitadel-bootstrap || true
+          echo "===== zitadel-db logs ====="
+          docker compose logs zitadel-db || true
+
       - name: Wait for ZITADEL readiness
+        # Compose maps zitadel to host port 37823 (internal 8080). This
+        # step was dead code before — previous compose up --wait always
+        # exited 1 first — so the wrong port (8080) never mattered.
+        # Port now corrected to match the actual published port.
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/debug/ready && echo "ZITADEL ready" && exit 0
+            curl -sf http://localhost:37823/debug/ready && echo "ZITADEL ready" && exit 0
             echo "Waiting for ZITADEL... ($i/60)"
             sleep 2
           done
-          echo "ZITADEL did not become ready" && exit 1
+          echo "ZITADEL did not become ready"
+          docker compose ps -a
+          docker compose logs zitadel
+          exit 1
 
-      - name: Run migrations and seed
+      - name: Pre-create alembic_version with VARCHAR(128)
+        # Known issue (see issue #19 / reference_alembic_version_column_width.md).
+        # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
+        # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
+        # StringDataRightTruncation blows up migrate. Dev + prod DBs were
+        # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
+        # Pre-create with the right width so the api container's
+        # dev-entrypoint.sh alembic run detects the existing table and skips
+        # its VARCHAR(32) create. This step races the api container's own
+        # dev-entrypoint, but CREATE TABLE IF NOT EXISTS is idempotent and
+        # we only need to win the race at T0 before dev-entrypoint gets to
+        # alembic's internal CREATE TABLE alembic_version.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app alembic upgrade head"
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
+
+      - name: Restart api so compose re-reads post-bootstrap .env.zitadel
+        # compose env_file resolves at `up` time — the pre-touched empty
+        # .env.zitadel meant api started with NO ZITADEL_* vars. Bootstrap
+        # then populates .env.zitadel, but api's process env is frozen.
+        # Restart api so compose re-materializes env_file with real values.
+        # (The web container sources its env.zitadel at dev-entrypoint time
+        # from the shared /home/app/zitadel-data volume, so it doesn't need
+        # this dance.)
+        run: |
+          docker compose restart api
+
+      - name: Wait for api to finish self-migrating + become ready
+        # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
+        # on startup. We DON'T run our own alembic upgrade because two concurrent
+        # alembic runs race on migration 001's DDL (pg_type visibility leaks
+        # across transactions and we see 'users type already exists' collisions).
+        # Just wait for /health/ready to confirm alembic is done and uvicorn is up.
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:37821/health/ready; then
+              echo "api ready"
+              exit 0
+            fi
+            echo "Waiting for api... ($i/60)"
+            sleep 2
+          done
+          echo "api did not become ready"
+          docker compose ps -a
+          docker compose logs api
+          exit 1
+
+      - name: Seed dev data
+        run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
       - name: Install Python test dependencies
         run: uv sync --frozen --dev
 
       - name: Run integration tests
+        # tests/integration/conftest.py and individual test files read
+        # PG_HOST_PORT and TEST_DB_PORT (different files use different
+        # names) to build the DATABASE_URL. compose.yml publishes
+        # postgres on 37824 (PG_HOST_PORT default). Set BOTH to cover
+        # all test files — conftest.py uses PG_HOST_PORT, but
+        # test_rls_isolation.py hardcodes os.environ.get("TEST_DB_PORT", "5433").
         run: uv run pytest tests/integration/ -m integration -x -q
         env:
-          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5433/run_api"
+          PG_HOST_PORT: "37824"
+          TEST_DB_PORT: "37824"
 
       - name: Stop services
         if: always()
@@ -143,35 +230,127 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
+      - name: Create ZITADEL data dir, env file, and web/node_modules with open perms
+        run: |
+          mkdir -p .zitadel-data
+          chmod 0777 .zitadel-data
+          # zitadel-bootstrap container writes .env.zitadel into the repo
+          # root (bind-mounted as /home/app/output). Pre-touch with 0666 so
+          # the container's non-root app user can overwrite it.
+          touch .env.zitadel
+          chmod 0666 .env.zitadel
+          # docker compose up creates web/node_modules/ on the host as root
+          # when mounting the named volume web_node_modules:/home/app/web/node_modules
+          # (it needs the submount point). Subsequent `npm ci` as the runner
+          # user then fails with EACCES. Pre-create with 0777 so npm ci can
+          # populate it.
+          mkdir -p web/node_modules
+          chmod 0777 web/node_modules
+
       - name: Start services
-        run: docker compose up -d --build --wait
+        # No --wait: compose v2's strict mode errors out when any service
+        # lacks a healthcheck, even if downstream services are healthy.
+        # zitadel is intentionally healthcheck-less (distroless image has
+        # no curl/wget). The "Wait for ZITADEL readiness" step below is
+        # the real readiness gate.
+        run: docker compose up -d --build
         env:
           ZITADEL_TLS_MODE: disabled
           ZITADEL_EXTERNAL_SECURE: "false"
           ZITADEL_DOMAIN: localhost
           DISABLE_TLS: "true"
 
+      - name: Dump compose logs on startup failure
+        if: failure()
+        run: |
+          echo "===== docker compose ps ====="
+          docker compose ps -a || true
+          echo "===== zitadel logs ====="
+          docker compose logs zitadel || true
+          echo "===== zitadel-bootstrap logs ====="
+          docker compose logs zitadel-bootstrap || true
+          echo "===== zitadel-db logs ====="
+          docker compose logs zitadel-db || true
+
       - name: Wait for ZITADEL readiness
+        # Compose maps zitadel to host port 37823 (internal 8080). This
+        # step was dead code before — previous compose up --wait always
+        # exited 1 first — so the wrong port (8080) never mattered.
+        # Port now corrected to match the actual published port.
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/debug/ready && echo "ZITADEL ready" && exit 0
+            curl -sf http://localhost:37823/debug/ready && echo "ZITADEL ready" && exit 0
             echo "Waiting for ZITADEL... ($i/60)"
             sleep 2
           done
-          echo "ZITADEL did not become ready" && exit 1
+          echo "ZITADEL did not become ready"
+          docker compose ps -a
+          docker compose logs zitadel
+          exit 1
 
-      - name: Run migrations and seed
+      - name: Pre-create alembic_version with VARCHAR(128)
+        # Known issue (see issue #19 / reference_alembic_version_column_width.md).
+        # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
+        # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
+        # StringDataRightTruncation blows up migrate. Dev + prod DBs were
+        # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
+        # Pre-create with the right width so the api container's
+        # dev-entrypoint.sh alembic run detects the existing table and skips
+        # its VARCHAR(32) create. This step races the api container's own
+        # dev-entrypoint, but CREATE TABLE IF NOT EXISTS is idempotent and
+        # we only need to win the race at T0 before dev-entrypoint gets to
+        # alembic's internal CREATE TABLE alembic_version.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app alembic upgrade head"
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
+
+      - name: Restart api so compose re-reads post-bootstrap .env.zitadel
+        # compose env_file resolves at `up` time — the pre-touched empty
+        # .env.zitadel meant api started with NO ZITADEL_* vars. Bootstrap
+        # then populates .env.zitadel, but api's process env is frozen.
+        # Restart api so compose re-materializes env_file with real values.
+        # (The web container sources its env.zitadel at dev-entrypoint time
+        # from the shared /home/app/zitadel-data volume, so it doesn't need
+        # this dance.)
+        run: |
+          docker compose restart api
+
+      - name: Wait for api to finish self-migrating + become ready
+        # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
+        # on startup. We DON'T run our own alembic upgrade because two concurrent
+        # alembic runs race on migration 001's DDL (pg_type visibility leaks
+        # across transactions and we see 'users type already exists' collisions).
+        # Just wait for /health/ready to confirm alembic is done and uvicorn is up.
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:37821/health/ready; then
+              echo "api ready"
+              exit 0
+            fi
+            echo "Waiting for api... ($i/60)"
+            sleep 2
+          done
+          echo "api did not become ready"
+          docker compose ps -a
+          docker compose logs api
+          exit 1
+
+      - name: Seed dev data
+        run: |
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
       - name: Create E2E test users
+        # PAT_PATH override: create-e2e-users.py defaults to /zitadel-data/pat.txt
+        # (absolute mount path from zitadel-bootstrap container), but the api
+        # container mounts ./.zitadel-data at /home/app/zitadel-data:ro — so the
+        # PAT actually lives at /home/app/zitadel-data/pat.txt from inside api.
+        # Same override web/scripts/run-e2e.sh uses for its bootstrap check.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py"
 
       - name: Verify no-MFA policy is enforced (fail on policy drift)
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py --verify-policy-only --strict-policy"
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py --verify-policy-only --strict-policy"
 
       - name: Install Playwright browsers
         working-directory: web
@@ -187,17 +366,35 @@ jobs:
 
       - name: Run auth setup smoke projects (deterministic gate)
         working-directory: web
+        # E2E_DEV_SERVER_URL points Playwright at the docker-compose web
+        # container (host port 37822) instead of letting Playwright spawn
+        # its own `npm run dev --port 5173`. Playwright's spawned vite
+        # wouldn't know the ZITADEL discovery URL — web/.env.local on the
+        # CI runner is empty, whereas the docker web container sources
+        # /home/app/zitadel-data/env.zitadel at startup and has all the
+        # VITE_ZITADEL_* vars the login flow needs.
         run: npx playwright test --project=setup-owner --project=setup-admin --project=setup-manager --project=setup-volunteer --project=setup-viewer --workers=1
+        env:
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
 
       - name: Run Phase 63 strict no-skip gate (PB-10 + FIELD-08/09/10)
         if: matrix.shardIndex == 1
         working-directory: web
         run: ./scripts/run-e2e.sh --strict-phase63-no-skip
+        env:
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
 
       - name: Run E2E tests
         working-directory: web
         run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
+          E2E_ZITADEL_HOST: "localhost"
+          E2E_ZITADEL_PORT: "37823"
           E2E_OWNER_USERNAME: owner1@localhost
           E2E_OWNER_PASSWORD: "Owner1234!"
           E2E_ADMIN_USERNAME: admin1@localhost
