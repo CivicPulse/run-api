@@ -142,6 +142,18 @@ jobs:
           docker compose logs zitadel
           exit 1
 
+      - name: Pre-create alembic_version with VARCHAR(128)
+        # Known issue (see issue #19 / reference_alembic_version_column_width.md).
+        # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
+        # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
+        # StringDataRightTruncation blows up migrate. Dev + prod DBs were
+        # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
+        # Pre-create with the right width so alembic detects the existing
+        # table and skips its VARCHAR(32) create.
+        run: |
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
+
       - name: Run migrations and seed
         # Use `python -m alembic` rather than bare `alembic`: the COPY'd
         # venv in the dev Dockerfile target has absolute-path shebangs
@@ -234,6 +246,18 @@ jobs:
           docker compose ps -a
           docker compose logs zitadel
           exit 1
+
+      - name: Pre-create alembic_version with VARCHAR(128)
+        # Known issue (see issue #19 / reference_alembic_version_column_width.md).
+        # Alembic creates alembic_version.version_num as VARCHAR(32) by default;
+        # migration 023_phase61_chunk_aggregation_contracts is 39 chars and
+        # StringDataRightTruncation blows up migrate. Dev + prod DBs were
+        # ALTERed in place on 2026-04-05; fresh bootstraps still default to 32.
+        # Pre-create with the right width so alembic detects the existing
+        # table and skips its VARCHAR(32) create.
+        run: |
+          docker compose exec -T postgres psql -U postgres -d run_api \
+            -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
       - name: Run migrations and seed
         # Use `python -m alembic` rather than bare `alembic`: the COPY'd
