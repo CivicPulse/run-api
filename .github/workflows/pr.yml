@@ -186,9 +186,12 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run integration tests
+        # compose.yml publishes postgres on host port 37824 (PG_HOST_PORT
+        # default); the prior workflow used 5433 which was never actually
+        # mapped — dead config from an older compose file. Corrected.
         run: uv run pytest tests/integration/ -m integration -x -q
         env:
-          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5433/run_api"
+          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:37824/run_api"
 
       - name: Stop services
         if: always()
@@ -304,12 +307,17 @@ jobs:
           docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/seed.py"
 
       - name: Create E2E test users
+        # PAT_PATH override: create-e2e-users.py defaults to /zitadel-data/pat.txt
+        # (absolute mount path from zitadel-bootstrap container), but the api
+        # container mounts ./.zitadel-data at /home/app/zitadel-data:ro — so the
+        # PAT actually lives at /home/app/zitadel-data/pat.txt from inside api.
+        # Same override web/scripts/run-e2e.sh uses for its bootstrap check.
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py"
 
       - name: Verify no-MFA policy is enforced (fail on policy drift)
         run: |
-          docker compose exec -T api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py --verify-policy-only --strict-policy"
+          docker compose exec -T api bash -c "PYTHONPATH=/home/app PAT_PATH=/home/app/zitadel-data/pat.txt python scripts/create-e2e-users.py --verify-policy-only --strict-policy"
 
       - name: Install Playwright browsers
         working-directory: web
