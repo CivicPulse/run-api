@@ -158,6 +158,17 @@ jobs:
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
+      - name: Restart api so compose re-reads post-bootstrap .env.zitadel
+        # compose env_file resolves at `up` time — the pre-touched empty
+        # .env.zitadel meant api started with NO ZITADEL_* vars. Bootstrap
+        # then populates .env.zitadel, but api's process env is frozen.
+        # Restart api so compose re-materializes env_file with real values.
+        # (The web container sources its env.zitadel at dev-entrypoint time
+        # from the shared /home/app/zitadel-data volume, so it doesn't need
+        # this dance.)
+        run: |
+          docker compose restart api
+
       - name: Wait for api to finish self-migrating + become ready
         # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
         # on startup. We DON'T run our own alembic upgrade because two concurrent
@@ -292,6 +303,17 @@ jobs:
         run: |
           docker compose exec -T postgres psql -U postgres -d run_api \
             -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
+
+      - name: Restart api so compose re-reads post-bootstrap .env.zitadel
+        # compose env_file resolves at `up` time — the pre-touched empty
+        # .env.zitadel meant api started with NO ZITADEL_* vars. Bootstrap
+        # then populates .env.zitadel, but api's process env is frozen.
+        # Restart api so compose re-materializes env_file with real values.
+        # (The web container sources its env.zitadel at dev-entrypoint time
+        # from the shared /home/app/zitadel-data volume, so it doesn't need
+        # this dance.)
+        run: |
+          docker compose restart api
 
       - name: Wait for api to finish self-migrating + become ready
         # The api container's dev-entrypoint.sh runs `python -m alembic upgrade head`
