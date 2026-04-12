@@ -186,15 +186,16 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run integration tests
-        # tests/integration/conftest.py reads PG_HOST_PORT (or TEST_DB_PORT)
-        # to build the DATABASE_URL, NOT the DATABASE_URL env var itself.
-        # compose.yml publishes postgres on 37824 (PG_HOST_PORT default).
-        # The prior workflow set DATABASE_URL to port 5433 which the
-        # conftest ignored entirely, then fell back to its own default
-        # of 5433 (which was never mapped). Fix: set PG_HOST_PORT.
+        # tests/integration/conftest.py and individual test files read
+        # PG_HOST_PORT and TEST_DB_PORT (different files use different
+        # names) to build the DATABASE_URL. compose.yml publishes
+        # postgres on 37824 (PG_HOST_PORT default). Set BOTH to cover
+        # all test files — conftest.py uses PG_HOST_PORT, but
+        # test_rls_isolation.py hardcodes os.environ.get("TEST_DB_PORT", "5433").
         run: uv run pytest tests/integration/ -m integration -x -q
         env:
           PG_HOST_PORT: "37824"
+          TEST_DB_PORT: "37824"
 
       - name: Stop services
         if: always()
