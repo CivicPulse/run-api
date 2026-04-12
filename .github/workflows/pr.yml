@@ -91,10 +91,15 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
-      - name: Create ZITADEL data dir with open perms
+      - name: Create ZITADEL data dir and env file with open perms
         run: |
           mkdir -p .zitadel-data
           chmod 0777 .zitadel-data
+          # zitadel-bootstrap container writes .env.zitadel into the repo
+          # root (bind-mounted as /home/app/output). Pre-touch with 0666 so
+          # the container's non-root app user can overwrite it.
+          touch .env.zitadel
+          chmod 0666 .env.zitadel
 
       - name: Start services
         run: docker compose up -d --build --wait
@@ -160,10 +165,15 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      - name: Create ZITADEL data dir with open perms
+      - name: Create ZITADEL data dir and env file with open perms
         run: |
           mkdir -p .zitadel-data
           chmod 0777 .zitadel-data
+          # zitadel-bootstrap container writes .env.zitadel into the repo
+          # root (bind-mounted as /home/app/output). Pre-touch with 0666 so
+          # the container's non-root app user can overwrite it.
+          touch .env.zitadel
+          chmod 0666 .env.zitadel
 
       - name: Start services
         run: docker compose up -d --build --wait
