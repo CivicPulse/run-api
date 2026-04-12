@@ -91,6 +91,11 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
+      - name: Create ZITADEL data dir with open perms
+        run: |
+          mkdir -p .zitadel-data
+          chmod 0777 .zitadel-data
+
       - name: Start services
         run: docker compose up -d --build --wait
         env:
@@ -154,6 +159,11 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
+
+      - name: Create ZITADEL data dir with open perms
+        run: |
+          mkdir -p .zitadel-data
+          chmod 0777 .zitadel-data
 
       - name: Start services
         run: docker compose up -d --build --wait
