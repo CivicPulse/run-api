@@ -137,34 +137,70 @@ test.describe.serial("Navigation", () => {
       }
     })
 
-    // Test mobile viewport sidebar behavior
-    await test.step("Sidebar collapses on mobile viewport", async () => {
-      // Navigate back to campaign
+    // Test mobile viewport: every sidebar link must be tappable and navigate
+    await test.step("Mobile sidebar links are interactive and navigate", async () => {
       await page.goto(`/campaigns/${campaignId}/dashboard`)
       await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
 
-      // Resize to mobile viewport
       await page.setViewportSize({ width: 390, height: 844 })
 
-      // On mobile, sidebar should be hidden (sheet/overlay pattern)
-      // The sidebar trigger should still be visible
       const mobileTrigger = page.getByRole("button", {
         name: /open sidebar|toggle sidebar/i,
       })
       await expect(mobileTrigger).toBeVisible({ timeout: 5_000 })
 
-      // Click to open sidebar as overlay/sheet
-      await mobileTrigger.click()
+      for (const link of sidebarLinks) {
+        await test.step(`Mobile nav: ${link.name}`, async () => {
+          await mobileTrigger.click()
 
-      // Sidebar should become visible
-      const sidebar = page.locator("[data-sidebar='sidebar']")
-      await expect(sidebar).toBeVisible({ timeout: 5_000 })
+          const sidebar = page.locator("[data-sidebar='sidebar']")
+          await expect(sidebar).toBeVisible({ timeout: 5_000 })
 
-      // Verify sidebar links are accessible at mobile
-      const dashLink = sidebar.getByRole("link", { name: /^Dashboard$/i }).first()
-      await expect(dashLink).toBeVisible({ timeout: 3_000 })
+          const sidebarLink = sidebar
+            .getByRole("link", { name: link.name })
+            .first()
+          await expect(sidebarLink).toBeVisible({ timeout: 3_000 })
+          await sidebarLink.click()
 
-      // Reset to desktop viewport
+          await page.waitForURL(link.urlPattern, { timeout: 10_000 })
+        })
+      }
+
+      // Settings (admin-only, footer)
+      await test.step("Mobile nav: Settings", async () => {
+        await mobileTrigger.click()
+        const sidebar = page.locator("[data-sidebar='sidebar']")
+        await expect(sidebar).toBeVisible({ timeout: 5_000 })
+
+        const settingsLink = sidebar
+          .getByRole("link", { name: /^Settings$/i })
+          .first()
+        const isVisible = await settingsLink.isVisible().catch(() => false)
+        if (isVisible) {
+          await settingsLink.click()
+          await page.waitForURL(/\/settings/, { timeout: 10_000 })
+        }
+      })
+
+      // Field Operations
+      await test.step("Mobile nav: Field Operations", async () => {
+        await page.goto(`/campaigns/${campaignId}/dashboard`)
+        await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
+
+        await mobileTrigger.click()
+        const sidebar = page.locator("[data-sidebar='sidebar']")
+        await expect(sidebar).toBeVisible({ timeout: 5_000 })
+
+        const fieldLink = sidebar
+          .getByRole("link", { name: /field operations/i })
+          .first()
+        const isVisible = await fieldLink.isVisible().catch(() => false)
+        if (isVisible) {
+          await fieldLink.click()
+          await page.waitForURL(/\/field\//, { timeout: 10_000 })
+        }
+      })
+
       await page.setViewportSize({ width: 1280, height: 720 })
     })
   })
