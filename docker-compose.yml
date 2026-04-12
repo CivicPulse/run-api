@@ -183,6 +183,12 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "Run API Service Account"
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
       ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel-data/pat.txt
+      # Force v1 login UI (bundled in core image). ZITADEL v4.10.1
+      # defaults to LoginV2 for NEW instances, which requires a separate
+      # zitadel/typescript container that we don't run. Upgraded instances
+      # (like local dev from v2→v4) retain v1. Explicit false keeps
+      # fresh CI bootstraps consistent with local dev.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
       # Domain policy: SMTP sender address must match instance domain.
       # SMTP configuration itself is INTENTIONALLY omitted from this compose
       # file. ZITADEL v4.x validates DefaultInstance.SMTPConfiguration.FROM
