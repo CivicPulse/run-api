@@ -353,7 +353,7 @@ jobs:
         # VITE_ZITADEL_* vars the login flow needs.
         run: npx playwright test --project=setup-owner --project=setup-admin --project=setup-manager --project=setup-volunteer --project=setup-viewer --workers=1
         env:
-          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
           E2E_ZITADEL_HOST: "localhost"
           E2E_ZITADEL_PORT: "37823"
 
@@ -362,7 +362,7 @@ jobs:
         working-directory: web
         run: ./scripts/run-e2e.sh --strict-phase63-no-skip
         env:
-          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
           E2E_ZITADEL_HOST: "localhost"
           E2E_ZITADEL_PORT: "37823"
 
@@ -370,7 +370,7 @@ jobs:
         working-directory: web
         run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
-          E2E_DEV_SERVER_URL: "https://localhost:37822"
+          E2E_DEV_SERVER_URL: "http://localhost:37822"
           E2E_ZITADEL_HOST: "localhost"
           E2E_ZITADEL_PORT: "37823"
           E2E_OWNER_USERNAME: owner1@localhost
