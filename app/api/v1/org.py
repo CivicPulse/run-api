@@ -30,6 +30,7 @@ from app.schemas.org import (
     OrgUpdate,
 )
 from app.services.org import OrgService
+from app.services.twilio_config import TwilioConfigError
 
 router = APIRouter()
 router.include_router(numbers_router, prefix="/numbers", tags=["org-numbers"])
@@ -72,7 +73,13 @@ async def update_org(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
         )
-    updated = await _service.update_org_details(db, org, body)
+    try:
+        updated = await _service.update_org_details(db, org, body)
+    except TwilioConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return await _service.build_org_response(db, updated.org)
 
 
