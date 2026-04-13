@@ -184,6 +184,7 @@ class TestVolunteerApplicationService:
                 application,  # application lookup
                 campaign,  # campaign lookup
                 None,  # resolve user by email
+                None,  # volunteer de-dupe lookup (user_id IS NULL by email)
                 None,  # org lookup
             ]
         )
@@ -204,3 +205,55 @@ class TestVolunteerApplicationService:
         assert approved.review_context.approval_delivery == "queued"
         service._invite_service.create_invite.assert_awaited_once()
         zitadel.assign_project_role.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_approve_application_creates_unlinked_volunteer_for_anonymous(self):
+        """Regression: anonymous approvals must insert a Volunteer row with
+        user_id=None so the approved applicant appears on the volunteers page
+        before they accept the invite."""
+        from app.models.volunteer import Volunteer
+
+        service = VolunteerApplicationService()
+        db = AsyncMock()
+        added: list[object] = []
+        db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        application = _make_application(applicant_user_id=None)
+        campaign = _make_campaign(campaign_id=application.campaign_id)
+        service._build_review_context = AsyncMock(
+            return_value=MagicMock(approval_delivery="queued")
+        )
+        db.scalar = AsyncMock(
+            side_effect=[
+                application,  # application lookup
+                campaign,  # campaign lookup
+                None,  # resolve user by email -> no local account
+                None,  # volunteer de-dupe lookup by email -> none exists
+                None,  # org lookup
+            ]
+        )
+        service._invite_service.create_invite = AsyncMock(
+            return_value=MagicMock(email_delivery_status="queued")
+        )
+        zitadel = AsyncMock()
+
+        await service.approve_application(
+            db,
+            application.campaign_id,
+            application.id,
+            "reviewer-1",
+            zitadel,
+        )
+
+        volunteer_rows = [obj for obj in added if isinstance(obj, Volunteer)]
+        assert len(volunteer_rows) == 1, (
+            "approve_application must insert a Volunteer row even when the "
+            "applicant has no user account yet"
+        )
+        volunteer = volunteer_rows[0]
+        assert volunteer.user_id is None
+        assert volunteer.campaign_id == application.campaign_id
+        assert volunteer.email == application.email
+        assert volunteer.first_name == application.first_name
+        assert volunteer.last_name == application.last_name
+        assert volunteer.status == "active"
+        assert volunteer.created_by == "reviewer-1"

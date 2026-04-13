@@ -220,13 +220,19 @@ class TestAcceptInvite:
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
+        volunteer_backfill_result = MagicMock()  # UPDATE volunteers back-fill
         campaign = MagicMock()
         campaign.zitadel_org_id = "org-1"
         campaign.organization_id = None
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result, campaign_result]
+            side_effect=[
+                validate_result,
+                member_result,
+                volunteer_backfill_result,
+                campaign_result,
+            ]
         )
 
         result = await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
@@ -265,13 +271,19 @@ class TestAcceptInvite:
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
+        volunteer_backfill_result = MagicMock()
         campaign = MagicMock()
         campaign.zitadel_org_id = "org-1"
         campaign.organization_id = None
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result, campaign_result]
+            side_effect=[
+                validate_result,
+                member_result,
+                volunteer_backfill_result,
+                campaign_result,
+            ]
         )
 
         # Commit raises — compensation should fire
@@ -302,13 +314,19 @@ class TestAcceptInvite:
         validate_result.scalar_one_or_none.return_value = invite
         member_result = MagicMock()
         member_result.scalar_one_or_none.return_value = None
+        volunteer_backfill_result = MagicMock()
         campaign = MagicMock()
         campaign.zitadel_org_id = "org-1"
         campaign.organization_id = None
         campaign_result = MagicMock()
         campaign_result.scalar_one_or_none.return_value = campaign
         mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result, campaign_result]
+            side_effect=[
+                validate_result,
+                member_result,
+                volunteer_backfill_result,
+                campaign_result,
+            ]
         )
 
         mock_db.commit = AsyncMock(side_effect=RuntimeError("original commit error"))
@@ -323,6 +341,45 @@ class TestAcceptInvite:
 
         mock_db.rollback.assert_awaited_once()
         mock_zitadel.remove_project_role.assert_awaited_once()
+
+    async def test_accept_backfills_unlinked_volunteer_user_id(
+        self, service, mock_db, mock_zitadel
+    ):
+        """Regression: accept_invite must back-fill volunteers.user_id for any
+        unlinked Volunteer row created by the anonymous application-approval
+        path, so the volunteer profile ties to the real account."""
+        from sqlalchemy.sql import Update
+
+        invite = _make_invite(email="user@test.com")
+        user = _make_user(email="user@test.com")
+
+        validate_result = MagicMock()
+        validate_result.scalar_one_or_none.return_value = invite
+        member_result = MagicMock()
+        member_result.scalar_one_or_none.return_value = None
+        volunteer_backfill_result = MagicMock()
+        campaign = MagicMock()
+        campaign.zitadel_org_id = "org-1"
+        campaign.organization_id = None
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                validate_result,
+                member_result,
+                volunteer_backfill_result,
+                campaign_result,
+            ]
+        )
+
+        await service.accept_invite(mock_db, invite.token, user, mock_zitadel)
+
+        # Third execute call must be the Volunteer UPDATE back-fill
+        third_call = mock_db.execute.await_args_list[2]
+        stmt = third_call.args[0]
+        assert isinstance(stmt, Update), (
+            "accept_invite must issue an UPDATE against volunteers to back-fill"
+        )
 
 
 class TestRevokeInvite:

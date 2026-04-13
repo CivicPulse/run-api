@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -19,6 +19,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.volunteer import Volunteer
 from app.tasks.invite_tasks import send_campaign_invite_email
 
 if TYPE_CHECKING:
@@ -224,6 +225,18 @@ class InviteService:
         else:
             old_role = member.role
             member.role = invite.role
+
+        # Back-fill any unlinked Volunteer row created by the volunteer
+        # application approval path so it ties to this user's account.
+        await db.execute(
+            update(Volunteer)
+            .where(
+                Volunteer.campaign_id == invite.campaign_id,
+                Volunteer.email == invite.email.lower(),
+                Volunteer.user_id.is_(None),
+            )
+            .values(user_id=user.id, updated_at=utcnow())
+        )
 
         # Look up campaign for ZITADEL context — fail fast if missing
         campaign_result = await db.execute(

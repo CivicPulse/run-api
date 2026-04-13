@@ -202,9 +202,11 @@ class VolunteerApplicationService:
             db.add(user)
             await db.flush()
 
-        if user is None:
-            created_member = False
-        else:
+        # Always create/update a Volunteer row so list_volunteers surfaces the
+        # approved applicant, regardless of whether a local users row exists yet.
+        # When `user` is None (anonymous invite path), the Volunteer row is
+        # created with user_id=None and back-filled on invite acceptance.
+        if user is not None:
             display_name = f"{application.first_name} {application.last_name}".strip()
             if application.applicant_user_id is None:
                 application.applicant_user_id = user.id
@@ -240,30 +242,40 @@ class VolunteerApplicationService:
                     Volunteer.user_id == user.id,
                 )
             )
-            if volunteer is None:
-                volunteer = Volunteer(
-                    campaign_id=campaign_id,
-                    user_id=user.id,
-                    first_name=application.first_name,
-                    last_name=application.last_name,
-                    email=application.email,
-                    phone=application.phone,
-                    notes=application.notes,
-                    status="active",
-                    skills=[],
-                    created_by=reviewer_id,
+        else:
+            # Anonymous path: de-dupe by (campaign_id, email) + user_id IS NULL.
+            volunteer = await db.scalar(
+                select(Volunteer).where(
+                    Volunteer.campaign_id == campaign_id,
+                    Volunteer.user_id.is_(None),
+                    Volunteer.email == application.email,
                 )
-                db.add(volunteer)
-            else:
-                volunteer.first_name = application.first_name
-                volunteer.last_name = application.last_name
-                volunteer.email = application.email
-                if application.phone:
-                    volunteer.phone = application.phone
-                if application.notes:
-                    volunteer.notes = application.notes
-                volunteer.status = "active"
-                volunteer.updated_at = utcnow()
+            )
+
+        if volunteer is None:
+            volunteer = Volunteer(
+                campaign_id=campaign_id,
+                user_id=user.id if user is not None else None,
+                first_name=application.first_name,
+                last_name=application.last_name,
+                email=application.email,
+                phone=application.phone,
+                notes=application.notes,
+                status="active",
+                skills=[],
+                created_by=reviewer_id,
+            )
+            db.add(volunteer)
+        else:
+            volunteer.first_name = application.first_name
+            volunteer.last_name = application.last_name
+            volunteer.email = application.email
+            if application.phone:
+                volunteer.phone = application.phone
+            if application.notes:
+                volunteer.notes = application.notes
+            volunteer.status = "active"
+            volunteer.updated_at = utcnow()
 
         project_grant_id = None
         if campaign.organization_id:
