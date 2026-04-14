@@ -4,6 +4,7 @@ and supervisor ops -- PHONE-02 to PHONE-05."""
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -188,7 +189,7 @@ class TestPhoneBankSession:
                 result_code=CallResultCode.ANSWERED,
                 phone_number_used="5551234567",
                 call_started_at=now,
-                call_ended_at=now.replace(minute=max(now.minute - 1, 0)),
+                call_ended_at=now - timedelta(minutes=1),
             )
 
     @pytest.mark.asyncio
