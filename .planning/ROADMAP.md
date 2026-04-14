@@ -2,7 +2,7 @@
 
 ## Overview
 
-Current milestone: **v1.18 Field UX Polish** — fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Phases 106-110.
+Current milestone: **v1.19 Volunteer Lifecycle Expansion** — allow pre-signup volunteers (approved but not yet logged in) to be assigned to phone bank sessions and canvassing walk lists, so admins can build rosters before invite acceptance. Phases TBD by roadmapper.
 
 ## Milestones
 
@@ -22,6 +22,7 @@ Current milestone: **v1.18 Field UX Polish** — fix reported canvassing field b
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
 - ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
 - ✅ **v1.18 Field UX Polish** — Phases 106-110 (shipped 2026-04-11)
+- 🚧 **v1.19 Volunteer Lifecycle Expansion** — Phases 111+ (in progress, started 2026-04-14)
 
 ## Milestone History
 

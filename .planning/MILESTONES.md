@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.18 Field UX Polish (Shipped: 2026-04-11)
+
+**Phases completed:** 5 phases (106-110), 36 plans
+
+**Key accomplishments:**
+
+- Phase 106: Test baseline trustworthiness — fixed/deleted broken tests, reduced default Playwright workers 16→8 in run-e2e.sh, cleared rbac concurrency flakes
+- Phase 107: Canvassing wizard fixes — auto-advance, working Skip House, optional outcome notes, form requiredness audit (CANV-01/02/03, FORMS-01)
+- Phase 108: House selection & active-state — tap-to-activate from list and map, audited state machine (SELECT-01/02/03)
+- Phase 109: Map rendering & asset pipeline — Leaflet icons render, list/map layering fixed via Radix popper z-1200 fix, asset pipeline audit (MAP-01/02/03)
+- Phase 110: Offline queue & connectivity hardening — persist/replay, ConnectivityPill, sync engine with backoff (OFFLINE-01/02/03), TEST-01/02/03 cross-cutting coverage anchored to phase 110
+- Volunteer approval bug fix (post-milestone, 2026-04-13, commit 4902c158): anonymous-application approval now creates the Volunteer row regardless of whether the applicant has a pre-existing user account; InviteService.accept_invite back-fills volunteers.user_id on first login
+
+---
+
 ## v1.17 Easy Volunteer Invites (Shipped: 2026-04-10)
 
 **Phases completed:** 4 phases, 4 plans, 0 tasks

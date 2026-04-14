@@ -129,11 +129,11 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-- Fix reported canvassing field bugs (auto-advance, skip house, map/list layering, house selection, broken map icons, optional outcome notes) — v1.18
-- Audit household active-state state machine end-to-end — v1.18
-- Audit field-mode map asset pipeline and Leaflet icon loading — v1.18
-- Audit field-mode form requiredness to remove over-eager validation — v1.18
-- Proactively harden the offline queue, connectivity indicators, and sync-on-reconnect flow — v1.18
+- Pre-signup volunteer assignment to phone bank sessions and canvassing walk lists — v1.19
+- Dual-identity (`user_id` OR `volunteer_id`) model for caller and canvasser assignment tables — v1.19
+- Add Caller / Add Canvasser pickers extended to surface pre-signup volunteers with clear "not yet logged in" affordance — v1.19
+- Invite acceptance backfills any outstanding session/walk-list assignments so the volunteer is runtime-capable instantly on first login — v1.19
+- One-time reconciliation migration to link existing dual-row volunteers (Julia Callahan pattern: separate `volunteers` and `campaign_members` rows for the same person) — v1.19
 
 ### Out of Scope
 
@@ -159,26 +159,31 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
 - White-label / custom branding per org
 
-## Current Milestone: v1.18 Field UX Polish
+## Current Milestone: v1.19 Volunteer Lifecycle Expansion
 
-**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably.
+**Goal:** Allow pre-signup volunteers (approved but not yet logged in) to be assigned to phone banking sessions and canvassing walk lists, so admins can build rosters before invite acceptance. When the volunteer accepts their invite and logs in, their existing assignments become immediately actionable with no re-work.
 
 **Target features:**
-- Canvassing flow fixes — auto-advance after outcome, working Skip House, optional outcome note
-- House selection from list and map — tap-to-activate in both views, resolve "can't activate correct house" friction
-- Map rendering fixes — broken Leaflet marker icons and map-over-list layering
-- Household active-state state-machine audit
-- Field-mode form requiredness audit
-- Offline queue, connectivity indicator, and sync-on-reconnect hardening
+- Dual-identity assignment model — `session_callers` and canvassing assignment tables accept either `user_id` (logged-in member) or `volunteer_id` (pre-signup volunteer) as primary identity, with an exactly-one constraint
+- Add Caller picker extended — phone banking session caller picker shows logged-in campaign members AND pre-signup volunteers, visually distinguished
+- Canvassing walk list assignment parity — walk list canvasser assignment uses the same dual-identity model
+- Runtime gating preserved — check-in, start-call, record-knock actions remain user-scoped (disabled with tooltip for pre-signup volunteers)
+- Invite acceptance backfill — `InviteService.accept_invite` extends its existing `volunteers.user_id` backfill to also resolve every outstanding `session_callers` / canvassing assignment row for that person, so the volunteer is runtime-capable instantly on first login
+- Reconciliation migration — one-time data migration to link existing dual-row volunteers (Julia Callahan pattern: same person present as both `volunteers` row and `campaign_members` row with no linkage)
 
 **Key context:**
-- Driven by real volunteer feedback from door-knocking sessions
-- Bug-fix + polish milestone on the mobile-first field mode shipped in v1.4
-- Medium scope (4–6 phases); phase numbering continues from v1.17
+- Builds directly on v1.17 Easy Volunteer Invites (phases 101-105) and the anonymous-application approval fix shipped 2026-04-13 (commit `4902c158`)
+- Driving incident: Leo Segelman application approved → appears on volunteers page (v1.18.x fix) → cannot be assigned to "D5 Not Voted" phone banking session because Add Caller picker only surfaces `campaign_members`
+- Out of scope: merging volunteers/users into one table (Option C), pre-stubbing placeholder users on approval (Option B — both rejected during brainstorm)
+- Scope boundary: NO change to authentication, ZITADEL integration, or how volunteers actually log in — purely a data-model + assignment-UI change. Runtime operations stay user-scoped.
 
 ## Current State
 
-**Shipped:** v1.17 Easy Volunteer Invites (2026-04-10)
+**Shipped:** v1.18 Field UX Polish (2026-04-11) and the volunteer approval fix (2026-04-13)
+
+The v1.18 milestone closed all 7 reported field bugs across canvassing flow, house selection, map rendering, form requiredness, and offline queue hardening. A subsequent direct-to-main fix (commit `4902c158`, 2026-04-13) addressed an anonymous-application approval bug where approving a volunteer application without a pre-existing user account created an Invite but failed to create the corresponding Volunteer row, leaving approved applicants invisible on the volunteers page. The fix is shipped and verified in production for lsegelman84@gmail.com.
+
+**Previously shipped:** v1.17 Easy Volunteer Invites (2026-04-10)
 
 The platform now supports campaign-scoped volunteer signup links separate from trusted member invites. v1.17 closed 5 phases (5 plans) and delivered: admin-managed signup links with create/list/disable/regenerate lifecycle, a safe same-origin public signup landing page, anonymous and authenticated public volunteer application intake with immutable source-link attribution, duplicate-safe handling and rate-limited neutral public endpoints, an admin review queue with approve/reject actions that gate campaign membership activation on explicit approval, and enriched review context (existing-account/member/prior-status) with idempotent approval and an invite-fallback path for email-only applicants.
 
@@ -195,7 +200,19 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-_v1.18 Field UX Polish is the current milestone — see above._
+_v1.19 Volunteer Lifecycle Expansion is the current milestone — see above._
+
+<details>
+<summary>Archived v1.18 planning context</summary>
+
+- Canvassing flow fixes — auto-advance after outcome, working Skip House, optional outcome note
+- House selection from list and map — tap-to-activate in both views
+- Map rendering fixes — Leaflet marker icons and map/list layering
+- Household active-state state-machine audit
+- Field-mode form requiredness audit
+- Offline queue, connectivity indicator, and sync-on-reconnect hardening
+
+</details>
 
 <details>
 <summary>Archived v1.17 planning context</summary>
@@ -287,4 +304,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — started milestone v1.18 Field UX Polish*
+*Last updated: 2026-04-14 — started milestone v1.19 Volunteer Lifecycle Expansion*
