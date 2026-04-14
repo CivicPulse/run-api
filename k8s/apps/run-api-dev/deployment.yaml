@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: ghcr.io/civicpulse/run-api:sha-c0d49575
+          image: ghcr.io/civicpulse/run-api:sha-4902c158
           command: ["python", "-m", "alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
@@ -45,7 +45,7 @@ spec:
               drop: ["ALL"]
       containers:
         - name: run-api
-          image: ghcr.io/civicpulse/run-api:sha-c0d49575
+          image: ghcr.io/civicpulse/run-api:sha-4902c158
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
