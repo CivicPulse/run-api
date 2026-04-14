@@ -6,7 +6,15 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, Integer, String, func
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -84,12 +92,46 @@ class WalkListEntry(Base):
 
 
 class WalkListCanvasser(Base):
-    """Join table assigning canvassers (users) to walk lists."""
+    """Join table assigning canvassers to walk lists.
+
+    Dual-identity (Phase 111 / ASSIGN-02): exactly one of ``user_id``
+    (logged-in campaign member) or ``volunteer_id`` (pre-signup volunteer)
+    must be set, enforced by ``ck_walk_list_canvassers_exactly_one_identity``.
+    Surrogate ``id`` PK replaces the prior composite PK so both identity
+    columns can be nullable. Per-identity uniqueness is enforced by two
+    partial unique indexes.
+    """
 
     __tablename__ = "walk_list_canvassers"
-
-    walk_list_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("walk_lists.id"), primary_key=True
+    __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(user_id, volunteer_id) = 1",
+            name="ck_walk_list_canvassers_exactly_one_identity",
+        ),
+        Index(
+            "uq_walk_list_canvassers_list_user",
+            "walk_list_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("user_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_walk_list_canvassers_list_volunteer",
+            "walk_list_id",
+            "volunteer_id",
+            unique=True,
+            postgresql_where=text("volunteer_id IS NOT NULL"),
+        ),
     )
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    walk_list_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("walk_lists.id"), nullable=False
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    volunteer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("volunteers.id"), nullable=True
+    )
     assigned_at: Mapped[datetime] = mapped_column(server_default=func.now())
