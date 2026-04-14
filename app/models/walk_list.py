@@ -128,9 +128,7 @@ class WalkListCanvasser(Base):
     walk_list_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("walk_lists.id"), nullable=False
     )
-    user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     volunteer_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("volunteers.id"), nullable=True
     )

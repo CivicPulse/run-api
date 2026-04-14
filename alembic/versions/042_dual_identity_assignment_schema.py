@@ -132,9 +132,7 @@ def upgrade() -> None:
         WHERE id IS NULL
         """
     )
-    op.execute(
-        "ALTER TABLE walk_list_canvassers ALTER COLUMN id SET NOT NULL"
-    )
+    op.execute("ALTER TABLE walk_list_canvassers ALTER COLUMN id SET NOT NULL")
 
     # 2. Drop the existing composite PK and promote id.
     op.execute(
@@ -195,14 +193,11 @@ def downgrade() -> None:
     # volunteer_id -> user_id on accept) or DELETE the pre-signup rows
     # before this downgrade can proceed (D-13).
     sc_count = bind.execute(
-        sa.text(
-            "SELECT COUNT(*) FROM session_callers WHERE volunteer_id IS NOT NULL"
-        )
+        sa.text("SELECT COUNT(*) FROM session_callers WHERE volunteer_id IS NOT NULL")
     ).scalar_one()
     wlc_count = bind.execute(
         sa.text(
-            "SELECT COUNT(*) FROM walk_list_canvassers "
-            "WHERE volunteer_id IS NOT NULL"
+            "SELECT COUNT(*) FROM walk_list_canvassers WHERE volunteer_id IS NOT NULL"
         )
     ).scalar_one()
     if sc_count or wlc_count:
@@ -217,17 +212,13 @@ def downgrade() -> None:
     # ============================================================
     # walk_list_canvassers downgrade
     # ============================================================
-    op.execute(
-        "DROP INDEX IF EXISTS uq_walk_list_canvassers_list_volunteer"
-    )
+    op.execute("DROP INDEX IF EXISTS uq_walk_list_canvassers_list_volunteer")
     op.execute("DROP INDEX IF EXISTS uq_walk_list_canvassers_list_user")
     op.execute(
         "ALTER TABLE walk_list_canvassers "
         "DROP CONSTRAINT IF EXISTS ck_walk_list_canvassers_exactly_one_identity"
     )
-    op.execute(
-        "ALTER TABLE walk_list_canvassers DROP COLUMN IF EXISTS volunteer_id"
-    )
+    op.execute("ALTER TABLE walk_list_canvassers DROP COLUMN IF EXISTS volunteer_id")
     # Restore NOT NULL on user_id (safe -- guard above proved no NULLs
     # via volunteer_id rows; remaining rows must have user_id set thanks
     # to the CHECK we just dropped).
@@ -247,9 +238,7 @@ def downgrade() -> None:
     # ============================================================
     # session_callers downgrade
     # ============================================================
-    op.execute(
-        "DROP INDEX IF EXISTS uq_session_callers_session_volunteer"
-    )
+    op.execute("DROP INDEX IF EXISTS uq_session_callers_session_volunteer")
     op.execute("DROP INDEX IF EXISTS uq_session_callers_session_user")
     op.execute(
         "ALTER TABLE session_callers "

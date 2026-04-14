@@ -95,9 +95,7 @@ class SessionCaller(Base):
     session_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("phone_bank_sessions.id"), nullable=False
     )
-    user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     volunteer_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("volunteers.id"), nullable=True
     )

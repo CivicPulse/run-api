@@ -149,9 +149,7 @@ async def _run_reconcile(
     """Bridge async session to the sync helper via run_sync."""
     conn = await session.connection()
     return await conn.run_sync(
-        lambda sync_conn: reconcile_volunteers(
-            sync_conn, artifact_path=artifact_path
-        )
+        lambda sync_conn: reconcile_volunteers(sync_conn, artifact_path=artifact_path)
     )
 
 
@@ -162,9 +160,7 @@ async def test_link_case(superuser_session, tmp_path):
     """One volunteer + one matching user in same campaign -> linked."""
     artifact = tmp_path / "recon-link.jsonl"
     creator = await _insert_user(superuser_session, "creator-link@example.com")
-    matched_user = await _insert_user(
-        superuser_session, "Julia.Callahan@example.com"
-    )
+    matched_user = await _insert_user(superuser_session, "Julia.Callahan@example.com")
     campaign = await _insert_campaign(superuser_session, "Link Case", creator)
     await _insert_campaign_member(superuser_session, matched_user, campaign)
     volunteer = await _insert_volunteer(
@@ -253,13 +249,9 @@ async def test_no_match_case(superuser_session, tmp_path):
         assert report.linked == 0
         assert report.ambiguous == 0
         assert report.unchanged >= 1
-        assert (
-            await _get_volunteer_user_id(superuser_session, volunteer)
-        ) is None
+        assert (await _get_volunteer_user_id(superuser_session, volunteer)) is None
     finally:
-        await _cleanup(
-            superuser_session, campaign_ids=[campaign], user_ids=[creator]
-        )
+        await _cleanup(superuser_session, campaign_ids=[campaign], user_ids=[creator])
 
 
 async def test_idempotent_rerun(superuser_session, tmp_path):
@@ -288,9 +280,7 @@ async def test_idempotent_rerun(superuser_session, tmp_path):
         assert second.ambiguous == 0
         # Volunteer is now linked, so it's no longer in the user_id IS NULL
         # candidate set on the second run.
-        assert (
-            await _get_volunteer_user_id(superuser_session, volunteer)
-        ) == matched
+        assert (await _get_volunteer_user_id(superuser_session, volunteer)) == matched
     finally:
         await _cleanup(
             superuser_session,
@@ -322,9 +312,7 @@ async def test_cross_campaign_match_rejected(superuser_session, tmp_path):
         await superuser_session.commit()
 
         assert report.linked == 0
-        assert (
-            await _get_volunteer_user_id(superuser_session, volunteer)
-        ) is None
+        assert (await _get_volunteer_user_id(superuser_session, volunteer)) is None
     finally:
         await _cleanup(
             superuser_session,

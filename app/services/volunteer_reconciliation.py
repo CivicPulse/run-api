@@ -153,9 +153,7 @@ def reconcile_volunteers(
     #    - Volunteers with no email (NULL or empty)
     #    - Volunteers whose email matches no user in their campaign
     #    - Volunteers in the ambiguous bucket (left untouched per D-03)
-    unchanged_sql = text(
-        "SELECT COUNT(*) FROM volunteers WHERE user_id IS NULL"
-    )
+    unchanged_sql = text("SELECT COUNT(*) FROM volunteers WHERE user_id IS NULL")
     unchanged_count = connection.execute(unchanged_sql).scalar_one()
 
     report = ReconciliationReport(
