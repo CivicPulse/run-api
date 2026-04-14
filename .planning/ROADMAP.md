@@ -2,7 +2,7 @@
 
 ## Overview
 
-Current milestone: **v1.19 Volunteer Lifecycle Expansion** — allow pre-signup volunteers (approved but not yet logged in) to be assigned to phone bank sessions and canvassing walk lists, so admins can build rosters before invite acceptance. Phases TBD by roadmapper.
+Current milestone: **v1.19 Volunteer Lifecycle Expansion** — allow pre-signup volunteers (approved but not yet logged in) to be assigned to phone bank sessions and canvassing walk lists, so admins can build rosters before invite acceptance. Phases 111-115.
 
 ## Milestones
 
@@ -22,7 +22,7 @@ Current milestone: **v1.19 Volunteer Lifecycle Expansion** — allow pre-signup 
 - ✅ **v1.16 Email Delivery Foundation** — Phases 95-100 (shipped 2026-04-08)
 - ✅ **v1.17 Easy Volunteer Invites** — Phases 101-105 (shipped 2026-04-10)
 - ✅ **v1.18 Field UX Polish** — Phases 106-110 (shipped 2026-04-11)
-- 🚧 **v1.19 Volunteer Lifecycle Expansion** — Phases 111+ (in progress, started 2026-04-14)
+- 🚧 **v1.19 Volunteer Lifecycle Expansion** — Phases 111-115 (in progress, started 2026-04-14)
 
 ## Milestone History
 
@@ -195,144 +195,126 @@ See: `.planning/milestones/v1.17-ROADMAP.md`
 
 </details>
 
+<details>
+<summary>✅ v1.18 Field UX Polish (Phases 106-110) — SHIPPED 2026-04-11</summary>
+
+- [x] Phase 106: Test Baseline Trustworthiness (5/5 plans) — completed 2026-04-11
+- [x] Phase 107: Canvassing Wizard Fixes (10/10 plans) — completed 2026-04-11
+- [x] Phase 108: House Selection & Active-State (7/7 plans) — completed 2026-04-11
+- [x] Phase 109: Map Rendering & Asset Pipeline (6/6 plans) — completed 2026-04-11
+- [x] Phase 110: Offline Queue & Connectivity Hardening (8/8 plans) — completed 2026-04-11
+
+See: `.planning/milestones/v1.18-ROADMAP.md`
+
+</details>
+
 ## Current Milestone
 
-### v1.18 Field UX Polish
+### v1.19 Volunteer Lifecycle Expansion
 
-**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Raise the test suite to a trustworthy baseline.
+**Goal:** Allow pre-signup volunteers (approved but not yet logged in) to be assigned to phone banking sessions and canvassing walk lists. When the volunteer accepts their invite and logs in, their existing assignments become immediately actionable with no re-work.
 
-**Phase numbering:** continues from v1.17 (last phase 105) → v1.18 spans **Phases 106-110**.
+**Phase numbering:** continues from v1.18 (last phase 110) → v1.19 spans **Phases 111-115**.
 
-**Phase dependency chain:** 106 → 107 → 108 → 109 → 110 (sequential; each phase ships on a trustworthy baseline left by the previous one).
+**Phase dependency chain:** 111 → 112 → 113 → 114 → 115 (sequential; each phase leaves the system shippable on its own).
 
-| #   | Phase                                      | Goal                                                                                     | Requirements                                      |
-|-----|--------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
-| 106 | 5/5 | Complete    | 2026-04-11 |
-| 107 | 10/10 | Complete    | 2026-04-11 |
-| 108 | 7/7 | Complete    | 2026-04-11 |
-| 109 | 6/6 | Complete   | 2026-04-11 |
-| 110 | 8/8 | Complete   | 2026-04-11 |
+## Phases
 
-#### Phase 106: Test Baseline Trustworthiness ✅ Complete (2026-04-10)
+- [ ] **Phase 111: Reconciliation & Dual-Identity Schema** — One-time Julia-style reconciliation migration plus dual-identity (`user_id` OR `volunteer_id`) schema on `session_callers` and the walk-list canvasser assignment table.
+- [ ] **Phase 112: Service Layer & Invite-Acceptance Backfill** — Dual-identity service helper / unified DTO plus `InviteService.accept_invite` extension that backfills outstanding session/walk-list assignments on first login.
+- [ ] **Phase 113: Runtime API Gating** — Runtime-action API endpoints reject `volunteer_id`-only assignments with a structured 422 error the frontend can render.
+- [ ] **Phase 114: Picker UI & Runtime-Gating UX** — Add Caller / Add Canvasser pickers surface pre-signup volunteers with clear affordance; phone-banking and canvassing runtime actions render disabled with tooltip for pre-signup rows.
+- [ ] **Phase 115: E2E Coverage & Milestone Exit** — Full end-to-end coverage of the assign → disabled-action → accept-invite → actionable-post-login flow, plus milestone-final 4-suite gate.
 
-**Status:** Complete — verified via 106-VERIFICATION.md (TEST-04 satisfied; D-12 exit gate passed with two consecutive Playwright greens at 01:52:12Z and 01:54:28Z; phase-verify cluster + a11y/voter-contacts deferrals authorized via D-15 Option D hybrid).
+## Phase Details
 
-**Goal:** Pre-existing broken or consistently failing tests are fixed or deleted so that any red test in the remaining v1.18 work signals a real regression.
+### Phase 111: Reconciliation & Dual-Identity Schema
 
-**Requirements:** TEST-04 ✅
+**Goal:** The data foundation for dual-identity assignment is in place and existing Julia-style dual-row volunteers are linked, so every subsequent phase reads and writes against a clean post-reconciliation schema.
 
-**Success criteria:**
-1. `uv run pytest` runs end-to-end with no unexpected failures (skips/xfails justified in code).
-2. Frontend `vitest` suite runs clean with no known-broken tests left as `.skip` / `xfail` without justification.
-3. `web/scripts/run-e2e.sh` runs the full Playwright suite with no flaky-known-broken specs — any remaining failures are tracked as real bugs.
-4. Any tests deleted during this phase are recorded with a short justification in the phase commit messages.
+**Depends on:** none (first phase of milestone)
 
-**Plans:** 5/5 plans complete
+**Requirements:** MIGRATE-01, MIGRATE-02, ASSIGN-01, ASSIGN-02
 
-Plans:
-- [x] 106-01-PLAN.md — Baseline capture (env sanity, 3-suite single-run, 106-BASELINE.md scope fence, scope-explosion gate)
-- [x] 106-02-PLAN.md — Pytest triage (15-min time-box, D-10 skip audit, `PHASE-106-DELETE:` deletion trail, pytest exits 0)
-- [x] 106-03-PLAN.md — Vitest triage (15-min time-box, D-10 skip/only audit, vitest exits 0)
-- [x] 106-04-PLAN.md — Playwright triage (D-11 known-skip audit, 3x rerun D-04, historical flake hit list, run-e2e.sh exits 0)
-- [x] 106-05-PLAN.md — D-12 exit gate (ruff + pytest + vitest + 2x consecutive green Playwright via wrapper, 106-EXIT-GATE.md)
+**Success Criteria** (what must be TRUE):
+1. Running the reconciliation migration against a fixture containing Julia-style dual-row volunteers links every unambiguous match, leaves ambiguous rows unchanged, and emits a report with linked / ambiguous / unchanged counts (MIGRATE-01).
+2. Pytest coverage exercises the reconciliation migration against link, ambiguous, and no-match seeded cases and asserts idempotent re-runs produce zero new links (MIGRATE-02).
+3. `session_callers` accepts a row with either `user_id` set or `volunteer_id` set (exactly one) and rejects rows with both or neither set at the DB level; the migration is reversible (ASSIGN-01).
+4. The canvassing walk-list canvasser assignment table accepts the same dual-identity shape with the same exactly-one CHECK constraint and reversible migration (ASSIGN-02).
+5. The production database schema after this phase is shippable on its own — no downstream code depends on service / UI / runtime-gating work landing first.
 
-**Dependencies:** none (first phase of milestone).
+**Plans:** TBD
 
-#### Phase 107: Canvassing Wizard Fixes
+### Phase 112: Service Layer & Invite-Acceptance Backfill
 
-**Goal:** A volunteer recording outcomes in the canvassing wizard experiences automatic advance, working skip, and no forced text entry.
+**Goal:** All backend service-layer reads and writes of session-caller and canvassing-assignment rows handle both identity types transparently, and a volunteer accepting their invite has every outstanding assignment silently upgraded to runtime-capable in the same transaction.
 
-**Requirements:** CANV-01, CANV-02, CANV-03, FORMS-01
+**Depends on:** Phase 111
 
-**Success criteria:**
-1. Submitting an outcome on the active house automatically transitions the wizard to the next house in the walk list (CANV-01).
-2. Tapping "Skip house" advances past the current active house, marks it skipped in the queue, and surfaces the next house within one tap (CANV-02).
-3. Any outcome can be saved with an empty notes field (CANV-03).
-4. A documented audit of every `required` validator in field-mode forms exists and over-eager validations are removed (FORMS-01).
-5. Unit, integration, and E2E tests cover auto-advance, skip, optional notes, and the form-requiredness changes (TEST-01/02/03).
+**Requirements:** ASSIGN-03, BACKFILL-01, BACKFILL-02
 
-**Plans:** 10/10 plans complete
+**Success Criteria** (what must be TRUE):
+1. Backend service methods that read session-caller / canvassing-assignment rows return a unified person DTO that resolves to either a volunteer record or a user record via a single helper, with no `if user_id else volunteer_id` branching leaking out of the service layer (ASSIGN-03).
+2. When a pre-signup volunteer accepts their invite, every outstanding `session_callers` and walk-list canvasser row whose `volunteer_id` resolves to the invitee by email is updated in place to set `user_id` and clear `volunteer_id` as part of the existing `accept_invite` flow (BACKFILL-01).
+3. If any step of accept_invite fails (user sync, volunteer backfill, assignment backfill), the entire transaction rolls back with no partial state on any of the three surfaces (BACKFILL-02).
+4. Unit and integration test coverage (TEST-01/02) lands alongside the service helper and backfill changes, exercising both identity types against a real test database.
 
-Plans:
-- [x] 107-01-PLAN.md — usePrefersReducedMotion hook + unit test (D-20 dependency for Plan 04)
-- [x] 107-02-PLAN.md — HOUSE_LEVEL_OUTCOMES set in types/canvassing.ts + unit test (D-18 dependency for Plan 04)
-- [x] 107-03-PLAN.md — Integration test locking empty-notes door-knock contract (D-10/D-16)
-- [x] 107-04-PLAN.md — CANV-01: D-18 hybrid advance refactor + triple-channel feedback (D-03) + ARIA live + focus management
-- [x] 107-05-PLAN.md — CANV-02: handleSkipAddress refactor per RESEARCH §2 option (c); isPending guard; Undo toast (D-06, D-07)
-- [x] 107-06-PLAN.md — CANV-03: notesRequired prop decoupling in InlineSurvey; both call sites updated per D-19; new test file
-- [x] 107-07-PLAN.md — FORMS-01: write 107-FORMS-AUDIT.md with 4-row disposition table (D-12, D-14, D-19)
-- [x] 107-08-PLAN.md — E2E spec canvassing-wizard.spec.ts covering CANV-01/02/03 + FORMS-01 D-17 via run-e2e.sh
-- [x] 107-09-PLAN.md — Phase exit gate: ruff + pytest + vitest + run-e2e.sh green; write 107-VERIFICATION-RESULTS.md
+**Plans:** TBD
 
-**Dependencies:** Phase 106.
+### Phase 113: Runtime API Gating
 
-#### Phase 108: House Selection & Active-State
+**Goal:** The runtime-action API surface refuses to execute authenticated operations on behalf of a pre-signup volunteer assignment, returning a structured machine-readable error the frontend can render consistently.
 
-**Goal:** Volunteers can reliably make any house active from either the list or the map, with a state machine that is the same regardless of entry point.
+**Depends on:** Phase 112
 
-**Requirements:** SELECT-01, SELECT-02, SELECT-03
+**Requirements:** RUNTIME-03
 
-**Success criteria:**
-1. Tapping any house in the household list sets it as the active house (SELECT-01).
-2. Tapping any house marker on the map sets it as the active house (SELECT-02).
-3. A documented state-machine audit covers list-tap, map-tap, auto-advance, skip, resume, and reconciliation after offline sync; the same target state is reachable from every entry point (SELECT-03).
-4. Unit, integration, and E2E tests cover list-tap, map-tap, and state transitions end-to-end (TEST-01/02/03).
+**Success Criteria** (what must be TRUE):
+1. Phone banking runtime endpoints (check-in, start-call, submit-call-record) return 422 with a stable error `code` when invoked against an assignment whose primary identity is `volunteer_id` only (RUNTIME-03).
+2. Canvassing runtime endpoints (check-in, record door knock, submit outcome) return the same structured 422 under the same condition (RUNTIME-03).
+3. The error payload carries a code the frontend can map 1:1 to the disabled-tooltip message without string matching, and the contract is covered by integration tests against a real test database (TEST-02).
+4. Unit test coverage (TEST-01) locks the gating behavior for every modified endpoint handler.
+5. The API is safe to ship before any UI surfaces the new picker entries — pre-signup rows cannot reach runtime endpoints through any supported UI path yet, and the API defends itself if they ever do.
 
-**Plans:** 7/7 plans complete
+**Plans:** TBD
 
-Plans:
-- [x] 108-01-PLAN.md — Wave 0: Spikes A1 (Space key) + A2 (L.DivIcon) + fixture House C
-- [x] 108-02-PLAN.md — SELECT-01: wrap handleJumpToAddress, hook unit test, HouseholdCard render-path guard
-- [x] 108-03-PLAN.md — SELECT-02: CanvassingMapMarkers refactor, panTo, ARIA, CSS, component tests
-- [x] 108-04-PLAN.md — SELECT-03 docs: 108-STATE-MACHINE.md Mermaid + transition table + reconciliation placeholder
-- [x] 108-05-PLAN.md — SELECT-03 test: behavioral integration test covering all 5 entry points
-- [x] 108-06-PLAN.md — E2E: canvassing-house-selection.spec.ts (list-tap, map-tap, keyboard, resume)
-- [x] 108-07-PLAN.md — Phase exit gate: ruff + pytest + vitest + 2x run-e2e.sh, 108-VERIFICATION-RESULTS.md
+### Phase 114: Picker UI & Runtime-Gating UX
 
-**Canonical refs:** 108-CONTEXT.md, 108-UI-SPEC.md, 108-RESEARCH.md, 108-SPIKES.md, 108-STATE-MACHINE.md
+**Goal:** Admins can assign pre-signup volunteers to phone banking sessions and canvassing walk lists through the existing Add Caller / Add Canvasser pickers, and every runtime action that requires a logged-in user renders clearly disabled with an explanatory tooltip for pre-signup assignments.
 
-**Dependencies:** Phase 107.
+**Depends on:** Phase 113
 
-#### Phase 109: Map Rendering & Asset Pipeline
+**Requirements:** PICKER-01, PICKER-02, PICKER-03, PICKER-04, RUNTIME-01, RUNTIME-02
 
-**Goal:** Field-mode maps render correctly — no broken marker icons and no layout occluding the household list.
+**Success Criteria** (what must be TRUE):
+1. Opening the Add Caller picker on a phone banking session shows logged-in campaign members and pre-signup volunteers in the same list, with a visual badge or icon distinguishing pre-signup entries (PICKER-01).
+2. Opening the Add Canvasser picker on a walk list shows the same dual list with the same visual distinction (PICKER-02).
+3. A pre-signup volunteer row in either picker displays a clear affordance (tooltip or status text) explaining "Hasn't logged in yet — they'll be able to start working when they accept their invite" (PICKER-03).
+4. The picker search box matches against name and email for both members and pre-signup volunteers with a single query (PICKER-04).
+5. Phone banking runtime action buttons (check-in, start-call, submit-call-record) render disabled with an explanatory tooltip for assignments whose primary identity is `volunteer_id` (RUNTIME-01).
+6. Canvassing runtime action buttons (check-in, record door knock, submit outcome) render disabled with the same tooltip for `volunteer_id`-only assignments (RUNTIME-02).
+7. Unit and integration tests (TEST-01/02) cover the picker data path, search behavior, and disabled-state rendering.
 
-**Requirements:** MAP-01, MAP-02, MAP-03
+**Plans:** TBD
+**UI hint**: yes
 
-**Success criteria:**
-1. Leaflet marker icons render on every field-mode map view (canvassing map, walk list map, volunteer hub map) with zero broken-image placeholders (MAP-01).
-2. In list view the household list is fully visible and interactable; the map no longer overlays or z-index covers it (MAP-02).
-3. A map asset pipeline audit document lives in `.planning/phases/109-*` confirming every Leaflet icon, sprite, and tile asset resolves correctly under dev, preview, and production build/serve (MAP-03).
-4. Unit/integration tests cover map marker rendering and layout behavior; E2E tests confirm the list-vs-map layout bug does not return (TEST-01/02/03).
+### Phase 115: E2E Coverage & Milestone Exit
 
-**Dependencies:** Phase 108.
+**Goal:** The end-to-end user journey — admin assigns a pre-signup volunteer to a session, the volunteer sees disabled runtime actions, the volunteer accepts their invite, and their assignments become immediately actionable — is locked in by Playwright, and the full v1.19 test suite gate is satisfied.
 
-#### Phase 110: Offline Queue & Connectivity Hardening
+**Depends on:** Phase 114
 
-**Goal:** The offline outcome queue reliably persists, replays, and reconciles outcomes on reconnect, volunteers always know their sync state, and the full v1.18 test suite gate is satisfied.
+**Requirements:** TEST-03 (anchor), TEST-01, TEST-02 (milestone coverage anchor)
 
-**Requirements:** OFFLINE-01, OFFLINE-02, OFFLINE-03, TEST-01/02/03 (milestone coverage anchor)
+**Success Criteria** (what must be TRUE):
+1. An E2E spec via `web/scripts/run-e2e.sh` assigns a pre-signup volunteer to a phone banking session through the Add Caller picker and verifies the assignment appears in the session roster with the pre-signup badge (TEST-03).
+2. The same spec (or a sibling spec) verifies that phone banking and canvassing runtime actions render disabled with the correct tooltip text for pre-signup assignments (TEST-03).
+3. An E2E spec exercises invite acceptance as the assigned pre-signup volunteer and verifies that after first login the volunteer's session and walk-list assignments are immediately runtime-capable with no admin re-assign step (TEST-03).
+4. Milestone-final 4-suite gate: `uv run ruff check .`, `uv run pytest`, `vitest`, and `web/scripts/run-e2e.sh` all exit clean; every file modified across phases 111-115 has meaningful unit + integration + E2E coverage for its changed behavior (TEST-01/02/03).
 
-**Success criteria:**
-1. Under simulated connectivity loss, outcomes persist locally and replay on reconnect with no duplication or loss (OFFLINE-01).
-2. A glanceable connectivity indicator shows online / offline / syncing / last-sync-time in the field-mode shell (OFFLINE-02).
-3. Sync-on-reconnect completes within a defined budget, retries server errors with backoff, and surfaces unresolvable items as actionable errors (OFFLINE-03).
-4. Full milestone coverage gate: every file modified across phases 106-110 has unit + integration + E2E coverage for its changed behavior, and the full `uv run pytest`, `vitest`, and `web/scripts/run-e2e.sh` suites pass clean (TEST-01/02/03).
-
-**Dependencies:** Phase 109.
-
-**Plans:** 8/8 plans complete
-
-Plans:
-- [x] 110-01: Offline boundary audit (`110-OFFLINE-AUDIT.md`)
-- [x] 110-02: `client_uuid` end-to-end + canvass service `DuplicateClientUUIDError` 409 path
-- [x] 110-03: `classifyError` 4-way split + `useSyncEngine` drainQueue dispositions
-- [x] 110-04: `computeBackoffMs` 1s→60s ladder + dead-letter slice + Sheet Retry / Discard
-- [x] 110-05: `ConnectivityPill` 6-state derivation + `ConnectivitySheet` UI
-- [x] 110-06: Coverage backfill (`110-COVERAGE-AUDIT.md` + missing component tests)
-- [x] 110-07: E2E `canvassing-offline-sync.spec.ts` (OFFLINE-01/02/03 4 tests)
-- [x] 110-08: Milestone v1.18 exit gate — 4-suite verification + `110-VERIFICATION-RESULTS.md`
+**Plans:** TBD
+**UI hint**: yes
 
 ---
 
-_TEST-01, TEST-02, and TEST-03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107-110). They are anchored to Phase 110 in the Traceability table as the milestone-final coverage gate._
+_TEST-01, TEST-02, and TEST-03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (111-115). They are anchored to Phase 115 in the Traceability table as the milestone-final coverage gate._

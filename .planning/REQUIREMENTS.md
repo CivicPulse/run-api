@@ -84,23 +84,23 @@ _Deferred to later milestones:_
 
 | REQ-ID       | Description                                                       | Phase |
 |--------------|-------------------------------------------------------------------|-------|
-| ASSIGN-01    | session_callers dual-identity schema + check constraint           | TBD   |
-| ASSIGN-02    | walk list canvasser dual-identity schema + check constraint       | TBD   |
-| ASSIGN-03    | Service-layer dual-identity helper + DTO                          | TBD   |
-| PICKER-01    | Add Caller picker shows volunteers                                | TBD   |
-| PICKER-02    | Add Canvasser picker shows volunteers                             | TBD   |
-| PICKER-03    | Pre-signup affordance tooltip                                     | TBD   |
-| PICKER-04    | Cross-identity name/email search                                  | TBD   |
-| RUNTIME-01   | Phone bank action gating for pre-signup                           | TBD   |
-| RUNTIME-02   | Canvassing action gating for pre-signup                           | TBD   |
-| RUNTIME-03   | API rejection with structured error                               | TBD   |
-| BACKFILL-01  | accept_invite backfills outstanding assignments                   | TBD   |
-| BACKFILL-02  | Backfill in single transaction                                    | TBD   |
-| MIGRATE-01   | One-time Julia-style reconciliation migration                     | TBD   |
-| MIGRATE-02   | Migration pytest coverage                                         | TBD   |
-| TEST-01      | Unit coverage for modified files                                  | TBD*  |
-| TEST-02      | Integration coverage for touched boundaries                       | TBD*  |
-| TEST-03      | E2E coverage for user-visible changes                             | TBD*  |
+| ASSIGN-01    | session_callers dual-identity schema + check constraint           | 111   |
+| ASSIGN-02    | walk list canvasser dual-identity schema + check constraint       | 111   |
+| ASSIGN-03    | Service-layer dual-identity helper + DTO                          | 112   |
+| PICKER-01    | Add Caller picker shows volunteers                                | 114   |
+| PICKER-02    | Add Canvasser picker shows volunteers                             | 114   |
+| PICKER-03    | Pre-signup affordance tooltip                                     | 114   |
+| PICKER-04    | Cross-identity name/email search                                  | 114   |
+| RUNTIME-01   | Phone bank action gating for pre-signup                           | 114   |
+| RUNTIME-02   | Canvassing action gating for pre-signup                           | 114   |
+| RUNTIME-03   | API rejection with structured error                               | 113   |
+| BACKFILL-01  | accept_invite backfills outstanding assignments                   | 112   |
+| BACKFILL-02  | Backfill in single transaction                                    | 112   |
+| MIGRATE-01   | One-time Julia-style reconciliation migration                     | 111   |
+| MIGRATE-02   | Migration pytest coverage                                         | 111   |
+| TEST-01      | Unit coverage for modified files                                  | 111-115*   |
+| TEST-02      | Integration coverage for touched boundaries                       | 111-115*   |
+| TEST-03      | E2E coverage for user-visible changes                             | 115*   |
 
 _* TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase. The roadmapper anchors them to whichever phase is the last code-changing one for traceability and milestone-final pass._
 
