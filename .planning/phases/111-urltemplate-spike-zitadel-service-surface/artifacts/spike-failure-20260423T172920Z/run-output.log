@@ -1,0 +1,58 @@
+(node:1789396) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22mWarning: Route file "/home/kwhatcher/projects/civicpulse/run-api/web/src/routes/callback-state.ts" does not export a Route. This file will not be included in the route tree.
+[2m[WebServer] [22m
+[2m[WebServer] [22mIf this file is not intended to be a route, you can exclude it using one of these options:
+[2m[WebServer] [22m  1. Rename the file to "/home/kwhatcher/projects/civicpulse/run-api/web/src/routes/-callback-state.ts" (prefix with "-")
+[2m[WebServer] [22m  2. Use 'routeFileIgnorePattern' in your config to match this file
+[2m[WebServer] [22m
+[2m[WebServer] [22mCurrent configuration:
+[2m[WebServer] [22m  routeFileIgnorePrefix: "-"
+[2m[WebServer] [22m  routeFileIgnorePattern: "(_components|\.test\.tsx$)"
+
+Running 1 test using 1 worker
+
+(node:1789594) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › e2e/invite-urltemplate-spike.spec.ts:270:3 › Phase 111 urlTemplate deep-link spike › urlTemplate deep-links invitee to /invites/<token> with zitadelCode+userID (31.1s)
+
+
+  1) [chromium] › e2e/invite-urltemplate-spike.spec.ts:270:3 › Phase 111 urlTemplate deep-link spike › urlTemplate deep-links invitee to /invites/<token> with zitadelCode+userID 
+
+    TimeoutError: page.waitForURL: Timeout 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation until "load"
+      navigated to "https://kudzu.tailb56d83.ts.net:49373/ui/console/"
+      navigated to "https://kudzu.tailb56d83.ts.net:49373/ui/console/"
+      navigated to "https://kudzu.tailb56d83.ts.net:49373/ui/login/login?authRequestID=369885816668815365"
+    ============================================================
+
+      337 |     //    breaks and EMAIL-03 must be replanned.
+      338 |     // eslint-disable-next-line prettier/prettier
+    > 339 |     await page.waitForURL(/^https:\/\/run\.civpulse\.org\/invites\/[^/?#]+\?zitadelCode=[^&#]+&userID=[^&#]+$/, { timeout: 30_000 })
+          |                ^
+      340 |
+      341 |     // 5) Landing-URL substitution proof.
+      342 |     const landed = new URL(page.url())
+        at /home/kwhatcher/projects/civicpulse/run-api/web/e2e/invite-urltemplate-spike.spec.ts:339:16
+
+    Error: apiRequestContext._wrapApiCall: ENOENT: no such file or directory, open '/home/kwhatcher/projects/civicpulse/run-api/web/test-results/.playwright-artifacts-0/traces/1a2baa5f14b83245c654-ed9ec211f1bb526522ea.trace'
+
+    Error: browserContext._wrapApiCall: ENOENT: no such file or directory, open '/home/kwhatcher/projects/civicpulse/run-api/web/test-results/.playwright-artifacts-0/traces/1a2baa5f14b83245c654-ed9ec211f1bb526522ea.trace'
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/invite-urltemplate-spike-P-7f139-ken-with-zitadelCode-userID-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/invite-urltemplate-spike-P-7f139-ken-with-zitadelCode-userID-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/invite-urltemplate-spike-P-7f139-ken-with-zitadelCode-userID-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/invite-urltemplate-spike-P-7f139-ken-with-zitadelCode-userID-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e/invite-urltemplate-spike.spec.ts:270:3 › Phase 111 urlTemplate deep-link spike › urlTemplate deep-links invitee to /invites/<token> with zitadelCode+userID 
