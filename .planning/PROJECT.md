@@ -134,10 +134,10 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 
 ### Active
 
-- Pre-provision a credentialed identity for new invitees so the invite link lands them in a "set password → accept" flow rather than a stuck login page — v1.19
-- Make `/login` and the invite-accept page fall back gracefully when an init link expires or context is lost — v1.19
-- Update the invite email content to set expectations for first-time vs returning users — v1.19
-- Idempotent re-invite path for users who already have a ZITADEL identity (joining a second campaign) — v1.19
+- Replace ZITADEL with native auth (fastapi-users + cookie + Postgres sessions) so we own every credential-handling surface and eliminate external-IdP UI-bundling risk — v1.20
+- Stand up continuous test verification (pre-commit / CI / scheduled runs) before cross-cutting auth rewrite starts so drift is caught daily instead of at milestone end — v1.20 (SEED-002)
+- Ship the volunteer-invite onboarding flow originally scoped in v1.19 — click link → set password → accept invite — under the native auth stack with no external-IdP redirects — v1.20
+- Rewire the invite email, `/login` fallback, and re-invite idempotency paths to the native auth surface — v1.20
 
 ### Out of Scope
 
@@ -151,7 +151,7 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Real-time WebSocket infrastructure — SSE sufficient unless demand emerges
 - Actual cluster deployment — manifests only, deployment is a separate operational step
 - Helm/Kustomize — plain manifests following contact-api pattern
-- Local ZITADEL instance — use existing dev org at auth.civpulse.org
+- External IdP (ZITADEL) — removed in v1.20 pivot to DIY auth; return conditions tracked in SEED-003 (SSO/SAML/MFA/compliance triggers)
 - Self-computed propensity scores — vendor problem; import vendor data as-is
 - BISG/fBISG ethnicity prediction — 14-26% error rates, legal/ethical concerns
 - Normalized ethnicity/language enums — L2 has 50+ values, fixed enums break with vendor data
@@ -160,30 +160,33 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Shapefile (.shp) or KML import — multi-file format requires GDAL/OGR; GeoJSON only
 - Freehand polygon drawing — produces self-intersecting polygons that Shapely rejects
 - Custom permission builder — fixed 7-role hierarchy (5 campaign + 2 org) is sufficient
-- Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
+- Per-org SSO/SAML configuration — deferred under DIY auth; tracked in SEED-003 for a future milestone trigger (customer SSO request, enterprise compliance driver)
 - White-label / custom branding per org
 
-## Current Milestone: v1.19 Invite Onboarding
+## Current Milestone: v1.20 Native Auth Rebuild & Invite Onboarding
 
-**Goal:** Make the volunteer-invite link work end-to-end for brand-new users — clicking the link must lead to a working "set password → accept invite" flow without manual admin intervention or generic-login dead-ends.
+**Goal:** Replace ZITADEL with native auth (fastapi-users 15.0.5 + `CookieTransport` + `DatabaseStrategy`, Postgres-backed), then ship the invite onboarding flow that v1.19 originally targeted — now under our own auth stack with no external IdP dependencies.
 
 **Target features:**
-- Programmatic ZITADEL user provisioning at invite-creation time (Option B vs Option C decision pending research)
-- One-time setup link in the invite email (init-code, magic link, or app-owned setup page)
-- Updated invite email content explaining the first-click flow for new vs returning invitees
-- Idempotent re-invite handling — existing ZITADEL identity joining a new campaign skips provisioning, lands directly on the accept page
-- Defensive `/login` page copy that surfaces invite context when the user lands there with `?redirect=/invites/...`
-- Backend `ZitadelService` extended with `create_human_user`, `send_init_code`, and idempotency primitives (or equivalent app-owned password-set endpoint, depending on chosen approach)
-- E2E coverage for the click → setup → accept flow plus unit/integration coverage for the new ZITADEL surface
+- **Continuous test verification infrastructure (SEED-002)** — stand up pre-commit / CI / scheduled test runs *before* the cross-cutting auth rewrite starts, so drift is caught within a day of being introduced (not at milestone end, like v1.18 Phase 106's 219+ accumulated failures)
+- **ZITADEL tear-out** — remove `app/services/zitadel.py`, the ZITADEL docker service, `scripts/bootstrap-zitadel.py`, OIDC JWKS validation, `oidc-client-ts` and all its frontend wiring
+- **User table migration** — Alembic reshape to fastapi-users base mixin (`email`, `hashed_password`, `is_active`, `is_superuser`, `is_verified`, `id`); drop ZITADEL-specific columns
+- **Native auth endpoints** via fastapi-users 15.0.5 — register, login, logout, password reset, email verify, using `CookieTransport` + `DatabaseStrategy`
+- **CSRF middleware** — double-submit cookie pattern, `X-CSRF-Token` header, our own ~40 LOC (no 2026 FastAPI auth library ships CSRF)
+- **Frontend auth rewire** — drop `oidc-client-ts`, switch `web/src/api/client.ts` to `credentials: 'include'`, update route guards and the `useAuth` surface
+- **Invite flow re-implementation** — preserves existing UX goals (single-click-accept landing, Mailgun/Procrastinate delivery, role binding at accept) but with our own password-set page instead of ZITADEL's hosted UI
+- **Test harness rewire** — `scripts/seed.py`, `scripts/create-e2e-users.py`, Playwright auth helpers, E2E user bootstrap, integration coverage for the new auth surface
 
 **Key context:**
-- Driven by a real volunteer who got stuck on the login page with no instructions after clicking the v1.17 invite link
-- Audit (in conversation 2026-04-22) found that ZITADEL self-registration is disabled and `app/services/zitadel.py` has no user-creation methods, so brand-new invitees are currently locked out
-- Implementation approach (Option B "ZITADEL init code" vs Option C "app-owned setup page") to be decided after parallel project-research evaluates both
-- Existing `/signup/$token` volunteer-application flow is separate and out of scope
-- Phase numbering continues from v1.18 (next phase = 111)
+- v1.19 closed as a **research + pivot milestone** on 2026-04-23. Phase 111 `urlTemplate` spike FAILed — ZITADEL v4.10.1 bundles only the legacy Go-templates login UI; the v2 TypeScript login app that honors `urlTemplate` is a separate undeployed Next.js app. Sizing analysis during the pivot found DIY auth ≈ same engineering effort as finishing Option C non-ROPC (~2-3 weeks either way).
+- Pivot is **tactical in motivation**, but cookie-based SPA auth leans permanent because the frontend auth contract changes. Tripwires for reintroducing an external IdP captured in `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`.
+- **Three open design questions** to resolve in plan-phases (Q-AUTH-01/02/03 in `.planning/research/questions.md`): email verification model (invite-token-as-proof vs explicit ceremony), password policy rule set (zxcvbn vs traditional vs NIST 800-63B length+HIBP), session lifecycle (idle/absolute timeout, refresh behavior, logout-all semantics).
+- Phase numbering continues from v1.19 (Phase 111 stays as the spike-FAIL artifact; v1.20 begins at Phase 112).
+- Full decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`.
 
 ## Current State
+
+**v1.19 Invite Onboarding (closed 2026-04-23):** Closed as a **research + pivot** milestone — no user-visible features shipped. Phase 111 `urlTemplate` spike returned verdict FAIL (ZITADEL v4.10.1 bundling quirk, not a fundamental design issue). Research artifacts (`STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`, `SUMMARY.md`) and the Phase 111 service-surface implementation remain in the repo; the pivot decision itself is the milestone's deliverable. v1.20 carries the invite-onboarding goal forward under native auth. See `.planning/notes/decision-drop-zitadel-diy-auth.md`.
 
 **Shipped:** v1.18 Field UX Polish (2026-04-11)
 
@@ -202,7 +205,17 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-_v1.19 Invite Onboarding is the current milestone — see above._
+_v1.20 Native Auth Rebuild & Invite Onboarding is the current milestone — see above._
+
+<details>
+<summary>Archived v1.19 planning context (research + pivot milestone; no shipped features)</summary>
+
+- Programmatic ZITADEL user provisioning at invite-creation time — research converged on **Option B** (ZITADEL `invite_code` + `urlTemplate` deep-link)
+- Phase 111 gating spike — verify the `urlTemplate` deep-link actually lands authenticated invitees on `/invites/<token>` — **returned verdict FAIL** on ZITADEL v4.10.1
+- Brief Option C non-ROPC replan (app-owned setup page with v2 Sessions API or 2nd-password-entry) — **superseded** after effort-parity analysis showed DIY auth ≈ same cost with full surface ownership
+- Deliverables produced: 4 research artifacts (STACK/FEATURES/ARCHITECTURE/PITFALLS + SUMMARY), Phase 111 service-surface implementation (`ensure_human_user`, `create_invite_code`, bounded retry, scoped PAT), spike-FAIL verdict record, and the pivot decision itself — all preserved for v1.20 context
+
+</details>
 
 <details>
 <summary>Archived v1.18 planning context</summary>
@@ -245,7 +258,7 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 ## Constraints
 
 - **Tech stack**: FastAPI + SQLAlchemy + PostgreSQL + PostGIS — established
-- **Auth**: ZITADEL at https://auth.civpulse.org — external OIDC provider
+- **Auth**: fastapi-users 15.0.5 (native, v1.20+) with httponly cookie sessions backed by Postgres — no external IdP; ZITADEL removed in the v1.19→v1.20 pivot (see SEED-003 for return conditions)
 - **Deployment**: Kubernetes — production deployment target
 - **Python**: 3.13+ with uv for package management
 - **API-first**: Web frontend temporarily served via FastAPI static mount; will move to Cloudflare Pages
@@ -288,6 +301,7 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | Approval-gated volunteer access with pending applications | Public intake must not grant campaign visibility before reviewer approval | ✓ Good — pending applications activate membership only on approve; anonymous approvals fall back to invite delivery for email-only applicants |
 | Test baseline trustworthiness as its own first phase | Subsequent phases need a trustworthy pytest/vitest/Playwright signal before they can claim coverage. Phase 106 surfaced 219+ pre-existing failures (488 of 565 were env-drift, 77 mock-shape rot). | ✓ Good — TEST-04 fixed first, then TEST-01/02/03 anchored as per-phase obligations on every code-changing phase |
 | Unify offline gating signal between UI and queue | UI showed "online" while submitDoorKnock decided "offline" via a different signal, masking real offline events as 5xx errors and breaking sync indicators | ✓ Good — Phase 110 unified both on `navigator.onLine`; ConnectivityPill and queue can no longer disagree |
+| ZITADEL → DIY auth pivot (v1.20) | Phase 111 urlTemplate spike FAILed on ZITADEL v4.10.1 bundling quirk (v2 TypeScript login app is a separate Next.js deploy, not bundled); sizing analysis showed DIY auth ≈ same engineering effort as finishing Option C non-ROPC; at cost parity, surface ownership wins | ✓ Chosen 2026-04-23 — fastapi-users 15.0.5 + `CookieTransport` + `DatabaseStrategy` (Postgres, no Redis); tactical-but-cookies-lean-permanent; SEED-003 tracks return conditions (SSO/SAML/MFA/compliance) |
 
 ---
 ## Evolution
@@ -308,4 +322,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 — shipped v1.18 Field UX Polish; started milestone v1.19 Invite Onboarding*
+*Last updated: 2026-04-23 — v1.19 Invite Onboarding closed as research+pivot (ZITADEL→DIY); started milestone v1.20 Native Auth Rebuild & Invite Onboarding*

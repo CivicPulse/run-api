@@ -1,46 +1,38 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.19
-milestone_name: milestone
-status: Blocked — urlTemplate spike FAIL, awaiting milestone replan
-stopped_at: "Completed 111-01-PLAN.md (spike verdict: FAIL, confirmed with second run). Phase 111 blocked. Awaiting milestone replan."
-last_updated: "2026-04-23T18:00:00.006Z"
+milestone: v1.20
+milestone_name: native-auth-rebuild-and-invite-onboarding
+status: Defining requirements
+stopped_at: ""
+last_updated: "2026-04-23T19:00:00.000Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 5
+  total_phases: 0
   completed_phases: 0
-  total_plans: 6
-  completed_plans: 1
-  percent: 17
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-22)
+See: .planning/PROJECT.md (updated 2026-04-23)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Phase 111 — urltemplate-spike-zitadel-service-surface
+**Current focus:** Milestone v1.20 scoping — requirements and roadmap in progress
 
 ## Current Position
 
-Phase: 112
-Plan: Not started
-Status: Blocked — urlTemplate spike FAIL, awaiting milestone replan
-Last activity: 2026-04-23
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-23 — Milestone v1.20 started after v1.19 closed as research+pivot (ZITADEL→DIY auth)
 
 ## Roadmap Summary
 
-5 phases, strictly sequential (111 → 112 → 113 → 114 → 115). Full detail in `.planning/ROADMAP.md`.
-
-- **Phase 111: `urlTemplate` Spike + ZITADEL Service Surface** — Gating spike verifies ZITADEL deep-link behavior; ship `ensure_human_user` + `create_invite_code` with bounded retry; confirm service-account PAT least-privilege scope. Reqs: PROV-01, PROV-02, PROV-03, SEC-03.
-- **Phase 112: Schema Migration + Legacy-Invite Handling** — Alembic migration adds provisioning columns (all tz-aware) and marks pre-v1.19 pending invites `legacy_flow=true` via pure SQL so deploy does not couple to ZITADEL availability. Reqs: MIG-01, MIG-02, MIG-03, SEC-04.
-- **Phase 113: Provisioning Step in Email Task + Branched Email Content** — Extend `send_campaign_invite_email` with idempotent ZITADEL provisioning under the existing `queueing_lock`; branch first-time vs returning email content; wire `urlTemplate`. Reqs: PROV-04, PROV-05, EMAIL-01, EMAIL-02, EMAIL-03.
-- **Phase 114: Frontend `/login` Interstitial + Empty-Membership Login Gate** — Pre-redirect `/login` context, OIDC-callback empty-membership gate (M1 mitigation), auto-landing-authed verification on `/invites/<token>`, email-mismatch recovery page, `SELECT FOR UPDATE` token-reuse guard. Reqs: UX-01, UX-02, UX-03, UX-04, SEC-01, SEC-02.
-- **Phase 115: Resend, Recovery, and Observability** — Transparent init-code re-mint, public "request a fresh invite" rate-limited endpoint, admin resend endpoint, legacy-flow recovery CTA, funnel events, admin pending-invite visibility extension, milestone-final TEST-01/02/03/04 pass. Reqs: RECOV-01, RECOV-02, RECOV-03, RECOV-04, OBS-01, OBS-02, TEST-01, TEST-02, TEST-03, TEST-04.
-
-**Coverage:** 29/29 requirements mapped. No orphans. TEST-01/02/03/04 anchored to Phase 115 for the milestone-final pass and referenced as per-phase exit-gate criteria on every code-changing phase (same pattern as v1.18).
+TBD — roadmap will be generated after v1.20 requirements are confirmed. Phase numbering continues from v1.19 (Phase 111 preserved as the `urlTemplate` spike-FAIL artifact; v1.20 begins at Phase 112).
 
 ## Accumulated Context
 
@@ -55,28 +47,29 @@ Last activity: 2026-04-23
 - [Phase 110]: Phase 110 exit gate PASSED — milestone v1.18 ships on commit 18d54e9. Pytest 1122 (+4 client_uuid service tests), vitest 805 (+67 offline queue/sync engine/connectivity), Playwright 312 (+4 canvassing-offline-sync) on two consecutive greens via run-e2e.sh. Production code change: submitDoorKnock now derives offline state from the same navigator.onLine signal as ConnectivityPill, so the UI and the offline queue can no longer disagree about whether the volunteer is online.
 - v1.19: Driven by a real volunteer who got stuck on the login page after clicking the v1.17 invite link with no instructions on how to authenticate.
 - v1.19: Audit (2026-04-22 conversation) found ZITADEL self-registration is disabled (`scripts/bootstrap-zitadel.py:372` `allowRegister: False`) and `app/services/zitadel.py` has no user-creation methods, so brand-new invitees are currently locked out.
-- v1.19: Option B (ZITADEL `invite_code` + `urlTemplate` deep-link) chosen — all four research workstreams converged independently on cost, UX, pitfall surface, and re-invite handling. ROPC out of scope under every branch; Option C non-ROPC is the Phase-111 spike-failure fallback only.
-- v1.19: Phase 111 opens with a gating spike against our 2.71.x ZITADEL instance to verify the `urlTemplate` deep-link actually lands an authenticated invitee on `/invites/<token>`. Failure of the spike forces a replan to Option C non-ROPC.
-- v1.19: Pre-v1.19 pending invites handled via `legacy_flow=true` + recovery CTA (MIG-02) rather than a deploy-time ZITADEL backfill — avoids coupling deploy to ZITADEL availability. Recovery path reuses the same "Request a fresh invite" CTA we ship for expired init codes.
-- v1.19: TEST-01/02/03 are per-phase coverage obligations (same pattern as v1.18). TEST-04 is the pre-phase-exit baseline check. All four anchor to Phase 115 in the traceability table for the milestone-final pass.
+- v1.19: Option B (ZITADEL `invite_code` + `urlTemplate` deep-link) chosen — all four research workstreams converged independently on cost, UX, pitfall surface, and re-invite handling. ROPC out of scope under every branch.
+- v1.19: Phase 111 opens with a gating spike against our 2.71.x ZITADEL instance to verify the `urlTemplate` deep-link actually lands an authenticated invitee on `/invites/<token>`. Failure of the spike forces a replan.
+- v1.19: TEST-01/02/03 are per-phase coverage obligations (same pattern as v1.18). TEST-04 is the pre-phase-exit baseline check.
 - v1.19: Existing `/signup/$token` volunteer-application flow is separate and out of scope.
 - [Phase 111-01]: urlTemplate deep-link spike FAILED. ZITADEL v4.10.1 bundles only legacy Go-templates login UI (`/ui/login/*`); the v2 TypeScript login app (`/ui/v2/login/*`) that honors `urlTemplate` is a separate undeployed Next.js app. API surface (user creation, invite codes, service-account auth) works. Failure is strictly at post-password-set redirect boundary. Plans 02-06 blocked; milestone must replan.
-- [Phase 111]: v1.19 replans to Option C non-ROPC — Phase 111 spike proved ZITADEL v4.10.1 legacy login UI does not honor urlTemplate (v2 TypeScript login app is a separate deploy, not bundled). User selected Option C non-ROPC over (B) deploying zitadel/typescript app or (3) app-side bounce page. Trade-off accepted: ~10x implementation work (~500 LOC vs ~50 LOC), 3 new security pitfalls to mitigate (S1 email-verification bypass per ZITADEL #10319, S7/Z5 password-policy drift, U3 mobile autofill). Phases 112-115 require full re-scoping before execution can resume.
+- [v1.19 → v1.20 pivot 2026-04-23]: Chose DIY auth (fastapi-users 15.0.5 + CookieTransport + DatabaseStrategy, Postgres-backed) over Option C non-ROPC after sizing analysis showed equivalent engineering effort (~2-3 weeks) with surface ownership as the tie-breaker. Pivot tactical in motivation; cookie-based SPA auth leans permanent. Full decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`. Tripwires for return: `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`.
+- v1.20: Continuous Test Verification (SEED-002) included as an early phase — auth rebuild is cross-cutting, without continuous test runs we risk repeating v1.18 Phase 106's 219-silent-failure situation.
+- v1.20: Three open design questions (Q-AUTH-01/02/03 in `.planning/research/questions.md`) to resolve during plan-phases, not at milestone-scoping time: email verification model, password policy rule set, session lifecycle.
 
 ## Pending Todos
 
-- Replan milestone v1.19 via `/gsd-replan-milestone v1.19 --reason option-c-non-ropc` (or review 111-SPIKE-VERDICT.md options first)
+- Formal `/gsd-complete-milestone v1.18` archival to MILESTONES.md — carried over from v1.19 STATE.md; still outstanding
+- Formal `/gsd-complete-milestone v1.19` archival — add v1.19 to MILESTONES.md with the research+pivot outcome and preserved research artifacts as deliverable
 
 ## Blockers/Concerns
 
-- v1.18 has not been formally archived to MILESTONES.md via `/gsd-complete-milestone` — STATE.md confirms shipment but milestone audit and MILESTONES.md entry are pending. Track separately; not a v1.19 blocker.
-- Campaign creation 500 in production — ZITADEL pod connectivity investigation remains an ops follow-up, not milestone scope. Worth flagging because Phase 111 spike + Phase 113 provisioning both depend on ZITADEL being reachable from prod.
-- HSTS header — requires Cloudflare edge configuration outside this code milestone.
-- **ACTIVE: Phase 111 urlTemplate spike FAILED.** ZITADEL v4.10.1 legacy login UI does not honor urlTemplate. v2 login app (`/ui/v2/login/*`) returns 404 — it's a separate Next.js app not deployed. Milestone must replan per D-SPIKE-03. Three options in `111-SPIKE-VERDICT.md`.
-- Phase 111 spike FAIL — ZITADEL v4.10.1 legacy login UI does not honor urlTemplate; v2 TypeScript login app not deployed. Milestone replanning to Option C non-ROPC (user decision 2026-04-23). Phases 112-115 require full re-scoping: new REQUIREMENTS.md entries (REG-*, PWD-*), new backend /register + /password-policy endpoints, new frontend /setup-password route, second-password-entry vs v2 Sessions API trade-off pending.
+- **v1.18 archival gap:** v1.18 has not been formally archived to MILESTONES.md — STATE.md confirmed shipment but the milestone audit and MILESTONES.md entry are pending. Track separately; not a v1.20 blocker.
+- **v1.19 archival gap:** v1.19 needs formal close-out via `/gsd-complete-milestone` now that the pivot decision has been made. Not a v1.20 blocker but should happen before v1.20 Phase 112 planning begins so the MILESTONES.md history is clean.
+- **Campaign creation 500 in production** — was ZITADEL-related in v1.19; under v1.20's ZITADEL tear-out this is expected to resolve by construction, but should be verified post-v1.20. Not milestone scope.
+- **HSTS header** — requires Cloudflare edge configuration outside this code milestone.
 
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: Completed 111-01-PLAN.md (spike verdict: FAIL, confirmed with second run). Phase 111 blocked. Awaiting milestone replan.
+Stopped at: v1.20 milestone initialization — PROJECT.md updated, STATE.md reset, requirements and roadmap pending
 Resume file: None
