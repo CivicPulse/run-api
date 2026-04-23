@@ -125,7 +125,10 @@ class MailgunEmailProvider(TransactionalEmailProvider):
         message_id = response.json().get("id")
         if not isinstance(message_id, str) or not message_id:
             raise EmailProviderError("Mailgun response did not include a message id")
-        return message_id
+        # Mailgun's send response wraps the id in RFC 2822 angle brackets, but
+        # the webhook payload reports it bare. Normalize on store so lookups
+        # work in both directions.
+        return message_id.strip().strip("<>")
 
 
 def get_transactional_email_provider() -> TransactionalEmailProvider:

@@ -107,7 +107,8 @@ async def test_parse_mailgun_event_verifies_signature_and_maps_status():
         settings.mailgun_webhook_signing_key = original
 
     assert event.provider_event_id == "evt-1"
-    assert event.provider_message_id == "<message-1@example.test>"
+    # Angle brackets are stripped to match webhook payload format.
+    assert event.provider_message_id == "message-1@example.test"
     assert event.status == "delivered"
 
 
@@ -329,7 +330,8 @@ async def test_parse_mailgun_event_accepts_json_v2_envelope():
         settings.mailgun_webhook_signing_key = original
 
     assert event.provider_event_id == "evt-json-1"
-    assert event.provider_message_id == "<message-1@example.test>"
+    # Angle brackets are stripped to match webhook payload format.
+    assert event.provider_message_id == "message-1@example.test"
     assert event.status == "delivered"
 
 
@@ -361,6 +363,43 @@ async def test_parse_mailgun_event_rejects_json_v2_with_bad_signature():
         settings.mailgun_webhook_signing_key = original
 
     assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_parse_mailgun_event_strips_angle_brackets_from_message_id():
+    """Mailgun webhook payloads omit angle brackets around message-id, but the
+    DB column is populated from the send response which includes them. Strip
+    on read so lookups match either form."""
+    from app.services.mailgun_webhook import parse_mailgun_event
+
+    timestamp = "1710000000"
+    token = "mailgun-token"
+    key = "signing-secret"
+    request = _mock_json_request(
+        {
+            "signature": {
+                "timestamp": timestamp,
+                "token": token,
+                "signature": _signature(timestamp, token, key),
+            },
+            "event-data": {
+                "id": "evt-bracket",
+                "event": "delivered",
+                "message": {
+                    "headers": {"message-id": "<20260423021908.deadbeef@mg.test>"}
+                },
+            },
+        }
+    )
+
+    original = settings.mailgun_webhook_signing_key
+    try:
+        settings.mailgun_webhook_signing_key = SecretStr(key)
+        event = await parse_mailgun_event(request)
+    finally:
+        settings.mailgun_webhook_signing_key = original
+
+    assert event.provider_message_id == "20260423021908.deadbeef@mg.test"
 
 
 @pytest.mark.asyncio

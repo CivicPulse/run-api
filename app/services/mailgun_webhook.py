@@ -112,9 +112,9 @@ async def parse_mailgun_event(request: Request) -> MailgunWebhookEvent:
     event_type = str(event_data.get("event") or "").strip()
     provider_event_id = str(event_data.get("id") or "").strip()
     message = event_data.get("message") or {}
-    provider_message_id = str(
-        message.get("headers", {}).get("message-id") or ""
-    ).strip()
+    provider_message_id = (
+        str(message.get("headers", {}).get("message-id") or "").strip().strip("<>")
+    )
     reason = (
         event_data.get("severity")
         or event_data.get("reason")
