@@ -20,7 +20,7 @@ Phase dependencies are strictly sequential (111 → 112 → 113 → 114 → 115)
 
 ## Phases
 
-- [ ] **Phase 111: `urlTemplate` Spike + ZITADEL Service Surface** — Verify ZITADEL deep-link behavior; ship `ensure_human_user` + `create_invite_code` with bounded retry and least-privilege scope
+- [x] **Phase 111: `urlTemplate` Spike + ZITADEL Service Surface** — Verify ZITADEL deep-link behavior; ship `ensure_human_user` + `create_invite_code` with bounded retry and least-privilege scope (completed 2026-04-23)
 - [ ] **Phase 112: Schema Migration + Legacy-Invite Handling** — Add provisioning columns to invites; mark pre-v1.19 pending invites legacy_flow so deploy does not couple to ZITADEL availability
 - [ ] **Phase 113: Provisioning Step in Email Task + Branched Email Content** — Extend `send_campaign_invite_email` with idempotent ZITADEL provisioning and first-time-vs-returning email branching
 - [ ] **Phase 114: Frontend `/login` Interstitial + Empty-Membership Login Gate** — Ship the pre-redirect `/login` context, the OIDC-callback empty-membership gate, auto-landing-authed verification on `/invites/<token>`, and the email-mismatch recovery page
@@ -46,7 +46,7 @@ Phase dependencies are strictly sequential (111 → 112 → 113 → 114 → 115)
 5. The ZITADEL service-account PAT is confirmed scoped to `ORG_USER_MANAGER` + `ORG_PROJECT_USER_GRANT_EDITOR` on the CivicPulse org (not `IAM_OWNER`); if over-privileged today, it is narrowed inside this phase.
 6. Phase-exit gate: pytest/vitest/Playwright baselines remain green on consecutive runs per TEST-04; every changed file has unit coverage per TEST-01; every new service boundary has integration coverage per TEST-02.
 
-**Plans:** TBD
+**Plans:** 1/6 plans complete
 
 ---
 
@@ -135,7 +135,7 @@ Phase dependencies are strictly sequential (111 → 112 → 113 → 114 → 115)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 111. urlTemplate Spike + ZITADEL Service Surface | 1/6 | Blocked (spike FAIL) | 2026-04-23 |
+| 111. urlTemplate Spike + ZITADEL Service Surface | 1/6 | Complete    | 2026-04-23 |
 | 112. Schema Migration + Legacy-Invite Handling | 0/? | Not started | - |
 | 113. Provisioning Step in Email Task + Branched Email | 0/? | Not started | - |
 | 114. Frontend `/login` Interstitial + Empty-Membership Gate | 0/? | Not started | - |

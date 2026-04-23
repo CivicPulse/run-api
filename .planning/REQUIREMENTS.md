@@ -21,9 +21,9 @@ Requirements derived from:
 
 ### PROV — ZITADEL Identity Provisioning
 
-- [ ] **PROV-01**: `ZitadelService.ensure_human_user(email, given_name, family_name, org_id) -> (user_id, created)` is implemented with the search-then-create idempotency pattern (mirrors `ensure_project_grant`), sets `email.isVerified=true`, and returns whether the identity was newly created or already existed.
-- [ ] **PROV-02**: `ZitadelService.create_invite_code(user_id, url_template) -> code` is implemented against `POST /v2/users/{userId}/invite_code` using `{"returnCode": {}}` so CivicPulse emails the code via Mailgun rather than letting ZITADEL send it.
-- [ ] **PROV-03**: `ensure_human_user` and `create_invite_code` share the existing bounded exponential retry (3x, 1/2/4s) on 5xx / connect / timeout errors, matching the `bootstrap-zitadel.py:102-117` pattern.
+- [x] **PROV-01**: `ZitadelService.ensure_human_user(email, given_name, family_name, org_id) -> (user_id, created)` is implemented with the search-then-create idempotency pattern (mirrors `ensure_project_grant`), sets `email.isVerified=true`, and returns whether the identity was newly created or already existed.
+- [x] **PROV-02**: `ZitadelService.create_invite_code(user_id, url_template) -> code` is implemented against `POST /v2/users/{userId}/invite_code` using `{"returnCode": {}}` so CivicPulse emails the code via Mailgun rather than letting ZITADEL send it.
+- [x] **PROV-03**: `ensure_human_user` and `create_invite_code` share the existing bounded exponential retry (3x, 1/2/4s) on 5xx / connect / timeout errors, matching the `bootstrap-zitadel.py:102-117` pattern.
 - [ ] **PROV-04**: Provisioning is called from within `send_campaign_invite_email` (Procrastinate `communications` queue) under the existing per-invite `queueing_lock`, guarded by `if invite.zitadel_user_id is None`, so retries are idempotent across DB, queue, and ZITADEL layers.
 - [ ] **PROV-05**: Partial-failure recovery — if `ensure_human_user` succeeds but subsequent role-grant or email-send fails, the next retry reuses the existing ZITADEL user via search and does not create a duplicate.
 
@@ -57,7 +57,7 @@ Requirements derived from:
 
 - [ ] **SEC-01**: Email-match enforcement on accept remains case-insensitive and rejects mismatches with a non-ambiguous error (S3 mitigation). Existing logic at `invite.py:202-205` preserved; UX-04 extends the user-facing recovery.
 - [ ] **SEC-02**: Invite-token reuse prevention — `accepted_at` is set under `SELECT FOR UPDATE` inside the accept transaction; second use returns 410 Gone (S4 mitigation).
-- [ ] **SEC-03**: The ZITADEL service-account PAT is confirmed scoped to `ORG_USER_MANAGER` + `ORG_PROJECT_USER_GRANT_EDITOR` on the CivicPulse org (not `IAM_OWNER`). If it is over-privileged today, narrow it as part of Phase 111 (S6/Z3 mitigation).
+- [x] **SEC-03**: The ZITADEL service-account PAT is confirmed scoped to `ORG_USER_MANAGER` + `ORG_PROJECT_USER_GRANT_EDITOR` on the CivicPulse org (not `IAM_OWNER`). If it is over-privileged today, narrow it as part of Phase 111 (S6/Z3 mitigation).
 - [ ] **SEC-04**: Naive-datetime regression guarded — all new datetime columns use `DateTime(timezone=True)` and all new timestamp writes use `datetime.now(UTC)`, never `datetime.utcnow()` (O6 mitigation). Enforce with a ruff rule or unit test.
 
 ### OBS — Observability
