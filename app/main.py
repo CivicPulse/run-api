@@ -116,6 +116,12 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(v1_router)
 
+    # Native auth (fastapi-users) -- Step 1 of the ZITADEL -> DIY pivot.
+    # Mounted alongside the existing ZITADEL stack; nothing consumes it yet.
+    from app.auth.router import native_auth_router
+
+    app.include_router(native_auth_router, prefix="/api/v1/auth", tags=["auth-native"])
+
     # Serve built frontend in production (static/ exists only in Docker image)
     if (STATIC_DIR / "assets").is_dir():
         app.mount(

@@ -29,6 +29,7 @@ dependencies = [
     "structlog>=24.4.0",
     "procrastinate>=3.7.3",
     "twilio>=9.10.4",
+    "fastapi-users[sqlalchemy]>=15.0.5",
 ]
 
 [dependency-groups]
