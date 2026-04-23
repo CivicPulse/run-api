@@ -292,3 +292,4 @@ vendor/
 coverage/
 .cache/
 tmp/
+.planning/logs/
