@@ -1,103 +1,134 @@
-# Milestone v1.18 Requirements — Field UX Polish
+# Milestone v1.19 Requirements — Invite Onboarding
 
-**Milestone:** v1.18 Field UX Polish
-**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably. Raise the test suite to a trustworthy baseline.
-**Status:** Roadmap created — 5 phases (106-110)
-**Last updated:** 2026-04-10
+**Milestone:** v1.19 Invite Onboarding
+**Goal:** Make the volunteer-invite link work end-to-end for brand-new users — clicking the link leads to a working "set password → accept invite" flow without manual admin intervention or generic-login dead-ends.
+**Status:** Requirements defined; roadmap pending
+**Last updated:** 2026-04-23
 
 ---
 
 ## Source of Truth
 
 Requirements derived from:
-- Reported volunteer feedback from real door-knocking sessions (7 canvassing bugs)
-- Broader audits triggered by those reports (map asset pipeline, active-state state machine, form requiredness)
-- Proactive offline/sync hardening
-- Test-suite trustworthiness: full unit/integration/E2E coverage for everything touched + fix pre-existing broken tests
+- Audit conducted 2026-04-22 in conversation following a production bug report (volunteer stuck on login page after clicking invite link)
+- Four parallel research workstreams (.planning/research/{STACK,FEATURES,ARCHITECTURE,PITFALLS,SUMMARY}.md)
+- Convergent recommendation: **Option B** — ZITADEL `invite_code` flow with `urlTemplate` deep-link back to `/invites/<token>`, pre-provisioning the ZITADEL identity at email-send time inside the existing Procrastinate `send_campaign_invite_email` task. Gated on a Phase-111 spike that verifies the deep-link behavior end-to-end.
+- Option C (app-owned setup page on run.civpulse.org) is explicitly the fallback if the Phase-111 spike fails. ROPC is out of scope under all branches.
 
 ---
 
-## v1.18 Requirements
+## v1.19 Requirements
 
-### CANV — Canvassing Flow Fixes
+### PROV — ZITADEL Identity Provisioning
 
-- [x] **CANV-01**: After a volunteer records an outcome for the active house, the canvassing wizard automatically advances to the next house in the walk list without manual intervention.
-- [x] **CANV-02**: The "Skip house" button advances past the current active house, marks it skipped in the local queue, and surfaces the next house within one tap.
-- [x] **CANV-03**: The outcome notes field is optional — volunteers can save any outcome (contacted, not home, refused, moved, etc.) without entering text in the notes field.
+- [ ] **PROV-01**: `ZitadelService.ensure_human_user(email, given_name, family_name, org_id) -> (user_id, created)` is implemented with the search-then-create idempotency pattern (mirrors `ensure_project_grant`), sets `email.isVerified=true`, and returns whether the identity was newly created or already existed.
+- [ ] **PROV-02**: `ZitadelService.create_invite_code(user_id, url_template) -> code` is implemented against `POST /v2/users/{userId}/invite_code` using `{"returnCode": {}}` so CivicPulse emails the code via Mailgun rather than letting ZITADEL send it.
+- [ ] **PROV-03**: `ensure_human_user` and `create_invite_code` share the existing bounded exponential retry (3x, 1/2/4s) on 5xx / connect / timeout errors, matching the `bootstrap-zitadel.py:102-117` pattern.
+- [ ] **PROV-04**: Provisioning is called from within `send_campaign_invite_email` (Procrastinate `communications` queue) under the existing per-invite `queueing_lock`, guarded by `if invite.zitadel_user_id is None`, so retries are idempotent across DB, queue, and ZITADEL layers.
+- [ ] **PROV-05**: Partial-failure recovery — if `ensure_human_user` succeeds but subsequent role-grant or email-send fails, the next retry reuses the existing ZITADEL user via search and does not create a duplicate.
 
-### SELECT — House Selection & Active-State
+### MIG — Schema & Legacy-Invite Migration
 
-- [x] **SELECT-01**: Volunteers can tap any house in the household list to set it as the active house.
-- [x] **SELECT-02**: Volunteers can tap any house marker on the map to set it as the active house.
-- [x] **SELECT-03**: The active-house state machine is reviewed end-to-end so a volunteer standing at a specific address can reliably make that address active regardless of entry point (list, map, auto-advance, skip, resume).
+- [ ] **MIG-01**: Alembic migration adds `zitadel_user_id`, `identity_provisioning_status`, `identity_provisioning_error`, `identity_provisioning_at`, `legacy_flow` columns to the `invites` table. All datetime columns use `DateTime(timezone=True)`.
+- [ ] **MIG-02**: Pre-v1.19 pending invites (no `zitadel_user_id`) are marked `legacy_flow=true` in the same migration. These invites route through the v1.18 behavior plus the new recovery CTA rather than the new provisioning path, so deploy does not couple to ZITADEL availability.
+- [ ] **MIG-03**: The migration is reversible (downgrade drops the columns cleanly) and dry-run-safe against a prod snapshot.
 
-### MAP — Map Rendering & Layout
+### EMAIL — Invite Email Content Branching
 
-- [x] **MAP-01**: Leaflet marker icons render correctly on every field-mode map view (no broken-image placeholders). The fix is verified across canvassing map, walk list map, and volunteer hub map.
-- [x] **MAP-02**: In list view, the household list is fully visible and interactable — the map does not overlay, z-index-cover, or otherwise block the list.
-- [x] **MAP-03**: A map asset pipeline audit confirms every Leaflet icon, sprite, and tile asset resolves correctly under the app's build/serve configuration (dev, preview, and production).
+- [ ] **EMAIL-01**: The invite email template branches on whether the ZITADEL identity was newly created. First-time invitees receive a "set your password to accept this invite" subject and body with the ZITADEL init link. Returning invitees (existing ZITADEL identity, new campaign) receive the existing "accept your invite" subject and body with the direct `/invites/<token>` link.
+- [ ] **EMAIL-02**: Both email variants preserve the existing context (inviter name, campaign name, organization, role, expiry date) and meet the accessibility bar (plain-text fallback, semantic HTML, no image-only content).
+- [ ] **EMAIL-03**: The init-link URL uses ZITADEL's `urlTemplate` parameter to deep-link `https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}` (exact placeholder shape confirmed by the Phase-111 spike).
 
-### FORMS — Field-Mode Form Requiredness
+### UX — Invite-Accept Page & Login Interstitial
 
-- [x] **FORMS-01**: A field-mode form audit identifies every `required` validator and every form field in the canvassing and phone banking flows; each is reviewed against its UX intent and over-eager validations are removed.
+- [ ] **UX-01**: The `/invites/<token>` page handles "user just landed authenticated via ZITADEL `urlTemplate` redirect" — oidc-client-ts picks up the fresh session, the page renders the Accept-invite confirmation without requiring a second sign-in click.
+- [ ] **UX-02**: The `/login` page, when bounced to with `?redirect=/invites/...`, renders a brief contextual interstitial ("You're signing in to accept your invite to <campaign>") before the OIDC redirect, so users arriving from a stale session are not stranded on "Redirecting…".
+- [ ] **UX-03**: The OIDC callback handler enforces an empty-membership gate — a ZITADEL user with zero campaign/organization memberships is redirected to an accept-invite prompt instead of receiving a session cookie that exposes empty tenant context. (Addresses Pitfall M1.)
+- [ ] **UX-04**: Email-mismatch failures during accept render an explicit "this invite is for X, you signed in as Y" page with three actions: log out, request a re-send, contact the campaign admin. (Extends `invite.py:202-205`.)
 
-### OFFLINE — Offline Queue Hardening
+### RECOV — Expired-Link Recovery & Resend
 
-- [x] **OFFLINE-01**: The offline outcome queue is exercised under simulated connectivity loss and reliably persists, replays, and reconciles outcomes on reconnect without duplication or loss.
-- [x] **OFFLINE-02**: Connectivity state (online, offline, syncing, last-sync-time) is surfaced to volunteers in a glanceable indicator within the field-mode shell.
-- [x] **OFFLINE-03**: Sync-on-reconnect completes within a defined budget, handles server errors gracefully (retry with backoff), and surfaces any unresolvable items as actionable errors to the volunteer.
+- [ ] **RECOV-01**: When the CivicPulse invite is still valid but the ZITADEL init code has expired (ZITADEL's init code TTL is shorter than our 7-day invite TTL), the accept-flow read path transparently calls `create_invite_code` again to mint a fresh code and surfaces the new link to the user. No manual admin intervention required.
+- [ ] **RECOV-02**: The expired-invite UI shows a "Request a fresh invite" button that hits a rate-limited public endpoint and emails the campaign admin team. No captcha (the invite token is the gate); per-token and per-IP rate limits enforced via slowapi.
+- [ ] **RECOV-03**: Admins have a `POST /api/v1/invites/{id}/resend` endpoint that re-calls `create_invite_code` (which invalidates any prior code per ZITADEL docs — messaging surfaces this to both admin and user).
+- [ ] **RECOV-04**: Legacy-flow invites (MIG-02) surface the "Request a fresh invite" button on first click so pre-v1.19 invitees have a path forward.
 
-### TEST — Test Suite Trustworthiness
+### SEC — Security Controls
 
-- [x] **TEST-01**: Every file modified during v1.18 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
-- [x] **TEST-02**: Every API and service boundary touched during v1.18 has integration test coverage (backend: pytest integration marker; frontend: TanStack Query hooks against mock server).
-- [x] **TEST-03**: Every user-visible behavior changed during v1.18 has E2E test coverage via `web/scripts/run-e2e.sh`, including the canvassing auto-advance, skip house, map house-tap, list house-tap, and offline sync flows.
-- [x] **TEST-04**: All pre-existing broken or consistently failing tests across backend (pytest) and frontend (vitest + Playwright) are either fixed or deleted with justification, so the CI signal is trustworthy — only valid regressions fail.
+- [ ] **SEC-01**: Email-match enforcement on accept remains case-insensitive and rejects mismatches with a non-ambiguous error (S3 mitigation). Existing logic at `invite.py:202-205` preserved; UX-04 extends the user-facing recovery.
+- [ ] **SEC-02**: Invite-token reuse prevention — `accepted_at` is set under `SELECT FOR UPDATE` inside the accept transaction; second use returns 410 Gone (S4 mitigation).
+- [ ] **SEC-03**: The ZITADEL service-account PAT is confirmed scoped to `ORG_USER_MANAGER` + `ORG_PROJECT_USER_GRANT_EDITOR` on the CivicPulse org (not `IAM_OWNER`). If it is over-privileged today, narrow it as part of Phase 111 (S6/Z3 mitigation).
+- [ ] **SEC-04**: Naive-datetime regression guarded — all new datetime columns use `DateTime(timezone=True)` and all new timestamp writes use `datetime.now(UTC)`, never `datetime.utcnow()` (O6 mitigation). Enforce with a ruff rule or unit test.
+
+### OBS — Observability
+
+- [ ] **OBS-01**: Structured funnel events emitted at each step: `invite.link_clicked`, `invite.password_shown` (from ZITADEL return), `invite.zitadel_redirected`, `invite.accept_clicked`, `invite.completed`. Consumed by structlog request telemetry for future dashboard wiring (O5 mitigation).
+- [ ] **OBS-02**: `identity_provisioning_status` column and (if non-null) `identity_provisioning_error` are exposed in the existing admin pending-invite view alongside email-delivery status, so staff can see where an invite got stuck end-to-end.
+
+### TEST — Test Suite Coverage
+
+- [ ] **TEST-01**: Every file modified during v1.19 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
+- [ ] **TEST-02**: Every API and service boundary touched during v1.19 has integration test coverage — including `ensure_human_user` idempotency across retries, `create_invite_code` against a mocked ZITADEL, the empty-membership login gate, and the migration's legacy-flow marking.
+- [ ] **TEST-03**: Every user-visible behavior changed during v1.19 has E2E test coverage via `web/scripts/run-e2e.sh`, including the first-time invite → set password → accept flow and the returning-user → accept flow.
+- [ ] **TEST-04**: The pytest, vitest, and Playwright baselines from v1.18 (1122 / 805 / 312) remain green on consecutive runs before each phase-exit gate.
 
 ---
 
-## Future Requirements
+## Future Requirements (deferred to v1.20+)
 
-_Deferred to later milestones:_
-
-- Phone banking field-mode UX review (unless uncovered during FORMS-01 audit)
-- Volunteer hub / shell improvements beyond the offline indicator
-- Offline support for new entity types beyond canvassing outcomes
+- **PASSKEY-01**: Offer passkey enrollment on the ZITADEL setup page (strongest argument *for* B — ZITADEL handles the WebAuthn dance natively — but not table stakes for v1.19).
+- **MAGICLINK-01**: Magic-link passwordless as an alternative to the invite-code flow.
+- **DASH-01**: Multi-pending-invite dashboard for volunteers invited to several campaigns.
+- **RECOV-05**: Self-service "find my invite by email" recovery page.
+- **MFA-01**: Post-onboarding MFA nudge for privileged roles.
 
 ---
 
-## Out of Scope
+## Out of Scope (explicit exclusions)
 
-- New canvassing features beyond fixing reported bugs
-- Backend API contract changes for canvassing or phone banking
-- Non-field-mode map work (admin turf editor was already polished in v1.5)
-- Replacing Leaflet or the offline queue implementation
-- New test frameworks (keep pytest/vitest/Playwright)
+- **Option C app-owned setup page on run.civpulse.org** — evaluated in research, rejected on cost / pitfall surface / ZITADEL #10319 risk. Remains the Phase-111 fallback only if the `urlTemplate` spike fails.
+- **ROPC (Resource Owner Password Credentials) grant** — adding `OIDC_GRANT_TYPE_PASSWORD` and a `client_secret` to the SPA is a security regression (contradicts the existing `OIDC_AUTH_METHOD_TYPE_NONE` posture, deprecated in OAuth 2.1). Out of scope under every branch, including the Option-C fallback.
+- **ZITADEL self-registration** — flipping `allowRegister: True` was the Option-A hot-patch; intentionally not taken because it opens a signup path to anyone who finds `/login`, not just invitees.
+- **Changes to the anonymous `/signup/$token` volunteer-application flow** — separate v1.17 feature, not part of this milestone.
+- **Backfilling ZITADEL identities for pre-v1.19 pending invites at deploy time** — chose the legacy-flow + recovery CTA path instead (MIG-02) to avoid coupling deploys to ZITADEL availability.
+- **Bulk-invite rate-limit infrastructure (token-bucket at 40 req/s)** — no current bulk-invite UI; design provisioning task so adding this limiter later is a one-line change (honorable-mention pitfall O1).
+- **Campaign-authored / marketing email** — still out of scope (product-level decision held from v1.16).
+- **In-product registration of a ZITADEL invitation message template** — we email via Mailgun `returnCode`; registering a ZITADEL template adds operational surface for negligible benefit.
 
 ---
 
 ## Traceability
 
-| REQ-ID      | Description                                        | Phase |
-|-------------|----------------------------------------------------|-------|
-| CANV-01     | Auto-advance after outcome                         | 107   |
-| CANV-02     | Skip house button works                            | 107   |
-| CANV-03     | Outcome note optional                              | 107   |
-| SELECT-01   | Tap house in list → active                         | 108   |
-| SELECT-02   | Tap house on map → active                          | 108   |
-| SELECT-03   | Active-state state machine audit                   | 108   |
-| MAP-01      | Leaflet marker icons render                        | 109   |
-| MAP-02      | List view not covered by map                       | 109   |
-| MAP-03      | Map asset pipeline audit                           | 109   |
-| FORMS-01    | Field-mode form requiredness audit                 | 107   |
-| OFFLINE-01  | Queue persists/replays reliably                    | 110   |
-| OFFLINE-02  | Connectivity indicator                             | 110   |
-| OFFLINE-03  | Sync-on-reconnect with retry/backoff               | 110   |
-| TEST-01     | Unit coverage for modified files                   | 110*  |
-| TEST-02     | Integration coverage for touched boundaries        | 110*  |
-| TEST-03     | E2E coverage for user-visible changes              | 110*  |
-| TEST-04     | Fix/delete pre-existing broken tests               | 106   |
+_Populated by the roadmapper. Each REQ-ID maps to exactly one phase below._
 
-_* TEST-01/02/03 are cross-cutting coverage obligations applied as explicit success criteria on every code-changing phase (107, 108, 109, 110). Anchored to Phase 110 for traceability — that is the milestone-final coverage gate where the full suite must pass clean._
-
-**Coverage:** 17/17 requirements mapped. No orphans. No duplicates.
+| REQ-ID | Phase |
+|--------|-------|
+| PROV-01 | — |
+| PROV-02 | — |
+| PROV-03 | — |
+| PROV-04 | — |
+| PROV-05 | — |
+| MIG-01 | — |
+| MIG-02 | — |
+| MIG-03 | — |
+| EMAIL-01 | — |
+| EMAIL-02 | — |
+| EMAIL-03 | — |
+| UX-01 | — |
+| UX-02 | — |
+| UX-03 | — |
+| UX-04 | — |
+| RECOV-01 | — |
+| RECOV-02 | — |
+| RECOV-03 | — |
+| RECOV-04 | — |
+| SEC-01 | — |
+| SEC-02 | — |
+| SEC-03 | — |
+| SEC-04 | — |
+| OBS-01 | — |
+| OBS-02 | — |
+| TEST-01 | — |
+| TEST-02 | — |
+| TEST-03 | — |
+| TEST-04 | — |
