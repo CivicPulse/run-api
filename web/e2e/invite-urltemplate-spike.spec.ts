@@ -279,17 +279,27 @@ test.describe("Phase 111 urlTemplate deep-link spike", () => {
     const userId = spikeState.userId!
     const inviteCode = spikeState.inviteCode!
 
-    // 1) Navigate to the COMMITTED ZITADEL v2 hosted invite-verify page.
-    //    Reference: zitadel/typescript apps/login src/app/(login)/verify/page.tsx —
-    //    searchParams.invite === "true" drives the set-password-then-redirect
-    //    flow that honors our urlTemplate from POST /v2/users/{userId}/invite_code.
-    //    Do NOT fall back to /ui/login/login/invite or /ui/login/login/accept-invitation —
-    //    those are legacy v1 paths; ZITADEL 2.71.x uses v2 at /ui/v2/login/*.
+    // 1) Navigate to the COMMITTED ZITADEL hosted invite-verify page.
+    //
+    //    DEVIATION [Rule 1 — Bug]: The plan's original URL was
+    //      ${ZITADEL_URL}/ui/v2/login/verify?userId=<userId>&code=<inviteCode>&invite=true
+    //    referencing the `zitadel/typescript` login app. Empirical probe
+    //    (2026-04-23) against our dev ZITADEL v4.10.1 shows /ui/v2/login/*
+    //    returns HTTP 404 — the typescript login app is NOT bundled into the
+    //    ZITADEL server binary and must be deployed as a separate service.
+    //    Our dev instance serves the classic Go-templates console-login UI at
+    //    /ui/login/*, which handles invite codes at /ui/login/user/init.
+    //    This is the same UI path that ZITADEL 2.71.x serves out of the box.
+    //    Verified the page fills field IDs `code`, `password`, `passwordconfirm`
+    //    and submits via a "Next" button.
+    //    NOTE: the legacy path uses `userID` (capital D) in query params.
+    //    References:
+    //      - github.com/zitadel/zitadel /internal/api/ui/login/user_init_handler.go
+    //      - /ui/login/user/init is the officially supported fallback route
     const verifyUrl =
-      `${zitadelUrl}/ui/v2/login/verify` +
-      `?userId=${encodeURIComponent(userId)}` +
-      `&code=${encodeURIComponent(inviteCode)}` +
-      `&invite=true`
+      `${zitadelUrl}/ui/login/user/init` +
+      `?userID=${encodeURIComponent(userId)}` +
+      `&code=${encodeURIComponent(inviteCode)}`
     await page.goto(verifyUrl, { waitUntil: "domcontentloaded" })
 
     // 2) Generated strong password meeting ZITADEL default policy
@@ -308,8 +318,11 @@ test.describe("Phase 111 urlTemplate deep-link spike", () => {
 
     await passwordField.fill(password)
     await confirmField.fill(password)
+    // Button regex includes "next" — the classic console-login UI's primary
+    // submit button on /ui/login/user/init is labelled "Next" (id=init-button).
+    // (See 2026-04-23 probe; /ui/v2/login/verify uses "Continue"/"Save".)
     await page
-      .getByRole("button", { name: /continue|save|set password|submit/i })
+      .getByRole("button", { name: /continue|save|set password|submit|next/i })
       .first()
       .click()
 
