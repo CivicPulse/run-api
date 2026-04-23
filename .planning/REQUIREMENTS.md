@@ -2,7 +2,7 @@
 
 **Milestone:** v1.19 Invite Onboarding
 **Goal:** Make the volunteer-invite link work end-to-end for brand-new users — clicking the link leads to a working "set password → accept invite" flow without manual admin intervention or generic-login dead-ends.
-**Status:** Requirements defined; roadmap pending
+**Status:** Requirements defined; roadmap complete (phases 111-115)
 **Last updated:** 2026-04-23
 
 ---
@@ -99,36 +99,36 @@ Requirements derived from:
 
 ## Traceability
 
-_Populated by the roadmapper. Each REQ-ID maps to exactly one phase below._
+Each REQ-ID maps to exactly one phase. TEST-01/02/03/04 are cross-cutting per-phase obligations (per the v1.18 pattern) and anchored to Phase 115 here for the milestone-final pass; they also appear as exit-gate success criteria on every code-changing phase 111-115.
 
 | REQ-ID | Phase |
 |--------|-------|
-| PROV-01 | — |
-| PROV-02 | — |
-| PROV-03 | — |
-| PROV-04 | — |
-| PROV-05 | — |
-| MIG-01 | — |
-| MIG-02 | — |
-| MIG-03 | — |
-| EMAIL-01 | — |
-| EMAIL-02 | — |
-| EMAIL-03 | — |
-| UX-01 | — |
-| UX-02 | — |
-| UX-03 | — |
-| UX-04 | — |
-| RECOV-01 | — |
-| RECOV-02 | — |
-| RECOV-03 | — |
-| RECOV-04 | — |
-| SEC-01 | — |
-| SEC-02 | — |
-| SEC-03 | — |
-| SEC-04 | — |
-| OBS-01 | — |
-| OBS-02 | — |
-| TEST-01 | — |
-| TEST-02 | — |
-| TEST-03 | — |
-| TEST-04 | — |
+| PROV-01 | Phase 111 |
+| PROV-02 | Phase 111 |
+| PROV-03 | Phase 111 |
+| PROV-04 | Phase 113 |
+| PROV-05 | Phase 113 |
+| MIG-01 | Phase 112 |
+| MIG-02 | Phase 112 |
+| MIG-03 | Phase 112 |
+| EMAIL-01 | Phase 113 |
+| EMAIL-02 | Phase 113 |
+| EMAIL-03 | Phase 113 |
+| UX-01 | Phase 114 |
+| UX-02 | Phase 114 |
+| UX-03 | Phase 114 |
+| UX-04 | Phase 114 |
+| RECOV-01 | Phase 115 |
+| RECOV-02 | Phase 115 |
+| RECOV-03 | Phase 115 |
+| RECOV-04 | Phase 115 |
+| SEC-01 | Phase 114 |
+| SEC-02 | Phase 114 |
+| SEC-03 | Phase 111 |
+| SEC-04 | Phase 112 |
+| OBS-01 | Phase 115 |
+| OBS-02 | Phase 115 |
+| TEST-01 | Phase 115 |
+| TEST-02 | Phase 115 |
+| TEST-03 | Phase 115 |
+| TEST-04 | Phase 115 |
