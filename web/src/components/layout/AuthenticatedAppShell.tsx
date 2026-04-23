@@ -165,7 +165,7 @@ function UserMenu() {
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
 
-  const displayName = user?.profile?.name || user?.profile?.email || "User"
+  const displayName = user?.display_name || user?.email || "User"
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -192,8 +192,8 @@ function UserMenu() {
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
             <p className="text-sm font-medium">{displayName}</p>
-            {user?.profile?.email && (
-              <p className="text-xs text-muted-foreground">{user.profile.email}</p>
+            {user?.email && (
+              <p className="text-xs text-muted-foreground">{user.email}</p>
             )}
           </div>
         </div>

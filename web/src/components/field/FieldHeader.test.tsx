@@ -41,10 +41,14 @@ const mockUseAuthStore = useAuthStore as unknown as ReturnType<typeof vi.fn>
 
 function mockUser(name: string, email?: string) {
   return {
-    profile: {
-      name,
-      email: email ?? `${name.toLowerCase().replace(/\s/g, ".")}@example.com`,
-    },
+    id: "u1",
+    email: email ?? `${name.toLowerCase().replace(/\s/g, ".")}@example.com`,
+    display_name: name,
+    org_id: null,
+    org_ids: [],
+    role: null,
+    is_active: true,
+    is_verified: true,
   }
 }
 

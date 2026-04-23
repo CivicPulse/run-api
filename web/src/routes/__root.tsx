@@ -10,7 +10,15 @@ import { SkipNav } from "@/components/shared/SkipNav"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuthStore } from "@/stores/authStore"
 
-const PUBLIC_ROUTES = ["/login", "/callback", "/invites", "/signup"]
+const PUBLIC_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/invites",
+  "/signup",
+]
 const AuthenticatedAppShell = lazy(() =>
   import("@/components/layout/AuthenticatedAppShell").then((module) => ({
     default: module.AuthenticatedAppShell,
@@ -18,7 +26,7 @@ const AuthenticatedAppShell = lazy(() =>
 )
 
 function RootLayout() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isAuthenticated = useAuthStore((state) => state.status === "authenticated")
   const location = useRouterState({ select: (s) => s.location })
 
   const isPublicRoute = PUBLIC_ROUTES.some((r) =>
@@ -82,9 +90,6 @@ function RootLayout() {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    // Callback processes the OIDC response itself via handleCallback()
-    if (location.pathname === "/callback") return
-
     await useAuthStore.getState().initialize()
 
     const isPublicRoute = PUBLIC_ROUTES.some((r) =>
@@ -92,8 +97,8 @@ export const Route = createRootRoute({
     )
     if (isPublicRoute) return
 
-    const { isAuthenticated } = useAuthStore.getState()
-    if (!isAuthenticated) {
+    const { status } = useAuthStore.getState()
+    if (status !== "authenticated") {
       throw redirect({
         to: "/login",
         search: { redirect: location.pathname + (location.searchStr ?? "") },

@@ -20,16 +20,32 @@ export class PermissionError extends Error {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || window.location.origin
 
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
+
+function readCsrfCookie(): string | null {
+  if (typeof document === "undefined") return null
+  const match = document.cookie.match(/(?:^|;\s*)cp_csrf=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 export const api = ky.create({
   prefixUrl: API_BASE_URL,
+  credentials: "include",
   hooks: {
     beforeRequest: [
       async (request) => {
-        // Dynamic import to avoid circular dependency
-        const { useAuthStore } = await import("@/stores/authStore")
-        const token = useAuthStore.getState().getAccessToken()
-        if (token) {
-          request.headers.set("Authorization", `Bearer ${token}`)
+        const method = request.method.toUpperCase()
+        if (MUTATING_METHODS.has(method)) {
+          let token = readCsrfCookie()
+          if (!token) {
+            // Bootstrap a CSRF cookie lazily so the first mutating call
+            // after page load doesn't 403.
+            const { bootstrapCsrf } = await import("@/stores/authStore")
+            token = await bootstrapCsrf()
+          }
+          if (token) {
+            request.headers.set("X-CSRF-Token", token)
+          }
         }
       },
     ],
@@ -37,10 +53,7 @@ export const api = ky.create({
       async (_request, _options, response) => {
         if (response.status === 401) {
           const { useAuthStore } = await import("@/stores/authStore")
-          // Clear local auth state only — don't call signoutRedirect() which
-          // triggers a full OIDC logout redirect and destroys the session.
-          // The user will see the unauthenticated landing page and can re-login.
-          useAuthStore.setState({ user: null, isAuthenticated: false })
+          useAuthStore.setState({ user: null, status: "unauthenticated" })
           throw new AuthenticationError()
         }
         if (response.status === 403) {

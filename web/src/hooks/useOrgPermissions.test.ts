@@ -2,10 +2,21 @@ import { renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { UserOrg } from "@/types/org"
 
+type MockMe = {
+  id: string
+  email: string
+  display_name: string
+  org_id: string | null
+  org_ids: string[]
+  role: { name: string; permissions: string[] } | null
+  is_active: boolean
+  is_verified: boolean
+}
+
 // Module-level mutable state consumed by the mocked modules below.
 const mockAuthState = {
-  user: null as null | { profile: Record<string, unknown> },
-  isInitialized: false,
+  user: null as MockMe | null,
+  status: "unknown" as "unknown" | "authenticated" | "unauthenticated",
 }
 
 const mockOrgsState = {
@@ -15,59 +26,40 @@ const mockOrgsState = {
 }
 
 vi.mock("@/stores/authStore", () => ({
-  useAuthStore: (
-    selector: (s: typeof mockAuthState) => unknown,
-  ) => selector(mockAuthState),
+  useAuthStore: (selector: (s: typeof mockAuthState) => unknown) =>
+    selector(mockAuthState),
 }))
 
 vi.mock("./useOrg", () => ({
   useMyOrgs: () => mockOrgsState,
 }))
 
-vi.mock("@/config", () => ({
-  getConfig: () => ({ zitadel_project_id: "proj-1" }),
-}))
-
 import { useOrgPermissions } from "./useOrgPermissions"
 
-const PROJECT_ID = "proj-1"
-const ROLES_CLAIM = `urn:zitadel:iam:org:project:${PROJECT_ID}:roles`
-const RESOURCE_OWNER_CLAIM = "urn:zitadel:iam:user:resourceowner:id"
-
-function makeUserWithProjectRoles(
-  roleMap: Record<string, Record<string, string>>,
-  resourceOwnerId?: string,
-) {
-  const profile: Record<string, unknown> = {
-    [ROLES_CLAIM]: roleMap,
-  }
-  if (resourceOwnerId) profile[RESOURCE_OWNER_CLAIM] = resourceOwnerId
-  return { profile }
-}
-
-function makeUserWithResourceOwnerOnly(resourceOwnerId: string) {
+function makeMe(orgIds: string[], primaryOrgId?: string | null): MockMe {
   return {
-    profile: {
-      [RESOURCE_OWNER_CLAIM]: resourceOwnerId,
-    },
+    id: "u1",
+    email: "a@example.com",
+    display_name: "Alice",
+    org_id: primaryOrgId === undefined ? orgIds[0] ?? null : primaryOrgId,
+    org_ids: orgIds,
+    role: null,
+    is_active: true,
+    is_verified: true,
   }
 }
 
 describe("useOrgPermissions", () => {
   beforeEach(() => {
     mockAuthState.user = null
-    mockAuthState.isInitialized = false
+    mockAuthState.status = "unknown"
     mockOrgsState.data = undefined
     mockOrgsState.isLoading = false
     mockOrgsState.isFetched = false
   })
 
-  it("returns isLoading=true when authStore is not yet initialized", () => {
-    mockAuthState.isInitialized = false
-    mockOrgsState.data = undefined
-    mockOrgsState.isLoading = false
-    mockOrgsState.isFetched = false
-
+  it("returns isLoading=true when auth status is unknown", () => {
+    mockAuthState.status = "unknown"
     const { result } = renderHook(() => useOrgPermissions())
 
     expect(result.current.isLoading).toBe(true)
@@ -77,24 +69,19 @@ describe("useOrgPermissions", () => {
   })
 
   it("returns isLoading=true when user is authenticated but orgs query still pending", () => {
-    mockAuthState.isInitialized = true
-    mockAuthState.user = makeUserWithProjectRoles({
-      org_owner: { "org-abc": "Acme" },
-    })
+    mockAuthState.status = "authenticated"
+    mockAuthState.user = makeMe(["org-abc"])
     mockOrgsState.data = undefined
     mockOrgsState.isLoading = true
     mockOrgsState.isFetched = false
 
     const { result } = renderHook(() => useOrgPermissions())
-
     expect(result.current.isLoading).toBe(true)
   })
 
-  it("resolves org_owner role from JWT claim + useMyOrgs match", () => {
-    mockAuthState.isInitialized = true
-    mockAuthState.user = makeUserWithProjectRoles({
-      org_owner: { "org-abc": "Acme" },
-    })
+  it("resolves org_owner role via me.org_ids match", () => {
+    mockAuthState.status = "authenticated"
+    mockAuthState.user = makeMe(["org-abc"])
     mockOrgsState.data = [
       {
         id: "internal-1",
@@ -103,7 +90,6 @@ describe("useOrgPermissions", () => {
         role: "org_owner",
       },
     ]
-    mockOrgsState.isLoading = false
     mockOrgsState.isFetched = true
 
     const { result } = renderHook(() => useOrgPermissions())
@@ -116,10 +102,8 @@ describe("useOrgPermissions", () => {
   })
 
   it("resolves org_admin role and denies org_owner access", () => {
-    mockAuthState.isInitialized = true
-    mockAuthState.user = makeUserWithProjectRoles({
-      org_admin: { "org-xyz": "Beta" },
-    })
+    mockAuthState.status = "authenticated"
+    mockAuthState.user = makeMe(["org-xyz"])
     mockOrgsState.data = [
       {
         id: "internal-2",
@@ -128,7 +112,6 @@ describe("useOrgPermissions", () => {
         role: "org_admin",
       },
     ]
-    mockOrgsState.isLoading = false
     mockOrgsState.isFetched = true
 
     const { result } = renderHook(() => useOrgPermissions())
@@ -138,11 +121,9 @@ describe("useOrgPermissions", () => {
     expect(result.current.hasOrgRole("org_owner")).toBe(false)
   })
 
-  it("returns undefined orgRole when JWT claims name orgs not in useMyOrgs", () => {
-    mockAuthState.isInitialized = true
-    mockAuthState.user = makeUserWithProjectRoles({
-      org_owner: { "org-missing": "Ghost" },
-    })
+  it("returns undefined orgRole when me.org_ids name orgs not in useMyOrgs", () => {
+    mockAuthState.status = "authenticated"
+    mockAuthState.user = makeMe(["org-missing"])
     mockOrgsState.data = [
       {
         id: "internal-3",
@@ -151,7 +132,6 @@ describe("useOrgPermissions", () => {
         role: "org_owner",
       },
     ]
-    mockOrgsState.isLoading = false
     mockOrgsState.isFetched = true
 
     const { result } = renderHook(() => useOrgPermissions())
@@ -162,9 +142,9 @@ describe("useOrgPermissions", () => {
     expect(result.current.hasOrgRole("org_owner")).toBe(false)
   })
 
-  it("falls back to resourceowner:id claim when project roles claim is absent", () => {
-    mockAuthState.isInitialized = true
-    mockAuthState.user = makeUserWithResourceOwnerOnly("org-home")
+  it("uses primary org_id when org_ids is empty", () => {
+    mockAuthState.status = "authenticated"
+    mockAuthState.user = makeMe([], "org-home")
     mockOrgsState.data = [
       {
         id: "internal-home",
@@ -173,7 +153,6 @@ describe("useOrgPermissions", () => {
         role: "org_admin",
       },
     ]
-    mockOrgsState.isLoading = false
     mockOrgsState.isFetched = true
 
     const { result } = renderHook(() => useOrgPermissions())

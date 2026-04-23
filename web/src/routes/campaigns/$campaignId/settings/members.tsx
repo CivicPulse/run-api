@@ -169,7 +169,7 @@ function MembersSettings() {
   })
 
   const { hasRole } = usePermissions()
-  const currentUserId = useAuthStore((s) => s.user?.profile?.sub as string | undefined)
+  const currentUserId = useAuthStore((s) => s.user?.id)
 
   // Queries
   const { data: membersData, isLoading: membersLoading } = useMembers(campaignId)

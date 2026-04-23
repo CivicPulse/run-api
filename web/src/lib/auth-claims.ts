@@ -1,23 +1,23 @@
 import { ROLE_HIERARCHY } from "@/hooks/usePermissions"
+import type { MeResponse } from "@/stores/authStore"
 import type { CampaignRole } from "@/types/auth"
 
+/**
+ * Return the user's highest role, as reported by `/auth/me`.
+ *
+ * Historically this function decoded a ZITADEL JWT claim map. With native
+ * cookie sessions, the backend has already computed the "best" role across
+ * all orgs (see `_authenticated_user_from_db`) and returns it on `me.role`.
+ * We keep the function name so existing call-sites don't churn — the
+ * second argument (formerly `projectId`) is accepted and ignored for
+ * backward compatibility.
+ */
 export function getHighestRoleFromClaims(
-  claims: Record<string, unknown>,
-  projectId: string,
+  me: MeResponse | null | undefined,
+  _projectId?: string,
 ): CampaignRole | null {
-  if (!projectId) return null
-
-  const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
-  if (!(claimKey in claims)) return null
-
-  const roleMap = claims[claimKey] as Record<string, unknown>
-  const foundRoles = Object.keys(roleMap).filter(
-    (role): role is CampaignRole => role in ROLE_HIERARCHY,
-  )
-
-  if (foundRoles.length === 0) return null
-
-  return foundRoles.reduce((best, role) =>
-    ROLE_HIERARCHY[role] > ROLE_HIERARCHY[best] ? role : best,
-  foundRoles[0])
+  if (!me || !me.role) return null
+  const name = me.role.name.toLowerCase()
+  if (name in ROLE_HIERARCHY) return name as CampaignRole
+  return null
 }

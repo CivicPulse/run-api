@@ -166,3 +166,44 @@ None currently blocking Step 1. Re-read before Step 3:
   - Dual-auth means endpoints can migrate piecemeal: change `get_current_user` → `current_user_dual` in the signature and that route accepts both auth modes. Prioritize migrating `/auth/me` and anything the SPA hits on boot (me, csrf, dashboard).
   - Dev seed now logs `seeddev-password-123` as the universal password; use `dana.whitfield@example.com` / that password against the native `POST /auth/login` for a smoke test.
   - Backfill script is **not** auto-run by lifespan — prod release runbook must call it explicitly between Step 4 deploy and Step 5 flip.
+
+### Step 5 — Frontend cutover (committed as <PENDING>)
+- Backend additions:
+  - `app/auth/router.py` — added `GET /api/v1/auth/me` returning the richer shape
+    `{id, email, display_name, org_id, org_ids, role: {name, permissions}|null, is_active, is_verified}`.
+    Uses `get_current_native_user` (requires active+verified cookie) plus `_authenticated_user_from_db`.
+  - `tests/unit/test_auth_me_endpoint.py` (new) — 3 tests: authed 200 with MeResponse shape, unauthed 401, router smoke.
+- Frontend files created:
+  - `web/src/routes/register.tsx`, `web/src/routes/forgot-password.tsx`,
+    `web/src/routes/reset-password.tsx`, `web/src/routes/verify-email.tsx` — shadcn/ui Card-based forms, react-hook-form + zod, error/success flows mapped to fastapi-users error codes (LOGIN_USER_NOT_VERIFIED, LOGIN_BAD_CREDENTIALS, REGISTER_INVALID_PASSWORD, RESET_PASSWORD_BAD_TOKEN, etc.).
+- Frontend files rewritten:
+  - `web/src/stores/authStore.ts` — state is now `{ user: MeResponse | null, status: 'unknown'|'authenticated'|'unauthenticated' }`; actions `fetchMe`, `loginWithPassword`, `logout`, `initialize`. Exports `getCsrfCookie` + `bootstrapCsrf`. Uses a credentials:include ky instance.
+  - `web/src/api/client.ts` — `credentials: 'include'`, drops Authorization bearer injection, adds `X-CSRF-Token` injection from `cp_csrf` cookie on POST/PUT/PATCH/DELETE (with lazy bootstrap via `/auth/csrf`), 401 resets authStore to `unauthenticated`.
+  - `web/src/lib/auth-claims.ts` — `getHighestRoleFromClaims(me)` reads `me.role.name` directly; legacy `projectId` arg accepted-and-ignored for caller compatibility.
+  - `web/src/config.ts` — removed `zitadel_issuer`, `zitadel_client_id`, `zitadel_project_id` from AppConfig; only `upload_host` remains.
+  - `web/src/routes/login.tsx` — email+password form; handles not-verified with a resend-verification button (POSTs `/auth/request-verify-token`); honors `?redirect=` via existing `isSafeRedirect`.
+  - `web/src/routes/__root.tsx` — drops `/callback` carve-out; `beforeLoad` awaits `authStore.initialize()` (which fetches `/auth/me`) and redirects to `/login` when `status !== "authenticated"`; new public route prefixes for `/register`, `/forgot-password`, `/reset-password`, `/verify-email`.
+  - `web/src/hooks/usePermissions.ts` — role comes from `me.role.name`; no JWT decode; preserves per-campaign API override.
+  - `web/src/hooks/useOrgPermissions.ts` — currentOrg selected by matching `me.org_ids` against `/me/orgs` (no ZITADEL claim decode).
+  - `web/src/components/org/OrgSwitcher.tsx` — neutered to a display-only label (no `switchOrg` action during DIY-auth phase; real org-switch UX is future work).
+- Frontend files deleted:
+  - `web/src/routes/callback.tsx`, `web/src/routes/callback-state.ts`, `web/src/routes/callback.test.tsx`.
+- Test files updated: `stores/authStore.test.ts`, `api/client.test.ts`, `lib/auth-claims.test.ts`, `hooks/usePermissions.test.ts`, `hooks/useOrgPermissions.test.ts`, `components/field/FieldHeader.test.tsx`, `routes/campaigns/new.test.tsx`, `routes/campaigns/$campaignId/settings/members.test.tsx`, `routes/field/$campaignId/{canvassing,phone-banking}.test.tsx` — all mocks migrated from `user.profile.sub`/JWT claim maps to the flat `MeResponse` shape.
+- Dependency changes: `npm uninstall oidc-client-ts` (removed from `web/package.json` + lockfile).
+- Call-site fixes (`user.profile.x` → flat `MeResponse`): `components/layout/AuthenticatedAppShell.tsx`, `components/field/FieldHeader.tsx`, `routes/field/$campaignId.tsx`, `routes/campaigns/new.tsx`, `routes/campaigns/$campaignId/settings/members.tsx`, `routes/campaigns/$campaignId/volunteers/register/index.tsx`, `routes/signup/$token.tsx`, `routes/index.tsx`, `routes/invites/$token.tsx`.
+- Validation:
+  - `uv run ruff check .` + `uv run ruff format --check .` clean.
+  - `uv run pytest tests/unit/ -q` → 1015 passed.
+  - `cd web && npx tsc --noEmit` → clean.
+  - `cd web && npm test -- --run` → 794 passed, 21 todo, 6 skipped (the skipped files were already skipped pre-Step-5 for unrelated map-library reasons).
+- Deviations:
+  - Plan called for backend `MeResponse.role.permissions: list[str]`. We return `[]` — there is no domain "permissions" concept in the codebase yet; the key is wired so Step 6+ can populate it without a shape change.
+  - `OrgSwitcher` was a functional requirement of the old flow. Rather than plumbing a server-driven org switch we pared it down to a display label. Multi-org users retain access (backend `require_org_role` still resolves across `org_ids`), but Step 6 or later work should add a first-class switch UX.
+  - `web/src/lib/auth-claims.ts` keeps the old function name + ignored 2nd arg to avoid a cascading rename across 5 call sites.
+  - `login.tsx`'s post-login redirect currently uses `navigate({ to: target })`. TanStack Router types require known route literals; `target` is a user-controlled string validated by `isSafeRedirect`. The type is narrowed via the existing pattern from the Step-4 login flow and has been exercised in unit coverage.
+- Known limitations for Step 6:
+  - Backend `app/services/zitadel.py` still present (per plan — Step 6 removes it).
+  - `app/core/security.py` still imports httpx for the ZITADEL JWT fallback; `get_current_user_dual` keeps the grace-period dual-auth branch.
+  - 11-file ZITADEL frontend grep snapshot is now 0 hits — `rg -i zitadel web/src` returns only `zitadel_org_id` schema fields on `Organization` (a DB column preserved until Step 6 drops it).
+  - Invite-acceptance UI (`routes/invites/$token.tsx`) still POSTs empty body; the backend now requires `{password, display_name}` (Step 4). Step 5 did not rewrite that route because it's outside the auth cutover scope, but Step 6 (or a follow-up plan) must update it before the old ZITADEL-accept flow is removed.
+  - Smoke-test URL (Tailscale dev): `https://<your-fqdn>:37822/login` — use seed creds `dana.whitfield@example.com` / `seeddev-password-123`.

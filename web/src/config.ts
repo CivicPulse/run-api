@@ -1,7 +1,4 @@
 interface AppConfig {
-  zitadel_issuer: string
-  zitadel_client_id: string
-  zitadel_project_id: string
   upload_host: string
 }
 

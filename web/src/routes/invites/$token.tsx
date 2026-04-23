@@ -14,7 +14,7 @@ function InviteEntryPage() {
   const { token } = Route.useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isAuthenticated = useAuthStore((state) => state.status === "authenticated")
   const [acceptedCampaignId, setAcceptedCampaignId] = useState<string | null>(null)
   const [acceptError, setAcceptError] = useState<string | null>(null)
 

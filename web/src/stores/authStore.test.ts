@@ -1,207 +1,132 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
-import type { User } from "oidc-client-ts"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 
-// Event handler registry captured from UserManager.events.addXxx
-const eventHandlers: Record<string, (...args: unknown[]) => void> = {}
+const fetchMock = vi.fn()
 
-// Call-order tracking for logout sequencing tests
-const callOrder: string[] = []
-
-const mockUserManager = {
-  getUser: vi.fn().mockResolvedValue(null),
-  signinRedirect: vi.fn().mockResolvedValue(undefined),
-  signinRedirectCallback: vi.fn(),
-  signoutRedirect: vi.fn(() => {
-    callOrder.push("signoutRedirect")
-    return Promise.resolve()
-  }),
-  removeUser: vi.fn(() => {
-    callOrder.push("removeUser")
-    return Promise.resolve()
-  }),
-  events: {
-    addUserLoaded: vi.fn((cb: (user: User) => void) => {
-      eventHandlers.userLoaded = cb as (...args: unknown[]) => void
-    }),
-    addUserUnloaded: vi.fn((cb: () => void) => {
-      eventHandlers.userUnloaded = cb as (...args: unknown[]) => void
-    }),
-    addAccessTokenExpired: vi.fn((cb: () => void) => {
-      eventHandlers.tokenExpired = cb as (...args: unknown[]) => void
-    }),
-  },
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  })
 }
 
-vi.mock("oidc-client-ts", () => ({
-  UserManager: vi.fn().mockImplementation(function () {
-    return mockUserManager
-  }),
-  WebStorageStateStore: vi.fn().mockImplementation(function () {
-    return {}
-  }),
-}))
-
-vi.mock("@/config", () => ({
-  loadConfig: vi.fn().mockResolvedValue({
-    zitadel_issuer: "https://test.example",
-    zitadel_client_id: "test-client",
-    zitadel_project_id: "test-project",
-  }),
-}))
-
-const fakeUser = {
-  access_token: "token-abc",
-  expired: false,
-  profile: { sub: "user-1" },
-} as unknown as User
+function emptyResponse(status: number): Response {
+  return new Response("", { status })
+}
 
 type AuthStoreModule = typeof import("./authStore")
 
 async function freshStore(): Promise<AuthStoreModule> {
   vi.resetModules()
-  const mod = await import("./authStore")
-  await mod.useAuthStore.getState().initialize()
-  return mod
+  return (await import("./authStore")) as AuthStoreModule
 }
 
-describe("authStore", () => {
+const me = {
+  id: "user-1",
+  email: "a@example.com",
+  display_name: "Alice",
+  org_id: "org-1",
+  org_ids: ["org-1"],
+  role: { name: "admin", permissions: [] },
+  is_active: true,
+  is_verified: true,
+}
+
+describe("authStore (native cookie)", () => {
   beforeEach(() => {
-    callOrder.length = 0
-    for (const key of Object.keys(eventHandlers)) delete eventHandlers[key]
-    mockUserManager.getUser.mockClear().mockResolvedValue(null)
-    mockUserManager.signinRedirect.mockClear().mockResolvedValue(undefined)
-    mockUserManager.signinRedirectCallback.mockClear()
-    mockUserManager.signoutRedirect
-      .mockClear()
-      .mockImplementation(() => {
-        callOrder.push("signoutRedirect")
-        return Promise.resolve()
-      })
-    mockUserManager.removeUser.mockClear().mockImplementation(() => {
-      callOrder.push("removeUser")
-      return Promise.resolve()
-    })
-    mockUserManager.events.addUserLoaded.mockClear()
-    mockUserManager.events.addUserUnloaded.mockClear()
-    mockUserManager.events.addAccessTokenExpired.mockClear()
+    vi.stubGlobal("fetch", fetchMock)
+    fetchMock.mockReset()
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.resetModules()
   })
 
-  describe("Token storage", () => {
-    it("getAccessToken returns user.access_token when user is set", async () => {
+  describe("fetchMe", () => {
+    it("on 200 sets user + status=authenticated", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(me))
       const { useAuthStore } = await freshStore()
-      eventHandlers.userLoaded(fakeUser)
-      expect(useAuthStore.getState().getAccessToken()).toBe("token-abc")
+      await useAuthStore.getState().fetchMe()
+      const state = useAuthStore.getState()
+      expect(state.user).toEqual(me)
+      expect(state.status).toBe("authenticated")
     })
 
-    it("getAccessToken returns null when user is null", async () => {
+    it("on 401 sets user=null + status=unauthenticated", async () => {
+      fetchMock.mockResolvedValueOnce(emptyResponse(401))
       const { useAuthStore } = await freshStore()
-      expect(useAuthStore.getState().user).toBeNull()
-      expect(useAuthStore.getState().getAccessToken()).toBeNull()
+      await useAuthStore.getState().fetchMe()
+      const state = useAuthStore.getState()
+      expect(state.user).toBeNull()
+      expect(state.status).toBe("unauthenticated")
     })
   })
 
-  describe("OIDC events", () => {
-    it("addUserLoaded handler sets user + isAuthenticated=true", async () => {
+  describe("loginWithPassword", () => {
+    it("posts OAuth2 form body then calls fetchMe", async () => {
+      fetchMock
+        .mockResolvedValueOnce(emptyResponse(204)) // login
+        .mockResolvedValueOnce(jsonResponse(me)) // fetchMe
       const { useAuthStore } = await freshStore()
-      expect(useAuthStore.getState().isAuthenticated).toBe(false)
-      eventHandlers.userLoaded(fakeUser)
-      const state = useAuthStore.getState()
-      expect(state.user).toBe(fakeUser)
-      expect(state.isAuthenticated).toBe(true)
-    })
-
-    it("addUserUnloaded handler clears user + isAuthenticated=false", async () => {
-      const { useAuthStore } = await freshStore()
-      eventHandlers.userLoaded(fakeUser)
-      expect(useAuthStore.getState().isAuthenticated).toBe(true)
-      eventHandlers.userUnloaded()
-      const state = useAuthStore.getState()
-      expect(state.user).toBeNull()
-      expect(state.isAuthenticated).toBe(false)
-    })
-
-    it("addAccessTokenExpired handler clears user + isAuthenticated=false", async () => {
-      const { useAuthStore } = await freshStore()
-      eventHandlers.userLoaded(fakeUser)
-      expect(useAuthStore.getState().isAuthenticated).toBe(true)
-      eventHandlers.tokenExpired()
-      const state = useAuthStore.getState()
-      expect(state.user).toBeNull()
-      expect(state.isAuthenticated).toBe(false)
-    })
-  })
-
-  describe("switchOrg", () => {
-    it("calls signinRedirect with scope containing org id", async () => {
-      const { useAuthStore } = await freshStore()
-      await useAuthStore.getState().switchOrg("org-123")
-      expect(mockUserManager.signinRedirect).toHaveBeenCalledTimes(1)
-      const args = mockUserManager.signinRedirect.mock.calls[0][0] as {
-        scope: string
-      }
-      expect(args.scope).toContain("urn:zitadel:iam:org:id:org-123")
-    })
-
-    it("scope includes profile, email, project aud and roles claims", async () => {
-      const { useAuthStore } = await freshStore()
-      await useAuthStore.getState().switchOrg("org-xyz")
-      const args = mockUserManager.signinRedirect.mock.calls[0][0] as {
-        scope: string
-      }
-      expect(args.scope).toContain("openid")
-      expect(args.scope).toContain("profile")
-      expect(args.scope).toContain("email")
-      expect(args.scope).toContain(
-        "urn:zitadel:iam:org:project:id:test-project:aud",
+      const result = await useAuthStore
+        .getState()
+        .loginWithPassword("a@example.com", "pw12345678901")
+      expect(result).toBeNull()
+      expect(useAuthStore.getState().user).toEqual(me)
+      const loginReq = fetchMock.mock.calls[0][0] as Request
+      expect(loginReq.method).toBe("POST")
+      expect(loginReq.headers.get("Content-Type")).toMatch(
+        /application\/x-www-form-urlencoded/,
       )
-      expect(args.scope).toContain(
-        "urn:zitadel:iam:org:project:id:test-project:roles",
+    })
+
+    it("returns not_verified failure on LOGIN_USER_NOT_VERIFIED", async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "LOGIN_USER_NOT_VERIFIED" }), {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }),
       )
-      expect(args.scope).toContain("urn:zitadel:iam:org:projects:roles")
+      const { useAuthStore } = await freshStore()
+      const result = await useAuthStore
+        .getState()
+        .loginWithPassword("a@example.com", "pw")
+      expect(result?.kind).toBe("not_verified")
+    })
+
+    it("returns bad_credentials failure on LOGIN_BAD_CREDENTIALS", async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "LOGIN_BAD_CREDENTIALS" }), {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      const { useAuthStore } = await freshStore()
+      const result = await useAuthStore
+        .getState()
+        .loginWithPassword("a@example.com", "pw")
+      expect(result?.kind).toBe("bad_credentials")
     })
   })
 
   describe("logout", () => {
-    it("calls removeUser() then resets state then signoutRedirect() in order", async () => {
+    it("POSTs /auth/logout and clears state", async () => {
+      fetchMock.mockResolvedValueOnce(emptyResponse(204))
       const { useAuthStore } = await freshStore()
-      // Seed a user so we can observe the reset-before-redirect invariant
-      eventHandlers.userLoaded(fakeUser)
-      expect(useAuthStore.getState().user).toBe(fakeUser)
-
-      // Instrument signoutRedirect to capture store state at the moment
-      // it is invoked — proves state was cleared BEFORE redirect.
-      let userAtRedirect: User | null | "unset" = "unset"
-      mockUserManager.signoutRedirect.mockImplementationOnce(() => {
-        callOrder.push("signoutRedirect")
-        userAtRedirect = useAuthStore.getState().user
-        return Promise.resolve()
-      })
-
+      useAuthStore.setState({ user: me, status: "authenticated" })
       await useAuthStore.getState().logout()
-
-      expect(callOrder).toEqual(["removeUser", "signoutRedirect"])
-      expect(userAtRedirect).toBeNull()
-      expect(useAuthStore.getState().user).toBeNull()
-      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+      const state = useAuthStore.getState()
+      expect(state.user).toBeNull()
+      expect(state.status).toBe("unauthenticated")
     })
 
-    it("clears local state even when signoutRedirect rejects", async () => {
+    it("clears state even when logout request fails", async () => {
+      fetchMock.mockRejectedValueOnce(new Error("network"))
       const { useAuthStore } = await freshStore()
-      eventHandlers.userLoaded(fakeUser)
-      expect(useAuthStore.getState().user).toBe(fakeUser)
-
-      mockUserManager.signoutRedirect.mockRejectedValueOnce(new Error("boom"))
-
-      await expect(useAuthStore.getState().logout()).rejects.toThrow("boom")
-
-      // Cleanup happened BEFORE the redirect that threw.
-      expect(mockUserManager.removeUser).toHaveBeenCalledTimes(1)
+      useAuthStore.setState({ user: me, status: "authenticated" })
+      await useAuthStore.getState().logout()
       expect(useAuthStore.getState().user).toBeNull()
-      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+      expect(useAuthStore.getState().status).toBe("unauthenticated")
     })
   })
 })
