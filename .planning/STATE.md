@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.19
 milestone_name: milestone
-status: blocked
-stopped_at: "Phase 111 Plan 01 spike FAILED — urlTemplate not honored by ZITADEL v4.10.1 legacy login UI. Plans 02-06 blocked. Run /gsd-replan-milestone v1.19."
-last_updated: "2026-04-23T17:37:16Z"
+status: Blocked — urlTemplate spike FAIL, awaiting milestone replan
+stopped_at: "Completed 111-01-PLAN.md (spike verdict: FAIL, confirmed with second run). Phase 111 blocked. Awaiting milestone replan."
+last_updated: "2026-04-23T18:00:00.006Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
   completed_plans: 1
-  percent: 3
+  percent: 17
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 ## Current Position
 
-Phase: 111 (urltemplate-spike-zitadel-service-surface) — BLOCKED
-Plan: 1 of 6 (completed; plans 02-06 blocked by spike failure)
+Phase: 112
+Plan: Not started
 Status: Blocked — urlTemplate spike FAIL, awaiting milestone replan
-Last activity: 2026-04-23 -- Plan 01 spike executed, verdict: FAIL
+Last activity: 2026-04-23
 
 ## Roadmap Summary
 
@@ -61,6 +61,7 @@ Last activity: 2026-04-23 -- Plan 01 spike executed, verdict: FAIL
 - v1.19: TEST-01/02/03 are per-phase coverage obligations (same pattern as v1.18). TEST-04 is the pre-phase-exit baseline check. All four anchor to Phase 115 in the traceability table for the milestone-final pass.
 - v1.19: Existing `/signup/$token` volunteer-application flow is separate and out of scope.
 - [Phase 111-01]: urlTemplate deep-link spike FAILED. ZITADEL v4.10.1 bundles only legacy Go-templates login UI (`/ui/login/*`); the v2 TypeScript login app (`/ui/v2/login/*`) that honors `urlTemplate` is a separate undeployed Next.js app. API surface (user creation, invite codes, service-account auth) works. Failure is strictly at post-password-set redirect boundary. Plans 02-06 blocked; milestone must replan.
+- [Phase 111]: v1.19 replans to Option C non-ROPC — Phase 111 spike proved ZITADEL v4.10.1 legacy login UI does not honor urlTemplate (v2 TypeScript login app is a separate deploy, not bundled). User selected Option C non-ROPC over (B) deploying zitadel/typescript app or (3) app-side bounce page. Trade-off accepted: ~10x implementation work (~500 LOC vs ~50 LOC), 3 new security pitfalls to mitigate (S1 email-verification bypass per ZITADEL #10319, S7/Z5 password-policy drift, U3 mobile autofill). Phases 112-115 require full re-scoping before execution can resume.
 
 ## Pending Todos
 
@@ -72,6 +73,7 @@ Last activity: 2026-04-23 -- Plan 01 spike executed, verdict: FAIL
 - Campaign creation 500 in production — ZITADEL pod connectivity investigation remains an ops follow-up, not milestone scope. Worth flagging because Phase 111 spike + Phase 113 provisioning both depend on ZITADEL being reachable from prod.
 - HSTS header — requires Cloudflare edge configuration outside this code milestone.
 - **ACTIVE: Phase 111 urlTemplate spike FAILED.** ZITADEL v4.10.1 legacy login UI does not honor urlTemplate. v2 login app (`/ui/v2/login/*`) returns 404 — it's a separate Next.js app not deployed. Milestone must replan per D-SPIKE-03. Three options in `111-SPIKE-VERDICT.md`.
+- Phase 111 spike FAIL — ZITADEL v4.10.1 legacy login UI does not honor urlTemplate; v2 TypeScript login app not deployed. Milestone replanning to Option C non-ROPC (user decision 2026-04-23). Phases 112-115 require full re-scoping: new REQUIREMENTS.md entries (REG-*, PWD-*), new backend /register + /password-policy endpoints, new frontend /setup-password route, second-password-entry vs v2 Sessions API trade-off pending.
 
 ## Session Continuity
 
