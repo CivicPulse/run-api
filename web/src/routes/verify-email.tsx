@@ -114,7 +114,7 @@ function VerifyEmailPage() {
         <CardContent className="space-y-4">
           {status === "success" && (
             <Button asChild className="w-full">
-              <Link to="/login">Continue to sign in</Link>
+              <Link to="/login" search={{ redirect: undefined, reset: undefined }}>Continue to sign in</Link>
             </Button>
           )}
           {status === "error" && (
@@ -145,7 +145,7 @@ function VerifyEmailPage() {
                 Resend verification email
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                <Link to="/login" className="underline hover:text-foreground">
+                <Link to="/login" search={{ redirect: undefined, reset: undefined }} className="underline hover:text-foreground">
                   Back to sign in
                 </Link>
               </p>

@@ -96,7 +96,7 @@ function RegisterPage() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full" variant="outline">
-              <Link to="/login">Back to sign in</Link>
+              <Link to="/login" search={{ redirect: undefined, reset: undefined }}>Back to sign in</Link>
             </Button>
           </CardContent>
         </Card>
@@ -186,7 +186,7 @@ function RegisterPage() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="underline hover:text-foreground">
+            <Link to="/login" search={{ redirect: undefined, reset: undefined }} className="underline hover:text-foreground">
               Sign in
             </Link>
           </p>

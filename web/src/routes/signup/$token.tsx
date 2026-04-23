@@ -93,7 +93,7 @@ function SignupEntryPage() {
   const isValid = link?.status === "valid"
 
   const handleLogin = () => {
-    navigate({ to: "/login", search: { redirect: `/signup/${token}` } })
+    navigate({ to: "/login", search: { redirect: `/signup/${token}`, reset: undefined } })
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {
@@ -264,7 +264,7 @@ function SignupEntryPage() {
         <div className="flex flex-wrap gap-3">
           {isValid ? (
             <Button asChild variant="outline">
-              <Link to="/login" search={{ redirect: `/signup/${token}` }}>
+              <Link to="/login" search={{ redirect: `/signup/${token}`, reset: undefined }}>
                 Sign in
               </Link>
             </Button>

@@ -44,7 +44,7 @@ function ResetPasswordPage() {
         json: { token, password: values.password },
         credentials: "include",
       })
-      navigate({ to: "/login", search: { reset: true } })
+      navigate({ to: "/login", search: { redirect: undefined, reset: true } })
     } catch (err) {
       if (err instanceof HTTPError) {
         let message = "Password reset failed."
@@ -133,7 +133,7 @@ function ResetPasswordPage() {
               Reset password
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              <Link to="/login" className="underline hover:text-foreground">
+              <Link to="/login" search={{ redirect: undefined, reset: undefined }} className="underline hover:text-foreground">
                 Back to sign in
               </Link>
             </p>
