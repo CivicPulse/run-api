@@ -91,6 +91,36 @@ class UserManager(BaseUserManager[User, str]):
             return None
         return await super().authenticate(credentials)
 
+    async def forgot_password(
+        self,
+        user: User,
+        request: Request | None = None,
+    ) -> None:
+        """Override to seed a random unusable hash for NULL-hash users.
+
+        fastapi-users includes a ``password_fgpt`` in the reset token so a
+        password change invalidates outstanding tokens. The fingerprint is
+        ``hash(user.hashed_password)`` — which crashes when the hash is NULL
+        (legacy ZITADEL rows that never set a native password). Before
+        delegating, seed an unusable random hash so the fingerprint works and
+        subsequent ``reset_password`` calls correctly consume the token.
+        """
+        if not user.hashed_password:
+            import secrets as _secrets
+
+            from sqlalchemy import update
+
+            placeholder = self.password_helper.hash(_secrets.token_urlsafe(32))
+            user.hashed_password = placeholder
+            async with async_session_factory() as session:
+                await session.execute(
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(hashed_password=placeholder)
+                )
+                await session.commit()
+        await super().forgot_password(user, request)
+
     async def validate_password(
         self,
         password: str,
