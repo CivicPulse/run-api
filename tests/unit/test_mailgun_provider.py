@@ -111,3 +111,37 @@ async def test_mailgun_send_sanitizes_failure_details():
 
     assert "401" in str(exc.value)
     assert "key-super-secret" not in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_mailgun_send_strips_angle_brackets_from_message_id():
+    """Mailgun's send response wraps message-id in <...>; webhook events report
+    it bare. Normalize on store so downstream lookups match."""
+    provider = MailgunEmailProvider(
+        MailgunSettings(
+            api_key="key-test-secret",
+            domain="mg.example.test",
+            sender_name="CivicPulse Run",
+            sender_address="no-reply@example.test",
+            base_url=MAILGUN_EU_BASE_URL,
+        )
+    )
+    response = MagicMock()
+    response.status_code = 200
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "id": "<20260423021908.deadbeef@mg.example.test>",
+        "message": "Queued. Thank you.",
+    }
+    mock_client = AsyncMock()
+    mock_client.post.return_value = response
+    mock_context = AsyncMock()
+    mock_context.__aenter__.return_value = mock_client
+
+    with patch(
+        "app.services.email_provider.httpx.AsyncClient",
+        return_value=mock_context,
+    ):
+        message_id = await provider.send(_make_email())
+
+    assert message_id == "20260423021908.deadbeef@mg.example.test"
