@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import uuid4
 
 import httpx
+from loguru import logger
 
 from app.core.config import settings
 from app.services.email_types import TransactionalEmail
@@ -78,6 +80,39 @@ class DisabledEmailProvider(TransactionalEmailProvider):
         raise EmailProviderError("Transactional email provider is disabled")
 
 
+class ConsoleEmailProvider(TransactionalEmailProvider):
+    """Dev-only provider that logs rendered email bodies to loguru.
+
+    Useful for local development: operators can `docker compose logs` and grep
+    for the `[CONSOLE-EMAIL]` prefix to inspect outbound email content without
+    running a real SMTP catcher. Never raises — always returns a fake message
+    id so downstream delivery bookkeeping proceeds normally.
+    """
+
+    _HTML_TRUNCATE = 2000
+
+    async def send(self, email: TransactionalEmail) -> str:
+        message_id = f"console-{uuid4()}"
+        html_body = email.rendered.html_body or ""
+        if len(html_body) > self._HTML_TRUNCATE:
+            html_body = (
+                html_body[: self._HTML_TRUNCATE]
+                + f"... [truncated, {len(email.rendered.html_body)} chars total]"
+            )
+        logger.info(
+            "[CONSOLE-EMAIL] message_id={mid} to={to} subject={subject}\n"
+            "---- TEXT BODY ----\n{text}\n"
+            "---- HTML BODY ----\n{html}\n"
+            "---- END CONSOLE-EMAIL ----",
+            mid=message_id,
+            to=email.to_email,
+            subject=email.rendered.subject,
+            text=email.rendered.text_body,
+            html=html_body,
+        )
+        return message_id
+
+
 class MailgunEmailProvider(TransactionalEmailProvider):
     """Mailgun adapter for app-owned transactional email."""
 
@@ -136,6 +171,8 @@ def get_transactional_email_provider() -> TransactionalEmailProvider:
     provider = settings.email_provider.strip().lower()
     if provider in {"", "disabled", "none"}:
         return DisabledEmailProvider()
+    if provider == "console":
+        return ConsoleEmailProvider()
     if provider == "mailgun":
         return MailgunEmailProvider(resolve_mailgun_settings())
     raise EmailProviderError(f"Unsupported email provider: {provider}")
