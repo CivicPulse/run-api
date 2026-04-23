@@ -31,6 +31,16 @@
  */
 
 import { test, expect } from "@playwright/test"
+import { randomUUID } from "node:crypto"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCKED urlTemplate shape — this is the EXACT string that EMAIL-03 will ship
+// later in Phase 113. Changing it here without replanning EMAIL-03 would break
+// the regression-gate contract this spike establishes. Template placeholders
+// {{.Code}} and {{.UserID}} are substituted by ZITADEL before redirect.
+// LOCKED urlTemplate: https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}
+// ─────────────────────────────────────────────────────────────────────────────
+const URL_TEMPLATE = "https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dev-only ZITADEL service-account token helper.
@@ -101,17 +111,115 @@ const spikeState: {
 }
 
 test.describe("Phase 111 urlTemplate deep-link spike", () => {
-  // Spec-local trace/video/screenshot retention, overrides weaker playwright.config.ts
-  // defaults. Added in T4 for this spike only — on failure we need the trace to
-  // diagnose whether ZITADEL's urlTemplate substitution broke vs our expectations.
-  // (Placeholder until T4 — intentionally not set yet.)
+  // Spec-local trace/video/screenshot retention lands in T4.
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Server-side invitee provisioning.
+  // Creates a per-run throwaway human user with isVerified=true, then mints
+  // an invite code with the LOCKED urlTemplate. ZITADEL does NOT send mail
+  // because we pass `returnCode: {}` — we get the code back in the response
+  // and the test drives the hosted flow directly.
+  //
+  // Shapes sourced from:
+  //   - .planning/research/SUMMARY.md (returnCode shape + urlTemplate shape)
+  //   - ZITADEL v2 docs — zitadel.user.v2.UserService.CreateUser / CreateInviteCode
+  //   - .planning/research/PITFALLS.md §M1 — pre-created user MUST go through
+  //     accept-invite before its first login, else the invite shell is orphaned.
+  // ───────────────────────────────────────────────────────────────────────
+  test.beforeAll(async () => {
+    const zitadelUrl = process.env.ZITADEL_URL
+    if (!zitadelUrl) {
+      throw new Error(
+        "Phase 111 spike: ZITADEL_URL must be set — cannot provision invitee.",
+      )
+    }
+
+    // Per-run throwaway identity (D-SPIKE-04). `.test` TLD cannot receive mail,
+    // and afterAll (T4) deletes the user regardless of test outcome.
+    const email = `spike-${randomUUID()}@civpulse.test`
+
+    const token = await getZitadelToken()
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    } as const
+
+    // 1) POST /v2/users/human — create the throwaway human user.
+    //    isVerified=true is safe via the invite-code path (research SUMMARY.md
+    //    confirms this is the sanctioned shape; Option B explicitly relies on it).
+    const createRes = await fetch(`${zitadelUrl}/v2/users/human`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        username: email,
+        profile: { givenName: "Spike", familyName: "Invitee" },
+        email: { email, isVerified: true },
+      }),
+    })
+
+    if (createRes.status !== 200 && createRes.status !== 201) {
+      const text = await createRes
+        .text()
+        .catch(() => "<unreadable response body>")
+      throw new Error(
+        `Phase 111 spike: POST /v2/users/human failed (${createRes.status}): ${text.slice(0, 500)}`,
+      )
+    }
+
+    const createJson = (await createRes.json()) as {
+      userId?: string
+      id?: string
+    }
+    const userId = createJson.userId ?? createJson.id
+    if (!userId) {
+      throw new Error(
+        `Phase 111 spike: POST /v2/users/human response missing userId. Body: ${JSON.stringify(createJson).slice(0, 500)}`,
+      )
+    }
+
+    // 2) POST /v2/users/{userId}/invite_code — mint the invite code.
+    //    Body shape is the research-locked {"returnCode": {}, "urlTemplate": ...}.
+    //    urlTemplate is LOCKED to EMAIL-03's exact shape; changing it here
+    //    breaks Phase 113's regression contract.
+    const inviteRes = await fetch(
+      `${zitadelUrl}/v2/users/${userId}/invite_code`,
+      {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          returnCode: {},
+          urlTemplate: URL_TEMPLATE,
+        }),
+      },
+    )
+
+    if (inviteRes.status !== 200 && inviteRes.status !== 201) {
+      const text = await inviteRes
+        .text()
+        .catch(() => "<unreadable response body>")
+      throw new Error(
+        `Phase 111 spike: POST /v2/users/{userId}/invite_code failed (${inviteRes.status}): ${text.slice(0, 500)}`,
+      )
+    }
+
+    const inviteJson = (await inviteRes.json()) as { inviteCode?: string }
+    const inviteCode = inviteJson.inviteCode
+    if (!inviteCode) {
+      throw new Error(
+        `Phase 111 spike: POST /v2/users/{userId}/invite_code response missing inviteCode. Body: ${JSON.stringify(inviteJson).slice(0, 500)}`,
+      )
+    }
+
+    spikeState.email = email
+    spikeState.userId = userId
+    spikeState.inviteCode = inviteCode
+    spikeState.serviceToken = token
+  })
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   test.skip("placeholder — real test lands in T3", async () => {
-    // The real test body arrives in task T3. Keeping this skipped placeholder
-    // so the file is valid TypeScript after T1's commit. It is replaced in T3.
-    const _t = await getZitadelToken()
-    void _t
+    // Real test body arrives in T3.
     void spikeState
+    void expect
   })
 })
