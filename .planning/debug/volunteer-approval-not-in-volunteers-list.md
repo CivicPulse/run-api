@@ -1,16 +1,20 @@
 ---
-status: awaiting_human_verify
+status: root_cause_found
 trigger: "volunteer approved for lsegelman84@gmail.com but not appearing in volunteers page or assignable to sessions"
 created: 2026-04-13
-updated: 2026-04-13
+updated: 2026-04-14
 ---
 
 ## Current Focus
 
-hypothesis: CONFIRMED and fix applied (Strategy A).
-test: 20 unit tests across volunteer_application + invite services pass, including new regression tests.
-expecting: User verifies fix in real environment and runs prod remediation SQL for lsegelman84.
-next_action: Await user confirmation.
+hypothesis: CONFIRMED — two compounding root causes. (1) **Leo's invite email was never sent** because the `communications` procrastinate queue has no subscribed worker — `scripts/worker.py:103` hardcodes `queues=["imports"]`, so the send_campaign_invite_email job has been stuck in status=`todo` with attempts=0 since 2026-04-13 23:26. (2) **Settings → Members is working as designed** — `list_members` INNER JOINs campaign_members→users, and anonymous-approval path never creates a campaign_members row (FK requires users.id). Leo cannot appear in Members until he accepts the invite → signs up → accept_invite creates users + campaign_members. Since (1) blocks (2), Leo is simply stuck in pre-acceptance state forever.
+test: Prod SQL confirmed — invites.email_delivery_status=queued, procrastinate_jobs row 1082 status=todo attempts=0 on communications queue, users=0 rows, campaign_members=0 rows, volunteers row present (created 2026-04-14, user_id NULL).
+expecting: Fix #1 = add "communications" to worker queue list + redeploy worker. Fix #2 (optional UX) = surface pending invites in Members list.
+next_action: Await user decision on fix scope.
+
+## Resumed 2026-04-14
+
+new_symptom: User reports Leo's "user account is still not right — doesn't show up in user lists correctly", specifically in **Settings → Members**. Prior fix targeted the volunteers page; members-list path was not in scope of that fix. Note v1.19 phase 111 landed migration 041 (dual-identity `session_callers.volunteer_id` + `walk_list_canvassers.volunteer_id`) and a reconciliation helper on 2026-04-14 — Leo's row state may have changed since the 2026-04-13 fix.
 
 ## Symptoms
 
