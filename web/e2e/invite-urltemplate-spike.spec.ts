@@ -110,9 +110,18 @@ const spikeState: {
   serviceToken: null,
 }
 
-test.describe("Phase 111 urlTemplate deep-link spike", () => {
-  // Spec-local trace/video/screenshot retention lands in T4.
+// Spec-local trace/video/screenshot retention — overrides playwright.config.ts
+// defaults (trace: "on-first-retry"). On spike failure we need the full trace
+// immediately to diagnose whether ZITADEL's urlTemplate substitution broke vs
+// our selector expectations — a first-retry trace is too late (spikes run
+// without retries in dev).
+test.use({
+  trace: "retain-on-failure",
+  video: "retain-on-failure",
+  screenshot: "only-on-failure",
+})
 
+test.describe("Phase 111 urlTemplate deep-link spike", () => {
   // ───────────────────────────────────────────────────────────────────────
   // Server-side invitee provisioning.
   // Creates a per-run throwaway human user with isVerified=true, then mints
@@ -214,6 +223,43 @@ test.describe("Phase 111 urlTemplate deep-link spike", () => {
     spikeState.userId = userId
     spikeState.inviteCode = inviteCode
     spikeState.serviceToken = token
+  })
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Cleanup: DELETE the throwaway invitee so repeated spike runs do not
+  // accumulate dead users in dev ZITADEL. Accept 200/204/404 as success —
+  // 404 covers the "already deleted" case (safe to re-run cleanup).
+  // ───────────────────────────────────────────────────────────────────────
+  test.afterAll(async () => {
+    const zitadelUrl = process.env.ZITADEL_URL
+    if (!zitadelUrl || !spikeState.userId || !spikeState.serviceToken) {
+      // beforeAll failed before provisioning — nothing to clean up.
+      return
+    }
+    try {
+      const res = await fetch(
+        `${zitadelUrl}/v2/users/${spikeState.userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${spikeState.serviceToken}`,
+          },
+        },
+      )
+      if (res.status !== 200 && res.status !== 204 && res.status !== 404) {
+        // Log but do NOT throw — cleanup is best-effort.
+        // Next run will still succeed because each run uses a unique email+user.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[Phase 111 spike] Cleanup DELETE returned ${res.status} for userId=${spikeState.userId}; user may leak in dev ZITADEL.`,
+        )
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[Phase 111 spike] Cleanup DELETE threw: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
   })
 
   test("urlTemplate deep-links invitee to /invites/<token> with zitadelCode+userID", async ({
