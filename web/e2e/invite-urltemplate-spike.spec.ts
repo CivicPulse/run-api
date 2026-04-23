@@ -116,6 +116,11 @@ const spikeState: {
 // our selector expectations — a first-retry trace is too late (spikes run
 // without retries in dev).
 test.use({
+  // Clean browser context — the spike creates its own throwaway ZITADEL user
+  // and must NOT inherit stale session cookies from the auth-setup state files
+  // (e.g., owner.json), which would cause ZITADEL to redirect the invite page
+  // to the regular "Welcome Back" login form instead of showing the init form.
+  storageState: { cookies: [], origins: [] },
   trace: "retain-on-failure",
   video: "retain-on-failure",
   screenshot: "only-on-failure",
