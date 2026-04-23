@@ -57,14 +57,30 @@ def verify_mailgun_signature(
 
 
 async def parse_mailgun_event(request: Request) -> MailgunWebhookEvent:
-    """Parse and verify one Mailgun webhook payload from form-encoded data."""
-    form = await request.form()
-    timestamp = str(form.get("timestamp") or "")
-    token = str(form.get("token") or "")
-    signature = str(form.get("signature") or "")
-    raw_event = form.get("event-data")
+    """Parse and verify one Mailgun webhook payload.
 
-    if not timestamp or not token or not signature or raw_event is None:
+    Modern (post-2018) Mailgun webhooks send a JSON body that nests
+    `timestamp`, `token`, and `signature` under a `signature` object alongside
+    a parsed `event-data` object. Legacy webhooks send those fields top-level
+    in form-encoded form. Both formats are accepted.
+    """
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "application/json" in content_type:
+        body = await request.json()
+        sig_obj = body.get("signature") or {}
+        timestamp = str(sig_obj.get("timestamp") or "")
+        token = str(sig_obj.get("token") or "")
+        signature = str(sig_obj.get("signature") or "")
+        event_data = body.get("event-data")
+    else:
+        form = await request.form()
+        timestamp = str(form.get("timestamp") or "")
+        token = str(form.get("token") or "")
+        signature = str(form.get("signature") or "")
+        raw_event = form.get("event-data")
+        event_data = json.loads(str(raw_event)) if raw_event is not None else None
+
+    if not timestamp or not token or not signature or event_data is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incomplete Mailgun webhook payload",
@@ -88,7 +104,11 @@ async def parse_mailgun_event(request: Request) -> MailgunWebhookEvent:
         signature=signature,
     )
 
-    event_data = json.loads(str(raw_event))
+    if not isinstance(event_data, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mailgun webhook event-data must be an object",
+        )
     event_type = str(event_data.get("event") or "").strip()
     provider_event_id = str(event_data.get("id") or "").strip()
     message = event_data.get("message") or {}
