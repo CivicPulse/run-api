@@ -135,7 +135,7 @@ Phase dependencies are strictly sequential (111 → 112 → 113 → 114 → 115)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 111. urlTemplate Spike + ZITADEL Service Surface | 0/? | Not started | - |
+| 111. urlTemplate Spike + ZITADEL Service Surface | 1/6 | Blocked (spike FAIL) | 2026-04-23 |
 | 112. Schema Migration + Legacy-Invite Handling | 0/? | Not started | - |
 | 113. Provisioning Step in Email Task + Branched Email | 0/? | Not started | - |
 | 114. Frontend `/login` Interstitial + Empty-Membership Gate | 0/? | Not started | - |
