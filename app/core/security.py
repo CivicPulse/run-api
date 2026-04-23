@@ -393,6 +393,136 @@ async def get_optional_current_user(
     return await get_current_user(request, credentials)
 
 
+async def _authenticated_user_from_db(
+    user_id: str,
+    db: AsyncSession,
+) -> AuthenticatedUser | None:
+    """Build an ``AuthenticatedUser`` from local DB state (no JWT).
+
+    Native-cookie users have no JWT claims. Their roles come from
+    ``OrganizationMember`` / ``CampaignMember`` rows. We synthesize an
+    ``AuthenticatedUser`` struct so downstream dependencies (``require_role``,
+    ``require_org_role``, etc.) behave identically whether the user logged in
+    via ZITADEL JWT or native cookie.
+
+    The ``role`` field here reflects the user's "best" role across all orgs
+    they belong to, mirroring how JWT ``_extract_role`` picks the highest.
+    Per-campaign role resolution still happens in ``resolve_campaign_role``
+    against the DB, so this field is only an upper bound seed.
+
+    Returns ``None`` if the user row does not exist locally (shouldn't happen
+    for a valid cp_session cookie, but we don't want to 500 in that case).
+    """
+    from app.models.organization import Organization
+    from app.models.organization_member import OrganizationMember
+    from app.models.user import User as UserModel
+
+    user_row = await db.scalar(select(UserModel).where(UserModel.id == user_id))
+    if user_row is None:
+        return None
+
+    # Pull every org the user belongs to via OrganizationMember (the
+    # native equivalent of JWT role grants keyed by resourceowner id).
+    rows = (
+        await db.execute(
+            select(OrganizationMember.role, Organization.zitadel_org_id)
+            .join(
+                Organization,
+                Organization.id == OrganizationMember.organization_id,
+            )
+            .where(OrganizationMember.user_id == user_id)
+        )
+    ).all()
+
+    org_ids: list[str] = []
+    best_role = CampaignRole.VIEWER
+    for org_role_value, zitadel_org_id in rows:
+        if zitadel_org_id:
+            org_ids.append(zitadel_org_id)
+        # Map org role to a CampaignRole upper bound so require_role() can
+        # gate on it until resolve_campaign_role() overrides with the real
+        # per-campaign value.
+        try:
+            mapped = ORG_ROLE_CAMPAIGN_EQUIVALENT[OrgRole(org_role_value)]
+        except (ValueError, KeyError):
+            continue
+        if mapped > best_role:
+            best_role = mapped
+
+    primary_org_id = org_ids[0] if org_ids else ""
+
+    return AuthenticatedUser(
+        id=user_row.id,
+        org_id=primary_org_id,
+        org_ids=sorted(set(org_ids)),
+        role=best_role,
+        email=user_row.email,
+        display_name=user_row.display_name or user_row.email,
+    )
+
+
+async def get_current_user_dual(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
+) -> AuthenticatedUser:
+    """Return the authenticated user via native cookie OR ZITADEL JWT.
+
+    Resolution order (Step 4 grace period):
+    1. If a ``cp_session`` cookie is present and corresponds to an active +
+       verified user row, build ``AuthenticatedUser`` from local DB state
+       (``OrganizationMember`` / ``CampaignMember``).
+    2. Otherwise fall back to the legacy ZITADEL JWT dependency.
+
+    Callers migrate from ``get_current_user`` to this dependency as their
+    endpoints are updated. When Step 6 drops ZITADEL, the ``AuthenticatedUser``
+    struct can be replaced wholesale with a native-only shape and this
+    dependency collapses back to a single branch.
+    """
+    # Local imports: avoid cycles with app.auth.* (imports security indirectly)
+    # and with app.db.session (imports happen at app startup time).
+    from app.auth.models import AccessToken
+    from app.db.session import async_session_factory
+    from app.models.user import User as UserModel
+
+    token = request.cookies.get("cp_session")
+    if token:
+        # SQLAlchemyAccessTokenTable stores the raw opaque client value, so a
+        # direct SELECT is enough to resolve the session. We use the same
+        # session to load both the token row and the user + memberships,
+        # keeping the whole authn check on one DB connection.
+        try:
+            async with async_session_factory() as session:
+                access = await session.scalar(
+                    select(AccessToken).where(AccessToken.token == token)
+                )
+                if access is not None:
+                    user_row = await session.scalar(
+                        select(UserModel).where(UserModel.id == access.user_id)
+                    )
+                    if (
+                        user_row is not None
+                        and user_row.is_active
+                        and user_row.is_verified
+                    ):
+                        built = await _authenticated_user_from_db(user_row.id, session)
+                        if built is not None:
+                            return built
+        except Exception as exc:  # noqa: BLE001 -- fall through to JWT
+            logger.debug("Native cookie path failed, trying JWT: {}", exc)
+
+    # Fall back to ZITADEL JWT (legacy path).
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    return await get_current_user(request, credentials)
+
+
+# Back-compat alias: callers migrating off ZITADEL can import this name.
+current_user_dual = get_current_user_dual
+
+
 def require_role(minimum: str):
     """FastAPI dependency factory that enforces minimum role level.
 

@@ -186,10 +186,16 @@ class TestCreateInviteEndpoint:
 
 
 class TestAcceptInviteEndpoint:
-    """POST /api/v1/invites/{token}/accept."""
+    """POST /api/v1/invites/{token}/accept.
 
-    async def test_requires_authentication(self):
-        """Unauthenticated request returns 401/403."""
+    Step 4: endpoint is now unauthenticated and takes {password, display_name}.
+    Integration-shape tests for the full native flow live in
+    ``test_invite_native_flow.py``; here we just verify the HTTP contract
+    (payload validation + error passthrough).
+    """
+
+    async def test_rejects_missing_payload(self):
+        """Accept without payload returns 422 (FastAPI validation)."""
         app = create_app()
 
         transport = ASGITransport(app=app)
@@ -197,48 +203,20 @@ class TestAcceptInviteEndpoint:
             token = uuid.uuid4()
             resp = await client.post(f"/api/v1/invites/{token}/accept")
 
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 422
 
-    async def test_accept_invite_success(self, mock_db):
-        """Authenticated user can accept valid invite."""
-        invite = _make_invite(email="user@test.com")
-        user = _make_user(email="user@test.com", role=CampaignRole.VIEWER)
-        app = _override_app(user=user, db=mock_db)
-
-        # Mock zitadel on app state
-        mock_zitadel = AsyncMock()
-        mock_zitadel.assign_project_role = AsyncMock()
-        app.state.zitadel_service = mock_zitadel
-
-        # validate_invite lookup, member lookup, campaign lookup
-        validate_result = MagicMock()
-        validate_result.scalar_one_or_none.return_value = invite
-        member_result = MagicMock()
-        member_result.scalar_one_or_none.return_value = None
-        campaign = MagicMock()
-        campaign.zitadel_org_id = "org-1"
-        campaign.organization_id = None  # no org model → skip org lookup
-        campaign_result = MagicMock()
-        campaign_result.scalar_one_or_none.return_value = campaign
-        mock_db.execute = AsyncMock(
-            side_effect=[validate_result, member_result, campaign_result]
-        )
+    async def test_rejects_short_password(self):
+        """Password <12 chars fails pydantic min_length before service runs."""
+        app = create_app()
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(f"/api/v1/invites/{invite.token}/accept")
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["message"] == "Invite accepted successfully"
-        assert data["role"] == "manager"
-        mock_zitadel.assign_project_role.assert_awaited_once_with(
-            TEST_PROJECT_ID,
-            "user-1",
-            "manager",
-            project_grant_id=None,
-            org_id="org-1",
-        )
+            token = uuid.uuid4()
+            resp = await client.post(
+                f"/api/v1/invites/{token}/accept",
+                json={"password": "short", "display_name": "Test"},
+            )
+        assert resp.status_code == 422
 
 
 class TestRevokeInviteEndpoint:

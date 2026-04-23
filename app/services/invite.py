@@ -6,8 +6,10 @@ import uuid
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from fastapi_users.password import PasswordHelper
 from loguru import logger
 from sqlalchemy import and_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -18,6 +20,7 @@ from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.invite import Invite
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.user import User
 from app.models.volunteer import Volunteer
 from app.tasks.invite_tasks import send_campaign_invite_email
@@ -307,6 +310,165 @@ class InviteService:
             invite.role,
         )
         return invite
+
+    async def accept_invite_native(
+        self,
+        db: AsyncSession,
+        token: uuid.UUID,
+        password: str,
+        display_name: str,
+        user_manager: object,
+    ) -> tuple[Invite, User]:
+        """Accept an invite by creating a native-auth user in one step.
+
+        Step 4 replacement for ``accept_invite``: no ZITADEL involvement.
+        The invite link itself is proof of email ownership, so the new user
+        is created with ``email_verified=True`` / ``is_verified=True`` and
+        bypasses the separate verify-email round trip.
+
+        Args:
+            db: Async database session.
+            token: The invite token UUID.
+            password: The plain-text password supplied by the invitee.
+            display_name: Display name for the new user profile.
+            user_manager: ``app.auth.manager.UserManager`` instance. Typed as
+                ``object`` to avoid a circular import; call site provides a
+                real ``UserManager``.
+
+        Returns:
+            A tuple of ``(accepted invite, newly-created or linked user)``.
+
+        Raises:
+            ValueError: If the invite is invalid / expired / already accepted.
+            fastapi_users.InvalidPasswordException: From the user_manager's
+                password policy.
+        """
+        invite = await self.validate_invite(db, token)
+        if invite is None:
+            msg = "Invalid or expired invite"
+            raise ValueError(msg)
+
+        # Look up campaign + org context (we need them to create memberships).
+        campaign_result = await db.execute(
+            select(Campaign).where(Campaign.id == invite.campaign_id)
+        )
+        campaign = campaign_result.scalar_one_or_none()
+        if campaign is None:
+            msg = f"Campaign {invite.campaign_id} not found"
+            raise ValueError(msg)
+
+        # Does a user row already exist for this email? If so, reuse it --
+        # invited users may have pre-existing accounts via another campaign.
+        existing_user = await db.scalar(
+            select(User).where(User.email == invite.email.lower())
+        )
+
+        password_helper = PasswordHelper()
+        # Validate the candidate password against the UserManager policy
+        # before committing anything. We build a throwaway User carrying the
+        # invite email + display_name so zxcvbn's user_inputs are correct.
+        probe_user = existing_user or User(
+            id="",
+            email=invite.email.lower(),
+            display_name=display_name,
+            hashed_password=None,
+            is_active=True,
+            is_verified=False,
+            email_verified=False,
+        )
+        # validate_password is async; user_manager duck-types UserManager.
+        await user_manager.validate_password(password, probe_user)  # type: ignore[attr-defined]
+
+        if existing_user is None:
+            user = User(
+                id=str(uuid.uuid4()),
+                email=invite.email.lower(),
+                display_name=display_name,
+                hashed_password=password_helper.hash(password),
+                is_active=True,
+                is_verified=True,
+                is_superuser=False,
+                email_verified=True,
+                created_at=utcnow(),
+                updated_at=utcnow(),
+            )
+            db.add(user)
+        else:
+            # Existing user: refresh their password + mark verified.
+            # Accepting an invite to their email re-proves ownership.
+            user = existing_user
+            user.hashed_password = password_helper.hash(password)
+            user.is_active = True
+            user.is_verified = True
+            user.email_verified = True
+            user.display_name = display_name or user.display_name
+            user.updated_at = utcnow()
+
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise
+
+        # CampaignMember row with invite-supplied role.
+        member = CampaignMember(
+            user_id=user.id,
+            campaign_id=invite.campaign_id,
+            role=invite.role,
+        )
+        db.add(member)
+
+        # If invite role maps to an org-level role, create OrganizationMember.
+        # Only owner/admin get org-level membership; manager/volunteer/viewer
+        # stay campaign-scoped (matches app/api/deps.py _JWT_ROLE_TO_ORG_ROLE).
+        org_role_map = {"owner": "org_owner", "admin": "org_admin"}
+        org_role = org_role_map.get(invite.role)
+        if org_role and campaign.organization_id:
+            existing_org_member = await db.scalar(
+                select(OrganizationMember).where(
+                    and_(
+                        OrganizationMember.user_id == user.id,
+                        OrganizationMember.organization_id == campaign.organization_id,
+                    )
+                )
+            )
+            if existing_org_member is None:
+                db.add(
+                    OrganizationMember(
+                        user_id=user.id,
+                        organization_id=campaign.organization_id,
+                        role=org_role,
+                    )
+                )
+
+        # Back-fill any pending Volunteer row so it ties to the new account.
+        await db.execute(
+            update(Volunteer)
+            .where(
+                Volunteer.campaign_id == invite.campaign_id,
+                Volunteer.email == invite.email.lower(),
+                Volunteer.user_id.is_(None),
+            )
+            .values(user_id=user.id, updated_at=utcnow())
+        )
+
+        invite.accepted_at = utcnow()
+
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+        await db.refresh(invite)
+        await db.refresh(user)
+
+        logger.info(
+            "Native invite accepted: user={} campaign={} role={}",
+            user.id,
+            invite.campaign_id,
+            invite.role,
+        )
+        return invite, user
 
     async def revoke_invite(
         self,
