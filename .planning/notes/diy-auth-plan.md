@@ -125,3 +125,22 @@ None currently blocking Step 1. Re-read before Step 3:
   - The `cp_csrf` cookie is issued on successful login AND on the standalone `GET /api/v1/auth/csrf` endpoint, so the SPA has two options.
   - Password-reset / verify-email endpoints are already in the middleware exempt list; Step 3 can land them without touching middleware config.
   - Forbidden-response body is hard-coded JSON (`{"detail":"CSRF token missing or invalid"}`); if Step 3 introduces a global problem-details exception model, revisit this.
+
+### Step 3 — Password reset + mandatory email verification (committed as <PENDING>)
+- Files:
+  - `app/auth/manager.py` — real reset/verify secrets pulled from `settings`; `validate_password` enforces min-12 + zxcvbn score ≥ 3 with `user_inputs=[email, display_name]`; `on_after_register` auto-fires `request_verify`; `on_after_forgot_password` + `on_after_request_verify` dispatch via `app.services.auth_email`; `on_after_verify` syncs `email_verified`; `on_after_reset_password` DELETEs all `auth_access_tokens` rows for the user.
+  - `app/auth/router.py` — mounts `get_reset_password_router()`, `get_verify_router(UserRead)`; passes `requires_verification=True` to `get_auth_router` so unverified logins return 400 `LOGIN_USER_NOT_VERIFIED`.
+  - `app/core/config.py` — adds `auth_reset_password_token_secret`, `auth_verification_token_secret` (SecretStr), `auth_reset_password_token_lifetime_seconds` (3600), `auth_verification_token_lifetime_seconds` (86400).
+  - `app/main.py` — lifespan fail-fast for empty secrets in non-dev; dev auto-generates ephemeral `secrets.token_urlsafe(32)` with a warning log.
+  - `app/services/auth_email.py` (new) — `send_verify_email` + `send_password_reset_email` helpers; reuse `get_transactional_email_provider`; when provider is `disabled`, log `[DEV-EMAIL] ... url=...` at INFO; never raise.
+  - `tests/unit/test_auth_native_flows.py` (new) — 11 tests: password policy (short/weak/user-input/strong), secrets wiring, verify-token roundtrip, forgot+reset updates hash, weak-new-password rejected, bogus verify-token, registration auto-fires verify.
+  - `pyproject.toml`, `uv.lock` — `zxcvbn==4.5.0`.
+- Deviations:
+  - No dedicated auth template in `TransactionalTemplateKey` yet — `auth_email.py` uses inline text/html bodies and passes `CAMPAIGN_MEMBER_INVITE` as the (unused) template tag. Add real enum members + `email_templates.py` rendering in Step 4 alongside the invite rewrite.
+  - Tests are unit-level using a `_FakeUserDatabase` + `_NoopSession` monkeypatch rather than integration against the compose Postgres — lets `pytest tests/unit/test_auth_native_flows.py` run without docker. HTTP-level end-to-end (register→verify→login) is left for Step 4/5 integration coverage.
+  - `_resolve_reset_secret` / `_resolve_verify_secret` helpers fall back to static strings if settings are empty at import time (happens in unit tests that bypass lifespan). The lifespan remains the authoritative gate for runtime.
+- Notes for Step 4:
+  - Seed script + invite-accept flow should create users with `hashed_password`, `is_active=True`, `is_verified=True`, `email_verified=True` in one transaction — the invite link is proof of email ownership, so skip the verify round-trip.
+  - Consider adding `VERIFY_EMAIL` and `PASSWORD_RESET` members to `TransactionalTemplateKey` and migrating `auth_email.py` to `email_templates.render_template` — parity with invite rendering + centralizes template governance.
+  - `on_after_reset_password` does a best-effort session invalidation via a raw `DELETE FROM auth_access_tokens`. If Step 4 introduces a session-store abstraction (e.g. per-device metadata), move this into that service.
+  - The end-to-end `register → verify → login` loop is exercised under pytest but NOT smoke-tested against the live stack yet — that happens in Step 4 when seed + invite flows land.

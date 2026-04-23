@@ -23,10 +23,19 @@ fastapi_users: FastAPIUsers[User, str] = FastAPIUsers[User, str](
 get_current_native_user = fastapi_users.current_user(active=True, verified=True)
 
 native_auth_router = APIRouter()
-native_auth_router.include_router(fastapi_users.get_auth_router(auth_backend))
+# ``requires_verification=True`` means an active-but-unverified user cannot
+# complete ``POST /auth/login`` -- fastapi-users returns 400 with
+# ``{"detail": "LOGIN_USER_NOT_VERIFIED"}``. Combined with the auto-fire in
+# ``UserManager.on_after_register``, the user journey is:
+# register -> verify email -> log in.
+native_auth_router.include_router(
+    fastapi_users.get_auth_router(auth_backend, requires_verification=True)
+)
 native_auth_router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate)
 )
+native_auth_router.include_router(fastapi_users.get_reset_password_router())
+native_auth_router.include_router(fastapi_users.get_verify_router(UserRead))
 
 
 @native_auth_router.get("/csrf")

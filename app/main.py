@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from pydantic import SecretStr
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -35,6 +36,8 @@ if TYPE_CHECKING:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan handler -- initializes shared resources."""
     # Import here to avoid circular imports at module level
+    import secrets
+
     from app.core.errors import ZitadelUnavailableError
     from app.core.security import JWKSManager
     from app.services.storage import StorageService
@@ -42,6 +45,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from app.tasks.procrastinate_app import procrastinate_app
 
     logger.info("Starting {}", settings.app_name)
+
+    # Native-auth token secrets: fail fast in non-dev, generate per-process
+    # defaults with a warning in dev. These secrets HMAC the reset-password and
+    # verify-email tokens; rotating them invalidates all outstanding tokens.
+    reset_secret = settings.auth_reset_password_token_secret.get_secret_value()
+    verify_secret = settings.auth_verification_token_secret.get_secret_value()
+    if not reset_secret or not verify_secret:
+        if settings.environment != "development":
+            raise RuntimeError(
+                "Native-auth secrets not configured: "
+                "set AUTH_RESET_PASSWORD_TOKEN_SECRET and "
+                "AUTH_VERIFICATION_TOKEN_SECRET"
+            )
+        if not reset_secret:
+            generated = secrets.token_urlsafe(32)
+            settings.auth_reset_password_token_secret = SecretStr(generated)
+            logger.warning(
+                "native-auth: AUTH_RESET_PASSWORD_TOKEN_SECRET empty; "
+                "generated ephemeral dev secret (reset links will break on "
+                "API restart)"
+            )
+        if not verify_secret:
+            generated = secrets.token_urlsafe(32)
+            settings.auth_verification_token_secret = SecretStr(generated)
+            logger.warning(
+                "native-auth: AUTH_VERIFICATION_TOKEN_SECRET empty; "
+                "generated ephemeral dev secret (verify links will break on "
+                "API restart)"
+            )
 
     # Auth
     app.state.jwks_manager = JWKSManager(
