@@ -4,12 +4,12 @@ milestone: v1.19
 milestone_name: milestone
 status: completed
 stopped_at: Phase 112 context gathered
-last_updated: "2026-04-23T15:00:19.303Z"
+last_updated: "2026-04-23T15:02:41.302Z"
 last_activity: 2026-04-23 — Roadmap for v1.19 (phases 111-115) written; REQUIREMENTS.md traceability filled in.
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 4
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -77,3 +77,5 @@ Last activity: 2026-04-23 — Roadmap for v1.19 (phases 111-115) written; REQUIR
 Last session: --stopped-at
 Stopped at: Phase 112 context gathered
 Resume file: --resume-file
+
+**Planned Phase:** 111 (urlTemplate Spike + ZITADEL Service Surface) — 6 plans — 2026-04-23T15:02:41.295Z
