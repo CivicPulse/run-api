@@ -31,11 +31,23 @@ def _signature(timestamp: str, token: str, key: str) -> str:
 
 def _mock_request(form_data: dict[str, str]) -> MagicMock:
     request = MagicMock()
+    request.headers = {"content-type": "application/x-www-form-urlencoded"}
 
     async def _form():
         return form_data
 
     request.form = _form
+    return request
+
+
+def _mock_json_request(payload: dict) -> MagicMock:
+    request = MagicMock()
+    request.headers = {"content-type": "application/json"}
+
+    async def _json():
+        return payload
+
+    request.json = _json
     return request
 
 
@@ -285,3 +297,92 @@ async def test_mailgun_events_updates_orgless_attempt_without_idempotency_lookup
     assert attempt.provider_event_key == "evt-orgless-1"
     check_idempotency_mock.assert_not_awaited()
     db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_parse_mailgun_event_accepts_json_v2_envelope():
+    from app.services.mailgun_webhook import parse_mailgun_event
+
+    timestamp = "1710000000"
+    token = "mailgun-token"
+    key = "signing-secret"
+    request = _mock_json_request(
+        {
+            "signature": {
+                "timestamp": timestamp,
+                "token": token,
+                "signature": _signature(timestamp, token, key),
+            },
+            "event-data": {
+                "id": "evt-json-1",
+                "event": "delivered",
+                "message": {"headers": {"message-id": "<message-1@example.test>"}},
+            },
+        }
+    )
+
+    original = settings.mailgun_webhook_signing_key
+    try:
+        settings.mailgun_webhook_signing_key = SecretStr(key)
+        event = await parse_mailgun_event(request)
+    finally:
+        settings.mailgun_webhook_signing_key = original
+
+    assert event.provider_event_id == "evt-json-1"
+    assert event.provider_message_id == "<message-1@example.test>"
+    assert event.status == "delivered"
+
+
+@pytest.mark.asyncio
+async def test_parse_mailgun_event_rejects_json_v2_with_bad_signature():
+    from app.services.mailgun_webhook import parse_mailgun_event
+
+    request = _mock_json_request(
+        {
+            "signature": {
+                "timestamp": "1710000000",
+                "token": "mailgun-token",
+                "signature": "bad-signature",
+            },
+            "event-data": {
+                "id": "evt-json-2",
+                "event": "delivered",
+                "message": {"headers": {"message-id": "<message-2@example.test>"}},
+            },
+        }
+    )
+
+    original = settings.mailgun_webhook_signing_key
+    try:
+        settings.mailgun_webhook_signing_key = SecretStr("signing-secret")
+        with pytest.raises(HTTPException) as exc_info:
+            await parse_mailgun_event(request)
+    finally:
+        settings.mailgun_webhook_signing_key = original
+
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_parse_mailgun_event_rejects_json_v2_missing_signature_fields():
+    from app.services.mailgun_webhook import parse_mailgun_event
+
+    request = _mock_json_request(
+        {
+            "event-data": {
+                "id": "evt-json-3",
+                "event": "delivered",
+                "message": {"headers": {"message-id": "<m@example.test>"}},
+            },
+        }
+    )
+
+    original = settings.mailgun_webhook_signing_key
+    try:
+        settings.mailgun_webhook_signing_key = SecretStr("signing-secret")
+        with pytest.raises(HTTPException) as exc_info:
+            await parse_mailgun_event(request)
+    finally:
+        settings.mailgun_webhook_signing_key = original
+
+    assert exc_info.value.status_code == 400
