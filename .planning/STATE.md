@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.19
 milestone_name: milestone
-status: completed
-stopped_at: Phase 113 context gathered
-last_updated: "2026-04-23T15:08:05.376Z"
-last_activity: 2026-04-23 — Roadmap for v1.19 (phases 111-115) written; REQUIREMENTS.md traceability filled in.
+status: blocked
+stopped_at: "Phase 111 Plan 01 spike FAILED — urlTemplate not honored by ZITADEL v4.10.1 legacy login UI. Plans 02-06 blocked. Run /gsd-replan-milestone v1.19."
+last_updated: "2026-04-23T17:33:05Z"
+last_activity: 2026-04-23
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 3
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** v1.19 Invite Onboarding — roadmap complete, about to plan Phase 111.
+**Current focus:** Phase 111 — urltemplate-spike-zitadel-service-surface
 
 ## Current Position
 
-Phase: 111 (not yet planned)
-Plan: —
-Status: Roadmap complete; ready for `/gsd-plan-phase 111`
-Last activity: 2026-04-23 — Roadmap for v1.19 (phases 111-115) written; REQUIREMENTS.md traceability filled in.
+Phase: 111 (urltemplate-spike-zitadel-service-surface) — BLOCKED
+Plan: 1 of 6 (completed; plans 02-06 blocked by spike failure)
+Status: Blocked — urlTemplate spike FAIL, awaiting milestone replan
+Last activity: 2026-04-23 -- Plan 01 spike executed, verdict: FAIL
 
 ## Roadmap Summary
 
@@ -60,22 +60,21 @@ Last activity: 2026-04-23 — Roadmap for v1.19 (phases 111-115) written; REQUIR
 - v1.19: Pre-v1.19 pending invites handled via `legacy_flow=true` + recovery CTA (MIG-02) rather than a deploy-time ZITADEL backfill — avoids coupling deploy to ZITADEL availability. Recovery path reuses the same "Request a fresh invite" CTA we ship for expired init codes.
 - v1.19: TEST-01/02/03 are per-phase coverage obligations (same pattern as v1.18). TEST-04 is the pre-phase-exit baseline check. All four anchor to Phase 115 in the traceability table for the milestone-final pass.
 - v1.19: Existing `/signup/$token` volunteer-application flow is separate and out of scope.
+- [Phase 111-01]: urlTemplate deep-link spike FAILED. ZITADEL v4.10.1 bundles only legacy Go-templates login UI (`/ui/login/*`); the v2 TypeScript login app (`/ui/v2/login/*`) that honors `urlTemplate` is a separate undeployed Next.js app. API surface (user creation, invite codes, service-account auth) works. Failure is strictly at post-password-set redirect boundary. Plans 02-06 blocked; milestone must replan.
 
 ## Pending Todos
 
-- Plan Phase 111 (urlTemplate Spike + ZITADEL Service Surface) via `/gsd-plan-phase 111`
+- Replan milestone v1.19 via `/gsd-replan-milestone v1.19 --reason option-c-non-ropc` (or review 111-SPIKE-VERDICT.md options first)
 
 ## Blockers/Concerns
 
 - v1.18 has not been formally archived to MILESTONES.md via `/gsd-complete-milestone` — STATE.md confirms shipment but milestone audit and MILESTONES.md entry are pending. Track separately; not a v1.19 blocker.
 - Campaign creation 500 in production — ZITADEL pod connectivity investigation remains an ops follow-up, not milestone scope. Worth flagging because Phase 111 spike + Phase 113 provisioning both depend on ZITADEL being reachable from prod.
 - HSTS header — requires Cloudflare edge configuration outside this code milestone.
-- Open contingency: Phase 111 `urlTemplate` deep-link spike is the gate for the whole milestone. If it fails, the milestone replans to Option C non-ROPC — budget one day for the spike explicitly.
+- **ACTIVE: Phase 111 urlTemplate spike FAILED.** ZITADEL v4.10.1 legacy login UI does not honor urlTemplate. v2 login app (`/ui/v2/login/*`) returns 404 — it's a separate Next.js app not deployed. Milestone must replan per D-SPIKE-03. Three options in `111-SPIKE-VERDICT.md`.
 
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: Resume session — cleaned stray 111-reconciliation orphan dir, spot-checked Phase 111 placeholder markers (all benign), deleted stale HANDOFF.json. Ready for `/gsd-execute-phase 111` in a fresh session.
-Resume file: —
-
-**Planned Phase:** 111 (urlTemplate Spike + ZITADEL Service Surface) — 6 plans — 2026-04-23T15:02:41.295Z
+Stopped at: Completed 111-01-PLAN.md (spike verdict: FAIL). Phase 111 blocked. Awaiting milestone replan.
+Resume file: None

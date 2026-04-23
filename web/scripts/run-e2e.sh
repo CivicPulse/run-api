@@ -277,6 +277,34 @@ run_strict_phase64_field07_order() {
   exit 0
 }
 
+# ── Phase 111 spike env guard ──────────────────────────────────────────────
+# The Phase 111 urlTemplate spike (invite-urltemplate-spike.spec.ts) requires
+# a ZITADEL runtime service-account to create a throwaway invitee server-side.
+# Fail loudly here rather than letting the spec fail with confusing "fetch: undefined"
+# errors. Guard ONLY when the spike is in the argument set (or no args = full suite).
+RUN_SPIKE=0
+if [ ${#ARGS[@]} -eq 0 ]; then
+  RUN_SPIKE=1
+else
+  for a in "${ARGS[@]}"; do
+    case "$a" in
+      *invite-urltemplate-spike*) RUN_SPIKE=1 ;;
+    esac
+  done
+fi
+if [ "$RUN_SPIKE" -eq 1 ]; then
+  missing=()
+  [ -z "${ZITADEL_URL:-}" ] && missing+=("ZITADEL_URL")
+  [ -z "${ZITADEL_SERVICE_CLIENT_ID:-}" ] && missing+=("ZITADEL_SERVICE_CLIENT_ID")
+  [ -z "${ZITADEL_SERVICE_CLIENT_SECRET:-}" ] && missing+=("ZITADEL_SERVICE_CLIENT_SECRET")
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "✖ Phase 111 spike requires these envs (missing: ${missing[*]})"
+    echo "  Set them in .env (see .env.example) and re-run. Export them in the parent shell"
+    echo "  or 'set -a; source .env; set +a' before invoking run-e2e.sh."
+    exit 2
+  fi
+fi
+
 # ── Build the command ───────────────────────────────────────────────────────
 CMD="npx playwright test --reporter=list $WORKERS_FLAG"
 if [ ${#ARGS[@]} -gt 0 ]; then
