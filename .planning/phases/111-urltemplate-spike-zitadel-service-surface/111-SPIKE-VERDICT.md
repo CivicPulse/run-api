@@ -3,8 +3,9 @@ phase: 111
 plan: "01"
 artifact: spike-verdict
 verdict: FAIL
-run_at: 2026-04-23T17:25:21Z
-e2e_run_row: web/e2e-runs.jsonl line 11410-11423 (timestamp 2026-04-23T17:25:21Z)
+run_at: "2026-04-23T17:33:05Z"
+e2e_run_row: "2026-04-23T17:33:05Z entry in web/e2e-runs.jsonl (second run with storageState fix)"
+prior_run_at: "2026-04-23T17:25:21Z"
 ---
 
 # Phase 111 urlTemplate Deep-Link Spike — Verdict: FAIL
@@ -42,7 +43,7 @@ The failure is strictly at the post-password-set redirect boundary.
 - Actual navigation after form submit (from Playwright page log):
   1. `https://kudzu.tailb56d83.ts.net:49373/ui/console/`
   2. `https://kudzu.tailb56d83.ts.net:49373/ui/console/`
-  3. `https://kudzu.tailb56d83.ts.net:49373/ui/login/login?authRequestID=369885816668815365`
+  3. `https://kudzu.tailb56d83.ts.net:49373/ui/login/login?authRequestID=369886596171825157`
 - Playwright error: `page.waitForURL: Timeout 30000ms exceeded` at
   `web/e2e/invite-urltemplate-spike.spec.ts:339`.
 
@@ -135,5 +136,6 @@ follow-up section applies only on PASS.
 ---
 
 **Verdict author:** Executor (Claude, sequential mode)
-**Verdict timestamp:** 2026-04-23T17:30:20Z
+**Verdict timestamp:** 2026-04-23T17:36:00Z (updated from second run)
+**Second run:** 2026-04-23T17:33:05Z — added `storageState: { cookies: [], origins: [] }` to prevent stale session interference. Same FAIL result; ZITADEL still redirected to `/ui/console/` instead of urlTemplate URL. Artifacts in `artifacts/spike-failure-20260423T173305Z/`.
 **Plan reference:** `.planning/phases/111-urltemplate-spike-zitadel-service-surface/111-01-PLAN.md`
