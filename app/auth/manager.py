@@ -200,8 +200,9 @@ class UserManager(BaseUserManager[User, str]):
         """
         logger.info("native-auth: password reset id={} email={}", user.id, user.email)
         try:
-            from app.auth.models import AccessToken  # local import to avoid cycles
             from sqlalchemy import update
+
+            from app.auth.models import AccessToken  # local import to avoid cycles
 
             async with async_session_factory() as session:
                 # Good security hygiene: drop every outstanding session token.
