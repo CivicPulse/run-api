@@ -137,8 +137,62 @@
 
 ## Traceability
 
-_(Filled by the roadmapper — each REQ-ID maps to exactly one phase.)_
+Every v1.20 REQ-ID maps to exactly one phase. 55/55 requirements mapped. No orphans. No duplicates.
 
 | REQ-ID | Phase | Status |
 |---|---|---|
-| (filled by gsd-roadmapper) | | |
+| TEST-01 | 112 | Pending |
+| TEST-02 | 112 | Pending |
+| TEST-03 | 112 | Pending |
+| TEST-04 | 112 | Pending |
+| MIG-01 | 113 | Pending |
+| MIG-02 | 113 | Pending |
+| MIG-03 | 113 | Pending |
+| MIG-04 | 113 | Pending |
+| MIG-05 | 113 | Pending |
+| MIG-06 | 113 | Pending |
+| AUTH-01 | 113 | Pending |
+| AUTH-02 | 113 | Pending |
+| AUTH-06 | 113 | Pending |
+| SEC-01 | 113 | Pending |
+| SEC-05 | 113 | Pending |
+| CSRF-01 | 114 | Pending |
+| CSRF-02 | 114 | Pending |
+| CSRF-03 | 114 | Pending |
+| CSRF-04 | 114 | Pending |
+| CSRF-05 | 114 | Pending |
+| FE-01 | 115 | Pending |
+| FE-02 | 115 | Pending |
+| FE-03 | 115 | Pending |
+| FE-04 | 115 | Pending |
+| FE-05 | 115 | Pending |
+| FE-06 | 115 | Pending |
+| SEC-03 | 115 | Pending |
+| OBS-01 | 115 | Pending |
+| INV-01 | 116 | Pending |
+| INV-02 | 116 | Pending |
+| INV-03 | 116 | Pending |
+| INV-04 | 116 | Pending |
+| INV-05 | 116 | Pending |
+| INV-06 | 116 | Pending |
+| PWD-01 | 116 | Pending |
+| PWD-02 | 116 | Pending |
+| OBS-03 | 116 | Pending |
+| AUTH-03 | 117 | Pending |
+| AUTH-04 | 117 | Pending |
+| AUTH-05 | 117 | Pending |
+| PWD-03 | 117 | Pending |
+| PWD-04 | 117 | Pending |
+| SEC-02 | 117 | Pending |
+| OBS-02 | 117 | Pending |
+| CLEAN-01 | 118 | Pending |
+| CLEAN-02 | 118 | Pending |
+| CLEAN-03 | 118 | Pending |
+| CLEAN-04 | 118 | Pending |
+| CLEAN-05 | 118 | Pending |
+| CLEAN-06 | 118 | Pending |
+| SEC-04 | 118 | Pending |
+| SESS-01 | 119 | Pending |
+| SESS-02 | 119 | Pending |
+| SESS-03 | 119 | Pending |
+| SESS-04 | 119 | Pending |

@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.20
 milestone_name: native-auth-rebuild-and-invite-onboarding
-status: Defining requirements
+status: Roadmap defined
 stopped_at: ""
-last_updated: "2026-04-23T19:00:00.000Z"
+last_updated: "2026-04-23T20:00:00.000Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,18 +21,38 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-23)
 
 **Core value:** Any candidate, regardless of party or budget, can run professional-grade field operations from a single API.
-**Current focus:** Milestone v1.20 scoping — requirements and roadmap in progress
+**Current focus:** Milestone v1.20 — roadmap complete, ready for Phase 112 planning
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap defined, Phase 112 is next)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-23 — Milestone v1.20 started after v1.19 closed as research+pivot (ZITADEL→DIY auth)
+Status: Roadmap defined
+Last activity: 2026-04-23 — Roadmap finalized with 8 phases (112-119); 55/55 requirements mapped
 
 ## Roadmap Summary
 
-TBD — roadmap will be generated after v1.20 requirements are confirmed. Phase numbering continues from v1.19 (Phase 111 preserved as the `urlTemplate` spike-FAIL artifact; v1.20 begins at Phase 112).
+8 phases (112-119), continuing from v1.19's Phase 111 (preserved as the `urlTemplate` spike-FAIL artifact).
+
+| Phase | Name | Gates | Depends On |
+|-------|------|-------|------------|
+| 112 | SEED-002 Continuous Verification | — (prerequisite) | nothing |
+| 113 | User Table Migration + fastapi-users Scaffolding | Prod user audit; Context7 fastapi-users 15.0.5 lookup | 112 |
+| 114 | CSRF Middleware | — | 113 |
+| 115 | Frontend Auth Rewire + Cutover | — | 114 |
+| 116 | Invite Flow Re-Implementation | **Q-AUTH-02** (password policy) | 115 |
+| 117 | Password Reset + Email Verify | **Q-AUTH-01** (email verification model) | 115 |
+| 118 | ZITADEL Tear-Out | **≥1 milestone production soak** on native stack | 115, 116, 117 + external soak gate |
+| 119 | Session Lifecycle + Admin Controls | **Q-AUTH-03** (session lifecycle) | 113 (runs parallel with 118) |
+
+**Coverage:** 55/55 v1.20 requirements mapped. No orphans, no duplicates.
+
+**Load-bearing invariants:**
+- Phase 112 ships FIRST — cross-cutting rewrite needs the continuous-verification safety net before it touches every test surface.
+- Three Q-AUTH-* decisions are deliberately unresolved at milestone-scoping time; each gates a specific later phase.
+- Phase 118 ZITADEL tear-out is gated on ≥1 milestone of production soak on the native-auth stack — external gate, cannot begin until v1.21+.
+
+Full roadmap: `.planning/ROADMAP.md`
 
 ## Accumulated Context
 
@@ -55,21 +75,27 @@ TBD — roadmap will be generated after v1.20 requirements are confirmed. Phase 
 - [v1.19 → v1.20 pivot 2026-04-23]: Chose DIY auth (fastapi-users 15.0.5 + CookieTransport + DatabaseStrategy, Postgres-backed) over Option C non-ROPC after sizing analysis showed equivalent engineering effort (~2-3 weeks) with surface ownership as the tie-breaker. Pivot tactical in motivation; cookie-based SPA auth leans permanent. Full decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`. Tripwires for return: `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`.
 - v1.20: Continuous Test Verification (SEED-002) included as an early phase — auth rebuild is cross-cutting, without continuous test runs we risk repeating v1.18 Phase 106's 219-silent-failure situation.
 - v1.20: Three open design questions (Q-AUTH-01/02/03 in `.planning/research/questions.md`) to resolve during plan-phases, not at milestone-scoping time: email verification model, password policy rule set, session lifecycle.
+- [v1.20 roadmap 2026-04-23]: 8-phase layout (112-119) derived from SUMMARY.md recommended build order, no deviations. Phase 112 SEED-002 first (TI5 prerequisite); 113 before 114 (CSRF HMAC binds to access_token.id); 114 before 115 (SPA needs CSRF contract); 115 before 116 (invite-accept mints on new contract); 117 depends on 115 not 116 (reset independent of invite); 118 gated on production soak (external); 119 parallel with 118 (extends rather than removes access_token).
 
 ## Pending Todos
 
 - Formal `/gsd-complete-milestone v1.18` archival to MILESTONES.md — carried over from v1.19 STATE.md; still outstanding
 - Formal `/gsd-complete-milestone v1.19` archival — add v1.19 to MILESTONES.md with the research+pivot outcome and preserved research artifacts as deliverable
+- Resolve Q-AUTH-02 (password policy rule set) before Phase 116 plan-phase begins
+- Resolve Q-AUTH-01 (email verification model) before Phase 117 plan-phase begins
+- Resolve Q-AUTH-03 (session lifecycle) before Phase 119 plan-phase begins
+- Run prod user audit before Phase 113 merges (count legacy-auth users; enumerates forced-reset email list if any)
+- Context7 lookup on fastapi-users 15.0.5 at Phase 113 plan-time (router prefixes, DatabaseStrategy session semantics, UUID vs. string ID, hook signatures)
 
 ## Blockers/Concerns
 
 - **v1.18 archival gap:** v1.18 has not been formally archived to MILESTONES.md — STATE.md confirmed shipment but the milestone audit and MILESTONES.md entry are pending. Track separately; not a v1.20 blocker.
 - **v1.19 archival gap:** v1.19 needs formal close-out via `/gsd-complete-milestone` now that the pivot decision has been made. Not a v1.20 blocker but should happen before v1.20 Phase 112 planning begins so the MILESTONES.md history is clean.
-- **Campaign creation 500 in production** — was ZITADEL-related in v1.19; under v1.20's ZITADEL tear-out this is expected to resolve by construction, but should be verified post-v1.20. Not milestone scope.
+- **Campaign creation 500 in production** — was ZITADEL-related in v1.19; under v1.20's ZITADEL tear-out (Phase 118) this is expected to resolve by construction, but should be verified post-v1.20. Not milestone scope.
 - **HSTS header** — requires Cloudflare edge configuration outside this code milestone.
 
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: v1.20 milestone initialization — PROJECT.md updated, STATE.md reset, requirements and roadmap pending
+Stopped at: v1.20 roadmap complete — ready for `/gsd-plan-phase 112` (SEED-002 Continuous Verification)
 Resume file: None
