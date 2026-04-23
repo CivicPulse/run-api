@@ -47,9 +47,9 @@ interface AuthState {
 
 const API_BASE = window.location.origin
 
-// Local ky instance with credentials:include. No auth/CSRF hooks here —
-// the store's endpoints are either GETs (safe, exempt) or the login/logout
-// paths which are on the CSRF middleware's exempt list.
+// Local ky instance with credentials:include. GETs are safe and login/
+// register are on the CSRF exempt list. Logout is NOT exempt — we attach
+// the X-CSRF-Token header ourselves in `logout()` below.
 const authApi = ky.create({
   prefixUrl: API_BASE,
   credentials: "include",
@@ -138,7 +138,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
-      await authApi.post("api/v1/auth/logout")
+      let csrf = getCsrfCookie()
+      if (!csrf) {
+        await bootstrapCsrf()
+        csrf = getCsrfCookie()
+      }
+      await authApi.post("api/v1/auth/logout", {
+        headers: csrf ? { "X-CSRF-Token": csrf } : {},
+      })
     } catch {
       // Even if logout fails server-side, clear local state.
     }
