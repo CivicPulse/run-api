@@ -227,6 +227,7 @@ data/
 screenshots/
 .claude/settings.local.json
 .claude/worktrees
+.mcp.json
 
 # Local secrets (credentials, test user passwords, etc. — never commit)
 .secrets/
