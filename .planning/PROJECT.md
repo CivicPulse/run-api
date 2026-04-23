@@ -131,13 +131,19 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Map rendering & asset pipeline fixes (Leaflet icons, list/map z-index, asset audit) — v1.18 (MAP-01, MAP-02, MAP-03)
 - ✓ Offline queue hardening — persistent replay, connectivity indicator, sync-on-reconnect with backoff — v1.18 (OFFLINE-01, OFFLINE-02, OFFLINE-03)
 - ✓ Test baseline trustworthiness restored and per-phase coverage obligations met — v1.18 (TEST-01, TEST-02, TEST-03, TEST-04)
+- ✓ Native auth stack replacing ZITADEL — fastapi-users 15.0.5 + `CookieTransport` + `DatabaseStrategy` (Postgres-backed, httponly + samesite=lax `cp_session` cookie, 7d sliding), register/login/logout/forgot-password/reset-password/verify-email routes mounted on `/api/v1/auth` — v1.20 (AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, MIG-01 through MIG-06)
+- ✓ Frontend auth rewire — `credentials: 'include'` on `ky`, `authStore` rewritten without `oidc-client-ts`, `/login` + `/register` + `/forgot-password` + `/reset-password` + `/verify-email` + `/invites/$token` routes wired through the native cookie contract — v1.20 (FE-01, FE-02, FE-03, FE-04, FE-05, FE-06)
+- ✓ Invite onboarding flow re-implemented under native auth — no external-IdP redirects — v1.20 (INV-01, INV-02, INV-04, INV-05, INV-06)
+- ✓ Auth hardening — `UserManager.authenticate` rejects NULL hashed_password, `forgot_password` seeds placeholder hash for NULL-hash users (enumeration-neutral), `on_after_reset_password` flips `is_verified=true`, alembic `version_num` widened to VARCHAR(128) with idempotent CREATE guard for Postgres 15+ — v1.20
+- ✓ SEED-002 continuous-verification (partial) — `.pre-commit-config.yaml` + ruff DTZ rule, `scripts/analyze-e2e-trend.sh` 5pp regression detector with bats coverage, `scripts/doctor.sh` env-drift healthcheck — v1.20 (TEST-01 partial)
 
 ### Active
 
-- Replace ZITADEL with native auth (fastapi-users + cookie + Postgres sessions) so we own every credential-handling surface and eliminate external-IdP UI-bundling risk — v1.20
-- Stand up continuous test verification (pre-commit / CI / scheduled runs) before cross-cutting auth rewrite starts so drift is caught daily instead of at milestone end — v1.20 (SEED-002)
-- Ship the volunteer-invite onboarding flow originally scoped in v1.19 — click link → set password → accept invite — under the native auth stack with no external-IdP redirects — v1.20
-- Rewire the invite email, `/login` fallback, and re-invite idempotency paths to the native auth surface — v1.20
+- Complete SEED-002 continuous-verification — nightly CI workflow, `scripts/seed002-gate-check.sh` canonical exit-gate, self-coverage smokes workflow — v1.21+ (TEST-02, TEST-03, TEST-04 remainder)
+- ZITADEL tear-out — delete `app/services/zitadel.py`, `scripts/bootstrap-zitadel.py`, `.zitadel-data/`, compose ZITADEL service, authlib, ZITADEL_* env vars, `oidc-client-ts` FE remnants — v1.21+ (CLEAN-01 through CLEAN-06, SEC-04); gated on ≥1 milestone production soak on native stack
+- CSRF middleware — pure-ASGI double-submit with session-bound HMAC token, exemption allowlist, rotation on login — v1.21+ (CSRF-01 through CSRF-05)
+- Session lifecycle + admin controls — idle/absolute timeout per Q-AUTH-03, logout-all admin endpoint, per-session device metadata logging, password-change session invalidation — v1.21+ (SESS-01 through SESS-04)
+- Resolve deferred Q-AUTH design questions — Q-AUTH-01 (email verification model), Q-AUTH-02 (password policy rule set beyond current permissive default), Q-AUTH-03 (session lifecycle) — v1.21+ scoping
 
 ### Out of Scope
 
@@ -163,36 +169,21 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Per-org SSO/SAML configuration — deferred under DIY auth; tracked in SEED-003 for a future milestone trigger (customer SSO request, enterprise compliance driver)
 - White-label / custom branding per org
 
-## Current Milestone: v1.20 Native Auth Rebuild & Invite Onboarding
-
-**Goal:** Replace ZITADEL with native auth (fastapi-users 15.0.5 + `CookieTransport` + `DatabaseStrategy`, Postgres-backed), then ship the invite onboarding flow that v1.19 originally targeted — now under our own auth stack with no external IdP dependencies.
-
-**Target features:**
-- **Continuous test verification infrastructure (SEED-002)** — stand up pre-commit / CI / scheduled test runs *before* the cross-cutting auth rewrite starts, so drift is caught within a day of being introduced (not at milestone end, like v1.18 Phase 106's 219+ accumulated failures)
-- **ZITADEL tear-out** — remove `app/services/zitadel.py`, the ZITADEL docker service, `scripts/bootstrap-zitadel.py`, OIDC JWKS validation, `oidc-client-ts` and all its frontend wiring
-- **User table migration** — Alembic reshape to fastapi-users base mixin (`email`, `hashed_password`, `is_active`, `is_superuser`, `is_verified`, `id`); drop ZITADEL-specific columns
-- **Native auth endpoints** via fastapi-users 15.0.5 — register, login, logout, password reset, email verify, using `CookieTransport` + `DatabaseStrategy`
-- **CSRF middleware** — double-submit cookie pattern, `X-CSRF-Token` header, our own ~40 LOC (no 2026 FastAPI auth library ships CSRF)
-- **Frontend auth rewire** — drop `oidc-client-ts`, switch `web/src/api/client.ts` to `credentials: 'include'`, update route guards and the `useAuth` surface
-- **Invite flow re-implementation** — preserves existing UX goals (single-click-accept landing, Mailgun/Procrastinate delivery, role binding at accept) but with our own password-set page instead of ZITADEL's hosted UI
-- **Test harness rewire** — `scripts/seed.py`, `scripts/create-e2e-users.py`, Playwright auth helpers, E2E user bootstrap, integration coverage for the new auth surface
-
-**Key context:**
-- v1.19 closed as a **research + pivot milestone** on 2026-04-23. Phase 111 `urlTemplate` spike FAILed — ZITADEL v4.10.1 bundles only the legacy Go-templates login UI; the v2 TypeScript login app that honors `urlTemplate` is a separate undeployed Next.js app. Sizing analysis during the pivot found DIY auth ≈ same engineering effort as finishing Option C non-ROPC (~2-3 weeks either way).
-- Pivot is **tactical in motivation**, but cookie-based SPA auth leans permanent because the frontend auth contract changes. Tripwires for reintroducing an external IdP captured in `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`.
-- **Three open design questions** to resolve in plan-phases (Q-AUTH-01/02/03 in `.planning/research/questions.md`): email verification model (invite-token-as-proof vs explicit ceremony), password policy rule set (zxcvbn vs traditional vs NIST 800-63B length+HIBP), session lifecycle (idle/absolute timeout, refresh behavior, logout-all semantics).
-- Phase numbering continues from v1.19 (Phase 111 stays as the spike-FAIL artifact; v1.20 begins at Phase 112).
-- Full decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`.
-
 ## Current State
 
-**v1.19 Invite Onboarding (closed 2026-04-23):** Closed as a **research + pivot** milestone — no user-visible features shipped. Phase 111 `urlTemplate` spike returned verdict FAIL (ZITADEL v4.10.1 bundling quirk, not a fundamental design issue). Research artifacts (`STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`, `SUMMARY.md`) and the Phase 111 service-surface implementation remain in the repo; the pivot decision itself is the milestone's deliverable. v1.20 carries the invite-onboarding goal forward under native auth. See `.planning/notes/decision-drop-zitadel-diy-auth.md`.
+**Between milestones (2026-04-23):** v1.18, v1.19, v1.20 all archived. Ready to scope v1.21 via `/gsd-new-milestone`.
 
-**Shipped:** v1.18 Field UX Polish (2026-04-11)
+**Most recently shipped:** v1.20 Native Auth Rebuild & Invite Onboarding (2026-04-23)
 
-The mobile-first field mode is now reliable for door-knocking volunteers. v1.18 closed 5 phases (106-110, 36 plans) and delivered: a trustworthy test baseline (TEST-04 — pytest 1122 / vitest 805 / Playwright 312 on consecutive greens via `web/scripts/run-e2e.sh`), canvassing wizard fixes (auto-advance, working Skip House, optional outcome notes, form-requiredness audit), tap-to-activate house selection from list and map with an end-to-end-audited active-house state machine, Leaflet asset/icon and z-index fixes (Radix popper z-1200 over z-1100 Sheet overlay), and a hardened offline outcome queue with persistent replay, glanceable connectivity pill, and 5xx/422-aware sync with backoff. A production fix in Phase 110 unified `submitDoorKnock`'s offline gating with `ConnectivityPill` so UI and queue can no longer disagree about online state.
+v1.20 shipped **out of the GSD phase/plan flow** as a single merged PR branch (PR #32, `f99e2cae`) to speed delivery after the v1.19 ZITADEL pivot. The native auth stack is live: fastapi-users 15.0.5 + `CookieTransport` + `DatabaseStrategy` (Postgres-backed, httponly + samesite=lax `cp_session` cookie, 7d sliding), alembic migration 042 adding `hashed_password` / `email_verified` / `is_active` / `is_superuser` / `is_verified` / `auth_access_tokens`, and frontend `/login` + `/register` + `/forgot-password` + `/reset-password` + `/verify-email` + `/invites/$token` routes through a rewritten `authStore` (no `oidc-client-ts`). Follow-up hardening landed NULL-hash guards in `UserManager.authenticate` and `forgot_password` (enumeration-neutral), `on_after_reset_password` flipping `is_verified=true`, and the alembic `version_num` VARCHAR(128) widen + idempotent CREATE guard for Postgres 15+. SEED-002 continuous-verification partially landed: pre-commit config + ruff DTZ, `scripts/analyze-e2e-trend.sh` 5pp regression detector, `scripts/doctor.sh` env-drift check.
 
-**Previously shipped:** v1.17 Easy Volunteer Invites (2026-04-10) — campaign-scoped volunteer signup links separate from trusted member invites; admin-managed lifecycle, anonymous and authenticated public application intake, admin review queue with approve/reject gating, idempotent approval, and invite-fallback for email-only applicants.
+**Carried forward as tech debt to v1.21+:** Phase 118 ZITADEL tear-out (gated on ≥1 milestone production soak on native stack), Phase 119 session lifecycle + admin controls (Q-AUTH-03 unresolved), Phase 114 CSRF middleware, SEED-002 remainder (nightly CI, seed002-gate-check, self-coverage smokes), and Q-AUTH-01/02 (email verification model and password-policy tightening).
+
+**v1.19 (Abandoned 2026-04-23):** Phase 111 `urlTemplate` deep-link spike returned verdict FAIL — ZITADEL v4.10.1 bundles only the legacy Go-templates login UI; the v2 TypeScript login app honoring `urlTemplate` is a separate undeployed Next.js app. Pivoted to v1.20 DIY auth after sizing analysis showed equivalent engineering effort with surface ownership as the tiebreaker. Research artifacts and spike verdict preserved in `.planning/milestones/v1.19-phases/`. Tripwires for revisiting ZITADEL captured in `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`. Decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`.
+
+**v1.18 (Shipped 2026-04-11):** Mobile-first field mode reliability for door-knocking volunteers — 5 phases (106-110, ~36 plans) delivering a trustworthy test baseline (TEST-04), canvassing wizard fixes (auto-advance, Skip House, optional notes), audited house selection state machine, Leaflet asset/z-index fixes, and a hardened offline queue with persistent replay, connectivity pill, and backoff-aware sync. `submitDoorKnock` unified on `navigator.onLine` so UI and queue can no longer disagree about online state.
+
+**v1.17 (Shipped 2026-04-10):** Campaign-scoped volunteer signup links separate from trusted member invites; admin-managed lifecycle, public application intake, admin review queue, idempotent approval, invite-fallback for email-only applicants.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
@@ -205,7 +196,11 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-_v1.20 Native Auth Rebuild & Invite Onboarding is the current milestone — see above._
+No active milestone. v1.21 will be scoped next via `/gsd-new-milestone`. Top candidates (tracked in Active above):
+
+1. **Complete native-auth hardening** — CSRF middleware (Phase 114), session lifecycle + admin controls (Phase 119), resolve Q-AUTH-01/02/03 design questions that were deferred when v1.20 shipped out-of-flow.
+2. **Finish SEED-002 continuous verification** — nightly CI workflow, canonical `seed002-gate-check.sh`, self-coverage smokes so the remaining auth phases ship on a trustworthy baseline.
+3. **ZITADEL tear-out (Phase 118)** — eligible after ≥1 milestone production soak on native stack with no rollback regressions; deletes `app/services/zitadel.py`, `scripts/bootstrap-zitadel.py`, `.zitadel-data/`, authlib, ZITADEL_* env, `oidc-client-ts` FE remnants.
 
 <details>
 <summary>Archived v1.19 planning context (research + pivot milestone; no shipped features)</summary>
@@ -322,4 +317,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 — v1.19 Invite Onboarding closed as research+pivot (ZITADEL→DIY); started milestone v1.20 Native Auth Rebuild & Invite Onboarding*
+*Last updated: 2026-04-23 — archived v1.18 (shipped), v1.19 (abandoned/pivoted), v1.20 (shipped out-of-flow: native auth via PR #32); between milestones, awaiting v1.21 scoping*

@@ -1,5 +1,74 @@
 # Milestones
 
+## v1.20 Native Auth Rebuild & Invite Onboarding (Shipped: 2026-04-23)
+
+**Phases completed:** 1 partial phase (112 SEED-002), 0 plans formally closed; core auth rewrite shipped **outside the GSD phase/plan flow** as a single merged PR branch to speed delivery.
+
+**Execution note:** The 8-phase ROADMAP (112-119) scoped upfront was not executed sequentially. Phase 112 (SEED-002 continuous verification) partially landed; Phase 118 (ZITADEL tear-out) was intentionally deferred pending production soak; Phase 119 (session lifecycle admin) deferred to a future milestone. Archived roadmap: `.planning/milestones/v1.20-ROADMAP.md`. Deferred phases noted as tech debt for v1.21+ planning.
+
+**Key accomplishments (extracted from git log since 2026-04-23 pivot):**
+
+1. **Replaced ZITADEL OIDC with native fastapi-users cookie sessions** (PR #32, `f99e2cae`) — dual-mount auth on `/api/v1/auth`, `SQLAlchemyBaseUserTable[str]` keeping ZITADEL sub claims as valid PKs, `cp_session` cookie (httponly, samesite=lax, 7d sliding), register / login / logout / forgot-password / reset-password / verify-email routes, frontend `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email` routes wired through `authStore`
+2. **Alembic migration 042** — added `hashed_password`, `email_verified`, `is_active`, `is_superuser`, `is_verified` nullable columns + `auth_access_tokens` table; no data migration required
+3. **Auth hardening follow-ups** — `UserManager.authenticate` rejects NULL hashed_password (`03a58bd8`), `forgot_password` seeds placeholder hash for NULL-hash users so enumeration response stays neutral (`707f9cf7`), `on_after_reset_password` flips `is_verified=true` (`179a109e`)
+4. **Alembic version table fix** — widened `alembic_version.version_num` to VARCHAR(128) (`59deeb08`); migration env idempotent CREATE guard for Postgres 15+ (`2d2f582d`)
+5. **TanStack Router strict-search fixes** across `/login` redirects and field-route `user.id` paths (`5c983b88`, `64692203`, `e35454ef`)
+6. **SEED-002 continuous-verification partial delivery** — `.pre-commit-config.yaml` + ruff DTZ rule (112-01, `45c55f59`), `scripts/analyze-e2e-trend.sh` 5pp regression detector with failing bats suite + fixtures (112-03, `bc787b56`/`0cb4eb3b`), `scripts/doctor.sh` postgres connection params fix (112-04, `c944297f`)
+
+**Deferred to v1.21+ (tech debt):**
+
+- Phase 118 **ZITADEL tear-out** — `app/services/zitadel.py`, `scripts/bootstrap-zitadel.py`, `.zitadel-data/`, authlib, compose ZITADEL service, ZITADEL_* env vars, `oidc-client-ts` FE remnants still present; gated on ≥1 milestone production soak on the native stack (external gate)
+- Phase 119 **Session lifecycle + admin controls** — idle/absolute timeout, logout-all-sessions admin control, per-session device metadata logging, password-change session invalidation
+- SEED-002 remainder — nightly CI workflow (112-02), `scripts/seed002-gate-check.sh` (112-05), self-coverage smokes (112-06)
+- CSRF middleware (Phase 114) — scoped but not shipped in the out-of-flow merge; revisit before the next auth-adjacent milestone
+
+**Open design questions (carried to v1.21+ scoping):** Q-AUTH-01 (email verification model), Q-AUTH-02 (password policy rule set — reset/verify flows shipped with permissive policy), Q-AUTH-03 (session lifecycle)
+
+**Pivot context:** v1.19 Phase 111 `urlTemplate` deep-link spike failed (ZITADEL v4.10.1 ships only legacy login UI, not the v2 app that honors `urlTemplate`). DIY auth chosen over Option C non-ROPC workaround after sizing analysis showed equivalent ~2-3-week engineering effort with surface ownership as the tiebreaker. Decision record: `.planning/notes/decision-drop-zitadel-diy-auth.md`. Tripwires for revisiting ZITADEL: `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md`.
+
+---
+
+## v1.19 Invite Onboarding (Abandoned: 2026-04-23)
+
+**Phases planned:** 5 (111-115) | **Phases executed:** 1 partial (111 spike only) | **Pivoted to:** v1.20 Native Auth Rebuild
+
+**Outcome: ABANDONED.** The milestone opened with a gating spike (Phase 111 Plan 01) against our 2.71.x / 4.10.1 ZITADEL instance to verify that the `urlTemplate` post-password-set redirect actually lands an authenticated invitee on `/invites/<token>`. The spike **verdict: FAIL** — ZITADEL v4.10.1 bundles only the legacy Go-templates login UI (`/ui/login/*`); the v2 TypeScript login app (`/ui/v2/login/*`) that honors `urlTemplate` is a separate undeployed Next.js app. API surface (user creation, invite codes, service-account auth) works; failure is strictly at the post-password-set redirect boundary. Plans 111-02 through 111-06 were blocked; phases 112-115 were never planned.
+
+**Pivot:** On 2026-04-23, after sizing analysis comparing Option C (non-ROPC ZITADEL workaround) against a native rebuild showed equivalent engineering effort, the milestone pivoted to v1.20 DIY auth (fastapi-users + cookie sessions). Surface ownership was the tiebreaker; the spike artifacts and research were preserved.
+
+**Preserved deliverables:**
+
+- `.planning/milestones/v1.19-phases/111-urltemplate-spike-zitadel-service-surface/` — spike code, verdict, research, and service-surface inventory (ZITADEL API endpoints that *do* work)
+- `.planning/notes/decision-drop-zitadel-diy-auth.md` — full ZITADEL→DIY pivot decision record
+- `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md` — tripwires that would trigger a return to ZITADEL
+- Invite-flow design research (pitfall analysis, INV1/INV2/INV3 mitigations) partially reused in v1.20 Phase 116 scoping
+
+**Requirements outcome:** All v1.19 requirements rolled into v1.20 scope under the DIY auth stack. See `.planning/milestones/v1.20-REQUIREMENTS.md`.
+
+---
+
+## v1.18 Field UX Polish (Shipped: 2026-04-11)
+
+**Phases completed:** 5 phases, 28 plans
+**Timeline:** 2 days (2026-04-10 → 2026-04-11)
+**Commits:** ~167
+**Git range:** merged via PR #24 (`1d763596`)
+**Phase artifacts:** preserved in merge commit `1d763596`; intentionally removed from active tree in `ae9210d3` before v1.19 began
+
+**Key accomplishments:**
+
+1. **Test baseline trustworthiness (Phase 106)** — Froze three-suite baseline (pytest 2 fail / 1113 pass, vitest 65 fail / 614 pass, Playwright 152 fail / 93 pass), uncovered 219 real hard fails after env-unblock fixes (host-port drift, Playwright auth, stale docker image), and locked Option D hybrid scope (D-15) deferring the phase-verify cluster (~91 tests) to v1.19 triage. Exit gate achieved two consecutive Playwright greens.
+2. **Canvassing wizard fixes (Phase 107)** — Closed 9 plans covering CANV-01/02/03 requiredness audits, post-pinning assertion fixes, phone-banking test label rename, and 4-suite exit gate with `107-VERIFICATION-RESULTS.md` proving shippability.
+3. **House selection active state (Phase 108)** — Delivered SELECT-01/02/03 active-house UX and advanced STATE.md to phase 109 readiness; 4-gate exit (ruff + pytest + vitest + tsc + 2×Playwright) all green, zero regressions.
+4. **Map rendering asset pipeline (Phase 109)** — Delivered MAP-01/02/03 Leaflet marker/list-vs-map layout fixes; Radix portal z-index repair for Select-inside-Sheet, MAP-01 decode-race fix under 8-worker parallel load; 4-gate exit green.
+5. **Offline queue & connectivity hardening (Phase 110)** — Delivered OFFLINE-01/02/03 + TEST-01/02/03 with `client_uuid` end-to-end + `DuplicateClientUUIDError` 409 path, `classifyError` 4-way split + `useSyncEngine` drainQueue dispositions, 1s→60s backoff ladder, dead-letter slice, `ConnectivityPill` 6-state derivation. Milestone exit gate shipped four Rule 1 auto-fixes (ky retry disable, `submitDoorKnock` pre-flight `navigator.onLine` guard, two test bugs) and achieved two consecutive Playwright greens.
+
+**Driver:** Real volunteer feedback from door-knocking sessions — 7 reported canvassing bugs + 3 broader audits + offline hardening.
+
+**Archived:** `.planning/milestones/v1.18-ROADMAP.md`, `.planning/milestones/v1.18-REQUIREMENTS.md`. Phase 106-110 artifacts preserved in git via merge commit `1d763596`.
+
+---
+
 ## v1.17 Easy Volunteer Invites (Shipped: 2026-04-10)
 
 **Phases completed:** 4 phases, 4 plans, 0 tasks

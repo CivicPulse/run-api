@@ -82,8 +82,8 @@ Output: Bash script + bats test suite + fixture env files.
   <action>
     Create `scripts/doctor.sh` with the check-framework sketch above. Implement:
       - Check 1 (DB port): parse `DATABASE_URL` or `DB_PORT` from `--env-file`; run `docker compose port db 5432` (timeout 3s). Compare host-ports. Remediation: "update .env DB port to match compose (run: docker compose port db 5432)".
-      - Check 2 (alembic head): compare `uv run alembic heads` (single head hash expected) to the `version_num` value stored in the `alembic_version` DB table via `docker compose exec -T postgres psql -U postgres -d run_api -tAc "select version_num from alembic_version"` (reuses same psql pattern as Check 3). Mismatch → FAIL with remediation "run `uv run alembic upgrade head`". If either side unavailable → SKIP. Do NOT use file-mtime or `down_revision = None` heuristics (unreliable — see commit 5b8eec04 fix for column-width bug).
-    Create `scripts/test/fixtures/env.clean.env` (PG_HOST_PORT=37824 matching compose default) and `env.drift-db-port.env` (PG_HOST_PORT=9999). Create PATH stubs for `docker` and `alembic` under `scripts/test/stubs/` that emit deterministic output (docker stub returns `0.0.0.0:37824` for `port postgres 5432`).
+      - Check 2 (alembic head): compare `uv run alembic heads` (single head hash expected) to the `version_num` value stored in the `alembic_version` DB table via `docker compose exec -T db psql -U app -d civicpulse_dev -tAc "select version_num from alembic_version"` (reuses same psql pattern as Check 3). Mismatch → FAIL with remediation "run `uv run alembic upgrade head`". If either side unavailable → SKIP. Do NOT use file-mtime or `down_revision = None` heuristics (unreliable — see commit 5b8eec04 fix for column-width bug).
+    Create `scripts/test/fixtures/env.clean.env` (DB_PORT=5433 matching compose) and `env.drift-db-port.env` (DB_PORT=9999). Create PATH stubs for `docker` and `alembic` under `scripts/test/stubs/` that emit deterministic output.
     Create `scripts/test/doctor.bats` with cases:
       - `clean env exits 0` (uses stubs returning 5433 and matching alembic head)
       - `db-port drift exits non-zero with remediation` (stub returns 5433, .env says 9999)
@@ -101,13 +101,13 @@ Output: Bash script + bats test suite + fixture env files.
   <name>Task 2: E2E users check + pyproject↔image dep-skew check + bootstrap/CI wiring verification</name>
   <files>scripts/doctor.sh, scripts/test/doctor.bats</files>
   <behavior>
-    - Check 3 (E2E users): queries the DB for known E2E usernames (owner1@localhost, admin1@localhost, volunteer1@localhost) via `docker compose exec -T postgres psql -U postgres -d run_api ...` OR a simple `nc`-based connectivity probe that falls through to SKIP when postgres container is unreachable. Missing users → FAIL with remediation `docker compose exec api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"` (preserved for v1.19 compatibility; rewritten in Phase 113).
+    - Check 3 (E2E users): queries the DB for known E2E usernames (owner1@localhost, admin1@localhost, volunteer1@localhost) via `docker compose exec -T db psql ...` OR a simple `nc`-based connectivity probe that falls through to SKIP when DB is unreachable. Missing users → FAIL with remediation `docker compose exec api bash -c "PYTHONPATH=/home/app python scripts/create-e2e-users.py"` (preserved for v1.19 compatibility; rewritten in Phase 113).
     - Check 4 (dep skew): compares `uv pip list` inside the running api container against `pyproject.toml` `[project.dependencies]`. Drift → FAIL with remediation `docker compose build api && docker compose up -d api`.
     - bats test exercises missing-users path (stub psql returns 0 rows) and dep-skew path (stub returns a mismatched package list).
     - All four checks run unconditionally; script accumulates failures rather than short-circuiting so the operator sees every issue in one pass.
   </behavior>
   <action>
-    Add checks 3 and 4 to `scripts/doctor.sh`. For check 3, use `docker compose exec -T postgres psql -U postgres -d run_api -tAc "select count(*) from users where email in (...)"` via a helper function (password is `postgres` inside the container, trust auth works via -U); SKIP when compose unreachable.
+    Add checks 3 and 4 to `scripts/doctor.sh`. For check 3, use `docker compose exec -T -e PGPASSWORD=... db psql -U postgres -d civicpulse -tAc "select count(*) from users where email in (...)"` via a helper function; SKIP when compose unreachable.
     For check 4, helper `image_has_pkg <name> <version>` running `docker compose exec -T api uv pip show <name>`; compare result to pinned version from pyproject.
     Extend stubs to emulate psql + docker-compose-exec output for bats.
     Add bats cases: `missing e2e users → FAIL remediation present`, `dep skew → FAIL remediation present`, `all four checks PASS → exit 0 with summary line`.
