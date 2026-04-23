@@ -44,7 +44,7 @@ export function FieldHeader({
 
   const handleLogout = () => {
     logout().catch(() => {
-      navigate({ to: "/login", search: { redirect: undefined } })
+      navigate({ to: "/login", search: { redirect: undefined, reset: undefined } })
     })
   }
 

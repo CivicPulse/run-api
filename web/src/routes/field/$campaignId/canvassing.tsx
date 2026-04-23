@@ -76,7 +76,7 @@ function Canvassing() {
   })
 
   const user = useAuthStore((state) => state.user)
-  const userId = user?.profile?.sub
+  const userId = user?.id
   const key = userId ? tourKey(campaignId, userId) : ""
   const { startSegment } = useTour(key)
   const shouldShowQS = useTourStore((s) => {

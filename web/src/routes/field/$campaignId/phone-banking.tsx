@@ -61,7 +61,7 @@ function PhoneBanking() {
 
   // Tour auto-trigger
   const user = useAuthStore((state) => state.user)
-  const userId = user?.profile?.sub
+  const userId = user?.id
   const key = userId ? tourKey(campaignId, userId) : ""
   const { startSegment } = useTour(key)
 

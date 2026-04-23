@@ -101,7 +101,7 @@ export const Route = createRootRoute({
     if (status !== "authenticated") {
       throw redirect({
         to: "/login",
-        search: { redirect: location.pathname + (location.searchStr ?? "") },
+        search: { redirect: location.pathname + (location.searchStr ?? ""), reset: undefined },
       })
     }
   },
