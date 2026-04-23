@@ -55,7 +55,13 @@ Phase numbering continues from v1.19 — Phase 111 remains in place as the `urlT
 4. `scripts/doctor.sh` exits non-zero on a known env drift (e.g., `.env` DB port not matching `docker compose port db 5432`, missing E2E users, or pyproject/image dep skew), printing a human-readable remediation line; CI invokes it as the first step of every workflow and fails fast.
 5. Phase-exit gate (TEST-04): pytest + vitest + Playwright are green on two consecutive runs via `web/scripts/run-e2e.sh` before Phase 113 begins; SEED-002 infrastructure itself has CI coverage.
 
-**Plans:** TBD
+**Plans:** 6 plans
+- [ ] 112-01-precommit-husky-bootstrap.md — Pre-commit config + husky/lint-staged + bootstrap-dev.sh wiring + DTZ backstop
+- [ ] 112-02-ci-push-nightly-workflows.md — pr.yml push trigger + nightly.yml scheduled full suite + regression-issue alert
+- [ ] 112-03-analyze-e2e-trend.md — tail-20 vs tail-100 E2E regression analyzer (5pp threshold, D3)
+- [ ] 112-04-doctor-env-drift.md — scripts/doctor.sh four-check env-drift healthcheck (DB port, alembic head, e2e users, dep skew)
+- [ ] 112-05-seed002-gate-check.md — scripts/seed002-gate-check.sh canonical phase-exit gate script (D4)
+- [ ] 112-06-self-coverage-smokes.md — seed002-self-coverage.yml + local run-all-smokes.sh runner (success criterion 5)
 
 ---
 
