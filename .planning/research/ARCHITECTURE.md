@@ -1,272 +1,505 @@
-# Architecture Research: v1.19 Invite Onboarding
+# Architecture Research: v1.20 Native Auth Rebuild & Invite Onboarding
 
-**Domain:** Where ZITADEL programmatic user provisioning fits inside the existing FastAPI + Procrastinate + ZitadelService stack
+**Domain:** How fastapi-users + cookie sessions + our own CSRF middleware slot into the existing FastAPI + SQLAlchemy-async + Procrastinate + React+ky stack, replacing ZITADEL OIDC end-to-end
 **Project:** CivicPulse Run
-**Researched:** 2026-04-22
-**Scope:** Q1–Q5 from the spawn brief. Both Option B (ZITADEL `invite_code` flow) and Option C (app-owned `/invites/<token>/setup` page) are addressed; Option B is favored downstream of STACK.md but the architecture is given honest treatment for both.
+**Researched:** 2026-04-23
+**Scope:** Q1–Q8 from the spawn brief. Existing architecture (ASGI middleware discipline, `get_campaign_db` RLS, Procrastinate queue shape, ky client conventions) is taken as-is — this research is strictly about where the new seams go and what order they get built in.
 
 ---
 
-## Q1. Where does `create_human_user` belong?
+## Q1. fastapi-users dependencies + `get_campaign_db` RLS — coexistence, order, set_config interaction
 
-### Recommendation: **(b) — async on the `communications` queue**, with one tweak.
+### Summary
 
-Specifically: a **new Procrastinate task** `provision_invite_identity` on the `communications` queue, queued immediately after invite commit, that **chains into** `send_campaign_invite_email` only on success. Email sending becomes downstream of identity provisioning, not parallel to it.
+`current_active_user` and `get_campaign_db` are **independent, orthogonal dependencies** and compose by stacking. **Order does not matter at dependency-resolution time** (FastAPI resolves each once per request, caches, and hands the values to the path operation). Order *does* matter at runtime observable-behavior time in exactly one dimension: transaction-scoped `set_config('app.current_campaign_id', ..., true)` is bound to the session FastAPI yields — the fastapi-users lookup must NOT share that session, because fastapi-users reads `access_token` and `user` rows that live **outside** campaign scope and RLS could deny them.
 
-### Rationale by option
-
-**(a) Synchronous inside `create_invite`** — REJECTED.
-- Fails the existing v1.16 contract that invite-creation is durable-then-deliver. Today `create_invite` commits the invite row, *then* `enqueue_invite_email` updates delivery state and defers the email (`app/services/invite.py:99-113, 148-174`). A synchronous ZITADEL call inside `create_invite` re-introduces a foreign-system blocker on the request path that v1.16 deliberately removed for email.
-- Failure mode: ZITADEL slow/down → admin's "Send invite" button spins for 15s then errors. Admin retries, may create a duplicate invite (the existence check at `invite.py:83-97` only catches *pending* invites — but if the first attempt rolled back the invite *and* a partial ZITADEL user lingers, idempotency now lives across two systems with no durable handoff).
-- Failure mode: ZITADEL succeeds, then DB commit fails → orphaned ZITADEL user. We have no compensating tx today.
-- The only argument for (a) is "fail fast so the admin sees the error." That argument is weaker than it looks: the admin already cannot tell from the create response whether the email was delivered (that's async). Adding partial sync provisioning makes the failure surface more confusing, not less.
-
-**(b) Pure async on `communications`** — RECOMMENDED.
-- Matches v1.16's invite-delivery shape exactly: invite commits → defer task → task is durable, retryable, observable via `email_delivery_status` + (new) `identity_provisioning_status` columns on `Invite`.
-- Failure mode: ZITADEL down → Procrastinate retries with backoff (already configured for the queue). Invite row exists with `identity_provisioning_status="failed"` after exhausted retries; admin pending-invites table (v1.16) surfaces it; admin retries via the resend button. No data loss.
-- Failure mode: ZITADEL succeeds, email send fails → next attempt of the email task no-ops the user-create (because the `provision_identity` step already wrote the `zitadel_user_id` onto the Invite row). Idempotent by construction.
-- Failure mode: invite revoked between provision and email → email task skip-path (`invite_tasks.py:44-49`) already handles this; just extend it to also skip provisioning if revoked first.
-- **The required tweak:** today the email task and provisioning task are conceptually one job. Splitting them as two independent queue items risks email being sent before the ZITADEL user exists (Option B's invite-code link would 404 at ZITADEL). Use **task chaining**: `provision_invite_identity` is enqueued first; on success it enqueues `send_campaign_invite_email`. Or, simpler and what I'd ship: **fold the provisioning step into the start of `send_campaign_invite_email`** (one new function call, guarded by an `if invite.zitadel_user_id is None:` check). One queue item, one durable retry envelope, no chaining gymnastics.
-
-**(c) Hybrid (sync user-create, async email)** — REJECTED.
-- All the failure surface of (a) for the user-create, and none of the recovery affordances of (b). The split also creates a new failure mode unique to the hybrid: user-create succeeds, request handler crashes before deferring the email → orphaned ZITADEL user with no email ever sent. (b) does not have this hole.
-
-### Concrete shape (recommended)
+### Concrete dependency shape (recommended)
 
 ```python
-# app/tasks/invite_tasks.py
-@procrastinate_app.task(name="send_campaign_invite_email", queue="communications")
-async def send_campaign_invite_email(*, invite_id: str, campaign_id: str) -> None:
+# app/auth/users.py  (new)
+from fastapi_users import FastAPIUsers
+fastapi_users = FastAPIUsers[User, uuid.UUID](get_user_manager, [auth_backend])
+current_active_user = fastapi_users.current_user(active=True)
+current_verified_user = fastapi_users.current_user(active=True, verified=True)
+current_superuser   = fastapi_users.current_user(active=True, superuser=True)
+
+# app/api/deps.py  (modified)
+async def get_campaign_db(
+    campaign_id: uuid.UUID,
+    user: User = Depends(current_active_user),   # <-- new: gates RLS session
+) -> AsyncGenerator[AsyncSession]:
     async with async_session_factory() as session:
-        await set_campaign_context(session, campaign_id)
-        invite = await session.get(Invite, uuid.UUID(invite_id))
-        # ... existing skip / expiry checks ...
-
-        # NEW: ensure ZITADEL identity exists before we can send the link.
-        if invite.zitadel_user_id is None:
-            await ensure_zitadel_identity_for_invite(session, invite, campaign)
-            # writes invite.zitadel_user_id, commits, raises on hard failure
-            # so Procrastinate retries the whole task
-
-        # Option B: also generate and stash the invite code (or have the email
-        # template fetch a fresh one each time — see Q2).
-        # ... existing email send path, now with init_url in template context ...
+        await set_campaign_context(session, str(campaign_id))
+        # Also set user-scoped RLS var if we ever add user-level policies.
+        yield session
 ```
 
-`ensure_zitadel_identity_for_invite` lives in a new `app/services/identity_provisioning.py` (tight scope, easy to test), is fully idempotent (Q2), and writes its outcome onto the `invite` row before returning. The email task is the single durable retry boundary.
+**Why `current_active_user` comes FIRST (as a sub-dep of `get_campaign_db`):**
 
-### Fit with v1.16 pattern
+1. **Authorization check happens before RLS context** — an unauthenticated request should get a 401 without ever touching a DB connection from the pool. Today's `require_role()` already works this way (see `app/core/security.py:396`) — we keep that invariant.
+2. **fastapi-users needs its own session for `access_token` + `user` lookup**. `fastapi-users` `DatabaseStrategy` uses an `SQLAlchemyAccessTokenDatabase` that takes a session via `get_async_session` dependency. That dep must be **separate** from `get_campaign_db` — it opens a session, looks up the `access_token` row by the cookie value, validates expiry, and yields the `User`. That session either (a) has no RLS context set (nil UUID default from pool checkout) or (b) is a dedicated session factory that bypasses campaign RLS for auth-table queries. We already have `get_db()` (non-RLS) in `app/db/session.py` — use it.
 
-This *is* the v1.16 pattern: delivery-status columns on `Invite`, post-commit `defer_async`, queueing_lock per invite, status visible in admin pending-invites UI. We are extending the same shape with a sibling concern (identity provisioning) rather than adding a parallel one. Status on the Invite row gets one new column family: `identity_provisioning_status`, `identity_provisioning_error`, `identity_provisioning_at`, mirroring the `email_delivery_*` columns from v1.16/v1.17.
+### Transaction-scoped RLS + fastapi-users: the sharp edge
+
+The v1.5 transaction-scoped RLS fix (`set_config(..., true)`) means **`db.commit()` clears `app.current_campaign_id`**. The `ensure_user_synced` helper in `deps.py` already captures and restores this (lines 110-115, 251-252). fastapi-users' login/register/verify endpoints all commit — but **they use their own session, scoped to the `users`/`access_token` tables only**, never a `get_campaign_db` session. So no interaction. Do NOT try to share the session across fastapi-users' internal DB ops and campaign-scoped routes.
+
+The one integration gap: after `current_active_user` resolves the User, we still need the campaign-member lookup that `require_role()` does today (resolve effective campaign role against `CampaignMember` + `OrganizationMember`). That lookup must run on the **campaign-scoped** session (it needs RLS), which is what `get_campaign_db` yields. So the final shape is:
+
+```
+Depends(current_active_user)          # auth — own session, no RLS
+   → Depends(get_campaign_db)         # RLS session, takes user
+       → Depends(require_role(...))   # role check on RLS session
+```
+
+`require_role()` becomes a thin wrapper that takes both deps and performs the additive campaign+org role resolution already in `security.py:_resolve_effective_role`. The JWT-based `AuthenticatedUser` shape goes away entirely; `User` from SQLAlchemy is passed through directly.
+
+### Files
+
+- **New:** `app/auth/users.py` (fastapi-users wiring), `app/auth/backend.py` (CookieTransport+DatabaseStrategy), `app/auth/user_manager.py` (UserManager subclass with `validate_password`, `on_after_register`, `on_after_forgot_password` hooks)
+- **Modified:** `app/api/deps.py` (gate `get_campaign_db` on `current_active_user`, remove `ensure_user_synced` JWT path, keep org/campaign-member ensure as an `on_after_login` hook OR keep it inline but driven by User row not JWT claims)
+- **Modified:** `app/core/security.py` (delete `JWKSManager`, `get_current_user`, `get_optional_current_user`; keep `CampaignRole`, `OrgRole`, `_resolve_effective_role`, `require_role` with new signature)
+- **Deleted:** All JWT/JWKS machinery in `security.py`, all `app.state.jwks_manager` wiring in `main.py`
 
 ---
 
-## Q2. Idempotency — where does it live?
+## Q2. User-table migration strategy
 
-### Recommendation: **All three layers, each doing one job.**
+### Verdict: **(b) single-migration reshape with zero-password state**, ONLY after verifying (c) is not available — and (c) IS available in practice.
 
-| Layer | Responsibility | Why we need it |
-|-------|---------------|----------------|
-| Procrastinate `queueing_lock="invite-provision:{invite.id}"` | Prevents double-enqueue from concurrent admin clicks / retries within the request | Already used at `invite.py:163` for email; mirror exactly |
-| DB constraint on `Invite (campaign_id, email, accepted_at IS NULL, revoked_at IS NULL)` | Prevents two pending invites for the same email+campaign | Already enforced by the existence check at `invite.py:83-97`; v1.17 may have promoted it to a partial unique index — verify and keep |
-| `ZitadelService.ensure_human_user(email)` — search-then-create at the service boundary | Prevents duplicate ZITADEL users across re-invites in *different* campaigns, and across Procrastinate retries that may run after a partial success | The proven pattern (`bootstrap-zitadel.py:131,447` and `ensure_project_grant` at `zitadel.py:463`) |
+### Prod user audit (verify before proceeding)
 
-### Why all three (not "just one")
+Before committing to any strategy, someone must run this exact check against prod:
 
-Each layer catches a different race:
+```bash
+kubectl exec -it deploy/run-api -n civpulse-prod -- \
+  uv run python -c "
+import asyncio
+from sqlalchemy import select, func
+from app.db.session import async_session_factory
+from app.models.user import User
+async def main():
+    async with async_session_factory() as s:
+        n = await s.scalar(select(func.count()).select_from(User))
+        rows = (await s.execute(select(User.id, User.email).limit(20))).all()
+        print(f'count={n}', rows)
+asyncio.run(main())
+"
+```
 
-1. **Queueing lock** catches the in-process race: admin clicks "Send invite" twice in 200ms, or the request handler crashes between defer and commit and the retry path fires. Without it, two tasks run concurrently and both try to provision.
-2. **DB constraint** catches the cross-request race at the right semantic level: "you already have a pending invite for this person in this campaign — refuse." This is a business-rule guard, not an idempotency guard, but it usefully prevents the case where the invitee gets two emails for the same campaign.
-3. **Search-then-create at the ZITADEL boundary** catches the cross-campaign case (Bob is invited to Campaign A, accepts, then is invited to Campaign B — must not create a second ZITADEL user) AND the cross-retry case (provisioning task ran, succeeded at ZITADEL, crashed before writing `invite.zitadel_user_id`, retries — must not create a second user). DB constraints can't catch this because each invite row is legitimately distinct; the dedup must happen at the ZITADEL identity boundary.
+Based on `scripts/reset_prod.py` existing at all (explicit tool for wiping prod to single-org demo) and the v1.13 production shakedown history (GO-with-conditions, no real customer traffic), the working hypothesis is **(c) — no real prod users exist; seed + E2E regeneration is the honest path.** But this requires an explicit confirmation from the operator before the migration ships.
 
-### The `ensure_human_user` shape (mirrors `ensure_project_grant`)
+### If (c) holds: recommended path
+
+1. **Alembic migration 042_native_auth_user_reshape** — single migration:
+   - Add columns: `hashed_password TEXT NOT NULL` (no default — the migration will populate from a placeholder), `is_active BOOLEAN NOT NULL DEFAULT true`, `is_superuser BOOLEAN NOT NULL DEFAULT false`, `is_verified BOOLEAN NOT NULL DEFAULT false`
+   - Change PK: `id` from `VARCHAR(255)` (ZITADEL sub) to `UUID`. **This is the FK blast radius** — 27 tables reference `users.id` (see audit below). Strategy: keep `users.id` as TEXT for now, OR do a staged rename. Honest choice: **keep PK as TEXT/VARCHAR(36) holding a UUID string**. fastapi-users accepts a custom ID type via the `FastAPIUsers[User, UUID]` generic — but the underlying column can be stored as string. Check Context7/fastapi-users docs for the `SQLAlchemyBaseUserTableUUID` vs custom ID type decision.
+   - Drop columns: any `zitadel_user_id`, `zitadel_sub` on `users` (the actual `user.py` model is lean — see below — but confirm via `\d users` in psql; migrations may have added columns outside the model).
+   - Populate `hashed_password` with a deterministic "unusable" marker (e.g., argon2 hash of a random secret that's immediately discarded). All existing user rows are effectively zombied.
+   - Seed + `create-e2e-users.py` regenerate the demo + test users using the new `/auth/register` admin endpoint, so no usable state is left behind.
+
+2. **FK impact (27 tables, all pointing at `users.id`):** if PK stays as string (storing UUID text), no FK migration needed. If PK changes to native UUID, every FK column needs ALTER. **Recommend string-stored UUID** to avoid 27 concurrent ALTER TABLEs on a live DB — much cheaper migration, and fastapi-users doesn't care.
+
+3. **Current User model is blessedly thin** (`app/models/user.py` — 32 lines, columns `id/display_name/email/created_at/updated_at`). No ZITADEL columns in the model. The tight shape is a gift; the reshape is small.
+
+### If (c) does NOT hold (prod has real users): fallback is (a)
+
+- Add fastapi-users columns *alongside* existing columns in one migration (`hashed_password` NULLABLE initially).
+- Build a "claim your account" flow: users receive a one-time email, set password, `hashed_password` populated, `is_verified=true`.
+- Cutover: when all users claimed, second migration makes `hashed_password` NOT NULL and drops any remaining ZITADEL columns.
+- This is a 4–6 week user-facing migration, not a code migration. Do NOT pick this unless prod user count > 0.
+
+### Explicit gate
+
+**Do not merge the migration until the prod audit returns count=0 or count=small-list-of-internal-staff-who-can-reset.** This is a plan-phase gate, not a research deliverable.
+
+---
+
+## Q3. CSRF middleware placement + exemptions + token delivery
+
+### Middleware order (definitive)
+
+FastAPI/Starlette middleware execute in **reverse registration order on the request path, forward order on the response path**. So the last `add_middleware` call is the outermost on the response. Recommended registration order (copy to `app/main.py`):
 
 ```python
-# app/services/zitadel.py
-async def ensure_human_user(
-    self,
-    *,
-    email: str,
-    given_name: str,
-    family_name: str,
-    org_id: str | None = None,
-) -> str:
-    """Return ZITADEL userId for email, creating the user if absent."""
-    # 1) Search first — cheap, avoids 409 noise in metrics
-    existing_id = await self._find_user_by_email(email, org_id=org_id)
-    if existing_id is not None:
-        return existing_id
-    # 2) Create. On 409 (race lost to a concurrent caller), re-search and return.
-    try:
-        return await self._create_human_user(email, given_name, family_name, org_id)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (409, 400) and _is_already_exists(exc):
-            existing_id = await self._find_user_by_email(email, org_id=org_id)
-            if existing_id:
-                return existing_id
-        raise
+app.add_middleware(CORSMiddleware, ...)              # registered first → outermost on request
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(StructlogMiddleware)              # pure ASGI, ContextVars
+app.add_middleware(CSRFMiddleware)                   # new, pure ASGI
+# fastapi-users routes mounted via include_router — no middleware
 ```
 
-Search-then-create > create-then-409-fallback because email-uniqueness lookups are cheap and the search-first path keeps the happy path quiet in logs/metrics. `ensure_project_grant` uses create-first because grants are rarely re-created; users-by-email are commonly re-checked.
+Rationale:
+- **CORS first** so preflights never reach CSRF (OPTIONS requests have no cookies anyway).
+- **StructlogMiddleware before CSRF** so CSRF failures are logged with the same request_id as any other failure.
+- **CSRF is pure ASGI, not BaseHTTPMiddleware** — this matches the existing `StructlogMiddleware` pattern and avoids the streaming-response hazard called out in `PROJECT.md` Key Decisions. The ~40 LOC commitment in the decision note is compatible with pure ASGI; a BaseHTTPMiddleware version would also be ~40 LOC but would break streaming and is explicitly off-limits.
+
+### Endpoints exempt from CSRF
+
+The double-submit pattern requires the client to echo a cookie value in a header — which is impossible on the very first request, before any cookie is set. So:
+
+**Exempt (no cookie yet, or pre-session):**
+- `POST /auth/register` (public registration — if ever enabled; currently out of scope)
+- `POST /auth/cookie/login` (fastapi-users login endpoint name — confirm via Context7; see below)
+- `POST /auth/forgot-password`, `POST /auth/reset-password`
+- `POST /auth/request-verify-token`, `POST /auth/verify`
+- `POST /invites/{token}/accept` (public invite acceptance — no session yet)
+- `GET /health/*`
+- `GET /api/config` (public runtime config fetch)
+
+**Enforced (session-cookie-bearing requests):**
+- All `/api/v1/*` endpoints
+- `POST /auth/logout` (state-changing, session-bearing — enforce)
+
+### How the CSRF token reaches the frontend
+
+Three candidates; evaluated:
+
+1. **HTML meta tag injected by FastAPI** — rejected. The SPA is served statically (or by Vite in dev); injecting a per-request meta tag requires server-side rendering, which we don't do.
+2. **JSON endpoint (`GET /auth/csrf-token`)** — workable but adds a roundtrip on every app boot.
+3. **Cookie readable by JS (double-submit proper)** — **recommended**. The CSRF cookie (`csrf_token`) is set by the login endpoint (and refreshed on any state-changing response), `httponly=False` so JS can read it, `samesite="lax"`, `secure=true` in prod. The session cookie (`fastapiusersauth` or whatever we name it) is `httponly=True`. `ky.beforeRequest` reads `document.cookie`, extracts `csrf_token`, sets `X-CSRF-Token` header. CSRF middleware compares header value to cookie value — equal and non-empty → pass, else → 403.
+
+This is textbook OWASP double-submit. The header name `X-CSRF-Token` is already in the decision note.
+
+### Files
+
+- **New:** `app/core/middleware/csrf.py` (pure ASGI, ~40 LOC, exempt list is a `frozenset[str]` of path prefixes)
+- **New:** `app/auth/csrf.py` (helper to set the CSRF cookie from auth backend `on_after_login`)
+- **Modified:** `app/main.py` (registration order), `web/src/api/client.ts` (read cookie, set header in `beforeRequest`)
 
 ---
 
-## Q3. New endpoints needed
+## Q4. Frontend auth rewire — blast radius
 
-### Option B — **Zero new endpoints required.**
+### Inventory of touched frontend surfaces
 
-The init-link in the invite email points at ZITADEL's hosted password-set page (origin: `auth.civpulse.org`). After password-set, ZITADEL redirects to the `urlTemplate` we registered — which should be `https://run.civpulse.org/invites/{{.InviteToken}}` (we pass our invite token through ZITADEL's URL template machinery so the user lands on the *existing* `/invites/$token` route already authenticated, and clicks Accept).
+Found by grepping for `oidc-client-ts`, `access_token`, `Authorization`, `useAuthStore`:
 
-Note: ZITADEL's default `urlTemplate` placeholders are `{{.UserID}}`, `{{.LoginName}}`, `{{.Code}}`, `{{.OrgID}}` — there is **no `{{.InviteToken}}` placeholder out of the box**. Two fixes either of which works:
+| Surface | Current behavior | New behavior |
+|---|---|---|
+| `web/src/api/client.ts` | `beforeRequest` fetches `useAuthStore.getState().getAccessToken()` and sets `Authorization: Bearer` | Set `credentials: 'include'` on the ky instance; read `csrf_token` cookie via `document.cookie`, set `X-CSRF-Token` header |
+| `web/src/stores/authStore.ts` | Full `oidc-client-ts` `UserManager` lifecycle (initialize, login/logout redirects, silent renew) | Rewrite: state = `{ user, isAuthenticated, isLoading }`; `login(email, password)` POSTs to `/auth/cookie/login`; `logout()` POSTs to `/auth/cookie/logout`; `fetchMe()` GETs `/users/me`. No redirects, no localStorage user storage |
+| `web/src/routes/callback.tsx` (if present) | OIDC redirect callback handler | **Delete** — no more redirect flow |
+| `web/src/routes/login.tsx` | "Sign in with ZITADEL" button that calls `login()` | Real form: email + password, `react-hook-form + zod`, submits to authStore |
+| Route guards (TanStack Router `beforeLoad` hooks) | Check `isAuthenticated` from authStore | Unchanged — the store's `isAuthenticated` boolean remains the guard signal |
+| TanStack Query hooks (e.g., `useCampaigns`, every `useX`) | Inherit auth via `api` ky instance | Unchanged — ky handles it |
+| `web/src/config.ts` (`loadConfig`) | Fetches ZITADEL issuer/client_id | Can be deleted or reduced to app-level config only |
+| `web/.env.local` | ZITADEL issuer, client IDs | Remove all VITE_ZITADEL_* |
+| `web/e2e/auth-flow.ts` | Playwright storageState bootstrap via ZITADEL UI | Rewrite: POST to `/auth/cookie/login` directly, Playwright captures the `Set-Cookie` into storageState |
 
-- **(b1)** Persist a sidecar lookup `zitadel_user_id → invite_id` (or just put `zitadel_user_id` on Invite as recommended in Q1, then query by it on the landing page) and template the URL as `https://run.civpulse.org/invites/zitadel-callback?userID={{.UserID}}&code={{.Code}}`. Add a small `/invites/zitadel-callback` route on the frontend that POSTs to a new `GET /api/v1/public/invites/by-zitadel-user/{user_id}` lookup → 302s to `/invites/<token>`. **One new lookup endpoint.**
-- **(b2)** Bake the invite token into the `urlTemplate` at `CreateInviteCode` time as a literal: `https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}`. Per ZITADEL docs the URL template is per-invite, so we can substitute our own values *into the template string itself* before sending it. **Zero new endpoints.** This is the cleaner path and what I'd ship.
+### CSRF token injection point
 
-So Option B's frontend lands at the existing `/invites/$token` route, which already has the "Accept invite" UX. We just need that route to:
-- detect the user is now authenticated (oidc-client-ts session is fresh from the ZITADEL redirect)
-- and behave exactly as it does today for an authed user clicking Accept.
-
-No backend endpoint changes for Option B. (Optional: a `POST /api/v1/invites/{id}/resend` admin endpoint for the v1.16 admin pending-invites table, which would re-call `CreateInviteCode` — but that's strictly the resend feature, not Option B itself.)
-
-### Option C — One new endpoint, plus a policy-fetch endpoint.
-
-```
-POST /api/v1/public/invites/{token}/register
-```
-
-**Closest analog:** `POST /api/v1/join/{slug}/register` at `app/api/v1/join.py:64-100`. Same shape — public, rate-limited, uses the URL token as the gate, registers something. Differences below.
-
-| Aspect | `/join/{slug}/register` (today) | `/invites/{token}/register` (proposed) |
-|--------|-----------------------------------|----------------------------------------|
-| Auth | `Depends(get_current_user)` — requires the user to *already* be authed via ZITADEL | **None**. The invite token IS the bearer. The whole point is the user has no credentials yet. |
-| Body | `{}` (the slug is the only input) | `{"password": "<plaintext>"}` — sent over TLS only. Validate length + non-empty server-side; ZITADEL validates against full policy on submit. |
-| Response | `JoinResponse(message, campaign_id, volunteer_id)` | `{"status": "password_set", "next": "/invites/{token}", "login_hint": "<email>"}` — return JSON, **NOT** tokens or cookies. The frontend uses `next` + `login_hint` to start the OIDC flow via oidc-client-ts on the next step. |
-| Rate limit | `@limiter.limit("10/minute")` (per IP, default key) | **`@limiter.limit("5/minute", key_func=lambda req: token_from_path(req))`** — per-token, not per-IP. Cap also at the IP layer for safety: a separate `@limiter.limit("20/minute")` per IP. |
-| Token validation | slug → campaign | token → invite via `InviteService.validate_invite` (which already enforces expiry, accepted, revoked). Reject 404 on invalid token *before* doing any work. |
-| Side effects | Creates Volunteer, optionally CampaignMember | Calls `ZitadelService.set_user_password(zitadel_user_id, password)`. Does NOT mark invite accepted (acceptance happens on the existing `/invites/{token}/accept` endpoint after auth). |
-
-**Why no token return.** Returning JWTs from this endpoint would mean the backend mints user sessions, which it doesn't today (ZITADEL is the IdP — backend only validates JWTs at the edge per `app/api/deps.py`). Setting cookies cross-origin from `run-api.civpulse.org` to `run.civpulse.org` brings the SameSite headache. Cleanest is: backend confirms password-set succeeded → frontend kicks off the standard OIDC redirect with `login_hint=<email>` so ZITADEL pre-fills the username field; the user re-types the password they just set on ZITADEL's hosted login (one extra step) and lands authenticated. This is the Option C non-ROPC variant from STACK.md and accepts the "two trips" UX cost noted there.
-
-**The ROPC alternative** (`signinResourceOwnerCredentials` immediately after password set) eliminates the second trip but requires the SPA security regression flagged in STACK.md. If the team chooses ROPC, the backend endpoint shape doesn't change — only the frontend's response handling changes.
-
-```
-GET /api/v1/public/invites/{token}/password-policy   (Option C only, optional)
+```ts
+// web/src/api/client.ts (new)
+export const api = ky.create({
+  prefixUrl: API_BASE_URL,
+  credentials: "include",                          // <-- cookies ride automatically
+  hooks: {
+    beforeRequest: [
+      (request) => {
+        const method = request.method.toUpperCase()
+        if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+          const csrf = getCookie("csrf_token")     // doc.cookie parser
+          if (csrf) request.headers.set("X-CSRF-Token", csrf)
+        }
+      },
+    ],
+    afterResponse: [/* 401 → clear store; 403 → PermissionError (existing) */],
+  },
+})
 ```
 
-Returns sanitized password complexity policy from ZITADEL for client-side hints. Same auth model as above (token is the bearer). Cache policy server-side (1h TTL) to keep ZITADEL load minimal.
+No `beforeRequest` token read from the auth store anymore (the cookie handles it). GET/HEAD/OPTIONS don't need CSRF header — middleware exempts safe methods.
+
+### `useAuth` surface
+
+New shape (public API consumed by components):
+
+```ts
+interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean                       // new — needed because no synchronous OIDC session
+  login(email: string, password: string): Promise<void>
+  logout(): Promise<void>
+  refresh(): Promise<void>                 // calls /users/me
+}
+```
+
+Components using `useAuthStore` today mostly read `user` and `isAuthenticated` — low churn. The `getAccessToken()` method disappears entirely (token is in an httpOnly cookie, unreachable from JS — which is the point).
 
 ---
 
-## Q4. Frontend route changes
+## Q5. Invite flow integration
 
-### Option B — **Effectively zero.**
+### Current flow (ZITADEL-era)
 
-- `web/src/routes/invites/$token.tsx`: the existing route already handles "user is authenticated → show Accept button" and "user is unauthenticated → redirect to /login." After ZITADEL completes setup and redirects back to `/invites/<token>`, oidc-client-ts will pick up the session (the redirect from ZITADEL carries the auth cookie at `auth.civpulse.org`; on next API call, the silent renew flow restores it). No code change.
-- `web/src/routes/login.tsx`: minor copy/handling tweak so the bounced-through-login case doesn't leave the user staring at "Redirecting…" (Table-Stakes #10 from FEATURES.md). Optional, not strictly required for Option B to function.
-- One new frontend file possibly: `web/src/routes/invites/zitadel-callback.tsx` if we go with the (b1) variant from Q3. Not needed if (b2).
+Email link → `/invites/{token}` landing → ZITADEL redirect (hosted login/password-set) → callback → accept. Broken because ZITADEL login app bundling (Phase 111 FAIL).
 
-### Option C — One new route file plus copy.
+### New flow (recommended)
+
+1. Email link → `/invites/{token}/setup` (single URL, single route component).
+2. Frontend `GET /api/v1/invites/{token}` returns `{invite: {email, campaign_name, expires_at}}` — public endpoint, no auth required, rate-limited.
+3. User sees: email (prefilled, read-only), password input, confirm-password input, live policy validator. Submits to `POST /api/v1/invites/{token}/accept` with `{password}`.
+4. Backend endpoint:
+   - Validates token (same checks as today: exists, not revoked, not expired, not already accepted).
+   - Validates password against policy (Q-AUTH-02 rule set).
+   - Creates `User` row (hashed password via fastapi-users `UserManager.create`, `is_verified=true` if Q-AUTH-01 resolves to "invite-as-proof").
+   - Creates `CampaignMember` / `OrganizationMember` rows with invite-assigned role.
+   - Sets `invite.accepted_at`.
+   - **Mints session** (see below).
+   - Returns 200 with Set-Cookie headers for session + CSRF.
+5. Frontend receives response, updates authStore, router navigates to campaign dashboard.
+
+### Session minting at invite-accept
+
+fastapi-users' `auth_backend.login(strategy, user)` is the canonical way to write a session. It returns a `Response` with cookies set. Inside a custom endpoint, you do:
+
+```python
+@router.post("/invites/{token}/accept")
+async def accept_invite(
+    token: str,
+    payload: AcceptInvitePayload,
+    user_manager: UserManager = Depends(get_user_manager),
+    strategy: DatabaseStrategy = Depends(auth_backend.get_strategy),
+    db: AsyncSession = Depends(get_db),
+):
+    # ... validate invite, create user via user_manager ...
+    new_user = await user_manager.create(UserCreate(email=..., password=...))
+    # ... create members, mark invite accepted ...
+    return await auth_backend.login(strategy, new_user)
+```
+
+This works for a freshly-created user; there's no separate "first-login" ceremony. The user's browser receives the session cookie in the same response that confirms the invite was accepted. **One network round-trip, one page — no intermediate "now please log in" step.** This is the primary UX argument for DIY over ZITADEL's urlTemplate path — we finally own this flow.
+
+### Single route vs. split route
+
+**Recommendation: single `/invites/{token}/setup` route** (not `/invites/{token}` → redirect to `/setup-password?invite=...`). One URL, one bookmark, one place for the UX to evolve. Splitting adds an unnecessary redirect and two sources of truth for invite state.
+
+### Files
+
+- **New:** `app/api/v1/invites.py` (expand existing; add public `/invites/{token}` GET and `/invites/{token}/accept` POST)
+- **New:** `app/schemas/auth.py` (AcceptInvitePayload, UserCreate wrapper)
+- **Modified:** `web/src/routes/invites.$token.setup.tsx` (new file-based route) and delete old ZITADEL-redirect-based invite landing
+
+---
+
+## Q6. Procrastinate tasks for auth emails
+
+### Recommendation: **extend existing `communications` queue, new module `app/tasks/auth_tasks.py`**
+
+Not one monolithic `invite_tasks.py` — three distinct templates (password-reset, email-verify, invite) share delivery machinery but have distinct triggers, distinct schema updates, and distinct retry semantics. Organizing as:
 
 ```
-web/src/routes/invites/$token.setup.tsx   (NEW)
+app/tasks/
+  invite_tasks.py      # existing — campaign invite email (unchanged)
+  auth_tasks.py        # NEW — password_reset_email, verify_email_email
+  import_task.py       # existing
+  sms_tasks.py         # existing
 ```
 
-TanStack Router file-based routing means this nests *under* `$token.tsx` as a sibling segment. Path: `/invites/<token>/setup`. The existing `$token.tsx` continues to be the index route at `/invites/<token>`.
+All three auth tasks live on the `communications` queue so they share Mailgun rate limits, delivery audit (`email_delivery_attempt` table from v1.16), and the same retry envelope.
 
-**Layout sibling files (existing for reference):**
-- `web/src/routes/invites/$token.tsx` — invite landing page (loads, renders campaign/role context, "Accept invite" button when authed)
-- `web/src/routes/signup/$token.tsx` — volunteer-application flow (different feature, similar pattern of "public token gate" page)
+### Commit/durability seam
 
-Both are good crib references. `signup/$token.tsx` in particular already has the public-token-gated-form pattern.
+Identical to v1.16's invite-email shape (`app/tasks/invite_tasks.py` and `app/services/invite.py:99-113`):
 
-**Setup page flow:**
+1. fastapi-users `UserManager.on_after_forgot_password(user, token)` hook fires.
+2. Hook calls a **thin synchronous function** that writes a `password_reset_request` row (or inlines onto User.last_password_reset_token / etc. — schema decision in plan-phase) and then calls `procrastinate_app.defer_async("send_password_reset_email", user_id=str(user.id), token=token)`.
+3. Procrastinate persists the job to Postgres (same transaction if we're clever about it; otherwise post-commit `defer` via the SQLAlchemy event listener pattern v1.16 uses).
+4. Worker picks up the job, renders the template via existing `app/services/email_templates.py`, sends via Mailgun, writes to `email_delivery_attempt`.
 
-1. On mount: `GET /api/v1/public/invites/{token}` (existing) to confirm the token is valid + load context for the framing. Reuses existing TanStack Query key `["public-invite", token]`.
-2. Render shadcn/ui form (RHF + Zod): one password field with show-toggle, live strength meter from `GET /api/v1/public/invites/{token}/password-policy`, primary CTA "Set password & continue."
-3. On submit: `POST /api/v1/public/invites/{token}/register` with `{password}`. On success, store `next` in sessionStorage under the existing `POST_LOGIN_REDIRECT_KEY`.
-4. **Hand-off to OIDC:**
-   - **Non-ROPC path:** call `useAuthStore.getState().login()` (or directly `userManager.signinRedirect({ extraQueryParams: { login_hint: invite.email } })`). User redirects to ZITADEL hosted login, types the password they just set, redirects back to `/auth/callback`, then `/invites/<token>` (the redirect target stored in step 3). One extra password-entry step.
-   - **ROPC path (if approved):** `await userManager.signinResourceOwnerCredentials({ username: invite.email, password })` immediately, then `navigate({ to: "/invites/$token", params: { token } })`. No second password entry. Requires SPA-app changes per STACK.md.
+The durability seam is **the Procrastinate job row** — if the API crashes between writing the reset-token and deferring the job, fastapi-users' default behavior is to have the user re-click "forgot password." Acceptable. If stricter durability is needed, use the post-commit listener pattern from v1.16.
 
-**Files to add (Option C):**
-- `web/src/routes/invites/$token.setup.tsx` — the page
-- `web/src/components/invite/PasswordSetupForm.tsx` — the RHF + Zod form (cribbed from existing form patterns)
-- Optional: `web/src/types/invite.ts` extension for `PasswordPolicy` type
-- Update copy on `web/src/routes/invites/$token.tsx` to recognize and link into the setup page when the user lands there unauthed *and* the invite metadata says "first-time user" (signal computed server-side from `zitadel_user_id IS NOT NULL AND identity_provisioning_status = 'provisioned' AND user_has_password = false` — see Q5 for where that signal can come from).
+### fastapi-users hook → Procrastinate bridge
 
----
+```python
+# app/auth/user_manager.py
+class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
+    async def on_after_forgot_password(self, user, token, request=None):
+        await procrastinate_app.defer_async(
+            "send_password_reset_email",
+            user_id=str(user.id),
+            token=token,
+        )
 
-## Q5. Local `users` table sync — pre-create or wait?
+    async def on_after_request_verify(self, user, token, request=None):
+        await procrastinate_app.defer_async(
+            "send_verify_email", user_id=str(user.id), token=token,
+        )
+```
 
-### Recommendation: **Wait. Do NOT pre-create the local `users` row.**
+### Files
 
-`ensure_user_synced` (`app/api/deps.py:91-160`) uses the JWT `sub` as the canonical id, and runs idempotently on first authed request. Knowing the `sub` early (because we just created the ZITADEL user) is *technically* enough to insert a `users` row early, but the costs outweigh the benefits.
-
-### The case for pre-creating
-
-- Admin sees "Bob Smith — invite pending" in the campaign roster instead of just "bob@…".
-- One fewer round-trip on the user's first authed request (the row already exists, `ensure_user_synced` short-circuits to the update branch).
-- We could pre-create the `CampaignMember` row too, so admin tools that filter on members would see the invitee immediately.
-
-### The case against (stronger)
-
-1. **Display-name unknown at invite time.** The current invite-create form takes only `email` and `role` (`invite.py:36-43`). `User.display_name` would be empty or a guess from the email local-part — both worse than letting ZITADEL collect a real name during signup and syncing on first request. (The `signup/$token` flow takes a name; the invite flow does not.)
-2. **The display problem already has a solution.** The Invite row carries `email` (and via `created_by` the inviter context). The admin pending-invites UI from v1.16 already shows pending invitees by email. There's nothing the user-row would add to the admin view that the invite row doesn't already provide. Add `display_name` to the invite create form if we want richer admin display — that's a 5-LOC schema change, not a sync-architecture change.
-3. **Pre-creating the User row before first auth creates a "phantom user" foot-gun.** Today, if you query `users`, every row corresponds to someone who has authed at least once. Breaking that invariant means every read site has to know "users.last_seen_at IS NOT NULL means they've actually logged in" — a leaky abstraction across many call sites.
-4. **CampaignMember pre-create is worse.** It changes the semantics of `select(*).from(campaign_members)` everywhere — "members" would now include unaccepted invitees. Reports, RLS policies, and downstream count queries would all need an `accepted_at IS NOT NULL` filter retroactively. This is the same anti-pattern as auto-creating membership before accept (FEATURES.md anti-feature: "Auto-creating campaign membership before accept").
-5. **The first-request sync cost is negligible.** `ensure_user_synced` is 1-2 queries; the request is already paying ZITADEL JWT-validation cost. Saving a single insert is not worth the invariant change.
-
-### What to do instead
-
-- Store `zitadel_user_id` on the **Invite** row at provisioning time (we have it — write it).
-- Surface `zitadel_user_id IS NOT NULL` as the "identity provisioned" signal in admin UIs.
-- Let `ensure_user_synced` continue to be the single point of truth for `users` row creation, on first authed request, where we have the real display name from JWT claims.
-
-If the admin-UX argument is felt strongly later, the right wedge is "extend the invite create form to capture display_name, render it in admin pending-invites." Don't pre-populate `users`.
-
-### One subtle tradeoff to accept
-
-When the user first authenticates after Option B/C, `ensure_user_synced` runs and creates the `users` row using `user.id` from the JWT. That `user.id` MUST equal the `zitadel_user_id` we provisioned, because both are the same ZITADEL `sub`. If for any reason ZITADEL hands back a different `sub` than the one we recorded on the Invite (it shouldn't — `sub` is stable for a created user), the link breaks silently. Mitigation: when handling the post-OIDC accept, verify `authed_user.id == invite.zitadel_user_id`; on mismatch, log loudly and refuse the accept. (Reuses the existing email-match check pattern at `invite.py:202-205`.)
+- **New:** `app/tasks/auth_tasks.py` (2 tasks: `send_password_reset_email`, `send_verify_email`)
+- **New:** `app/services/auth_email.py` (parallels `invite_email.py` — template context builders, Mailgun submission)
+- **New:** Templates in `app/services/email_templates.py` (or the HTML template files wherever they live)
+- **Modified:** `app/auth/user_manager.py` hooks to defer tasks
 
 ---
 
-## Build-Order Sketches
+## Q7. Test harness changes
 
-### Option B (recommended) — 5 steps
+### `scripts/create-e2e-users.py` (999 lines)
 
-1. **Schema + service surface.** Alembic migration: add `zitadel_user_id`, `identity_provisioning_status`, `identity_provisioning_error`, `identity_provisioning_at` to `Invite`. Add `ZitadelService.ensure_human_user(email, given_name, family_name, org_id)` and `ZitadelService.create_invite_code(user_id, url_template)` using existing `_get_token` + 409-idempotent pattern. Unit tests for both with a mocked httpx client.
-2. **Provisioning step inside the email task.** Extend `send_campaign_invite_email` (`app/tasks/invite_tasks.py`) with a guarded `if invite.zitadel_user_id is None` block that calls a new `app/services/identity_provisioning.py::ensure_zitadel_identity_for_invite(session, invite, campaign)`. Writes outcome to invite row, raises on hard failure so Procrastinate retries. Integration test: ZITADEL stub down → task retries; ZITADEL up → user provisioned, code generated, email queued.
-3. **Email template + URL template.** Update `submit_campaign_invite_email` to template `urlTemplate` with the literal invite token (Option B variant b2 from Q3) — `https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}`. Pass to `create_invite_code`. Update first-time vs returning email templates per FEATURES.md Table-Stakes #14.
-4. **Frontend confirmation pass.** Verify `web/src/routes/invites/$token.tsx` correctly handles "user just landed via ZITADEL invite-code redirect, oidc-client-ts session is fresh." Update `/login` interstitial copy (FEATURES.md Table-Stakes #10). E2E test via `web/scripts/run-e2e.sh`: full create-invite → email-link → ZITADEL hosted setup → land on `/invites/<token>` → Accept → land on campaign.
-5. **Resend + admin polish.** Add `POST /api/v1/invites/{id}/resend` for the v1.16 admin pending-invites table (calls `create_invite_code` again — that invalidates the prior code per ZITADEL docs, which is fine). Add the "request new invite" CTA on the expired-invite frontend state (FEATURES.md Table-Stakes #8).
+Current: provisions ZITADEL users via v2 API, creates `.zitadel-data/env.zitadel` for Playwright.
 
-### Option C — 6 steps
+**Rewrite direction:** a ~100-line script that:
+1. Reads env (campaign IDs, user list).
+2. `POST`s to a new protected admin endpoint `POST /api/v1/auth/admin/bootstrap-user` (superuser-only, dev/test only — feature-flagged off in production) for each test user.
+3. Writes a `web/e2e/fixtures/users.json` with `{email, password}` pairs for Playwright to log in with.
 
-1. **Schema + service surface (same as B step 1, plus password endpoint).** Add the same Invite columns. Add `ensure_human_user`, `set_user_password`, `get_password_policy_for_org` to `ZitadelService`. Decide ROPC vs non-ROPC (this gates step 5).
-2. **Provisioning step inside the email task (same as B step 2).** Identity-provisioning logic is shared between B and C.
-3. **Email template + URL.** Email link points to `https://run.civpulse.org/invites/<token>/setup` (NOT the existing `/invites/<token>` index — the setup variant). Branch first-time vs returning per FEATURES.md.
-4. **New backend endpoints.** `POST /api/v1/public/invites/{token}/register` and `GET /api/v1/public/invites/{token}/password-policy` per Q3. Per-token rate limiting. Integration tests for: invalid token, expired token, weak password, ZITADEL-rejected password, success.
-5. **New frontend route.** `web/src/routes/invites/$token.setup.tsx` + `PasswordSetupForm` component. Implement the chosen post-set-password handoff (non-ROPC redirect or ROPC `signinResourceOwnerCredentials`). If ROPC chosen, also update `bootstrap-zitadel.py` to add `OIDC_GRANT_TYPE_PASSWORD` and a client_secret to the SPA app — and accept the security regression from STACK.md.
-6. **E2E + polish.** `web/scripts/run-e2e.sh` end-to-end: create invite → email-link → setup page → enter password → OIDC handoff → land on `/invites/<token>` authed → Accept → campaign. Resend endpoint + expired-link CTA as in B step 5.
+Alternative: skip the API and insert `User` rows directly via SQL in a migration-style script. Cleaner in the sense of zero network, but then the `hashed_password` has to be computed via argon2 in Python — doable, just requires `argon2-cffi`. **Recommend the direct-DB-insert path** (simpler, faster, matches the "we own this" posture).
+
+### Playwright `web/e2e/auth-flow.ts` storageState
+
+Current: walks ZITADEL UI, captures cookies and localStorage to `auth.json` storageState file.
+
+**New:** one-shot `POST /auth/cookie/login` via `page.request.post()`, captures cookies into storageState via `page.context().storageState({ path: "auth.json" })`. Faster (no UI walk), more reliable (no ZITADEL version sensitivity), and the storageState contains just cookies — no localStorage needed since there's no OIDC state.
+
+### `scripts/seed.py` user sections
+
+Currently creates ZITADEL users + local User rows. New: delete the ZITADEL side, keep the local-User creation with argon2-hashed passwords. ~200 LOC reduction expected.
+
+### Integration test fixtures that mock ZITADEL JWKS
+
+Grep for `JWKSManager`, `validate_token` in `tests/` — any fixture that mocks JWKS gets deleted. New fixtures mint sessions directly by POSTing to `/auth/cookie/login` with a seeded user.
+
+### Files
+
+- **Modified:** `scripts/create-e2e-users.py` (heavy rewrite — could be renamed since it's no longer ZITADEL-specific)
+- **Modified:** `scripts/seed.py` (user sections)
+- **Modified:** `web/e2e/auth-flow.ts`, `web/e2e/fixtures/` (storageState regeneration)
+- **Deleted:** Any `tests/conftest.py` fixture mocking ZITADEL JWKS; any `app/core/security.py` JWT test helpers
+- **New:** `tests/auth/test_cookie_login.py`, `tests/auth/test_csrf_middleware.py`, `tests/auth/test_invite_accept.py`, `tests/auth/test_password_reset.py`
 
 ---
 
-## B vs C — Architecture Scorecard
+## Q8. SEED-002 architecture — continuous test verification
 
-| Criterion | Option B (ZITADEL invite_code) | Option C (App-owned setup page) | Lean |
-|-----------|--------------------------------|----------------------------------|------|
-| **Build-order length (#steps)** | 5 | 6 (or 7 if ROPC variant pulls in `bootstrap-zitadel.py` work as its own step) | **B** |
-| **New backend endpoints** | 0 (1 optional resend) | 1 required (`/register`) + 1 optional (`/password-policy`) | **B** |
-| **New frontend routes/components** | 0 (just copy tweaks; possibly 1 callback route in variant b1) | 1 route + 1 form component + types | **B** |
-| **Files touched in `bootstrap-zitadel.py`** | 0 (optional: invitation message template, additive only) | 0 for non-ROPC; **3+ lines + security regression** for ROPC variant | **B** |
-| **Blast radius if it goes wrong (worst plausible failure)** | ZITADEL hosted setup page UX is off / `urlTemplate` doesn't deep-link → users land at the wrong place after setup. Recoverable: invite link is still valid until expiry; admin can resend. No data corruption, no security regression. | Non-ROPC: UX has an extra password-entry step (the FEATURES.md "Option C unifies the experience" promise softens). Recoverable. **ROPC: the SPA becomes a confidential client with a leakable secret, ROPC grant active for the org.** Hard to roll back without re-bootstrapping ZITADEL. | **B** (small blast); **C non-ROPC** (medium); **C ROPC** (large) |
-| **Fit with existing v1.16 invite-delivery pattern** | Drop-in: same Procrastinate task, same `email_delivery_*` columns extended with `identity_provisioning_*` siblings. Zero new patterns introduced. | Same provisioning fit as B, but adds a new pattern: a public token-gated POST endpoint that mutates ZITADEL state. The closest analog (`/join/{slug}/register` at `join.py:64`) requires the user to already be authed — so this endpoint type is genuinely new. Not bad, just new. | **B** |
-| **Fit with existing ZitadelService idempotency pattern** | `ensure_human_user` mirrors `ensure_project_grant` exactly. `create_invite_code` is naturally non-idempotent (each call invalidates the prior code) — that's a feature, not a bug, for resends. | Same `ensure_human_user`. `set_user_password` is naturally idempotent (set is set). Both fit. | **Tie** |
-| **Compensating-tx complexity if invite is revoked between provision and email** | None required — orphaned ZITADEL user is benign (no grants, no membership). Optional: deactivate via `POST /v2/users/{id}/deactivate` on revoke. | Same — none required. Optional same. | **Tie** |
-| **First-request `ensure_user_synced` interaction** | Identical to today. JWT `sub` = pre-provisioned `zitadel_user_id`, sync runs once, link verified by Q5's `authed_user.id == invite.zitadel_user_id` check. | Identical. | **Tie** |
+### Recommendation: **three-layer verification, built BEFORE the auth rewrite lands**
 
-### Architecture-only verdict
+1. **Pre-commit hooks** (`.pre-commit-config.yaml` at repo root):
+   - `uv run ruff check --fix` + `uv run ruff format` (already mandated but not enforced)
+   - `uv run pytest --lf -x` against the already-running docker-compose stack
+   - `cd web && npx vitest related --run` for staged TS files
+   - Fails fast with "run `docker compose up -d` first" if compose isn't up (honors the compose-only invariant from SEED-002 hard constraints)
 
-**Option B is the architecturally cheaper change** by every measure that matters: fewer endpoints, fewer routes, smaller blast radius, no new endpoint patterns, and a clean fit with the v1.16 delivery shape. Option C's only architectural advantage is "we own the page" — a product/UX argument, not an architecture argument. If the product argument is decisive, ship Option C non-ROPC and accept the extra password-entry step; do not ship Option C ROPC without a separate security review.
+2. **CI on push** (modify `.github/workflows/pr.yml` or add `push.yml`):
+   - Currently PR-only. Add `push:` trigger for feature branches (subset — unit + lint, not full Playwright) so pushes without open PRs still get signal.
+   - Full suite on `main` every push AND on PR open/sync.
+   - Every job starts with `docker compose up -d --wait` (no direct `uvicorn`/`vite` calls).
 
-The decision should still be informed by the Phase-111 `urlTemplate` spike from FEATURES.md (LOW-confidence flag): if `urlTemplate` cannot reliably deep-link to `/invites/<token>`, Option B's main UX promise weakens and Option C non-ROPC becomes more attractive.
+3. **Scheduled nightly** (new `.github/workflows/nightly.yml`):
+   - Full pytest + vitest + Playwright on `main`.
+   - On regression (tail-20 of `web/e2e-runs.jsonl` shows deterioration vs tail-100), open a GitHub issue automatically via `gh api`.
+   - Integrates with existing `web/scripts/run-e2e.sh` wrapper — it already logs JSONL; the nightly job just adds an analysis step.
+
+### Integration with `web/scripts/run-e2e.sh`
+
+Existing wrapper logs every run to `web/e2e-runs.jsonl`. Add a sibling `web/scripts/analyze-e2e-trend.sh` that:
+- Reads the last 100 runs.
+- Computes pass-rate delta between tail-20 and tail-100.
+- Exits non-zero + prints a human-readable summary if degradation exceeds a threshold (e.g., >5 percentage points).
+- Called from the nightly workflow; on non-zero exit, `gh issue create` opens a tracking ticket.
+
+### Why SEED-002 goes FIRST in v1.20
+
+Per seed's own guidance: SEED-002 is **prerequisite** to any cross-cutting work, and native-auth touches every route, every test, every fixture. If SEED-002 lands after the auth rewrite, we're back to the Phase 106 problem at a larger scale. Concrete ordering consequence: **Phase 112 must be SEED-002 infrastructure; auth work cannot start until Phase 112 is green.**
+
+### Files
+
+- **New:** `.pre-commit-config.yaml` (root)
+- **New:** `.github/workflows/nightly.yml`
+- **Modified:** `.github/workflows/pr.yml` (add `push:` trigger; split into push-quick and PR-full jobs)
+- **New:** `web/scripts/analyze-e2e-trend.sh`, `scripts/doctor.sh` (env-drift healthcheck from SEED-002 item 4)
+- **Modified:** `scripts/bootstrap-dev.sh` (call `scripts/doctor.sh` as last step)
+
+---
+
+## Cross-Cutting: Build Order
+
+Dependencies constrain sequencing. Recommended phase order:
+
+### Phase 112 — SEED-002 Continuous Verification (prerequisite)
+- Pre-commit hooks, push-trigger CI, nightly workflow, env-drift doctor
+- **Blocks** all subsequent phases. Nothing else ships until test baseline is watched continuously.
+- No code changes to application surface.
+
+### Phase 113 — User Table Migration + fastapi-users Scaffolding
+- Prod user audit (gate)
+- Alembic `042_native_auth_user_reshape`
+- `app/auth/` module tree (users.py, backend.py, user_manager.py)
+- New fastapi-users routes mounted under `/auth/*`
+- **ZITADEL still alive in parallel** (both auth paths work) to de-risk — feature flag `AUTH_BACKEND=native|zitadel` in settings
+- Tests: `tests/auth/` suite
+
+### Phase 114 — CSRF Middleware + Cookie Session Integration
+- `app/core/middleware/csrf.py` (pure ASGI)
+- Middleware registration order fix in `main.py`
+- CSRF token cookie emission on login
+- Tests: `tests/auth/test_csrf_middleware.py`
+
+### Phase 115 — Frontend Auth Rewire
+- `web/src/api/client.ts` (credentials: 'include', CSRF header)
+- `web/src/stores/authStore.ts` (rewrite — drop `oidc-client-ts`)
+- Real login/logout UI
+- `web/e2e/auth-flow.ts` rewrite
+- Delete callback route, ZITADEL env vars
+- **Cutover point:** flip `AUTH_BACKEND` default to `native`, keep ZITADEL path behind the flag for one milestone, monitor, then rip
+
+### Phase 116 — Invite Flow on Native Auth
+- `POST /api/v1/invites/{token}/accept` session minting
+- `/invites/{token}/setup` frontend route
+- `scripts/create-e2e-users.py` rewrite for invite-path testing
+- Playwright specs for invite-accept-with-password-set
+
+### Phase 117 — Password Reset + Email Verify
+- `app/tasks/auth_tasks.py` (Procrastinate tasks)
+- fastapi-users `/auth/forgot-password`, `/auth/reset-password`, `/auth/request-verify-token`, `/auth/verify` exposed
+- Email templates
+- Q-AUTH-01 decision implemented (invite-as-proof vs ceremony)
+
+### Phase 118 — ZITADEL Tear-Out
+- Delete `app/services/zitadel.py`, `scripts/bootstrap-zitadel.py`, `.zitadel-data/`
+- Remove ZITADEL service from `docker-compose.yml`
+- Delete `JWKSManager`, all JWT code in `app/core/security.py`
+- Remove `zitadel_*` settings
+- Drop ZITADEL columns from any table that still has them (audit via `\d`)
+- **Gated on:** Phase 115 cutover has been running in prod for at least one milestone without incident
+
+### Phase 119 — Session Lifecycle + Admin Controls
+- Q-AUTH-03 decisions implemented
+- Idle/absolute timeout
+- Expired-token cleanup Procrastinate task
+- Admin "revoke all sessions for user X" endpoint
+- Optional: "my active sessions" UI
+
+---
+
+## Patterns Preserved (Do Not Violate)
+
+1. **Pure ASGI middleware for anything that reads/writes request context.** CSRF middleware is pure ASGI. No `BaseHTTPMiddleware` anywhere in this milestone.
+2. **Transaction-scoped RLS via `set_config(..., true)`.** The new `current_active_user` dep must NOT share its session with `get_campaign_db` — auth table queries go through `get_db()` (non-RLS), campaign-data queries go through `get_campaign_db()` (RLS).
+3. **AST-based rate-limit-guard test.** New `/auth/*` endpoints registered by fastapi-users need rate limits — either via fastapi-users' built-in limiter hook or by wrapping the fastapi-users router with slowapi decorators. The existing AST test at CI time will fail the build if we forget. Verify the test can see the fastapi-users routes (it may need a tweak to recognize the `fastapi_users.get_auth_router(...)` pattern).
+4. **Procrastinate `communications` queue for all email.** Auth emails join invite emails on the same queue, same retry envelope, same `email_delivery_attempt` audit table.
+5. **Docker-compose-only dev/test env.** No `uvicorn` or `vite` invocations anywhere in new scripts. CI jobs do `docker compose up -d --wait`.
+6. **No service-worker-managed OIDC state.** There's no service worker; cookies ride the HTTP layer transparently. No new runtime complexity on the frontend.
+
+---
+
+## Open Hooks to Plan-Phase Research
+
+- **Q-AUTH-01** (email verification model) — determines `is_verified` initial value at invite-accept and whether Phase 117 ships a verify-email ceremony or not.
+- **Q-AUTH-02** (password policy) — determines frontend `live-validator.ts` shape and `UserManager.validate_password` hook body. Blocks Phase 113 UI work.
+- **Q-AUTH-03** (session lifecycle) — determines `access_token` table expiry strategy and whether Phase 119 needs a Procrastinate cleanup task. Phase 113 can ship with a conservative default (e.g., 7-day absolute, no idle) and refine in Phase 119.
+- **Prod user audit** — gates Q2 migration strategy (c) vs (a). Must run before Phase 113.
+- **Context7 lookup: exact fastapi-users 15.0.5 route prefix** — the decision note says `CookieTransport` + `DatabaseStrategy`; confirm the default router paths (`/auth/cookie/login` vs `/auth/login`) so CSRF exempt list is correct on first try.
+
+## Sources
+
+- `.planning/notes/decision-drop-zitadel-diy-auth.md` — decision record; tactical framing
+- `.planning/research/questions.md` — Q-AUTH-01/02/03 open questions
+- `.planning/seeds/SEED-002-test-hygiene-continuous-verification.md` — continuous verification rationale + constraints
+- `app/api/deps.py`, `app/core/security.py`, `app/main.py`, `app/models/user.py`, `app/tasks/invite_tasks.py`, `web/src/api/client.ts`, `web/src/stores/authStore.ts` — read for current-state integration points
+- `.planning/research/v1.19/ARCHITECTURE.md` — prior-milestone research for structural reference (Procrastinate pattern, Invite durable delivery shape)
+- Context7: **fastapi-users 15.0.5** official docs (recommend plan-phase lookup for: exact router prefixes, `DatabaseStrategy` session-sharing semantics, UUID vs string ID handling, `on_after_*` hook signatures) — not fetched during this research pass; deferred to Phase 113 plan

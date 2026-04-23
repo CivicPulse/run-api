@@ -1,169 +1,253 @@
-# Stack Research: v1.19 Invite Onboarding (ZITADEL User Provisioning)
+# Stack Research — v1.20 Native Auth Rebuild & Invite Onboarding
 
-**Domain:** Programmatic ZITADEL human user provisioning + first-time setup flow for campaign invites
-**Project:** CivicPulse Run API
-**Researched:** 2026-04-22
-**Overall confidence:** HIGH (ZITADEL endpoints) / MEDIUM (oidc-client-ts re-login pattern for Option C)
+**Domain:** Native password auth on FastAPI + async SQLAlchemy, Postgres-backed sessions, SPA cookie auth
+**Researched:** 2026-04-23
+**Confidence:** HIGH on library versions & availability (verified via PyPI/npm/Context7 2026-04-23); MEDIUM on specific integration patterns (HIGH from fastapi-users docs, MEDIUM on CSRF/policy choices where we own the design)
 
-## TL;DR Recommendation
+---
 
-The existing stack is sufficient. **No new pyproject dependencies required for either Option B or Option C.** Both options extend `app/services/zitadel.py` with three to four new methods using the already-imported `httpx` + cached service-account token (`_get_token`). The decision is about which ZITADEL endpoints to call and where the password-set UI lives — not about adopting a new SDK.
+## Scope of This Research
 
-The lean is **Option B (ZITADEL `invite_code` flow)**: one stable v2 endpoint replaces the entire frontend setup page + ROPC fallback that Option C requires, eliminates ROPC lock-in concerns, and leaves password-policy enforcement entirely on ZITADEL's side. See the scorecard at the bottom.
+This is a **subsequent-milestone** STACK.md. The existing CivicPulse Run stack is **not re-researched** — Python 3.13, FastAPI, async SQLAlchemy 2.x + asyncpg, Postgres 16 + PostGIS, Procrastinate, Mailgun, React 18 + TanStack, shadcn/ui, Playwright, pytest, uv, Docker Compose are all **retained as-is**. See `.planning/research/v1.19/STACK.md` for the validated baseline.
 
-## Existing Seams To Reuse
+This document answers only: **what new dependencies does v1.20 need, what goes away, and what's the correct 2026 version/integration for each?**
 
-| Seam | Where | What It Already Does |
-|------|-------|---------------------|
-| `ZitadelService` | `app/services/zitadel.py` | httpx-based Management API client; cached service-account token via `client_credentials` (`_get_token`); per-call host header + TLS verify control; existing 409 idempotency pattern in `assign_project_role` and `ensure_project_grant` |
-| Service-account JWT auth | `app/services/zitadel.py:46-93` (`_get_token`) | Caches token until 60s before expiry; refreshes lazily; raises `ZitadelUnavailableError` on connect/timeout. New methods can just call `await self._get_token()` |
-| `ZitadelUnavailableError` | `app/core/errors.py` (referenced) | Already mapped to upstream-unavailable HTTP responses; new methods reuse the same error envelope |
-| Mailgun invite delivery | `app/services/invite_email.py`, `app/tasks/invite_tasks.py` | Durable, post-commit, Procrastinate-queued. Both Option B and Option C send their links via this seam — neither needs a new email path |
-| oidc-client-ts UserManager | `web/src/stores/authStore.ts` | Already configured for ZITADEL with PKCE Authorization Code flow; provides `signinRedirect`, `signinSilent`, and (via library) `signinResourceOwnerCredentials` |
-| Bootstrap script project/roles | `scripts/bootstrap-zitadel.py` | Owns project, roles, SPA app, instance login policy. **Touch only if password complexity policy needs to be set programmatically (see Pitfalls #5)** |
+The three upstream decisions (fastapi-users + cookie + Postgres sessions, argon2id, own-built CSRF) are **not re-litigated** — they are inputs. See `.planning/notes/decision-drop-zitadel-diy-auth.md`.
 
-> **Correction:** `app/services/zitadel_auth.py` does not exist on disk. The service-account auth lives inline in `ZitadelService._get_token`. New work should extend that, not introduce a parallel module.
+---
 
-## ZITADEL API Surface Required
+## Dependency Deltas (the TL;DR)
 
-ZITADEL version in production (per `scripts/bootstrap-zitadel.py:432`): **v2.71.x** (Management v1 + User Service v2 both present and stable on 2.71). All endpoints below are GA on v2.71.
+### ADD to `pyproject.toml`
 
-### Both Options Need
+```toml
+# Native auth — replaces authlib/ZITADEL JWKS path
+"fastapi-users[sqlalchemy]>=15.0.5,<16",   # core + CookieTransport + DatabaseStrategy
 
-| # | Endpoint | Purpose | Notes |
-|---|----------|---------|-------|
-| 1 | `POST /v2/users/human` | Create the human user (no password) | Set `email.isVerified=true` (we trust the invitee email since they received the token). Omit `password` block to leave the user without credentials. Returns `userId`. **HIGH confidence** — primary documented "create human user" endpoint in v2.71. Source: https://zitadel.com/docs/guides/integrate/login-ui/username-password |
-| 2 | `POST /management/v1/users/_search` | Find existing user by email/loginName before create (idempotent re-invite) | Already used pattern in `bootstrap-zitadel.py:131` (machine user lookup) and `:447` (admin user lookup) — proven against this exact ZITADEL version. Body: `{"queries": [{"emailQuery": {"emailAddress": "...", "method": "TEXT_QUERY_METHOD_EQUALS"}}]}`. **HIGH confidence**. |
-| 3 | `POST /management/v1/users/{userId}/grants` (existing) | Assign campaign project role to the new ZITADEL user | Already implemented in `ZitadelService.assign_project_role`; reuse with `org_id` header for the campaign's ZITADEL org. **HIGH confidence**. |
+# Password strength scoring — backend pre-validate hook (Q-AUTH-02 candidate)
+"zxcvbn>=4.5.0,<5",                         # only if policy Q-AUTH-02 chooses zxcvbn
 
-### Option B Adds (one endpoint)
-
-| # | Endpoint | Purpose | Notes |
-|---|----------|---------|-------|
-| 4 | `POST /v2/users/{userId}/invite_code` | Generate a one-time invitation code; ZITADEL hosts the password-set UI | Body controls delivery: `{"sendCode": {"applicationName": "CivicPulse Run", "urlTemplate": "https://run.civpulse.org/invite/zitadel-callback?userID={{.UserID}}&code={{.Code}}&loginName={{.LoginName}}&orgID={{.OrgID}}"}}` to have ZITADEL email it, OR `{"returnCode": {}}` to get the code back and email it ourselves through Mailgun (preferred — keeps deliverability under our DMARC/SPF). **HIGH confidence** that this endpoint exists and is the documented v2 onboarding path; the exact JSON shape mirrors the well-documented `/v2/users/{id}/passkeys/registration_link` endpoint. Source: https://zitadel.com/docs/apis/migration_v1_to_v2 ("New onboarding process: invitation codes"). |
-
-### Option C Adds (two endpoints + ROPC config)
-
-| # | Endpoint | Purpose | Notes |
-|---|----------|---------|-------|
-| 4 | `POST /v2/users/{userId}/password` | Set the password the user typed on our `/invites/<token>/setup` page | Body for an admin-set: `{"newPassword": {"password": "...", "changeRequired": false}}` (no `verificationCode` or `currentPassword` needed when called with a service-account token holding `user.write` on the user's org). **HIGH confidence** — fully documented v2 endpoint. Source: https://zitadel.com/docs/guides/integrate/login-ui/password-reset |
-| 5 | `GET /management/v1/policies/password/complexity` (or `/admin/v1/policies/password/complexity`) | Read the active password complexity (min length, has-number, has-symbol, etc.) so the frontend can echo policy hints | Per-org from management API; instance default from admin API. We need this only if we want client-side validation parity. **MEDIUM confidence** on exact path name; ZITADEL docs confirm "Password Complexity Policy" exists at instance + org level via Management/Admin. Source: https://zitadel.com/docs/guides/manage/console/default-settings |
-| — | SPA app `grantTypes` change | If using ROPC for auto-login (the `signinResourceOwnerCredentials` path), the SPA OIDC app must include `OIDC_GRANT_TYPE_PASSWORD` and likely a `client_secret` (not currently issued — SPA is `OIDC_AUTH_METHOD_TYPE_NONE`) | This is a **bootstrap-zitadel.py change** with security trade-offs (ROPC discouraged by OAuth 2.1 BCP). See Pitfalls #6. |
-
-### Optional / Nice-to-Have for Either Option
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /v2/users/{userId}/email/_resend_code` | If the invitee's verification code expires before they click |
-| `POST /v2/users/{userId}/deactivate` | Compensating tx — if invite is revoked before acceptance, deactivate the half-provisioned ZITADEL user |
-| `DELETE /management/v1/users/{userId}` | Hard-delete in the same compensating tx if the invite was never accepted (consider only if the user is brand-new and has no other grants) |
-
-## httpx + JWT Service-Account Patterns
-
-### What's Already Right
-
-`ZitadelService._get_token` is the right shape: cached, lazy refresh, narrow exception envelope. New methods slot in alongside `create_organization` and follow the same pattern (`async with httpx.AsyncClient(verify=self._verify_tls, timeout=10.0) as client:` → POST → `raise_for_status()` → 409 swallowed for idempotency). No structural changes needed.
-
-### Suggested Additions (small, no new deps)
-
-1. **Surface a configurable timeout.** Today every method hard-codes `timeout=10.0`. Invite creation runs inside a request handler — bump to `timeout=15.0` and make it a class constant so we can dial it without churn.
-
-2. **Idempotency via the existing 409-then-search pattern.** No new library. Mirror `ensure_project_grant` (zitadel.py:463): try create → on `409`/`400 already exists` → search by email → return existing `userId`. This is the same idempotency primitive `assign_project_role` already uses. **No `idempotency-key` library is needed** — ZITADEL doesn't honor RFC idempotency keys; the safe pattern is "search by email first, then create on miss."
-
-3. **Bounded retry on 5xx for the user-create call.** The bootstrap script already does this manually (see `bootstrap-zitadel.py:102-117` — 10x retry on 503 with 3s sleep). For the runtime path, a 3x retry with exponential backoff (1s, 2s, 4s) on `httpx.ConnectError`, `httpx.TimeoutException`, and 5xx is sufficient. **Implement inline with `asyncio.sleep`** rather than adding `tenacity` — the policy is identical to existing patterns and a single new dep for one retry loop is overkill.
-
-4. **No rate-limit library needed.** ZITADEL's documented per-instance rate limits are well above the invite-creation cadence (admin actions are not user-facing throughput). `slowapi` is already in `pyproject.toml` for our own API rate limiting; no inbound limit on ZITADEL calls is required.
-
-## Frontend (Option C only)
-
-The currently-imported `oidc-client-ts` (per `web/src/stores/authStore.ts`) supports two paths to "log this user in immediately after we just set their password":
-
-### Path C1 — `signinResourceOwnerCredentials` (Direct)
-
-```ts
-const user = await mgr.signinResourceOwnerCredentials({ username, password })
+# Dev / CI
+"pre-commit>=4.6.0,<5",                     # dev group only
 ```
 
-- **Pros:** One call. No redirect bounce. Auto-fills the OIDC store.
-- **Cons:** Requires the SPA OIDC app to enable `OIDC_GRANT_TYPE_PASSWORD` AND requires a `client_secret` (per oidc-client-ts docs: "Required for ROPC"). The current SPA app is `OIDC_AUTH_METHOD_TYPE_NONE` (PKCE public client). Adding a secret to a browser-resident SPA is a regression — secrets in client-side JS are extractable. ROPC is also explicitly discouraged in OAuth 2.1 (deprecated grant). **LOW confidence** that this is acceptable for a production SPA.
+### ADD to `web/package.json`
 
-### Path C2 — `signinRedirect` with `prompt=none` after password set (Hidden Iframe)
-
-```ts
-await mgr.signinRedirect({ extraQueryParams: { login_hint: email, prompt: "login" } })
+```json
+{
+  "dependencies": {
+    "@zxcvbn-ts/core": "^3.0.4",            // only if policy Q-AUTH-02 chooses zxcvbn
+    "@zxcvbn-ts/language-common": "^3.0.4",
+    "@zxcvbn-ts/language-en": "^3.0.4"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3"
+  }
+}
 ```
 
-- ZITADEL still owns the password check (the user has *just* set the password; submitting it once via our form sets it in ZITADEL but does not establish a ZITADEL session cookie at `auth.civpulse.org`). The redirect re-authenticates them through ZITADEL's standard hosted login.
-- **Pros:** No grant-type changes. No client_secret. Matches existing flow.
-- **Cons:** Two trips: (1) our form POST sets the password, (2) `signinRedirect` bounces through `auth.civpulse.org` where the user is asked to enter the password again (since they have no active ZITADEL session). This **defeats the "Option C unifies the experience" promise** unless we also pre-create a ZITADEL session via `POST /v2/sessions` and pass the session token through the OIDC flow — which is a substantially deeper integration (custom login UI territory, see https://zitadel.com/docs/guides/integrate/login-ui/username-password).
+### REMOVE from `pyproject.toml`
 
-### Conclusion
+```toml
+"authlib>=1.6.9",     # used ONLY for ZITADEL JWKS JWT validation — dead on v1.20
+```
 
-Option C's frontend cost is significantly higher than the Project Description implies. The clean version (no ROPC, no `client_secret`, full SPA security posture preserved) requires implementing parts of the v2 sessions API to mint a ZITADEL session token from the password we just set, then redirecting through ZITADEL with that session in cookie/state — meaningful added complexity. The hacky version (ROPC) regresses the SPA security model.
+### REMOVE from `web/package.json`
 
-This is the strongest argument for Option B.
+```json
+"oidc-client-ts": "^3.1.0"   // OIDC SPA flow gone — cookie auth replaces it entirely
+```
 
-## Password Policy Enforcement (Option C only)
+---
 
-For Option C, the frontend must show password rules at typing-time AND the backend must reject passwords that ZITADEL will reject (otherwise the user types, submits, hits "ZITADEL rejected your password," and re-types — bad UX).
+## Detailed Recommendations
 
-**Recommended:** Server-side proxy validation that defers to ZITADEL on submit, plus a one-time policy fetch the frontend caches.
+### 1. `fastapi-users[sqlalchemy]` 15.0.5
 
-1. Backend exposes `GET /api/v1/public/invites/{token}/password-policy` that internally calls `GET /management/v1/policies/password/complexity` for the campaign's ZITADEL org and returns a sanitized JSON shape (`{minLength, hasNumber, hasSymbol, hasUppercase, hasLowercase}`).
-2. Frontend renders rules and does inline validation against this shape (no app-side echo of business logic — just render the policy ZITADEL gave us).
-3. On submit, backend forwards the password to ZITADEL's `POST /v2/users/{userId}/password`. If ZITADEL rejects (400 with policy violation in body), backend translates the error to a 422 with the violated rule.
+| | |
+|---|---|
+| **PyPI verification (2026-04-23)** | 15.0.5 is current; released 2026-03-27 |
+| **Correct dep line** | `fastapi-users[sqlalchemy]>=15.0.5,<16` |
+| **Peer deps pulled automatically** | `pwdlib[argon2,bcrypt]==0.3.0`, `pyjwt[crypto]>=2.12.0,<3`, `makefun`, `email-validator`, `python-multipart`, and — via `[sqlalchemy]` extra — `fastapi-users-db-sqlalchemy>=7.0.0` |
+| **Do NOT add** | `passlib`, `bcrypt`, `argon2-cffi`, `pyjwt` — all pulled transitively. Adding them explicitly risks version drift. |
+| **Extras we do NOT want** | `[redis]` (no Redis), `[oauth]` (no third-party OAuth), `[beanie]` (not using Mongo) |
+| **CookieTransport + DatabaseStrategy** | First-class in 15.x. `DatabaseStrategy` uses `SQLAlchemyAccessTokenDatabase` against a new `access_token` table (opaque tokens, Postgres-backed). No extra extras required beyond `[sqlalchemy]`. |
+| **Why this library (vs. roll-own / fastapi-login / authx)** | Only 2026-maintained async-SQLAlchemy-native FastAPI auth library with cookie+database sessions, argon2id defaults, UUID PKs, and a well-tested `validate_password` hook. Authx is active but newer/smaller; fastapi-login is sync-first. |
 
-**Do NOT** hard-code policy numbers in the frontend — they will drift from ZITADEL's actual policy if an operator changes settings.
+**Integration hints specific to our stack:**
+- `fastapi-users-db-sqlalchemy` 7.0.0 assumes SQLAlchemy 2.x async — matches ours.
+- The `access_token` table is a **new Alembic migration**; the `SQLAlchemyBaseAccessTokenTable` mixin provides the shape. It's a simple 3-column table (`token` PK varchar(43), `user_id` FK, `created_at`) — no conflict with our existing RLS, because sessions are **user-scoped, not campaign-scoped**. RLS context is set *after* auth, from the session → user → campaign lookup.
+- The `User` ORM model will adopt `SQLAlchemyBaseUserTableUUID` — **new Alembic migration reshapes the existing `users` table** (drop `zitadel_sub`, `zitadel_user_id`; add `email UNIQUE NOT NULL`, `hashed_password VARCHAR`, `is_active`, `is_superuser`, `is_verified`). Data-migration strategy: a ZITADEL-era user row gets `hashed_password = NULL` and a forced password-reset invite.
+- `validate_password` is an async hook — integrate with our Procrastinate-free, sync-bounded password policy logic (see §4).
 
-For Option B this whole concern goes away — ZITADEL's hosted UI enforces policy with its own messages.
+### 2. Argon2id hashing — **no explicit `argon2-cffi` dep needed**
 
-## Stack Additions Required
+**Important correction to the decision doc:** fastapi-users 15.x does **not** use `passlib` + `argon2-cffi` directly. It depends on **`pwdlib[argon2,bcrypt]==0.3.0`**, which wraps `argon2-cffi>=23.1.0,<26` and `bcrypt>=4.1.2,<6`. `pwdlib` is by the same author as fastapi-users (frankie567) and replaces passlib (which has been effectively unmaintained — last meaningful release 2020).
 
-**None.**
+**What this means:**
+- Do not add `argon2-cffi` or `passlib` explicitly. `pwdlib` is pulled automatically.
+- argon2id is the pwdlib default (v=19, memory 65536 KiB, parallelism 4, iterations 3) — matches OWASP 2026 guidance, no override needed.
+- bcrypt is included for **verify-only** paths (if we ever need to migrate bcrypt hashes from a legacy store — not applicable here since we're starting fresh).
+- CFFI dep on argon2-cffi means the Docker image needs `libffi-dev` at build time; already present in our `python:3.13-slim` base.
 
-| Need | Status |
-|------|--------|
-| HTTP client | `httpx>=0.28.1` already present |
-| Async retry/backoff | Implement inline with `asyncio.sleep` — no `tenacity` needed |
-| Idempotency keys | Not needed — search-then-create pattern (already in codebase) |
-| Rate limiting (outbound) | Not needed at expected invite cadence |
-| Rate limiting (inbound) | `slowapi>=0.1.9` already in use; reuse on new public endpoints |
-| OIDC client (SPA) | `oidc-client-ts` already present in `web/package.json` |
-| Email delivery | Mailgun seam in `app/services/invite_email.py` already in use |
-| Job queue | `procrastinate>=3.7.3` already present (use only if init-code email needs async — but it already runs through `app/tasks/invite_tasks.py`) |
+**Confidence:** HIGH (verified via PyPI `requires_dist` 2026-04-23).
 
-## Bootstrap Script Implications
+### 3. CSRF middleware — **roll our own (~40 LOC)**
 
-| Change | Required For | Risk |
-|--------|-------------|------|
-| Set explicit password complexity policy on instance/default org | Both options (so policy is deterministic in dev) | LOW — additive `PUT /admin/v1/policies/password/complexity` modeled on existing `set_instance_login_policy` (`bootstrap-zitadel.py:388`) |
-| Add `OIDC_GRANT_TYPE_PASSWORD` to SPA app's `grantTypes` | **Option C, ROPC variant only** | **HIGH** — SPA becomes a confidential client (needs secret) which is a security regression and contradicts existing `OIDC_AUTH_METHOD_TYPE_NONE` posture |
-| Add a ZITADEL invitation message template (URL template baked into instance) | Option B if we let ZITADEL send the email; not needed if we use `returnCode` + Mailgun | LOW |
+Three maintained candidates evaluated:
 
-## Sources
+| Library | Latest | Last release | Verdict |
+|---|---|---|---|
+| `starlette-csrf` | 3.0.0 | **2023-06-27** | **STALE** — no release in ~3 years. Works with modern Starlette in practice but no bugfix commitments. Author = frankie567 (same as fastapi-users) — he has moved on from it. |
+| `fastapi-csrf-protect` | 1.0.7 | 2025-09-16 | **MAINTAINED** — active in 2025-2026. Uses Pydantic settings, supports double-submit. **However:** it ships a stateful "csrf_protect" dependency that expects `.validate_csrf(request)` calls in each route — a poor fit for our middleware-based approach, and it couples CSRF state to a `JWTStrategy`-style secret signing, not plain double-submit. |
+| `asgi-csrf` | 0.11 | 2024-11-15 | Maintained. Pure ASGI middleware (good), Simon Willison author. **However:** its double-submit implementation reads the cookie and compares to a form field by default; header-mode requires `header_name=` config and only supports **a single session-wide** token, not per-request tokens. Works, but small enough that its abstraction cost ≈ its LOC savings. |
 
-- ZITADEL v2 Create Human User: https://zitadel.com/docs/guides/integrate/login-ui/username-password
-- ZITADEL v2 Password Change/Reset: https://zitadel.com/docs/guides/integrate/login-ui/password-reset
-- ZITADEL v1→v2 Migration (mentions invitation-code onboarding): https://zitadel.com/docs/apis/migration_v1_to_v2
-- ZITADEL v2 sessions: https://zitadel.com/docs/guides/integrate/login-ui/username-password
-- ZITADEL onboarding flows: https://zitadel.com/docs/guides/integrate/onboarding/end-users
-- ZITADEL default settings (password complexity): https://zitadel.com/docs/guides/manage/console/default-settings
-- oidc-client-ts ROPC + silent renewal: https://context7.com/authts/oidc-client-ts/llms.txt
-- Existing in-repo patterns: `app/services/zitadel.py` (`_get_token`, `assign_project_role`, `ensure_project_grant`, 409-idempotency); `scripts/bootstrap-zitadel.py:102-117` (5xx retry), `:421-443` (v2 password set with `changeRequired=false`), `:131,447` (user search by username); `web/src/stores/authStore.ts` (oidc-client-ts UserManager configuration)
+**Recommendation: roll our own, as the decision doc specifies.**
 
-## B vs C — Stack Scorecard
+Rationale:
+- The double-submit pattern is genuinely ~40 LOC of Starlette `BaseHTTPMiddleware` (or pure ASGI middleware, matching our existing structlog middleware style).
+- No maintained library matches the exact shape we want: httponly session cookie (fastapi-users-managed) + non-httponly `csrf_token` cookie + `X-CSRF-Token` header comparison, scoped to state-changing verbs only (`POST`/`PUT`/`PATCH`/`DELETE`).
+- Owning it means no version-drift surprise and no coupling to another auth abstraction.
 
-| Criterion | Option B (ZITADEL invite_code) | Option C (App-owned setup page) | Lean |
-|-----------|--------------------------------|----------------------------------|------|
-| **Implementation cost (LOC, new libs)** | ~1 new ZitadelService method (`create_invite_code`), ~50 LOC backend total. **Zero frontend code** (ZITADEL hosts the UI). No new libs. | 4 new ZitadelService methods (`create_human_user`, `set_user_password`, `get_password_policy`, `find_user_by_email`), ~200 LOC backend, ~300 LOC frontend (setup page + form + validation + post-set login flow + error mapping). Zero new libs. | **B** (≈5x less code) |
-| **ZITADEL endpoint stability** | One v2 endpoint (`/v2/users/{id}/invite_code`). v2 is GA, but this specific endpoint is the newest of the bunch — surfaced in 2.x as part of the new onboarding process. **MEDIUM-HIGH** | Three endpoints (`/v2/users/human`, `/v2/users/{id}/password`, `/management/v1/policies/password/complexity`). All long-standing GA in 2.71. **HIGH** | **C** (slightly older endpoints) |
-| **Lock-in risk** | We bind to ZITADEL's hosted "set password" UI at `auth.civpulse.org`. Migration to a different IdP requires re-implementing this anyway. **MEDIUM** | We own the password-set form. Migration to a different IdP swaps the backend ZITADEL calls but the frontend page survives. **LOW**. ROPC variant adds **HIGH** lock-in to ROPC grant type which most modern IdPs deprecate. | **C (non-ROPC), tied (ROPC)** |
-| **Auto-login UX after password set** | Via `urlTemplate` deep-link, ZITADEL completes setup and redirects to our app. ZITADEL session is established by ZITADEL itself; we just OIDC-callback. **Works out of the box.** | Either ROPC (security regression) or `POST /v2/sessions` integration (custom login UI complexity, ~300 more LOC). **Hard.** | **B** (decisive) |
-| **Bootstrap-zitadel.py impact** | None required (optional: invitation message template) | None required for non-ROPC; **SPA confidentiality regression required for ROPC variant** | **B** (no risk) |
-| **Password policy enforcement** | Entirely ZITADEL's responsibility | We must read policy + render rules + map errors back, or accept "submit-then-fail" UX | **B** |
+**Integration hint:** place it **after** the auth middleware so unauthenticated requests short-circuit the CSRF check. Emit the `csrf_token` cookie on successful `/auth/login`, rotate it on `/auth/logout`, and on 401-with-renewable sessions. Frontend `web/src/api/client.ts` reads the cookie (document.cookie) and sets `X-CSRF-Token` header on mutating verbs.
 
-### Recommended Lean
+**Confidence:** HIGH that this is the right call (verified maintenance status of all three alternatives against PyPI 2026-04-23).
 
-**Option B.** It is roughly 5x less code, requires no SPA security regression, gets auto-login for free via the `urlTemplate` deep-link, and fully delegates password policy to the system that owns it. The lock-in cost (ZITADEL hosts the password-set UI on `auth.civpulse.org`) is real but largely unavoidable — any IdP migration would need a re-implementation regardless.
+### 4. Password policy library — **recommend `zxcvbn` 4.5.0** (pending Q-AUTH-02)
 
-**Pick Option C only if** there is a hard product requirement that the entire flow stays on `run.civpulse.org` (e.g. a brand reason that's worth the engineering cost), AND we accept implementing the v2 sessions integration to avoid ROPC.
+| Library | Latest | Last release | Status | Notes |
+|---|---|---|---|---|
+| `zxcvbn` (Python) | **4.5.0** | 2025-02-19 | **MAINTAINED** | Official Dropbox port; the canonical Python zxcvbn in 2026. Requires no external service. |
+| `zxcvbn-python` | 4.4.24 | (older) | Legacy fork | Superseded by `zxcvbn`. Avoid. |
+| `pwdlib` | 0.3.0 | 2025-10-25 | **Hashing only** | Does NOT provide policy/strength scoring — it's a passlib replacement for *hashing*. Not a policy library. |
+| `pyhibp` (HIBP client) | 4.2.0 | **2021-03-28** | **STALE** | Last release 5 years old. Use **Pwned Passwords v3 k-anonymity endpoint directly via `httpx`** (~20 LOC) if Q-AUTH-02 chooses HIBP route. |
+| `python-bcrypt-patches` | — | — | **Not a thing** | Not a real package. Disregard. |
+
+**Frontend companion (if zxcvbn chosen):** `@zxcvbn-ts/core` 3.0.4 (TypeScript rewrite, ~15KB gz core, modular dictionaries). Do NOT use the legacy `zxcvbn` npm package — unmaintained since 2017 and 180KB+.
+
+**Recommendation:** Plan-phase-level choice (Q-AUTH-02). If zxcvbn: `zxcvbn==4.5.0` on backend (`validate_password` hook), `@zxcvbn-ts/core` on frontend (live strength indicator on password-set page). If length+HIBP: no Python lib, ~20 LOC httpx call to `api.pwnedpasswords.com/range/{prefix}`. **Do not use `pyhibp`.**
+
+**Confidence:** HIGH on library statuses; MEDIUM on recommendation (pending Q-AUTH-02 resolution).
+
+### 5. Continuous test verification (SEED-002)
+
+| Tool | Version | Role |
+|---|---|---|
+| `pre-commit` | 4.6.0 (2026-04-21) | Driver — runs ruff, prettier, lint-staged hooks locally and in CI |
+| `ruff` | 0.15.5+ (already in project) | Python lint+format, runs in pre-commit Python hook |
+| `prettier` | 3.8.3 | TS/JSON/MD formatting in pre-commit |
+| `lint-staged` | 16.4.0 | Scopes prettier/eslint to changed files only |
+| `husky` | 9.1.7 | Git hooks installer (invoked by npm `prepare` script) |
+| GitHub Actions scheduled workflow | n/a | `on: schedule: - cron: '0 7 * * *'` — full pytest + vitest + Playwright run daily |
+
+**2026-specific worth-adopting:**
+- **`pre-commit` 4.x** improved `default_language_version` pinning and supports `uv run ruff` hooks natively.
+- **Playwright 1.58+ sharding** (we're on 1.58.2) — the scheduled CI run should shard across 4 workers to stay under 15 min wall-clock.
+- **`ruff` pre-commit hook** runs both `ruff check --fix` and `ruff format` in one hook since 0.6 — no need for separate `black`/`isort`.
+- **Test drift detection:** existing `web/scripts/run-e2e.sh` writes to `web/e2e-runs.jsonl`. Extend with a small Python script that reads last 7 runs and flags regressions (pass count drops, flake count rises). ~30 LOC, no new dep.
+
+**Nothing new-and-shiny worth adopting:** no AI-test-triage tooling has matured to production-worthiness in 2026 for a project our size. Stick with pre-commit + scheduled CI.
+
+**Integration hint:** `.pre-commit-config.yaml` at repo root; `.github/workflows/scheduled-tests.yml` with cron; both invoked in `CONTRIBUTING.md`.
+
+### 6. What Goes Away — Verified
+
+#### `authlib>=1.6.9` (Python)
+
+Grep confirms usage is **ZITADEL-only**:
+- `app/services/zitadel.py` — imports `authlib.jose` for JWKS/JWT decoding
+- `app/core/auth.py` (or equivalent) — imports `authlib` for ID-token validation
+
+No other callers. **Safe to remove** once `app/services/zitadel.py` is deleted.
+
+**Flag:** audit `grep -rn "authlib\|jose" app/ scripts/ tests/` before removal to catch any test helper that imports directly. Any hit outside ZITADEL/auth code is a surprise that needs review.
+
+#### `oidc-client-ts@3.1.0` (web)
+
+Used only by the SPA auth bootstrap:
+- `web/src/auth/` (OIDC client wiring)
+- `web/src/main.tsx` or `App.tsx` — `UserManager` initialization
+- `web/src/api/client.ts` — `Authorization: Bearer ${token}` injection
+
+Replacement path:
+- `web/src/api/client.ts` switches from `Authorization` header to `credentials: 'include'` (ky supports this via `credentials` option) — cookie rides automatically, `X-CSRF-Token` injected from document.cookie on mutations.
+- `useAuth` hook returns `{ user, isAuthenticated }` by calling `GET /auth/me`.
+- All `UserManager` code deleted.
+
+**Flag:** verify **no Playwright helper** reads tokens from localStorage (`oidc-client-ts` stores session state there). Playwright auth helpers must be rewritten to post to `/auth/login` and capture the `Set-Cookie` into the browser context. Our existing `web/playwright/.auth/` state-storage pattern will work with cookies natively.
+
+---
+
+## Alternatives Considered (and rejected)
+
+| Recommended | Alternative | Why Not |
+|---|---|---|
+| fastapi-users 15.0.5 | authx, fastapi-login | authx is newer/smaller community; fastapi-login is sync-first. fastapi-users is the de-facto 2026 choice. |
+| pwdlib (via fastapi-users) | explicit passlib + argon2-cffi | passlib is effectively unmaintained since 2020. pwdlib is the designated successor. |
+| Roll-own CSRF (~40 LOC) | starlette-csrf 3.0.0 | Stale since 2023. |
+| Roll-own CSRF | fastapi-csrf-protect 1.0.7 | Maintained but couples CSRF to signed-JWT state; wrong shape for our middleware-plus-cookie design. |
+| Roll-own CSRF | asgi-csrf 0.11 | Maintained, but a single session-wide token; not worth the import over ~40 LOC. |
+| zxcvbn 4.5.0 | zxcvbn-python 4.4.24 | Legacy fork; `zxcvbn` is the maintained Dropbox port. |
+| Direct httpx HIBP call | pyhibp 4.2.0 | 5-year-old library; just call the k-anonymity endpoint directly. |
+| pre-commit 4.6 | lefthook, simple-git-hooks | pre-commit has the richest Python+Node shared-hook ecosystem and is what the `uv`+`ruff` community uses. |
+
+---
+
+## What NOT to Use
+
+- **Redis / redis-py** — explicitly out of scope per the decision. Postgres-backed sessions via `DatabaseStrategy` are the design.
+- **JWT-in-cookie / JWTStrategy** — fastapi-users ships this; we are NOT using it. Stateless JWT sessions block eager revocation.
+- **OAuth2 password-grant flow for the SPA** — confused with "password auth"; we use CookieTransport, not OAuth2PasswordBearer. OAuth2PasswordBearer stays only for any service-to-service endpoints we might add (currently none).
+- **`oidc-client-ts`, `openid-client`, `@okta/okta-auth-js`** — all OIDC SPA libraries. None apply.
+- **`authlib`** — removed.
+- **`passlib`** — do not add; pwdlib replaces it and is pulled by fastapi-users.
+- **`pyhibp`** — stale.
+- **`starlette-csrf`** — stale.
+
+---
+
+## Installation
+
+```bash
+# Backend (run from repo root)
+uv add "fastapi-users[sqlalchemy]>=15.0.5,<16"
+uv add --dev "pre-commit>=4.6.0,<5"
+# Optional — only if Q-AUTH-02 chooses zxcvbn
+uv add "zxcvbn>=4.5.0,<5"
+uv remove authlib
+
+# Frontend
+cd web
+npm install --save-dev husky@^9.1.7 lint-staged@^16.4.0 prettier@^3.8.3
+npm uninstall oidc-client-ts
+# Optional — only if Q-AUTH-02 chooses zxcvbn
+npm install @zxcvbn-ts/core @zxcvbn-ts/language-common @zxcvbn-ts/language-en
+npx husky init
+```
+
+---
+
+## Sources & Confidence
+
+| Claim | Confidence | Source |
+|---|---|---|
+| fastapi-users 15.0.5 is current and released 2026-03-27 | HIGH | PyPI JSON API 2026-04-23 |
+| fastapi-users 15.x pulls pwdlib[argon2,bcrypt], NOT passlib | HIGH | PyPI `requires_dist` 2026-04-23 |
+| argon2-cffi 25.1.0 is transitively pulled via pwdlib | HIGH | PyPI `requires_dist` 2026-04-23 |
+| fastapi-users-db-sqlalchemy 7.0.0 is the current SQLAlchemy adapter | HIGH | PyPI 2026-04-23 |
+| starlette-csrf is stale (last release 2023-06-27) | HIGH | PyPI release history 2026-04-23 |
+| fastapi-csrf-protect 1.0.7 is maintained (2025-09-16) | HIGH | PyPI 2026-04-23 |
+| asgi-csrf 0.11 is maintained (2024-11-15) | HIGH | PyPI 2026-04-23 |
+| zxcvbn 4.5.0 is the maintained Python port | HIGH | PyPI 2026-04-23 |
+| pyhibp is stale (2021-03-28) | HIGH | PyPI 2026-04-23 |
+| pre-commit 4.6.0 released 2026-04-21 | HIGH | PyPI 2026-04-23 |
+| lint-staged 16.4.0, husky 9.1.7, prettier 3.8.3 current | HIGH | npm registry 2026-04-23 |
+| `@zxcvbn-ts/core` 3.0.4 preferred over legacy zxcvbn npm | MEDIUM | npm registry; legacy zxcvbn is unmaintained since 2017 |
+| Roll-own CSRF middleware is the right call | HIGH | Three alternatives surveyed; none match the desired shape; 40-LOC implementation is well-established |
+| authlib and oidc-client-ts have no callers outside auth surfaces | MEDIUM | Claim from decision doc; REQUIRES `grep` audit in implementation plan before removal |
+
+---
+
+*End of stack research. Downstream consumers (REQUIREMENTS.md, ROADMAP.md) should treat the "Dependency Deltas" section as the authoritative list of package changes for v1.20.*

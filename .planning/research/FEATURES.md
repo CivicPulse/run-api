@@ -1,247 +1,298 @@
-# Feature Landscape
+# Feature Landscape — v1.20 Native Auth Rebuild & Invite Onboarding
 
-**Domain:** Invite-onboarding for a multi-tenant SaaS — specifically the "click invite link → set credentials → accept invite → land in app" flow for brand-new volunteers on CivicPulse Run.
-**Researched:** 2026-04-22
-**Scope:** v1.19 only (the new invite-onboarding feature surface). Existing invite-creation, accept-invite endpoint, and `/signup/$token` volunteer-application flow are NOT in scope.
+**Domain:** DIY cookie-session auth + invite onboarding for a multi-tenant field-ops SaaS; plus continuous test verification infrastructure (SEED-002).
+**Researched:** 2026-04-23
+**Scope:** Auth surfaces that ZITADEL used to provide (login/logout/password reset/email verification/session mgmt), the invite-under-native-auth UX, auth endpoint protection, and the SEED-002 continuous-test deliverables. Existing invite-creation, signup-link intake, and the `/invites/<token>` landing page are PRESERVED — only the credential-setting surface is new.
+**Overall confidence:** MEDIUM-HIGH. Auth-UX patterns are well-documented 2026 industry consensus; fastapi-users specific behaviors verified against library + discussion board. Three design knobs (verification model, password policy, session lifecycle) are deliberately left open for plan-phase resolution per Q-AUTH-01/02/03.
 
 ---
 
-## Context Recap
+## Context Recap — What We Already Have
 
-Today, a brand-new invitee:
+**Existing surfaces v1.20 preserves:**
+- `/invites/<token>` public landing page (same-origin, campaign/role context rendered, email-match enforcement, expired/not-found/accepted states)
+- Invite token model: DB-owned, 7-day expiry (`INVITE_EXPIRY_DAYS`), one-time-use via `accepted_at`, email-match required
+- Mailgun delivery via `invite_email.py` + Procrastinate `invite_tasks.py`
+- Volunteer signup links (v1.17) — separate public intake path with admin review queue
+- Admin pending-invite table with delivery status (v1.16 AUD-04)
+- Role binding at invite-accept time (`campaign_members` row written at accept)
+- Rate limiting on all public endpoints (v1.5, per-user JWT or CF-Connecting-IP)
+- Email tenant context (`EmailTenantContext`) with org/campaign/inviter metadata
 
-1. Receives an email from CivicPulse Run with a link to `/invites/<token>`.
-2. Clicks it. The frontend shows campaign/role context and a "Sign in to accept invite" button.
-3. Button bounces them to `/login`, which silently redirects to ZITADEL's hosted login page.
-4. ZITADEL self-registration is **disabled** and there is no pre-provisioned identity for that email — the user dead-ends with no obvious path forward. Audited 2026-04-22.
+**Existing v1.19 research artifact to lean on:** The invite-UX observations in `.planning/research/v1.19/FEATURES.md` are ZITADEL-framed but ~80% transfer directly — accessible password patterns, subject-line patterns, expired-link recovery, re-invite UX, anti-features. Not re-deriving those here.
 
-v1.19 must close that gap. Two candidate approaches — referenced throughout this doc as **Option B** and **Option C** — were defined in the milestone goals:
-
-| Option | Mechanism | Where the password is set |
-|--------|-----------|---------------------------|
-| **B** | Backend calls ZITADEL `CreateUser` + `CreateInviteCode` at invite-creation time. The init-link in the invite email goes to ZITADEL's hosted setup page, then redirects back to `/invites/<token>` already authenticated. | ZITADEL hosted UI |
-| **C** | Backend calls `CreateUser`. App ships an own `/invites/<token>/setup` page that collects the password inline, calls a new backend endpoint that sets the ZITADEL password, then bounces user into the OIDC flow with `prompt=none` so they land on `/invites/<token>` already authed. | CivicPulse Run UI on `run.civpulse.org` |
-
-Each feature below is annotated with **B / C / both / neither** to flag which approach naturally supports it.
+**What's NEW in v1.20 relative to v1.19's framing:**
+- We own the password-set surface entirely (no hosted IdP UI question).
+- We own email verification entirely (Q-AUTH-01).
+- We own password policy entirely (Q-AUTH-02).
+- We own session lifecycle entirely (Q-AUTH-03).
+- A `/login` page becomes a first-class app surface, not a redirect shim.
+- Logout, password reset, password change, and session management all become features we ship.
 
 ---
 
 ## Table Stakes
 
-Features without which the flow is broken or feels unprofessional. Missing any of these is an immediate volunteer-confusion incident.
+Features without which the v1.20 auth surface is incomplete, unsafe, or visibly worse than what users expect from any 2026 SaaS.
 
-| # | Feature | Why expected | Complexity | B/C affinity | Notes |
-|---|---------|--------------|------------|--------------|-------|
-| 1 | **Invitee can set a password without admin intervention** | This is the core user job. Without it, every new volunteer requires manual help. | Med | Both — B uses ZITADEL hosted; C uses app-owned form | The current state fails this; this is the entire reason v1.19 exists. |
-| 2 | **Pre-provisioned ZITADEL identity at invite-creation time** | Required for ZITADEL `CreateInviteCode` to even be callable on a real `user_id`. Both options need this. | Med | Both | New backend surface: `ZitadelService.create_human_user(email, given_name, family_name)`. |
-| 3 | **Idempotent re-invite on existing email** | Re-inviting must NOT create a duplicate ZITADEL user or 409. | Med | Both | Look up by email/login-name first; only `CreateUser` if missing. ZITADEL surfaces `User.UserName.AlreadyExists` (`409`) — catch and degrade to skip-provision path. |
-| 4 | **First-click email link works on mobile** | Volunteers click invite links on phones, often in landing pages opened from Gmail/Outlook in-app browsers. | Low | Both | Touch targets ≥ 44 px (project's existing WCAG-AA standard). Single-column layout. No horizontal scroll. |
-| 5 | **Show password toggle (eye icon) on the password field** | 2026 standard. Reduces typos on mobile keyboards dramatically. WCAG-allowed and recommended. | Low | C only — B is ZITADEL's UI | Single password field + show-password is preferred over confirm-password (WAI guidance, 2024+). If C, this is on us; if B, ZITADEL hosted UI's behavior is what it is. |
-| 6 | **Password strength indicator with live-updating requirement checklist** | Show requirements *before* the user errors — each becomes a green check as met. WCAG-AA: requirements wired via `aria-describedby`. | Low–Med | C only — B is ZITADEL's UI | If C, build with the existing shadcn/ui + Zod stack. Don't *block* on "weak" if min requirements are met — guide, don't force. |
-| 7 | **Email-already-has-an-account → "sign in instead" branch** | The user might already have a CivicPulse identity (joining a second campaign). Loud "create password" CTA on a returning user is wrong. | Med | Both | Detect at invite-render time on the `/invites/<token>` page using the existing public-invite endpoint, plus a new "does ZITADEL know this email?" signal. Do NOT leak account-existence to anonymous callers — server gates the signal behind the invite token. |
-| 8 | **Expired-link recovery path with a clear "request new invite" CTA** | Invites currently expire after 7 days (`INVITE_EXPIRY_DAYS=7`). Volunteer momentum is days, not minutes — expired links happen. The current page just says "Ask your campaign admin to send a new one" with no action. | Med | Both | Add a lightweight "Request a fresh invite" button on the expired-state UI. Backend rate-limits + emails the inviter (or campaign admins). MUST NOT auto-resurrect a revoked invite — only re-notify the campaign team. |
-| 9 | **Contextual page copy that mentions campaign + role + inviter** | Already partially done on `/invites/<token>`. Must also be present on the password-set page (whichever lives at) so the user remembers WHY they're setting a password. | Low | C cleanly; B requires ZITADEL `application_name` config + branding | If B: pass `applicationName` to `CreateInviteCode` so ZITADEL's hosted page at least shows "Set up your account for CivicPulse Run." If C: full contextual framing ("Set your password to join Mayor Smith for City Council as a Volunteer"). |
-| 10 | **`/login` page that surfaces invite context when bounced through it** | Today's `/login` is a 4-line "Redirecting to login..." screen. If ZITADEL ever bounces the user back to `/login` (init expired, session lost, browser clears cookie mid-flow), the user is stranded with no instructions. | Low | Both | Read `?redirect=/invites/<token>` from search params and render a brief "You're signing in to accept your invite to <campaign>" pre-redirect interstitial. Ties into the existing `POST_LOGIN_REDIRECT_KEY` sessionStorage pattern. |
-| 11 | **Email-match enforcement on accept** | Already enforced by `accept_invite` (case-insensitive). Must remain. Critical: prevents User-A from accepting an invite addressed to User-B by clicking a forwarded link. | Low | Both | Existing behavior — keep. |
-| 12 | **Single-use, one-time invite link** | Invite-accept already idempotent at the DB layer (`accepted_at` set once). The init-code from ZITADEL is also single-use. Both layers must remain single-use. | Low | Both | Industry standard (Postmark, Clerk: "links should mirror password-reset semantics"). |
-| 13 | **Same-origin landing** (`run.civpulse.org/invites/<token>`) | Already in place. Critical for trust — a Mailgun-signed link to `run.civpulse.org` is recognizable to the user. | Low | Both | Keep `app_base_url` as the origin in `build_invite_accept_url`. |
-| 14 | **Email content that distinguishes "first-time setup" from "re-invite to a second campaign"** | Today's email body is one-size-fits-all ("X invited you to join Y"). For an existing user, the "Accept your invite" button works fine; for a new user, they need to know they'll be asked to set a password. | Low | Both | Two template variants keyed off "does ZITADEL know this email?" computed at queue time. |
+### A. Login / Logout / Core Session
 
-> **What good looks like (Table Stakes):**
-> *"A volunteer who has never heard of CivicPulse Run clicks the invite link on their phone, sets a password in under 90 seconds, lands on the campaign page, and never thinks about the auth system. If their link is expired, they tap one button to ask for a new one."*
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-A1 | **Email + password login page** (`/login`) with error surfacing, "enter" submits, loading state | Core. Current `/login` is a 4-line redirect shim — needs to become a real page. | Low | fastapi-users login route; shadcn/ui form stack already in project |
+| TS-A2 | **Cookie session set on successful login** (`httponly`, `samesite=lax`, `secure` in prod) | OWASP baseline for SPA cookie auth; required by `CookieTransport` | Low (library default) | `CookieTransport` + `DatabaseStrategy` |
+| TS-A3 | **Logout endpoint that destroys server-side session row** (not just clears cookie) | Eager revocation is the whole point of choosing `DatabaseStrategy` over JWT-in-cookie. Clearing cookie alone leaves an active token in DB — security-meaningful. | Low | access_token table |
+| TS-A4 | **Logout button reachable from every authed page** | OWASP session mgmt guidance — "visible and easily accessible from every resource." Already present in our sidebar; just needs rewire to native logout. | Trivial | existing layout |
+| TS-A5 | **"Remember me" toggle affecting cookie Max-Age** (or deliberate omission, e.g. always session-length) | User expectation in 2026 SaaS. If omitted, document the session lifecycle in login-page copy so volunteers aren't surprised by re-auth frequency. | Low | Q-AUTH-03 decision |
+| TS-A6 | **Redirect-after-login preservation** — bounced unauth users land back where they started after login | Existing `POST_LOGIN_REDIRECT_KEY` sessionStorage pattern. Critical for the invite flow specifically (`?redirect=/invites/<token>`). | Low | existing pattern |
+| TS-A7 | **Login failure messages that don't leak account existence** | "Invalid email or password" — not "user not found" or "wrong password." Standard since ~2015; inexcusable to miss in 2026. | Trivial | route copy |
+
+### B. Password Reset
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-B1 | **"Forgot password?" link on the login page** | Universally expected. Missing = support tickets and account lockout. | Trivial | — |
+| TS-B2 | **Request-reset endpoint returns 202 regardless of whether email exists** | Prevents account-existence enumeration. fastapi-users built-in behavior. | None (library default) | fastapi-users |
+| TS-B3 | **Reset email with short-lived token link** — industry default is 15–60 min, NIST-aligned guidance says ≤1 hour | Well-established 2026 industry baseline (Postmark, SuperTokens, OWASP Forgot Password cheat sheet). | Low | fastapi-users; Mailgun |
+| TS-B4 | **One-time-use token** — once consumed, subsequent attempts rejected | Standard. fastapi-users handles via hashed token + invalidation hook. | None (library default) | fastapi-users |
+| TS-B5 | **Rate-limit on resend** (per-email + per-IP) | Prevents mailbox flooding and enumeration-by-timing. OWASP baseline. | Low | existing rate-limiter, new keyed rule |
+| TS-B6 | **Reset email that looks like a real password-reset** — subject "Reset your CivicPulse Run password," plaintext fallback, clear expiry notice, single CTA, no marketing | 2026 email content consensus (Postmark guide). | Low | existing email template infra (v1.16) |
+| TS-B7 | **Reset-complete side effect: invalidate all other active sessions for that user** | OWASP + WorkOS + Auth0 consensus. Password change = session compromise assumption. | Low-Med | `access_token` bulk delete in the `on_after_reset_password` fastapi-users hook |
+| TS-B8 | **Reset-complete side effect: auto-login the user** (or explicit "you can now sign in" screen — pick one) | Both are valid; don't leave the user on a dead confirmation page with no next action. | Low | route wiring |
+
+### C. Email Verification
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-C1 | **`is_verified` flag on User model that gates access to sensitive actions** (or to login outright — policy TBD in Q-AUTH-01) | fastapi-users ships this; the decision is what to *enforce* based on it | Low | fastapi-users base model |
+| TS-C2 | **Verify-by-email ceremony IF explicit ceremony chosen over token-as-proof** (Q-AUTH-01 gate) | If the answer is "token-as-proof suffices for invites," then this is only needed for future self-serve signup (currently out of scope). If the answer is "always verify," this ships in v1.20. | Med | Q-AUTH-01 |
+| TS-C3 | **Resend verification email** (rate-limited, returns 202 blindly) | If ceremony chosen. fastapi-users built-in. | Low | fastapi-users |
+| TS-C4 | **Verify-while-authed edge case: show "already verified" gracefully** | If a user clicks an old verification link after the flag was already set by a later invite-accept. No surprise modal, no 500. | Low | route copy |
+
+### D. Session Management UX
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-D1 | **"Log out everywhere" button in account settings** | Enterprise-grade 2026 SaaS baseline (Slack, Google Workspace). Volunteers lose phones; admins leave campaigns. | Low-Med | `access_token` bulk delete keyed by user_id (excluding current) |
+| TS-D2 | **Password change triggers logout-all-other-sessions automatically** | OWASP + Auth0 consensus. User changes password → all other sessions die, current one keeps going. | Low | `on_after_update_user`/`on_after_reset_password` fastapi-users hooks |
+| TS-D3 | **Session expiry (absolute OR idle, per Q-AUTH-03)** | Required — unlimited sessions are the anti-pattern. Exact model is the open question. | Low (once answered) | Q-AUTH-03 |
+| TS-D4 | **Graceful 401-on-expired — frontend redirects to `/login?redirect=<current>` instead of erroring** | TanStack Query interceptor pattern. We already have `client.ts`; extend its 401 handling. | Low | `web/src/api/client.ts` |
+
+### E. Password Policy (gated by Q-AUTH-02)
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-E1 | **Live-validation on the password-set form** (rules display + green-checks as met) | 2026 accessibility + UX standard. Users discover rules as they type, not as post-submit errors. WCAG-AA pattern from v1.19 research applies. | Low-Med | shadcn/ui + RHF + Zod |
+| TS-E2 | **Backend `validate_password` hook that matches frontend rules exactly** | fastapi-users provides the hook. Mismatched rules = "it said it was OK but the server rejected it" bug class. | Low | fastapi-users |
+| TS-E3 | **Single password field + show-password toggle** (NO confirm-password) | 2026 WAI / Atomic A11y guidance. v1.19 research established this as a hard preference. | Low | — |
+
+### F. Invite-Under-Native-Auth (the v1.19 goal, rewired)
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-F1 | **Invite-token URL → `/invites/<token>/setup` password-set page (for new users) or `/invites/<token>` accept page (for existing users)** | The two-branch pattern is how Linear, Notion, Vercel, Slack all do it: same URL shape, backend decides which surface to render based on whether an account exists. | Med | user lookup by email at render time |
+| TS-F2 | **Single-click accept for returning users** — sign in (if needed) → one button → in the campaign | Same UX we had planned for v1.19 Option B/C; now cleaner because no external redirect hop | Low | existing `/invites/<token>` page + auth interceptor |
+| TS-F3 | **Set-password + accept-invite in one atomic-feeling UX** — user sets password, user is logged in, invite is accepted, user lands on campaign. No "OK now click this other button." | Critical for activation. First-time volunteer attention span is ~90 seconds. | Med | route orchestration: create_user → set_password → login → accept_invite in sequence |
+| TS-F4 | **Token-as-proof of email ownership** (if Q-AUTH-01 resolves that way) — `is_verified=true` at invite-accept without a separate verify ceremony | Preserves the v1.19 activation-quality goal. The invite token IS the email-possession proof. | Low | custom `on_after_register` or invite-accept hook |
+| TS-F5 | **Idempotent re-invite to a second campaign for existing users** — skips setup entirely | v1.19 Table Stakes #3, preserved verbatim. Look up user by email; if exists, skip the setup branch. | Low | existing invite-service + user lookup |
+| TS-F6 | **First-time vs returning email content differs** — "Set up your CivicPulse account" vs "Sara invited you to Mayor Smith for City Council" | Two template variants keyed off user-exists signal at enqueue time. v1.19 Table Stakes #14. | Low | existing Mailgun templating |
+| TS-F7 | **Expired-link recovery: "request a fresh invite" button** | v1.19 Table Stakes #8, preserved. Same endpoint; notifies inviter. | Low-Med | new public endpoint |
+| TS-F8 | **Post-set-password → auto-login → auto-accept-invite flow never strands the user** | If any step fails, land the user on a page that tells them what happened and what to do. Not a generic 500. | Med | error-state orchestration |
+
+### G. Rate Limiting / Endpoint Protection
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-G1 | **Per-IP + per-email rate limit on `/auth/login`** — 2026 industry default: ~5 attempts / 15 min before soft-throttle or CAPTCHA | OWASP; every auth library guide recommends. | Low | existing rate-limiter (slowapi) |
+| TS-G2 | **Per-IP rate limit on `/auth/forgot-password`, `/auth/request-verify-token`, `/auth/register`** (register is N/A currently but covered for future) | Prevent mailbox flooding + enumeration | Low | existing rate-limiter |
+| TS-G3 | **Exponential backoff on repeated login failures per email** — 1s, 2s, 4s, 8s, up to a cap | Defense in depth beyond fixed-rate. Makes brute-force impractical without hard-locking accounts (which creates DoS risk). | Med | new middleware or slowapi custom-rule |
+| TS-G4 | **Account lockout is SOFT** — temporary delay, not permanent lock | Hard lockout is itself a DoS vector (attacker flood-locks a real user). Temporary rate-based backoff is the 2026 consensus. | Low | tied to G3 |
+| TS-G5 | **Generic failure messages on all auth endpoints** — "Invalid credentials," never "user not found" | Enumeration protection | None (fastapi-users default) | — |
+
+### H. CSRF Protection (explicitly table stakes, not differentiator)
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-H1 | **Double-submit-cookie CSRF** — X-CSRF-Token header required on all state-changing requests | Decision already made in `decision-drop-zitadel-diy-auth.md`; ~40 LOC middleware. Non-negotiable for cookie-based SPA auth. | Low-Med | new middleware |
+| TS-H2 | **CSRF token refreshed on login/logout** | Token bound to session, rotates on auth state change | Low | middleware wiring |
+
+### I. Continuous Test Verification (SEED-002)
+
+| # | Feature | Why expected | Complexity | Depends on |
+|---|---------|--------------|------------|------------|
+| TS-I1 | **Pre-commit hook runs `uv run ruff check --fix && uv run ruff format` on staged Python + `vitest related --run` on staged TS** | CLAUDE.md already mandates ruff; hook enforces it. Caught-before-push is the 2026 baseline. | Low | `.pre-commit-config.yaml` |
+| TS-I2 | **Pre-commit hook runs `pytest --lf -x` on staged Python against already-up compose stack** | Last-failed fast mode. MUST fail fast with "run docker compose up -d first" if stack isn't up (hard constraint from SEED-002). | Low-Med | hook script, compose health check |
+| TS-I3 | **CI on push to feature branches** (not only PRs) — lightweight unit suite at minimum | Current `pr.yml` only runs on PR trigger. Branches without PRs accumulate drift silently. | Low | `.github/workflows/push.yml` |
+| TS-I4 | **Scheduled nightly full suite on main** (pytest + vitest + Playwright) via `schedule:` cron | The daily drift detector. Caught within 24h, not at milestone end. | Med | new workflow file, compose-up-in-CI pattern |
+| TS-I5 | **Nightly regression alert: diff vs previous night; auto-open GH issue on net-new failures** | Turns the logging archaeology into actionable signal. SEED-002 item 5. | Med | workflow + `gh issue create` scripting |
+| TS-I6 | **Env-drift healthcheck (`scripts/doctor.sh`)** — validates `.env` DB port matches compose, E2E users exist, API image deps match pyproject, web/.env.local synced | Phase 106 proved 488/565 silent failures were env drift. This is the single-highest-leverage SEED-002 deliverable. | Med | new script + compose port introspection |
+| TS-I7 | **Healthcheck runs as first step of every CI workflow** | Fail fast on drift BEFORE burning 30min of test time. | Low | workflow wiring |
+| TS-I8 | **`run-e2e.sh` regression alerter** — parses `web/e2e-runs.jsonl`, compares tail-20 vs tail-100, emits notification on deterioration | User-requested ("the highest-leverage single fix" per SEED-002). | Low-Med | new script, Slack/Discord webhook or GH issue |
 
 ---
 
 ## Differentiators
 
-Features that make the flow feel genuinely well-designed. Skip without shame for v1.19, but each shortens the activation curve and reduces support load.
+Nice to have. Each shortens activation or reduces support load but skipping any one does not make v1.20 feel incomplete.
 
-| # | Feature | Value proposition | Complexity | B/C affinity | Notes |
-|---|---------|-------------------|------------|--------------|-------|
-| 1 | **Magic-link / passwordless option on the setup page** | Lets volunteers skip password creation entirely. Some campaigns will have volunteers who don't want yet-another password. | High | B can lean on ZITADEL's email-OTP/passkey support; C needs custom backend | ZITADEL Login V2 already supports passkeys/IdP/password as configurable per-org auth methods. Defer for v1.19 unless truly trivial — it's a v1.20+ candidate. |
-| 2 | **Passkey enrollment on first setup** | WebAuthn passkeys are the modern default for new accounts. ZITADEL supports this in Login V2. | Med | B (ZITADEL hosted does it natively) ; C would need custom WebAuthn glue | If we go with B and enable passkeys at the org level in ZITADEL, we get this nearly for free. Strong argument *for* Option B. |
-| 3 | **Single-click activation when no password is required** | If campaign admins flag "this volunteer doesn't need login access yet" (e.g. for receive-only SMS lists), the invite could be a no-op acknowledgement. | High | Neither natively — needs new backend modeling | Out of scope for v1.19 — flag in REQUIREMENTS as deferred. Listed for completeness because the question asked. |
-| 4 | **"Joining X campaign as Y role" framing rendered ON the password page itself** | Reinforces the *why* at the moment of friction. Reduces "what is this site again?" abandonment. | Low | C natively (we own the page); B only via ZITADEL `applicationName` (limited) | Strong argument *for* Option C. With C, we can also show the inviter's name and the campaign's logo (if we ever ship per-campaign branding). |
-| 5 | **Inviter's first name + a short personal message in the email** | Postmark, Linear, Notion, Vercel-style. "Sara from Mayor Smith for City Council invited you…" outperforms "A CivicPulse teammate invited you." Today's template falls back to "A CivicPulse teammate" when inviter has no display name — that's the bad path. | Med | Both — pure email-content change | Add an optional "personal note" field in the create-invite form. Admin can leave blank. If blank, omit the section (don't show empty quotes). |
-| 6 | **Pre-fill the user's name from invite metadata** | If the admin invited "kerry@…", the password-set page can show "Hi Kerry" if they typed a name. Tiny, warm. | Low | C natively; B not really controllable | Requires extending the invite create form to optionally collect first/last name. Already partially solved by `signup/$token` — can crib that pattern. |
-| 7 | **Show pending-invite list on the post-login dashboard for users with multiple workspaces** | If a user has 3 pending campaign invites, after accepting one they should see the other two surfaced. | Med | Both | Defer to v1.20+. Our model already supports this (multiple `Invite` rows per email), the UI just doesn't surface it. |
-| 8 | **"You're already a member of this campaign" detection on accept** | If a user clicks an old invite link after they've already been added by another path, show "You're already in! Open campaign" instead of "Accept invite." | Low | Both | Cheap win — add to accept-invite UX. Existing `effectiveStatus === "accepted"` partly does this; needs to also check campaign membership independent of invite state. |
-| 9 | **Resend-invite from the admin pending-invites table** | v1.16 added "pending invite admin visibility for delivery status." A button on each pending-invite row that re-runs delivery (and, if needed, regenerates the ZITADEL init code) closes the loop without requiring a new invite-create. | Low–Med | Both — but B's resend must call `CreateInviteCode` again (which invalidates the prior code, per ZITADEL docs) | Combines neatly with the "Request a fresh invite" CTA in #8 of Table Stakes — same backend handler. |
-| 10 | **Honest "this might be in your spam folder" prompt** | On the `/invites/<token>` page when status is `not_found`, suggest checking spam *and* offer the "request new invite" path. | Low | Both | Tiny copy change. |
+### Auth surface
 
-> **What good looks like (Differentiators):**
-> *"The invite email reads like it was written by a human teammate, the setup page says 'Set your password to volunteer with Mayor Smith,' and a returning user sees 'Welcome back, you've also been invited to two more campaigns.' Nothing about the auth provider leaks through."*
+| # | Feature | Value | Complexity |
+|---|---------|-------|------------|
+| D-1 | **"Active sessions" UI showing device/browser/last-seen/IP for each active session with per-row revoke** | Field volunteers lose phones; admins want forensic visibility after a suspected breach. Matches Slack/Google Workspace. | Med (new UI + endpoint iterating `access_token` rows per user + device-metadata capture at login) |
+| D-2 | **Device metadata captured at login** — UA, approximate location (from IP), last-seen timestamp, friendly device label ("Chrome on Mac") | Required to make D-1 useful. Alone it's logging, which is fine to ship. | Low |
+| D-3 | **"New sign-in from unrecognized device" notification email** | Modern phishing/credential-stuffing defense; Google/GitHub-style. | Med (new device fingerprint state, new email template) |
+| D-4 | **HIBP breached-password check on set-password / change-password** (client-side k-anonymity API) | NIST 800-63B aligned. Cheap if done client-side (no server round-trip, no privacy concerns). | Low |
+| D-5 | **Password change (from settings, while authed) as a distinct flow from password reset** | Standard. Requires current password + new password. Less scary than a password-reset email for a user who just wants to rotate. | Low |
+| D-6 | **"Sign in with a magic link" as an alternative to password on the login page** | Reduces password-reset support tickets. fastapi-users doesn't ship this; would need a custom flow. | High — defer beyond v1.20 |
+| D-7 | **Email-change flow with verification on both old and new addresses** | Enterprise-grade; needed once we have org admins managing their own emails | Med — defer beyond v1.20 |
+| D-8 | **Passkey (WebAuthn) enrollment** | 2026 modern default for new accounts. fastapi-users doesn't ship. | High — defer; flag for SEED-003 trigger alongside SSO |
 
----
+### Invite UX
 
-## Anti-Features (Out of Scope / Avoid)
+| # | Feature | Value | Complexity |
+|---|---------|-------|------------|
+| D-9 | **Inviter's first name + optional personal note rendered in the invite email** | v1.19 Differentiator #5; warm, converts better. | Low-Med |
+| D-10 | **Pre-fill invitee's name on setup form from invite metadata** | v1.19 Differentiator #6; tiny, warm. | Low |
+| D-11 | **"You're already a member of this campaign" branch on accept** | v1.19 Differentiator #8; prevents confusion on duplicate invites. | Low |
+| D-12 | **Resend-invite button in admin pending-invites table** | v1.19 Differentiator #9; closes the loop for admins without re-creating invites manually. | Low-Med |
+| D-13 | **Honest "check your spam folder" prompt on not-found state of `/invites/<token>`** | v1.19 Differentiator #10; tiny copy change, big empathy. | Trivial |
+| D-14 | **Post-login dashboard lists other pending invites for the user's email** | v1.19 Differentiator #7; multi-campaign onboarding feels coherent. | Med — defer to later milestone |
 
-Things competing products sometimes ship that we should NOT.
+### SEED-002 surface
 
-| Anti-feature | Why avoid | Do this instead |
-|--------------|-----------|-----------------|
-| **CAPTCHA on the invite-accept or password-setup page** | The invite token itself is the gate — it's a unique, expiring, single-use, server-issued secret delivered to a verified inbox. Adding CAPTCHA on top is friction with no incremental security benefit, and CAPTCHAs harm WCAG compliance (visual challenges fail screen readers). | Rely on the existing rate-limiting on public endpoints (already shipped per `/v1.5`). Add per-token attempt rate-limit if abuse appears. |
-| **Email verification step on top of the invite link** | The invite link itself proves email ownership — they had to receive it to click it. Adding a "verify your email" hop is redundant and stalls activation. ZITADEL's `isEmailVerified=true` flag should be set at `CreateUser` time precisely to skip this. | Set `isEmailVerified=true` when creating the ZITADEL user (the invite token is the verification proof). Documented ZITADEL pattern. |
-| **Forced 2FA / MFA enrollment during first setup** | Volunteers in the field need to be able to log in fast. Forcing MFA at first run will tank activation. | Make MFA optional, surface it as a post-onboarding nudge for admin/manager roles only. (And only when the org actually wants it.) |
-| **Required confirm-password field** | 2026 best practice (WAI / Atomic A11y) is a single password field with a show-password toggle. Confirm-password adds friction without security value when a show toggle exists. | One field + show toggle. |
-| **Generic `noreply@` sender** | Already partly avoided since we route via Mailgun with org context. Don't regress — keep the inviter's name in the body and use a campaign-recognizable sender display name. | Keep current `EmailTenantContext` + add inviter display name in subject for personality (e.g. "Sara invited you to Mayor Smith for City Council"). |
-| **"Reset password to recover an expired invite link" flow** | An expired invite is NOT a forgotten password — they're orthogonal. Conflating them confuses both states. | Expired invite → "request new invite" → admin re-issues. Forgotten password → ZITADEL's existing reset flow. Two separate paths. |
-| **Auto-creating campaign membership before accept** | Tempting (saves a step), but breaks the "user must explicitly opt in" trust model and would surprise users invited to campaigns they don't want to join. | Keep the explicit "Accept invite" click as the consent point. |
-| **A separate "welcome to CivicPulse" tour on first login** | Invited users are joining an already-running campaign. They want to *do their job*, not learn the product. The existing field-mode driver.js tour (v1.4) is the right scope; don't add a setup-wizard tour on top. | Land them directly on the relevant campaign page (existing behavior — keep). |
-| **Captcha on the "request new invite" button** | Same reasoning as above — the original invite token's campaign context is the gate. | Per-token / per-IP rate limit. The request just emails the campaign admin team. |
-| **Surveying volunteer demographics during account setup** | Out of scope and slows activation. There's already a separate `/signup/$token` volunteer-application flow for that. Don't conflate. | Keep invite onboarding minimal — set password, accept, land in app. |
+| # | Feature | Value | Complexity |
+|---|---------|-------|------------|
+| D-15 | **Test health dashboard** — GH Pages or similar showing pass rate / flake rate / nightly trend from `e2e-runs.jsonl` and CI history | Actionable trend data vs archaeology. Makes test health a visible team metric. | Med |
+| D-16 | **Per-spec quarantine mechanism** — `@pytest.mark.quarantine` and equivalent for vitest/Playwright; quarantined tests run in a separate non-blocking job | Known-flake ≠ real-failure; separates them so the main signal stays green and trustworthy. | Low-Med |
+| D-17 | **Coverage floor enforcement in CI** — fail the build if coverage drops below a ratcheted baseline | Prevents per-phase erosion. TEST-01/02/03 obligations become enforceable. | Med |
+| D-18 | **Slack/Discord integration for nightly regressions** | Pushes signal where the team actually looks. Email gets ignored. | Low — but requires Slack app, deferrable |
 
----
+### Rate limiting / protection
 
-## Re-Invite UX (existing user, new campaign)
-
-Explicitly addressed because this is a real branch the implementation will hit, and the question called it out.
-
-**The scenario:** A user already has a CivicPulse identity (because they accepted a prior campaign invite, or because they were created via the v1.17 volunteer-application approval path). An admin on a *different* campaign now invites them.
-
-**Required behavior:**
-
-1. **At invite-creation time:** `InviteService.create_invite` is unchanged (it doesn't know about ZITADEL today). The new backend surface — call it `IdentityProvisioningService.ensure_identity(email)` — is invoked from `enqueue_invite_email` (or the email task itself, for clean async boundaries). It should:
-   - Look up the user in ZITADEL by login-name (lowercased email).
-   - If found → **no-op**. Do not regenerate an init-code. Do not call `CreateUser`.
-   - If not found → `CreateUser` with `isEmailVerified=true`, then `CreateInviteCode` (Option B) or just record the user_id (Option C).
-2. **Email content branches on this signal:**
-   - **First-time:** subject "Set up your CivicPulse account to join {campaign}", body explains "you'll set a password on the next page."
-   - **Returning:** subject "{Inviter} invited you to {campaign}", body is the existing concise "Accept your invite" pattern. NO setup-link, NO password copy — just the accept link.
-3. **Landing experience:**
-   - **First-time + Option B:** init-link → ZITADEL setup → redirected back to `/invites/<token>` already authed → one-click "Accept invite."
-   - **First-time + Option C:** invite-link → `/invites/<token>` shows "Set a password to continue" inline form → on submit, set password + start OIDC → land back on `/invites/<token>` already authed → one-click "Accept invite."
-   - **Returning (both options):** invite-link → `/invites/<token>` → if not authed, "Sign in to accept" (existing) → ZITADEL prompts for password → land back on `/invites/<token>` authed → "Accept invite."
-4. **Already-a-member case:** If the returning user is *already* a member of this campaign (e.g. a duplicate invite was sent), show "You're already a member of {campaign}. Open campaign →" and silently mark the invite accepted. This is a small extension of the existing `effectiveStatus === "accepted"` branch.
-
-**Symbol of done:** A user who already has an account and clicks an invite link sees ZERO password / setup UX. They sign in (if not already), click Accept, and land in the campaign. The flow is indistinguishable from clicking any other authenticated link.
-
-> **What good looks like (Re-invite):**
-> *"If you already have a CivicPulse account, an invite to a second campaign feels like clicking 'Accept' on a Slack channel invite — sign in if you're not, click once, you're in. No re-onboarding, no extra password, no spurious 'set up your account' email."*
+| # | Feature | Value | Complexity |
+|---|---------|-------|------------|
+| D-19 | **Geo-velocity anomaly detection** — "sign-in from two continents 5 min apart" flag | Detects credential stuffing without false-positive storms | High — defer |
+| D-20 | **Optional TOTP/passkey MFA opt-in in account settings** (never forced) | Security-conscious users can harden. v1.19 research explicitly anti-features FORCED MFA, not optional. | High — defer; flag SEED-003 trigger |
 
 ---
 
-## Expired / Lost-Link Recovery
+## Anti-Features (explicitly DO NOT build)
 
-The standard 2026 pattern (Clerk, Postmark, most B2B SaaS):
-
-1. **Server-side detection:** Public invite endpoint already returns `status: "expired"` (lines 393–403 of `app/services/invite.py`). No change needed there.
-2. **Client-side messaging:** Replace today's passive "Ask your campaign admin to send a new one" with an active "Request a new invite" button. (Existing `effectiveStatus === "expired"` branch on the page.)
-3. **Recovery action:** The button hits a new public endpoint (rate-limited, captcha-free) that:
-   - Takes the expired invite token.
-   - Looks up the campaign + the original inviter.
-   - Sends a templated email to the inviter (and any other admins on the campaign): "{invitee_email} tried to use an expired invite link to join {campaign}. Re-invite them?" with a deep link to the pending-invites admin table.
-   - Shows the user a "We've notified the campaign team — they'll send a fresh invite to your email" confirmation.
-4. **Lost-link recovery (user can't find the email at all):** This is a different path — the user doesn't have a token. Two acceptable patterns:
-   - **a) Don't solve it in v1.19.** Most users will find the email; for the rest, "contact the campaign admin out-of-band" is fine. Punt.
-   - **b) Defer to v1.20:** add a "Did you receive an invite to a campaign? Find it in your account" UX after login that lists pending invites by email match. Tied to differentiator #7 above.
-
-**Recommendation:** Ship 1–3 in v1.19. Defer (b) to v1.20.
-
-> **What good looks like (Recovery):**
-> *"An expired link offers a one-tap 'request a fresh invite' that emails the campaign team — the user knows what to expect and isn't dead-ended. No password-reset confusion. No support ticket required."*
-
----
-
-## Email Content Patterns
-
-Distilled from Postmark's invitation-email guide, the SaaSframe collection (Linear, Notion, Miro, Mixpanel, etc.), and Clerk's invitation docs.
-
-**Subject line patterns that work in 2026:**
-
-- Good: `{Inviter first name} invited you to {workspace}` (Linear, Notion, Slack, Vercel pattern)
-- Good: `Set up your {Product} account` (for first-time-only sends, when the email serves as both invite and account-init)
-- Bad: `You have a new invitation` (vague — kills open rate)
-- Bad: `[Action Required] Accept your invite to ProductName` (looks like spam)
-
-Today's template: `"{inviter_name} invited you to join {campaign_name}"` — already close to the recommended pattern. Keep, with the inviter-name fallback fixed (don't show "A CivicPulse teammate" if avoidable).
-
-**Body patterns that work:**
-
-- **Inviter context:** "Sara from Mayor Smith for City Council invited you to volunteer." Use the campaign+org+inviter we already have in `build_campaign_invite_email`.
-- **Role + value:** "You'll be joining as a {role} — you'll be able to {1-line role-specific value statement}." Don't list features — list *what they can do*.
-- **Optional personal note:** Render a quoted block ONLY if the admin filled one in. Never show empty quotes.
-- **Single primary CTA:** "Accept your invite" or "Set up your account" — one button, not two.
-- **Expiry messaging:** "This invite expires {date}." We already include this — keep.
-- **What to expect on click:** Two-template branch per re-invite section above:
-  - First-time: "You'll set a password on the next page (takes about a minute)."
-  - Returning: "Sign in to accept" — no password mention.
-- **Footer:** Reply-to a real inbox or include a "Need help? Contact …" line. Postmark guidance.
-- **Plain-text version:** Already implemented (`text_body`) — keep parity. Many clients (mobile in particular) render text by default.
-
-**What to drop from today's template:**
-
-- The "for {organization_name}" sub-clause is fine when org ≠ campaign, but the current code falls back to `organization_name = campaign.name` — meaning we sometimes render "join Foo for Foo" when no org exists. Suppress the "for X" clause when org ≡ campaign or org is None.
-
-> **What good looks like (Email):**
-> *"The subject reads 'Sara invited you to Mayor Smith for City Council.' The body opens with Sara's name, a one-line on what the user will be doing as a Volunteer, a single 'Set up your account' button, and a quiet 'expires Apr 29' line. Nothing else. It looks like Sara wrote it personally — not like a SaaS notification."*
+| Anti-feature | Why avoid | Do instead |
+|--------------|-----------|------------|
+| **Self-serve public registration at `/auth/register`** | CivicPulse is invite-only-by-design. A public register endpoint becomes an abuse magnet (fake accounts, spam pipelines). fastapi-users ships `/register` by default — we must explicitly NOT mount it, or gate it behind an invite-token check. | Keep registration invite-scoped only. Invite-accept flow calls `UserManager.create()` server-side. |
+| **CAPTCHA on the invite-accept or password-set page** | Invite token is the gate. CAPTCHA is friction with no incremental security benefit and harms WCAG compliance. (v1.19 anti-feature, preserved.) | Existing rate limiting + per-token attempt counter if abuse appears. |
+| **CAPTCHA on login** | Same reasoning. Rate limit + backoff is the 2026 consensus; CAPTCHA is an escalation only if automated attack patterns actually appear. | Ship G1-G4 first; add CAPTCHA only if attack data warrants it. |
+| **Hard account lockout after N failed attempts** | Creates a DoS vector — attacker flood-locks a real user. | Soft lockout via exponential backoff (TS-G3/G4). |
+| **Forced MFA at first login** | Tanks volunteer activation. (v1.19 anti-feature.) | Make MFA opt-in for users who want it; opt-in per-role for admins who want to require it. |
+| **Required confirm-password field** | v1.19 research established: single field + show-password is 2026 best practice. | TS-E3. |
+| **Email verification step ON TOP of invite flow (unless Q-AUTH-01 resolves that way)** | Redundant — invite token proves email ownership. (v1.19 anti-feature.) | Token-as-proof unless Q-AUTH-01 says otherwise. |
+| **Conflating expired invite with forgotten password** | Two different states, two different recovery paths. (v1.19 anti-feature.) | Expired invite → "request new invite"; forgotten password → `/auth/forgot-password`. |
+| **JWT in Authorization header for the SPA** | Decision already made: cookie sessions. The decision note calls this out explicitly. | Stick to `credentials: 'include'` + cookie. |
+| **Redis as the session store** | Not in the stack; decision note rejected it explicitly. Postgres + indexed token column is fast enough at our scale. | Postgres-backed `access_token` table via `SQLAlchemyAccessTokenDatabase`. |
+| **SSO/SAML/MFA scaffolding built "for the future"** | Tactical-pivot framing. Building for hypothetical future = dead code. SEED-003 tracks return conditions. | Defer cleanly. Do not build `OAuth2Provider` abstractions or SAML seams. |
+| **Auto-login on email verification click** (if ceremony chosen) | Token possession is not password knowledge. Verification completes → show "Email verified, please sign in" screen. | Separate verify from authenticate. |
+| **Password expiry / forced rotation policy** | NIST 800-63B explicitly deprecates forced rotation as of 2017+; it produces weaker passwords and support load. | Rotate only on compromise signal. |
+| **"Security questions" as a reset alternative** | 1990s pattern; verifiably weaker than email reset. | Email reset only. |
+| **Running dev services outside `docker compose`** (for tests, for CI, for anything) | Load-bearing project invariant. SEED-002 `Hard Constraints` section explicitly forbids this. Violation = accelerates drift while pretending to solve it. | Compose-up-first in every hook, every workflow, every script. |
+| **Test cleanup phase as the v1.20 test-health strategy** | Phase 106 proved this is 10x the cost of continuous verification, and SEED-002 exists specifically to prevent it. Cleanup phase #2 = root cause never addressed. | SEED-002 continuous verification as a first-class milestone deliverable. |
 
 ---
 
-## MVP Recommendation for v1.19
+## Feature Dependencies
 
-Prioritize, in this order:
+```
+fastapi-users core setup
+  ├─ Login/logout (TS-A1..A7)
+  ├─ Password reset (TS-B1..B8)
+  ├─ Email verification (TS-C1..C4, gated by Q-AUTH-01)
+  ├─ Session management (TS-D1..D4, shaped by Q-AUTH-03)
+  └─ Password policy (TS-E1..E3, shaped by Q-AUTH-02)
+    └─ User model Alembic migration (prereq for all auth)
 
-1. **Pre-provisioned ZITADEL identity** (Table Stakes #2) — required for both options; do this first.
-2. **Password-set flow** — pick Option B or C and ship it (Table Stakes #1, #5, #6, #9).
-3. **Idempotent re-invite** (Table Stakes #3) — non-negotiable, gate to merge.
-4. **Email-already-has-account branch + first-time vs returning email content** (Table Stakes #7, #14).
-5. **Defensive `/login` interstitial when bounced with `redirect=/invites/...`** (Table Stakes #10).
-6. **Expired-link "request new invite" button** (Table Stakes #8) + admin resend from pending-invites table (Differentiator #9).
+CSRF middleware (TS-H1..H2) — independent, can be built in parallel
 
-Defer to v1.20+:
+Invite rewire (TS-F1..F8)
+  ├─ depends on: login/logout, password policy, email verification decision
+  └─ preserves: existing /invites/<token>, existing invite service, Mailgun
 
-- Magic-link / passwordless (Differentiator #1).
-- Multi-pending-invite dashboard (Differentiator #7).
-- Post-onboarding MFA nudges (anti-feature avoidance still).
-- Lost-link "find my invite by email" recovery (Recovery option b).
+Rate limiting (TS-G1..G5)
+  └─ extends existing slowapi infrastructure — independent of auth lib
+
+SEED-002 (TS-I1..I8)
+  ├─ Independent of auth work — can ship before, during, or after
+  └─ SEED-002 TS-I6 (doctor.sh healthcheck) SHOULD ship first so the auth
+     rewrite gets the drift safety net from day one
+
+Differentiators build on Table Stakes — none are prerequisites for each other
+```
+
+**Critical ordering signal for roadmap:** SEED-002 TS-I1 (pre-commit) + TS-I6 (doctor.sh healthcheck) + TS-I4 (nightly) should ship as a Phase before the cross-cutting auth rewrite starts, per SEED-002's own trigger note ("v1.18 Phase 106 discovered 219+ silent failures"). The auth rewrite touches ~every test surface; doing it without continuous verification repeats the v1.18 mistake.
+
+---
+
+## MVP Recommendation for v1.20
+
+Prioritize, in order:
+
+1. **SEED-002 foundation first** — TS-I1 (pre-commit), TS-I6 (doctor.sh), TS-I4 (nightly) + TS-I7 (healthcheck-in-CI). Ship before auth work starts.
+2. **User model migration** — one-shot Alembic reshape to fastapi-users base mixin.
+3. **Core auth endpoints via fastapi-users** — login, logout, password reset (TS-A, TS-B, TS-G1/G2/G5).
+4. **CSRF middleware** (TS-H1/H2).
+5. **Password policy** (TS-E) once Q-AUTH-02 is resolved in plan-phase.
+6. **Session lifecycle + logout-all** (TS-D) once Q-AUTH-03 is resolved.
+7. **Email verification model** (TS-C) once Q-AUTH-01 is resolved.
+8. **Invite rewire** (TS-F) — the v1.19 goal, now on native auth.
+9. **Frontend rewire** — drop `oidc-client-ts`, switch `client.ts` to cookies, 401-handler, login/logout UI polish.
+10. **Rate-limit hardening** (TS-G3/G4) — exponential backoff on login.
+11. **Test harness rewire** — `scripts/seed.py`, `create-e2e-users.py`, Playwright auth helpers.
+
+Defer to later milestones:
+
+- Active-sessions UI (D-1..D-3) — ship device metadata logging (D-2) in v1.20 so we have data when we build the UI.
+- HIBP check (D-4) — cheap enough to pull in if Q-AUTH-02 lands on "length-only + HIBP"; otherwise defer.
+- Password-change-while-authed (D-5) — likely in v1.20 because it's trivial once the other pieces exist; demote to differentiator only because it's not strictly needed for ZITADEL parity.
+- Passkeys / MFA / SSO — defer; tripwires in SEED-003.
+- Test health dashboard (D-15) — after SEED-002 Table Stakes prove out; first nightly alerts are higher leverage.
+
+---
+
+## Quality Gate Self-Check
+
+- **Categories clear:** TS / D / AF split enforced per section. ✓
+- **Grounded in real products:** References Slack / Google Workspace / Linear / Notion / Vercel / Auth0 / WorkOS / Postmark / Clerk patterns — not theoretical. ✓
+- **Complexity noted:** Low / Low-Med / Med / High on every row. ✓
+- **Dependencies on existing features identified:** Existing invite model, Mailgun, rate limiter, `/invites/<token>` page, `client.ts`, compose stack all mapped. ✓
+- **Does NOT pre-answer Q-AUTH-01/02/03:** Email verification model (C2/F4 gated), password policy (E1/E2 gated), session lifecycle (D3/A5 gated) all deferred to plan-phase. ✓
 
 ---
 
 ## Sources
 
-- [ZITADEL CreateInviteCode API reference](https://zitadel.com/docs/reference/api/user/zitadel.user.v2.UserService.CreateInviteCode)
-- [ZITADEL CreateUser API reference](https://zitadel.com/docs/reference/api/user/zitadel.user.v2.UserService.CreateUser)
-- [ZITADEL Onboard End Users guide](https://zitadel.com/docs/guides/integrate/onboarding/end-users)
-- [ZITADEL Console — manage users](https://zitadel.com/docs/guides/manage/console/users)
-- [Clerk Invitations docs](https://clerk.com/docs/users/invitations)
-- [Postmark — User invitation email best practices](https://postmarkapp.com/guides/user-invitation-email-best-practices)
-- [SaaSframe — 29 invitation email examples (Linear, Notion, Miro, Mixpanel, Vercel-adjacent products)](https://www.saasframe.io/categories/invitation-emails)
-- [Userpilot — How to onboard invited users in SaaS](https://userpilot.com/blog/onboard-invited-users-saas/)
-- [Appcues — onboarding strategies for invited users](https://www.appcues.com/blog/user-onboarding-strategies-invited-users)
-- [Atomic A11y — Accessible password input checklist (2026)](https://www.atomica11y.com/accessible-web/password-input/)
-- [W3C WAI — Complete password example](https://www.w3.org/WAI/tutorials/forms/examples/password/)
-- [PatternFly — Password strength design guidelines](https://www.patternfly.org/components/password-strength/design-guidelines/)
-- [CourseUX — UX login & signup guidelines 2026](https://courseux.com/ux-login-signup-password-guidelines/)
-- [PageFlows — invite teammate flow patterns](https://pageflows.com/resources/invite-teammates-user-flow/)
-- ZITADEL GitHub issue [#8310 — Invite User Link](https://github.com/zitadel/zitadel/issues/8310) (clarifies CreateInviteCode link semantics)
+- [WorkOS — How to revoke sessions and sign users out everywhere](https://workos.com/blog/workos-sessions-api-session-revocation-sign-out-everywhere) — active-sessions UI, force-logout-on-password-change consensus (HIGH)
+- [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) — cookie attributes, logout visibility, session binding (HIGH)
+- [OWASP Forgot Password Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html) — reset token best practices (HIGH)
+- [Auth0 — Application Session Management Best Practices](https://auth0.com/blog/application-session-management-best-practices/) — logout-on-password-change pattern (HIGH)
+- [Postmark — Password reset email best practices](https://postmarkapp.com/guides/password-reset-email-best-practices) — email content and expiry patterns (HIGH)
+- [Postmark — User invitation email best practices](https://postmarkapp.com/guides/user-invitation-email-best-practices) — invite subject/body patterns (HIGH)
+- [Visakh Vijayan — Secure password reset tokens and expiry](https://vjnvisakh.medium.com/secure-password-reset-tokens-expiry-and-system-design-best-practices-337c6161af5a) — 15-60 min token window industry default (MEDIUM)
+- [SuperTokens — Forgot Password flow implementation guide](https://supertokens.com/blog/implementing-a-forgot-password-flow) — one-time-use + rate limit (HIGH)
+- [fastapi-users Email Verification Routes (DeepWiki)](https://deepwiki.com/fastapi-users/fastapi-users/6.3-email-verification-routes) — 202-always response for enum protection (HIGH)
+- [fastapi-users Flow documentation](https://fastapi-users.github.io/fastapi-users/latest/usage/flow/) — library default behaviors (HIGH)
+- [WorkOS — Top authentication solutions for FastAPI (2026)](https://workos.com/blog/top-authentication-solutions-fastapi-2026) — fastapi-users positioning (MEDIUM)
+- [vibeship — Missing rate limiting and brute-force defense](https://vibeship.co/kb/security/vulnerabilities/missing-rate-limiting) — 5/15min login baseline, exp backoff (MEDIUM)
+- [Laranepal — Exponential backoff login rate limiting](https://laranepal.com/blog/rate-limiting-with-exponential-backoff-in-laravel) — 1/2/4/8s pattern (MEDIUM)
+- [Firefly — Continuous drift detection in CI/CD with GitHub Actions](https://www.firefly.ai/academy/implementing-continuous-drift-detection-in-ci-cd-pipelines-with-github-actions-workflow) — scheduled CI patterns (MEDIUM)
+- [OneUptime — Session management implementation](https://oneuptime.com/blog/post/2026-01-30-session-management/view) — session lifecycle patterns (MEDIUM)
+- [v1.19 FEATURES.md — invite UX research](.planning/research/v1.19/FEATURES.md) — preserved invite patterns (HIGH, internal)
+- [SEED-002](.planning/seeds/SEED-002-test-hygiene-continuous-verification.md) — continuous verification scope and hard constraints (HIGH, internal)
+- [decision-drop-zitadel-diy-auth.md](.planning/notes/decision-drop-zitadel-diy-auth.md) — library/session-model decisions already made (HIGH, internal)
+- [questions.md](.planning/research/questions.md) — Q-AUTH-01/02/03 open design questions (HIGH, internal)
 
-**Confidence levels:**
-
-- **HIGH:** ZITADEL API capabilities (CreateUser, CreateInviteCode, isEmailVerified, idempotency-by-email) — verified against official ZITADEL docs.
-- **HIGH:** WCAG-AA / accessible password-form patterns — multi-source consensus (W3C WAI, Atomic A11y, PatternFly).
-- **MEDIUM:** Specific SaaS competitor email content patterns (Linear, Notion, Vercel) — drawn from aggregator + Postmark guidance, not direct fetches of each product's actual email. Patterns are well-known and unlikely to be wrong.
-- **LOW (flagged):** Exact behavior of ZITADEL's `url_template` and `applicationName` parameters in `CreateInviteCode` — docs are sparse. **Spike required during Phase 111** to verify Option B can actually deep-link the user back to `/invites/<token>` after init. If it can't, Option C wins by default.
-
----
-
-## B vs C — Feature Affinity
-
-Quick reference for the requirements author. "Easier" = less new code on our side.
-
-| # | Feature | Option B (ZITADEL init code) | Option C (App-owned setup page) | Winner |
-|---|---------|------------------------------|---------------------------------|--------|
-| 1 | **Set password without admin help** (table stakes) | Easy — ZITADEL hosted UI handles it. | Med — we own the form, password POST endpoint, error states. | **B** for speed of delivery |
-| 2 | **Contextual "joining {campaign} as {role}" framing on the password page** | Hard — only `applicationName` + ZITADEL branding config; cannot show campaign/role. | Trivial — full control of page content. | **C** for activation quality |
-| 3 | **Passkey enrollment at first setup** | Native — enable at the org level in ZITADEL Login V2. | Hard — would need WebAuthn implementation in our backend. | **B** strongly |
-| 4 | **Password strength meter + show-password toggle + WCAG-AA tied via aria-describedby** | Outsourced to ZITADEL hosted UI (their compliance, their controls). | We build it — but we already have shadcn/ui, RHF, Zod. Standard work. | **B** for "don't reinvent"; **C** for "we control the bar" |
-| 5 | **Idempotent re-invite (existing identity skips setup)** | Both must look up by email before `CreateUser`. Identical work. | Identical work. | **Tie** |
-| 6 | **Magic-link / passwordless option** | Native if we enable it in ZITADEL. | Significant new backend work. | **B** strongly |
-| 7 | **Mobile UX parity (≥ 44 px tap targets, single-column, native autofill)** | Depends on ZITADEL hosted UI's mobile quality (separately verifiable, but outside our control). | We own it — meets our existing WCAG-AA bar by default. | **C** for control; **B** for not-our-problem |
-| 8 | **Deep-link back to `/invites/<token>` after auth setup so user lands on accept** | Depends on `url_template` working as expected — UNVERIFIED, requires spike. | Trivial — we orchestrate the OIDC start ourselves and pass `redirect` through. | **C** until B's deep-link is proven |
-
-**Synthesis for the requirements author:**
-
-- If the Phase-111 spike confirms ZITADEL's `url_template` reliably deep-links back, **Option B** has the lowest delivery cost and gets us passkey support nearly for free. The cost is contextual framing on the password page (we lose it).
-- If the spike shows `url_template` is flaky / ZITADEL hosted UI looks visibly off-brand on mobile / we want passkeys to wait, **Option C** wins — more code, but full control of the activation experience and clean integration with our existing same-origin same-stack UI.
-- The decision should be made *after* the Phase-111 spike, not before. REQUIREMENTS should encode this as a conditional: "REQ-XX: implement Option B if spike succeeds, otherwise Option C."
+**Confidence summary:**
+- HIGH on core auth UX patterns (login, logout, reset, session management) — multi-source 2026 consensus.
+- HIGH on anti-features — clear industry/regulatory guidance (NIST on rotation/composition, OWASP on CAPTCHA/MFA-forcing).
+- HIGH on SEED-002 scope — internal document, concrete from Phase 106 evidence.
+- MEDIUM on exact rate-limit thresholds (5/15min, 1/2/4/8s backoff) — convention not standard; tuneable in plan-phase.
+- LOW (by design) on Q-AUTH-01/02/03 specifics — deliberately deferred; surfaced as decision surfaces without pre-answering.
