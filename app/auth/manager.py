@@ -69,6 +69,28 @@ class UserManager(BaseUserManager[User, str]):
             raise exceptions.InvalidID()
         return s
 
+    async def authenticate(
+        self,
+        credentials: Any,
+    ) -> User | None:
+        """Override to gracefully reject users with no native password set.
+
+        Legacy ZITADEL rows have ``hashed_password = NULL`` until the user
+        claims their account via the password-reset flow. ``pwdlib`` would
+        otherwise crash with ``TypeError: hash must be str or bytes``.
+        Return ``None`` so fastapi-users emits the standard
+        ``LOGIN_BAD_CREDENTIALS`` response.
+        """
+        try:
+            user = await self.get_by_email(credentials.username)
+        except exceptions.UserNotExists:
+            # Run the hasher anyway so timing leaks no user-existence signal.
+            self.password_helper.hash(credentials.password)
+            return None
+        if not user.hashed_password:
+            return None
+        return await super().authenticate(credentials)
+
     async def validate_password(
         self,
         password: str,
