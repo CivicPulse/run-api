@@ -10,10 +10,10 @@
  * proves the LANDING URL CONTRACT only — urlTemplate substitution works,
  * browser arrives at the correct path, the query string carries the two
  * template placeholders populated to concrete values, and a ZITADEL session
- * cookie is set on the `auth.civpulse.org` origin. Assertions about
- * `authStore` hydration and authed backend calls are Phase 114's scope and
- * are deliberately absent here (moving them to Phase 111 would force this
- * phase to ship Phase 114's code).
+ * cookie is set on the `auth.civpulse.org` origin. Assertions about the
+ * SPA auth-store hydration and authed backend calls are Phase 114's scope
+ * and are deliberately absent here (moving them to Phase 111 would force
+ * this phase to ship Phase 114's code).
  *
  * ZITADEL v2 hosted invite verify page (invite=true branch):
  *   ${ZITADEL_URL}/ui/v2/login/verify?userId=<userId>&code=<inviteCode>&invite=true
@@ -216,10 +216,102 @@ test.describe("Phase 111 urlTemplate deep-link spike", () => {
     spikeState.serviceToken = token
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  test.skip("placeholder — real test lands in T3", async () => {
-    // Real test body arrives in T3.
-    void spikeState
-    void expect
+  test("urlTemplate deep-links invitee to /invites/<token> with zitadelCode+userID", async ({
+    page,
+  }) => {
+    const zitadelUrl = process.env.ZITADEL_URL
+    expect(zitadelUrl, "ZITADEL_URL must be set").toBeTruthy()
+    expect(
+      spikeState.userId,
+      "beforeAll must populate spikeState.userId",
+    ).toBeTruthy()
+    expect(
+      spikeState.inviteCode,
+      "beforeAll must populate spikeState.inviteCode",
+    ).toBeTruthy()
+
+    const userId = spikeState.userId!
+    const inviteCode = spikeState.inviteCode!
+
+    // 1) Navigate to the COMMITTED ZITADEL v2 hosted invite-verify page.
+    //    Reference: zitadel/typescript apps/login src/app/(login)/verify/page.tsx —
+    //    searchParams.invite === "true" drives the set-password-then-redirect
+    //    flow that honors our urlTemplate from POST /v2/users/{userId}/invite_code.
+    //    Do NOT fall back to /ui/login/login/invite or /ui/login/login/accept-invitation —
+    //    those are legacy v1 paths; ZITADEL 2.71.x uses v2 at /ui/v2/login/*.
+    const verifyUrl =
+      `${zitadelUrl}/ui/v2/login/verify` +
+      `?userId=${encodeURIComponent(userId)}` +
+      `&code=${encodeURIComponent(inviteCode)}` +
+      `&invite=true`
+    await page.goto(verifyUrl, { waitUntil: "domcontentloaded" })
+
+    // 2) Generated strong password meeting ZITADEL default policy
+    //    (12+ chars, upper/lower/digit/symbol).
+    const password = "Spike!" + randomUUID().slice(0, 12) + "Aa1"
+
+    // 3) Fill the ZITADEL v2 password-set form. Priority: accessible labels
+    //    (ZITADEL's v2 login UI sets them), falling back to input[type=password].
+    //    We pick ONE locator per run — do NOT chain fallbacks inside a single run.
+    let passwordField = page.getByLabel(/password/i).first()
+    let confirmField = page.getByLabel(/confirm/i).first()
+    if ((await passwordField.count()) === 0) {
+      passwordField = page.locator('input[type="password"]').first()
+      confirmField = page.locator('input[type="password"]').nth(1)
+    }
+
+    await passwordField.fill(password)
+    await confirmField.fill(password)
+    await page
+      .getByRole("button", { name: /continue|save|set password|submit/i })
+      .first()
+      .click()
+
+    // 4) Wait for the browser to land on the LOCKED regex.
+    //    Landing URL shape is the EXACT string EMAIL-03 will ship later in
+    //    Phase 113. If this regex ever changes, the whole spike contract
+    //    breaks and EMAIL-03 must be replanned.
+    // eslint-disable-next-line prettier/prettier
+    await page.waitForURL(/^https:\/\/run\.civpulse\.org\/invites\/[^/?#]+\?zitadelCode=[^&#]+&userID=[^&#]+$/, { timeout: 30_000 })
+
+    // 5) Landing-URL substitution proof.
+    const landed = new URL(page.url())
+    expect(
+      landed.pathname,
+      "token path segment must be present and slash-free",
+    ).toMatch(/^\/invites\/[^/]+$/)
+
+    const zitadelCode = landed.searchParams.get("zitadelCode")
+    expect(zitadelCode, "zitadelCode query param must be present").toBeTruthy()
+    expect(
+      zitadelCode,
+      "ZITADEL must substitute {{.Code}} — literal placeholder means template shipped untouched",
+    ).not.toBe("{{.Code}}")
+
+    const landedUserId = landed.searchParams.get("userID")
+    expect(
+      landedUserId,
+      "userID must carry through from provisioned user",
+    ).toBe(userId)
+
+    // 6) ZITADEL session-cookie precondition — Phase 114's silent-renew flow
+    //    depends on a ZITADEL session being present on the auth origin. Without
+    //    it, no subsequent OIDC handoff can succeed.
+    const zitadelHost = new URL(zitadelUrl!).host
+    const cookies = await page.context().cookies()
+    const zitadelSessionCookie = cookies.find(
+      (c) => c.domain.endsWith(zitadelHost) && /session|zitadel/i.test(c.name),
+    )
+    expect(
+      zitadelSessionCookie,
+      "ZITADEL session cookie must be set on auth origin after password-set flow",
+    ).toBeDefined()
+
+    // NOTE: Per the scope-narrow decision in 111-REVIEWS.md §Blockers B1, this
+    // spike deliberately stops here. The next assertions — SPA auth-store
+    // hydration from the zitadelCode query param, and an authed backend call
+    // returning 200 — are Phase 114's explicit scope. Phase 114's verification
+    // gate re-runs this flow end-to-end and adds them. Keeping this spike
+    // narrow prevents Phase 111 from shipping Phase 114's code.
   })
 })
