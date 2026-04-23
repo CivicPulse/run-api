@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.rate_limit import get_user_or_ip_key, limiter
-from app.core.security import AuthenticatedUser, get_current_user
+from app.core.security import AuthenticatedUser, get_current_user_dual
 from app.db.session import get_db
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
@@ -27,7 +27,7 @@ router = APIRouter()
 @limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def get_me(
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user_dual),
     db: AsyncSession = Depends(get_db),
 ):
     """Return current user info from local DB."""
@@ -42,7 +42,7 @@ async def get_me(
 @limiter.limit("120/minute", key_func=get_user_or_ip_key)
 async def get_my_campaigns(
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user_dual),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all campaigns the current user belongs to."""
@@ -75,7 +75,7 @@ async def get_my_campaigns(
 @limiter.limit("240/minute", key_func=get_user_or_ip_key)
 async def list_my_orgs(
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user_dual),
     db: AsyncSession = Depends(get_db),
 ):
     """List all organizations the current user belongs to."""

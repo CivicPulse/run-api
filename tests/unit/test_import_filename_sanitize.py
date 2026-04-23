@@ -16,7 +16,12 @@ import httpx
 import pytest
 
 from app.api.deps import ensure_user_synced, get_campaign_db
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
@@ -49,6 +54,7 @@ def _make_local_user() -> User:
 def _build_app_with_overrides(mock_db) -> object:
     app = create_app()
     app.dependency_overrides[get_current_user] = _make_user
+    app.dependency_overrides[get_current_user_dual] = _make_user
 
     async def _get_db():
         yield mock_db

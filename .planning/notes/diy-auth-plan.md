@@ -227,3 +227,25 @@ None currently blocking Step 1. Re-read before Step 3:
     - `GET /api/v1/auth/me` post-logout → 401.
   - Notable: the Step 5.1 task spec said logout would be 204 without a CSRF header. That is wrong — the CSRF middleware (Step 2) correctly blocks it. The SPA already injects `X-CSRF-Token` via `web/src/api/client.ts`, so the live app is fine. Updating only the smoke-test script is needed if anyone reruns this manually.
 - Step 6 readiness: **green**. End-to-end native auth round-trip works in the live dev stack; Step 5 frontend + Step 4 backend + Step 2 CSRF are all mutually consistent.
+
+### Step 5.2 — Migrate endpoints to dual-auth (committed as <PENDING>)
+- Problem: Step 5 browser smoke showed `POST /auth/login` + `GET /auth/me` succeeded, but every other authenticated endpoint (e.g. `/me/orgs`, `/org/campaigns`) returned 401. Cause: Step 4 added `get_current_user_dual` but no caller migrated — routes still depended on the legacy JWT-only `get_current_user`.
+- Scope of swap (5 production-code swaps across 5 dependency sites):
+  - `app/core/security.py` — `require_role._check_role` and `require_org_role._check_org_role` now `Depends(get_current_user_dual)` (migrated in-place, not duplicated — the factories only consume `AuthenticatedUser` and work identically with either source).
+  - `app/api/v1/users.py` — 3 route handlers (`get_me`, `get_my_campaigns`, `list_my_orgs`) now `Depends(get_current_user_dual)`; import updated.
+  - `app/api/v1/campaigns.py` — `create_campaign` now `Depends(get_current_user_dual)`; import updated. Other handlers here already go through `require_role`, so they inherit the dual path transitively.
+  - `app/api/v1/join.py` — `register_volunteer` now `Depends(get_current_user_dual)`; import updated.
+- Role-gate decision: migrated in-place (preferred path in the brief). Dual returns the same `AuthenticatedUser` shape; JWT-claim parsing lives inside `get_current_user`, which `get_current_user_dual` still calls on cookie miss. No behavior change for JWT users.
+- `_authenticated_user_from_db` (Step 4 helper) verified: pulls every `OrganizationMember` row for the user, maps role via `ORG_ROLE_CAMPAIGN_EQUIVALENT`, picks max as the upper-bound `role`, returns `org_ids=sorted(set(...))`. Dana Whitfield (seed owner) returns `org_ids=["seed-e74fc90a875649a5"]` and `role=OWNER` — no bug.
+- Tests:
+  - Added `app.dependency_overrides[get_current_user_dual] = ...` alongside every existing `get_current_user` override in 20 test files (scripted). Necessary because `require_role` now resolves the dual dep by identity and the JWT-only override would be ignored.
+  - `uv run ruff check .` clean. `uv run ruff format --check .` clean.
+  - `uv run pytest tests/unit/ -q` → 1015 passed, 31 warnings (no regressions).
+  - Skipped the suggested new `tests/unit/test_dual_auth_endpoints.py` because a full cookie-backed integration round-trip requires standing up the fastapi-users auth backend + `AccessToken` DB + CSRF middleware against the unit-test app factory — not a minor addition. Live compose smoke below provides equivalent end-to-end coverage.
+- Live smoke (dev compose, api on host port 49371, API container restarted):
+  - `GET /api/v1/auth/csrf` → 200, sets `cp_csrf`.
+  - `POST /api/v1/auth/login` (form, `X-CSRF-Token` header) with `dana.whitfield@example.com` / `seeddev-password-123` → 204, sets `cp_session`.
+  - `GET /api/v1/me` → 200 `{id: ea02f84e-…, display_name: "Dana Whitfield", email: …}`.
+  - `GET /api/v1/me/orgs` → **200**, array length **1** (`Macon-Bibb Demo Organization`, role `org_owner`).
+  - `GET /api/v1/org/campaigns` → **200**, array length **1** (`Macon-Bibb Demo Campaign`, status `active`, member_count 8).
+- Step 6 readiness: **green**. Native cookie session now transits the role-gate factories correctly; the remaining ZITADEL fallback in `get_current_user_dual` is purely additive grace-period code.

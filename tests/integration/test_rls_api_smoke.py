@@ -23,7 +23,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.deps import get_campaign_db
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.rls import set_campaign_context
 from app.main import create_app
@@ -217,6 +222,7 @@ def _make_app_for_campaign(
         display_name=f"Test {user_id}",
     )
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_user_dual] = lambda: user
 
     # Override get_db to use the test superuser engine, avoiding the
     # module-level engine which is bound to a different event loop.

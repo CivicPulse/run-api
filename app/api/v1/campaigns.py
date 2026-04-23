@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ensure_user_synced
 from app.core.rate_limit import get_user_or_ip_key, limiter
-from app.core.security import AuthenticatedUser, get_current_user, require_role
+from app.core.security import AuthenticatedUser, get_current_user_dual, require_role
 from app.db.session import get_db
 from app.schemas.campaign import CampaignCreate, CampaignResponse, CampaignUpdate
 from app.schemas.common import PaginatedResponse
@@ -30,7 +30,7 @@ _service = CampaignService()
 async def create_campaign(
     body: CampaignCreate,
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user_dual),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new campaign in an existing organization.

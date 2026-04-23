@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Path, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
-from app.core.security import AuthenticatedUser, get_current_user
+from app.core.security import AuthenticatedUser, get_current_user_dual
 from app.db.session import get_db
 from app.schemas.join import CampaignPublicInfo, JoinResponse
 from app.services.join import JoinService
@@ -76,7 +76,7 @@ async def get_campaign_public_info(
 async def register_volunteer(
     slug: SlugParam,
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user_dual),
     db: AsyncSession = Depends(get_db),
 ) -> JoinResponse:
     """Register the authenticated user as a volunteer for the campaign.

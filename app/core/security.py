@@ -542,7 +542,7 @@ def require_role(minimum: str):
 
     async def _check_role(
         request: Request,
-        current_user: AuthenticatedUser = Depends(get_current_user),
+        current_user: AuthenticatedUser = Depends(get_current_user_dual),
         db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
         from app.api.deps import ensure_user_synced
@@ -619,7 +619,7 @@ def require_org_role(minimum: str):
     from app.db.session import get_db  # noqa: F811
 
     async def _check_org_role(
-        current_user: AuthenticatedUser = Depends(get_current_user),
+        current_user: AuthenticatedUser = Depends(get_current_user_dual),
         db: AsyncSession = Depends(get_db),
     ) -> AuthenticatedUser:
         from app.api.deps import ensure_user_synced

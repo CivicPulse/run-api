@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
@@ -225,6 +230,7 @@ def _override_app(
 
     if user is not None:
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_dual] = lambda: user
 
     if db is not None:
 
