@@ -66,7 +66,7 @@ function ForgotPasswordPage() {
         <CardContent>
           {submitted ? (
             <Button asChild className="w-full" variant="outline">
-              <Link to="/login">Back to sign in</Link>
+              <Link to="/login" search={{ redirect: undefined, reset: undefined }}>Back to sign in</Link>
             </Button>
           ) : (
             <form className="space-y-4" onSubmit={onSubmit} noValidate>
@@ -97,7 +97,7 @@ function ForgotPasswordPage() {
                 Send reset link
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                <Link to="/login" className="underline hover:text-foreground">
+                <Link to="/login" search={{ redirect: undefined, reset: undefined }} className="underline hover:text-foreground">
                   Back to sign in
                 </Link>
               </p>

@@ -107,7 +107,7 @@ function InviteEntryPage() {
       if (error instanceof HTTPError) {
         const status = error.response.status
         try {
-          const body = await error.response.clone().json<{ detail?: unknown }>()
+          const body = (await error.response.clone().json()) as { detail?: unknown }
           const detail = body.detail
           if (typeof detail === "string") {
             // Backend prefixes fastapi-users password-policy failures as
@@ -185,7 +185,7 @@ function InviteEntryPage() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full" variant="outline">
-              <Link to="/login">Back to sign in</Link>
+              <Link to="/login" search={{ redirect: undefined, reset: undefined }}>Back to sign in</Link>
             </Button>
           </CardContent>
         </Card>
@@ -318,7 +318,7 @@ function InviteEntryPage() {
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link to="/login" className="underline hover:text-foreground">
+                <Link to="/login" search={{ redirect: undefined, reset: undefined }} className="underline hover:text-foreground">
                   Sign in
                 </Link>
               </p>
