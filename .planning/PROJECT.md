@@ -126,14 +126,18 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - ✓ Anonymous and authenticated public volunteer application submission with existing-account prefill — v1.17 (APPL-01, APPL-04, APPL-05)
 - ✓ Admin review queue with approve/reject actions, exactly-once membership activation, and auditable decision trail — v1.17 (REVW-01, REVW-03, REVW-04, REVW-05, REVW-06)
 - ✓ Review queue context surfacing existing-account, existing-member, and prior-status signals with idempotent approval retries and invite fallback for email-only applicants — v1.17 (REVW-02, SAFE-03)
+- ✓ Canvassing field bug fixes — auto-advance after outcome, working Skip House, optional outcome notes, form-requiredness audit — v1.18 (CANV-01, CANV-02, CANV-03, FORMS-01)
+- ✓ House selection from list and map with audited active-state state machine — v1.18 (SELECT-01, SELECT-02, SELECT-03)
+- ✓ Map rendering & asset pipeline fixes (Leaflet icons, list/map z-index, asset audit) — v1.18 (MAP-01, MAP-02, MAP-03)
+- ✓ Offline queue hardening — persistent replay, connectivity indicator, sync-on-reconnect with backoff — v1.18 (OFFLINE-01, OFFLINE-02, OFFLINE-03)
+- ✓ Test baseline trustworthiness restored and per-phase coverage obligations met — v1.18 (TEST-01, TEST-02, TEST-03, TEST-04)
 
 ### Active
 
-- Fix reported canvassing field bugs (auto-advance, skip house, map/list layering, house selection, broken map icons, optional outcome notes) — v1.18
-- Audit household active-state state machine end-to-end — v1.18
-- Audit field-mode map asset pipeline and Leaflet icon loading — v1.18
-- Audit field-mode form requiredness to remove over-eager validation — v1.18
-- Proactively harden the offline queue, connectivity indicators, and sync-on-reconnect flow — v1.18
+- Pre-provision a credentialed identity for new invitees so the invite link lands them in a "set password → accept" flow rather than a stuck login page — v1.19
+- Make `/login` and the invite-accept page fall back gracefully when an init link expires or context is lost — v1.19
+- Update the invite email content to set expectations for first-time vs returning users — v1.19
+- Idempotent re-invite path for users who already have a ZITADEL identity (joining a second campaign) — v1.19
 
 ### Out of Scope
 
@@ -159,30 +163,33 @@ Any candidate, regardless of party or budget, can run professional-grade field o
 - Per-org SSO/SAML configuration — ZITADEL handles SSO at instance level
 - White-label / custom branding per org
 
-## Current Milestone: v1.18 Field UX Polish
+## Current Milestone: v1.19 Invite Onboarding
 
-**Goal:** Fix reported canvassing field bugs and harden the offline/sync path so volunteers can complete doors reliably.
+**Goal:** Make the volunteer-invite link work end-to-end for brand-new users — clicking the link must lead to a working "set password → accept invite" flow without manual admin intervention or generic-login dead-ends.
 
 **Target features:**
-- Canvassing flow fixes — auto-advance after outcome, working Skip House, optional outcome note
-- House selection from list and map — tap-to-activate in both views, resolve "can't activate correct house" friction
-- Map rendering fixes — broken Leaflet marker icons and map-over-list layering
-- Household active-state state-machine audit
-- Field-mode form requiredness audit
-- Offline queue, connectivity indicator, and sync-on-reconnect hardening
+- Programmatic ZITADEL user provisioning at invite-creation time (Option B vs Option C decision pending research)
+- One-time setup link in the invite email (init-code, magic link, or app-owned setup page)
+- Updated invite email content explaining the first-click flow for new vs returning invitees
+- Idempotent re-invite handling — existing ZITADEL identity joining a new campaign skips provisioning, lands directly on the accept page
+- Defensive `/login` page copy that surfaces invite context when the user lands there with `?redirect=/invites/...`
+- Backend `ZitadelService` extended with `create_human_user`, `send_init_code`, and idempotency primitives (or equivalent app-owned password-set endpoint, depending on chosen approach)
+- E2E coverage for the click → setup → accept flow plus unit/integration coverage for the new ZITADEL surface
 
 **Key context:**
-- Driven by real volunteer feedback from door-knocking sessions
-- Bug-fix + polish milestone on the mobile-first field mode shipped in v1.4
-- Medium scope (4–6 phases); phase numbering continues from v1.17
+- Driven by a real volunteer who got stuck on the login page with no instructions after clicking the v1.17 invite link
+- Audit (in conversation 2026-04-22) found that ZITADEL self-registration is disabled and `app/services/zitadel.py` has no user-creation methods, so brand-new invitees are currently locked out
+- Implementation approach (Option B "ZITADEL init code" vs Option C "app-owned setup page") to be decided after parallel project-research evaluates both
+- Existing `/signup/$token` volunteer-application flow is separate and out of scope
+- Phase numbering continues from v1.18 (next phase = 111)
 
 ## Current State
 
-**Shipped:** v1.17 Easy Volunteer Invites (2026-04-10)
+**Shipped:** v1.18 Field UX Polish (2026-04-11)
 
-The platform now supports campaign-scoped volunteer signup links separate from trusted member invites. v1.17 closed 5 phases (5 plans) and delivered: admin-managed signup links with create/list/disable/regenerate lifecycle, a safe same-origin public signup landing page, anonymous and authenticated public volunteer application intake with immutable source-link attribution, duplicate-safe handling and rate-limited neutral public endpoints, an admin review queue with approve/reject actions that gate campaign membership activation on explicit approval, and enriched review context (existing-account/member/prior-status) with idempotent approval and an invite-fallback path for email-only applicants.
+The mobile-first field mode is now reliable for door-knocking volunteers. v1.18 closed 5 phases (106-110, 36 plans) and delivered: a trustworthy test baseline (TEST-04 — pytest 1122 / vitest 805 / Playwright 312 on consecutive greens via `web/scripts/run-e2e.sh`), canvassing wizard fixes (auto-advance, working Skip House, optional outcome notes, form-requiredness audit), tap-to-activate house selection from list and map with an end-to-end-audited active-house state machine, Leaflet asset/icon and z-index fixes (Radix popper z-1200 over z-1100 Sheet overlay), and a hardened offline outcome queue with persistent replay, glanceable connectivity pill, and 5xx/422-aware sync with backoff. A production fix in Phase 110 unified `submitDoorKnock`'s offline gating with `ConnectivityPill` so UI and queue can no longer disagree about online state.
 
-**Previously shipped:** v1.16 Email Delivery Foundation (2026-04-08) — provider-agnostic Mailgun-backed transactional email seam with durable post-commit invite delivery, authenticated webhook reconciliation, canonical delivery-attempt audit rows, ZITADEL SMTP runbooks, and pending-invite UI visibility.
+**Previously shipped:** v1.17 Easy Volunteer Invites (2026-04-10) — campaign-scoped volunteer signup links separate from trusted member invites; admin-managed lifecycle, anonymous and authenticated public application intake, admin review queue with approve/reject gating, idempotent approval, and invite-fallback for email-only applicants.
 
 **Ops conditions (not code gaps):**
 1. Campaign creation 500 — ZITADEL pod connectivity investigation needed
@@ -195,7 +202,19 @@ Codebase: ~22K LOC Python backend + ~43K LOC TypeScript frontend.
 
 ## Next Milestone Goals
 
-_v1.18 Field UX Polish is the current milestone — see above._
+_v1.19 Invite Onboarding is the current milestone — see above._
+
+<details>
+<summary>Archived v1.18 planning context</summary>
+
+- Reported canvassing field bugs — auto-advance, skip house, map/list layering, broken map icons, optional outcome notes
+- Audit household active-state state machine end-to-end
+- Audit field-mode map asset pipeline and Leaflet icon loading
+- Audit field-mode form requiredness to remove over-eager validation
+- Proactively harden offline queue, connectivity indicator, and sync-on-reconnect
+- Restore test baseline trustworthiness (TEST-04) and apply per-phase coverage obligations (TEST-01/02/03)
+
+</details>
 
 <details>
 <summary>Archived v1.17 planning context</summary>
@@ -267,6 +286,8 @@ Deployment: Docker Compose for local dev, GitHub Actions CI/CD to GHCR, K8s mani
 | ZITADEL email stays configure-and-document in-product scope | Auth email originates in ZITADEL, so this milestone should unblock delivery and operations without rebuilding auth templating in CivicPulse | ✓ Good — ZITADEL SMTP runbook plus ops separation shipped without CivicPulse-side auth templating |
 | Keep public signup links separate from trusted member invites | Public volunteer traffic and trusted staff invites have different trust models and should not share a single entry surface | ✓ Good — dedicated signup-link domain, neutral public resolver, and same-origin landing page shipped alongside untouched member invites |
 | Approval-gated volunteer access with pending applications | Public intake must not grant campaign visibility before reviewer approval | ✓ Good — pending applications activate membership only on approve; anonymous approvals fall back to invite delivery for email-only applicants |
+| Test baseline trustworthiness as its own first phase | Subsequent phases need a trustworthy pytest/vitest/Playwright signal before they can claim coverage. Phase 106 surfaced 219+ pre-existing failures (488 of 565 were env-drift, 77 mock-shape rot). | ✓ Good — TEST-04 fixed first, then TEST-01/02/03 anchored as per-phase obligations on every code-changing phase |
+| Unify offline gating signal between UI and queue | UI showed "online" while submitDoorKnock decided "offline" via a different signal, masking real offline events as 5xx errors and breaking sync indicators | ✓ Good — Phase 110 unified both on `navigator.onLine`; ConnectivityPill and queue can no longer disagree |
 
 ---
 ## Evolution
@@ -287,4 +308,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — started milestone v1.18 Field UX Polish*
+*Last updated: 2026-04-22 — shipped v1.18 Field UX Polish; started milestone v1.19 Invite Onboarding*
