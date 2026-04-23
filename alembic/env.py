@@ -10,7 +10,7 @@ import os
 from logging.config import fileConfig
 
 from geoalchemy2 import alembic_helpers
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -48,6 +48,34 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _ensure_version_table_width(connection: Connection) -> None:
+    """Ensure ``alembic_version.version_num`` is wide enough for our long migration IDs.
+
+    Alembic hardcodes ``Column('version_num', String(32))`` in ``MigrationContext``
+    — there is no config knob for this. Several of our migration IDs exceed 32 chars
+    (the widest today is ``037_email_delivery_attempts_and_mailgun_webhooks`` at 47),
+    so a fresh DB crashes the moment alembic tries to record one of them.
+
+    Runs before ``context.run_migrations()`` so:
+      - On a fresh DB: we pre-create the table; alembic detects it and reuses it.
+      - On an existing narrow DB: the column gets widened in place.
+      - On an already-widened DB (dev/prod after the 2026-04-05 hotfix): no-op.
+
+    Closes CivicPulse/run-api#19.
+    """
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS alembic_version ("
+            "version_num VARCHAR(128) NOT NULL, "
+            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)"
+            ")"
+        )
+    )
+    connection.execute(
+        text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
+    )
+
+
 def do_run_migrations(connection: Connection) -> None:
     """Execute migrations within a connection context."""
     context.configure(
@@ -57,6 +85,8 @@ def do_run_migrations(connection: Connection) -> None:
         process_revision_directives=alembic_helpers.writer,
         render_item=alembic_helpers.render_item,
     )
+
+    _ensure_version_table_width(connection)
 
     with context.begin_transaction():
         context.run_migrations()
