@@ -207,3 +207,23 @@ None currently blocking Step 1. Re-read before Step 3:
   - 11-file ZITADEL frontend grep snapshot is now 0 hits — `rg -i zitadel web/src` returns only `zitadel_org_id` schema fields on `Organization` (a DB column preserved until Step 6 drops it).
   - Invite-acceptance UI (`routes/invites/$token.tsx`) still POSTs empty body; the backend now requires `{password, display_name}` (Step 4). Step 5 did not rewrite that route because it's outside the auth cutover scope, but Step 6 (or a follow-up plan) must update it before the old ZITADEL-accept flow is removed.
   - Smoke-test URL (Tailscale dev): `https://<your-fqdn>:37822/login` — use seed creds `dana.whitfield@example.com` / `seeddev-password-123`.
+
+### Step 5.1 — Invite-accept frontend fix + dev smoke test (committed as <PENDING>)
+- Files:
+  - `web/src/routes/invites/$token.tsx` — replaced empty-body POST with a shadcn/ui Card form (react-hook-form + zod). Fields: `display_name`, `password`, `confirm_password`. On success calls `authStore.fetchMe()` to sync the `cp_session` cookie, then navigates to `/campaigns/$campaignId`. Error handling mirrors `register.tsx` for `REGISTER_INVALID_PASSWORD` (both the structured `{code,reason}` shape and the `"Invalid password: ..."` string the backend currently returns). 404/410 map to "invite not found / expired" with a link back to `/login`. Non-valid statuses (expired/revoked/accepted/not_found) render a minimal info card instead of the form.
+  - No pre-existing route test to update.
+- Validation:
+  - `cd web && npx tsc --noEmit` — clean.
+  - `cd web && npm test -- --run` — 794 passed, 21 todo, 6 skipped (unchanged from Step 5 baseline).
+- Smoke test (dev stack, api on host port 49371):
+  - 2a. `alembic upgrade head` — ran via container entrypoint on restart; migration `042_native_auth_columns` applied cleanly.
+  - 2b. `scripts/seed.py` — required `unset SEED_ZITADEL_ORG_ID` to avoid colliding with the container entrypoint's `ensure-dev-org` bootstrap (pre-existing dev-stack wart, not an auth-step regression). Seed then succeeded and printed the dev-credentials banner: password `seeddev-password-123`; sample user `dana.whitfield@example.com`.
+  - 2c. Curl round-trip (host port `49371`):
+    - `GET /health/live` → 200 (project uses `/health/live`, not `/api/health`).
+    - `GET /api/v1/auth/csrf` → 200 + `Set-Cookie: cp_csrf=…`.
+    - `POST /api/v1/auth/login` (form body) → 204 + `cp_session` + `cp_csrf` cookies.
+    - `GET /api/v1/auth/me` → 200 with the full `MeResponse` shape (id, email, display_name, org_id, org_ids, role={name:"owner", permissions:[]}, is_active:true, is_verified:true).
+    - `POST /api/v1/auth/logout` → 403 without CSRF header; 204 with `X-CSRF-Token` set to the `cp_csrf` cookie value + session-clearing `Set-Cookie: cp_session=""`.
+    - `GET /api/v1/auth/me` post-logout → 401.
+  - Notable: the Step 5.1 task spec said logout would be 204 without a CSRF header. That is wrong — the CSRF middleware (Step 2) correctly blocks it. The SPA already injects `X-CSRF-Token` via `web/src/api/client.ts`, so the live app is fine. Updating only the smoke-test script is needed if anyone reruns this manually.
+- Step 6 readiness: **green**. End-to-end native auth round-trip works in the live dev stack; Step 5 frontend + Step 4 backend + Step 2 CSRF are all mutually consistent.

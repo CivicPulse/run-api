@@ -1,56 +1,142 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { HTTPError } from "ky"
-import { Loader2, MailCheck, MailX } from "lucide-react"
-import { useState } from "react"
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  MailCheck,
+  MailX,
+  Vote,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { toast } from "sonner"
-import { api, AuthenticationError } from "@/api/client"
+import { api } from "@/api/client"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useAuthStore } from "@/stores/authStore"
 import type { PublicInvite } from "@/types/invite"
+
+const acceptSchema = z
+  .object({
+    display_name: z.string().min(2, "Enter your name"),
+    password: z.string().min(12, "Password must be at least 12 characters"),
+    confirm_password: z.string().min(1, "Confirm your password"),
+  })
+  .refine((values) => values.password === values.confirm_password, {
+    path: ["confirm_password"],
+    message: "Passwords do not match",
+  })
+
+type AcceptFormValues = z.infer<typeof acceptSchema>
+
+interface AcceptResponse {
+  message: string
+  campaign_id: string
+  role: string
+}
 
 function InviteEntryPage() {
   const { token } = Route.useParams()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const isAuthenticated = useAuthStore((state) => state.status === "authenticated")
-  const [acceptedCampaignId, setAcceptedCampaignId] = useState<string | null>(null)
-  const [acceptError, setAcceptError] = useState<string | null>(null)
+  const fetchMe = useAuthStore((state) => state.fetchMe)
+
+  const [acceptedCampaignId, setAcceptedCampaignId] = useState<string | null>(
+    null,
+  )
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const inviteQuery = useQuery({
     queryKey: ["public-invite", token],
     queryFn: () => api.get(`api/v1/public/invites/${token}`).json<PublicInvite>(),
   })
 
+  const form = useForm<AcceptFormValues>({
+    resolver: zodResolver(acceptSchema),
+    defaultValues: { display_name: "", password: "", confirm_password: "" },
+  })
+
+  // Prefill display_name if the invite response carries inviter metadata.
+  // The current PublicInvite schema doesn't include an invitee display name,
+  // but we honor it defensively if the backend adds one later.
+  useEffect(() => {
+    const invite = inviteQuery.data as
+      | (PublicInvite & { display_name?: string | null })
+      | undefined
+    if (invite?.display_name && !form.getValues("display_name")) {
+      form.setValue("display_name", invite.display_name)
+    }
+  }, [inviteQuery.data, form])
+
   const acceptInvite = useMutation({
-    mutationFn: () =>
-      api.post(`api/v1/invites/${token}/accept`).json<{
-        message: string
-        campaign_id: string
-        role: string
-      }>(),
+    mutationFn: (values: AcceptFormValues) =>
+      api
+        .post(`api/v1/invites/${token}/accept`, {
+          json: {
+            password: values.password,
+            display_name: values.display_name,
+          },
+        })
+        .json<AcceptResponse>(),
     onSuccess: async (data) => {
-      setAcceptError(null)
+      setServerError(null)
       setAcceptedCampaignId(data.campaign_id)
-      toast.success("Invite accepted")
-      await queryClient.invalidateQueries({ queryKey: ["public-invite", token] })
+      toast.success("Invite accepted — welcome aboard")
+      // Sync auth store with the freshly-issued cp_session cookie.
+      await fetchMe()
+      navigate({
+        to: "/campaigns/$campaignId",
+        params: { campaignId: data.campaign_id },
+      })
     },
     onError: async (error) => {
-      if (error instanceof AuthenticationError) {
-        navigate({ to: "/login", search: { redirect: `/invites/${token}` } })
-        return
-      }
+      let message = "Failed to accept invite"
       if (error instanceof HTTPError) {
+        const status = error.response.status
         try {
-          const body = await error.response.json<{ detail?: string }>()
-          setAcceptError(body.detail ?? "Failed to accept invite")
+          const body = await error.response.clone().json<{ detail?: unknown }>()
+          const detail = body.detail
+          if (typeof detail === "string") {
+            // Backend prefixes fastapi-users password-policy failures as
+            // "Invalid password: <reason>" (code REGISTER_INVALID_PASSWORD).
+            if (detail.toLowerCase().startsWith("invalid password")) {
+              message = detail.replace(/^invalid password:?\s*/i, "") ||
+                "Choose a stronger password."
+            } else {
+              message = detail
+            }
+          } else if (
+            detail &&
+            typeof detail === "object" &&
+            "code" in detail &&
+            (detail as { code?: string }).code === "REGISTER_INVALID_PASSWORD"
+          ) {
+            const reason = (detail as { reason?: string }).reason
+            message = reason || "Choose a stronger password."
+          }
         } catch {
-          setAcceptError("Failed to accept invite")
+          // ignore parse failure
         }
-        return
+        if (status === 404) {
+          message = "This invite link is invalid or no longer exists."
+        } else if (status === 410) {
+          message = "This invite has expired. Ask your campaign admin for a new one."
+        }
       }
-      setAcceptError("Failed to accept invite")
+      setServerError(message)
     },
   })
 
@@ -58,114 +144,188 @@ function InviteEntryPage() {
   const effectiveStatus =
     acceptedCampaignId !== null ? "accepted" : (invite?.status ?? "not_found")
 
-  const handleLogin = () => {
-    navigate({ to: "/login", search: { redirect: `/invites/${token}` } })
-  }
+  const onSubmit = form.handleSubmit((values) => {
+    setServerError(null)
+    acceptInvite.mutate(values)
+  })
 
-  const handleOpenCampaign = () => {
-    if (!acceptedCampaignId) return
-    navigate({
-      to: "/campaigns/$campaignId",
-      params: { campaignId: acceptedCampaignId },
-    })
+  // Non-valid invite states: render a minimal info card with a link to /login.
+  if (
+    !inviteQuery.isLoading &&
+    (effectiveStatus === "not_found" ||
+      effectiveStatus === "expired" ||
+      effectiveStatus === "revoked" ||
+      effectiveStatus === "accepted")
+  ) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <MailX className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <CardTitle>
+              {effectiveStatus === "expired"
+                ? "Invite expired"
+                : effectiveStatus === "revoked"
+                  ? "Invite revoked"
+                  : effectiveStatus === "accepted"
+                    ? "Invite already accepted"
+                    : "Invite not found"}
+            </CardTitle>
+            <CardDescription>
+              {effectiveStatus === "expired"
+                ? "This invite expired before it could be accepted. Ask your campaign admin to send a new one."
+                : effectiveStatus === "revoked"
+                  ? "This invite was revoked. Contact the campaign admin if you still need access."
+                  : effectiveStatus === "accepted"
+                    ? "This invite has already been accepted. Sign in to continue."
+                    : "This invite link is invalid or no longer exists."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full" variant="outline">
+              <Link to="/login">Back to sign in</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-svh bg-background px-4 py-10 text-foreground">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6 rounded-3xl border bg-card p-8 shadow-sm">
-        <div className="flex items-center gap-3">
-          {effectiveStatus === "valid" ? (
-            <MailCheck className="size-6 text-primary" />
-          ) : (
-            <MailX className="size-6 text-muted-foreground" />
+    <div className="flex min-h-svh items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            {effectiveStatus === "valid" ? (
+              <MailCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+            ) : acceptedCampaignId ? (
+              <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden="true" />
+            ) : (
+              <Vote className="h-5 w-5 text-primary" aria-hidden="true" />
+            )}
+          </div>
+          <CardTitle>
+            {invite?.campaign_name ?? "Accept your campaign invite"}
+          </CardTitle>
+          <CardDescription>
+            {invite ? (
+              <>
+                {invite.inviter_name ?? "A team member"} invited you to join{" "}
+                <strong>{invite.campaign_name ?? "this campaign"}</strong>
+                {invite.organization_name
+                  ? ` for ${invite.organization_name}`
+                  : ""}{" "}
+                as <strong>{invite.role ?? "a member"}</strong>.
+              </>
+            ) : (
+              "Set a password to finish creating your account."
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {inviteQuery.isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              <span>Loading invite details...</span>
+            </div>
+          ) : null}
+
+          {inviteQuery.isError ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Unable to load invite</AlertTitle>
+              <AlertDescription>
+                We couldn't fetch this invite right now. Please try again.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {invite?.expires_at ? (
+            <p className="mb-4 text-center text-xs text-muted-foreground">
+              Expires {format(new Date(invite.expires_at), "PPP p")}
+            </p>
+          ) : null}
+
+          {serverError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Could not accept invite</AlertTitle>
+              <AlertDescription>{serverError}</AlertDescription>
+            </Alert>
           )}
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">
-              Campaign invite
-            </p>
-            <h1 className="text-2xl font-semibold">
-              {invite?.campaign_name ?? "Invite link"}
-            </h1>
-          </div>
-        </div>
 
-        {inviteQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            <span>Loading invite details...</span>
-          </div>
-        ) : null}
-
-        {invite ? (
-          <div className="space-y-3 text-sm">
-            <p>
-              {invite.inviter_name ?? "A team member"} invited you to join{" "}
-              <strong>{invite.campaign_name ?? "this campaign"}</strong>
-              {invite.organization_name ? ` for ${invite.organization_name}` : ""} as{" "}
-              <strong>{invite.role ?? "a member"}</strong>.
-            </p>
-            {invite.expires_at ? (
-              <p className="text-muted-foreground">
-                Expires {format(new Date(invite.expires_at), "PPP p")}
+          {effectiveStatus === "valid" ? (
+            <form className="space-y-4" onSubmit={onSubmit} noValidate>
+              <div className="space-y-2">
+                <Label htmlFor="display_name">Full name</Label>
+                <Input
+                  id="display_name"
+                  autoComplete="name"
+                  autoFocus
+                  aria-invalid={!!form.formState.errors.display_name}
+                  {...form.register("display_name")}
+                />
+                {form.formState.errors.display_name && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.display_name.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  aria-invalid={!!form.formState.errors.password}
+                  {...form.register("password")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minimum 12 characters. Avoid common passwords.
+                </p>
+                {form.formState.errors.password && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.password.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm password</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  autoComplete="new-password"
+                  aria-invalid={!!form.formState.errors.confirm_password}
+                  {...form.register("confirm_password")}
+                />
+                {form.formState.errors.confirm_password && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.confirm_password.message}
+                  </p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={form.formState.isSubmitting || acceptInvite.isPending}
+              >
+                {(form.formState.isSubmitting || acceptInvite.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Accept invite & create account
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <Link to="/login" className="underline hover:text-foreground">
+                  Sign in
+                </Link>
               </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {inviteQuery.isError ? (
-          <p className="text-sm text-destructive">
-            Unable to load this invite right now.
-          </p>
-        ) : null}
-
-        {effectiveStatus === "not_found" ? (
-          <p className="text-sm text-muted-foreground">
-            This invite link is invalid or no longer exists.
-          </p>
-        ) : null}
-        {effectiveStatus === "expired" ? (
-          <p className="text-sm text-muted-foreground">
-            This invite expired before it could be accepted. Ask your campaign admin to send a new one.
-          </p>
-        ) : null}
-        {effectiveStatus === "revoked" ? (
-          <p className="text-sm text-muted-foreground">
-            This invite was revoked. Contact the campaign admin if you still need access.
-          </p>
-        ) : null}
-        {effectiveStatus === "accepted" ? (
-          <p className="text-sm text-muted-foreground">
-            This invite has already been accepted.
-          </p>
-        ) : null}
-        {acceptError ? (
-          <p className="text-sm text-destructive">{acceptError}</p>
-        ) : null}
-
-        <div className="flex flex-wrap gap-3">
-          {effectiveStatus === "valid" && !isAuthenticated ? (
-            <Button onClick={handleLogin}>Sign in to accept invite</Button>
+            </form>
           ) : null}
-          {effectiveStatus === "valid" && isAuthenticated ? (
-            <Button
-              onClick={() => acceptInvite.mutate()}
-              disabled={acceptInvite.isPending}
-            >
-              {acceptInvite.isPending ? "Accepting..." : "Accept invite"}
-            </Button>
-          ) : null}
-          {acceptedCampaignId ? (
-            <Button variant="outline" onClick={handleOpenCampaign}>
-              Open campaign
-            </Button>
-          ) : null}
-          {!acceptedCampaignId && effectiveStatus !== "valid" ? (
-            <Button variant="outline" onClick={() => navigate({ to: "/" })}>
-              Back to app
-            </Button>
-          ) : null}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
