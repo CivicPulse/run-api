@@ -9,7 +9,12 @@ import httpx
 import pytest
 
 from app.core.errors import ZitadelUnavailableError
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
@@ -267,6 +272,7 @@ async def test_campaign_create_e2e_flow(_mock_settings, _mock_infra):
     ):
         app = create_app()
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_dual] = lambda: user
 
         async def _get_db():
             yield mock_db

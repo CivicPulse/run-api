@@ -74,6 +74,14 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = 0.1
     environment: str = "development"
 
+    # Native auth (fastapi-users) -- password reset + email verification tokens.
+    # Empty in dev triggers a per-process random default (logged warning) in the
+    # app.main lifespan; empty in non-development environments is a hard error.
+    auth_reset_password_token_secret: SecretStr = SecretStr("")
+    auth_verification_token_secret: SecretStr = SecretStr("")
+    auth_reset_password_token_lifetime_seconds: int = 3600  # 1 hour
+    auth_verification_token_lifetime_seconds: int = 60 * 60 * 24  # 24 hours
+
     # App-owned transactional email
     email_provider: str = "disabled"
     app_base_url: str = "http://localhost:5173"

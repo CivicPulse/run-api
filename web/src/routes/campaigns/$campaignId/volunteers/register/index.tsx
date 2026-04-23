@@ -93,10 +93,13 @@ function VolunteerRegisterPage() {
   // Pre-fill from auth store for self-registration
   useEffect(() => {
     if (user && !preFilled && !form.formState.isDirty) {
+      const nameParts = (user.display_name ?? "").trim().split(/\s+/)
+      const firstName = nameParts[0] ?? ""
+      const lastName = nameParts.slice(1).join(" ")
       form.reset({
-        first_name: user.profile?.given_name ?? "",
-        last_name: user.profile?.family_name ?? "",
-        email: user.profile?.email ?? "",
+        first_name: firstName,
+        last_name: lastName,
+        email: user.email ?? "",
         phone: "",
         street: "",
         city: "",

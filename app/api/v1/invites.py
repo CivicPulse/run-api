@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi_users import InvalidPasswordException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.backend import auth_backend, get_database_strategy
+from app.auth.db import get_access_token_db
+from app.auth.manager import UserManager, get_user_manager
+from app.core.config import settings
+from app.core.middleware.csrf import issue_csrf_cookie
 from app.core.rate_limit import get_user_or_ip_key, limiter
-from app.core.security import AuthenticatedUser, get_current_user, require_role
+from app.core.security import AuthenticatedUser, require_role
 from app.db.session import get_db
 from app.schemas.invite import (
     InviteAcceptResponse,
@@ -17,6 +25,14 @@ from app.schemas.invite import (
     PublicInviteResponse,
 )
 from app.services.invite import InviteService
+
+
+class InviteAcceptNativeRequest(BaseModel):
+    """Payload for native invite acceptance (no ZITADEL involvement)."""
+
+    password: str = Field(min_length=12, description="New account password.")
+    display_name: str = Field(min_length=1, max_length=255)
+
 
 router = APIRouter()
 invite_service = InviteService()
@@ -163,25 +179,61 @@ async def revoke_invite(
 async def accept_invite(
     token: uuid.UUID,
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    payload: InviteAcceptNativeRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
+    user_manager: UserManager = Depends(get_user_manager),
 ):
-    """Accept an invite. Requires authentication (any role)."""
+    """Accept an invite natively: create a user + log them in.
+
+    Step 4 rewrite -- no authentication required and no ZITADEL involvement.
+    The invite token is the proof of identity; the caller supplies a password
+    and display name to bootstrap their native account. On success we write
+    both ``cp_session`` and ``cp_csrf`` cookies so the SPA lands logged in.
+    """
     try:
-        zitadel = request.app.state.zitadel_service
-        invite = await invite_service.accept_invite(
+        invite, user = await invite_service.accept_invite_native(
             db=db,
             token=token,
-            user=user,
-            zitadel=zitadel,
+            password=payload.password,
+            display_name=payload.display_name,
+            user_manager=user_manager,
         )
-        return InviteAcceptResponse(
-            message="Invite accepted successfully",
-            campaign_id=invite.campaign_id,
-            role=invite.role,
-        )
+    except InvalidPasswordException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid password: {exc.reason}",
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+    # Issue a session cookie by running the configured auth backend's login
+    # flow with a fresh database-strategy session. We avoid Depends() on the
+    # strategy because we need it *after* the user is created.
+    access_token_db_gen = get_access_token_db().__aiter__()
+    try:
+        access_token_db = await access_token_db_gen.__anext__()
+    except StopAsyncIteration:  # pragma: no cover -- defensive
+        raise HTTPException(status_code=500, detail="session init failed") from None
+    try:
+        strategy = get_database_strategy(access_token_db)
+        login_response = await auth_backend.login(strategy, user)
+        # Copy the login response's Set-Cookie header onto our response.
+        set_cookie = login_response.headers.get("set-cookie")
+        if set_cookie:
+            response.headers.append("set-cookie", set_cookie)
+        # Issue the matching CSRF cookie so the SPA can make mutating calls.
+        issue_csrf_cookie(response, secure=not settings.debug)
+    finally:
+        # Exhaust the generator so its session is closed.
+        with contextlib.suppress(StopAsyncIteration):
+            await access_token_db_gen.__anext__()
+
+    return InviteAcceptResponse(
+        message="Invite accepted successfully",
+        campaign_id=invite.campaign_id,
+        role=invite.role,
+    )

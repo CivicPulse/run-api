@@ -19,7 +19,12 @@ from app.core.errors import (
     CampaignNotFoundError,
     init_error_handlers,
 )
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.db.session import get_db
 from app.models.campaign import Campaign, CampaignStatus
 
@@ -139,6 +144,7 @@ class TestRegisterVolunteer:
 
         app.dependency_overrides[get_db] = _mock_get_db
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_dual] = lambda: user
 
         with patch(
             "app.api.v1.join.join_service.register_volunteer",
@@ -173,6 +179,7 @@ class TestRegisterVolunteer:
 
         app.dependency_overrides[get_db] = _mock_get_db
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_dual] = lambda: user
 
         with patch(
             "app.api.v1.join.join_service.register_volunteer",
@@ -201,6 +208,7 @@ class TestRegisterVolunteer:
 
         app.dependency_overrides[get_db] = _mock_get_db
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_dual] = lambda: user
 
         with patch(
             "app.api.v1.join.join_service.register_volunteer",

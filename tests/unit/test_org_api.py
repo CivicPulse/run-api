@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
@@ -109,6 +114,8 @@ class TestGetOrg:
         mock_db.scalar = AsyncMock(side_effect=[org, "org_admin", org])
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
@@ -138,6 +145,8 @@ class TestGetOrg:
         mock_db.scalar = AsyncMock(side_effect=[org, None])
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
@@ -172,6 +181,8 @@ class TestListOrgCampaigns:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
@@ -233,6 +244,8 @@ class TestListOrgMembers:
         )
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
@@ -263,6 +276,8 @@ class TestPatchOrg:
         mock_db.scalar = AsyncMock(side_effect=[org, "org_owner", org])
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         patch_target = "app.api.v1.org._service.update_org_details"
@@ -306,6 +321,8 @@ class TestPatchOrg:
         mock_db.scalar = AsyncMock(side_effect=[org, "org_admin"])
 
         app.dependency_overrides[get_current_user] = lambda: user
+
+        app.dependency_overrides[get_current_user_dual] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)

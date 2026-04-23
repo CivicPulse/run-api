@@ -1,7 +1,6 @@
 import { useAuthStore } from "@/stores/authStore"
 import { useParams } from "@tanstack/react-router"
 import { useMyCampaignRole, useMyCampaigns } from "./useUsers"
-import { getConfig } from "@/config"
 import type { CampaignRole } from "@/types/auth"
 
 export type { CampaignRole }
@@ -14,15 +13,13 @@ export const ROLE_HIERARCHY: Record<CampaignRole, number> = {
   owner: 4,
 }
 
-let _warnedMissingClaim = false
-
 export function usePermissions(): {
   role: CampaignRole
   hasRole: (minimum: CampaignRole) => boolean
   isLoading: boolean
 } {
   const user = useAuthStore((s) => s.user)
-  const isInitialized = useAuthStore((s) => s.isInitialized)
+  const status = useAuthStore((s) => s.status)
 
   // Get campaignId for the fallback API call (may not be in route params)
   let campaignId = ""
@@ -45,43 +42,17 @@ export function usePermissions(): {
   let role: CampaignRole = "viewer"
 
   if (user) {
-    // 1. Extract org-level role from JWT claims
-    let jwtRole: CampaignRole = "viewer"
-    let projectId: string | undefined
-    try {
-      projectId = getConfig().zitadel_project_id
-    } catch {
-      // Config not yet loaded
-    }
-
-    if (projectId) {
-      const claimKey = `urn:zitadel:iam:org:project:${projectId}:roles`
-      const claims = user.profile as Record<string, unknown>
-
-      if (claimKey in claims) {
-        const roleMap = claims[claimKey] as Record<string, unknown>
-        const foundRoles = Object.keys(roleMap).filter(
-          (r): r is CampaignRole => r in ROLE_HIERARCHY
-        )
-        if (foundRoles.length > 0) {
-          jwtRole = foundRoles.reduce((best, r) =>
-            ROLE_HIERARCHY[r as CampaignRole] > ROLE_HIERARCHY[best]
-              ? (r as CampaignRole)
-              : best
-          , foundRoles[0] as CampaignRole)
-        }
-      } else if (!_warnedMissingClaim) {
-        console.warn("Role claim missing from JWT, falling back to API")
-        _warnedMissingClaim = true
-      }
-    }
+    // 1. Base role from /auth/me (org-wide upper-bound role)
+    const meRoleName = user.role?.name?.toLowerCase() ?? ""
+    const baseRole: CampaignRole =
+      meRoleName in ROLE_HIERARCHY ? (meRoleName as CampaignRole) : "viewer"
 
     // 2. Resolve effective role: per-campaign API role takes priority
     // when we're in a campaign context
     role =
       campaignId && apiRole && apiRole in ROLE_HIERARCHY
         ? (apiRole as CampaignRole)
-        : jwtRole
+        : baseRole
   }
 
   const hasRole = (minimum: CampaignRole): boolean =>
@@ -93,7 +64,7 @@ export function usePermissions(): {
   // <Navigate>, which would cause a false-positive redirect before the API
   // role resolves.
   const isLoading =
-    !isInitialized ||
+    status === "unknown" ||
     (!!user &&
       !!campaignId &&
       !campaigns &&

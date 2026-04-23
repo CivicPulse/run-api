@@ -10,7 +10,12 @@ from unittest.mock import AsyncMock, MagicMock
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import get_campaign_db
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.db.session import get_db
 from app.main import create_app
 
@@ -39,6 +44,7 @@ def _make_user(
 def _override_app(user, db):
     app = create_app()
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_user_dual] = lambda: user
 
     async def _get_db():
         yield db

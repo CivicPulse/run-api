@@ -200,7 +200,7 @@ function LandingPage() {
 }
 
 function HomePage() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isAuthenticated = useAuthStore((state) => state.status === "authenticated")
 
   if (!isAuthenticated) {
     return <LandingPage />

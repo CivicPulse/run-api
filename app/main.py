@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from pydantic import SecretStr
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -19,6 +20,7 @@ from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import init_error_handlers
+from app.core.middleware.csrf import CSRFMiddleware
 from app.core.middleware.request_logging import StructlogMiddleware
 from app.core.middleware.security_headers import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
@@ -34,6 +36,8 @@ if TYPE_CHECKING:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan handler -- initializes shared resources."""
     # Import here to avoid circular imports at module level
+    import secrets
+
     from app.core.errors import ZitadelUnavailableError
     from app.core.security import JWKSManager
     from app.services.storage import StorageService
@@ -41,6 +45,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from app.tasks.procrastinate_app import procrastinate_app
 
     logger.info("Starting {}", settings.app_name)
+
+    # Native-auth token secrets: fail fast in non-dev, generate per-process
+    # defaults with a warning in dev. These secrets HMAC the reset-password and
+    # verify-email tokens; rotating them invalidates all outstanding tokens.
+    reset_secret = settings.auth_reset_password_token_secret.get_secret_value()
+    verify_secret = settings.auth_verification_token_secret.get_secret_value()
+    if not reset_secret or not verify_secret:
+        if settings.environment != "development":
+            raise RuntimeError(
+                "Native-auth secrets not configured: "
+                "set AUTH_RESET_PASSWORD_TOKEN_SECRET and "
+                "AUTH_VERIFICATION_TOKEN_SECRET"
+            )
+        if not reset_secret:
+            generated = secrets.token_urlsafe(32)
+            settings.auth_reset_password_token_secret = SecretStr(generated)
+            logger.warning(
+                "native-auth: AUTH_RESET_PASSWORD_TOKEN_SECRET empty; "
+                "generated ephemeral dev secret (reset links will break on "
+                "API restart)"
+            )
+        if not verify_secret:
+            generated = secrets.token_urlsafe(32)
+            settings.auth_verification_token_secret = SecretStr(generated)
+            logger.warning(
+                "native-auth: AUTH_VERIFICATION_TOKEN_SECRET empty; "
+                "generated ephemeral dev secret (verify links will break on "
+                "API restart)"
+            )
 
     # Auth
     app.state.jwks_manager = JWKSManager(
@@ -107,6 +140,26 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        CSRFMiddleware,
+        exempt_paths={
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/request-verify-token",
+            "/api/v1/auth/verify",
+            "/api/v1/auth/csrf",
+        },
+        exempt_prefixes=(
+            "/healthz",
+            "/api/health",
+            "/static",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+        ),
+    )
     app.add_middleware(StructlogMiddleware)
 
     app.state.limiter = limiter
@@ -115,6 +168,12 @@ def create_app() -> FastAPI:
     init_error_handlers(app)
     app.include_router(health_router)
     app.include_router(v1_router)
+
+    # Native auth (fastapi-users) -- Step 1 of the ZITADEL -> DIY pivot.
+    # Mounted alongside the existing ZITADEL stack; nothing consumes it yet.
+    from app.auth.router import native_auth_router
+
+    app.include_router(native_auth_router, prefix="/api/v1/auth", tags=["auth-native"])
 
     # Serve built frontend in production (static/ exists only in Docker image)
     if (STATIC_DIR / "assets").is_dir():

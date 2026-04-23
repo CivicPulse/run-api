@@ -16,6 +16,7 @@ from app.core.security import (
     AuthenticatedUser,
     CampaignRole,
     get_current_user,
+    get_current_user_dual,
     get_optional_current_user,
 )
 from app.db.session import get_db
@@ -52,6 +53,7 @@ class TestVolunteerApplicationApi:
 
         app.dependency_overrides[get_db] = _mock_get_db
         app.dependency_overrides[get_current_user] = _mock_user
+        app.dependency_overrides[get_current_user_dual] = _mock_user
 
         with patch(
             "app.api.v1.volunteer_applications.volunteer_application_service.get_current_application",

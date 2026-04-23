@@ -17,6 +17,7 @@ import random
 import uuid
 from datetime import timedelta
 
+from fastapi_users.password import PasswordHelper
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -53,6 +54,12 @@ from app.models.walk_list import WalkList, WalkListCanvasser, WalkListEntry
 
 SEED_CAMPAIGN_NAME = "Macon-Bibb Demo Campaign"
 NOW = utcnow()
+
+# Dev-only password used for every seeded user. Native auth (Step 4) requires
+# every user row to carry a hashed password; ZITADEL is no longer consulted
+# during seeding. The plain-text value is logged at the end of the script so
+# the operator can log in immediately without a password reset round-trip.
+SEED_DEV_PASSWORD = "seeddev-password-123"  # noqa: S105
 
 # Macon-Bibb County GA neighborhood center coordinates
 NEIGHBORHOODS = {
@@ -280,78 +287,55 @@ async def main() -> None:  # noqa: C901, PLR0915
         print("Creating Macon-Bibb County demo seed data...")
 
         # ----------------------------------------------------------
-        # 1. Users (8 fabricated users with ZITADEL-style IDs)
+        # 1. Users (8 fabricated users, native-auth ready)
         # ----------------------------------------------------------
-        user_owner_id = f"seed-owner-{uuid.uuid4().hex[:12]}"
-        user_manager_id = f"seed-manager-{uuid.uuid4().hex[:12]}"
-        user_volunteer_id = f"seed-volunteer-{uuid.uuid4().hex[:12]}"
-        user_canvasser1_id = f"seed-canvasser1-{uuid.uuid4().hex[:12]}"
-        user_canvasser2_id = f"seed-canvasser2-{uuid.uuid4().hex[:12]}"
-        user_caller1_id = f"seed-caller1-{uuid.uuid4().hex[:12]}"
-        user_caller2_id = f"seed-caller2-{uuid.uuid4().hex[:12]}"
-        user_invited_id = f"seed-invited-{uuid.uuid4().hex[:12]}"
+        # Step 4: Generate UUID-string ids locally; no ZITADEL round-trip.
+        # Every user gets the same hashed dev password so the operator can
+        # log in immediately with any seeded email + SEED_DEV_PASSWORD.
+        user_owner_id = str(uuid.uuid4())
+        user_manager_id = str(uuid.uuid4())
+        user_volunteer_id = str(uuid.uuid4())
+        user_canvasser1_id = str(uuid.uuid4())
+        user_canvasser2_id = str(uuid.uuid4())
+        user_caller1_id = str(uuid.uuid4())
+        user_caller2_id = str(uuid.uuid4())
+        user_invited_id = str(uuid.uuid4())
+
+        password_helper = PasswordHelper()
+        seed_hashed_password = password_helper.hash(SEED_DEV_PASSWORD)
+
+        def _seed_user(user_id: str, display_name: str, email: str) -> User:
+            """Build a seeded User row with native-auth columns populated."""
+            return User(
+                id=user_id,
+                display_name=display_name,
+                email=email,
+                hashed_password=seed_hashed_password,
+                is_active=True,
+                is_verified=True,
+                is_superuser=False,
+                email_verified=True,
+                created_at=NOW,
+                updated_at=NOW,
+            )
 
         users = [
-            User(
-                id=user_owner_id,
-                display_name="Dana Whitfield",
-                email="dana.whitfield@example.com",
-                created_at=NOW,
-                updated_at=NOW,
+            _seed_user(user_owner_id, "Dana Whitfield", "dana.whitfield@example.com"),
+            _seed_user(user_manager_id, "Marcus Chen", "marcus.chen@example.com"),
+            _seed_user(user_volunteer_id, "Priya Patel", "priya.patel@example.com"),
+            _seed_user(user_canvasser1_id, "Jordan Hayes", "jordan.hayes@example.com"),
+            _seed_user(
+                user_canvasser2_id, "Sofia Ramirez", "sofia.ramirez@example.com"
             ),
-            User(
-                id=user_manager_id,
-                display_name="Marcus Chen",
-                email="marcus.chen@example.com",
-                created_at=NOW,
-                updated_at=NOW,
+            _seed_user(user_caller1_id, "Leon Brooks", "leon.brooks@example.com"),
+            _seed_user(
+                user_caller2_id, "Nina Washington", "nina.washington@example.com"
             ),
-            User(
-                id=user_volunteer_id,
-                display_name="Priya Patel",
-                email="priya.patel@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            User(
-                id=user_canvasser1_id,
-                display_name="Jordan Hayes",
-                email="jordan.hayes@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            User(
-                id=user_canvasser2_id,
-                display_name="Sofia Ramirez",
-                email="sofia.ramirez@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            User(
-                id=user_caller1_id,
-                display_name="Leon Brooks",
-                email="leon.brooks@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            User(
-                id=user_caller2_id,
-                display_name="Nina Washington",
-                email="nina.washington@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            User(
-                id=user_invited_id,
-                display_name="Terrence Moore",
-                email="terrence.moore@example.com",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
+            _seed_user(user_invited_id, "Terrence Moore", "terrence.moore@example.com"),
         ]
         session.add_all(users)
         await session.flush()
-        print(f"  Created {len(users)} users")
+        print(f"  Created {len(users)} users (native-auth, all verified)")
 
         # Convenient groupings for later use
         canvasser_user_ids = [
@@ -1900,6 +1884,19 @@ async def main() -> None:  # noqa: C901, PLR0915
     print(f"  DNC entries: {len(dnc_records)}")
     print(f"  Invites: {len(invite_records)}")
     print(f"  Voter addresses: {len(addr_records)}")
+
+    # --- Dev login banner --------------------------------------------------
+    # Loud + last so the operator can't miss it. All seeded users share the
+    # same password; log in with any of the emails listed above.
+    print("\n" + "=" * 72)
+    print("  NATIVE-AUTH DEV CREDENTIALS")
+    print("=" * 72)
+    print(f"  Password (all seeded users): {SEED_DEV_PASSWORD}")
+    print("  Example logins:")
+    print("    dana.whitfield@example.com  (org_owner)")
+    print("    marcus.chen@example.com     (manager)")
+    print("    priya.patel@example.com     (volunteer)")
+    print("=" * 72)
 
 
 if __name__ == "__main__":

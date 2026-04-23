@@ -14,7 +14,12 @@ import pytest
 from sqlalchemy import delete
 
 from app.api.deps import get_campaign_db
-from app.core.security import AuthenticatedUser, CampaignRole, get_current_user
+from app.core.security import (
+    AuthenticatedUser,
+    CampaignRole,
+    get_current_user,
+    get_current_user_dual,
+)
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.main import create_app
@@ -134,6 +139,7 @@ def _build_app_with_overrides(mock_db: AsyncMock) -> object:
     """Create app with dependency overrides."""
     app = create_app()
     app.dependency_overrides[get_current_user] = _make_user
+    app.dependency_overrides[get_current_user_dual] = _make_user
 
     async def _get_db():
         yield mock_db

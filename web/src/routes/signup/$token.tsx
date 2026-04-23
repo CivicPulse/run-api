@@ -42,7 +42,7 @@ function splitDisplayName(name: string | undefined) {
 function SignupEntryPage() {
   const { token } = Route.useParams()
   const navigate = useNavigate()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isAuthenticated = useAuthStore((state) => state.status === "authenticated")
   const user = useAuthStore((state) => state.user)
   const [submittedApplication, setSubmittedApplication] =
     useState<VolunteerApplication | null>(null)
@@ -54,14 +54,8 @@ function SignupEntryPage() {
   const currentApplicationQuery = useCurrentVolunteerApplication(token, isAuthenticated)
   const createApplication = useCreateVolunteerApplication(token)
 
-  const profile = user?.profile as Record<string, unknown> | undefined
-  const displayName =
-    typeof profile?.name === "string"
-      ? profile.name
-      : typeof profile?.preferred_username === "string"
-        ? profile.preferred_username
-        : undefined
-  const email = typeof profile?.email === "string" ? profile.email : ""
+  const displayName = user?.display_name ?? undefined
+  const email = user?.email ?? ""
   const { firstName, lastName } = splitDisplayName(displayName)
 
   const form = useForm<ApplicationFormValues>({

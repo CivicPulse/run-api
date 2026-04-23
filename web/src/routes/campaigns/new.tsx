@@ -122,7 +122,7 @@ function NewCampaignPage() {
   const submittedRef = useRef(false)
 
   const user = useAuthStore((s) => s.user)
-  const currentUserId = user?.profile?.sub as string | undefined
+  const currentUserId = user?.id
 
   const { currentOrg } = useOrgPermissions()
   const { data: orgMembers } = useOrgMembers()

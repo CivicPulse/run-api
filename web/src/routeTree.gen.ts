@@ -9,8 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as CallbackRouteImport } from './routes/callback'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignupTokenRouteImport } from './routes/signup/$token'
 import { Route as OrgSettingsRouteImport } from './routes/org/settings'
@@ -63,14 +66,29 @@ import { Route as CampaignsCampaignIdVolunteersShiftsShiftIdIndexRouteImport } f
 import { Route as CampaignsCampaignIdPhoneBankingSessionsSessionIdIndexRouteImport } from './routes/campaigns/$campaignId/phone-banking/sessions/$sessionId/index'
 import { Route as CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRouteImport } from './routes/campaigns/$campaignId/phone-banking/sessions/$sessionId/call'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CallbackRoute = CallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -373,8 +391,11 @@ const CampaignsCampaignIdPhoneBankingSessionsSessionIdCallRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/callback': typeof CallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
@@ -428,8 +449,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/callback': typeof CallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/invites/$token': typeof InvitesTokenRoute
@@ -477,8 +501,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/callback': typeof CallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof CampaignsNewRoute
   '/field/$campaignId': typeof FieldCampaignIdRouteWithChildren
@@ -534,8 +561,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/callback'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/field/$campaignId'
@@ -589,8 +619,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/callback'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/invites/$token'
@@ -637,8 +670,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/callback'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/field/$campaignId'
@@ -693,8 +729,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CallbackRoute: typeof CallbackRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   CampaignsCampaignIdRoute: typeof CampaignsCampaignIdRouteWithChildren
   CampaignsNewRoute: typeof CampaignsNewRoute
   FieldCampaignIdRoute: typeof FieldCampaignIdRouteWithChildren
@@ -706,6 +745,27 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -713,11 +773,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/callback': {
-      id: '/callback'
-      path: '/callback'
-      fullPath: '/callback'
-      preLoaderRoute: typeof CallbackRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -1294,8 +1354,11 @@ const FieldCampaignIdRouteWithChildren = FieldCampaignIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CallbackRoute: CallbackRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   CampaignsCampaignIdRoute: CampaignsCampaignIdRouteWithChildren,
   CampaignsNewRoute: CampaignsNewRoute,
   FieldCampaignIdRoute: FieldCampaignIdRouteWithChildren,

@@ -52,8 +52,8 @@ vi.mock("@/hooks/useTour", () => ({
 }))
 
 vi.mock("@/stores/authStore", () => ({
-  useAuthStore: (selector: (state: { user: { profile: { sub: string } } }) => unknown) =>
-    selector({ user: { profile: { sub: "user-1" } } }),
+  useAuthStore: (selector: (state: { user: { id: string } }) => unknown) =>
+    selector({ user: { id: "user-1" } }),
 }))
 
 const mockUseTourStore = vi.hoisted(() => Object.assign(
