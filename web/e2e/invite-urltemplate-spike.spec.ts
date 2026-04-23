@@ -284,20 +284,20 @@ test.describe("Phase 111 urlTemplate deep-link spike", () => {
     //    DEVIATION [Rule 1 — Bug]: The plan's original URL was
     //      ${ZITADEL_URL}/ui/v2/login/verify?userId=<userId>&code=<inviteCode>&invite=true
     //    referencing the `zitadel/typescript` login app. Empirical probe
-    //    (2026-04-23) against our dev ZITADEL v4.10.1 shows /ui/v2/login/*
+    //    (2026-04-23) against our dev ZITADEL v4.10.1 showed /ui/v2/login/*
     //    returns HTTP 404 — the typescript login app is NOT bundled into the
     //    ZITADEL server binary and must be deployed as a separate service.
     //    Our dev instance serves the classic Go-templates console-login UI at
-    //    /ui/login/*, which handles invite codes at /ui/login/user/init.
-    //    This is the same UI path that ZITADEL 2.71.x serves out of the box.
+    //    /ui/login/*. Within that UI, the v2-invite-code redemption path is
+    //    /ui/login/user/invite (NOT /ui/login/user/init — that one handles
+    //    v1 initialize-user codes, a different code type).
     //    Verified the page fills field IDs `code`, `password`, `passwordconfirm`
     //    and submits via a "Next" button.
     //    NOTE: the legacy path uses `userID` (capital D) in query params.
     //    References:
-    //      - github.com/zitadel/zitadel /internal/api/ui/login/user_init_handler.go
-    //      - /ui/login/user/init is the officially supported fallback route
+    //      - github.com/zitadel/zitadel /internal/api/ui/login/user_invite_handler.go
     const verifyUrl =
-      `${zitadelUrl}/ui/login/user/init` +
+      `${zitadelUrl}/ui/login/user/invite` +
       `?userID=${encodeURIComponent(userId)}` +
       `&code=${encodeURIComponent(inviteCode)}`
     await page.goto(verifyUrl, { waitUntil: "domcontentloaded" })
