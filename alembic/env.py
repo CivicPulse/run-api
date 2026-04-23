@@ -63,14 +63,27 @@ def _ensure_version_table_width(connection: Connection) -> None:
 
     Closes CivicPulse/run-api#19.
     """
-    connection.execute(
-        text(
-            "CREATE TABLE IF NOT EXISTS alembic_version ("
-            "version_num VARCHAR(128) NOT NULL, "
-            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)"
-            ")"
-        )
+    # On Postgres 15+, the public schema is not writable by non-owner roles
+    # by default. `CREATE TABLE IF NOT EXISTS` still requires CREATE privilege
+    # even when the table exists, so we must check existence first.
+    exists = (
+        connection.execute(
+            text(
+                "SELECT 1 FROM pg_tables "
+                "WHERE schemaname = current_schema() AND tablename = 'alembic_version'"
+            )
+        ).scalar()
+        is not None
     )
+    if not exists:
+        connection.execute(
+            text(
+                "CREATE TABLE alembic_version ("
+                "version_num VARCHAR(128) NOT NULL, "
+                "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)"
+                ")"
+            )
+        )
     connection.execute(
         text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     )
