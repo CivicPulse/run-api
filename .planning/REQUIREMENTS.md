@@ -1,134 +1,144 @@
-# Milestone v1.19 Requirements — Invite Onboarding
+# v1.20 Native Auth Rebuild & Invite Onboarding — Requirements
 
-**Milestone:** v1.19 Invite Onboarding
-**Goal:** Make the volunteer-invite link work end-to-end for brand-new users — clicking the link leads to a working "set password → accept invite" flow without manual admin intervention or generic-login dead-ends.
-**Status:** Requirements defined; roadmap complete (phases 111-115)
-**Last updated:** 2026-04-23
+**Milestone:** v1.20 Native Auth Rebuild & Invite Onboarding
+**Derived from:**
+- `.planning/PROJECT.md` — Current Milestone section
+- `.planning/research/SUMMARY.md` — research synthesis (STACK / FEATURES / ARCHITECTURE / PITFALLS)
+- `.planning/notes/decision-drop-zitadel-diy-auth.md` — architectural pivot decision
+- `.planning/seeds/SEED-002-test-hygiene-continuous-verification.md` — test infrastructure seed included in scope
+- `.planning/research/questions.md` — Q-AUTH-01/02/03 deferred to plan-phases
 
----
+**Supersedes:** v1.19 REQUIREMENTS.md (research+pivot milestone; preserved in git history at commit `d5b0864e`). v1.19 REQs captured in the archived planning section of PROJECT.md.
 
-## Source of Truth
-
-Requirements derived from:
-- Audit conducted 2026-04-22 in conversation following a production bug report (volunteer stuck on login page after clicking invite link)
-- Four parallel research workstreams (.planning/research/{STACK,FEATURES,ARCHITECTURE,PITFALLS,SUMMARY}.md)
-- Convergent recommendation: **Option B** — ZITADEL `invite_code` flow with `urlTemplate` deep-link back to `/invites/<token>`, pre-provisioning the ZITADEL identity at email-send time inside the existing Procrastinate `send_campaign_invite_email` task. Gated on a Phase-111 spike that verifies the deep-link behavior end-to-end.
-- Option C (app-owned setup page on run.civpulse.org) is explicitly the fallback if the Phase-111 spike fails. ROPC is out of scope under all branches.
-
----
-
-## v1.19 Requirements
-
-### PROV — ZITADEL Identity Provisioning
-
-- [x] **PROV-01**: `ZitadelService.ensure_human_user(email, given_name, family_name, org_id) -> (user_id, created)` is implemented with the search-then-create idempotency pattern (mirrors `ensure_project_grant`), sets `email.isVerified=true`, and returns whether the identity was newly created or already existed.
-- [x] **PROV-02**: `ZitadelService.create_invite_code(user_id, url_template) -> code` is implemented against `POST /v2/users/{userId}/invite_code` using `{"returnCode": {}}` so CivicPulse emails the code via Mailgun rather than letting ZITADEL send it.
-- [x] **PROV-03**: `ensure_human_user` and `create_invite_code` share the existing bounded exponential retry (3x, 1/2/4s) on 5xx / connect / timeout errors, matching the `bootstrap-zitadel.py:102-117` pattern.
-- [ ] **PROV-04**: Provisioning is called from within `send_campaign_invite_email` (Procrastinate `communications` queue) under the existing per-invite `queueing_lock`, guarded by `if invite.zitadel_user_id is None`, so retries are idempotent across DB, queue, and ZITADEL layers.
-- [ ] **PROV-05**: Partial-failure recovery — if `ensure_human_user` succeeds but subsequent role-grant or email-send fails, the next retry reuses the existing ZITADEL user via search and does not create a duplicate.
-
-### MIG — Schema & Legacy-Invite Migration
-
-- [ ] **MIG-01**: Alembic migration adds `zitadel_user_id`, `identity_provisioning_status`, `identity_provisioning_error`, `identity_provisioning_at`, `legacy_flow` columns to the `invites` table. All datetime columns use `DateTime(timezone=True)`.
-- [ ] **MIG-02**: Pre-v1.19 pending invites (no `zitadel_user_id`) are marked `legacy_flow=true` in the same migration. These invites route through the v1.18 behavior plus the new recovery CTA rather than the new provisioning path, so deploy does not couple to ZITADEL availability.
-- [ ] **MIG-03**: The migration is reversible (downgrade drops the columns cleanly) and dry-run-safe against a prod snapshot.
-
-### EMAIL — Invite Email Content Branching
-
-- [ ] **EMAIL-01**: The invite email template branches on whether the ZITADEL identity was newly created. First-time invitees receive a "set your password to accept this invite" subject and body with the ZITADEL init link. Returning invitees (existing ZITADEL identity, new campaign) receive the existing "accept your invite" subject and body with the direct `/invites/<token>` link.
-- [ ] **EMAIL-02**: Both email variants preserve the existing context (inviter name, campaign name, organization, role, expiry date) and meet the accessibility bar (plain-text fallback, semantic HTML, no image-only content).
-- [ ] **EMAIL-03**: The init-link URL uses ZITADEL's `urlTemplate` parameter to deep-link `https://run.civpulse.org/invites/<token>?zitadelCode={{.Code}}&userID={{.UserID}}` (exact placeholder shape confirmed by the Phase-111 spike).
-
-### UX — Invite-Accept Page & Login Interstitial
-
-- [ ] **UX-01**: The `/invites/<token>` page handles "user just landed authenticated via ZITADEL `urlTemplate` redirect" — oidc-client-ts picks up the fresh session, the page renders the Accept-invite confirmation without requiring a second sign-in click.
-- [ ] **UX-02**: The `/login` page, when bounced to with `?redirect=/invites/...`, renders a brief contextual interstitial ("You're signing in to accept your invite to <campaign>") before the OIDC redirect, so users arriving from a stale session are not stranded on "Redirecting…".
-- [ ] **UX-03**: The OIDC callback handler enforces an empty-membership gate — a ZITADEL user with zero campaign/organization memberships is redirected to an accept-invite prompt instead of receiving a session cookie that exposes empty tenant context. (Addresses Pitfall M1.)
-- [ ] **UX-04**: Email-mismatch failures during accept render an explicit "this invite is for X, you signed in as Y" page with three actions: log out, request a re-send, contact the campaign admin. (Extends `invite.py:202-205`.)
-
-### RECOV — Expired-Link Recovery & Resend
-
-- [ ] **RECOV-01**: When the CivicPulse invite is still valid but the ZITADEL init code has expired (ZITADEL's init code TTL is shorter than our 7-day invite TTL), the accept-flow read path transparently calls `create_invite_code` again to mint a fresh code and surfaces the new link to the user. No manual admin intervention required.
-- [ ] **RECOV-02**: The expired-invite UI shows a "Request a fresh invite" button that hits a rate-limited public endpoint and emails the campaign admin team. No captcha (the invite token is the gate); per-token and per-IP rate limits enforced via slowapi.
-- [ ] **RECOV-03**: Admins have a `POST /api/v1/invites/{id}/resend` endpoint that re-calls `create_invite_code` (which invalidates any prior code per ZITADEL docs — messaging surfaces this to both admin and user).
-- [ ] **RECOV-04**: Legacy-flow invites (MIG-02) surface the "Request a fresh invite" button on first click so pre-v1.19 invitees have a path forward.
-
-### SEC — Security Controls
-
-- [ ] **SEC-01**: Email-match enforcement on accept remains case-insensitive and rejects mismatches with a non-ambiguous error (S3 mitigation). Existing logic at `invite.py:202-205` preserved; UX-04 extends the user-facing recovery.
-- [ ] **SEC-02**: Invite-token reuse prevention — `accepted_at` is set under `SELECT FOR UPDATE` inside the accept transaction; second use returns 410 Gone (S4 mitigation).
-- [x] **SEC-03**: The ZITADEL service-account PAT is confirmed scoped to `ORG_USER_MANAGER` + `ORG_PROJECT_USER_GRANT_EDITOR` on the CivicPulse org (not `IAM_OWNER`). If it is over-privileged today, narrow it as part of Phase 111 (S6/Z3 mitigation).
-- [ ] **SEC-04**: Naive-datetime regression guarded — all new datetime columns use `DateTime(timezone=True)` and all new timestamp writes use `datetime.now(UTC)`, never `datetime.utcnow()` (O6 mitigation). Enforce with a ruff rule or unit test.
-
-### OBS — Observability
-
-- [ ] **OBS-01**: Structured funnel events emitted at each step: `invite.link_clicked`, `invite.password_shown` (from ZITADEL return), `invite.zitadel_redirected`, `invite.accept_clicked`, `invite.completed`. Consumed by structlog request telemetry for future dashboard wiring (O5 mitigation).
-- [ ] **OBS-02**: `identity_provisioning_status` column and (if non-null) `identity_provisioning_error` are exposed in the existing admin pending-invite view alongside email-delivery status, so staff can see where an invite got stuck end-to-end.
-
-### TEST — Test Suite Coverage
-
-- [ ] **TEST-01**: Every file modified during v1.19 has meaningful unit test coverage for new or changed behavior (backend: pytest; frontend: vitest/RTL).
-- [ ] **TEST-02**: Every API and service boundary touched during v1.19 has integration test coverage — including `ensure_human_user` idempotency across retries, `create_invite_code` against a mocked ZITADEL, the empty-membership login gate, and the migration's legacy-flow marking.
-- [ ] **TEST-03**: Every user-visible behavior changed during v1.19 has E2E test coverage via `web/scripts/run-e2e.sh`, including the first-time invite → set password → accept flow and the returning-user → accept flow.
-- [ ] **TEST-04**: The pytest, vitest, and Playwright baselines from v1.18 (1122 / 805 / 312) remain green on consecutive runs before each phase-exit gate.
+**Scope gates:**
+- **SEED-002 ships FIRST** (Phase 112) — cross-cutting auth rewrite needs daily drift signal in place before it touches every test surface (cross-referenced in research: FEATURES MVP #1, ARCHITECTURE Phase-order, PITFALLS TI5)
+- **Q-AUTH-01/02/03 deliberately unanswered** at milestone-scoping time — each gates a specific later phase
+- **Phase 118 ZITADEL tear-out gated** on ≥1 milestone of production soak under native auth
 
 ---
 
-## Future Requirements (deferred to v1.20+)
+## v1.20 Requirements
 
-- **PASSKEY-01**: Offer passkey enrollment on the ZITADEL setup page (strongest argument *for* B — ZITADEL handles the WebAuthn dance natively — but not table stakes for v1.19).
-- **MAGICLINK-01**: Magic-link passwordless as an alternative to the invite-code flow.
-- **DASH-01**: Multi-pending-invite dashboard for volunteers invited to several campaigns.
-- **RECOV-05**: Self-service "find my invite by email" recovery page.
-- **MFA-01**: Post-onboarding MFA nudge for privileged roles.
+### TEST — Continuous Test Verification (SEED-002) → Phase 112
+
+- [ ] **TEST-01**: Pre-commit hooks run `ruff check`/`ruff format` (Python), `prettier` (frontend), and gating lint; installed automatically via `bootstrap-dev.sh`
+- [ ] **TEST-02**: GitHub Actions workflow runs pytest + vitest on every push; scheduled nightly run executes full Playwright suite via `web/scripts/run-e2e.sh`
+- [ ] **TEST-03**: Scheduled nightly run publishes test-health drift signal (pass/fail counts, duration, flake list) to `web/e2e-runs.jsonl` and surfaces breaks within 24h of introduction
+- [ ] **TEST-04**: Test baseline maintained pre-phase-exit (pattern continues from v1.18) — pytest + vitest + Playwright green on two consecutive runs before any v1.20 phase exits
+
+### MIG — User Table Migration + fastapi-users Scaffolding → Phase 113
+
+- [ ] **MIG-01**: Alembic multi-revision reshapes `users` to fastapi-users 15.0.5 base mixin (`id` string-UUID preserved, `email`, `hashed_password`, `is_active`, `is_superuser`, `is_verified`); 27 FK references across other tables preserved by keeping string PK
+- [ ] **MIG-02**: Migration split into 4 individually-reversible revisions — (1) add nullable columns → (2) backfill idempotent → (3) add NOT NULL + indexes → (4) drop ZITADEL columns (final, data-destructive)
+- [ ] **MIG-03**: Every schema-DDL migration has tested `downgrade()`; CI runs `alembic upgrade head && downgrade -1 && upgrade head` against a test DB (R1 mitigation)
+- [ ] **MIG-04**: Pre-merge prod user audit confirms count of legacy-auth users; if count > 0, migration queues forced password-reset emails via Procrastinate `communications` queue
+- [ ] **MIG-05**: fastapi-users `UserManager` + `SQLAlchemyUserDatabase` adapter + `CookieTransport` + `DatabaseStrategy` wired in `app/core/auth.py`; new `access_token` table created by the same migration
+- [ ] **MIG-06**: `get_current_user` dependency migrates from ZITADEL JWT validation to fastapi-users `current_active_user`; resolved via separate non-RLS session so `get_campaign_db` RLS context is preserved
+
+### CSRF — Double-Submit CSRF Middleware → Phase 114
+
+- [ ] **CSRF-01**: Pure-ASGI middleware implements double-submit cookie pattern with `X-CSRF-Token` request header; token is `hmac(server_secret, access_token_id)` (C3 session-binding)
+- [ ] **CSRF-02**: Middleware registration order: CORS → SecurityHeaders → Structlog → CSRF → fastapi-users → routes
+- [ ] **CSRF-03**: Exempts `/auth/cookie/login`, `/auth/register` (admin-only), `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify`, `/invites/{token}/setup`, `/health`, and Mailgun webhook endpoints
+- [ ] **CSRF-04**: CSRF token delivered via JS-readable `csrf_token` cookie (NOT httponly); `ky` client auto-attaches header on mutating methods (POST/PATCH/PUT/DELETE)
+- [ ] **CSRF-05**: Token rotates in `on_after_login` together with session cookie (C1 session-fixation mitigation)
+
+### FE — Frontend Auth Rewire → Phase 115
+
+- [ ] **FE-01**: `web/src/api/client.ts` switches to `credentials: 'include'`; `ky` client attaches `X-CSRF-Token` header on mutating methods; `Authorization: Bearer` header removed entirely
+- [ ] **FE-02**: `oidc-client-ts` dependency removed from `web/package.json`; all `UserManager` / `signinRedirect` / `signinCallback` / `signoutRedirect` call sites replaced
+- [ ] **FE-03**: `web/src/stores/authStore.ts` rewritten — cookie-aware, no token storage; `useAuth()` surface preserved so every route guard and TanStack Query consumer is unchanged
+- [ ] **FE-04**: `/callback` route deleted (OIDC redirect flow obsolete)
+- [ ] **FE-05**: Playwright auth helper (`web/e2e/auth-flow.ts`) re-implemented via direct POST to `/auth/cookie/login` producing valid `storageState` usable across E2E specs
+- [ ] **FE-06**: All `fetch()` / `new EventSource(...)` / `new WebSocket(...)` call sites audited for `credentials: 'include'`; Playwright test verifies the session cookie is sent from every unique API origin (FE1 severity-5 mitigation)
+
+### AUTH — Native Auth Endpoints → Phase 113 (core) + Phase 117 (reset / verify)
+
+- [ ] **AUTH-01**: `/auth/cookie/login` accepts email + password and mints httponly + Secure + SameSite=Lax session cookie on success; `on_after_login` rotates session ID and CSRF token
+- [ ] **AUTH-02**: `/auth/cookie/logout` clears session cookie and deletes the `access_token` row (server-side revocation, not just client-side cookie expiry)
+- [ ] **AUTH-03**: `/auth/forgot-password` accepts email, generates bounded-TTL one-time-use reset token, queues reset email via Procrastinate `communications` queue; returns identical response for known/unknown email (no enumeration)
+- [ ] **AUTH-04**: `/auth/reset-password` consumes one-time-use token under `SELECT FOR UPDATE`; on success invalidates all other active sessions for that user (C3 mitigation)
+- [ ] **AUTH-05**: `/auth/request-verify-token` and `/auth/verify` wired; Q-AUTH-01 resolution at Phase 117 determines whether invite-accept auto-sets `is_verified=true` or requires an explicit click
+- [ ] **AUTH-06**: `POST /auth/register` is NOT publicly mounted; user creation only via invite-accept flow or admin-scoped endpoint
+
+### INV — Invite Flow Re-Implementation → Phase 116
+
+- [ ] **INV-01**: `/invites/{token}/setup` is a single-route accept flow — GET renders password-set UI (never marks accepted, Mailgun click-tracking OFF, `X-Robots-Tag: noindex` to defeat email-client prefetch); POST sets password, accepts the invite, and mints the session cookie in the same response (INV1 mitigation)
+- [ ] **INV-02**: Accept handler enforces `invite.email == request.user.email` on the re-invite path; mismatch renders a three-action recovery page (logout & accept as invitee, contact inviter, cancel) — never silently binds (INV2 severity-5)
+- [ ] **INV-03**: Accept runs under `SELECT FOR UPDATE` + `(campaign_id, user_id)` unique constraint; concurrent or double-click accept returns `410 Gone`; `asyncio.gather` race test asserts single accept wins (INV3)
+- [ ] **INV-04**: Invite emails continue on the existing Procrastinate `communications` queue; `normalize_external_id`, idempotent-by-key behavior, and monotonic webhook state preserved from v1.16
+- [ ] **INV-05**: Pre-migration inventory of ZITADEL-shadow rows queues forced-reset emails for users already provisioned during v1.19 Phase 111 (so no shadow user is orphaned)
+- [ ] **INV-06**: Re-invite idempotency — an existing user invited to a second campaign lands directly on the accept panel (no password-set UI); accept binds a new `campaign_members` row
+
+### PWD — Password Policy & Verification → Phase 116 (policy) + Phase 117 (reset / verify)
+
+- [ ] **PWD-01**: `validate_password` hook rejects passwords below the chosen policy floor; rule set resolved by **Q-AUTH-02** before Phase 116 begins (zxcvbn strength vs. traditional rules vs. NIST 800-63B length + HIBP)
+- [ ] **PWD-02**: Frontend password-set UI shows live validation feedback matching the backend `validate_password` rules — no "submit, get rejected, retype" UX regression
+- [ ] **PWD-03**: Password-reset and email-verify email templates branded, transactional via Mailgun; honor reduced-motion and plain-text fallback
+- [ ] **PWD-04**: Email verification flow resolved by **Q-AUTH-01** before Phase 117 begins
+
+### CLEAN — ZITADEL Tear-Out → Phase 118
+
+- [ ] **CLEAN-01**: `app/services/zitadel.py` removed; every caller migrated to the fastapi-users surface
+- [ ] **CLEAN-02**: `scripts/bootstrap-zitadel.py`, `.zitadel-data/`, and the ZITADEL service in `docker-compose.yml` removed; `bootstrap-dev.sh` updated
+- [ ] **CLEAN-03**: `authlib` dependency removed from `pyproject.toml`; `rg 'authlib|jose' app/` returns zero
+- [ ] **CLEAN-04**: `ZITADEL_*` env vars removed from `.env`, `.env.example`, `docker-compose.yml`, k8s manifests, and `web/.env*`
+- [ ] **CLEAN-05**: `rg '\bzitadel\b'` against `app/`, `web/src/`, `scripts/`, `alembic/`, `.github/`, `docker-compose.yml`, `.env*` returns zero matches outside `.planning/` archives
+- [ ] **CLEAN-06**: Phase 118 gated on ≥1 milestone of production soak on the native-auth stack (no rollback regressions observed)
+
+### SESS — Session Lifecycle & Admin Controls → Phase 119
+
+- [ ] **SESS-01**: Session lifecycle behavior (idle timeout / absolute timeout / refresh-on-activity / logout-all semantics) resolved by **Q-AUTH-03** before Phase 119 begins
+- [ ] **SESS-02**: Admin surface — "log out all sessions for user X" for account-recovery and incident-response scenarios
+- [ ] **SESS-03**: Per-session device metadata logged (IP, user-agent, last-seen) for a future differentiator UI; write path in v1.20, read-surface UI deferred (see Future Requirements)
+- [ ] **SESS-04**: Password change invalidates all other active sessions for that user (paired with AUTH-04)
+
+### SEC — Cross-Cutting Security (from pitfalls research) — distributed across phases
+
+- [ ] **SEC-01**: Constant-time comparison at login to resist timing attacks — fastapi-users default handling verified (T5 mitigation)
+- [ ] **SEC-02**: Reset and verify emails never contain user-identifying information in the URL beyond the opaque token (T6 mitigation — no email in query string)
+- [ ] **SEC-03**: Public auth endpoints rate-limited via slowapi (login, forgot-password, register); thresholds per FEATURES §G (5/15min login, exponential backoff on repeated failures)
+- [ ] **SEC-04**: AST-based rate-limit-guard test recognizes `fastapi_users.get_auth_router(...)` routes (existing pattern extended to the new router)
+- [ ] **SEC-05**: Naive-datetime regression guard preserved — `DateTime(timezone=True)` on new columns, `datetime.now(UTC)` on writes, never `datetime.utcnow()` (O6 / X4 mitigation)
+
+### OBS — Observability — distributed across phases
+
+- [ ] **OBS-01**: Structlog events for login success/failure, logout, password-reset-request, password-reset-complete, email-verify, invite-accept — each with `user_id`, `session_id`, and request metadata
+- [ ] **OBS-02**: Sentry breadcrumbs around the auth flow; 4xx rate on auth endpoints monitored for brute-force signal
+- [ ] **OBS-03**: Admin pending-invite visibility preserved from v1.17 / v1.19 (invite lifecycle still queryable through the existing admin surface)
 
 ---
 
-## Out of Scope (explicit exclusions)
+## Future Requirements (Deferred)
 
-- **Option C app-owned setup page on run.civpulse.org** — evaluated in research, rejected on cost / pitfall surface / ZITADEL #10319 risk. Remains the Phase-111 fallback only if the `urlTemplate` spike fails.
-- **ROPC (Resource Owner Password Credentials) grant** — adding `OIDC_GRANT_TYPE_PASSWORD` and a `client_secret` to the SPA is a security regression (contradicts the existing `OIDC_AUTH_METHOD_TYPE_NONE` posture, deprecated in OAuth 2.1). Out of scope under every branch, including the Option-C fallback.
-- **ZITADEL self-registration** — flipping `allowRegister: True` was the Option-A hot-patch; intentionally not taken because it opens a signup path to anyone who finds `/login`, not just invitees.
-- **Changes to the anonymous `/signup/$token` volunteer-application flow** — separate v1.17 feature, not part of this milestone.
-- **Backfilling ZITADEL identities for pre-v1.19 pending invites at deploy time** — chose the legacy-flow + recovery CTA path instead (MIG-02) to avoid coupling deploys to ZITADEL availability.
-- **Bulk-invite rate-limit infrastructure (token-bucket at 40 req/s)** — no current bulk-invite UI; design provisioning task so adding this limiter later is a one-line change (honorable-mention pitfall O1).
-- **Campaign-authored / marketing email** — still out of scope (product-level decision held from v1.16).
-- **In-product registration of a ZITADEL invitation message template** — we email via Mailgun `returnCode`; registering a ZITADEL template adds operational surface for negligible benefit.
+- **Active-sessions UI** — "your devices" read-surface. Device metadata logged in v1.20 Phase 119 (SESS-03); UI deferred to a later milestone.
+- **New-device notification emails** — differentiator; not v1.20 scope.
+- **HIBP breached-password check** — adoption conditional on Q-AUTH-02 resolution; if chosen, the k-anonymity API call is a small extension.
+- **Magic-link login** — complexity-to-value mismatch for v1.20; re-evaluate when volunteer-facing.
+- **Email-change flow** — distinct from password/verify; defer.
+- **Test-health dashboard** — differentiator on SEED-002; JSONL log is sufficient for v1.20.
+
+---
+
+## Out of Scope (explicit)
+
+- **Self-serve public `/auth/register`** — invite-only by design; public signup is already served by the separate volunteer signup-link flow (v1.17). FEATURES §Anti-Features confirms.
+- **SSO / SAML / per-org federation** — see `.planning/seeds/SEED-003-revisit-zitadel-when-sso-needed.md` for return tripwires (customer SSO request, enterprise compliance, MFA product requirement)
+- **MFA / TOTP / passkeys (WebAuthn)** — SEED-003 tripwire; FEATURES flags forced-MFA as an anti-feature
+- **Redis session store** — `access_token` table on Postgres is sufficient at our scale; decided against in the pivot research
+- **Stateless JWT-in-cookie** — we chose server-side opaque tokens for eager-revocability
+- **CAPTCHA on login** — FEATURES anti-feature; rate limiting + password policy sufficient
+- **Forced MFA enrollment** — premature; SEED-003 tripwire
+- **Confirm-password field** — modern standard is a single password field + show-toggle
+- **Password expiry / rotation** — current NIST 800-63B guidance is against it
+- **Security questions** — FEATURES anti-feature; recovery via email link only
 
 ---
 
 ## Traceability
 
-Each REQ-ID maps to exactly one phase. TEST-01/02/03/04 are cross-cutting per-phase obligations (per the v1.18 pattern) and anchored to Phase 115 here for the milestone-final pass; they also appear as exit-gate success criteria on every code-changing phase 111-115.
+_(Filled by the roadmapper — each REQ-ID maps to exactly one phase.)_
 
-| REQ-ID | Phase |
-|--------|-------|
-| PROV-01 | Phase 111 |
-| PROV-02 | Phase 111 |
-| PROV-03 | Phase 111 |
-| PROV-04 | Phase 113 |
-| PROV-05 | Phase 113 |
-| MIG-01 | Phase 112 |
-| MIG-02 | Phase 112 |
-| MIG-03 | Phase 112 |
-| EMAIL-01 | Phase 113 |
-| EMAIL-02 | Phase 113 |
-| EMAIL-03 | Phase 113 |
-| UX-01 | Phase 114 |
-| UX-02 | Phase 114 |
-| UX-03 | Phase 114 |
-| UX-04 | Phase 114 |
-| RECOV-01 | Phase 115 |
-| RECOV-02 | Phase 115 |
-| RECOV-03 | Phase 115 |
-| RECOV-04 | Phase 115 |
-| SEC-01 | Phase 114 |
-| SEC-02 | Phase 114 |
-| SEC-03 | Phase 111 |
-| SEC-04 | Phase 112 |
-| OBS-01 | Phase 115 |
-| OBS-02 | Phase 115 |
-| TEST-01 | Phase 115 |
-| TEST-02 | Phase 115 |
-| TEST-03 | Phase 115 |
-| TEST-04 | Phase 115 |
+| REQ-ID | Phase | Status |
+|---|---|---|
+| (filled by gsd-roadmapper) | | |
