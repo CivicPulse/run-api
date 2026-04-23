@@ -48,12 +48,23 @@ target-version = "py313"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "SIM", "ASYNC"]
+# DTZ enforces the SEC-05 naive-datetime ban (Phase 112 Plan 01 / v1.20 invariant).
+# Keep existing rule families; add DTZ so every `git commit` blocks naive
+# datetime.now()/datetime.utcnow()/date.today() calls at hook time.
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "ASYNC", "DTZ"]
 ignore = ["B008"]  # Depends() in FastAPI default args is standard pattern
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/017_procrastinate_schema.py" = ["E501"]  # Vendor SQL from procrastinate package
 "alembic/versions/028_voter_search_surface.py" = ["E501"]  # Long embedded SQL strings
+# date.today() in voter DOB validators is a date-only comparison; timezone is
+# irrelevant for "not in the future" semantics at day granularity. Narrowly
+# ignored to unblock DTZ adoption; revisit under a dedicated refactor plan.
+"app/schemas/voter.py" = ["DTZ011"]
+# Voice service tests patch `datetime` with side_effect=lambda *a, **kw: datetime(*a, **kw)
+# to forward mock constructor calls; the naive datetime is intentional test harness
+# plumbing, not production code.
+"tests/unit/test_voice_service.py" = ["DTZ001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

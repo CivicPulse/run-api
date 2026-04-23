@@ -1,0 +1,60 @@
+# Phase 112 Plan 01 — layer-1 continuous-verification safety net.
+#
+# Strict <5s budget on a 2-file diff (PITFALLS CV3). Every hook is narrowly
+# scoped via `files:` / `types_or:`. Nothing that can't hit the budget belongs
+# here — push-CI owns pytest/vitest/gitleaks; nightly owns the full suite.
+#
+# Install locally:  uv run pre-commit install
+# Install via bootstrap: scripts/bootstrap-dev.sh (runs pre-commit install)
+
+default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
+minimum_pre_commit_version: "4.6.0"
+
+repos:
+  # ---------------------------------------------------------------------
+  # Python: ruff check (with DTZ for SEC-05 naive-datetime ban) + format.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # ---------------------------------------------------------------------
+  # Web: prettier --check on staged TS/TSX/JSON/MD only.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: prettier (web)
+        args: [--check]
+        files: ^web/.*\.(ts|tsx|json|md)$
+
+  # ---------------------------------------------------------------------
+  # Local hooks.
+  # ---------------------------------------------------------------------
+  - repo: local
+    hooks:
+      # uv.lock vs pyproject.toml drift.
+      - id: uv-lock-check
+        name: uv lock --check
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      # lint-staged drives `vitest related --run` + prettier on staged web files.
+      # Husky's pre-commit invokes lint-staged directly; this hook keeps the
+      # same guarantee when pre-commit is driving the commit (belt + braces).
+      - id: lint-staged
+        name: lint-staged (web)
+        entry: bash -c 'cd web && npx --no-install lint-staged || npx lint-staged'
+        language: system
+        files: ^web/.*\.(ts|tsx|json|md)$
+        pass_filenames: false
+        stages: [pre-commit]
