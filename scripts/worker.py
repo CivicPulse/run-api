@@ -100,7 +100,7 @@ async def main() -> None:
                 )
             logger.info("Procrastinate connected, waiting for jobs")
             await procrastinate_app.run_worker_async(
-                queues=["imports"],
+                queues=["imports", "communications"],
                 name="import-worker",
             )
     finally:
