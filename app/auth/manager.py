@@ -190,22 +190,35 @@ class UserManager(BaseUserManager[User, str]):
     async def on_after_reset_password(
         self, user: User, request: Request | None = None
     ) -> None:
-        """Log reset and invalidate all existing session tokens for this user."""
+        """Log reset and invalidate all existing session tokens for this user.
+
+        Also promotes the user to ``is_verified=True`` / ``email_verified=True``
+        if they weren't already — completing a reset proves email ownership,
+        which is the same thing email-verification proves. This is what lets
+        legacy ZITADEL users (imported with ``email_verified=NULL/false``) log
+        in after claiming their native password.
+        """
         logger.info("native-auth: password reset id={} email={}", user.id, user.email)
-        # Good security hygiene: drop every outstanding session token. The
-        # user's current client will need to log in again with the new
-        # password, and any attacker with a stolen cookie loses access.
         try:
             from app.auth.models import AccessToken  # local import to avoid cycles
+            from sqlalchemy import update
 
             async with async_session_factory() as session:
+                # Good security hygiene: drop every outstanding session token.
                 await session.execute(
                     delete(AccessToken).where(AccessToken.user_id == user.id)
+                )
+                # Promote to verified — completing the reset proves email
+                # ownership. No-op if the flags are already true.
+                await session.execute(
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(is_verified=True, email_verified=True)
                 )
                 await session.commit()
         except Exception as exc:  # noqa: BLE001 -- log and continue
             logger.error(
-                "native-auth: failed to invalidate sessions after reset id={} err={}",
+                "native-auth: failed to finalize reset id={} err={}",
                 user.id,
                 exc,
             )
