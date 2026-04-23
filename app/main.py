@@ -19,6 +19,7 @@ from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import init_error_handlers
+from app.core.middleware.csrf import CSRFMiddleware
 from app.core.middleware.request_logging import StructlogMiddleware
 from app.core.middleware.security_headers import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
@@ -107,6 +108,26 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        CSRFMiddleware,
+        exempt_paths={
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/request-verify-token",
+            "/api/v1/auth/verify",
+            "/api/v1/auth/csrf",
+        },
+        exempt_prefixes=(
+            "/healthz",
+            "/api/health",
+            "/static",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+        ),
+    )
     app.add_middleware(StructlogMiddleware)
 
     app.state.limiter = limiter

@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, Response
 from fastapi_users import BaseUserManager, InvalidPasswordException, exceptions
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from loguru import logger
 
 from app.auth.db import get_user_db
+from app.core.config import settings
+from app.core.middleware.csrf import issue_csrf_cookie
 from app.models.user import User
 
 
@@ -80,6 +82,24 @@ class UserManager(BaseUserManager[User, str]):
 
     async def on_after_verify(self, user: User, request: Request | None = None) -> None:
         logger.info("native-auth: email verified id={} email={}", user.id, user.email)
+
+    async def on_after_login(
+        self,
+        user: User,
+        request: Request | None = None,
+        response: Response | None = None,
+    ) -> None:
+        """Attach a ``cp_csrf`` cookie to the successful-login response.
+
+        Double-submit CSRF protection (see ``app.core.middleware.csrf``) needs
+        a token the SPA can read from JS. Issuing it here means the very first
+        response that carries the ``cp_session`` cookie also carries the CSRF
+        cookie, so the SPA can make mutating calls immediately without a
+        separate ``GET /auth/csrf`` round trip.
+        """
+        logger.info("native-auth: user logged in id={} email={}", user.id, user.email)
+        if response is not None:
+            issue_csrf_cookie(response, secure=not settings.debug)
 
 
 async def get_user_manager(

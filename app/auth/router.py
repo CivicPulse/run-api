@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi_users import FastAPIUsers
 
 from app.auth.backend import auth_backend
 from app.auth.manager import get_user_manager
 from app.auth.schemas import UserCreate, UserRead
+from app.core.config import settings
+from app.core.middleware.csrf import issue_csrf_cookie
 from app.models.user import User
 
 fastapi_users: FastAPIUsers[User, str] = FastAPIUsers[User, str](
@@ -25,3 +27,17 @@ native_auth_router.include_router(fastapi_users.get_auth_router(auth_backend))
 native_auth_router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate)
 )
+
+
+@native_auth_router.get("/csrf")
+async def get_csrf_token(response: Response) -> dict[str, str]:
+    """Issue a fresh ``cp_csrf`` cookie and return the token in the body.
+
+    No auth required -- protection comes from the double-submit check
+    (header value must match cookie value), not from who can read it.
+    The SPA calls this at boot (or after login if the login response did
+    not already set the cookie) and echoes the value in ``X-CSRF-Token``
+    on mutating requests.
+    """
+    token = issue_csrf_cookie(response, secure=not settings.debug)
+    return {"csrf_token": token}

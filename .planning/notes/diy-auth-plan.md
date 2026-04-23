@@ -103,3 +103,25 @@ Frontend (11 files):
 None currently blocking Step 1. Re-read before Step 3:
 - Email provider for verification delivery in dev — reuse existing `email_provider` config from `app/core/config.py`
 - Reset token TTL — default to 1 hour unless user specifies otherwise
+
+## Progress log
+
+### Step 1 — fastapi-users backend alongside ZITADEL (committed as e189a88b)
+- Files: `app/auth/{__init__,backend,db,manager,models,router,schemas}.py`, `alembic/versions/042_native_auth_columns.py`, `app/db/base.py`, `app/main.py`, `app/models/user.py`, `pyproject.toml`, `uv.lock`
+- Deviations: `UUIDIDMixin` not inherited (override-only approach); `DatabaseStrategy` return annotation left unparameterized (fastapi-users 15.x uses 3-type generic); placeholder `CHANGE_ME_STEP_3` secrets for reset/verify routers (not mounted yet).
+- Notes: `get_current_native_user` requires `verified=True` — no user from `/register` can authenticate against it until Step 3 verify lands. `email_verified` ↔ `is_verified` sync will be added in `UserManager.on_after_verify` in Step 3.
+
+### Step 2 — CSRF middleware (committed as c15d613c)
+- Files:
+  - `app/core/middleware/csrf.py` (new) — pure-ASGI `CSRFMiddleware` + `issue_csrf_cookie` helper.
+  - `app/auth/router.py` — added `GET /api/v1/auth/csrf` endpoint.
+  - `app/auth/manager.py` — `on_after_login` now sets `cp_csrf` cookie on the login response (fastapi-users 15 passes `response`, confirmed via `inspect.signature`).
+  - `app/main.py` — wired `CSRFMiddleware` between `SecurityHeadersMiddleware` and `StructlogMiddleware` with the exempt-paths / exempt-prefixes lists from the Step 2 spec.
+  - `tests/unit/test_csrf_middleware.py` (new) — 9 tests covering safe methods, bearer bypass, unauth bypass, missing/mismatched/matching tokens, exempt path bypass, missing cookie reject.
+- Deviations:
+  - Implemented as pure ASGI (matching `security_headers.py` / `request_logging.py`) instead of inheriting from `BaseHTTPMiddleware` as the spec suggested — the two descriptions in the spec were contradictory ("pure ASGI" vs `BaseHTTPMiddleware`) and pure ASGI matches the existing package style.
+  - Skipped `httponly=False` cookie emission from `get_csrf_token` being re-serialized; used Starlette's `Response` param injection instead for a clean dict return.
+- Notes for Step 3:
+  - The `cp_csrf` cookie is issued on successful login AND on the standalone `GET /api/v1/auth/csrf` endpoint, so the SPA has two options.
+  - Password-reset / verify-email endpoints are already in the middleware exempt list; Step 3 can land them without touching middleware config.
+  - Forbidden-response body is hard-coded JSON (`{"detail":"CSRF token missing or invalid"}`); if Step 3 introduces a global problem-details exception model, revisit this.
