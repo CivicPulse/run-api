@@ -41,7 +41,7 @@ patterns-established:
 
 requirements-completed: []
 
-duration: 23min
+duration: 27min
 completed: 2026-04-23
 ---
 
@@ -51,9 +51,9 @@ completed: 2026-04-23
 
 ## Performance
 
-- **Duration:** ~23 min (13:10-13:33 UTC, across commits)
+- **Duration:** ~27 min (13:10-13:37 UTC, across commits + second run)
 - **Started:** 2026-04-23T17:10:17Z
-- **Completed:** 2026-04-23T17:33:05Z
+- **Completed:** 2026-04-23T17:37:16Z
 - **Tasks:** 6 (T0-T5)
 - **Files modified:** 8
 

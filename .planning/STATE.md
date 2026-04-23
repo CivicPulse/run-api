@@ -4,7 +4,7 @@ milestone: v1.19
 milestone_name: milestone
 status: blocked
 stopped_at: "Phase 111 Plan 01 spike FAILED — urlTemplate not honored by ZITADEL v4.10.1 legacy login UI. Plans 02-06 blocked. Run /gsd-replan-milestone v1.19."
-last_updated: "2026-04-23T17:33:05Z"
+last_updated: "2026-04-23T17:37:16Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 5
@@ -76,5 +76,5 @@ Last activity: 2026-04-23 -- Plan 01 spike executed, verdict: FAIL
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: Completed 111-01-PLAN.md (spike verdict: FAIL). Phase 111 blocked. Awaiting milestone replan.
+Stopped at: Completed 111-01-PLAN.md (spike verdict: FAIL, confirmed with second run). Phase 111 blocked. Awaiting milestone replan.
 Resume file: None
