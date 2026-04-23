@@ -110,6 +110,12 @@ echo "    ZITADEL SMTP config present"
 #    project-root copy written by bootstrap-zitadel.py's OUTPUT_PATH)
 # ---------------------------------------------------------------------------
 echo "==> Clearing stale ZITADEL data..."
+# ZITADEL v4 distroless runs as uid:gid 1000:1000 and writes pat.txt to this
+# bind mount. Docker auto-creates missing bind-mount dirs as root:root, which
+# breaks the 03_default_instance migration. Repair perms via a throwaway
+# container so no host sudo is needed.
+mkdir -p .zitadel-data
+docker run --rm -v "$PWD/.zitadel-data:/d" alpine chown -R 1000:1000 /d
 rm -f .zitadel-data/env.zitadel .zitadel-data/pat.txt .env.zitadel
 
 # ---------------------------------------------------------------------------
